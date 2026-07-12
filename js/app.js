@@ -27,7 +27,7 @@ async function renderRoute() {
   let key = currentRoute();
   if (!authReady && key !== "login" && key !== "home") key = "home";
   if (!allowedRoute(key)) {
-    navigate(auth.isAuthenticated() ? "home" : "login");
+    navigate(auth.isAuthenticated() ? "dashboard" : "home");
     return;
   }
 
@@ -131,6 +131,13 @@ function isIos() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent);
 }
 
+
+function applyBranding() {
+  const cfg = auth.current().backend?.publicConfig || {};
+  if (cfg.primaryColor && /^#[0-9a-f]{6}$/i.test(cfg.primaryColor)) document.documentElement.style.setProperty("--blue-800", cfg.primaryColor);
+  document.querySelectorAll(".brand strong").forEach(el => { el.textContent = cfg.appName || cfg.title || "Plärrdeifl Portal"; });
+  if (cfg.logoUrl && /^https:\/\//i.test(cfg.logoUrl)) document.querySelectorAll(".brand img").forEach(img => { img.src = cfg.logoUrl; });
+}
 async function refreshApp() {
   try {
     setConnectionStatus("Aktualisiere …", "warning");
@@ -151,7 +158,7 @@ async function logout() {
     await auth.logout();
     renderNavigation();
     updateUserChrome();
-    navigate("login");
+    navigate("home");
     setConnectionStatus("Backend bereit", "success");
     showToast("Du wurdest abgemeldet.", "success");
   } catch (error) {
@@ -173,6 +180,7 @@ async function bootstrap() {
     setConnectionStatus("Backend wird geprüft", "warning");
     try {
       await auth.initialize();
+      applyBranding();
       authReady = true;
       setConnectionStatus(auth.isAuthenticated() ? "Sicher verbunden" : "Backend bereit", "success");
     } catch (error) {
@@ -188,9 +196,9 @@ async function bootstrap() {
     const notice = auth.current().notice;
     if (notice && notice.message) showToast(notice.message, notice.type || "info", 5200);
 
-    if (!location.hash) navigate(auth.isAuthenticated() ? "home" : "login");
-    else if (auth.isAuthenticated() && initial === "login") navigate("home");
-    else if (!allowedRoute(initial)) navigate(auth.isAuthenticated() ? "home" : "login");
+    if (!location.hash) navigate(auth.isAuthenticated() ? "dashboard" : "home");
+    else if (auth.isAuthenticated() && (initial === "login" || initial === "home")) navigate("dashboard");
+    else if (!allowedRoute(initial)) navigate(auth.isAuthenticated() ? "dashboard" : "home");
     else await renderRoute();
 
     document.getElementById("appShell").hidden = false;

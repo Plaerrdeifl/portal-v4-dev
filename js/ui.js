@@ -19,10 +19,20 @@ export async function mountComponents() {
 
 export function visibleRouteEntries() {
   const authenticated = auth.isAuthenticated();
-  return Object.entries(routes()).filter(([key]) => {
-    if (key === "login") return !authenticated;
-    return auth.canAccessRoute(key);
-  });
+  if (!authenticated) return [["home", routes().home], ["login", routes().login]];
+
+  const configured = auth.appNavigation();
+  if (configured.length) {
+    return configured
+      .filter(item => item && item.active !== false && item.inNavigation !== false && routes()[item.id])
+      .sort((a, b) => Number(a.order || 0) - Number(b.order || 0))
+      .map(item => [item.id, Object.assign({}, routes()[item.id], {
+        title: item.label || item.title || routes()[item.id].title,
+        subtitle: item.description || routes()[item.id].subtitle,
+        icon: item.icon || routes()[item.id].icon
+      })]);
+  }
+  return Object.entries(routes()).filter(([key]) => key !== "login" && key !== "home" && auth.canAccessRoute(key));
 }
 
 export function renderNavigation() {
@@ -89,11 +99,17 @@ export function applyLegacyLinks() {
 }
 
 export function setRouteHeader(route) {
+  const key = currentRoute();
+  const configured = auth.routeConfig(key);
+  const effective = configured ? {
+    title: configured.label || configured.title || route.title,
+    subtitle: configured.description || route.subtitle
+  } : route;
   const title = document.getElementById("routeTitle");
   const subtitle = document.getElementById("routeSubtitle");
-  if (title) title.textContent = route.title;
-  if (subtitle) subtitle.textContent = route.subtitle;
-  document.title = `${route.title} · ${CONFIG.app.name}`;
+  if (title) title.textContent = effective.title;
+  if (subtitle) subtitle.textContent = effective.subtitle;
+  document.title = `${effective.title} · ${CONFIG.app.name}`;
 }
 
 export function showToast(message, type = "info", duration = 3200) {

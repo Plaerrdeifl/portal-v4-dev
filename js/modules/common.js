@@ -76,9 +76,21 @@ export function formDataObject(form) {
       result[key] = Array.isArray(result[key]) ? result[key].concat(value) : [result[key], value];
     } else result[key] = value;
   });
+
+  // Einzelne Checkboxen werden als Boolean, Checkbox-Gruppen als Werteliste
+  // übertragen. Damit funktionieren sowohl Teamleiter-Schalter als auch die
+  // konfigurierbare Rollenwahl für Navigation und Dashboard zuverlässig.
+  const groups = {};
   form.querySelectorAll('input[type="checkbox"][name]').forEach(input => {
-    if (!Object.prototype.hasOwnProperty.call(result, input.name)) result[input.name] = false;
-    else if (!Array.isArray(result[input.name])) result[input.name] = input.checked;
+    (groups[input.name] ||= []).push(input);
+  });
+  Object.entries(groups).forEach(([name, inputs]) => {
+    if (inputs.length === 1) {
+      result[name] = Boolean(inputs[0].checked);
+      return;
+    }
+    const checked = inputs.filter(input => input.checked).map(input => input.value);
+    result[name] = checked.length ? checked : false;
   });
   return result;
 }

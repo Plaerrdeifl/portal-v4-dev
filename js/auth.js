@@ -203,13 +203,28 @@ export const auth = {
     return Boolean(state.portal && state.portal[name]);
   },
 
+  appNavigation() {
+    return Array.isArray(state.portal?.appNavigation) ? state.portal.appNavigation.slice() : [];
+  },
+
+  routeConfig(key) {
+    return this.appNavigation().find(item => String(item.id || item.target || "") === String(key || "")) || null;
+  },
+
   canAccessRoute(key) {
     if (key === "home" || key === "login") return true;
     if (!this.isAuthenticated()) return false;
+    const configuredItems = this.appNavigation();
+    const configured = configuredItems.find(item => String(item.id || item.target || "") === String(key || ""));
+    if (configuredItems.length) return Boolean(configured && configured.active !== false);
+
+    // Rückfall für eine noch nicht migrierte Backend-Version.
     const portal = state.portal || {};
-    if (key === "dashboard") return this.canReadArea("Dashboard");
-    if (key === "fanclub") return this.isAdmin() || Boolean(portal.memberActive);
+    if (key === "dashboard") return true;
+    if (key === "fanclub") return this.isAdmin() || Boolean(portal.memberActive) || this.canReadArea("Mitglieder");
+    if (key === "cash") return this.isAdmin() || this.canReadArea("Kasse") || this.canReadArea("Beiträge") || this.canReadArea("Konten");
     if (key === "teams") return this.isAdmin() || Boolean(portal.teamAccess);
+    if (key === "board") return this.isAdmin() || Boolean(portal.boardAccess);
     if (key === "fanbus") return portal.fanbusAccess !== false;
     if (key === "admin") return this.isAdmin() || Boolean(portal.adminAccess);
     return false;

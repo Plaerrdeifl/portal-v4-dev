@@ -3,9 +3,10 @@ import { applyLegacyLinks, escapeHtml, showToast } from "./ui.js";
 import { navigate } from "./router.js";
 import { googleIdentity } from "./google-identity.js";
 import { hydrateDashboard } from "./modules/dashboard.js";
-import { hydrateFanclub } from "./modules/fanclub.js";
+import { hydrateFanclub, hydrateCash } from "./modules/fanclub.js";
 import { hydrateTeams } from "./modules/teams.js";
 import { hydrateFanbus } from "./modules/fanbus.js";
+import { hydrateBoard } from "./modules/board.js";
 import { hydrateAdmin } from "./modules/admin.js";
 
 function setText(id,value){const el=document.getElementById(id);if(el)el.textContent=String(value??"");}
@@ -14,13 +15,27 @@ function formatDateTime(value){const date=new Date(Number(value||0));if(!Number.
 function openLoginPage() { navigate("login"); }
 
 async function hydrateHome(){
-  const current=auth.current();const actions=document.getElementById("homeActions");const grid=document.getElementById("homeUserGrid");const backendPill=document.getElementById("backendStatusPill");
-  if(backendPill){backendPill.textContent=current.backend?"Verbunden":"Nicht verbunden";backendPill.className=`status-pill ${current.backend?"success":"warning"}`;}
-  if(!current.authenticated){setText("homeStatus","Anmeldung erforderlich");const status=document.getElementById("homeStatus");if(status)status.className="status-pill warning";setText("homeHeadline","Willkommen im Plärrdeifl Portal.");setText("homeText","Die PWA ist bereit. Melde dich jetzt mit deinem freigeschalteten Google-Konto an.");if(actions)actions.innerHTML='<button id="homeLoginButton" class="button primary" type="button">Mit Google anmelden</button><a class="button ghost" data-legacy-link href="#">Bisheriges Portal öffnen</a>';document.getElementById("homeLoginButton")?.addEventListener("click", openLoginPage);if(grid)grid.hidden=true;applyLegacyLinks();return;}
-  const user=current.user||{};setText("homeStatus","Sicher angemeldet");const status=document.getElementById("homeStatus");if(status)status.className="status-pill success";setText("homeHeadline",`Servus ${user.name||user.email||"Plärrdeifl"}!`);setText("homeText","Das v3-Portal ist als installierbare PWA mit dem bestehenden Apps-Script-Backend verbunden.");
-  const routeButtons=[auth.canAccessRoute("dashboard")&&["dashboard","📊 Dashboard"],auth.canAccessRoute("fanclub")&&["fanclub","🏒 Fanclub"],auth.canAccessRoute("teams")&&["teams","👥 Teams"],auth.canAccessRoute("fanbus")&&["fanbus","🚌 Fanbusse"],auth.canAccessRoute("admin")&&["admin","⚙️ Admin"]].filter(Boolean);
-  if(actions)actions.innerHTML=routeButtons.map(([route,label])=>`<button class="button ${route==="dashboard"?"primary":"secondary"}" type="button" data-route="${escapeHtml(route)}">${escapeHtml(label)}</button>`).join("");if(grid)grid.hidden=false;setText("homeUserName",user.name||user.email||"–");setText("homeUserRole",`${user.role||"Portaluser"}${user.isAdmin?" · Vollzugriff":""}`);setText("homeSessionExpiry",formatDateTime(current.expires));
-  const title=document.querySelector("#homeUserGrid")?.nextElementSibling?.querySelector("h3");if(title)title.textContent="v3-PWA-Systemstatus";applyLegacyLinks();
+  const current=auth.current();
+  if(current.authenticated){ navigate("dashboard"); return; }
+  const cfg=current.backend?.publicConfig||{};
+  setText("publicTitle",cfg.title||"Plärrdeifl Portal");
+  setText("publicHeadline",cfg.headline||"Willkommen bei den Schweinfurter Plärrdeifln");
+  setText("publicText",cfg.text||"Das gemeinsame Portal für Fanclub, Teams und Fanfahrten.");
+  setText("publicNote",cfg.note||"Registrierte Benutzer können sich mit ihrem freigeschalteten Google-Konto anmelden.");
+  setText("publicAboutText",cfg.about||"Das Portal verbindet Fanclubverwaltung, Teams und künftig die komplette Fanbusorganisation.");
+  setText("publicContactText",cfg.contact||"Kontaktinformationen können in der Portalverwaltung gepflegt werden.");
+  setText("publicNewsText",cfg.news||"Neuigkeiten werden hier veröffentlicht, sobald sie im Portal gepflegt sind.");
+  setText("publicDatesText",cfg.dates||"Kommende Veranstaltungen und Fanfahrten werden hier angekündigt.");
+  const logo=document.getElementById("publicLogo");if(logo&&cfg.logoUrl&&/^https:\/\//i.test(cfg.logoUrl))logo.src=cfg.logoUrl;
+  if(cfg.primaryColor&&/^#[0-9a-f]{6}$/i.test(cfg.primaryColor))document.documentElement.style.setProperty("--blue-800",cfg.primaryColor);
+  const login=document.getElementById("publicLoginButton");
+  login?.addEventListener("click",()=>navigate("login"));
+  document.getElementById("publicInstallButton")?.addEventListener("click",()=>document.getElementById("installButton")?.click());
+  document.querySelectorAll("[data-public-section]").forEach(button=>button.addEventListener("click",()=>{
+    const id=button.dataset.publicSection;document.getElementById(id)?.scrollIntoView({behavior:"smooth",block:"start"});
+  }));
+  const backendPill=document.getElementById("backendStatusPill");
+  if(backendPill){backendPill.textContent=current.backend?"Portal bereit":"Verbindung wird geprüft";backendPill.className=`status-pill ${current.backend?"success":"warning"}`;}
 }
 
 async function hydrateLogin(){
@@ -38,7 +53,7 @@ async function hydrateLogin(){
       onCredential:async({credential,nonce})=>{
         if(pill){pill.textContent="Wird geprüft";pill.className="status-pill warning";}setText("loginMessage","Google-Konto, Sitzung und Rechte werden geprüft …");
         const result=await auth.signInWithGoogleCredential(credential,nonce);
-        if(result.authenticated){navigate("home");return;}
+        if(result.authenticated){navigate("dashboard");return;}
         const latest=auth.current();if(notice&&latest.notice){notice.hidden=false;notice.className=`notice ${latest.notice.type||"warning"}`;notice.textContent=latest.notice.message+(latest.notice.email?` (${latest.notice.email})`:"");}if(pill){pill.textContent="Freischaltung nötig";pill.className="status-pill warning";}
       },
       onError:error=>{if(pill){pill.textContent="Fehler";pill.className="status-pill danger";}setText("loginMessage",error?.message||"Google-Anmeldung fehlgeschlagen.");showToast(error?.message||"Google-Anmeldung fehlgeschlagen.","error",7000);}
@@ -47,4 +62,4 @@ async function hydrateLogin(){
   applyLegacyLinks();
 }
 
-export async function hydratePage(routeKey){applyLegacyLinks();if(routeKey==="home")return hydrateHome();if(routeKey==="login")return hydrateLogin();if(routeKey==="dashboard")return hydrateDashboard();if(routeKey==="fanclub")return hydrateFanclub();if(routeKey==="teams")return hydrateTeams();if(routeKey==="fanbus")return hydrateFanbus();if(routeKey==="admin")return hydrateAdmin();}
+export async function hydratePage(routeKey){applyLegacyLinks();if(routeKey==="home")return hydrateHome();if(routeKey==="login")return hydrateLogin();if(routeKey==="dashboard")return hydrateDashboard();if(routeKey==="fanclub")return hydrateFanclub();if(routeKey==="cash")return hydrateCash();if(routeKey==="teams")return hydrateTeams();if(routeKey==="board")return hydrateBoard();if(routeKey==="fanbus")return hydrateFanbus();if(routeKey==="admin")return hydrateAdmin();}

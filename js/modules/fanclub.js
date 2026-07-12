@@ -7,10 +7,11 @@ import { phase3State } from "./state.js";
 
 const KEY = "fanclub:";
 let activeTab = "overview";
+let moduleName = "fanclub";
 
-function target() { return document.getElementById("fanclubPanel"); }
+function target() { return document.getElementById(`${moduleName}Panel`); }
 function setStatus(text, type = "success") {
-  const el = document.getElementById("fanclubStatus");
+  const el = document.getElementById(`${moduleName}Status`);
   if (el) { el.textContent = text; el.className = `status-pill ${type}`; }
 }
 function queryTab() {
@@ -19,36 +20,44 @@ function queryTab() {
   return new URLSearchParams(q).get("tab") || "";
 }
 function setTabHash(tab) {
-  const next = `#/fanclub?tab=${encodeURIComponent(tab)}`;
+  const next = `#/${moduleName}?tab=${encodeURIComponent(tab)}`;
   if (location.hash === next) renderTab(tab); else location.hash = next;
 }
 function tabs() {
   const p = portal();
+  if (moduleName === "cash") {
+    return [
+      { id: "contributions", label: "Beiträge", icon: "💶", show: canRead("Beiträge") },
+      { id: "cashbook", label: "Kassenbuch", icon: "📒", show: canRead("Kasse") },
+      { id: "accounts", label: "Konten", icon: "🏦", show: canRead("Konten") }
+    ].filter(item => item.show);
+  }
   return [
     { id: "overview", label: "Start", icon: "🏠", show: true },
-    { id: "members", label: "Mitglieder", icon: "👥", show: canRead("Mitglieder") },
-    { id: "contributions", label: "Beiträge", icon: "💶", show: canRead("Beiträge") },
-    { id: "cashbook", label: "Kasse", icon: "📒", show: canRead("Kasse") },
-    { id: "accounts", label: "Konten", icon: "🏦", show: canRead("Konten") },
-    { id: "tasks", label: "Aufgaben", icon: "✅", show: Boolean(p.boardAccess) || canRead("Aufgaben") }
+    { id: "members", label: "Mitglieder", icon: "👥", show: canRead("Mitglieder") }
   ].filter(item => item.show);
 }
+
 function renderTabs() {
   const items = tabs();
   if (!items.some(item => item.id === activeTab)) activeTab = items[0]?.id || "overview";
-  const wrap = document.getElementById("fanclubTabs");
+  const wrap = document.getElementById(`${moduleName}Tabs`);
   if (wrap) {
-    wrap.innerHTML = tabBar(items, activeTab, "fanclub");
-    wrap.querySelectorAll('[data-module-tab="fanclub"]').forEach(button => button.addEventListener("click", () => setTabHash(button.dataset.tab)));
+    wrap.innerHTML = tabBar(items, activeTab, moduleName);
+    wrap.querySelectorAll(`[data-module-tab="${moduleName}"]`).forEach(button => button.addEventListener("click", () => setTabHash(button.dataset.tab)));
   }
 }
 
-export async function hydrateFanclub() {
+async function hydrateModule(name, fallback) {
+  moduleName = name;
   const requested = queryTab();
-  activeTab = tabs().some(item => item.id === requested) ? requested : (tabs()[0]?.id || "overview");
+  activeTab = tabs().some(item => item.id === requested) ? requested : (tabs()[0]?.id || fallback);
   renderTabs();
   await renderTab(activeTab);
 }
+
+export async function hydrateFanclub() { return hydrateModule("fanclub", "overview"); }
+export async function hydrateCash() { return hydrateModule("cash", "contributions"); }
 
 async function renderTab(tab) {
   activeTab = tabs().some(item => item.id === tab) ? tab : (tabs()[0]?.id || "overview");

@@ -1,4 +1,4 @@
-const CACHE_VERSION = "pd-portal-v3-final-20260712-1";
+const CACHE_VERSION = "pd-portal-v3-ui-config-20260712-2";
 const APP_CACHE = `${CACHE_VERSION}-app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -6,9 +6,9 @@ const APP_SHELL = [
   "./", "./index.html", "./offline.html", "./manifest.webmanifest",
   "./css/tokens.css", "./css/layout.css", "./css/components.css", "./css/mobile.css",
   "./js/config.js", "./js/storage.js", "./js/api.js", "./js/google-identity.js", "./js/auth.js", "./js/router.js", "./js/ui.js", "./js/pages.js", "./js/app.js",
-  "./js/modules/common.js", "./js/modules/state.js", "./js/modules/dashboard.js", "./js/modules/fanclub.js", "./js/modules/teams.js", "./js/modules/fanbus.js", "./js/modules/admin.js",
+  "./js/modules/common.js", "./js/modules/state.js", "./js/modules/dashboard.js", "./js/modules/fanclub.js", "./js/modules/teams.js", "./js/modules/board.js", "./js/modules/fanbus.js", "./js/modules/admin.js",
   "./components/sidebar.html", "./components/topbar.html",
-  "./pages/home.html", "./pages/login.html", "./pages/dashboard.html", "./pages/fanclub.html", "./pages/teams.html", "./pages/fanbus.html", "./pages/admin.html",
+  "./pages/home.html", "./pages/login.html", "./pages/dashboard.html", "./pages/fanclub.html", "./pages/cash.html", "./pages/teams.html", "./pages/board.html", "./pages/fanbus.html", "./pages/admin.html",
   "./assets/icons/icon-32.png", "./assets/icons/icon-180.png", "./assets/icons/icon-192.png", "./assets/icons/icon-512.png", "./assets/icons/icon-maskable-192.png", "./assets/icons/icon-maskable-512.png"
 ];
 

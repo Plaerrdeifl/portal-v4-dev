@@ -1,35 +1,32 @@
-<section class="page">
-  <div class="hero">
+<section class="page public-landing">
+  <div class="hero public-hero">
     <div class="hero-content">
       <div>
-        <span id="homeStatus" class="status-pill warning">Zugang wird geprüft</span>
-        <h2 id="homeHeadline">Willkommen im neuen Plärrdeifl Portal.</h2>
-        <p id="homeText">Fanclub, Teams, Dashboard und Adminbereich sind in Phase 3 modular migriert.</p>
-        <div id="homeActions" class="action-row"></div>
+        <span id="backendStatusPill" class="status-pill warning">Portal wird geprüft</span>
+        <h2 id="publicHeadline">Willkommen bei den Schweinfurter Plärrdeifln</h2>
+        <p id="publicText">Das gemeinsame Portal für Fanclub, Teams und Fanfahrten.</p>
+        <div class="action-row">
+          <button id="publicLoginButton" class="button primary" type="button">Mit Google anmelden</button>
+          <button id="publicInstallButton" class="button secondary" type="button">Portal installieren</button>
+          <button class="button ghost" type="button" data-public-section="publicAbout">Mehr erfahren</button>
+        </div>
+        <p id="publicNote" class="subtle public-note">Registrierte Benutzer können sich mit ihrem freigeschalteten Google-Konto anmelden.</p>
       </div>
-      <img src="./assets/icons/icon-512.png" alt="Plärrdeifl Logo">
+      <img id="publicLogo" src="./assets/icons/icon-512.png" alt="Plärrdeifl Logo">
     </div>
   </div>
 
-  <div id="homeUserGrid" class="grid three" hidden>
-    <article class="card"><div class="card-icon">👤</div><h3>Angemeldet als</h3><p id="homeUserName">–</p></article>
-    <article class="card"><div class="card-icon">🛡️</div><h3>Rolle</h3><p id="homeUserRole">–</p></article>
-    <article class="card"><div class="card-icon">⏱️</div><h3>Sitzung gültig bis</h3><p id="homeSessionExpiry">–</p></article>
+  <div class="public-shortcuts" aria-label="Öffentliche Bereiche">
+    <button type="button" data-public-section="publicNews">📰 Aktuelles</button>
+    <button type="button" data-public-section="publicDates">📅 Termine</button>
+    <button type="button" data-public-section="publicAbout">🏒 Über uns</button>
+    <button type="button" data-public-section="publicContact">✉️ Kontakt</button>
   </div>
 
-  <div class="grid two">
-    <article class="card">
-      <div class="card-row"><div><h3>Phase-3-Systemstatus</h3><p>Aktueller Stand der echten Backend-Verbindung.</p></div><span id="backendStatusPill" class="status-pill warning">Prüfung</span></div>
-      <div class="info-list" style="margin-top:18px">
-        <div class="info-item"><span>✓</span><div><strong>Google OAuth</strong><small>Die Anmeldung läuft über das bestehende Apps-Script-Backend; das Client-Secret bleibt serverseitig.</small></div></div>
-        <div class="info-item"><span>✓</span><div><strong>Serverseitige Rechte</strong><small>Alle API-Aufrufe verwenden weiterhin die bestehende Rollen- und Rechteprüfung.</small></div></div>
-        <div class="info-item"><span>✓</span><div><strong>Kein direkter Tabellenzugriff</strong><small>GitHub Pages erhält ausschließlich freigegebene API-Antworten.</small></div></div>
-      </div>
-    </article>
-    <article class="card">
-      <h3>Fachbereiche migriert</h3>
-      <p>Die vorhandenen v3-Fachbereiche laufen jetzt modular in der GitHub-PWA. Bus-Modul und Push folgen ausschließlich in v4.</p>
-      <div class="action-row"><button id="homeDashboardButton" class="button secondary" type="button" data-route="dashboard">Dashboard prüfen</button><a class="button ghost" data-legacy-link href="#">Bisheriges Portal</a></div>
-    </article>
+  <div class="grid two public-content-grid">
+    <article id="publicNews" class="card public-section"><div class="card-icon">📰</div><h3>Aktuelles</h3><p id="publicNewsText">Neuigkeiten werden hier veröffentlicht, sobald sie im Portal gepflegt sind.</p></article>
+    <article id="publicDates" class="card public-section"><div class="card-icon">📅</div><h3>Termine</h3><p id="publicDatesText">Kommende Veranstaltungen und Fanfahrten werden hier angekündigt.</p></article>
+    <article id="publicAbout" class="card public-section"><div class="card-icon">🏒</div><h3>Über uns</h3><p id="publicAboutText">Das Portal verbindet Fanclubverwaltung, Teams und künftig die komplette Fanbusorganisation.</p></article>
+    <article id="publicContact" class="card public-section"><div class="card-icon">✉️</div><h3>Kontakt</h3><p id="publicContactText">Kontaktinformationen können in der Portalverwaltung gepflegt und später hier veröffentlicht werden.</p></article>
   </div>
 </section>

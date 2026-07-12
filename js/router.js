@@ -1,19 +1,19 @@
 const ROUTES = Object.freeze({
-  home: { title: "Start", subtitle: "Persönlicher Portalzugang", page: "home.html", icon: "🏠", public: true },
+  home: { title: "Start", subtitle: "Öffentlicher Bereich", page: "home.html", icon: "🏠", public: true },
   login: { title: "Anmeldung", subtitle: "Sicher mit Google anmelden", page: "login.html", icon: "🔐", public: true },
-  dashboard: { title: "Dashboard", subtitle: "Kennzahlen der Fanclubverwaltung", page: "dashboard.html", icon: "📊" },
-  fanclub: { title: "Fanclub", subtitle: "Mitglieder, Beiträge, Finanzen und Vorstandsaufgaben", page: "fanclub.html", icon: "🏒" },
+  dashboard: { title: "Dashboard", subtitle: "Deine persönliche Übersicht", page: "dashboard.html", icon: "🏠" },
+  fanclub: { title: "Fanclub", subtitle: "Mitgliedschaft und Mitgliederverwaltung", page: "fanclub.html", icon: "👥" },
+  cash: { title: "Kasse", subtitle: "Beiträge, Buchungen und Konten", page: "cash.html", icon: "💰" },
   teams: { title: "Teams", subtitle: "Teamübersicht, Aufgaben und Verwaltung", page: "teams.html", icon: "👥" },
-  fanbus: { title: "Fanbusse", subtitle: "v3-Erweiterungspunkt für das Bus-Modul in v4", page: "fanbus.html", icon: "🚌" },
-  admin: { title: "Admin-Bereich", subtitle: "Fanclub- und Portalverwaltung", page: "admin.html", icon: "⚙️" }
+  board: { title: "Vorstand", subtitle: "Mitgliedsanträge und Vorstandsaufgaben", page: "board.html", icon: "👔" },
+  fanbus: { title: "Fanbus", subtitle: "v4-Erweiterungspunkt für das Bus-Modul", page: "fanbus.html", icon: "🚌" },
+  admin: { title: "Administration", subtitle: "Portal-, Rollen- und Systemverwaltung", page: "admin.html", icon: "⚙️" }
 });
 
 export function routes() { return ROUTES; }
 
 export function currentRoute() {
-  const key = String(location.hash || "#/home")
-    .replace(/^#\/?/, "")
-    .split(/[?&]/)[0] || "home";
+  const key = String(location.hash || "#/home").replace(/^#\/?/, "").split(/[?&]/)[0] || "home";
   return ROUTES[key] ? key : "home";
 }
 
