@@ -48,27 +48,39 @@ async function renderRoute() {
   }
 }
 
+function showServiceWorkerUpdate(registration) {
+  const banner = document.getElementById("updateBanner");
+  const button = document.getElementById("updateButton");
+  const dismiss = document.getElementById("updateDismiss");
+  if (!banner || !registration?.waiting) return;
+  banner.hidden = false;
+  button.onclick = () => {
+    storage.set(CONFIG.pwa.updateReloadKey, true);
+    registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    button.disabled = true;
+    button.textContent = "Wird aktualisiert …";
+  };
+  dismiss.onclick = () => { banner.hidden = true; storage.set(CONFIG.pwa.updateDismissKey, true); };
+}
+
 async function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) {
     showToast("Dieser Browser unterstützt keinen Service Worker.", "error");
     return;
   }
   try {
-    let reloading = false;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (reloading) return;
-      reloading = true;
+      if (!storage.get(CONFIG.pwa.updateReloadKey, false)) return;
+      storage.remove(CONFIG.pwa.updateReloadKey);
       window.location.reload();
     });
     const registration = await navigator.serviceWorker.register(CONFIG.pwa.serviceWorker, { scope: "./", updateViaCache: "none" });
     await navigator.serviceWorker.ready;
-    if (registration.waiting) registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    if (registration.waiting) showServiceWorkerUpdate(registration);
     registration.addEventListener("updatefound", () => {
       const worker = registration.installing;
       worker?.addEventListener("statechange", () => {
-        if (worker.state === "installed" && navigator.serviceWorker.controller) {
-          worker.postMessage({ type: "SKIP_WAITING" });
-        }
+        if (worker.state === "installed" && navigator.serviceWorker.controller) showServiceWorkerUpdate(registration);
       });
     });
     registration.update().catch(() => null);

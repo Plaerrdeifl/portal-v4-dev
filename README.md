@@ -1,7 +1,10 @@
-# Plärrdeifl Portal v3 – PWA FINAL RC1
+# Plärrdeifl Portal v3.0.0 FINAL – GitHub Pages PWA
 
-Produktives GitHub-Pages-Frontend für `https://plaerrdeifl.github.io/portal/`.
+Produktives Frontend unter `https://plaerrdeifl.github.io/portal/`.
 
-Enthalten: Google-Login, Sitzung, rechteabhängige Navigation, Dashboard, Fanclub, Teams, Fanbus-v4-Erweiterungspunkt, Adminbereich, PWA-Installation, Offline-Fallback und Update-Mechanismus.
+- Direkter Google Identity Services Popup-Login
+- Apps-Script-IFrame-Brücke für serverseitig geprüfte Sitzungen und Fach-APIs
+- Kontrollierte PWA-Updates ohne automatischen Doppel-Reload
+- v4-Erweiterungspunkte vorhanden; Bus-Modul und Push sind nicht Teil von v3
 
-Keine Geheimnisse oder Vereinsdaten in dieses öffentliche Repository eintragen.
+Keine Secrets oder Vereinsdaten in dieses öffentliche Repository eintragen.

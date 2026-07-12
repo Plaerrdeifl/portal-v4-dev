@@ -1,11 +1,11 @@
-const CACHE_VERSION = "pd-portal-v3-final-rc1-bridge-hotfix-20260712-2";
+const CACHE_VERSION = "pd-portal-v3-final-20260712-1";
 const APP_CACHE = `${CACHE_VERSION}-app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
 const APP_SHELL = [
   "./", "./index.html", "./offline.html", "./manifest.webmanifest",
   "./css/tokens.css", "./css/layout.css", "./css/components.css", "./css/mobile.css",
-  "./js/config.js", "./js/storage.js", "./js/api.js", "./js/auth.js", "./js/router.js", "./js/ui.js", "./js/pages.js", "./js/app.js",
+  "./js/config.js", "./js/storage.js", "./js/api.js", "./js/google-identity.js", "./js/auth.js", "./js/router.js", "./js/ui.js", "./js/pages.js", "./js/app.js",
   "./js/modules/common.js", "./js/modules/state.js", "./js/modules/dashboard.js", "./js/modules/fanclub.js", "./js/modules/teams.js", "./js/modules/fanbus.js", "./js/modules/admin.js",
   "./components/sidebar.html", "./components/topbar.html",
   "./pages/home.html", "./pages/login.html", "./pages/dashboard.html", "./pages/fanclub.html", "./pages/teams.html", "./pages/fanbus.html", "./pages/admin.html",
@@ -14,7 +14,6 @@ const APP_SHELL = [
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(APP_CACHE).then(cache => cache.addAll(APP_SHELL)));
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", event => {

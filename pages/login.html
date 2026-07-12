@@ -1,6 +1,6 @@
 <section class="page login-page">
   <div class="page-header">
-    <div><h2>Mit Google anmelden</h2><p>Der produktive Login läuft über das Apps-Script-Backend. Geheimnisse und Vereinsdaten bleiben außerhalb des öffentlichen GitHub-Repositories.</p></div>
+    <div><h2>Mit Google anmelden</h2><p>Die Google-Kontoauswahl öffnet sich direkt in dieser PWA. Identität, Rolle und Rechte werden anschließend serverseitig geprüft.</p></div>
     <span id="loginStatusPill" class="status-pill warning">Nicht angemeldet</span>
   </div>
   <div class="grid two">
@@ -9,9 +9,9 @@
       <h3>Plärrdeifl Portal öffnen</h3>
       <p id="loginMessage">Melde dich mit einem im Portal freigeschalteten Google-Konto an.</p>
       <div id="loginNotice" class="notice" hidden></div>
+      <div id="googleSignInButton" class="google-signin-slot" aria-label="Mit Google anmelden"></div>
       <div class="action-row">
-        <button id="googleLoginButton" class="button primary" type="button">Mit Google anmelden</button>
-        <button id="loginRetryButton" class="button secondary" type="button">Backend erneut prüfen</button>
+        <button id="loginRetryButton" class="button secondary" type="button">Anmeldung neu laden</button>
         <a class="button ghost" data-legacy-link href="#">Bisheriges Portal öffnen</a>
       </div>
     </article>

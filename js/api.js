@@ -148,6 +148,12 @@ export const api = Object.freeze({
   async getConfig() {
     return unwrap(await bridge.request("config"));
   },
+  async createGisChallenge() {
+    return unwrap(await bridge.request("createGisChallenge"));
+  },
+  async loginWithGoogleCredential(credential, nonce) {
+    return unwrap(await bridge.request("loginWithGoogleCredential", [credential, nonce]));
+  },
   async createLoginUrl(frontendReturnUrl) {
     return unwrap(await bridge.request("createLoginUrl", [frontendReturnUrl]));
   },

@@ -2,8 +2,8 @@ export const CONFIG = Object.freeze({
   app: {
     name: "Plärrdeifl Portal",
     shortName: "Plärrdeifl",
-    version: "v3.0.0 PWA FINAL RC1",
-    build: "2026.07.12-github-pages-v3-final-rc1",
+    version: "v3.0.0 PWA FINAL",
+    build: "2026.07.12-github-pages-v3-final",
     repository: "https://github.com/Plaerrdeifl/portal"
   },
   urls: {
@@ -27,7 +27,8 @@ export const CONFIG = Object.freeze({
   pwa: {
     serviceWorker: "./service-worker.js",
     installDismissKey: "pd_v3_final_install_dismissed",
-    updateReloadKey: "pd_v3_final_update_reload"
+    updateReloadKey: "pd_v3_final_update_reload",
+    updateDismissKey: "pd_v3_final_update_dismissed"
   },
   lists: {
     bookingLimit: 100,

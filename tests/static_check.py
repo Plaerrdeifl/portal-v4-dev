@@ -3,7 +3,7 @@ import json, re, sys
 root=Path(__file__).resolve().parents[1]
 checks=[]
 def add(name, ok, detail=""): checks.append({"name":name,"ok":bool(ok),"detail":detail})
-required=["index.html","manifest.webmanifest","service-worker.js","js/app.js","js/api.js","js/auth.js","js/pages.js","js/modules/fanclub.js","js/modules/teams.js","js/modules/admin.js","pages/login.html"]
+required=["index.html","manifest.webmanifest","service-worker.js","js/app.js","js/api.js","js/auth.js","js/google-identity.js","js/pages.js","js/modules/fanclub.js","js/modules/teams.js","js/modules/admin.js","pages/login.html"]
 for name in required: add("Datei "+name,(root/name).is_file())
 manifest=json.loads((root/"manifest.webmanifest").read_text(encoding="utf-8"))
 add("PWA standalone",manifest.get("display")=="standalone")
@@ -12,9 +12,9 @@ config=(root/"js/config.js").read_text(encoding="utf-8")
 add("Produktive Frontend-Adresse","https://plaerrdeifl.github.io/portal/" in config)
 add("Produktive Backend-Brücke","?pwa=bridge" in config)
 login=(root/"pages/login.html").read_text(encoding="utf-8")
-add("Google-Login-Button",'id="googleLoginButton"' in login)
+add("Google-Login-Slot",'id="googleSignInButton"' in login)
 auth=(root/"js/auth.js").read_text(encoding="utf-8")
-add("OAuth-Ticket-Austausch","exchangeTicket" in auth and "createLoginUrl" in auth)
+add("Direkter GIS-Login","signInWithGoogleCredential" in auth and "loginWithGoogleCredential" in auth)
 add("Sitzungswiederaufnahme","resumeSession" in auth)
 alltext="\n".join(p.read_text(encoding="utf-8",errors="ignore") for p in root.rglob("*.*") if p.suffix in {".js",".html",".json",".webmanifest"})
 add("Kein Client Secret",not re.search(r"client[_-]?secret\s*[:=]\s*[\"'][^\"']+",alltext,re.I))

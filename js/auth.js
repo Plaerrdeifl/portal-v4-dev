@@ -215,10 +215,32 @@ export const auth = {
     return false;
   },
 
+  async signInWithGoogleCredential(credential, nonce) {
+    const result = await api.loginWithGoogleCredential(credential, nonce);
+    if (result?.pending) {
+      clearPersisted();
+      state = {
+        ...EMPTY_STATE,
+        backend: state.backend,
+        notice: {
+          type: "warning",
+          message: "Dein Google-Konto wurde zur Freischaltung eingereicht. Ein Portal-Admin muss den Antrag noch bestätigen.",
+          email: String(result.request?.email || "")
+        }
+      };
+      emitChange();
+      return this.current();
+    }
+    if (!result?.sessionToken) throw new Error("Das Backend hat keine gültige Sitzung geliefert.");
+    const initialData = await loadInitialData(result.sessionToken);
+    setAuthenticated(result, initialData, { type: "success", message: "Google-Anmeldung erfolgreich." });
+    emitChange();
+    return this.current();
+  },
+
   async login() {
-    const result = await api.createLoginUrl(CONFIG.urls.frontend);
-    if (!result?.url) throw new Error("Google-Anmeldeadresse konnte nicht erstellt werden.");
-    window.location.assign(result.url);
+    if (location.hash !== "#/login") location.hash = "#/login";
+    return this.current();
   },
 
   async logout() {
@@ -226,6 +248,7 @@ export const auth = {
     try {
       if (token) await api.logout(token);
     } finally {
+      try { window.google?.accounts?.id?.disableAutoSelect(); } catch (error) {}
       clearPersisted();
       state = { ...EMPTY_STATE, backend: state.backend, notice: { type: "success", message: "Du wurdest abgemeldet." } };
       emitChange();
