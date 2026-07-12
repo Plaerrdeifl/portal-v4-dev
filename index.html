@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b4f9c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Plärrdeifl">
+  <meta name="format-detection" content="telephone=no">
+  <title>Plärrdeifl Portal</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon-192.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="./icons/icon-180.png">
+  <link rel="stylesheet" href="./app.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="card">
+      <img class="logo" src="./icons/icon-192.png" alt="Plärrdeifl Logo">
+      <p class="kicker">PWA-Umstellung · Phase 1</p>
+      <h1>Plärrdeifl Portal</h1>
+      <p>Die neue GitHub-Pages-Grundlage ist eingerichtet. Mit diesem Stand prüfen wir zuerst Adresse, Installation und App-Icon.</p>
+
+      <div id="installStatus" class="status">PWA wird geprüft …</div>
+
+      <div class="actions">
+        <button id="installButton" type="button" hidden>Portal installieren</button>
+        <a class="secondary" href="https://script.google.com/macros/s/AKfycbz6B2hdN-tytcK4_4uGgSzRvzvXpeLxYzwhhOxmeJKh6pQZ44JJccM5zuCehFc1oo_Olw/exec">Aktuelles Portal öffnen</a>
+      </div>
+
+      <p class="hint">Auf dem iPhone: in Safari öffnen → Teilen → „Zum Home-Bildschirm“.</p>
+    </section>
+  </main>
+  <script src="./app.js" defer></script>
+</body>
+</html>
