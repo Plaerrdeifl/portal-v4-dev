@@ -1,0 +1,38 @@
+<section class="page">
+  <div class="hero">
+    <div class="hero-content">
+      <div>
+        <span class="status-pill success">Phase 1 erfolgreich geladen</span>
+        <h2>Das neue Plärrdeifl Portal steht auf einem sauberen Fundament.</h2>
+        <p>GitHub Pages liefert jetzt die Oberfläche als installierbare PWA. Das bestehende Apps-Script-Portal bleibt bis zur vollständigen Migration unverändert verfügbar.</p>
+        <div class="action-row">
+          <a class="button primary" data-legacy-link href="#">Bestehendes Portal öffnen</a>
+          <button class="button secondary" type="button" data-route="login">Login-Grundlage ansehen</button>
+        </div>
+      </div>
+      <img src="./assets/icons/icon-512.png" alt="Plärrdeifl Logo">
+    </div>
+  </div>
+
+  <div class="grid three">
+    <article class="card"><div class="card-icon">📱</div><h3>Installierbare PWA</h3><p>Manifest, App-Icons, Standalone-Modus und iOS-Home-Bildschirm sind eingerichtet.</p></article>
+    <article class="card"><div class="card-icon">🧭</div><h3>Modulares Routing</h3><p>Seiten und Navigation sind getrennt und können schrittweise um echte Fachmodule erweitert werden.</p></article>
+    <article class="card"><div class="card-icon">🔌</div><h3>API vorbereitet</h3><p>Eine zentrale API-Schicht ist vorhanden, aber absichtlich noch nicht produktiv mit Apps Script verbunden.</p></article>
+  </div>
+
+  <div class="grid two">
+    <article class="card">
+      <div class="card-row"><div><h3>Systemstatus</h3><p>Aktueller Zustand der Phase-1-Grundlage.</p></div><span class="status-pill success">Bereit</span></div>
+      <div class="info-list" style="margin-top:18px">
+        <div class="info-item"><span>✓</span><div><strong>GitHub-Pages-kompatibel</strong><small>Alle Pfade funktionieren innerhalb von <code>/portal/</code> und später auch mit eigener Domain.</small></div></div>
+        <div class="info-item"><span>✓</span><div><strong>Offline-Grundlage</strong><small>App-Shell und Platzhalterseiten werden über den Service Worker zwischengespeichert.</small></div></div>
+        <div class="info-item"><span>✓</span><div><strong>Keine Geheimnisse im Repository</strong><small>Client-Secrets, Tabelleninhalte und Backendcode sind nicht Bestandteil dieses Pakets.</small></div></div>
+      </div>
+    </article>
+    <article class="card">
+      <h3>Nächster Schritt</h3>
+      <p>In Phase 2 verbinden wir Google-Login, Sitzungsverwaltung und die sichere Apps-Script-API. Erst danach migrieren wir Fanclub, Teams, Fanbusse und Admin.</p>
+      <div class="action-row"><button class="button ghost" type="button" data-route="dashboard">Modulplatzhalter prüfen</button></div>
+    </article>
+  </div>
+</section>

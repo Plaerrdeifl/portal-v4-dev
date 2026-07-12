@@ -1,0 +1,10 @@
+<section class="page">
+  <div class="page-header"><div><h2>Login-Grundlage</h2><p>Diese Seite zeigt den vorgesehenen Ablauf. Der echte Google-Login wird erst in Phase 2 sicher mit dem Apps-Script-Backend verbunden.</p></div><span class="status-pill warning">Noch nicht verbunden</span></div>
+  <div class="grid two">
+    <article class="card">
+      <div class="card-icon">🔐</div><h3>Google-Anmeldung</h3><p>Die PWA wird später eine Login-Anfrage an das Backend starten und nach erfolgreicher Anmeldung eine kurzlebige Portalsitzung verwenden.</p>
+      <div class="action-row"><a class="button primary" data-legacy-link href="#">Aktuelles Portal öffnen</a><button class="button ghost" type="button" disabled>Neuer Login folgt in Phase 2</button></div>
+    </article>
+    <article class="card"><h3>Sicherheitsprinzipien</h3><div class="info-list" style="margin-top:14px"><div class="info-item"><span>1</span><div><strong>Keine Secrets im Frontend</strong><small>Das öffentliche GitHub-Repository enthält niemals Client-Secret oder interne Schlüssel.</small></div></div><div class="info-item"><span>2</span><div><strong>Backend entscheidet</strong><small>Rollen, Rechte und Datenzugriffe bleiben vollständig serverseitig.</small></div></div><div class="info-item"><span>3</span><div><strong>Sitzungen statt Tabellenzugriff</strong><small>Der Browser erhält keine direkte Freigabe auf Google Sheets.</small></div></div></div></article>
+  </div>
+</section>

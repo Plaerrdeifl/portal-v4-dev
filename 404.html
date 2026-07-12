@@ -1,1 +1,9 @@
-<!doctype html><html lang="de"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=./"><title>Weiterleitung</title></head><body><a href="./">Zum Plärrdeifl Portal</a></body></html>
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Weiterleitung …</title></head>
+<body><p>Portal wird geöffnet …</p><script>
+(function(){
+  const segments=location.pathname.split('/').filter(Boolean);
+  const base=location.hostname.endsWith('github.io') && segments.length ? `/${segments[0]}/` : '/';
+  location.replace(base+'#/home');
+})();
+</script></body></html>
