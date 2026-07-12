@@ -1,25 +1,24 @@
 <section class="page login-page">
   <div class="page-header">
-    <div><h2>Mit Google anmelden</h2><p>Die Google-Kontoauswahl öffnet sich direkt in dieser PWA. Identität, Rolle und Rechte werden anschließend serverseitig geprüft.</p></div>
+    <div><h2>Mit Google anmelden</h2><p>Wähle dein freigeschaltetes Google-Konto. Identität, Rolle und Rechte werden ausschließlich serverseitig geprüft.</p></div>
     <span id="loginStatusPill" class="status-pill warning">Nicht angemeldet</span>
   </div>
   <div class="grid two">
     <article class="card login-card">
       <div class="card-icon">🔐</div>
       <h3>Plärrdeifl Portal öffnen</h3>
-      <p id="loginMessage">Melde dich mit einem im Portal freigeschalteten Google-Konto an.</p>
+      <p id="loginMessage">Google-Anmeldung wird vorbereitet …</p>
       <div id="loginNotice" class="notice" hidden></div>
       <div id="googleSignInButton" class="google-signin-slot" aria-label="Mit Google anmelden"></div>
       <div class="action-row">
-        <button id="loginRetryButton" class="button secondary" type="button">Anmeldung neu laden</button>
-        <a class="button ghost" data-legacy-link href="#">Bisheriges Portal öffnen</a>
+        <button id="loginRetryButton" class="button secondary" type="button">Anmeldung neu vorbereiten</button>
       </div>
     </article>
     <article class="card">
       <h3>Verbindungsstatus</h3>
       <div class="info-list" style="margin-top:14px">
         <div class="info-item"><span id="bridgeStatusIcon">…</span><div><strong>Apps-Script-Brücke</strong><small id="bridgeStatusText">Wird geprüft …</small></div></div>
-        <div class="info-item"><span>G</span><div><strong>Google OAuth</strong><small id="oauthStatusText">Konfiguration wird gelesen …</small></div></div>
+        <div class="info-item"><span>G</span><div><strong>Google-Anmeldung</strong><small id="oauthStatusText">Konfiguration wird gelesen …</small></div></div>
         <div class="info-item"><span>🔒</span><div><strong>Rechteprüfung</strong><small>Rollen, Mitgliedschaft und Teamrechte werden ausschließlich serverseitig entschieden.</small></div></div>
       </div>
     </article>

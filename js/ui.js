@@ -19,12 +19,27 @@ export async function mountComponents() {
 
 export function visibleRouteEntries() {
   const authenticated = auth.isAuthenticated();
-  if (!authenticated) return [["home", routes().home], ["login", routes().login]];
+  if (!authenticated) {
+    const configuredPublic = auth.current().backend?.publicConfig?.navigation;
+    if (Array.isArray(configuredPublic) && configuredPublic.length) {
+      return configuredPublic
+        .filter(item => item && routes()[item.id]?.public)
+        .sort((a, b) => Number(a.order || 0) - Number(b.order || 0))
+        .map(item => [item.id, Object.assign({}, routes()[item.id], {
+          title: item.label || item.title || routes()[item.id].title,
+          subtitle: item.description || routes()[item.id].subtitle,
+          icon: item.icon || routes()[item.id].icon
+        })]);
+    }
+    return Object.entries(routes())
+      .filter(([, route]) => route.public)
+      .sort((a, b) => Number(a[1].publicOrder || 0) - Number(b[1].publicOrder || 0));
+  }
 
   const configured = auth.appNavigation();
   if (configured.length) {
     return configured
-      .filter(item => item && item.active !== false && item.inNavigation !== false && routes()[item.id])
+      .filter(item => item && item.active !== false && item.inNavigation !== false && routes()[item.id] && !routes()[item.id].public)
       .sort((a, b) => Number(a.order || 0) - Number(b.order || 0))
       .map(item => [item.id, Object.assign({}, routes()[item.id], {
         title: item.label || item.title || routes()[item.id].title,
@@ -32,7 +47,7 @@ export function visibleRouteEntries() {
         icon: item.icon || routes()[item.id].icon
       })]);
   }
-  return Object.entries(routes()).filter(([key]) => key !== "login" && key !== "home" && auth.canAccessRoute(key));
+  return Object.entries(routes()).filter(([key, route]) => !route.public && auth.canAccessRoute(key));
 }
 
 export function renderNavigation() {

@@ -9,15 +9,21 @@ export class ApiError extends Error {
   }
 }
 
+function wait(ms) {
+  return new Promise(resolve => window.setTimeout(resolve, ms));
+}
+
 class AppsScriptBridge {
   constructor() {
-    this.channel = this.randomToken();
+    this.channel = "";
     this.iframe = null;
     this.readyPromise = null;
     this.pending = new Map();
     this.bridgeWindow = null;
     this.bridgeOrigin = "";
+    this.readyResolver = null;
     this.boundMessage = event => this.onMessage(event);
+    window.addEventListener("message", this.boundMessage);
   }
 
   randomToken() {
@@ -41,19 +47,42 @@ class AppsScriptBridge {
     }
   }
 
-  initialize() {
-    if (!CONFIG.api.enabled) {
-      return Promise.reject(new ApiError("Die Backend-Verbindung ist deaktiviert.", "API_DISABLED"));
-    }
-    if (this.readyPromise) return this.readyPromise;
+  resetFrame() {
+    this.iframe?.remove();
+    this.iframe = null;
+    this.bridgeWindow = null;
+    this.bridgeOrigin = "";
+    this.readyResolver = null;
+  }
 
-    this.readyPromise = new Promise((resolve, reject) => {
+  connectOnce() {
+    this.resetFrame();
+    this.channel = this.randomToken();
+
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finishError = error => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        this.resetFrame();
+        reject(error);
+      };
+      const finishReady = payload => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        resolve(payload || {});
+      };
+
       const timer = window.setTimeout(() => {
-        reject(new ApiError("Die Apps-Script-Brücke antwortet nicht. Prüfe Bereitstellung und Phase-2-Backend.", "BRIDGE_TIMEOUT"));
+        finishError(new ApiError("Die Apps-Script-Brücke antwortet nicht. Prüfe die aktive Web-App-Bereitstellung.", "BRIDGE_TIMEOUT"));
       }, CONFIG.api.readyTimeoutMs);
 
       const url = new URL(CONFIG.api.bridgeUrl);
       url.searchParams.set("channel", this.channel);
+      url.searchParams.set("v", CONFIG.app.build);
+
       this.iframe = document.createElement("iframe");
       this.iframe.id = "appsScriptBridge";
       this.iframe.className = "backend-bridge";
@@ -62,17 +91,39 @@ class AppsScriptBridge {
       this.iframe.tabIndex = -1;
       this.iframe.src = url.toString();
       this.iframe.addEventListener("error", () => {
-        window.clearTimeout(timer);
-        reject(new ApiError("Die Apps-Script-Brücke konnte nicht geladen werden.", "BRIDGE_LOAD_ERROR"));
+        finishError(new ApiError("Die Apps-Script-Brücke konnte nicht geladen werden.", "BRIDGE_LOAD_ERROR"));
       }, { once: true });
 
-      this._resolveReady = payload => {
-        window.clearTimeout(timer);
-        resolve(payload || {});
-      };
-
-      window.addEventListener("message", this.boundMessage);
+      this.readyResolver = finishReady;
       document.body.appendChild(this.iframe);
+    });
+  }
+
+  initialize() {
+    if (!CONFIG.api.enabled) {
+      return Promise.reject(new ApiError("Die Backend-Verbindung ist deaktiviert.", "API_DISABLED"));
+    }
+    if (this.readyPromise) return this.readyPromise;
+
+    this.readyPromise = (async () => {
+      let firstError;
+      try {
+        return await this.connectOnce();
+      } catch (error) {
+        firstError = error;
+      }
+      await wait(650);
+      try {
+        return await this.connectOnce();
+      } catch (secondError) {
+        throw new ApiError(secondError.message || firstError?.message || "Backend-Verbindung fehlgeschlagen.", secondError.code || "BRIDGE_RETRY_FAILED", {
+          firstError: firstError?.message || "",
+          secondError: secondError?.message || ""
+        });
+      }
+    })().catch(error => {
+      this.readyPromise = null;
+      throw error;
     });
 
     return this.readyPromise;
@@ -86,16 +137,18 @@ class AppsScriptBridge {
     if (message.type === "ready") {
       this.bridgeWindow = event.source;
       this.bridgeOrigin = event.origin;
-      if (this._resolveReady) {
-        this._resolveReady(message.payload || {});
-        this._resolveReady = null;
+      if (this.readyResolver) {
+        const resolve = this.readyResolver;
+        this.readyResolver = null;
+        resolve(message.payload || {});
       }
       return;
     }
 
-    const pending = this.pending.get(String(message.requestId || ""));
+    const requestId = String(message.requestId || "");
+    const pending = this.pending.get(requestId);
     if (!pending) return;
-    this.pending.delete(String(message.requestId || ""));
+    this.pending.delete(requestId);
     window.clearTimeout(pending.timer);
 
     if (message.type === "error") {
@@ -118,9 +171,11 @@ class AppsScriptBridge {
       if (!this.bridgeWindow || !this.bridgeOrigin) {
         this.pending.delete(requestId);
         window.clearTimeout(timer);
+        this.readyPromise = null;
         reject(new ApiError("Die Apps-Script-Brücke ist noch nicht vollständig verbunden.", "BRIDGE_NOT_READY"));
         return;
       }
+
       this.bridgeWindow.postMessage({
         source: "pd-pwa-client",
         channel: this.channel,
@@ -153,12 +208,6 @@ export const api = Object.freeze({
   },
   async loginWithGoogleCredential(credential, nonce) {
     return unwrap(await bridge.request("loginWithGoogleCredential", [credential, nonce]));
-  },
-  async createLoginUrl(frontendReturnUrl) {
-    return unwrap(await bridge.request("createLoginUrl", [frontendReturnUrl]));
-  },
-  async exchangeTicket(ticket) {
-    return unwrap(await bridge.request("exchangeTicket", [ticket]));
   },
   async resumeSession(sessionToken) {
     return unwrap(await bridge.request("resumeSession", [sessionToken]));

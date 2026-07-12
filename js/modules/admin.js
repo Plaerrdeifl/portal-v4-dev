@@ -1,6 +1,7 @@
+import { auth } from "../auth.js";
 import {
   call, canRead, canWrite, closeDialog, confirmAction, empty, errorPanel, escapeAttr,
-  escapeHtml, fmtDate, isAdmin, loading, openDialog, optionList, runWrite, statusBadge
+  escapeHtml, fmtDate, isAdmin, loading, openDialog, optionList, runWrite, showToast, statusBadge
 } from "./common.js";
 import { phase3State } from "./state.js";
 
@@ -15,7 +16,10 @@ function renderAdminHome(){
   if(canWrite("Verwaltung")&&canWrite("Kasse"))fan.push(action("yearclose","📊","Jahresabschluss","Erstellt die finanzielle Jahreszusammenfassung."));
   if(canWrite("Verwaltung"))fan.push(action("datacheck","✓","Datenprüfung","Prüft die fachliche Datenstruktur."));
   if(canRead("Benutzeranträge"))portal.push(action("requests","✉️","Freischaltungsanträge","Unbekannte Google-Konten prüfen und freigeben."));
-  if(canRead("Rollen"))portal.push(action("users","🔐","Benutzer & Rollen","Benutzerkonten und Rollen verwalten."));
+  if(canRead("Rollen"))portal.push(
+    action("users","👤","Benutzer","Benutzerkonten, Rolle und Google-Verknüpfung verwalten."),
+    action("rights","🔐","Rollen & Rechte","Lesen, Schreiben und Administration je Rolle und Fachbereich einstellen.")
+  );
   if(canWrite("Verwaltung"))portal.push(action("backup","💾","Backup","Erstellt einen Snapshot aller aktiven DB_-Tabellen."));
   if(canRead("System"))portal.push(action("system","⚙️","Systemstatus","Zeigt Tabellenstatus und technische Hinweise."),action("audit","☷","Audit-Log","Zeigt nachvollziehbare Änderungen und Ereignisse."));
   if(isAdmin())portal.push(
@@ -27,12 +31,12 @@ function renderAdminHome(){
   target().innerHTML=`<section><div class="section-title"><div><h3>Fanclubverwaltung</h3><p>Saison, Jahresabschluss und fachliche Prüfungen.</p></div></div><div class="admin-actions" style="margin-top:14px">${fan.join("")||empty("Keine Fanclub-Administrationsfunktionen freigegeben.")}</div></section><section><div class="section-title"><div><h3>Portalverwaltung</h3><p>Benutzer, Rechte, Sicherung und technischer Status.</p></div></div><div class="admin-actions" style="margin-top:14px">${portal.join("")||empty("Keine Portalverwaltungsfunktionen freigegeben.")}</div></section><article class="card"><h3>v3-Abgrenzung</h3><p>Bus-Modul und Push-Benachrichtigungen werden bewusst nicht in v3 umgesetzt. Die PWA-Struktur bleibt dafür in v4 erweiterbar.</p></article>`;
   document.querySelectorAll("[data-admin-action]").forEach(b=>b.addEventListener("click",()=>runAction(b.dataset.adminAction)));
 }
-async function runAction(id){try{if(id==="season")return seasonDialog();if(id==="yearclose")return yearCloseDialog();if(id==="datacheck")return runDataCheck();if(id==="requests")return openRequests();if(id==="users")return openUsers();if(id==="backup")return createBackup();if(id==="system")return openSystem();if(id==="audit")return openAudit();if(id==="structure")return openPortalStructure();if(id==="widgets")return openDashboardWidgets();if(id==="appearance")return openPortalAppearance();if(id==="clean")return openCleanSystem();}catch(error){target().innerHTML=errorPanel(error);}}
+async function runAction(id){try{if(id==="season")return seasonDialog();if(id==="yearclose")return yearCloseDialog();if(id==="datacheck")return runDataCheck();if(id==="requests")return openRequests();if(id==="users")return openUsers();if(id==="rights")return openRoleRights();if(id==="backup")return createBackup();if(id==="system")return openSystem();if(id==="audit")return openAudit();if(id==="structure")return openPortalStructure();if(id==="widgets")return openDashboardWidgets();if(id==="appearance")return openPortalAppearance();if(id==="clean")return openCleanSystem();}catch(error){target().innerHTML=errorPanel(error);}}
 function seasonDialog(){openDialog({title:"Neue Saison starten",kicker:"Fanclubverwaltung",body:`<form><label>Saison/Jahr<input name="seasonName" value="${new Date().getFullYear()+1}" required></label><div class="notice warning" style="margin-top:14px">Für beitragspflichtige Mitglieder werden Beiträge angelegt. Bestehende Saisonwerte werden serverseitig geprüft.</div></form>`,onSubmit:async data=>{await runWrite("Neue Saison wird angelegt …",()=>call("apiStartNewSeason",data.seasonName));closeDialog();}});}
 function yearCloseDialog(){openDialog({title:"Jahresabschluss",kicker:"Fanclubverwaltung",body:`<form><label>Jahr<input type="number" name="year" value="${new Date().getFullYear()}" required></label></form>`,onSubmit:async data=>{await runWrite("Jahresabschluss wird erstellt …",()=>call("apiCreateYearClose",Number(data.year)));closeDialog();}});}
 async function runDataCheck(){const result=await runWrite("Datenprüfung läuft …",()=>call("apiRunDataCheck"),"Datenprüfung abgeschlossen.");openDialog({title:"Datenprüfung",kicker:`${Number(result.count||0)} Hinweis(e)`,wide:true,body:`${result.issues?.length?`<div class="settings-grid">${result.issues.map(issue=>`<div class="card"><strong>${escapeHtml(issue[0]||"Hinweis")} · ${escapeHtml(issue[1]||"")}</strong><p>${escapeHtml(issue[2]||"")}</p></div>`).join("")}</div>`:'<div class="notice success">Keine fachlichen Probleme gefunden.</div>'}<div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});}
 
-async function openUsers(force=false){let data=phase3State.get("admin:roles");if(!data||force)data=phase3State.set("admin:roles",await call("apiListRoles"));const users=data.roles||[];const roleNames=data.meta?.rollen||[];openDialog({title:"Benutzer & Rollen",kicker:`${users.length} Benutzer`,wide:true,body:`<div class="module-toolbar"><input id="adminUserSearch" class="grow" placeholder="Benutzer suchen …">${canWrite("Rollen")?'<button id="adminNewUser" class="button primary">+ Benutzer</button>':""}<button id="adminUsersRefresh" class="button ghost">Aktualisieren</button></div><div id="adminUserResults" style="margin-top:16px"></div><div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});const render=()=>{const q=String(document.getElementById("adminUserSearch")?.value||"").toLowerCase();const list=users.filter(u=>!q||[u.id,u.name,u.email,u.rolle,u.mitgliedsId].join(" ").toLowerCase().includes(q));document.getElementById("adminUserResults").innerHTML=list.length?`<div class="card table-card"><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Benutzer</th><th>Rolle</th><th>Google</th><th>Status</th><th></th></tr></thead><tbody>${list.map(u=>`<tr><td><strong>${escapeHtml(u.name||u.email||u.id)}</strong><div class="subtle">${escapeHtml(u.id)}${u.mitgliedsId?` · ${escapeHtml(u.mitgliedsId)}`:""}</div></td><td>${escapeHtml(u.rolle)}</td><td>${u.googleVerknuepft?'<span class="badge success">Verbunden</span>':'<span class="badge neutral">Nicht verbunden</span>'}</td><td>${statusBadge(u.aktiv)}</td><td>${canWrite("Rollen")?`<div class="button-row"><button class="button small ghost" data-user-edit="${escapeAttr(u.id)}">Bearbeiten</button><button class="button small ${u.aktiv==="JA"?"danger":"secondary"}" data-user-toggle="${escapeAttr(u.id)}" data-active="${u.aktiv==="JA"?"false":"true"}">${u.aktiv==="JA"?"Deaktivieren":"Aktivieren"}</button>${u.googleVerknuepft?`<button class="button small ghost" data-user-unlink="${escapeAttr(u.id)}">Google lösen</button>`:""}</div>`:""}</td></tr>`).join("")}</tbody></table></div></div>`:empty("Keine Benutzer gefunden.");document.querySelectorAll("[data-user-edit]").forEach(b=>b.addEventListener("click",()=>openUserForm(users.find(u=>u.id===b.dataset.userEdit),roleNames)));document.querySelectorAll("[data-user-toggle]").forEach(b=>b.addEventListener("click",()=>toggleUser(b.dataset.userToggle,b.dataset.active==="true")));document.querySelectorAll("[data-user-unlink]").forEach(b=>b.addEventListener("click",()=>unlinkUser(b.dataset.userUnlink)));};render();document.getElementById("adminUserSearch")?.addEventListener("input",render);document.getElementById("adminNewUser")?.addEventListener("click",()=>openUserForm({},roleNames));document.getElementById("adminUsersRefresh")?.addEventListener("click",()=>{closeDialog();phase3State.remove("admin:roles");openUsers(true);});}
+async function openUsers(force=false){let data=phase3State.get("admin:roles");if(!data||force)data=phase3State.set("admin:roles",await call("apiListRoles"));const users=data.roles||[];const roleNames=data.meta?.rollen||[];openDialog({title:"Benutzer",kicker:`${users.length} Benutzer`,wide:true,body:`<div class="module-toolbar"><input id="adminUserSearch" class="grow" placeholder="Benutzer suchen …">${canWrite("Rollen")?'<button id="adminNewUser" class="button primary">+ Benutzer</button>':""}<button id="adminUsersRefresh" class="button ghost">Aktualisieren</button></div><div id="adminUserResults" style="margin-top:16px"></div><div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});const render=()=>{const q=String(document.getElementById("adminUserSearch")?.value||"").toLowerCase();const list=users.filter(u=>!q||[u.id,u.name,u.email,u.rolle,u.mitgliedsId].join(" ").toLowerCase().includes(q));document.getElementById("adminUserResults").innerHTML=list.length?`<div class="card table-card"><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Benutzer</th><th>Rolle</th><th>Google</th><th>Status</th><th></th></tr></thead><tbody>${list.map(u=>`<tr><td><strong>${escapeHtml(u.name||u.email||u.id)}</strong><div class="subtle">${escapeHtml(u.id)}${u.mitgliedsId?` · ${escapeHtml(u.mitgliedsId)}`:""}</div></td><td>${escapeHtml(u.rolle)}</td><td>${u.googleVerknuepft?'<span class="badge success">Verbunden</span>':'<span class="badge neutral">Nicht verbunden</span>'}</td><td>${statusBadge(u.aktiv)}</td><td>${canWrite("Rollen")?`<div class="button-row"><button class="button small ghost" data-user-edit="${escapeAttr(u.id)}">Bearbeiten</button><button class="button small ${u.aktiv==="JA"?"danger":"secondary"}" data-user-toggle="${escapeAttr(u.id)}" data-active="${u.aktiv==="JA"?"false":"true"}">${u.aktiv==="JA"?"Deaktivieren":"Aktivieren"}</button>${u.googleVerknuepft?`<button class="button small ghost" data-user-unlink="${escapeAttr(u.id)}">Google lösen</button>`:""}</div>`:""}</td></tr>`).join("")}</tbody></table></div></div>`:empty("Keine Benutzer gefunden.");document.querySelectorAll("[data-user-edit]").forEach(b=>b.addEventListener("click",()=>openUserForm(users.find(u=>u.id===b.dataset.userEdit),roleNames)));document.querySelectorAll("[data-user-toggle]").forEach(b=>b.addEventListener("click",()=>toggleUser(b.dataset.userToggle,b.dataset.active==="true")));document.querySelectorAll("[data-user-unlink]").forEach(b=>b.addEventListener("click",()=>unlinkUser(b.dataset.userUnlink)));};render();document.getElementById("adminUserSearch")?.addEventListener("input",render);document.getElementById("adminNewUser")?.addEventListener("click",()=>openUserForm({},roleNames));document.getElementById("adminUsersRefresh")?.addEventListener("click",()=>{closeDialog();phase3State.remove("admin:roles");openUsers(true);});}
 function openUserForm(user={},roles=[]){openDialog({title:user.id?"Benutzer bearbeiten":"Benutzer anlegen",kicker:user.id||"Neues Benutzerkonto",body:`<form><input type="hidden" name="id" value="${escapeAttr(user.id||"")}"><div class="form-grid"><label>Vorname<input name="vorname" value="${escapeAttr(user.vorname||"")}"></label><label>Nachname<input name="nachname" value="${escapeAttr(user.nachname||"")}"></label><label class="full">Anzeigename<input name="name" value="${escapeAttr(user.name||"")}"></label><label>Google-E-Mail<input type="email" name="email" value="${escapeAttr(user.email||"")}"></label><label>Mitglieds-ID<input name="mitgliedsId" value="${escapeAttr(user.mitgliedsId||"")}" placeholder="optional"></label><label>Rolle<select name="rolle">${optionList(roles,user.rolle||roles[0],"Rolle auswählen")}</select></label><label>Aktiv<select name="aktiv">${optionList(["JA","NEIN"],user.aktiv||"JA")}</select></label><label class="full">Telefon<input name="telefon" value="${escapeAttr(user.telefon||"")}"></label><label class="full">Bemerkung<textarea name="bemerkung">${escapeHtml(user.bemerkung||"")}</textarea></label></div></form>`,onSubmit:async data=>{await runWrite("Benutzer wird gespeichert …",()=>call("apiSaveRole",data));closeDialog();phase3State.remove("admin:roles");openUsers(true);}});}
 async function toggleUser(id,active){await runWrite(active?"Benutzer wird aktiviert …":"Benutzer wird deaktiviert …",()=>call("apiSetRoleActive",id,active));closeDialog();phase3State.remove("admin:roles");openUsers(true);}
 async function unlinkUser(id){if(!await confirmAction({title:"Google-Verknüpfung lösen",message:"Der Benutzer muss sich danach erneut mit dem hinterlegten Google-Konto verbinden.",confirmText:"Verknüpfung lösen"}))return;await runWrite("Google-Verknüpfung wird gelöst …",()=>call("apiResetGoogleLink",id));closeDialog();phase3State.remove("admin:roles");openUsers(true);}
@@ -70,6 +74,209 @@ async function openDashboardWidgets(){
 }
 function openWidgetItem(widget,roles,sizes){
   openDialog({title:"Dashboard-Widget bearbeiten",kicker:widget.label||widget.key,body:`<form><input type="hidden" name="key" value="${escapeAttr(widget.key)}"><div class="form-grid"><label>Bezeichnung<input name="label" value="${escapeAttr(widget.label||"")}" required></label><label>Symbol<input name="icon" value="${escapeAttr(widget.icon||"")}" maxlength="8"></label><label>Reihenfolge<input type="number" name="order" min="1" max="9999" value="${Number(widget.order||10)}"></label><label>Größe<select name="size">${optionList(sizes,widget.size||"M")}</select></label><label>Aktiv<select name="active">${optionList([{value:"true",label:"Ja"},{value:"false",label:"Nein"}],String(widget.active))}</select></label><label class="full">Beschreibung<input name="description" value="${escapeAttr(widget.description||"")}"></label><div class="full"><strong>Sichtbar für Rollen</strong>${roleChecks(roles,widget.roles)}</div></div></form>`,onSubmit:async form=>{form.active=String(form.active)==="true";await runWrite("Dashboard-Widget wird gespeichert …",()=>call("apiSaveDashboardWidget",form));closeDialog();await openDashboardWidgets();}});
+}
+
+
+
+const V3_ROLE_RIGHTS_EXCLUDED_AREAS = new Set(["Bus-Orga", "Getränke"]);
+
+function rolePermissionKey(role, area) {
+  return `${role}::${area}`;
+}
+
+function normalizePermission(permission = {}) {
+  const admin = Boolean(permission.admin);
+  const write = admin || Boolean(permission.schreiben ?? permission.write);
+  const read = write || Boolean(permission.lesen ?? permission.read);
+  return { lesen: read, schreiben: write, admin };
+}
+
+function rolePermissionFromBundle(bundle, role, area) {
+  const rows = bundle?.rolePermissions || bundle?.meta?.rolePermissions || [];
+  const row = rows.find(item => String(item.rolle || "") === String(role || "") && String(item.bereich || "") === String(area || ""));
+  return normalizePermission(row || {});
+}
+
+function roleAreaLabel(bundle, area) {
+  return String(bundle?.meta?.areaLabels?.[area] || area || "Bereich");
+}
+
+function activeRoleDefinitions(bundle) {
+  const definitions = bundle?.roleDefinitions || bundle?.meta?.roleDefinitions || [];
+  const active = definitions.filter(item => String(item.aktiv || "JA") === "JA");
+  if (active.length) return active;
+  return (bundle?.meta?.rollen || []).map(name => ({ name, aktiv: "JA", assignedUsers: 0, activeUsers: 0 }));
+}
+
+async function openRoleRights(force = false) {
+  let bundle = phase3State.get("admin:roles");
+  if (!bundle || force) bundle = phase3State.set("admin:roles", await call("apiListRoles"));
+
+  const definitions = activeRoleDefinitions(bundle);
+  const roles = definitions.map(item => item.name).filter(Boolean);
+  const allAreas = bundle?.meta?.areas || [];
+  const areas = allAreas.filter(area => !V3_ROLE_RIGHTS_EXCLUDED_AREAS.has(area));
+  const selectedRole = roles.includes("Admin") ? "Admin" : (roles[0] || "");
+  const pending = new Map();
+
+  if (!roles.length) {
+    openDialog({
+      title: "Rollen & Rechte",
+      kicker: "Portalverwaltung",
+      body: `<div class="notice error">Es wurden keine aktiven Rollen gefunden. Bitte zuerst das Grundsystem prüfen.</div><div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`
+    });
+    return;
+  }
+
+  openDialog({
+    title: "Rollen & Rechte",
+    kicker: "Fachliche Berechtigungen",
+    wide: true,
+    body: `
+      <div class="notice warning"><strong>Zwei getrennte Ebenen:</strong><br>
+        Unter <strong>Portalstruktur</strong> stellst du ein, welche Rolle einen Hauptbereich in der Navigation sieht.
+        Hier legst du fest, ob die Rolle die zugehörigen Daten tatsächlich <strong>lesen</strong>, <strong>bearbeiten</strong> oder <strong>administrieren</strong> darf.
+      </div>
+      <div class="module-toolbar role-rights-toolbar" style="margin-top:16px">
+        <label class="role-rights-role-select">Rolle
+          <select id="roleRightsRole">${optionList(roles, selectedRole)}</select>
+        </label>
+        <button id="roleRightsOpenStructure" class="button ghost" type="button">🧭 Portalstruktur öffnen</button>
+        <button id="roleRightsRefresh" class="button ghost" type="button">Aktualisieren</button>
+      </div>
+      <div id="roleRightsRoleSummary" class="role-rights-summary"></div>
+      <div id="roleRightsMatrix" style="margin-top:16px"></div>
+      <div class="dialog-actions role-rights-actions">
+        <span id="roleRightsDirty" class="subtle">Keine ungespeicherten Änderungen</span>
+        <button class="button ghost" type="button" id="roleRightsDiscard" disabled>Änderungen verwerfen</button>
+        <button class="button primary" type="button" id="roleRightsSave" ${canWrite("Rollen") ? "" : "disabled"}>Rechte speichern</button>
+        <button class="button ghost" type="button" data-dialog-close>Schließen</button>
+      </div>`
+  });
+
+  const roleSelect = document.getElementById("roleRightsRole");
+  const matrix = document.getElementById("roleRightsMatrix");
+  const dirtyLabel = document.getElementById("roleRightsDirty");
+  const saveButton = document.getElementById("roleRightsSave");
+  const discardButton = document.getElementById("roleRightsDiscard");
+
+  const roleDefinition = role => definitions.find(item => String(item.name) === String(role)) || {};
+  const currentPermission = (role, area) => pending.get(rolePermissionKey(role, area)) || rolePermissionFromBundle(bundle, role, area);
+  const updateDirty = () => {
+    const count = pending.size;
+    if (dirtyLabel) dirtyLabel.textContent = count ? `${count} geänderte Bereich(e) noch nicht gespeichert` : "Keine ungespeicherten Änderungen";
+    if (discardButton) discardButton.disabled = count === 0;
+    if (saveButton) saveButton.disabled = !canWrite("Rollen") || count === 0;
+  };
+
+  const syncPermissionInputs = (role, area, changedKind) => {
+    const base = `rr_${String(role).replace(/[^a-zA-Z0-9_-]/g, "_")}_${String(area).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+    const readInput = document.getElementById(`${base}_read`);
+    const writeInput = document.getElementById(`${base}_write`);
+    const adminInput = document.getElementById(`${base}_admin`);
+    if (!readInput || !writeInput || !adminInput) return;
+
+    if (changedKind === "admin" && adminInput.checked) {
+      writeInput.checked = true;
+      readInput.checked = true;
+    }
+    if (changedKind === "write" && writeInput.checked) readInput.checked = true;
+    if (changedKind === "write" && !writeInput.checked) adminInput.checked = false;
+    if (changedKind === "read" && !readInput.checked) {
+      writeInput.checked = false;
+      adminInput.checked = false;
+    }
+
+    const permission = normalizePermission({
+      lesen: readInput.checked,
+      schreiben: writeInput.checked,
+      admin: adminInput.checked
+    });
+    readInput.checked = permission.lesen;
+    writeInput.checked = permission.schreiben;
+    adminInput.checked = permission.admin;
+    pending.set(rolePermissionKey(role, area), { rolle: role, bereich: area, ...permission, aktiv: "JA" });
+    updateDirty();
+  };
+
+  const renderMatrix = () => {
+    const role = roleSelect?.value || selectedRole;
+    const definition = roleDefinition(role);
+    const summary = document.getElementById("roleRightsRoleSummary");
+    if (summary) summary.innerHTML = `
+      <span class="badge success">Aktiv</span>
+      <strong>${escapeHtml(role)}</strong>
+      <span>${Number(definition.assignedUsers || 0)} Benutzer · ${Number(definition.activeUsers || 0)} aktiv</span>
+      ${role === "Admin" ? '<span class="badge warning">System/Admin muss mindestens einmal erhalten bleiben</span>' : ""}`;
+
+    matrix.innerHTML = `
+      <div class="permission-grid role-rights-grid">
+        <div class="permission-row permission-row-head" aria-hidden="true">
+          <strong>Fachbereich</strong><strong>Lesen</strong><strong>Schreiben</strong><strong>Admin</strong>
+        </div>
+        ${areas.map(area => {
+          const permission = currentPermission(role, area);
+          const safeRole = String(role).replace(/[^a-zA-Z0-9_-]/g, "_");
+          const safeArea = String(area).replace(/[^a-zA-Z0-9_-]/g, "_");
+          const base = `rr_${safeRole}_${safeArea}`;
+          const disabled = canWrite("Rollen") ? "" : "disabled";
+          return `<div class="permission-row" data-rights-area="${escapeAttr(area)}">
+            <div><strong>${escapeHtml(roleAreaLabel(bundle, area))}</strong><div class="subtle">${escapeHtml(area)}</div></div>
+            <label title="Lesen"><input id="${base}_read" type="checkbox" aria-label="${escapeAttr(roleAreaLabel(bundle, area))}: Lesen" ${permission.lesen ? "checked" : ""} ${disabled}></label>
+            <label title="Schreiben"><input id="${base}_write" type="checkbox" aria-label="${escapeAttr(roleAreaLabel(bundle, area))}: Schreiben" ${permission.schreiben ? "checked" : ""} ${disabled}></label>
+            <label title="Admin"><input id="${base}_admin" type="checkbox" aria-label="${escapeAttr(roleAreaLabel(bundle, area))}: Admin" ${permission.admin ? "checked" : ""} ${disabled}></label>
+          </div>`;
+        }).join("")}
+      </div>
+      <div class="notice" style="margin-top:14px"><strong>v3-Abgrenzung:</strong> Bus-Orga und Getränke werden hier bewusst noch nicht angeboten. Diese Fachrechte werden erst mit den entsprechenden v4-Modulen freigeschaltet.</div>`;
+
+    areas.forEach(area => {
+      const safeRole = String(role).replace(/[^a-zA-Z0-9_-]/g, "_");
+      const safeArea = String(area).replace(/[^a-zA-Z0-9_-]/g, "_");
+      const base = `rr_${safeRole}_${safeArea}`;
+      document.getElementById(`${base}_read`)?.addEventListener("change", () => syncPermissionInputs(role, area, "read"));
+      document.getElementById(`${base}_write`)?.addEventListener("change", () => syncPermissionInputs(role, area, "write"));
+      document.getElementById(`${base}_admin`)?.addEventListener("change", () => syncPermissionInputs(role, area, "admin"));
+    });
+    updateDirty();
+  };
+
+  roleSelect?.addEventListener("change", renderMatrix);
+  document.getElementById("roleRightsOpenStructure")?.addEventListener("click", async () => {
+    closeDialog();
+    await openPortalStructure();
+  });
+  document.getElementById("roleRightsRefresh")?.addEventListener("click", async () => {
+    closeDialog();
+    phase3State.remove("admin:roles");
+    await openRoleRights(true);
+  });
+  discardButton?.addEventListener("click", () => {
+    pending.clear();
+    renderMatrix();
+  });
+  saveButton?.addEventListener("click", async () => {
+    const changes = Array.from(pending.values());
+    if (!changes.length) return;
+    saveButton.disabled = true;
+    try {
+      await runWrite("Rollenrechte werden gespeichert …", () => call("apiSaveRolePermissionsBatch", changes), "Rollenrechte wurden gespeichert.");
+      pending.clear();
+      phase3State.remove("admin:roles");
+      try { await auth.refreshInitialData(); } catch (error) {}
+      closeDialog();
+      if (auth.canReadArea("Rollen")) await openRoleRights(true);
+      else {
+        showToast("Rollenrechte gespeichert. Dein eigener Zugriff auf die Rechteverwaltung ist jetzt eingeschränkt.", "warning", 6500);
+        renderAdminHome();
+      }
+    } catch (error) {
+      saveButton.disabled = false;
+      showToast(error?.message || "Rollenrechte konnten nicht gespeichert werden.", "error", 6500);
+    }
+  });
+
+  renderMatrix();
 }
 
 async function openPortalAppearance(){

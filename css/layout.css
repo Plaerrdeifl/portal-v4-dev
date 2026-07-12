@@ -19,3 +19,65 @@ a{color:inherit}
 .topbar-title h1{margin:0;font-size:1.35rem}.topbar-title p{margin:4px 0 0;color:var(--ink-500);font-size:.9rem}.topbar-actions{display:flex;align-items:center;gap:10px}.mobile-menu-toggle{display:none}
 .view{width:min(1180px,100%);margin:0 auto;padding:30px 30px 42px;outline:none;flex:1}
 .app-footer{display:flex;justify-content:space-between;gap:16px;padding:18px 30px calc(18px + var(--safe-bottom));color:var(--ink-500);font-size:.8rem;border-top:1px solid var(--line)}
+
+/* v3 Abnahme R3: finaler Splashscreen */
+.app-splash{
+  position:fixed;
+  inset:0;
+  z-index:1400;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:22px;
+  min-height:100dvh;
+  padding:calc(32px + env(safe-area-inset-top)) 24px calc(32px + env(safe-area-inset-bottom));
+  overflow:hidden;
+  color:#fff;
+  text-align:center;
+  background:
+    radial-gradient(circle at 50% 22%,rgba(47,119,207,.46),transparent 38%),
+    radial-gradient(circle at 15% 80%,rgba(7,36,83,.42),transparent 45%),
+    linear-gradient(155deg,#0b4f9c 0%,#0a4389 46%,#062b61 100%);
+}
+.app-splash::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  opacity:.16;
+  background-image:
+    repeating-linear-gradient(115deg,rgba(255,255,255,.05) 0 1px,transparent 1px 7px),
+    repeating-linear-gradient(25deg,rgba(0,0,0,.04) 0 1px,transparent 1px 9px);
+}
+.app-splash>*{position:relative;z-index:1}
+.app-splash img{
+  width:min(260px,58vw);
+  height:auto;
+  border-radius:24%;
+  box-shadow:0 24px 54px rgba(0,0,0,.3);
+}
+.app-splash strong{
+  margin-top:8px;
+  color:#fff;
+  font-size:clamp(1.7rem,5.5vw,2.35rem);
+  font-weight:900;
+  letter-spacing:-.025em;
+}
+.splash-loading-dots{display:flex;align-items:center;justify-content:center;gap:11px;height:24px}
+.splash-loading-dots span{
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  background:rgba(255,255,255,.28);
+  animation:pdSplashDot 1.35s infinite ease-in-out;
+}
+.splash-loading-dots span:nth-child(2){animation-delay:.13s}
+.splash-loading-dots span:nth-child(3){animation-delay:.26s}
+.splash-loading-dots span:nth-child(4){animation-delay:.39s}
+.splash-loading-dots span:nth-child(5){animation-delay:.52s}
+@keyframes pdSplashDot{
+  0%,55%,100%{opacity:.34;transform:scale(.78)}
+  22%{opacity:1;transform:scale(1.12);background:#fff}
+}
+@media (prefers-reduced-motion:reduce){.splash-loading-dots span{animation:none}.splash-loading-dots span:nth-child(-n+3){background:#fff;opacity:1}}

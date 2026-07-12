@@ -2,6 +2,7 @@ import { CONFIG } from "./config.js";
 import { auth } from "./auth.js";
 import { currentRoute, navigate, routes } from "./router.js";
 import { hydratePage } from "./pages.js";
+import { initializeInstall } from "./install.js";
 import { storage } from "./storage.js";
 import {
   bindGlobalUi,
@@ -16,16 +17,18 @@ import {
   updateUserChrome
 } from "./ui.js";
 
-let deferredInstallPrompt = null;
 let authReady = false;
 
 function allowedRoute(key) {
+  const route = routes()[key];
+  if (!route) return false;
+  if (route.public) return !auth.isAuthenticated();
   return auth.canAccessRoute(key);
 }
 
 async function renderRoute() {
   let key = currentRoute();
-  if (!authReady && key !== "login" && key !== "home") key = "home";
+  if (!authReady && key !== "home") key = "home";
   if (!allowedRoute(key)) {
     navigate(auth.isAuthenticated() ? "dashboard" : "home");
     return;
@@ -60,21 +63,24 @@ function showServiceWorkerUpdate(registration) {
     button.disabled = true;
     button.textContent = "Wird aktualisiert …";
   };
-  dismiss.onclick = () => { banner.hidden = true; storage.set(CONFIG.pwa.updateDismissKey, true); };
+  dismiss.onclick = () => {
+    banner.hidden = true;
+    storage.set(CONFIG.pwa.updateDismissKey, true);
+  };
 }
 
 async function registerServiceWorker() {
-  if (!("serviceWorker" in navigator)) {
-    showToast("Dieser Browser unterstützt keinen Service Worker.", "error");
-    return;
-  }
+  if (!("serviceWorker" in navigator)) return;
   try {
     navigator.serviceWorker.addEventListener("controllerchange", () => {
       if (!storage.get(CONFIG.pwa.updateReloadKey, false)) return;
       storage.remove(CONFIG.pwa.updateReloadKey);
       window.location.reload();
     });
-    const registration = await navigator.serviceWorker.register(CONFIG.pwa.serviceWorker, { scope: "./", updateViaCache: "none" });
+    const registration = await navigator.serviceWorker.register(CONFIG.pwa.serviceWorker, {
+      scope: "./",
+      updateViaCache: "none"
+    });
     await navigator.serviceWorker.ready;
     if (registration.waiting) showServiceWorkerUpdate(registration);
     registration.addEventListener("updatefound", () => {
@@ -89,55 +95,19 @@ async function registerServiceWorker() {
   }
 }
 
-function setupInstallPrompt() {
-  const banner = document.getElementById("installBanner");
-  const button = document.getElementById("installButton");
-  const dismiss = document.getElementById("installDismiss");
-  const dismissed = storage.get(CONFIG.pwa.installDismissKey, false);
-
-  window.addEventListener("beforeinstallprompt", event => {
-    event.preventDefault();
-    deferredInstallPrompt = event;
-    if (!dismissed && !isStandalone()) banner.hidden = false;
+function applyBranding() {
+  const cfg = auth.current().backend?.publicConfig || {};
+  if (cfg.primaryColor && /^#[0-9a-f]{6}$/i.test(cfg.primaryColor)) {
+    document.documentElement.style.setProperty("--blue-800", cfg.primaryColor);
+  }
+  document.querySelectorAll(".brand strong").forEach(element => {
+    element.textContent = cfg.appName || cfg.title || "Plärrdeifl Portal";
   });
-
-  button.addEventListener("click", async () => {
-    if (!deferredInstallPrompt) {
-      showToast("Auf iPhone: Safari → Teilen → Zum Home-Bildschirm.");
-      return;
-    }
-    deferredInstallPrompt.prompt();
-    await deferredInstallPrompt.userChoice;
-    deferredInstallPrompt = null;
-    banner.hidden = true;
-  });
-
-  dismiss.addEventListener("click", () => {
-    banner.hidden = true;
-    storage.set(CONFIG.pwa.installDismissKey, true);
-  });
-
-  if (isIos() && !isStandalone() && !dismissed) {
-    banner.hidden = false;
-    button.textContent = "Anleitung";
+  if (cfg.logoUrl && /^https:\/\//i.test(cfg.logoUrl)) {
+    document.querySelectorAll(".brand img").forEach(image => { image.src = cfg.logoUrl; });
   }
 }
 
-function isStandalone() {
-  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-}
-
-function isIos() {
-  return /iphone|ipad|ipod/i.test(navigator.userAgent);
-}
-
-
-function applyBranding() {
-  const cfg = auth.current().backend?.publicConfig || {};
-  if (cfg.primaryColor && /^#[0-9a-f]{6}$/i.test(cfg.primaryColor)) document.documentElement.style.setProperty("--blue-800", cfg.primaryColor);
-  document.querySelectorAll(".brand strong").forEach(el => { el.textContent = cfg.appName || cfg.title || "Plärrdeifl Portal"; });
-  if (cfg.logoUrl && /^https:\/\//i.test(cfg.logoUrl)) document.querySelectorAll(".brand img").forEach(img => { img.src = cfg.logoUrl; });
-}
 async function refreshApp() {
   try {
     setConnectionStatus("Aktualisiere …", "warning");
@@ -145,7 +115,7 @@ async function refreshApp() {
     renderNavigation();
     updateUserChrome();
     await renderRoute();
-    setConnectionStatus(auth.isAuthenticated() ? "Sicher verbunden" : "Backend bereit", "success");
+    setConnectionStatus(auth.isAuthenticated() ? "Sicher verbunden" : "Öffentlicher Bereich", "success");
   } catch (error) {
     setConnectionStatus("Verbindungsfehler", "warning");
     showToast(error.message || "Aktualisierung fehlgeschlagen.", "error", 6000);
@@ -159,7 +129,7 @@ async function logout() {
     renderNavigation();
     updateUserChrome();
     navigate("home");
-    setConnectionStatus("Backend bereit", "success");
+    setConnectionStatus("Öffentlicher Bereich", "success");
     showToast("Du wurdest abgemeldet.", "success");
   } catch (error) {
     showToast(error.message || "Abmeldung fehlgeschlagen.", "error");
@@ -168,9 +138,9 @@ async function logout() {
 
 async function bootstrap() {
   try {
+    initializeInstall();
     await mountComponents();
     bindGlobalUi({ onRefresh: refreshApp, onLogout: logout });
-    setupInstallPrompt();
     window.addEventListener("hashchange", renderRoute);
     window.addEventListener("pd-auth-change", () => {
       renderNavigation();
@@ -182,7 +152,7 @@ async function bootstrap() {
       await auth.initialize();
       applyBranding();
       authReady = true;
-      setConnectionStatus(auth.isAuthenticated() ? "Sicher verbunden" : "Backend bereit", "success");
+      setConnectionStatus(auth.isAuthenticated() ? "Sicher verbunden" : "Öffentlicher Bereich", "success");
     } catch (error) {
       authReady = true;
       setConnectionStatus("Backend nicht erreichbar", "warning");
@@ -194,10 +164,10 @@ async function bootstrap() {
 
     const initial = currentRoute();
     const notice = auth.current().notice;
-    if (notice && notice.message) showToast(notice.message, notice.type || "info", 5200);
+    if (notice?.message) showToast(notice.message, notice.type || "info", 5200);
 
     if (!location.hash) navigate(auth.isAuthenticated() ? "dashboard" : "home");
-    else if (auth.isAuthenticated() && (initial === "login" || initial === "home")) navigate("dashboard");
+    else if (auth.isAuthenticated() && routes()[initial]?.public) navigate("dashboard");
     else if (!allowedRoute(initial)) navigate(auth.isAuthenticated() ? "dashboard" : "home");
     else await renderRoute();
 
@@ -210,7 +180,7 @@ async function bootstrap() {
   }
 }
 
-window.addEventListener("online", () => setConnectionStatus(auth.isAuthenticated() ? "Sicher verbunden" : "Backend bereit", "success"));
+window.addEventListener("online", () => setConnectionStatus(auth.isAuthenticated() ? "Sicher verbunden" : "Öffentlicher Bereich", "success"));
 window.addEventListener("offline", () => setConnectionStatus("Offline", "warning"));
 
 bootstrap();

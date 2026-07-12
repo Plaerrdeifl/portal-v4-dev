@@ -19,3 +19,20 @@
 @media (max-width:520px){.settings-row{grid-template-columns:1fr}.settings-row>*:first-child{grid-column:auto}.permission-row{grid-template-columns:1fr;gap:5px}.permission-row label{justify-content:flex-start}.dialog-actions{flex-direction:column-reverse}.dialog-actions .button{width:100%}.meta-grid{grid-template-columns:1fr}}
 @media (max-width:860px){.dashboard-widget.widget-s,.dashboard-widget.widget-m,.dashboard-widget.widget-l{grid-column:1/-1}.portal-structure-row,.dashboard-config-row{grid-template-columns:1fr 1fr}.portal-structure-row>*:first-child,.dashboard-config-row>*:first-child{grid-column:1/-1}.role-check-grid{grid-template-columns:1fr}.public-hero{min-height:auto}.public-shortcuts{margin-left:-4px;margin-right:-4px}.install-banner{align-items:center;flex-wrap:nowrap}.install-banner .button{width:auto;flex:none}}
 @media (max-width:520px){.portal-structure-row,.dashboard-config-row{grid-template-columns:1fr}.install-banner{left:12px;right:12px;transform:none;width:auto}.install-banner span{display:none}.install-banner strong{font-size:.9rem}}
+
+/* v3 Abnahme R3 */
+@media (max-width:520px){
+  .app-splash{gap:18px}
+  .app-splash img{width:min(230px,62vw)}
+  .public-welcome-hero{min-height:calc(100dvh - 190px);padding:34px 22px}
+  .public-welcome-content img{width:min(190px,52vw)}
+}
+
+/* v3 Abnahme R3: mobile Rechtematrix */
+@media (max-width:520px){
+  .permission-row-head{display:none}
+  .role-rights-grid .permission-row{grid-template-columns:1fr repeat(3,52px);gap:7px}
+  .role-rights-grid .permission-row>div:first-child{grid-column:1/-1}
+  .role-rights-grid .permission-row label{justify-content:center;padding:8px 0;border-radius:9px;background:var(--surface-soft)}
+  .role-rights-actions{align-items:stretch}.role-rights-actions .subtle{width:100%;margin:0 0 4px}
+}

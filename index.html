@@ -7,7 +7,7 @@
   <meta name="color-scheme" content="light">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="description" content="Plärrdeifl Portal – sichere PWA für Fanclub, Teams und Fanbusse.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-src https://script.google.com https://script.googleusercontent.com https://accounts.google.com; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' https://accounts.google.com/gsi/client; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://accounts.google.com; worker-src 'self'; manifest-src 'self'; form-action 'self' https://accounts.google.com; upgrade-insecure-requests">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-src https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com https://accounts.google.com; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' https://accounts.google.com/gsi/client; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com https://accounts.google.com; worker-src 'self'; manifest-src 'self'; form-action 'self' https://accounts.google.com; upgrade-insecure-requests">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Plärrdeifl">
@@ -26,9 +26,11 @@
   </noscript>
 
   <div id="appSplash" class="app-splash" aria-live="polite">
-    <img src="./assets/icons/icon-192.png" alt="" width="112" height="112">
-    <strong>Plärrdeifl Portal</strong>
-    <span>Login, Rechte und Portalmodule werden geladen …</span>
+    <img src="./assets/icons/icon-512.png" alt="Schweinfurter Plärrdeifl Logo">
+    <strong>APP wird geladen</strong>
+    <div class="splash-loading-dots" aria-label="Wird geladen">
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
   </div>
 
   <div id="appShell" class="app-shell" hidden>
@@ -44,21 +46,12 @@
   </div>
 
   <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
-  <div id="installBanner" class="install-banner" hidden>
-    <div>
-      <strong>Portal als App nutzen</strong>
-      <span>Zum Home-Bildschirm hinzufügen.</span>
-    </div>
-    <button id="installButton" class="button primary" type="button">Installieren</button>
-    <button id="installDismiss" class="icon-button" type="button" aria-label="Hinweis schließen">×</button>
-  </div>
-
   <div id="updateBanner" class="install-banner" hidden>
     <div><strong>Neue Portalversion verfügbar</strong><span>Die Aktualisierung wird erst nach deiner Bestätigung übernommen.</span></div>
     <button id="updateButton" class="button primary" type="button">Jetzt aktualisieren</button>
     <button id="updateDismiss" class="icon-button" type="button" aria-label="Später aktualisieren">×</button>
   </div>
 
-  <script type="module" src="./js/app.js?v=20260712-ui-config-r1"></script>
+  <script type="module" src="./js/app.js?v=20260712-abnahme-r3"></script>
 </body>
 </html>
