@@ -8,6 +8,7 @@ const EMPTY_STATE = Object.freeze({
   expires: 0,
   user: null,
   portal: null,
+  initialData: null,
   backend: null,
   notice: null
 });
@@ -19,14 +20,16 @@ function emitChange() {
 }
 
 function callbackParams() {
+  const query = new URLSearchParams(location.search || "");
   const hash = String(location.hash || "");
-  const query = hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : "";
-  return new URLSearchParams(query);
+  const hashQuery = hash.includes("?") ? new URLSearchParams(hash.slice(hash.indexOf("?") + 1)) : new URLSearchParams();
+  for (const [key, value] of hashQuery.entries()) query.set(key, value);
+  return query;
 }
 
-function cleanCallbackHash(target = "login") {
-  const path = `${location.pathname}${location.search}#/${target}`;
-  history.replaceState(null, "", path);
+function cleanCallbackAddress(target = "login") {
+  try { history.replaceState(null, "", `${location.pathname}#/${target}`); }
+  catch { location.hash = `#/${target}`; }
 }
 
 function persistedSession() {
@@ -36,13 +39,14 @@ function persistedSession() {
   return value;
 }
 
-function saveSession(session, initialData) {
+function saveSession(session, initialData = null) {
   const record = {
-    sessionToken: String(session.sessionToken || ""),
-    expires: Number(session.expires || 0),
-    user: (initialData && initialData.user) || session.user || null,
-    portal: (initialData && initialData.portal) || null
+    sessionToken: String(session?.sessionToken || ""),
+    expires: Number(session?.expires || 0),
+    user: initialData?.user || session?.user || null,
+    portal: initialData?.portal || session?.portal || null
   };
+  if (!record.sessionToken || !record.expires) throw new Error("Das Backend hat keine gültige Sitzung geliefert.");
   storage.set(CONFIG.auth.storageKey, record);
   if (initialData) storage.set(CONFIG.auth.dataKey, initialData);
   return record;
@@ -57,6 +61,20 @@ async function loadInitialData(sessionToken) {
   return api.dispatch(sessionToken, "apiGetInitialData");
 }
 
+function setAuthenticated(session, initialData, notice = null) {
+  const saved = saveSession(session, initialData);
+  state = {
+    authenticated: true,
+    sessionToken: saved.sessionToken,
+    expires: saved.expires,
+    user: initialData?.user || saved.user,
+    portal: initialData?.portal || saved.portal,
+    initialData: initialData || null,
+    backend: state.backend,
+    notice
+  };
+}
+
 export const auth = {
   async initialize() {
     state = { ...EMPTY_STATE };
@@ -69,42 +87,48 @@ export const auth = {
 
     if (callbackStatus === "pending") {
       clearPersisted();
+      cleanCallbackAddress("login");
       state.notice = {
         type: "warning",
         message: "Dein Google-Konto wurde zur Freischaltung eingereicht. Ein Portal-Admin muss den Antrag noch bestätigen.",
         email: String(params.get("email") || "")
       };
-      cleanCallbackHash("login");
       emitChange();
       return this.current();
     }
 
     if (callbackStatus === "error") {
       clearPersisted();
+      cleanCallbackAddress("login");
       state.notice = {
         type: "error",
         message: String(params.get("message") || "Google-Anmeldung wurde nicht abgeschlossen.")
       };
-      cleanCallbackHash("login");
       emitChange();
       return this.current();
     }
 
     if (ticket) {
-      cleanCallbackHash("login");
       const session = await api.exchangeTicket(ticket);
-      const initialData = await loadInitialData(session.sessionToken);
-      const saved = saveSession(session, initialData);
-      state = {
-        authenticated: true,
-        sessionToken: saved.sessionToken,
-        expires: saved.expires,
-        user: initialData.user || saved.user,
-        portal: initialData.portal || null,
-        initialData,
-        backend: state.backend,
-        notice: { type: "success", message: "Google-Anmeldung erfolgreich." }
-      };
+      // Die Sitzung wird sofort gesichert. Falls nur das Laden der Startdaten
+      // scheitert, ist das einmalige Login-Ticket nicht verloren.
+      saveSession(session, null);
+      cleanCallbackAddress("home");
+      try {
+        const initialData = await loadInitialData(session.sessionToken);
+        setAuthenticated(session, initialData, { type: "success", message: "Google-Anmeldung erfolgreich." });
+      } catch (error) {
+        state = {
+          authenticated: true,
+          sessionToken: session.sessionToken,
+          expires: Number(session.expires || 0),
+          user: session.user || null,
+          portal: null,
+          initialData: null,
+          backend: state.backend,
+          notice: { type: "warning", message: `Anmeldung erfolgreich, Startdaten konnten noch nicht geladen werden: ${error.message}` }
+        };
+      }
       emitChange();
       return this.current();
     }
@@ -119,17 +143,7 @@ export const auth = {
     try {
       const resumed = await api.resumeSession(saved.sessionToken);
       const initialData = await loadInitialData(resumed.sessionToken);
-      const refreshed = saveSession(resumed, initialData);
-      state = {
-        authenticated: true,
-        sessionToken: refreshed.sessionToken,
-        expires: refreshed.expires,
-        user: initialData.user || resumed.user || saved.user,
-        portal: initialData.portal || saved.portal || null,
-        initialData,
-        backend: state.backend,
-        notice: null
-      };
+      setAuthenticated(resumed, initialData, null);
     } catch (error) {
       clearPersisted();
       state = {
@@ -167,8 +181,26 @@ export const auth = {
   canReadArea(area) {
     if (!this.isAuthenticated()) return false;
     if (!area || this.isAdmin()) return true;
-    const permissions = (state.user && state.user.permissions) || {};
-    return Boolean(permissions[area] && permissions[area].read);
+    const permissions = state.user?.permissions || {};
+    return Boolean(permissions[area]?.read);
+  },
+
+  canWriteArea(area) {
+    if (!this.isAuthenticated()) return false;
+    if (!area || this.isAdmin()) return true;
+    const permissions = state.user?.permissions || {};
+    return Boolean(permissions[area]?.write);
+  },
+
+  canAdminArea(area) {
+    if (!this.isAuthenticated()) return false;
+    if (!area || this.isAdmin()) return true;
+    const permissions = state.user?.permissions || {};
+    return Boolean(permissions[area]?.admin);
+  },
+
+  portalFlag(name) {
+    return Boolean(state.portal && state.portal[name]);
   },
 
   canAccessRoute(key) {
@@ -185,7 +217,7 @@ export const auth = {
 
   async login() {
     const result = await api.createLoginUrl(CONFIG.urls.frontend);
-    if (!result || !result.url) throw new Error("Google-Anmeldeadresse konnte nicht erstellt werden.");
+    if (!result?.url) throw new Error("Google-Anmeldeadresse konnte nicht erstellt werden.");
     window.location.assign(result.url);
   },
 
@@ -205,7 +237,7 @@ export const auth = {
     try {
       return await api.dispatch(state.sessionToken, functionName, ...args);
     } catch (error) {
-      if (/AUTH_REQUIRED|abgelaufen|anmelden/i.test(String(error && error.message || ""))) {
+      if (/AUTH_REQUIRED|abgelaufen|anmelden/i.test(String(error?.message || ""))) {
         clearPersisted();
         state = { ...EMPTY_STATE, backend: state.backend, notice: { type: "warning", message: "Deine Sitzung ist abgelaufen. Bitte erneut anmelden." } };
         emitChange();
@@ -225,11 +257,6 @@ export const auth = {
     return initialData;
   },
 
-  clearNotice() {
-    state.notice = null;
-  },
-
-  openLegacyPortal() {
-    window.open(CONFIG.urls.legacyPortal, "_blank", "noopener,noreferrer");
-  }
+  clearNotice() { state.notice = null; },
+  openLegacyPortal() { window.open(CONFIG.urls.legacyPortal, "_blank", "noopener,noreferrer"); }
 };

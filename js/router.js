@@ -1,11 +1,11 @@
 const ROUTES = Object.freeze({
   home: { title: "Start", subtitle: "Persönlicher Portalzugang", page: "home.html", icon: "🏠", public: true },
   login: { title: "Anmeldung", subtitle: "Sicher mit Google anmelden", page: "login.html", icon: "🔐", public: true },
-  dashboard: { title: "Dashboard", subtitle: "Echte Kennzahlen aus Apps Script", page: "dashboard.html", icon: "📊" },
-  fanclub: { title: "Fanclub", subtitle: "Migration folgt in Phase 3", page: "fanclub.html", icon: "🏒" },
-  teams: { title: "Teams", subtitle: "Migration folgt in Phase 3", page: "teams.html", icon: "👥" },
-  fanbus: { title: "Fanbusse", subtitle: "Migration folgt nach dem Frontend-Grundausbau", page: "fanbus.html", icon: "🚌" },
-  admin: { title: "Admin-Bereich", subtitle: "Migration folgt in Phase 3", page: "admin.html", icon: "⚙️" }
+  dashboard: { title: "Dashboard", subtitle: "Kennzahlen der Fanclubverwaltung", page: "dashboard.html", icon: "📊" },
+  fanclub: { title: "Fanclub", subtitle: "Mitglieder, Beiträge, Finanzen und Vorstandsaufgaben", page: "fanclub.html", icon: "🏒" },
+  teams: { title: "Teams", subtitle: "Teamübersicht, Aufgaben und Verwaltung", page: "teams.html", icon: "👥" },
+  fanbus: { title: "Fanbusse", subtitle: "v3-Erweiterungspunkt für das Bus-Modul in v4", page: "fanbus.html", icon: "🚌" },
+  admin: { title: "Admin-Bereich", subtitle: "Fanclub- und Portalverwaltung", page: "admin.html", icon: "⚙️" }
 });
 
 export function routes() { return ROUTES; }

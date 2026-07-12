@@ -65,7 +65,9 @@ export function bindGlobalUi({ onRefresh, onLogout } = {}) {
     const routeTarget = event.target.closest("[data-route]");
     if (routeTarget) {
       event.preventDefault();
-      navigate(routeTarget.dataset.route);
+      const params = new URLSearchParams();
+      if (routeTarget.dataset.openTab) params.set("tab", routeTarget.dataset.openTab);
+      navigate(routeTarget.dataset.route, params);
       closeMobileMenu();
       return;
     }

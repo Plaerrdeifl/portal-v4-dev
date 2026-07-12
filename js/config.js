@@ -2,8 +2,8 @@ export const CONFIG = Object.freeze({
   app: {
     name: "Plärrdeifl Portal",
     shortName: "Plärrdeifl",
-    version: "phase2-1.0.0",
-    build: "2026.07.12-github-pages-phase2",
+    version: "v3.0.0 PWA FINAL RC1",
+    build: "2026.07.12-github-pages-v3-final-rc1",
     repository: "https://github.com/Plaerrdeifl/portal"
   },
   urls: {
@@ -17,8 +17,8 @@ export const CONFIG = Object.freeze({
       "https://script.google.com",
       "https://script.googleusercontent.com"
     ],
-    readyTimeoutMs: 20000,
-    requestTimeoutMs: 30000
+    readyTimeoutMs: 25000,
+    requestTimeoutMs: 60000
   },
   auth: {
     storageKey: "pd_portal_pwa_session_v3",
@@ -26,6 +26,11 @@ export const CONFIG = Object.freeze({
   },
   pwa: {
     serviceWorker: "./service-worker.js",
-    installDismissKey: "pd_phase2_install_dismissed"
+    installDismissKey: "pd_v3_final_install_dismissed",
+    updateReloadKey: "pd_v3_final_update_reload"
+  },
+  lists: {
+    bookingLimit: 100,
+    auditLimit: 200
   }
 });

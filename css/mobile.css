@@ -13,3 +13,7 @@
   .topbar-actions{gap:4px}
   .topbar .status-pill{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 }
+
+@media (max-width:860px){
+  .form-grid,.list-grid,.surface-grid,.admin-actions,.split-view{grid-template-columns:1fr}.settings-row{grid-template-columns:1fr 1fr}.settings-row>*:first-child{grid-column:1/-1}.permission-row{grid-template-columns:1fr repeat(3,62px)}.data-table-wrap.desktop-only{display:none}.mobile-cards{display:grid;gap:12px}.entity-card{padding:16px}.dialog-body{padding:16px}.dialog-shell>header{padding:16px}.module-toolbar>*{width:100%}.module-toolbar .button-row,.button-row{width:auto}.sticky-card{position:static}.meta-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:520px){.settings-row{grid-template-columns:1fr}.settings-row>*:first-child{grid-column:auto}.permission-row{grid-template-columns:1fr;gap:5px}.permission-row label{justify-content:flex-start}.dialog-actions{flex-direction:column-reverse}.dialog-actions .button{width:100%}.meta-grid{grid-template-columns:1fr}}

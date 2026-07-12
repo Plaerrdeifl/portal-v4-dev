@@ -54,11 +54,26 @@ async function registerServiceWorker() {
     return;
   }
   try {
-    const registration = await navigator.serviceWorker.register(CONFIG.pwa.serviceWorker, { scope: "./" });
+    let reloading = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloading) return;
+      reloading = true;
+      window.location.reload();
+    });
+    const registration = await navigator.serviceWorker.register(CONFIG.pwa.serviceWorker, { scope: "./", updateViaCache: "none" });
     await navigator.serviceWorker.ready;
+    if (registration.waiting) registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    registration.addEventListener("updatefound", () => {
+      const worker = registration.installing;
+      worker?.addEventListener("statechange", () => {
+        if (worker.state === "installed" && navigator.serviceWorker.controller) {
+          worker.postMessage({ type: "SKIP_WAITING" });
+        }
+      });
+    });
     registration.update().catch(() => null);
   } catch (error) {
-    showToast(`Service Worker: ${error.message}`, "error", 5000);
+    showToast(`Service Worker: ${error.message}`, "error", 6000);
   }
 }
 
@@ -174,5 +189,8 @@ async function bootstrap() {
     if (splash) splash.innerHTML = `<strong>Portal konnte nicht gestartet werden</strong><span>${escapeHtml(error.message)}</span>`;
   }
 }
+
+window.addEventListener("online", () => setConnectionStatus(auth.isAuthenticated() ? "Sicher verbunden" : "Backend bereit", "success"));
+window.addEventListener("offline", () => setConnectionStatus("Offline", "warning"));
 
 bootstrap();
