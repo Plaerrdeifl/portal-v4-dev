@@ -1,13 +1,18 @@
 <header class="topbar">
-  <div style="display:flex;align-items:center;gap:11px;min-width:0">
+  <div class="topbar-leading">
     <button id="mobileMenuToggle" class="icon-button mobile-menu-toggle" type="button" aria-label="Menü öffnen">☰</button>
-    <div class="topbar-title" style="min-width:0">
+    <div class="topbar-title">
       <h1 id="routeTitle">Plärrdeifl Portal</h1>
-      <p id="routeSubtitle">Frontend-Grundlage</p>
+      <p id="routeSubtitle">Login und Backend werden geprüft</p>
     </div>
   </div>
   <div class="topbar-actions">
-    <span id="connectionStatus" class="status-pill success">PWA bereit</span>
+    <span id="connectionStatus" class="status-pill warning">Backend wird geprüft</span>
+    <div id="userSummary" class="user-summary" hidden>
+      <strong id="userSummaryName">Benutzer</strong>
+      <span id="userSummaryRole">Rolle</span>
+    </div>
     <button id="refreshButton" class="icon-button" type="button" title="Ansicht neu laden" aria-label="Ansicht neu laden">↻</button>
+    <button id="logoutButton" class="icon-button" type="button" title="Abmelden" aria-label="Abmelden" hidden>↪</button>
   </div>
 </header>

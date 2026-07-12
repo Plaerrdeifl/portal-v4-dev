@@ -1,20 +1,32 @@
 const ROUTES = Object.freeze({
-  home: { title: "Start", subtitle: "Phase-1-Grundlage", page: "home.html", icon: "🏠" },
-  login: { title: "Anmeldung", subtitle: "Google-Login wird in Phase 2 verbunden", page: "login.html", icon: "🔐" },
-  dashboard: { title: "Dashboard", subtitle: "Modulplatzhalter", page: "dashboard.html", icon: "📊" },
-  fanclub: { title: "Fanclub", subtitle: "Modulplatzhalter", page: "fanclub.html", icon: "🏒" },
-  teams: { title: "Teams", subtitle: "Modulplatzhalter", page: "teams.html", icon: "👥" },
-  fanbus: { title: "Fanbusse", subtitle: "Modulplatzhalter", page: "fanbus.html", icon: "🚌" },
-  admin: { title: "Admin-Bereich", subtitle: "Modulplatzhalter", page: "admin.html", icon: "⚙️" }
+  home: { title: "Start", subtitle: "Persönlicher Portalzugang", page: "home.html", icon: "🏠", public: true },
+  login: { title: "Anmeldung", subtitle: "Sicher mit Google anmelden", page: "login.html", icon: "🔐", public: true },
+  dashboard: { title: "Dashboard", subtitle: "Echte Kennzahlen aus Apps Script", page: "dashboard.html", icon: "📊" },
+  fanclub: { title: "Fanclub", subtitle: "Migration folgt in Phase 3", page: "fanclub.html", icon: "🏒" },
+  teams: { title: "Teams", subtitle: "Migration folgt in Phase 3", page: "teams.html", icon: "👥" },
+  fanbus: { title: "Fanbusse", subtitle: "Migration folgt nach dem Frontend-Grundausbau", page: "fanbus.html", icon: "🚌" },
+  admin: { title: "Admin-Bereich", subtitle: "Migration folgt in Phase 3", page: "admin.html", icon: "⚙️" }
 });
 
 export function routes() { return ROUTES; }
+
 export function currentRoute() {
-  const key = String(location.hash || "#/home").replace(/^#\/?/, "").split(/[?&]/)[0] || "home";
+  const key = String(location.hash || "#/home")
+    .replace(/^#\/?/, "")
+    .split(/[?&]/)[0] || "home";
   return ROUTES[key] ? key : "home";
 }
-export function navigate(key) {
+
+export function routeParams() {
+  const hash = String(location.hash || "");
+  const query = hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : "";
+  return new URLSearchParams(query);
+}
+
+export function navigate(key, params = null) {
   const target = ROUTES[key] ? key : "home";
-  if (currentRoute() === target) window.dispatchEvent(new HashChangeEvent("hashchange"));
-  else location.hash = `#/${target}`;
+  const query = params instanceof URLSearchParams && String(params) ? `?${params}` : "";
+  const next = `#/${target}${query}`;
+  if (location.hash === next) window.dispatchEvent(new HashChangeEvent("hashchange"));
+  else location.hash = next;
 }

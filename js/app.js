@@ -1,23 +1,36 @@
 import { CONFIG } from "./config.js";
-import { currentRoute, routes } from "./router.js";
-import { apiStatus } from "./api.js";
+import { auth } from "./auth.js";
+import { currentRoute, navigate, routes } from "./router.js";
+import { hydratePage } from "./pages.js";
 import { storage } from "./storage.js";
 import {
-  applyLegacyLinks,
   bindGlobalUi,
+  escapeHtml,
   loadFragment,
   mountComponents,
   renderNavigation,
   setConnectionStatus,
   setRouteHeader,
   showToast,
-  updateActiveNavigation
+  updateActiveNavigation,
+  updateUserChrome
 } from "./ui.js";
 
 let deferredInstallPrompt = null;
+let authReady = false;
+
+function allowedRoute(key) {
+  return auth.canAccessRoute(key);
+}
 
 async function renderRoute() {
-  const key = currentRoute();
+  let key = currentRoute();
+  if (!authReady && key !== "login" && key !== "home") key = "home";
+  if (!allowedRoute(key)) {
+    navigate(auth.isAuthenticated() ? "home" : "login");
+    return;
+  }
+
   const route = routes()[key];
   const view = document.getElementById("view");
   setRouteHeader(route);
@@ -25,7 +38,7 @@ async function renderRoute() {
   view.setAttribute("aria-busy", "true");
   try {
     view.innerHTML = await loadFragment(`./pages/${route.page}`);
-    applyLegacyLinks();
+    await hydratePage(key);
     view.focus({ preventScroll: true });
   } catch (error) {
     view.innerHTML = `<section class="card"><h2>Ansicht konnte nicht geladen werden</h2><p>${escapeHtml(error.message)}</p></section>`;
@@ -37,16 +50,14 @@ async function renderRoute() {
 
 async function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) {
-    setConnectionStatus("PWA nicht unterstützt", "warning");
+    showToast("Dieser Browser unterstützt keinen Service Worker.", "error");
     return;
   }
   try {
     const registration = await navigator.serviceWorker.register(CONFIG.pwa.serviceWorker, { scope: "./" });
     await navigator.serviceWorker.ready;
-    setConnectionStatus("PWA bereit", "success");
     registration.update().catch(() => null);
   } catch (error) {
-    setConnectionStatus("PWA-Fehler", "warning");
     showToast(`Service Worker: ${error.message}`, "error", 5000);
   }
 }
@@ -88,25 +99,75 @@ function setupInstallPrompt() {
 function isStandalone() {
   return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
 }
+
 function isIos() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent);
 }
-function escapeHtml(value) {
-  return String(value || "").replace(/[&<>'"]/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[char]));
+
+async function refreshApp() {
+  try {
+    setConnectionStatus("Aktualisiere …", "warning");
+    if (auth.isAuthenticated()) await auth.refreshInitialData();
+    renderNavigation();
+    updateUserChrome();
+    await renderRoute();
+    setConnectionStatus(auth.isAuthenticated() ? "Sicher verbunden" : "Backend bereit", "success");
+  } catch (error) {
+    setConnectionStatus("Verbindungsfehler", "warning");
+    showToast(error.message || "Aktualisierung fehlgeschlagen.", "error", 6000);
+  }
+}
+
+async function logout() {
+  try {
+    setConnectionStatus("Abmeldung …", "warning");
+    await auth.logout();
+    renderNavigation();
+    updateUserChrome();
+    navigate("login");
+    setConnectionStatus("Backend bereit", "success");
+    showToast("Du wurdest abgemeldet.", "success");
+  } catch (error) {
+    showToast(error.message || "Abmeldung fehlgeschlagen.", "error");
+  }
 }
 
 async function bootstrap() {
   try {
     await mountComponents();
-    renderNavigation();
-    bindGlobalUi();
+    bindGlobalUi({ onRefresh: refreshApp, onLogout: logout });
     setupInstallPrompt();
     window.addEventListener("hashchange", renderRoute);
-    if (!location.hash) history.replaceState(null, "", "#/home");
-    await renderRoute();
+    window.addEventListener("pd-auth-change", () => {
+      renderNavigation();
+      updateUserChrome();
+    });
+
+    setConnectionStatus("Backend wird geprüft", "warning");
+    try {
+      await auth.initialize();
+      authReady = true;
+      setConnectionStatus(auth.isAuthenticated() ? "Sicher verbunden" : "Backend bereit", "success");
+    } catch (error) {
+      authReady = true;
+      setConnectionStatus("Backend nicht erreichbar", "warning");
+      showToast(error.message || "Backend-Verbindung fehlgeschlagen.", "error", 8000);
+    }
+
+    renderNavigation();
+    updateUserChrome();
+
+    const initial = currentRoute();
+    const notice = auth.current().notice;
+    if (notice && notice.message) showToast(notice.message, notice.type || "info", 5200);
+
+    if (!location.hash) navigate(auth.isAuthenticated() ? "home" : "login");
+    else if (auth.isAuthenticated() && initial === "login") navigate("home");
+    else if (!allowedRoute(initial)) navigate(auth.isAuthenticated() ? "home" : "login");
+    else await renderRoute();
+
     document.getElementById("appShell").hidden = false;
-    document.getElementById("appSplash").remove();
-    document.documentElement.dataset.api = apiStatus().enabled ? "enabled" : "disabled";
+    document.getElementById("appSplash")?.remove();
     registerServiceWorker();
   } catch (error) {
     const splash = document.getElementById("appSplash");

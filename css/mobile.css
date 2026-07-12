@@ -7,3 +7,9 @@
 }
 @media (max-width: 480px){.hero{padding:24px 20px}.card{padding:18px}.view{padding-top:18px}.app-footer{flex-direction:column;gap:4px}.topbar-title p{max-width:45vw}}
 @media (prefers-reduced-motion: reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+@media (max-width:720px){
+  .user-summary{display:none!important}
+  .topbar-actions{gap:4px}
+  .topbar .status-pill{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}

@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b4f9c">
   <meta name="color-scheme" content="light">
-  <meta name="description" content="Plärrdeifl Portal – PWA-Grundlage für Fanclub, Teams und Fanbusse.">
+  <meta name="description" content="Plärrdeifl Portal – sichere PWA für Fanclub, Teams und Fanbusse.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-src https://script.google.com https://script.googleusercontent.com; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; form-action 'self' https://accounts.google.com; upgrade-insecure-requests">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Plärrdeifl">
@@ -26,7 +27,7 @@
   <div id="appSplash" class="app-splash" aria-live="polite">
     <img src="./assets/icons/icon-192.png" alt="" width="112" height="112">
     <strong>Plärrdeifl Portal</strong>
-    <span>Frontend wird geladen …</span>
+    <span>Login und Backend werden geprüft …</span>
   </div>
 
   <div id="appShell" class="app-shell" hidden>
@@ -36,7 +37,7 @@
       <main id="view" class="view" tabindex="-1" aria-live="polite"></main>
       <footer class="app-footer">
         <span>Plärrdeifl Portal</span>
-        <span id="buildLabel">Phase 1</span>
+        <span id="buildLabel">Phase 2</span>
       </footer>
     </div>
   </div>

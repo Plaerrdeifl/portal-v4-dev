@@ -1,4 +1,5 @@
 import { CONFIG } from "./config.js";
+import { auth } from "./auth.js";
 import { currentRoute, navigate, routes } from "./router.js";
 
 export async function loadFragment(path) {
@@ -16,13 +17,21 @@ export async function mountComponents() {
   document.getElementById("topbarSlot").innerHTML = topbar;
 }
 
+export function visibleRouteEntries() {
+  const authenticated = auth.isAuthenticated();
+  return Object.entries(routes()).filter(([key]) => {
+    if (key === "login") return !authenticated;
+    return auth.canAccessRoute(key);
+  });
+}
+
 export function renderNavigation() {
   const nav = document.getElementById("mainNav");
   if (!nav) return;
-  nav.innerHTML = Object.entries(routes()).map(([key, route]) => `
-    <button type="button" data-route="${key}">
-      <span class="nav-icon" aria-hidden="true">${route.icon}</span>
-      <span>${route.title}</span>
+  nav.innerHTML = visibleRouteEntries().map(([key, route]) => `
+    <button type="button" data-route="${escapeAttr(key)}">
+      <span class="nav-icon" aria-hidden="true">${escapeHtml(route.icon)}</span>
+      <span>${escapeHtml(route.title)}</span>
     </button>`).join("");
   updateActiveNavigation();
 }
@@ -34,7 +43,24 @@ export function updateActiveNavigation() {
   });
 }
 
-export function bindGlobalUi() {
+export function updateUserChrome() {
+  const current = auth.current();
+  const summary = document.getElementById("userSummary");
+  const logout = document.getElementById("logoutButton");
+  if (summary) summary.hidden = !current.authenticated;
+  if (logout) logout.hidden = !current.authenticated;
+
+  if (current.authenticated && current.user) {
+    const name = current.user.name || current.user.email || "Portaluser";
+    const role = current.user.role || "Portaluser";
+    const nameEl = document.getElementById("userSummaryName");
+    const roleEl = document.getElementById("userSummaryRole");
+    if (nameEl) nameEl.textContent = name;
+    if (roleEl) roleEl.textContent = role;
+  }
+}
+
+export function bindGlobalUi({ onRefresh, onLogout } = {}) {
   document.addEventListener("click", event => {
     const routeTarget = event.target.closest("[data-route]");
     if (routeTarget) {
@@ -47,7 +73,8 @@ export function bindGlobalUi() {
   });
 
   document.getElementById("mobileMenuToggle")?.addEventListener("click", openMobileMenu);
-  document.getElementById("refreshButton")?.addEventListener("click", () => window.dispatchEvent(new HashChangeEvent("hashchange")));
+  document.getElementById("refreshButton")?.addEventListener("click", () => onRefresh?.());
+  document.getElementById("logoutButton")?.addEventListener("click", () => onLogout?.());
   document.getElementById("buildLabel").textContent = `${CONFIG.app.version} · ${CONFIG.app.build}`;
 }
 
@@ -88,7 +115,22 @@ export function openMobileMenu() {
   document.getElementById("sidebar")?.classList.add("open");
   document.getElementById("mobileBackdrop")?.classList.add("show");
 }
+
 export function closeMobileMenu() {
   document.getElementById("sidebar")?.classList.remove("open");
   document.getElementById("mobileBackdrop")?.classList.remove("show");
+}
+
+export function escapeHtml(value) {
+  return String(value || "").replace(/[&<>'"]/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;"
+  }[char]));
+}
+
+export function escapeAttr(value) {
+  return escapeHtml(value).replace(/`/g, "&#96;");
 }

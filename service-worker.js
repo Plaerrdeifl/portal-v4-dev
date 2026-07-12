@@ -1,4 +1,4 @@
-const CACHE_VERSION = "pd-portal-phase1-v1.0.0";
+const CACHE_VERSION = "pd-portal-phase2-v1.0.0";
 const APP_CACHE = `${CACHE_VERSION}-app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -17,6 +17,7 @@ const APP_SHELL = [
   "./js/auth.js",
   "./js/router.js",
   "./js/ui.js",
+  "./js/pages.js",
   "./js/app.js",
   "./components/sidebar.html",
   "./components/topbar.html",

@@ -1,42 +1,30 @@
-# Plärrdeifl Portal – GitHub Pages Phase 1
+# Plärrdeifl Portal – GitHub Pages Phase 2
 
-Dieses Paket ist das getestete Frontend-Grundgerüst für die Migration des Plärrdeifl Portals von Google Apps Script HTMLService zu GitHub Pages.
+Dieses Frontend verbindet die installierbare GitHub-Pages-PWA mit dem bestehenden Apps-Script-Backend.
 
-## Enthalten
+## In Phase 2 produktiv verbunden
 
-- installierbare PWA mit Plärrdeifl-App-Icon
-- iOS Apple-Touch-Icon und Android-Maskable-Icons
-- App-Shell mit Desktop- und Mobilnavigation
-- Hash-Routing, das unter `/portal/` und später unter einer eigenen Domain funktioniert
-- getrennte CSS- und JavaScript-Module
-- zentrale Konfiguration
-- vorbereitete, aktuell deaktivierte API-Schicht
-- Login-Grundseite ohne Geheimnisse im Frontend
-- Service Worker und Offline-Grundseite
-- Platzhalter für Dashboard, Fanclub, Teams, Fanbusse und Admin
+- Google-Login über das bestehende serverseitige OAuth-Verfahren
+- einmaliges, kurzlebiges Login-Ticket im URL-Fragment
+- feste 12-Stunden-Portalsitzung
+- sichere Apps-Script-IFrame-Brücke mit Herkunfts- und Kanalprüfung
+- bestehender API-Dispatcher und bestehende serverseitige Rollen-/Rechteprüfung
+- echte Initialdaten und echte Dashboard-Kennzahlen
+- rollenabhängige Sichtbarkeit von Dashboard, Fanclub, Teams, Fanbus und Admin
+- Logout und erneuter Login
 
-## Installation im vorhandenen Repository
+## Noch nicht migriert
 
-Den gesamten Inhalt dieses Pakets direkt nach `C:\Projekte\Portal\portal` kopieren. Vorhandene Phase-1-Testdateien ersetzen.
+Die Fachoberflächen für Fanclub, Teams und Admin bleiben in Phase 2 bewusst Platzhalter. Das bisherige Apps-Script-Portal bleibt als Rückfalllösung verlinkt. Die eigentlichen Fachseiten folgen in Phase 3.
+
+## Aktualisierung
+
+Den Inhalt dieses Ordners direkt in das lokale GitHub-Repository `C:\Projekte\Portal\portal` kopieren und vorhandene Phase-1-Dateien ersetzen.
 
 ```powershell
 git add .
-git commit -m "Frontend-Grundgerüst Phase 1"
+git commit -m "Phase 2 Login und Backend verbinden"
 git push
 ```
 
-GitHub Pages veröffentlicht anschließend automatisch aus `main` und `/ (root)`.
-
-## Wichtiger Sicherheitsstand
-
-Die produktive Apps-Script-API ist bewusst noch deaktiviert. Das öffentliche Repository enthält keine Client-Secrets, Tabellen, Benutzerdaten oder Backenddateien. Der Button „Bestehendes Portal öffnen“ führt weiterhin zum funktionierenden Apps-Script-Portal.
-
-## Nächste Phase
-
-Phase 2 umfasst:
-
-1. HTTP-API-Endpunkt im Apps-Script-Backend
-2. erlaubte Herkunft für `https://plaerrdeifl.github.io`
-3. Google-Login und sichere Sitzungen
-4. serverseitige Rechteprüfung
-5. erste echte Datenabfrage aus der PWA
+Vor dem GitHub-Push muss zuerst das mitgelieferte Apps-Script-Backend bereitgestellt werden.

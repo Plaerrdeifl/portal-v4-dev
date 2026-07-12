@@ -1,10 +1,16 @@
-<section class="page">
-  <div class="page-header"><div><h2>Login-Grundlage</h2><p>Diese Seite zeigt den vorgesehenen Ablauf. Der echte Google-Login wird erst in Phase 2 sicher mit dem Apps-Script-Backend verbunden.</p></div><span class="status-pill warning">Noch nicht verbunden</span></div>
+<section class="page login-page">
+  <div class="page-header"><div><h2>Mit Google anmelden</h2><p>Der Login nutzt weiterhin das geprüfte Apps-Script-Backend. Im öffentlichen GitHub-Repository liegen keine geheimen Schlüssel.</p></div><span id="loginStatusPill" class="status-pill warning">Nicht angemeldet</span></div>
   <div class="grid two">
-    <article class="card">
-      <div class="card-icon">🔐</div><h3>Google-Anmeldung</h3><p>Die PWA wird später eine Login-Anfrage an das Backend starten und nach erfolgreicher Anmeldung eine kurzlebige Portalsitzung verwenden.</p>
-      <div class="action-row"><a class="button primary" data-legacy-link href="#">Aktuelles Portal öffnen</a><button class="button ghost" type="button" disabled>Neuer Login folgt in Phase 2</button></div>
+    <article class="card login-card">
+      <div class="card-icon">🔐</div>
+      <h3>Plärrdeifl Portal öffnen</h3>
+      <p id="loginMessage">Melde dich mit einem im Portal freigeschalteten Google-Konto an.</p>
+      <div id="loginNotice" class="notice" hidden></div>
+      <div class="action-row">
+        <button id="googleLoginButton" class="button primary" type="button">Mit Google anmelden</button>
+        <a class="button ghost" data-legacy-link href="#">Bisheriges Portal öffnen</a>
+      </div>
     </article>
-    <article class="card"><h3>Sicherheitsprinzipien</h3><div class="info-list" style="margin-top:14px"><div class="info-item"><span>1</span><div><strong>Keine Secrets im Frontend</strong><small>Das öffentliche GitHub-Repository enthält niemals Client-Secret oder interne Schlüssel.</small></div></div><div class="info-item"><span>2</span><div><strong>Backend entscheidet</strong><small>Rollen, Rechte und Datenzugriffe bleiben vollständig serverseitig.</small></div></div><div class="info-item"><span>3</span><div><strong>Sitzungen statt Tabellenzugriff</strong><small>Der Browser erhält keine direkte Freigabe auf Google Sheets.</small></div></div></div></article>
+    <article class="card"><h3>Sicherheitsprinzipien</h3><div class="info-list" style="margin-top:14px"><div class="info-item"><span>1</span><div><strong>Einmaliges Login-Ticket</strong><small>Nach Google OAuth wird nur ein kurzlebiges, einmal verwendbares Ticket an die PWA übergeben.</small></div></div><div class="info-item"><span>2</span><div><strong>Herkunft fest gebunden</strong><small>Die Backend-Brücke akzeptiert Nachrichten ausschließlich von der freigegebenen GitHub-Pages-Adresse.</small></div></div><div class="info-item"><span>3</span><div><strong>Backend entscheidet</strong><small>Rollen, Mitgliedschaft, Teamrechte und alle Schreibrechte werden serverseitig geprüft.</small></div></div></div></article>
   </div>
 </section>
