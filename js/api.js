@@ -15,6 +15,8 @@ class AppsScriptBridge {
     this.iframe = null;
     this.readyPromise = null;
     this.pending = new Map();
+    this.bridgeWindow = null;
+    this.bridgeOrigin = "";
     this.boundMessage = event => this.onMessage(event);
   }
 
@@ -25,7 +27,18 @@ class AppsScriptBridge {
   }
 
   isAllowedOrigin(origin) {
-    return CONFIG.api.allowedBridgeOrigins.includes(String(origin || ""));
+    const value = String(origin || "");
+    if (CONFIG.api.allowedBridgeOrigins.includes(value)) return true;
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" && (
+        url.hostname === "script.google.com" ||
+        url.hostname === "script.googleusercontent.com" ||
+        url.hostname.endsWith("-script.googleusercontent.com")
+      );
+    } catch (error) {
+      return false;
+    }
   }
 
   initialize() {
@@ -66,12 +79,13 @@ class AppsScriptBridge {
   }
 
   onMessage(event) {
-    if (!this.iframe || event.source !== this.iframe.contentWindow) return;
-    if (!this.isAllowedOrigin(event.origin)) return;
+    if (!this.iframe || !this.isAllowedOrigin(event.origin)) return;
     const message = event.data || {};
     if (message.source !== "pd-pwa-bridge" || message.channel !== this.channel) return;
 
     if (message.type === "ready") {
+      this.bridgeWindow = event.source;
+      this.bridgeOrigin = event.origin;
       if (this._resolveReady) {
         this._resolveReady(message.payload || {});
         this._resolveReady = null;
@@ -101,13 +115,19 @@ class AppsScriptBridge {
       }, CONFIG.api.requestTimeoutMs);
 
       this.pending.set(requestId, { resolve, reject, timer });
-      this.iframe.contentWindow.postMessage({
+      if (!this.bridgeWindow || !this.bridgeOrigin) {
+        this.pending.delete(requestId);
+        window.clearTimeout(timer);
+        reject(new ApiError("Die Apps-Script-Brücke ist noch nicht vollständig verbunden.", "BRIDGE_NOT_READY"));
+        return;
+      }
+      this.bridgeWindow.postMessage({
         source: "pd-pwa-client",
         channel: this.channel,
         requestId,
         action,
         args: Array.isArray(args) ? args : []
-      }, "*");
+      }, this.bridgeOrigin);
     });
   }
 }

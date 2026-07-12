@@ -1,4 +1,4 @@
-const CACHE_VERSION = "pd-portal-v3-final-rc1-20260712-1";
+const CACHE_VERSION = "pd-portal-v3-final-rc1-bridge-hotfix-20260712-2";
 const APP_CACHE = `${CACHE_VERSION}-app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
