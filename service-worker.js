@@ -1,4 +1,4 @@
-const CACHE_VERSION = "pd-portal-v3-abnahme-20260712-r3";
+const CACHE_VERSION = "pd-portal-v3-performance-20260713-r4";
 const APP_CACHE = `${CACHE_VERSION}-app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
