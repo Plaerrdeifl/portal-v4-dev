@@ -3,7 +3,7 @@ export const CONFIG = Object.freeze({
     name: "Plärrdeifl Portal",
     shortName: "Plärrdeifl",
     version: "v3.0.0 PWA FINAL",
-    build: "2026.07.12-pwa-abnahme-r3",
+    build: "2026.07.13-pwa-performance-r4",
     repository: "https://github.com/Plaerrdeifl/portal"
   },
   urls: {
@@ -17,7 +17,7 @@ export const CONFIG = Object.freeze({
       "https://script.google.com",
       "https://script.googleusercontent.com"
     ],
-    readyTimeoutMs: 25000,
+    readyTimeoutMs: 15000,
     requestTimeoutMs: 60000
   },
   auth: {

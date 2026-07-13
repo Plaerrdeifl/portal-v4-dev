@@ -203,6 +203,9 @@ export const api = Object.freeze({
   async getConfig() {
     return unwrap(await bridge.request("config"));
   },
+  async bootstrap(sessionToken = "") {
+    return unwrap(await bridge.request("bootstrap", [sessionToken]));
+  },
   async createGisChallenge() {
     return unwrap(await bridge.request("createGisChallenge"));
   },

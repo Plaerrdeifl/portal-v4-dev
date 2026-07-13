@@ -112,10 +112,10 @@ function setAuthenticated(session, initialData, notice = null) {
 
 async function initializeInternal() {
   state = { ...EMPTY_STATE };
-  await api.initialize();
-  state.backend = await api.getConfig();
-
   const saved = persistedSession();
+  const bundle = await api.bootstrap(saved?.sessionToken || "");
+  state.backend = bundle?.config || null;
+
   if (!saved) {
     clearPersisted();
     initialized = true;
@@ -123,48 +123,31 @@ async function initializeInternal() {
     return auth.current();
   }
 
-  let resumed;
-  try {
-    resumed = await api.resumeSession(saved.sessionToken);
-  } catch (error) {
-    if (isAuthenticationFailure(error)) {
-      clearPersisted();
-      state = {
-        ...EMPTY_STATE,
-        backend: state.backend,
-        notice: { type: "warning", message: "Deine Sitzung ist abgelaufen. Bitte erneut anmelden." }
-      };
-    } else {
-      setAuthenticatedSessionOnly(saved, {
+  if (!bundle?.authenticated || !bundle?.session) {
+    clearPersisted();
+    state = {
+      ...EMPTY_STATE,
+      backend: state.backend,
+      notice: {
         type: "warning",
-        message: "Die bestehende Sitzung wurde lokal wiederhergestellt. Das Backend ist momentan nicht vollständig erreichbar."
-      });
-    }
+        message: bundle?.authError || "Deine Sitzung ist abgelaufen. Bitte erneut anmelden."
+      }
+    };
     initialized = true;
     emitChange();
     return auth.current();
   }
 
-  // Eine vom Backend bestätigte Sitzung wird sofort gespeichert. Das Laden der
-  // Startdaten ist ein separater Schritt und darf einen gültigen Login nicht löschen.
-  setAuthenticatedSessionOnly(resumed, null);
-  try {
-    const initialData = await loadInitialDataWithRetry(resumed.sessionToken);
-    setAuthenticated(resumed, initialData, null);
-  } catch (error) {
-    if (isAuthenticationFailure(error)) {
-      clearPersisted();
-      state = {
-        ...EMPTY_STATE,
-        backend: state.backend,
-        notice: { type: "warning", message: "Deine Sitzung ist abgelaufen. Bitte erneut anmelden." }
-      };
-    } else {
-      state.notice = {
-        type: "warning",
-        message: `Sitzung ist gültig, Portaldaten konnten noch nicht vollständig geladen werden: ${errorText(error)}`
-      };
-    }
+  if (bundle.initialData) {
+    setAuthenticated(bundle.session, bundle.initialData, bundle.initialError ? {
+      type: "warning",
+      message: `Sitzung ist gültig, einzelne Portaldaten konnten noch nicht vollständig geladen werden: ${bundle.initialError}`
+    } : null);
+  } else {
+    setAuthenticatedSessionOnly(bundle.session, {
+      type: "warning",
+      message: bundle.initialError || "Die Sitzung ist gültig. Portaldaten werden beim Öffnen erneut geladen."
+    });
   }
 
   initialized = true;
@@ -279,8 +262,11 @@ export const auth = {
       emitChange();
 
       try {
-        const initialData = await loadInitialDataWithRetry(result.sessionToken);
-        setAuthenticated(result, initialData, { type: "success", message: "Google-Anmeldung erfolgreich." });
+        const initialData = result.initialData || await loadInitialDataWithRetry(result.sessionToken);
+        setAuthenticated(result, initialData, result.initialError ? {
+          type: "warning",
+          message: `Google-Anmeldung war erfolgreich. Einzelne Portaldaten konnten noch nicht vollständig geladen werden: ${result.initialError}`
+        } : { type: "success", message: "Google-Anmeldung erfolgreich." });
       } catch (error) {
         if (isAuthenticationFailure(error)) {
           clearPersisted();
