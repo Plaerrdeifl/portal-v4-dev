@@ -1,6 +1,6 @@
 import {
   call, canWrite, closeDialog, confirmAction, empty, errorPanel, escapeAttr, escapeHtml,
-  fmtDate, loading, openDialog, optionList, runWrite, statusBadge, tabBar, today
+  fmtDate, loading, openDialog, optionList, runWrite, statusBadge, tabBar
 } from "./common.js";
 
 let activeTab = "applications";
@@ -30,13 +30,38 @@ async function reject(id){if(!await confirmAction({title:"Antrag ablehnen",messa
 async function renderTasks(){
   const data=await call("apiListFanclubTasks",{status:"alle"});
   const tasks=(data.board||[]).filter(task=>!task.erledigt&&String(task.status||"").toLowerCase()!=="erledigt");
-  panel().innerHTML=`<div class="section-title"><div><h3>Offene Vorstandsaufgaben</h3><p>Gemeinsame Aufgaben des Vorstands.</p></div><div class="button-row">${canWrite("Aufgaben")?'<button id="newBoardTask" class="button primary small">+ Aufgabe</button>':""}<button id="boardTasksRefresh" class="button ghost small">Aktualisieren</button></div></div><div class="list-grid" style="margin-top:16px">${tasks.map(task=>`<article class="card task-card"><div class="entity-head"><div><div class="task-title">${escapeHtml(task.aufgabe)}</div><span class="subtle">${escapeHtml(task.team||"Vorstand")}</span></div>${statusBadge(task.status)}</div><div class="meta-grid"><div class="meta-item"><small>Verantwortlich</small>${escapeHtml(task.verantwortlich||"–")}</div><div class="meta-item"><small>Frist</small>${escapeHtml(fmtDate(task.frist))}</div></div>${task.notiz?`<p>${escapeHtml(task.notiz)}</p>`:""}${canWrite("Aufgaben")?`<div class="button-row"><button class="button small primary" data-complete="${task.row}">Erledigen</button></div>`:""}</article>`).join("")||empty("Keine offenen Vorstandsaufgaben.")}</div>`;
+  panel().innerHTML=`<div class="section-title"><div><h3>Offene Vorstandsaufgaben</h3><p>Gemeinsame Aufgaben des Vorstands.</p></div><div class="button-row">${canWrite("Aufgaben")?'<button id="newBoardTask" class="button primary small">+ Aufgabe</button>':""}<button id="boardTasksRefresh" class="button ghost small">Aktualisieren</button></div></div><div class="list-grid" style="margin-top:16px">${tasks.map(task=>`<article class="card task-card"><div class="entity-head"><div><div class="task-title">${escapeHtml(task.aufgabe)}</div><span class="subtle">${escapeHtml(task.team||"Vorstand")}</span></div>${statusBadge(task.status)}</div><div class="meta-grid"><div class="meta-item"><small>Verantwortlich</small>${escapeHtml(task.verantwortlich||"–")}</div><div class="meta-item"><small>Priorität</small>${escapeHtml(task.prioritaet||"Normal")}</div></div>${task.notiz?`<p>${escapeHtml(task.notiz)}</p>`:""}${canWrite("Aufgaben")?`<div class="button-row"><button class="button small primary" data-complete="${task.row}">Erledigen</button></div>`:""}</article>`).join("")||empty("Keine offenen Vorstandsaufgaben.")}</div>`;
   document.getElementById("boardTasksRefresh")?.addEventListener("click",renderTasks);
   document.getElementById("newBoardTask")?.addEventListener("click",()=>openTaskForm({},data.meta||{}));
   document.querySelectorAll("[data-complete]").forEach(button=>button.addEventListener("click",async()=>{await runWrite("Aufgabe wird erledigt …",()=>call("apiCompleteTask",Number(button.dataset.complete)));await renderTasks();}));
 }
-function openTaskForm(task={},meta={}){
-  const teams=meta.teamsDetailed||(meta.teams||[]).map(name=>({id:name,name}));
-  const board=teams.find(team=>String(team.name||"").toLowerCase()==="vorstand");
-  openDialog({title:"Vorstandsaufgabe anlegen",kicker:"Vorstand",body:`<form><div class="form-grid"><label class="full">Aufgabe<input name="aufgabe" required></label><label>Team<select name="teamId" required>${optionList(teams.map(team=>({value:team.id,label:team.name})),board?.id||"","Team auswählen")}</select></label><label>Priorität<select name="prioritaet">${optionList(meta.prioritaeten||["Niedrig","Normal","Hoch","Eilt!"],"Normal")}</select></label><label>Frist<input type="date" name="frist" value="${today()}"></label><label>Status<select name="status">${optionList(meta.statusListe||["Offen","In Arbeit","Erledigt"],"Offen")}</select></label><label class="full">Verantwortlich<input name="verantwortlich"></label><label class="full">Notiz<textarea name="notiz"></textarea></label></div></form>`,onSubmit:async data=>{await runWrite("Aufgabe wird gespeichert …",()=>call("apiSaveTask",data));closeDialog();await renderTasks();}});
+function openTaskForm(task = {}, meta = {}) {
+  const teams = meta.teamsDetailed || (meta.teams || []).map(name => ({ id: name, name }));
+  const board = teams.find(team => String(team.id || "").toUpperCase() === "VORSTAND" || String(team.name || "").toLowerCase() === "vorstand") || { id: "VORSTAND", name: "Vorstand" };
+  const options = (meta.verantwortlicheByTeam?.[board.id] || meta.verantwortlicheByTeam?.Vorstand || []).map(item => ({
+    value: item.id || item.value,
+    label: item.name || item.label || item.id || item.value
+  }));
+
+  openDialog({
+    title: task.id ? "Vorstandsaufgabe bearbeiten" : "Vorstandsaufgabe anlegen",
+    kicker: "Vorstand",
+    body: `<form>
+      <input type="hidden" name="id" value="${escapeAttr(task.id || "")}">
+      <input type="hidden" name="teamId" value="${escapeAttr(board.id)}">
+      <div class="form-grid">
+        <label class="full">Aufgabe<input name="aufgabe" value="${escapeAttr(task.aufgabe || "")}" required></label>
+        <label>Priorität<select name="prioritaet">${optionList(meta.prioritaeten || ["Niedrig", "Normal", "Hoch", "Eilt!"], task.prioritaet || "Normal")}</select></label>
+        <label>Status<select name="status">${optionList(meta.statusListe || ["Offen", "In Bearbeitung", "Erledigt", "Archiviert"], task.status || "Offen")}</select></label>
+        <label class="full">Verantwortlich<select name="verantwortlichId">${optionList(options, task.verantwortlichId || "", "Nicht zugewiesen")}</select></label>
+        <label class="full">Notiz<textarea name="notiz">${escapeHtml(task.notiz || "")}</textarea></label>
+        <div class="notice full">Zuweisbar sind ausschließlich die aktuellen fünf Amtsinhaber.</div>
+      </div>
+    </form>`,
+    onSubmit: async data => {
+      await runWrite("Aufgabe wird gespeichert …", () => call("apiSaveTask", data));
+      closeDialog();
+      await renderTasks();
+    }
+  });
 }
