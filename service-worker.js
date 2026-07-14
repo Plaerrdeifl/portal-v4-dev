@@ -1,4 +1,4 @@
-const CACHE_VERSION = "pd-portal-v3-r71.auth-hotfix-20260714-r1";
+const CACHE_VERSION = "pd-portal-v3-r71.perf-session-hotfix-20260714-r3";
 const APP_CACHE = `${CACHE_VERSION}-app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
