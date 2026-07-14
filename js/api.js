@@ -237,9 +237,6 @@ export const api = Object.freeze({
   async readBatch(sessionToken, calls) {
     return unwrap(await bridge.request("dispatch", [sessionToken, "apiReadBatch", [calls]]));
   },
-  async performanceDiagnostics(sessionToken) {
-    return unwrap(await bridge.request("performanceDiagnostics", [sessionToken]));
-  },
   performance() {
     return performanceMonitor.summary();
   }

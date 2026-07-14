@@ -87,7 +87,7 @@ function openAccountTypeForm(item={}){
 async function createBackup(){const result=await runWrite("Backup wird erstellt …",()=>call("apiCreateBackup"),"Backup wurde erstellt.");openDialog({title:"Backup abgeschlossen",kicker:"Portalverwaltung",body:`<div class="notice success">${escapeHtml(result.message||"Backup wurde erstellt.")}</div><div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});}
 async function openSystem(){const data=await call("apiGetSystemStatus");openDialog({title:"Systemstatus",kicker:data.message||"DB_-Status",wide:true,body:`${data.warnings?.length?`<div class="notice warning">${data.warnings.map(escapeHtml).join("<br>")}</div>`:'<div class="notice success">Keine technischen Warnungen.</div>'}<div class="card table-card" style="margin-top:16px"><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Tabelle</th><th>Status</th><th>Datenzeilen</th><th>Physische Zeilen</th></tr></thead><tbody>${(data.sheets||[]).map(s=>`<tr><td>${escapeHtml(s.name)}</td><td>${statusBadge(s.status)}</td><td>${Number(s.effectiveRows||0)}</td><td>${Number(s.physicalRows||0)}</td></tr>`).join("")}</tbody></table></div></div><div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});}
 async function openPerformanceDiagnostics(){
-  const data=await auth.performanceDiagnostics();
+  const data=await call("apiGetPerformanceDiagnostics");
   const client=performanceMonitor.summary();
   const domains=data.domains||[];
   const recent=data.performance?.recent||[];
