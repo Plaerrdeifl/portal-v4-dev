@@ -1,7 +1,7 @@
 import { CONFIG } from "./config.js";
 import { auth } from "./auth.js";
 import { currentRoute, navigate, routes } from "./router.js";
-import { hydratePage } from "./pages.js";
+import { hydratePage } from "./pages.js?v=20260714-r71-perf-ui-r4";
 import { initializeInstall } from "./install.js";
 import { storage } from "./storage.js";
 import {

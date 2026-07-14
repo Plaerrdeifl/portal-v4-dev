@@ -3,7 +3,7 @@ export const CONFIG = Object.freeze({
     name: "Plärrdeifl Portal",
     shortName: "Plärrdeifl",
     version: "v3.0.0 PWA FINAL",
-    build: "2026.07.14-r7.1.perf-session-hotfix-3",
+    build: "2026.07.14-r7.1.performance-ui-hotfix-4",
     repository: "https://github.com/Plaerrdeifl/portal"
   },
   urls: {

@@ -6,6 +6,8 @@ import {
 } from "./common.js";
 import { phase3State } from "./state.js";
 
+window.__PD_PERFORMANCE_UI_HOTFIX__ = "2026.07.14-r7.1.performance-ui-hotfix-4";
+
 function target(){return document.getElementById("adminPanel");}
 function setStatus(text,type="success"){const el=document.getElementById("adminStatus");if(el){el.textContent=text;el.className=`status-pill ${type}`;}}
 
@@ -37,7 +39,7 @@ function renderAdminHome(){
   target().innerHTML=`<section><div class="section-title"><div><h3>Fanclubverwaltung</h3><p>Saison, Jahresabschluss und fachliche Prüfungen.</p></div></div><div class="admin-actions" style="margin-top:14px">${fan.join("")||empty("Keine Fanclub-Administrationsfunktionen freigegeben.")}</div></section><section><div class="section-title"><div><h3>Portalverwaltung</h3><p>Benutzer, Rechte, Sicherung und technischer Status.</p></div></div><div class="admin-actions" style="margin-top:14px">${portal.join("")||empty("Keine Portalverwaltungsfunktionen freigegeben.")}</div></section><article class="card"><h3>v3-Abgrenzung</h3><p>Bus-Modul und Push-Benachrichtigungen werden bewusst nicht in v3 umgesetzt. Die PWA-Struktur bleibt dafür in v4 erweiterbar.</p></article>`;
   document.querySelectorAll("[data-admin-action]").forEach(b=>b.addEventListener("click",()=>runAction(b.dataset.adminAction)));
 }
-async function runAction(id){try{if(id==="season")return seasonDialog();if(id==="yearclose")return yearCloseDialog();if(id==="accounttypes")return openAccountTypes();if(id==="datacheck")return runDataCheck();if(id==="requests")return openRequests();if(id==="users")return openUsers();if(id==="rights")return openRoleRights();if(id==="backup")return createBackup();if(id==="system")return openSystem();if(id==="audit")return openAudit();if(id==="performance")return openPerformanceDiagnostics();if(id==="structure")return openPortalStructure();if(id==="widgets")return openDashboardWidgets();if(id==="appearance")return openPortalAppearance();if(id==="clean")return openCleanSystem();}catch(error){target().innerHTML=errorPanel(error);}}
+async function runAction(id){try{if(id==="season")return seasonDialog();if(id==="yearclose")return yearCloseDialog();if(id==="accounttypes")return openAccountTypes();if(id==="datacheck")return runDataCheck();if(id==="requests")return openRequests();if(id==="users")return openUsers();if(id==="rights")return openRoleRights();if(id==="backup")return createBackup();if(id==="system")return openSystem();if(id==="audit")return openAudit();if(id==="performance")return openPerformanceDiagnostics();if(id==="structure")return openPortalStructure();if(id==="widgets")return openDashboardWidgets();if(id==="appearance")return openPortalAppearance();if(id==="clean")return openCleanSystem();}catch(error){showToast(error?.message||"Aktion fehlgeschlagen.","error",8000);const panel=target();if(panel)panel.innerHTML=errorPanel(error);}}
 function seasonDialog(){openDialog({title:"Neue Saison starten",kicker:"Fanclubverwaltung",body:`<form><label>Saison/Jahr<input name="seasonName" value="${new Date().getFullYear()+1}" required></label><div class="notice warning" style="margin-top:14px">Für beitragspflichtige Mitglieder werden Beiträge angelegt. Bestehende Saisonwerte werden serverseitig geprüft.</div></form>`,onSubmit:async data=>{await runWrite("Neue Saison wird angelegt …",()=>call("apiStartNewSeason",data.seasonName));closeDialog();}});}
 function yearCloseDialog(){openDialog({title:"Jahresabschluss",kicker:"Fanclubverwaltung",body:`<form><label>Jahr<input type="number" name="year" value="${new Date().getFullYear()}" required></label></form>`,onSubmit:async data=>{await runWrite("Jahresabschluss wird erstellt …",()=>call("apiCreateYearClose",Number(data.year)));closeDialog();}});}
 async function runDataCheck(){const result=await runWrite("Datenprüfung läuft …",()=>call("apiRunDataCheck"),"Datenprüfung abgeschlossen.");openDialog({title:"Datenprüfung",kicker:`${Number(result.count||0)} Hinweis(e)`,wide:true,body:`${result.issues?.length?`<div class="settings-grid">${result.issues.map(issue=>`<div class="card"><strong>${escapeHtml(issue[0]||"Hinweis")} · ${escapeHtml(issue[1]||"")}</strong><p>${escapeHtml(issue[2]||"")}</p></div>`).join("")}</div>`:'<div class="notice success">Keine fachlichen Probleme gefunden.</div>'}<div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});}
@@ -87,7 +89,24 @@ function openAccountTypeForm(item={}){
 async function createBackup(){const result=await runWrite("Backup wird erstellt …",()=>call("apiCreateBackup"),"Backup wurde erstellt.");openDialog({title:"Backup abgeschlossen",kicker:"Portalverwaltung",body:`<div class="notice success">${escapeHtml(result.message||"Backup wurde erstellt.")}</div><div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});}
 async function openSystem(){const data=await call("apiGetSystemStatus");openDialog({title:"Systemstatus",kicker:data.message||"DB_-Status",wide:true,body:`${data.warnings?.length?`<div class="notice warning">${data.warnings.map(escapeHtml).join("<br>")}</div>`:'<div class="notice success">Keine technischen Warnungen.</div>'}<div class="card table-card" style="margin-top:16px"><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Tabelle</th><th>Status</th><th>Datenzeilen</th><th>Physische Zeilen</th></tr></thead><tbody>${(data.sheets||[]).map(s=>`<tr><td>${escapeHtml(s.name)}</td><td>${statusBadge(s.status)}</td><td>${Number(s.effectiveRows||0)}</td><td>${Number(s.physicalRows||0)}</td></tr>`).join("")}</tbody></table></div></div><div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});}
 async function openPerformanceDiagnostics(){
-  const data=await call("apiGetPerformanceDiagnostics");
+  openDialog({
+    title:"Performance & Persistenz",
+    kicker:"Diagnose wird geladen",
+    wide:true,
+    body:`${loading("Performance- und Persistenzdaten werden geladen …")}<div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`
+  });
+  let data;
+  try {
+    data=await call("apiGetPerformanceDiagnostics");
+  } catch(error) {
+    openDialog({
+      title:"Performance & Persistenz",
+      kicker:"Diagnose fehlgeschlagen",
+      wide:true,
+      body:`${errorPanel(error,"Diagnose konnte nicht geladen werden")}<div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`
+    });
+    throw error;
+  }
   const client=performanceMonitor.summary();
   const domains=data.domains||[];
   const recent=data.performance?.recent||[];
@@ -113,7 +132,6 @@ async function openPerformanceDiagnostics(){
   document.getElementById("performanceClearClient")?.addEventListener("click",()=>{performanceMonitor.clear();closeDialog();openPerformanceDiagnostics();});
   document.getElementById("performanceRefresh")?.addEventListener("click",()=>{closeDialog();openPerformanceDiagnostics();});
 }
-
 async function openAudit(){const data=await call("apiListAuditLog",{max:200});const rows=data.entries||data.logs||data.items||[];openDialog({title:"Audit-Log",kicker:`${rows.length} Einträge`,wide:true,body:rows.length?`<div class="card table-card"><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Zeit</th><th>Aktion</th><th>Bereich</th><th>Benutzer</th><th>Details</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${escapeHtml(r.zeitpunkt||r.timestamp||"")}</td><td>${escapeHtml(r.aktion||r.action||"")}</td><td>${escapeHtml(r.bereich||r.area||"")}</td><td>${escapeHtml(r.benutzer||r.user||"")}</td><td>${escapeHtml(r.bemerkung||r.details||"")}</td></tr>`).join("")}</tbody></table></div></div>`:empty("Noch keine Audit-Einträge vorhanden.")});}
 async function openCleanSystem(){const preview=await call("apiGetCleanSystemPreview");openDialog({title:"Grundsystem herstellen",kicker:preview.ready?"Bereit":"Sicherheitsabbruch",wide:true,body:`<div class="notice ${preview.ready?"warning":"error"}">${escapeHtml(preview.message||"")}</div><div class="grid three" style="margin-top:16px"><article class="card"><h3>Erhaltene Google-Benutzer</h3><strong>${Number(preview.googleLinkedCount||preview.linkedUsers?.length||0)}</strong></article><article class="card"><h3>Zielrollen</h3><strong>${Number(preview.targetRoles?.length||7)}</strong></article><article class="card"><h3>Konten / Teams</h3><strong>5 / 3</strong></article></div>${preview.ready?`<form id="cleanSystemForm" style="margin-top:16px"><label>Bestätigungstext<input name="confirmation" autocomplete="off" placeholder="GRUNDSYSTEM HERSTELLEN" required></label><label class="check-row" style="margin-top:14px"><input type="checkbox" name="secondConfirmation"> Automatisches Backup und endgültige Bereinigung bestätigen</label><div class="dialog-actions"><button class="button ghost" data-dialog-close type="button">Abbrechen</button><button class="button danger" type="submit">Grundsystem herstellen</button></div></form>`:'<div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>'}`});const form=document.getElementById("cleanSystemForm");form?.addEventListener("submit",async event=>{event.preventDefault();const confirmation=form.elements.confirmation.value;const secondConfirmation=form.elements.secondConfirmation.checked;if(confirmation!=="GRUNDSYSTEM HERSTELLEN"||!secondConfirmation){throw new Error("Bestätigung ist unvollständig.");}if(!await confirmAction({title:"Letzte Sicherheitsabfrage",message:"Alle Bewegungs- und Testdaten werden nach einem Backup gelöscht.",confirmText:"Endgültig ausführen",phrase:"JETZT BEREINIGEN"}))return;await runWrite("Grundsystem wird hergestellt …",()=>call("apiResetToCleanSystem",{confirmation,secondConfirmation}));closeDialog();location.reload();});}
 
