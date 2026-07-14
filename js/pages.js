@@ -8,7 +8,7 @@ import { hydrateFanclub, hydrateCash } from "./modules/fanclub.js";
 import { hydrateTeams } from "./modules/teams.js";
 import { hydrateFanbus } from "./modules/fanbus.js";
 import { hydrateBoard } from "./modules/board.js";
-import { hydrateAdmin } from "./modules/admin.js?v=20260714-r71-perf-ui-r4";
+import { hydrateAdmin } from "./modules/admin.js?v=20260714-r71-perf-fast-r5";
 
 let loginController = null;
 let loginHydrationId = 0;

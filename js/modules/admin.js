@@ -6,7 +6,7 @@ import {
 } from "./common.js";
 import { phase3State } from "./state.js";
 
-window.__PD_PERFORMANCE_UI_HOTFIX__ = "2026.07.14-r7.1.performance-ui-hotfix-4";
+window.__PD_PERFORMANCE_UI_HOTFIX__ = "2026.07.14-r7.1.performance-fast-hotfix-5";
 
 function target(){return document.getElementById("adminPanel");}
 function setStatus(text,type="success"){const el=document.getElementById("adminStatus");if(el){el.textContent=text;el.className=`status-pill ${type}`;}}
@@ -88,41 +88,75 @@ function openAccountTypeForm(item={}){
 
 async function createBackup(){const result=await runWrite("Backup wird erstellt …",()=>call("apiCreateBackup"),"Backup wurde erstellt.");openDialog({title:"Backup abgeschlossen",kicker:"Portalverwaltung",body:`<div class="notice success">${escapeHtml(result.message||"Backup wurde erstellt.")}</div><div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});}
 async function openSystem(){const data=await call("apiGetSystemStatus");openDialog({title:"Systemstatus",kicker:data.message||"DB_-Status",wide:true,body:`${data.warnings?.length?`<div class="notice warning">${data.warnings.map(escapeHtml).join("<br>")}</div>`:'<div class="notice success">Keine technischen Warnungen.</div>'}<div class="card table-card" style="margin-top:16px"><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Tabelle</th><th>Status</th><th>Datenzeilen</th><th>Physische Zeilen</th></tr></thead><tbody>${(data.sheets||[]).map(s=>`<tr><td>${escapeHtml(s.name)}</td><td>${statusBadge(s.status)}</td><td>${Number(s.effectiveRows||0)}</td><td>${Number(s.physicalRows||0)}</td></tr>`).join("")}</tbody></table></div></div><div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});}
+function performanceTimeout_(promise, timeoutMs) {
+  let timer = null;
+  const timeout = new Promise((_, reject) => {
+    timer = window.setTimeout(() => {
+      const error = new Error(
+        "Die Serverdiagnose wurde nach 25 Sekunden beendet. Andere Portalbereiche bleiben nutzbar."
+      );
+      error.code = "PERFORMANCE_DIAGNOSTIC_TIMEOUT";
+      reject(error);
+    }, Math.max(1000, Number(timeoutMs) || 25000));
+  });
+  return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timer));
+}
+
 async function openPerformanceDiagnostics(){
+  const initialClient=performanceMonitor.summary();
   openDialog({
     title:"Performance & Persistenz",
-    kicker:"Diagnose wird geladen",
+    kicker:"Schnelldiagnose wird geladen",
     wide:true,
-    body:`${loading("Performance- und Persistenzdaten werden geladen …")}<div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`
+    body:`
+      <div class="grid three">
+        <article class="card stat-card"><div class="card-icon">🌐</div><h3>Browseraufrufe</h3><strong>${Number(initialClient.count||0)}</strong><small>Ø ${Number(initialClient.averageClientMs||0)} ms</small></article>
+        <article class="card stat-card"><div class="card-icon">⏱️</div><h3>Serverdiagnose</h3><strong>läuft</strong><small>Abbruch automatisch nach 25 Sekunden</small></article>
+        <article class="card stat-card"><div class="card-icon">🛡️</div><h3>Modus</h3><strong>Nur lesen</strong><small>Keine Fachdatenänderung</small></article>
+      </div>
+      <div style="margin-top:16px">${loading("Nur ID-Spalten und die letzten 50 Auditzeilen werden geprüft …")}</div>
+      <div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`
   });
+
   let data;
   try {
-    data=await call("apiGetPerformanceDiagnostics");
+    data=await performanceTimeout_(call("apiGetPerformanceDiagnostics"),25000);
   } catch(error) {
     openDialog({
       title:"Performance & Persistenz",
-      kicker:"Diagnose fehlgeschlagen",
+      kicker:"Schnelldiagnose nicht abgeschlossen",
       wide:true,
-      body:`${errorPanel(error,"Diagnose konnte nicht geladen werden")}<div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`
+      body:`
+        ${errorPanel(error,"Diagnose wurde kontrolliert beendet")}
+        <div class="notice warning" style="margin-top:14px">
+          Das Portal bleibt nutzbar. Öffne im Apps-Script-Editor „Ausführungen“ und prüfe den jüngsten Aufruf von <strong>apiDispatch</strong> bzw. <strong>apiGetPerformanceDiagnostics</strong>.
+        </div>
+        <div class="dialog-actions"><button id="performanceRetry" class="button primary" type="button">Erneut versuchen</button><button class="button ghost" data-dialog-close>Schließen</button></div>`
     });
-    throw error;
+    document.getElementById("performanceRetry")?.addEventListener("click",()=>{closeDialog();openPerformanceDiagnostics();});
+    return;
   }
+
   const client=performanceMonitor.summary();
   const domains=data.domains||[];
   const recent=data.performance?.recent||[];
   const slow=data.performance?.slowCalls||[];
+  const stages=data.diagnostics?.stageTimings||[];
   openDialog({
     title:"Performance & Persistenz",
     kicker:`${recent.length} Serveraufrufe · ${client.count} Browseraufrufe`,
     wide:true,
     body:`
       <div class="grid three">
-        <article class="card stat-card"><div class="card-icon">⏱️</div><h3>Server Ø</h3><strong>${Number(data.performance?.averageMs||0)} ms</strong><small>Maximum ${Number(data.performance?.maxMs||0)} ms</small></article>
+        <article class="card stat-card"><div class="card-icon">⏱️</div><h3>Diagnose</h3><strong>${Number(data.durationMs||0)} ms</strong><small>Schnellpfad</small></article>
         <article class="card stat-card"><div class="card-icon">🌐</div><h3>Browser Ø</h3><strong>${Number(client.averageClientMs||0)} ms</strong><small>Maximum ${Number(client.maximumClientMs||0)} ms</small></article>
         <article class="card stat-card"><div class="card-icon">⚠️</div><h3>Langsame Aufrufe</h3><strong>${slow.length}</strong><small>Schwelle ${Number(data.performance?.slowThresholdMs||2500)} ms</small></article>
       </div>
-      <article class="card" style="margin-top:16px"><div class="section-title"><div><h3>Persistenz je Fachbereich</h3><p>Bestätigt wird nur, was tatsächlich in den R7.1-Tabellen oder im Audit-Log nachweisbar ist.</p></div></div>
+      <article class="card" style="margin-top:16px"><div class="section-title"><div><h3>Persistenz je Fachbereich</h3><p>Gezählt werden ausschließlich belegte ID-Zellen in den R7.1-Tabellen.</p></div></div>
         <div class="settings-grid" style="margin-top:14px">${domains.map(domain=>`<div class="card"><div class="entity-head"><div><strong>${escapeHtml(domain.label)}</strong><div class="subtle">${escapeHtml(domain.evidence||"")}</div></div><span class="badge ${domain.persisted?"success":"warning"}">${domain.persisted?"Bestätigt":"Noch offen"}</span></div><p class="subtle">${escapeHtml((domain.tables||[]).join(", "))}</p></div>`).join("")}</div>
+      </article>
+      <article class="card" style="margin-top:16px"><div class="section-title"><div><h3>Diagnosestufen</h3><p>Damit ist sofort sichtbar, welche Datenbank Zeit benötigt.</p></div></div>
+        ${stages.length?`<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Stufe</th><th>Dauer</th></tr></thead><tbody>${stages.map(row=>`<tr><td>${escapeHtml(row.stage||"")}</td><td>${Number(row.durationMs||0)} ms</td></tr>`).join("")}</tbody></table></div>`:empty("Keine Stufenmessung vorhanden.")}
       </article>
       <article class="card" style="margin-top:16px"><div class="section-title"><div><h3>Letzte Serveraufrufe</h3><p>Die langsamsten Aufrufe lassen sich damit gezielt nachstellen.</p></div></div>
         ${recent.length?`<div class="data-table-wrap"><table class="data-table"><thead><tr><th>API</th><th>Server</th><th>Status</th><th>Zugriffe</th></tr></thead><tbody>${recent.slice(0,20).map(row=>`<tr><td>${escapeHtml(row.functionName||"")}</td><td>${Number(row.durationMs||0)} ms</td><td>${row.ok?statusBadge(row.slow?"Langsam":"OK"):statusBadge("Fehler")}</td><td>${escapeHtml(Object.entries(row.counters||{}).map(([key,value])=>`${key}: ${value}`).join(" · ")||"–")}</td></tr>`).join("")}</tbody></table></div>`:empty("Noch keine Laufzeitdaten vorhanden.")}

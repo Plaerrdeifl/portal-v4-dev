@@ -1,4 +1,4 @@
-const CACHE_VERSION = "pd-portal-v3-r71.performance-ui-hotfix-20260714-r4";
+const CACHE_VERSION = "pd-portal-v3-r71.performance-fast-hotfix-20260714-r5";
 const APP_CACHE = `${CACHE_VERSION}-app`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
