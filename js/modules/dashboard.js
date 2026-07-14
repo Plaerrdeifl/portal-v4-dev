@@ -1,5 +1,9 @@
-import { call, empty, errorPanel, escapeAttr, escapeHtml, fmtDate, fmtMoney, fmtNumber, loading } from "./common.js";
+import { call, empty, errorPanel, escapeAttr, escapeHtml, fmtMoney, fmtNumber, loading } from "./common.js";
 import { navigate } from "../router.js";
+import { auth } from "../auth.js";
+import { storage } from "../storage.js";
+
+const DASHBOARD_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
 
 function valueLine(label,value){return `<div class="widget-value-line"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;}
 function dataMarkup(widget){
@@ -19,14 +23,36 @@ function dataMarkup(widget){
   return empty("Noch keine Daten verfügbar.");
 }
 function targetParts(value){const [route,tab]=String(value||"").split(":");return {route,tab};}
+function cacheKey(){return `pd:r71:dashboard:${auth.current().user?.userId||"anonymous"}`;}
+function readCached(){
+  const cached=storage.get(cacheKey(),null);
+  if(!cached||!cached.savedAt||!cached.payload)return null;
+  if(Date.now()-Number(cached.savedAt)>DASHBOARD_CACHE_MAX_AGE_MS)return null;
+  return cached.payload;
+}
+function writeCached(payload){storage.set(cacheKey(),{savedAt:Date.now(),payload});}
+function bindTargets(){
+  document.querySelectorAll("[data-widget-target]").forEach(card=>{const open=()=>{const {route,tab}=targetParts(card.dataset.widgetTarget);if(!route)return;const params=new URLSearchParams();if(tab)params.set("tab",tab);navigate(route,params);};card.addEventListener("click",open);card.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();open();}});});
+}
+function render(payload,target,status,label){
+  const widgets=payload?.widgets||[];
+  if(target)target.innerHTML=widgets.length?widgets.map(widget=>`<article class="card dashboard-widget widget-${escapeAttr(String(widget.size||"M").toLowerCase())} ${widget.clickTarget?"is-clickable":""}" ${widget.clickTarget?`data-widget-target="${escapeAttr(widget.clickTarget)}" role="button" tabindex="0"`:""}><div class="dashboard-widget-head"><span class="dashboard-widget-icon">${escapeHtml(widget.icon||"•")}</span><div><h3>${escapeHtml(widget.label||widget.key)}</h3><p>${escapeHtml(widget.description||"")}</p></div></div><div class="dashboard-widget-body">${dataMarkup(widget)}</div>${widget.clickTarget?'<span class="dashboard-widget-arrow" aria-hidden="true">›</span>':""}</article>`).join(""):empty("Für deine Rolle sind noch keine Dashboard-Widgets aktiv.");
+  bindTargets();
+  if(status){status.textContent=label||`${widgets.length} Widget${widgets.length===1?"":"s"}`;status.className="status-pill success";}
+}
 
 export async function hydrateDashboard(){
   const target=document.getElementById("dashboardWidgets");const status=document.getElementById("dashboardStatus");
-  if(target)target.innerHTML=loading("Dashboard-Widgets werden geladen …");
+  const cached=readCached();
+  if(cached)render(cached,target,status,"Sofortansicht · wird aktualisiert");
+  else if(target)target.innerHTML=loading("Dashboard-Widgets werden geladen …");
   try{
-    const payload=await call("apiGetMyDashboard");const widgets=payload.widgets||[];
-    if(target)target.innerHTML=widgets.length?widgets.map(widget=>`<article class="card dashboard-widget widget-${escapeAttr(String(widget.size||"M").toLowerCase())} ${widget.clickTarget?"is-clickable":""}" ${widget.clickTarget?`data-widget-target="${escapeAttr(widget.clickTarget)}" role="button" tabindex="0"`:""}><div class="dashboard-widget-head"><span class="dashboard-widget-icon">${escapeHtml(widget.icon||"•")}</span><div><h3>${escapeHtml(widget.label||widget.key)}</h3><p>${escapeHtml(widget.description||"")}</p></div></div><div class="dashboard-widget-body">${dataMarkup(widget)}</div>${widget.clickTarget?'<span class="dashboard-widget-arrow" aria-hidden="true">›</span>':""}</article>`).join(""):empty("Für deine Rolle sind noch keine Dashboard-Widgets aktiv.");
-    document.querySelectorAll("[data-widget-target]").forEach(card=>{const open=()=>{const {route,tab}=targetParts(card.dataset.widgetTarget);if(!route)return;const params=new URLSearchParams();if(tab)params.set("tab",tab);navigate(route,params);};card.addEventListener("click",open);card.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();open();}});});
-    if(status){status.textContent=`${widgets.length} Widget${widgets.length===1?"":"s"}`;status.className="status-pill success";}
-  }catch(error){if(target)target.innerHTML=errorPanel(error,"Dashboard konnte nicht geladen werden");if(status){status.textContent="Fehler";status.className="status-pill warning";}}
+    const payload=await call("apiGetMyDashboard");
+    writeCached(payload);
+    const suffix=payload.cacheHit?"Backend-Cache":"Aktualisiert";
+    render(payload,target,status,`${(payload.widgets||[]).length} Widgets · ${suffix}`);
+  }catch(error){
+    if(!cached){if(target)target.innerHTML=errorPanel(error,"Dashboard konnte nicht geladen werden");if(status){status.textContent="Fehler";status.className="status-pill warning";}}
+    else if(status){status.textContent="Sofortansicht · Aktualisierung fehlgeschlagen";status.className="status-pill warning";}
+  }
 }

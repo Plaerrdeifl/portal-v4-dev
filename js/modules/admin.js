@@ -129,7 +129,7 @@ async function openPerformanceDiagnostics(){
       body:`
         ${errorPanel(error,"Diagnose wurde kontrolliert beendet")}
         <div class="notice warning" style="margin-top:14px">
-          Das Portal bleibt nutzbar. Öffne im Apps-Script-Editor „Ausführungen“ und prüfe den jüngsten Aufruf von <strong>apiDispatch</strong> bzw. <strong>apiGetPerformanceDiagnostics</strong>.
+          Das Portal bleibt nutzbar. Öffne im Apps-Script-Editor „Ausführungen“ und prüfe den jüngsten Aufruf von <strong>den Backend-Aufruf</strong> bzw. <strong>apiGetPerformanceDiagnostics</strong>.
         </div>
         <div class="dialog-actions"><button id="performanceRetry" class="button primary" type="button">Erneut versuchen</button><button class="button ghost" data-dialog-close>Schließen</button></div>`
     });
