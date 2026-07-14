@@ -1,5 +1,5 @@
 import {
-  call, canRead, canWrite, closeDialog, confirmAction, currentUser, empty, errorPanel,
+  call, callBatch, canRead, canWrite, closeDialog, confirmAction, currentUser, empty, errorPanel,
   escapeAttr, escapeHtml, fmtDate, fmtMoney, loading, normalize, openDialog, optionList,
   portal, runWrite, showToast, statusBadge, tabBar, today
 } from "./common.js";
@@ -48,11 +48,28 @@ function renderTabs() {
   }
 }
 
+async function prefetchModule(name) {
+  const calls = name === "cash"
+    ? [
+        { id: "contributions", functionName: "apiListContributions", args: [{ status: "alle" }] },
+        { id: "cashbook", functionName: "apiListBookings", args: [{ max: 100 }] },
+        { id: "accounts", functionName: "apiListAccounts", args: [] }
+      ]
+    : [
+        { id: "overview", functionName: "apiListActiveMemberNames", args: [] },
+        ...(canRead("Mitglieder") ? [{ id: "members", functionName: "apiListMembers", args: [] }] : [])
+      ];
+  if (!calls.length || calls.every(item => phase3State.has(KEY + item.id))) return;
+  const bundle = await callBatch(calls.filter(item => !phase3State.has(KEY + item.id)));
+  Object.entries(bundle?.results || {}).forEach(([id, value]) => phase3State.set(KEY + id, value));
+}
+
 async function hydrateModule(name, fallback) {
   moduleName = name;
   const requested = queryTab();
   activeTab = tabs().some(item => item.id === requested) ? requested : (tabs()[0]?.id || fallback);
   renderTabs();
+  await prefetchModule(name);
   await renderTab(activeTab);
 }
 

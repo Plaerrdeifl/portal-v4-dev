@@ -321,6 +321,20 @@ export const auth = {
     }
   },
 
+  async readBatch(calls) {
+    if (!this.isAuthenticated()) throw new Error("Bitte zuerst anmelden.");
+    try {
+      return await api.readBatch(state.sessionToken, Array.isArray(calls) ? calls : []);
+    } catch (error) {
+      if (isAuthenticationFailure(error)) {
+        clearPersisted();
+        state = { ...EMPTY_STATE, backend: state.backend, notice: { type: "warning", message: "Deine Sitzung ist abgelaufen. Bitte erneut anmelden." } };
+        emitChange();
+      }
+      throw error;
+    }
+  },
+
   async refreshInitialData() {
     if (!this.isAuthenticated()) return null;
     const initialData = await loadInitialDataWithRetry(state.sessionToken);

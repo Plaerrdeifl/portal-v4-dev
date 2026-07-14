@@ -7,6 +7,14 @@ export function call(name, ...args) {
   return auth.call(name, ...args);
 }
 
+export function callBatch(calls) {
+  return auth.readBatch((calls || []).map((item, index) => ({
+    id: item.id || item.functionName || `call${index + 1}`,
+    functionName: item.functionName,
+    args: Array.isArray(item.args) ? item.args : []
+  })));
+}
+
 export function canRead(area) { return auth.canReadArea(area); }
 export function canWrite(area) { return auth.canWriteArea(area); }
 export function canAdmin(area) { return auth.canAdminArea(area); }

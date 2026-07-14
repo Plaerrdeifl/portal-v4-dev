@@ -1,5 +1,5 @@
 import {
-  call, closeDialog, confirmAction, empty, errorPanel, escapeAttr, escapeHtml, fmtDate,
+  call, callBatch, closeDialog, confirmAction, empty, errorPanel, escapeAttr, escapeHtml, fmtDate,
   loading, normalize, openDialog, optionList, portal, runWrite, statusBadge, tabBar
 } from "./common.js";
 import { phase3State } from "./state.js";
@@ -18,7 +18,17 @@ function tabs(){ const p=portal(); return [
 ].filter(x=>x.show); }
 function renderTabs(){ const items=tabs(); if(!items.some(x=>x.id===activeTab))activeTab=items[0]?.id||"overview"; const el=document.getElementById("teamsTabs"); if(el){el.innerHTML=tabBar(items,activeTab,"teams");el.querySelectorAll('[data-module-tab="teams"]').forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));} }
 
-export async function hydrateTeams(){ const req=requestedTab(); activeTab=tabs().some(x=>x.id===req)?req:(tabs()[0]?.id||"overview");renderTabs();await renderTab(activeTab); }
+async function prefetchTeams(){
+  const calls=[];
+  if(!phase3State.has(KEY+"overview"))calls.push({id:"overview",functionName:"apiListPortalTeams",args:[]});
+  if(!phase3State.has(KEY+"tasks"))calls.push({id:"tasks",functionName:"apiListMyTeamTasks",args:[{status:"alle"}]});
+  if(!phase3State.has(KEY+"all"))calls.push({id:"all",functionName:"apiListTeams",args:[]});
+  if(!calls.length)return;
+  const bundle=await callBatch(calls);
+  Object.entries(bundle?.results||{}).forEach(([id,value])=>phase3State.set(KEY+id,value));
+}
+
+export async function hydrateTeams(){ const req=requestedTab(); activeTab=tabs().some(x=>x.id===req)?req:(tabs()[0]?.id||"overview");renderTabs();await prefetchTeams();await renderTab(activeTab); }
 async function renderTab(tab){activeTab=tabs().some(x=>x.id===tab)?tab:(tabs()[0]?.id||"overview");renderTabs();target().innerHTML=loading();setStatus("Daten werden geladen","warning");try{if(activeTab==="overview")await renderOverview();if(activeTab==="tasks")await renderTasks();if(activeTab==="manage")await renderManagement(false);if(activeTab==="admin")await renderManagement(true);setStatus("Live verbunden","success");}catch(error){target().innerHTML=errorPanel(error);setStatus("Fehler","warning");}}
 
 async function renderOverview(force=false){let data=phase3State.get(KEY+"overview");if(!data||force)data=phase3State.set(KEY+"overview",await call("apiListPortalTeams"));const teams=data.teams||[];target().innerHTML=`<div class="module-toolbar"><button id="refreshTeamOverview" class="button ghost">Aktualisieren</button></div><div class="list-grid">${teams.map(team=>`<article class="card entity-card"><div class="entity-head"><div><h3>${escapeHtml(team.name||"Team")}</h3><p>${escapeHtml(team.description||"Keine Beschreibung hinterlegt.")}</p></div><span class="badge ${team.isLeader?"success":"neutral"}">${escapeHtml(team.isLeader?"Teamleiter":(team.myRole||"Mitglied"))}</span></div><div class="member-list">${(team.members||[]).map(member=>`<div class="member-line"><strong>${escapeHtml(member.name)}</strong><span>${escapeHtml(member.teamleiter?"Teamleiter":(member.role||"Mitglied"))}</span></div>`).join("")||empty("Keine aktiven Teammitglieder.")}</div></article>`).join("")||empty("Du bist aktuell keinem aktiven Team zugeordnet.")}</div>`;document.getElementById("refreshTeamOverview")?.addEventListener("click",()=>renderOverview(true));}

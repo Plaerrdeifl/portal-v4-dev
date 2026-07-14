@@ -1,4 +1,5 @@
 import { CONFIG } from "./config.js";
+import { performanceMonitor } from "./performance.js";
 
 export class ApiError extends Error {
   constructor(message, code = "API_ERROR", details = null) {
@@ -150,11 +151,20 @@ class AppsScriptBridge {
     if (!pending) return;
     this.pending.delete(requestId);
     window.clearTimeout(pending.timer);
+    const clientDurationMs = Math.max(0, performance.now() - pending.startedAt);
 
     if (message.type === "error") {
-      pending.reject(new ApiError(message.payload?.message || "Backendfehler", "BACKEND_ERROR", message.payload));
+      const error = new ApiError(message.payload?.message || "Backendfehler", "BACKEND_ERROR", message.payload);
+      performanceMonitor.record({ action: pending.action, clientDurationMs, ok: false, error: error.message });
+      pending.reject(error);
       return;
     }
+    performanceMonitor.record({
+      action: pending.action,
+      clientDurationMs,
+      server: message.payload?.performance || null,
+      ok: message.payload?.ok !== false
+    });
     pending.resolve(message.payload);
   }
 
@@ -162,12 +172,15 @@ class AppsScriptBridge {
     await this.initialize();
     const requestId = this.randomToken();
     return new Promise((resolve, reject) => {
+      const startedAt = performance.now();
       const timer = window.setTimeout(() => {
         this.pending.delete(requestId);
-        reject(new ApiError("Die Backend-Anfrage hat zu lange gedauert.", "REQUEST_TIMEOUT"));
+        const error = new ApiError("Die Backend-Anfrage hat zu lange gedauert.", "REQUEST_TIMEOUT");
+        performanceMonitor.record({ action, clientDurationMs: performance.now() - startedAt, ok: false, error: error.message });
+        reject(error);
       }, CONFIG.api.requestTimeoutMs);
 
-      this.pending.set(requestId, { resolve, reject, timer });
+      this.pending.set(requestId, { resolve, reject, timer, startedAt, action });
       if (!this.bridgeWindow || !this.bridgeOrigin) {
         this.pending.delete(requestId);
         window.clearTimeout(timer);
@@ -220,6 +233,12 @@ export const api = Object.freeze({
   },
   async dispatch(sessionToken, functionName, ...args) {
     return unwrap(await bridge.request("dispatch", [sessionToken, functionName, args]));
+  },
+  async readBatch(sessionToken, calls) {
+    return unwrap(await bridge.request("dispatch", [sessionToken, "apiReadBatch", [calls]]));
+  },
+  performance() {
+    return performanceMonitor.summary();
   }
 });
 
