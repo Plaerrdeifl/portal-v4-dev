@@ -1,6 +1,6 @@
-const CACHE_VERSION = "pd-portal-v3-r71-m4-20260715-stability-hotfix-2";
+const CACHE_VERSION = "pd-portal-v3-r71-m4-20260715-startup-hotfix-3";
 const APP_CACHE = `${CACHE_VERSION}-shell`;
-const BUILD_QUERY = "v=20260715-r71-m4-stability-hotfix-2";
+const BUILD_QUERY = "v=20260715-r71-m4-startup-hotfix-3";
 const SHELL = [
   "./",
   "./index.html",

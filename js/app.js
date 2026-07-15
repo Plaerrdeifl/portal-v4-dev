@@ -1,7 +1,7 @@
 import { CONFIG } from "./config.js";
 import { auth } from "./auth.js";
 import { currentRoute, legacyRouteRedirect, navigate, routes } from "./router.js";
-import { hydratePage } from "./pages.js?v=20260715-r71-m4-stability-hotfix-2";
+import { hydratePage } from "./pages.js?v=20260715-r71-m4-startup-hotfix-3";
 import { initializeInstall } from "./install.js";
 import { storage } from "./storage.js";
 import {
@@ -24,6 +24,8 @@ let routeAbortController = null;
 let reconnectTimer = 0;
 let reconnectAttempt = 0;
 let reconnectRunning = false;
+let startupProgressTimer = 0;
+let startupLongWaitTimer = 0;
 
 function allowedRoute(key) {
   const route = routes()[key];
@@ -197,6 +199,39 @@ async function registerServiceWorker() {
   }
 }
 
+function clearStartupTimers() {
+  window.clearTimeout(startupProgressTimer);
+  window.clearTimeout(startupLongWaitTimer);
+  startupProgressTimer = 0;
+  startupLongWaitTimer = 0;
+}
+
+function startupPanel(message = "Login und Backend werden geprüft", detail = "Die sichere Verbindung zum Portal wird aufgebaut.", showReload = false) {
+  const view = document.getElementById("view");
+  if (!view) return;
+  view.setAttribute("aria-busy", "true");
+  view.innerHTML = `<section class="loading-panel" id="startupLoadingPanel" aria-live="polite"><span class="spinner" aria-hidden="true"></span><strong>${escapeHtml(message)}</strong><span>${escapeHtml(detail)}</span>${showReload ? '<button id="startupReloadButton" class="button secondary" type="button">Verbindung neu starten</button>' : ""}</section>`;
+  document.getElementById("startupReloadButton")?.addEventListener("click", () => location.reload());
+}
+
+function beginStartupProgress() {
+  clearStartupTimers();
+  startupPanel();
+  startupProgressTimer = window.setTimeout(() => {
+    startupPanel(
+      "Login und Backend werden weiter geprüft",
+      "Der erste Verbindungsaufbau dauert länger als üblich. Deine Sitzung und Rechte werden noch nicht verändert."
+    );
+  }, 4500);
+  startupLongWaitTimer = window.setTimeout(() => {
+    startupPanel(
+      "Backend-Verbindung dauert ungewöhnlich lange",
+      "Du kannst noch warten oder den Verbindungsaufbau kontrolliert neu starten.",
+      true
+    );
+  }, 15000);
+}
+
 async function refreshApp() {
   try {
     setConnectionStatus("Aktualisiere …", "warning");
@@ -231,7 +266,8 @@ async function bootstrap() {
     initializeInstall();
     await mountComponents();
     document.getElementById("appShell").hidden = false;
-    document.getElementById("appSplash")?.remove();
+    beginStartupProgress();
+    window.requestAnimationFrame(() => document.getElementById("appSplash")?.remove());
     bindGlobalUi({ onRefresh: refreshApp, onLogout: logout });
     window.addEventListener("hashchange", renderRoute);
     window.addEventListener("pd-auth-change", () => {
@@ -260,6 +296,7 @@ async function bootstrap() {
       showToast(error.message || "Backend-Verbindung fehlgeschlagen.", "error", 8000);
     }
 
+    clearStartupTimers();
     renderNavigation();
     updateUserChrome();
     if (!location.hash) {
@@ -273,6 +310,7 @@ async function bootstrap() {
     if (auth.current().connectionPending) scheduleReconnect();
     registerServiceWorker();
   } catch (error) {
+    clearStartupTimers();
     const splash = document.getElementById("appSplash");
     if (splash) splash.innerHTML = `<strong>Portal konnte nicht gestartet werden</strong><span>${escapeHtml(error.message)}</span>`;
   }
