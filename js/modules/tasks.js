@@ -30,19 +30,39 @@ function renderTabs(){const el=document.getElementById("tasksTabs");if(!el)retur
 function normalizeStatus(value){return String(value||"").toUpperCase();}
 function statusLabel(v){return ({OFFEN:"Offen",IN_BEARBEITUNG:"In Bearbeitung",ERLEDIGT:"Erledigt",ARCHIVIERT:"Archiviert"})[normalizeStatus(v)]||v||"–";}
 function priorityLabel(v){return ({EILT:"Eilt!",HOCH:"Hoch",NORMAL:"Normal",NIEDRIG:"Niedrig"})[String(v||"").toUpperCase()]||v||"Normal";}
+function storeMineBoard(bundle){
+ const meta=bundle?.meta||{};
+ phase3State.set(CACHE_PREFIX+"mine",{tasks:bundle?.mine||[],meta});
+ phase3State.set(CACHE_PREFIX+"board",{tasks:bundle?.board||[],meta});
+ return bundle||{mine:[],board:[],meta:{}};
+}
 async function load(tab,force=false){
  const key=CACHE_PREFIX+tab;
  if(!force&&phase3State.has(key))return phase3State.get(key);
  let data;
  if(tab==="mine"||tab==="board"){
-   const bundle=await call("apiListFanclubTasks",{status:"alle"});
-   const meta=bundle.meta||{};
-   phase3State.set(CACHE_PREFIX+"mine",{tasks:bundle.mine||[],meta});
-   phase3State.set(CACHE_PREFIX+"board",{tasks:bundle.board||[],meta});
+   const bundle=await phase3State.once(
+     CACHE_PREFIX+"bundle",
+     ()=>call("apiListFanclubTasks",{status:"alle"}),
+     {force}
+   );
+   storeMineBoard(bundle);
    data=phase3State.get(key);
  }
- else if(tab==="team")data=await call("apiListMyTeamTasks",{status:"alle"});
- else data=await call("apiListTasks",{status:"ARCHIVIERT"});
+ else if(tab==="team"){
+   data=await phase3State.once(
+     CACHE_PREFIX+"team",
+     ()=>call("apiListMyTeamTasks",{status:"alle"}),
+     {force}
+   );
+ }
+ else{
+   data=await phase3State.once(
+     CACHE_PREFIX+"archive",
+     ()=>call("apiListTasks",{status:"ARCHIVIERT"}),
+     {force}
+   );
+ }
  return phase3State.set(key,data||{tasks:[],meta:{}});
 }
 function actions(task){const s=normalizeStatus(task.status), out=[];
@@ -55,7 +75,7 @@ function actions(task){const s=normalizeStatus(task.status), out=[];
  return out.join("");}
 function card(task){return `<article class="card task-card"><div class="entity-head"><div><div class="task-title">${escapeHtml(task.title||task.aufgabe||"Aufgabe")}</div><span class="subtle">${escapeHtml(task.team||task.contextId||"–")}</span></div>${statusBadge(statusLabel(task.status))}</div><div class="meta-grid"><div class="meta-item"><small>Verantwortlich</small>${escapeHtml(task.verantwortlich||"Nicht zugewiesen")}</div><div class="meta-item"><small>Priorität</small>${escapeHtml(priorityLabel(task.priority||task.prioritaet))}</div></div>${task.description?`<p>${escapeHtml(task.description)}</p>`:""}${task.ownNote||task.notiz?`<div class="notice"><strong>Eigene Notiz:</strong> ${escapeHtml(task.ownNote||task.notiz)}</div>`:""}<div class="button-row">${actions(task)}</div></article>`;}
 async function renderTab(tab,force=false){activeTab=tabs().some(x=>x.id===tab)?tab:"mine";renderTabs();panel().innerHTML=loading();setStatus("Daten werden geladen","warning");try{const data=await load(activeTab,force);const tasks=data.tasks||[];panel().innerHTML=`<div class="section-title"><div><h3>${escapeHtml((TAB_DEFS.find(x=>x.id===activeTab)||{}).label||"Aufgaben")}</h3><p>Schaltflächen werden nur nach den vom Backend gelieferten Fähigkeiten angezeigt.</p></div><div class="button-row">${canCreate(activeTab)&&data.meta?.teamsDetailed?.length?'<button id="newTask" class="button primary small">+ Aufgabe</button>':""}<button id="refreshTasks" class="button ghost small">Aktualisieren</button></div></div><div class="list-grid" style="margin-top:16px">${tasks.map(card).join("")||empty("Keine Aufgaben in diesem Bereich.")}</div>`;bind(data);setStatus("Live verbunden","success");}catch(e){panel().innerHTML=errorPanel(e);setStatus("Fehler","warning");}}
-function bind(data){const tasks=data.tasks||[];document.getElementById("refreshTasks")?.addEventListener("click",()=>{phase3State.remove(CACHE_PREFIX+activeTab);renderTab(activeTab,true);});document.getElementById("newTask")?.addEventListener("click",()=>openTask({},data.meta||{}));
+function bind(data){const tasks=data.tasks||[];document.getElementById("refreshTasks")?.addEventListener("click",()=>{phase3State.remove(CACHE_PREFIX+activeTab);if(activeTab==="mine"||activeTab==="board")phase3State.remove(CACHE_PREFIX+"bundle");renderTab(activeTab,true);});document.getElementById("newTask")?.addEventListener("click",()=>openTask({},data.meta||{}));
  panel().querySelectorAll("[data-task-status]").forEach(b=>b.addEventListener("click",()=>changeStatus(tasks.find(t=>String(t.id)===b.dataset.id),b.dataset.taskStatus)));
  panel().querySelectorAll("[data-task-edit]").forEach(b=>b.addEventListener("click",()=>openTask(tasks.find(t=>String(t.id)===b.dataset.taskEdit),data.meta||{})));
  panel().querySelectorAll("[data-task-reopen]").forEach(b=>b.addEventListener("click",()=>write("apiReopenTask",tasks.find(t=>String(t.id)===b.dataset.taskReopen))));

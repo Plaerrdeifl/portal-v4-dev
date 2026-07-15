@@ -3,7 +3,7 @@ import { navigate } from "../router.js";
 import { auth } from "../auth.js";
 import { storage } from "../storage.js";
 
-const DASHBOARD_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
+const DASHBOARD_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 let refreshPromise = null;
 
 function valueLine(label,value){return `<div class="widget-value-line"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;}

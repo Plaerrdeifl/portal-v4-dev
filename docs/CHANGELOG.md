@@ -47,3 +47,12 @@ Produktiver Pull/Push/Deploymentnachweis, Bestandszahlen und -bereinigung, Live-
 - Mobile Breiten und angenäherter 200-%-Zoom wurden gegen horizontales Seitenoverflow abgesichert.
 - Favicon und automatisierte Browser-Abnahme wurden ergänzt.
 - Apps-Script-Backend und produktive Backend-Version 62 bleiben unverändert.
+
+## 2026-07-15 – R7.1 M4 Performance-Finish 2
+
+- Aufgaben- und Fanclub-Warmup verwenden jetzt pro Datensatz geteilte laufende Requests statt paralleler Doppelaufrufe.
+- Aufgaben werden unmittelbar nach dem ersten nutzbaren Dashboard im Hintergrund vorbereitet.
+- Dashboard-Sofortansichten bleiben für normale Wiederstarts bis zu 24 Stunden nutzbar und werden im Hintergrund aktualisiert.
+- Offline-Navigation liefert eine eindeutige Offline-Seite statt eines erneut startenden Online-App-Shells.
+- Der Browser-Runner erzwingt für die Startmessung ein echtes neues Dokument und misst bis zum sichtbaren nutzbaren Dashboard.
+- Backend-Version 62 und alle fachlichen Rechte-/Schreibregeln bleiben unverändert.

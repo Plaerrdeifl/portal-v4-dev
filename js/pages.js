@@ -4,7 +4,7 @@ import { navigate } from "./router.js";
 import { googleIdentity } from "./google-identity.js";
 import { installState, requestInstall } from "./install.js";
 
-const FEATURE_BUILD = "20260715-r71-m4-performance-startup-finish-1";
+const FEATURE_BUILD = "20260715-r71-m4-performance-finish-2";
 let loginController = null;
 let loginHydrationId = 0;
 let loginMountPromise = null;

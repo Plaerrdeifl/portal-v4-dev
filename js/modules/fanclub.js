@@ -94,8 +94,11 @@ async function renderTab(tab) {
 }
 
 async function renderOverview(force = false) {
-  let data = phase3State.get(KEY + "overview");
-  if (!data || force) data = phase3State.set(KEY + "overview", await call("apiListActiveMemberNames"));
+  const data = await phase3State.once(
+    KEY + "overview",
+    () => call("apiListActiveMemberNames"),
+    { force }
+  );
   const names = Array.isArray(data?.names) ? data.names : [];
   const actions = tabs().filter(item => item.id !== "overview").map(item => `<button class="admin-action" type="button" data-fanclub-tab="${escapeAttr(item.id)}"><strong>${escapeHtml(item.icon)} ${escapeHtml(item.label)}</strong><span>Bereich öffnen.</span></button>`).join("");
   target().innerHTML = `
