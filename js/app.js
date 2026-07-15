@@ -1,7 +1,8 @@
 import { CONFIG } from "./config.js";
 import { auth } from "./auth.js";
 import { currentRoute, legacyRouteRedirect, navigate, routes } from "./router.js";
-import { hydratePage } from "./pages.js?v=20260715-r71-m4-startup-hotfix-3";
+import { hydratePage, preloadAuthenticatedModules } from "./pages.js?v=20260715-r71-m4-performance-startup-finish-1";
+import { warmupAuthenticatedData, resetWarmup } from "./warmup.js?v=20260715-r71-m4-performance-startup-finish-1";
 import { initializeInstall } from "./install.js";
 import { storage } from "./storage.js";
 import {
@@ -206,30 +207,68 @@ function clearStartupTimers() {
   startupLongWaitTimer = 0;
 }
 
-function startupPanel(message = "Login und Backend werden geprüft", detail = "Die sichere Verbindung zum Portal wird aufgebaut.", showReload = false) {
-  const view = document.getElementById("view");
-  if (!view) return;
-  view.setAttribute("aria-busy", "true");
-  view.innerHTML = `<section class="loading-panel" id="startupLoadingPanel" aria-live="polite"><span class="spinner" aria-hidden="true"></span><strong>${escapeHtml(message)}</strong><span>${escapeHtml(detail)}</span>${showReload ? '<button id="startupReloadButton" class="button secondary" type="button">Verbindung neu starten</button>' : ""}</section>`;
-  document.getElementById("startupReloadButton")?.addEventListener("click", () => location.reload());
+function setStartupProgress(message, detail = "", showReload = false) {
+  const splash = document.getElementById("appSplash");
+  const status = document.getElementById("splashStatus");
+  const detailNode = document.getElementById("splashDetail");
+  const reload = document.getElementById("splashReloadButton");
+  if (status) status.textContent = message;
+  if (detailNode) detailNode.textContent = detail;
+  if (reload) {
+    reload.hidden = !showReload;
+    reload.onclick = showReload ? () => location.reload() : null;
+  }
+  if (splash) splash.setAttribute("aria-busy", "true");
 }
 
 function beginStartupProgress() {
   clearStartupTimers();
-  startupPanel();
+  document.documentElement.dataset.startupState = "loading";
+  setStartupProgress("Portal wird vorbereitet …", "Sichere App-Oberfläche wird geladen.");
   startupProgressTimer = window.setTimeout(() => {
-    startupPanel(
-      "Login und Backend werden weiter geprüft",
-      "Der erste Verbindungsaufbau dauert länger als üblich. Deine Sitzung und Rechte werden noch nicht verändert."
+    setStartupProgress(
+      "Login und Backend werden weiter geprüft …",
+      "Der erste Verbindungsaufbau dauert länger als üblich. Deine Sitzung und Rechte bleiben erhalten."
     );
   }, 4500);
   startupLongWaitTimer = window.setTimeout(() => {
-    startupPanel(
-      "Backend-Verbindung dauert ungewöhnlich lange",
-      "Du kannst noch warten oder den Verbindungsaufbau kontrolliert neu starten.",
+    setStartupProgress(
+      "Backend-Verbindung dauert ungewöhnlich lange …",
+      "Du kannst weiter warten oder den Verbindungsaufbau kontrolliert neu starten.",
       true
     );
   }, 15000);
+}
+
+function finishStartup() {
+  clearStartupTimers();
+  const shell = document.getElementById("appShell");
+  const splash = document.getElementById("appSplash");
+  if (shell) shell.hidden = false;
+  document.documentElement.dataset.startupState = "complete";
+  document.documentElement.dataset.startupComplete = "true";
+  if (!splash) return;
+  splash.setAttribute("aria-busy", "false");
+  splash.classList.add("is-complete");
+  window.setTimeout(() => splash.remove(), 220);
+}
+
+function failStartup(error) {
+  clearStartupTimers();
+  document.documentElement.dataset.startupState = "failed";
+  setStartupProgress(
+    "Portal konnte nicht gestartet werden",
+    error?.message || String(error || "Unbekannter Startfehler"),
+    true
+  );
+}
+
+function primeRouteFragments() {
+  const entries = Object.values(routes());
+  const schedule = window.requestIdleCallback || (callback => window.setTimeout(callback, 500));
+  schedule(() => {
+    entries.forEach(route => loadFragment(`./pages/${route.page}`).catch(() => null));
+  });
 }
 
 async function refreshApp() {
@@ -252,6 +291,7 @@ async function logout() {
   try {
     clearReconnectTimer();
     await auth.logout();
+    resetWarmup();
     renderNavigation();
     updateUserChrome();
     navigate("home");
@@ -263,11 +303,10 @@ async function logout() {
 
 async function bootstrap() {
   try {
-    initializeInstall();
-    await mountComponents();
-    document.getElementById("appShell").hidden = false;
     beginStartupProgress();
-    window.requestAnimationFrame(() => document.getElementById("appSplash")?.remove());
+    initializeInstall();
+    setStartupProgress("App-Oberfläche wird vorbereitet …", "Navigation und Bedienoberfläche werden geladen.");
+    await mountComponents();
     bindGlobalUi({ onRefresh: refreshApp, onLogout: logout });
     window.addEventListener("hashchange", renderRoute);
     window.addEventListener("pd-auth-change", () => {
@@ -279,13 +318,17 @@ async function bootstrap() {
         return;
       }
       if (!auth.isAuthenticated() && !routes()[currentRoute()]?.public) {
+        resetWarmup();
         navigate("home", null, true);
         return;
       }
       if (auth.current().connectionPending) scheduleReconnect();
     });
 
+    registerServiceWorker();
+    primeRouteFragments();
     setConnectionStatus("Backend wird geprüft", "warning");
+    setStartupProgress("Sichere Verbindung wird aufgebaut …", "Login, Sitzung und Backend werden geprüft.");
     try {
       await auth.initialize();
       authReady = true;
@@ -296,23 +339,32 @@ async function bootstrap() {
       showToast(error.message || "Backend-Verbindung fehlgeschlagen.", "error", 8000);
     }
 
-    clearStartupTimers();
     renderNavigation();
     updateUserChrome();
-    if (!location.hash) {
-      navigate(mandatoryRoute());
-    } else if (!allowedRoute(currentRoute()) || (auth.requiresProfile() && currentRoute() !== "profile")) {
-      navigate(mandatoryRoute(), null, true);
-    } else {
-      await renderRoute();
+    if (auth.isAuthenticated() && !auth.requiresProfile()) {
+      setStartupProgress("Benutzerprofil und Rechte sind geladen …", "Die erste Portalansicht wird jetzt vollständig vorbereitet.");
     }
 
+    let startRoute=currentRoute();
+    if (!location.hash || !allowedRoute(startRoute) || (auth.requiresProfile() && startRoute !== "profile")) {
+      startRoute=mandatoryRoute();
+      history.replaceState(null,"",`#/${startRoute}`);
+    }
+    setStartupProgress("Startansicht wird geladen …", "Das Portal wird erst angezeigt, wenn die erste Ansicht nutzbar ist.");
+    await renderRoute();
+
     if (auth.current().connectionPending) scheduleReconnect();
-    registerServiceWorker();
+    finishStartup();
+
+    if (auth.isAuthenticated() && !auth.requiresProfile() && !auth.current().connectionPending) {
+      const schedule = window.requestIdleCallback || (callback => window.setTimeout(callback, 350));
+      schedule(() => {
+        preloadAuthenticatedModules().catch(() => null);
+        warmupAuthenticatedData().catch(() => null);
+      });
+    }
   } catch (error) {
-    clearStartupTimers();
-    const splash = document.getElementById("appSplash");
-    if (splash) splash.innerHTML = `<strong>Portal konnte nicht gestartet werden</strong><span>${escapeHtml(error.message)}</span>`;
+    failStartup(error);
   }
 }
 

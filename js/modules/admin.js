@@ -23,16 +23,20 @@ async function getSystemStatus(force=false){
 
 export async function hydrateAdmin(context={}){
   setStatus("Adminzugriff bestätigt","success");
+  const cachedIntegrity=phase3State.get("admin:nameIntegrity",lastIntegrity);
+  if(cachedIntegrity)lastIntegrity=cachedIntegrity;
   renderAdminHome(lastIntegrity);
-  try{
-    const integrity=await call("apiGetNameIntegrityStatus");
-    if(context.signal?.aborted||context.isCurrent?.()===false)return;
-    lastIntegrity=integrity;
-    renderAdminHome(integrity);
-  }catch(error){
-    if(context.signal?.aborted||context.isCurrent?.()===false)return;
-    setStatus("Namensprüfung später erneut versuchen","warning");
-  }
+  Promise.resolve().then(async()=>{
+    try{
+      const integrity=await phase3State.once("admin:nameIntegrity",()=>call("apiGetNameIntegrityStatus"));
+      if(context.signal?.aborted||context.isCurrent?.()===false)return;
+      lastIntegrity=integrity;
+      renderAdminHome(integrity);
+    }catch(error){
+      if(context.signal?.aborted||context.isCurrent?.()===false)return;
+      setStatus("Namensprüfung später erneut versuchen","warning");
+    }
+  });
 }
 function action(id,icon,title,text){return `<button class="admin-action" type="button" data-admin-action="${escapeAttr(id)}"><strong>${icon} ${escapeHtml(title)}</strong><span>${escapeHtml(text)}</span></button>`;}
 function renderAdminHome(integrity){
@@ -78,25 +82,56 @@ async function openContributionAdmin(){const data=await call("apiListContributio
 async function openSeasonClose(){const data=await call("apiListSeasons");openDialog({title:"Saison und Jahresabschluss",kicker:`${(data.seasons||[]).length} Saison(en)`,body:`<div class="settings-grid">${(data.seasons||[]).map(r=>`<article class="card"><strong>${escapeHtml(r.name||r.id)}</strong> ${statusBadge(r.status||r.active)}</article>`).join("")||empty("Keine Saison vorhanden.")}</div><div class="dialog-actions"><button id="adminNewSeason" class="button primary" type="button">Neue Saison starten</button><button id="adminYearClose" class="button secondary" type="button">Jahresabschluss</button><button class="button ghost" data-dialog-close>Schließen</button></div>`});document.getElementById("adminNewSeason")?.addEventListener("click",seasonDialog);document.getElementById("adminYearClose")?.addEventListener("click",yearCloseDialog);}
 function openFanclubSettings(){openDialog({title:"Fanclub-Einstellungen",kicker:"R7.1",body:`<form><label>Hinweis für interne Fanclubverwaltung<textarea name="hinweis" maxlength="1000"></textarea></label><div class="notice warning">Unveränderliche Systemregeln, Namenspflicht und Amtsplätze können hier nicht abgeschaltet werden.</div></form>`,onSubmit:async data=>{await runWrite("Fanclub-Einstellungen werden gespeichert …",()=>call("apiSaveFanclubSettings",data));closeDialog();}});}
 function openNavigationDashboard(){openDialog({title:"Navigation und Dashboard",kicker:"Darstellungskonfiguration",body:`<div class="notice warning">Die sechs Hauptbereiche, Reihenfolge, Grundsichtbarkeit und Admin-Gesamtzugriff sind unveränderliche Systemregeln.</div><div class="admin-actions" style="margin-top:14px"><button id="openNavigationPresentation" class="admin-action"><strong>🧭 Darstellung der Navigation</strong><span>Texte und Symbole nicht sicherheitskritisch pflegen.</span></button><button id="openDashboardPresentation" class="admin-action"><strong>📊 Dashboard-Widgets</strong><span>Widgetdarstellung verwalten.</span></button></div>`});document.getElementById("openNavigationPresentation")?.addEventListener("click",openPortalStructure);document.getElementById("openDashboardPresentation")?.addEventListener("click",openDashboardWidgets);}
-async function openSystemWithNames(){
-  const token=`system-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  const dialog=openDialog({title:"Systemstatus",kicker:"Prüfung läuft im Hintergrund",wide:true,body:`<div class="notice warning"><strong>Systemstatus wird geladen …</strong><br>Die Administration bleibt während der Tabellenprüfung bedienbar.</div>${loading("Datenbanken werden geprüft …")}`});
-  dialog.dataset.loadToken=token;
+function systemQuickBody(names){
+  const backend=auth.current().backend||{};
+  const connection=auth.current().connectionPending?"WIRD_WIEDERHERGESTELLT":"VERBUNDEN";
+  return `<div class="grid three"><article class="card stat-card"><h3>Backend</h3><strong>${escapeHtml(connection)}</strong><small>${escapeHtml(backend.version||backend.build||"Version nicht gemeldet")}</small></article><article class="card stat-card"><h3>Fehlender Vorname</h3><strong>${metric(names?.missingFirstCount)}</strong></article><article class="card stat-card"><h3>Fehlender Nachname</h3><strong>${metric(names?.missingLastCount)}</strong></article></div><div class="grid two" style="margin-top:14px"><article class="card stat-card"><h3>Unvollständige Anträge</h3><strong>${metric(names?.incompleteRequestCount)}</strong><small>${escapeHtml([...(names?.incompleteRequestIds||[])].join(", ")||"keine")}</small></article><article class="card stat-card"><h3>Aktive unvollständige Benutzer</h3><strong>${Number((names?.activeIncompleteIds||[]).length)}</strong><small>${escapeHtml([...(names?.activeIncompleteIds||[])].join(", ")||"keine")}</small></article></div><div class="notice success" style="margin-top:14px"><strong>Schnellstatus geladen.</strong><br>Die vollständige Prüfung aller Datenbanktabellen wird nur noch auf ausdrücklichen Wunsch gestartet und blockiert die Administration nicht.</div><div id="systemDeepResult" style="margin-top:14px"></div><div class="dialog-actions"><button id="systemDeepCheck" class="button primary" type="button">Vollständige Datenbankprüfung starten</button><button class="button ghost" data-dialog-close>Schließen</button></div>`;
+}
+
+async function loadSystemNames(dialog,token){
   try{
-    const namesPromise=lastIntegrity?Promise.resolve(lastIntegrity):call("apiGetNameIntegrityStatus");
-    const [system,names]=await Promise.all([getSystemStatus(),namesPromise]);
+    const names=lastIntegrity||phase3State.get("admin:nameIntegrity")||await phase3State.once("admin:nameIntegrity",()=>call("apiGetNameIntegrityStatus"));
     if(dialog.dataset.loadToken!==token||!dialog.open)return;
     lastIntegrity=names;
-    document.getElementById("dialogKicker").textContent=system.message||"DB_-Status";
-    document.getElementById("dialogBody").innerHTML=`<div class="grid three"><article class="card stat-card"><h3>Fehlender Vorname</h3><strong>${Number(names.missingFirstCount||0)}</strong></article><article class="card stat-card"><h3>Fehlender Nachname</h3><strong>${Number(names.missingLastCount||0)}</strong></article><article class="card stat-card"><h3>Unvollständige Anträge</h3><strong>${Number(names.incompleteRequestCount||0)}</strong></article></div><p class="subtle">Betroffene IDs: ${escapeHtml([...(names.activeIncompleteIds||[]),...(names.incompleteRequestIds||[])].join(", ")||"keine")}</p>${system.warnings?.length?`<div class="notice warning">${system.warnings.map(escapeHtml).join("<br>")}</div>`:'<div class="notice success">Keine technischen Warnungen.</div>'}<div class="card table-card" style="margin-top:16px"><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Tabelle</th><th>Status</th><th>Datenzeilen</th></tr></thead><tbody>${(system.sheets||[]).map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${statusBadge(r.status)}</td><td>${Number(r.effectiveRows||0)}</td></tr>`).join("")}</tbody></table></div></div><div class="dialog-actions"><button id="systemStatusRefresh" class="button secondary" type="button">Neu prüfen</button><button class="button ghost" data-dialog-close>Schließen</button></div>`;
-    document.getElementById("systemStatusRefresh")?.addEventListener("click",()=>{systemStatusCache=null;systemStatusCachedAt=0;closeDialog();openSystemWithNames();});
+    document.getElementById("dialogBody").innerHTML=systemQuickBody(names);
+    bindSystemDeepCheck(dialog,token);
   }catch(error){
     if(dialog.dataset.loadToken!==token||!dialog.open)return;
-    document.getElementById("dialogKicker").textContent="Prüfung fehlgeschlagen";
-    document.getElementById("dialogBody").innerHTML=`${errorPanel(error,"Systemstatus konnte nicht vollständig geladen werden")}<div class="dialog-actions"><button id="systemStatusRetry" class="button primary" type="button">Erneut versuchen</button><button class="button ghost" data-dialog-close>Schließen</button></div>`;
-    document.getElementById("systemStatusRetry")?.addEventListener("click",()=>{closeDialog();openSystemWithNames();});
+    document.getElementById("dialogBody").innerHTML=`${errorPanel(error,"Namensintegrität konnte nicht geladen werden")}<div id="systemDeepResult" style="margin-top:14px"></div><div class="dialog-actions"><button id="systemDeepCheck" class="button primary" type="button">Datenbankprüfung trotzdem starten</button><button class="button ghost" data-dialog-close>Schließen</button></div>`;
+    bindSystemDeepCheck(dialog,token);
   }
 }
+
+function bindSystemDeepCheck(dialog,token){
+  document.getElementById("systemDeepCheck")?.addEventListener("click",()=>runDeepSystemCheck(dialog,token));
+}
+
+async function runDeepSystemCheck(dialog,token){
+  const button=document.getElementById("systemDeepCheck");
+  const target=document.getElementById("systemDeepResult");
+  if(button){button.disabled=true;button.textContent="Prüfung läuft …";}
+  if(target)target.innerHTML=loading("Alle R7.1-Tabellen werden vollständig geprüft …");
+  try{
+    const system=await getSystemStatus(true);
+    if(dialog.dataset.loadToken!==token||!dialog.open)return;
+    if(target)target.innerHTML=`${system.warnings?.length?`<div class="notice warning">${system.warnings.map(escapeHtml).join("<br>")}</div>`:'<div class="notice success">Keine technischen Warnungen.</div>'}<div class="card table-card" style="margin-top:14px"><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Tabelle</th><th>Status</th><th>Datenzeilen</th><th>Physische Zeilen</th></tr></thead><tbody>${(system.sheets||[]).map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${statusBadge(r.status)}</td><td>${Number(r.effectiveRows||0)}</td><td>${Number(r.physicalRows||0)}</td></tr>`).join("")}</tbody></table></div></div>`;
+    if(button){button.textContent="Erneut vollständig prüfen";button.disabled=false;}
+  }catch(error){
+    if(dialog.dataset.loadToken!==token||!dialog.open)return;
+    if(target)target.innerHTML=errorPanel(error,"Vollständige Datenbankprüfung fehlgeschlagen");
+    if(button){button.textContent="Erneut versuchen";button.disabled=false;}
+  }
+}
+
+async function openSystemWithNames(){
+  const token=`system-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const names=lastIntegrity||phase3State.get("admin:nameIntegrity");
+  const dialog=openDialog({title:"Systemstatus",kicker:"Schnellstatus",wide:true,body:names?systemQuickBody(names):`${loading("Namensintegrität wird geladen …")}<div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});
+  dialog.dataset.loadToken=token;
+  if(names)bindSystemDeepCheck(dialog,token);
+  else loadSystemNames(dialog,token);
+}
+
 function seasonDialog(){openDialog({title:"Neue Saison starten",kicker:"Fanclubverwaltung",body:`<form><label>Saison/Jahr<input name="seasonName" value="${new Date().getFullYear()+1}" required></label><div class="notice warning" style="margin-top:14px">Für beitragspflichtige Mitglieder werden Beiträge angelegt. Bestehende Saisonwerte werden serverseitig geprüft.</div></form>`,onSubmit:async data=>{await runWrite("Neue Saison wird angelegt …",()=>call("apiStartNewSeason",data.seasonName));closeDialog();}});}
 function yearCloseDialog(){openDialog({title:"Jahresabschluss",kicker:"Fanclubverwaltung",body:`<form><label>Jahr<input type="number" name="year" value="${new Date().getFullYear()}" required></label></form>`,onSubmit:async data=>{await runWrite("Jahresabschluss wird erstellt …",()=>call("apiCreateYearClose",Number(data.year)));closeDialog();}});}
 async function runDataCheck(){const result=await runWrite("Datenprüfung läuft …",()=>call("apiRunDataCheck"),"Datenprüfung abgeschlossen.");openDialog({title:"Datenprüfung",kicker:`${Number(result.count||0)} Hinweis(e)`,wide:true,body:`${result.issues?.length?`<div class="settings-grid">${result.issues.map(issue=>`<div class="card"><strong>${escapeHtml(issue[0]||"Hinweis")} · ${escapeHtml(issue[1]||"")}</strong><p>${escapeHtml(issue[2]||"")}</p></div>`).join("")}</div>`:'<div class="notice success">Keine fachlichen Probleme gefunden.</div>'}<div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});}

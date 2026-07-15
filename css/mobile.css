@@ -36,3 +36,24 @@
   .role-rights-grid .permission-row label{justify-content:center;padding:8px 0;border-radius:9px;background:var(--surface-soft)}
   .role-rights-actions{align-items:stretch}.role-rights-actions .subtle{width:100%;margin:0 0 4px}
 }
+
+/* R7.1 M4 Performance-/Startup-Finish: robuste 200-%-Zoom- und Mobilbreiten */
+@media (max-width: 700px){
+  .view{width:100%;padding-left:max(14px,var(--safe-left));padding-right:max(14px,var(--safe-right))}
+  .topbar{max-width:100%;overflow:hidden}
+  .topbar-title{min-width:0;flex:1}
+  .topbar-actions{flex:none}
+  .module-toolbar,.section-title,.entity-head{flex-wrap:wrap}
+  .module-toolbar>.grow,.module-toolbar>input,.module-toolbar>select{min-width:0;width:100%}
+  .button-row{display:flex;flex-wrap:wrap}
+  .data-table{min-width:680px}
+  .app-dialog,.app-dialog.wide{width:calc(100% - 16px);max-width:calc(100% - 16px)}
+  .dialog-shell,.dialog-body{max-width:100%}
+  .splash-status{bottom:calc(20px + env(safe-area-inset-bottom))}
+}
+@media (max-width: 420px){
+  .topbar-title p{max-width:42vw}
+  .app-footer{overflow-wrap:anywhere}
+  .module-tabs{margin-inline:-2px;padding-bottom:4px}
+  .module-tab{white-space:nowrap}
+}

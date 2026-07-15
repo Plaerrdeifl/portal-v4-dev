@@ -190,6 +190,20 @@ async function initializeInternal() {
   const saved = persistedSession();
   if (saved) restoreSavedSession(saved);
 
+  if (!navigator.onLine) {
+    state = {
+      ...state,
+      registration: callbackRegistration || state.registration,
+      connectionPending: Boolean(saved),
+      notice: saved
+        ? { type: "warning", message: "Offline. Deine Anmeldung bleibt gespeichert und wird nach der Wiederverbindung geprüft." }
+        : { type: "warning", message: "Offline. Für die Anmeldung wird eine Internetverbindung benötigt." }
+    };
+    initialized = true;
+    emitChange();
+    return auth.current();
+  }
+
   try {
     const bundle = await bootstrapWithRetry(saved?.sessionToken || "", saved ? 3 : 2);
     await applyBootstrapBundle(bundle, saved, callbackRegistration);

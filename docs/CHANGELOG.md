@@ -35,3 +35,15 @@
 ### Weiter offen vor Release
 
 Produktiver Pull/Push/Deploymentnachweis, Bestandszahlen und -bereinigung, Live-Smoke, Browser-/Geräteabnahme und A-M3-01-Laufzeitmatrix.
+
+## 2026-07-15 – R7.1 M4 Performance-/Startup-Finish
+
+- Der Vollbild-Ladebildschirm bleibt bis zur vollständig nutzbaren ersten Route sichtbar.
+- Startphasen und kontrollierter Neustart werden im unteren Splashbereich angezeigt.
+- Hintergrund-Warmup startet erst nach der ersten nutzbaren Ansicht und nutzt einen gebündelten Leseaufruf.
+- Dashboard, Aufgaben, Teams, Fanclub und Administration verwenden gemeinsame kurzlebige In-Memory-/Sofortansichten.
+- Der Systemstatus öffnet als Schnellstatus; die vollständige 26-Tabellen-Prüfung wird nur noch ausdrücklich gestartet.
+- Service Worker und Offlinezustand wurden für verständliche Wiederverbindung und Sitzungserhalt erweitert.
+- Mobile Breiten und angenäherter 200-%-Zoom wurden gegen horizontales Seitenoverflow abgesichert.
+- Favicon und automatisierte Browser-Abnahme wurden ergänzt.
+- Apps-Script-Backend und produktive Backend-Version 62 bleiben unverändert.

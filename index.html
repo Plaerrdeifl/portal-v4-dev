@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="de" data-startup-state="starting">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -13,8 +13,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Plärrdeifl">
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/icon-180.png">
+  <link rel="icon" type="image/x-icon" href="./favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/icon-32.png">
   <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="preconnect" href="https://script.google.com" crossorigin>
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
   <link rel="stylesheet" href="./css/tokens.css">
   <link rel="stylesheet" href="./css/layout.css">
   <link rel="stylesheet" href="./css/components.css">
@@ -26,11 +29,16 @@
     <div class="noscript">Für das Plärrdeifl Portal muss JavaScript aktiviert sein.</div>
   </noscript>
 
-  <div id="appSplash" class="app-splash" aria-live="polite">
+  <div id="appSplash" class="app-splash" aria-live="polite" aria-busy="true">
     <img src="./assets/icons/icon-512.png" alt="Schweinfurter Plärrdeifl Logo">
     <strong>APP wird geladen</strong>
     <div class="splash-loading-dots" aria-label="Wird geladen">
       <span></span><span></span><span></span><span></span><span></span>
+    </div>
+    <div class="splash-status" role="status">
+      <span id="splashStatus">Portal wird vorbereitet …</span>
+      <small id="splashDetail">Sichere App-Oberfläche wird geladen.</small>
+      <button id="splashReloadButton" class="splash-reload" type="button" hidden>Verbindung neu starten</button>
     </div>
   </div>
 
@@ -53,6 +61,6 @@
     <button id="updateDismiss" class="icon-button" type="button" aria-label="Später aktualisieren">×</button>
   </div>
 
-  <script type="module" src="./js/app.js?v=20260715-r71-m4-startup-hotfix-3"></script>
+  <script type="module" src="./js/app.js?v=20260715-r71-m4-performance-startup-finish-1"></script>
 </body>
 </html>

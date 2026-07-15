@@ -28,7 +28,12 @@ async function prefetchTeams(){
   Object.entries(bundle?.results||{}).forEach(([id,value])=>phase3State.set(KEY+id,value));
 }
 
-export async function hydrateTeams(){ const req=requestedTab(); activeTab=tabs().some(x=>x.id===req)?req:(tabs()[0]?.id||"overview");renderTabs();await prefetchTeams();await renderTab(activeTab); }
+export async function hydrateTeams(){
+  const req=requestedTab();
+  activeTab=tabs().some(x=>x.id===req)?req:(tabs()[0]?.id||"overview");
+  renderTabs();
+  await renderTab(activeTab);
+}
 async function renderTab(tab){activeTab=tabs().some(x=>x.id===tab)?tab:(tabs()[0]?.id||"overview");renderTabs();target().innerHTML=loading();setStatus("Daten werden geladen","warning");try{if(activeTab==="overview")await renderTeamOverview();if(activeTab==="mine")await renderOverview();if(activeTab==="manage")await renderManagement(false);if(activeTab==="functions")await renderManagement(true);setStatus("Live verbunden","success");}catch(error){target().innerHTML=errorPanel(error);setStatus("Fehler","warning");}}
 
 async function workspaceData(force=false){let data=phase3State.get(KEY+"overview");if(!data||force)data=phase3State.set(KEY+"overview",await call("apiListPortalTeams"));return data||{teams:[]};}

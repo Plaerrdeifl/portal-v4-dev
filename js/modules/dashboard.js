@@ -4,6 +4,7 @@ import { auth } from "../auth.js";
 import { storage } from "../storage.js";
 
 const DASHBOARD_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
+let refreshPromise = null;
 
 function valueLine(label,value){return `<div class="widget-value-line"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;}
 function dataMarkup(widget){
@@ -40,19 +41,32 @@ function render(payload,target,status,label){
   bindTargets();
   if(status){status.textContent=label||`${widgets.length} Widget${widgets.length===1?"":"s"}`;status.className="status-pill success";}
 }
-
-export async function hydrateDashboard(){
-  const target=document.getElementById("dashboardWidgets");const status=document.getElementById("dashboardStatus");
-  const cached=readCached();
-  if(cached)render(cached,target,status,"Sofortansicht · wird aktualisiert");
-  else if(target)target.innerHTML=loading("Dashboard-Widgets werden geladen …");
-  try{
+async function refreshDashboard(target,status,{silent=false}={}){
+  if(refreshPromise)return refreshPromise;
+  refreshPromise=(async()=>{
     const payload=await call("apiGetMyDashboard");
     writeCached(payload);
     const suffix=payload.cacheHit?"Backend-Cache":"Aktualisiert";
     render(payload,target,status,`${(payload.widgets||[]).length} Widgets · ${suffix}`);
-  }catch(error){
-    if(!cached){if(target)target.innerHTML=errorPanel(error,"Dashboard konnte nicht geladen werden");if(status){status.textContent="Fehler";status.className="status-pill warning";}}
-    else if(status){status.textContent="Sofortansicht · Aktualisierung fehlgeschlagen";status.className="status-pill warning";}
+    return payload;
+  })().catch(error=>{
+    if(!silent){
+      if(target)target.innerHTML=errorPanel(error,"Dashboard konnte nicht geladen werden");
+      if(status){status.textContent="Fehler";status.className="status-pill warning";}
+    }else if(status){status.textContent="Sofortansicht · Aktualisierung fehlgeschlagen";status.className="status-pill warning";}
+    throw error;
+  }).finally(()=>{refreshPromise=null;});
+  return refreshPromise;
+}
+
+export async function hydrateDashboard(){
+  const target=document.getElementById("dashboardWidgets");const status=document.getElementById("dashboardStatus");
+  const cached=readCached();
+  if(cached){
+    render(cached,target,status,"Sofortansicht · wird aktualisiert");
+    refreshDashboard(target,status,{silent:true}).catch(()=>null);
+    return;
   }
+  if(target)target.innerHTML=loading("Dashboard-Widgets werden geladen …");
+  await refreshDashboard(target,status,{silent:false});
 }

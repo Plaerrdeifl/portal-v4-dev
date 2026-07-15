@@ -30,7 +30,7 @@ export async function loadFragment(path, { signal, force = false } = {}) {
 
   let promise = !force ? fragmentPromises.get(key) : null;
   if (!promise) {
-    promise = fetch(path, { cache: "no-store" })
+    promise = fetch(path, { cache: "default" })
       .then(response => {
         if (!response.ok) throw new Error(`Datei konnte nicht geladen werden: ${path}`);
         return response.text();

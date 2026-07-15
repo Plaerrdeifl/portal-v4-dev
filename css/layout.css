@@ -81,3 +81,21 @@ a{color:inherit}
   22%{opacity:1;transform:scale(1.12);background:#fff}
 }
 @media (prefers-reduced-motion:reduce){.splash-loading-dots span{animation:none}.splash-loading-dots span:nth-child(-n+3){background:#fff;opacity:1}}
+
+/* R7.1 M4 Performance-/Startup-Finish */
+html,body{max-width:100%;overflow-x:clip}
+.app-shell,.app-main,.view,#view{min-width:0;max-width:100%}
+.app-splash{transition:opacity .18s ease,visibility .18s ease}
+.app-splash.is-complete{opacity:0;visibility:hidden;pointer-events:none}
+.splash-status{position:absolute;left:max(20px,env(safe-area-inset-left));right:max(20px,env(safe-area-inset-right));bottom:calc(28px + env(safe-area-inset-bottom));display:grid;justify-items:center;gap:6px;max-width:760px;margin-inline:auto;color:#fff}
+.splash-status>span{color:#fff;font-weight:850;font-size:clamp(.98rem,2.8vw,1.1rem)}
+.splash-status small{color:#d9e9fb;line-height:1.45;max-width:680px}
+.splash-reload{margin-top:8px;border:1px solid rgba(255,255,255,.5);border-radius:14px;background:rgba(255,255,255,.12);color:#fff;padding:11px 16px;font-weight:850;cursor:pointer;min-height:46px}
+.splash-reload:hover,.splash-reload:focus-visible{background:#fff;color:var(--blue-900);outline:3px solid rgba(255,255,255,.28);outline-offset:3px}
+[data-startup-state="loading"] body{overflow:hidden}
+[data-startup-state="complete"] body{overflow:auto}
+.data-table-wrap,.module-tabs,.public-shortcuts{max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain}
+.grid,.list-grid,.admin-actions,.surface-grid,.form-grid,.settings-grid,.meta-grid,.dashboard-widget-grid,.split-view,.module-toolbar,.button-row,.section-title,.entity-head,.topbar,.topbar-actions{min-width:0}
+.card,.entity-card,.dashboard-widget,.meta-item,.settings-row,.permission-row{min-width:0;overflow-wrap:anywhere}
+img,svg,video,canvas,iframe{max-width:100%}
+input,select,textarea,button{max-width:100%}

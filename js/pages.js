@@ -4,7 +4,7 @@ import { navigate } from "./router.js";
 import { googleIdentity } from "./google-identity.js";
 import { installState, requestInstall } from "./install.js";
 
-const FEATURE_BUILD = "20260715-r71-m4-stability-hotfix-2";
+const FEATURE_BUILD = "20260715-r71-m4-performance-startup-finish-1";
 let loginController = null;
 let loginHydrationId = 0;
 let loginMountPromise = null;
@@ -249,6 +249,31 @@ async function hydrateLogin(context = {}) {
 
   retry?.addEventListener("click", mount);
   await mount();
+}
+
+
+export function preloadAuthenticatedModules(keys = ["dashboard", "fanclub", "tasks", "teams", "admin"]) {
+  const modules = {
+    profile: "./modules/profile.js",
+    dashboard: "./modules/dashboard.js",
+    fanclub: "./modules/fanclub.js",
+    tasks: "./modules/tasks.js",
+    teams: "./modules/teams.js",
+    admin: "./modules/admin.js"
+  };
+  return Promise.allSettled((keys || []).filter(key => modules[key]).map(key => {
+    const path = modules[key];
+    let promise = moduleCache.get(path);
+    if (!promise) {
+      promise = import(versionedModule(path, moduleFailures.get(path) || 0));
+      moduleCache.set(path, promise);
+    }
+    return promise.catch(error => {
+      if (moduleCache.get(path) === promise) moduleCache.delete(path);
+      moduleFailures.set(path, (moduleFailures.get(path) || 0) + 1);
+      throw error;
+    });
+  }));
 }
 
 export async function hydratePage(key, context = {}) {

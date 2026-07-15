@@ -64,8 +64,10 @@ async function hydrateModule(name, fallback) {
   const requested = queryTab();
   activeTab = tabs().some(item => item.id === requested) ? requested : (tabs()[0]?.id || fallback);
   renderTabs();
-  await prefetchModule();
   await renderTab(activeTab);
+  if (activeTab !== "overview" && !phase3State.has(KEY + "overview")) {
+    window.setTimeout(() => renderOverview().catch(() => null), 900);
+  }
 }
 
 export async function hydrateFanclub() { return hydrateModule("fanclub", "overview"); }
