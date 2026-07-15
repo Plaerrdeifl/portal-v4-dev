@@ -6,20 +6,41 @@ const ROUTES = Object.freeze({
   contact: { title: "Kontakt", subtitle: "Kontakt zu den Schweinfurter Plärrdeifln", page: "contact.html", icon: "✉️", public: true, publicOrder: 50 },
   install: { title: "Portal installieren", subtitle: "Plärrdeifl Portal als App nutzen", page: "install.html", icon: "📱", public: true, publicOrder: 60 },
   login: { title: "Anmeldung", subtitle: "Sicher mit Google anmelden", page: "login.html", icon: "🔐", public: true, publicOrder: 70 },
-  dashboard: { title: "Dashboard", subtitle: "Deine persönliche Übersicht", page: "dashboard.html", icon: "🏠" },
-  fanclub: { title: "Fanclub", subtitle: "Mitgliedschaft und Mitgliederverwaltung", page: "fanclub.html", icon: "👥" },
-  cash: { title: "Kasse", subtitle: "Beiträge, Buchungen und Konten", page: "cash.html", icon: "💰" },
-  teams: { title: "Teams", subtitle: "Teamübersicht, Aufgaben und Verwaltung", page: "teams.html", icon: "👥" },
-  board: { title: "Vorstand", subtitle: "Mitgliedsanträge und Vorstandsaufgaben", page: "board.html", icon: "👔" },
-  fanbus: { title: "Fanbus", subtitle: "Öffentlicher Platzhalter bis zum Bus-Modul in v4", page: "fanbus.html", icon: "🚌" },
-  admin: { title: "Administration", subtitle: "Portal-, Rollen- und Systemverwaltung", page: "admin.html", icon: "⚙️" }
+  profile: { title: "Profil vervollständigen", subtitle: "Vorname und Nachname sind erforderlich", page: "profile.html", icon: "👤", system: true },
+  dashboard: { title: "Dashboard", subtitle: "Deine persönliche Übersicht", page: "dashboard.html", icon: "🏠", order: 10 },
+  fanclub: { title: "Fanclub", subtitle: "Mitglieder, Beiträge, Zahlungen und Finanzen", page: "fanclub.html", icon: "👥", order: 20 },
+  tasks: { title: "Aufgaben", subtitle: "Eigene, Team- und Vorstandsaufgaben", page: "tasks.html", icon: "✅", order: 30 },
+  teams: { title: "Teams", subtitle: "Teamübersicht, Mitgliedschaften und Funktionen", page: "teams.html", icon: "🤝", order: 40 },
+  fanbuses: { title: "Fanbusse", subtitle: "Informationsseite; Fachfunktionen folgen in v4", page: "fanbuses.html", icon: "🚌", order: 50 },
+  admin: { title: "Administration", subtitle: "Fanclub- und Portalverwaltung", page: "admin.html", icon: "⚙️", order: 60 }
+});
+
+const LEGACY = Object.freeze({
+  cash: { target: "fanclub", tab: "contributions" },
+  board: { target: "tasks", tab: "board" },
+  fanbus: { target: "fanbuses", tab: "" }
 });
 
 export function routes() { return ROUTES; }
+export function fixedAuthenticatedOrder() { return ["dashboard", "fanclub", "tasks", "teams", "fanbuses", "admin"]; }
+
+export function rawRoute() {
+  return String(location.hash || "#/home").replace(/^#\/?/, "").split(/[?&]/)[0] || "home";
+}
 
 export function currentRoute() {
-  const key = String(location.hash || "#/home").replace(/^#\/?/, "").split(/[?&]/)[0] || "home";
-  return ROUTES[key] ? key : "home";
+  const raw = rawRoute();
+  return LEGACY[raw]?.target || (ROUTES[raw] ? raw : "home");
+}
+
+export function legacyRouteRedirect() {
+  const raw = rawRoute();
+  const alias = LEGACY[raw];
+  if (!alias) return false;
+  const params = routeParams();
+  if (alias.tab && !params.has("tab")) params.set("tab", alias.tab);
+  navigate(alias.target, params, true);
+  return true;
 }
 
 export function routeParams() {
@@ -28,10 +49,11 @@ export function routeParams() {
   return new URLSearchParams(query);
 }
 
-export function navigate(key, params = null) {
+export function navigate(key, params = null, replace = false) {
   const target = ROUTES[key] ? key : "home";
   const query = params instanceof URLSearchParams && String(params) ? `?${params}` : "";
   const next = `#/${target}${query}`;
+  if (replace) history.replaceState(null, "", next);
   if (location.hash === next) window.dispatchEvent(new HashChangeEvent("hashchange"));
   else location.hash = next;
 }

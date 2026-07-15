@@ -52,3 +52,6 @@
 .role-rights-grid .permission-row:not(.permission-row-head){padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#fff}
 .role-rights-grid .permission-row:not(.permission-row-head):hover{border-color:var(--blue-100);background:#fbfdff}
 .role-rights-actions{align-items:center;flex-wrap:wrap}.role-rights-actions .subtle{margin-right:auto}
+
+/* R7.1 M4: Namenspflicht und frühe Shell */
+.field-error{display:block;min-height:1.25em;color:var(--danger,#a61b1b);font-weight:700;margin-top:.3rem}.narrow-card{max-width:760px;margin-inline:auto}.profile-completion-page input:invalid{border-color:var(--danger,#a61b1b)}

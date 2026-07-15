@@ -1,0 +1,1 @@
+export async function hydrateFanbuses() { /* reine Informationsseite, keine v4-Fach-API */ }

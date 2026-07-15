@@ -23,18 +23,15 @@ function setTabHash(tab) {
   const next = `#/${moduleName}?tab=${encodeURIComponent(tab)}`;
   if (location.hash === next) renderTab(tab); else location.hash = next;
 }
+function isBoardUser() { const user=currentUser(); return Boolean(user.isAdmin || user.isBoard || (user.officeCodes || []).length); }
 function tabs() {
-  const p = portal();
-  if (moduleName === "cash") {
-    return [
-      { id: "contributions", label: "Beiträge", icon: "💶", show: canRead("Beiträge") },
-      { id: "cashbook", label: "Kassenbuch", icon: "📒", show: canRead("Kasse") },
-      { id: "accounts", label: "Konten", icon: "🏦", show: canRead("Konten") }
-    ].filter(item => item.show);
-  }
   return [
     { id: "overview", label: "Start", icon: "🏠", show: true },
-    { id: "members", label: "Mitglieder", icon: "👥", show: canRead("Mitglieder") }
+    { id: "members", label: "Mitglieder", icon: "👥", show: canRead("Mitglieder") },
+    { id: "contributions", label: "Beiträge", icon: "💶", show: canRead("Beiträge") },
+    { id: "paymentReports", label: "Beitragszahlungsmeldungen", icon: "🧾", show: canRead("Beiträge") && isBoardUser() },
+    { id: "cashbook", label: "Kassenbuch", icon: "📒", show: canRead("Kasse") },
+    { id: "accounts", label: "Konten", icon: "🏦", show: canRead("Konten") }
   ].filter(item => item.show);
 }
 
@@ -48,17 +45,15 @@ function renderTabs() {
   }
 }
 
-async function prefetchModule(name) {
-  const calls = name === "cash"
-    ? [
-        { id: "contributions", functionName: "apiListContributions", args: [{ status: "alle" }] },
-        { id: "cashbook", functionName: "apiListBookings", args: [{ max: 100 }] },
-        { id: "accounts", functionName: "apiListAccounts", args: [] }
-      ]
-    : [
-        { id: "overview", functionName: "apiListActiveMemberNames", args: [] },
-        ...(canRead("Mitglieder") ? [{ id: "members", functionName: "apiListMembers", args: [] }] : [])
-      ];
+async function prefetchModule() {
+  const calls = [
+    { id: "overview", functionName: "apiListActiveMemberNames", args: [] },
+    ...(canRead("Mitglieder") ? [{ id: "members", functionName: "apiListMembers", args: [] }] : []),
+    ...(canRead("Beiträge") ? [{ id: "contributions", functionName: "apiListContributions", args: [{ status: "alle" }] }] : []),
+    ...(canRead("Beiträge") && isBoardUser() ? [{ id: "paymentReports", functionName: "apiListPaymentReports", args: [{}] }] : []),
+    ...(canRead("Kasse") ? [{ id: "cashbook", functionName: "apiListBookings", args: [{ max: 100 }] }] : []),
+    ...(canRead("Konten") ? [{ id: "accounts", functionName: "apiListAccounts", args: [] }] : [])
+  ];
   if (!calls.length || calls.every(item => phase3State.has(KEY + item.id))) return;
   const bundle = await callBatch(calls.filter(item => !phase3State.has(KEY + item.id)));
   Object.entries(bundle?.results || {}).forEach(([id, value]) => phase3State.set(KEY + id, value));
@@ -69,12 +64,12 @@ async function hydrateModule(name, fallback) {
   const requested = queryTab();
   activeTab = tabs().some(item => item.id === requested) ? requested : (tabs()[0]?.id || fallback);
   renderTabs();
-  await prefetchModule(name);
+  await prefetchModule();
   await renderTab(activeTab);
 }
 
 export async function hydrateFanclub() { return hydrateModule("fanclub", "overview"); }
-export async function hydrateCash() { return hydrateModule("cash", "contributions"); }
+export async function hydrateCash() { location.hash = "#/fanclub?tab=contributions"; }
 
 async function renderTab(tab) {
   activeTab = tabs().some(item => item.id === tab) ? tab : (tabs()[0]?.id || "overview");
@@ -86,9 +81,9 @@ async function renderTab(tab) {
     if (activeTab === "overview") await renderOverview();
     if (activeTab === "members") await renderMembers();
     if (activeTab === "contributions") await renderContributions();
+    if (activeTab === "paymentReports") await renderPaymentReports();
     if (activeTab === "cashbook") await renderCashbook();
     if (activeTab === "accounts") await renderAccounts();
-    if (activeTab === "tasks") await renderTasks();
     setStatus("Live verbunden", "success");
   } catch (error) {
     if (panel) panel.innerHTML = errorPanel(error);
@@ -127,13 +122,14 @@ async function renderMembers(force = false) {
   const render = () => {
     const q = normalize(document.getElementById("memberSearch")?.value);
     const s = String(document.getElementById("memberStatus")?.value || "");
-    const list = members.filter(m => (!q || normalize([m.id,m.name,m.email,m.telefon,m.status].join(" ")).includes(q)) && (!s || m.status === s));
+    const full = String(data.view || "").toUpperCase() === "FULL";
+    const list = members.filter(m => (!q || normalize([m.id,m.vorname,m.nachname,m.name,m.ort,m.status].join(" ")).includes(q)) && (!s || m.status === s));
     document.getElementById("memberResults").innerHTML = entityTable(
-      ["Mitglied", "Status", "Mitgliedschaft", "Kontakt", ""],
-      list.map(m => [`<strong>${escapeHtml(m.name || "Ohne Name")}</strong><div class="subtle">${escapeHtml(m.id || "")}</div>`, statusBadge(m.status), escapeHtml(m.mitgliedschaft || "–"), `<span class="subtle">${escapeHtml(m.email || m.telefon || "–")}</span>`, `<button class="button small ghost" data-member-id="${escapeAttr(m.id)}">Öffnen</button>`]),
+      ["Vorname", "Nachname", "Wohnort", "Mitgliedsstatus", ""],
+      list.map(m => [escapeHtml(m.vorname || String(m.name || "").split(" ")[0] || "–"), escapeHtml(m.nachname || String(m.name || "").split(" ").slice(1).join(" ") || "–"), escapeHtml(m.ort || "–"), statusBadge(m.status), full ? `<button class="button small ghost" data-member-id="${escapeAttr(m.id)}">Vollständige Daten</button>` : ""]),
       "Keine Mitglieder gefunden."
     );
-    document.querySelectorAll("[data-member-id]").forEach(btn => btn.addEventListener("click", () => openMember(btn.dataset.memberId)));
+    if (full) document.querySelectorAll("[data-member-id]").forEach(btn => btn.addEventListener("click", () => openMember(btn.dataset.memberId)));
   };
   render();
   document.getElementById("memberSearch")?.addEventListener("input", render);
@@ -208,6 +204,24 @@ async function openContributionPayment(contribution, meta) {
     body: `<form><input type="hidden" name="beitragId" value="${escapeAttr(contribution.id)}"><div class="form-grid"><label>Betrag<input name="betrag" inputmode="decimal" value="${escapeAttr(contribution.offen || contribution.soll || "")}" required></label><label>Datum<input type="date" name="datum" value="${today()}" required></label><label>Zahlungsart<select name="zahlungsart">${optionList(meta.zahlungsarten || ["Bar","Überweisung","PayPal","Lastschrift","Sonstiges"], "Bar")}</select></label><label>Konto<select name="kontoId" required>${optionList(accountOptions, accountOptions.find(a => a.label === "Kasse")?.value || accountOptions[0]?.value || "", "Konto auswählen")}</select></label><label class="full">Bemerkung<input name="bemerkung"></label></div></form>`,
     onSubmit: async data => { data.requestId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`; await runWrite("Beitragszahlung wird gemeldet …", () => call("apiBookContribution", data)); closeDialog(); phase3State.remove(KEY+"contributions"); await renderContributions(true); }
   });
+}
+
+async function renderPaymentReports(force = false) {
+  let data = phase3State.get(KEY + "paymentReports");
+  if (!data || force) data = phase3State.set(KEY + "paymentReports", await call("apiListPaymentReports", {}));
+  const reports = data.reports || [];
+  const user = currentUser();
+  const offices = (user.officeCodes || user.offices || []).map(value => String(value || "").toUpperCase());
+  const reviewer = Boolean(user.isAdmin || offices.includes("KASSIER"));
+  target().innerHTML = `<div class="section-title"><div><h3>Beitragszahlungsmeldungen</h3><p>Eine Meldung erzeugt vor der Bestätigung keine Buchung. Prüfen dürfen ausschließlich Kassier und Admin.</p></div><button id="refreshPaymentReports" class="button ghost small">Aktualisieren</button></div><div class="list-grid" style="margin-top:16px">${reports.map(r => `<article class="card"><div class="entity-head"><div><h3>${escapeHtml(r.memberId || r.contributionId || r.id)}</h3><span class="subtle">${escapeHtml(fmtDate(r.paymentDate))} · ${escapeHtml(fmtMoney(r.amount))}</span></div>${statusBadge(r.status)}</div>${r.reason ? `<div class="notice warning"><strong>Begründung:</strong> ${escapeHtml(r.reason)}</div>` : ""}${r.note ? `<p>${escapeHtml(r.note)}</p>` : ""}<div class="button-row">${reviewer && String(r.status).toUpperCase()==="BESTÄTIGUNG_AUSSTEHEND" ? `<button class="button small primary" data-report-confirm="${escapeAttr(r.id)}">Bestätigen</button><button class="button small secondary" data-report-return="${escapeAttr(r.id)}">Zur Korrektur</button><button class="button small danger" data-report-reject="${escapeAttr(r.id)}">Ablehnen</button>` : ""}</div></article>`).join("") || empty("Keine Zahlungsmeldungen vorhanden.")}</div>`;
+  document.getElementById("refreshPaymentReports")?.addEventListener("click", () => renderPaymentReports(true));
+  target().querySelectorAll("[data-report-confirm]").forEach(b => b.addEventListener("click", () => paymentReportAction("apiConfirmPaymentReport", reports.find(r => r.id === b.dataset.reportConfirm), "Bestätigen")));
+  target().querySelectorAll("[data-report-return]").forEach(b => b.addEventListener("click", () => paymentReportAction("apiReturnPaymentReport", reports.find(r => r.id === b.dataset.reportReturn), "Zur Korrektur zurückgeben", true)));
+  target().querySelectorAll("[data-report-reject]").forEach(b => b.addEventListener("click", () => paymentReportAction("apiRejectPaymentReport", reports.find(r => r.id === b.dataset.reportReject), "Ablehnen", true)));
+}
+function paymentReportAction(apiName, report, title, reasonRequired = false) {
+  if (!report) return;
+  openDialog({ title, kicker: report.id, body: `<form><input type="hidden" name="reportId" value="${escapeAttr(report.id)}"><input type="hidden" name="revision" value="${escapeAttr(report.revision)}">${reasonRequired ? '<label>Begründung<textarea name="reason" required maxlength="1000"></textarea></label>' : '<div class="notice warning">Erst die Bestätigung erzeugt die gesicherte Buchung.</div>'}</form>`, onSubmit: async form => { form.requestId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`; await runWrite("Zahlungsmeldung wird verarbeitet …", () => call(apiName, form)); closeDialog(); phase3State.remove(KEY + "paymentReports"); await renderPaymentReports(true); } });
 }
 
 async function renderCashbook(force = false) {

@@ -1,0 +1,12 @@
+<section class="page profile-completion-page">
+  <div class="page-header"><div><h2>Profil vervollständigen</h2><p>Vorname und Nachname sind für jedes Portalbenutzerkonto verpflichtend.</p></div><span class="status-pill warning">Zugriff eingeschränkt</span></div>
+  <article class="card narrow-card">
+    <div class="notice warning"><strong>AE-R7.1-01</strong><br>Bis zur erfolgreichen Speicherung sind nur Profilvervollständigung und Abmeldung möglich. Rolle, PD-ID, Ämter und Teams bleiben unverändert.</div>
+    <form id="profileCompletionForm" class="form-grid" novalidate>
+      <label>Vorname <span aria-hidden="true">*</span><input id="profileFirstName" name="vorname" autocomplete="given-name" maxlength="160" required aria-describedby="profileFirstError"><small id="profileFirstError" class="field-error" aria-live="polite"></small></label>
+      <label>Nachname <span aria-hidden="true">*</span><input id="profileLastName" name="nachname" autocomplete="family-name" maxlength="160" required aria-describedby="profileLastError"><small id="profileLastError" class="field-error" aria-live="polite"></small></label>
+      <div class="full dialog-actions"><button class="button primary" type="submit">Profil speichern</button></div>
+    </form>
+    <div id="profileCompletionStatus" class="notice" hidden aria-live="polite"></div>
+  </article>
+</section>

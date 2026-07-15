@@ -225,6 +225,9 @@ export const api = Object.freeze({
   async loginWithGoogleCredential(credential, nonce) {
     return unwrap(await bridge.request("loginWithGoogleCredential", [credential, nonce]));
   },
+  async submitAccessRequest(registrationToken, data) {
+    return unwrap(await bridge.request("submitAccessRequest", [registrationToken, data || {}]));
+  },
   async resumeSession(sessionToken) {
     return unwrap(await bridge.request("resumeSession", [sessionToken]));
   },
