@@ -11,10 +11,11 @@ window.__PD_PERFORMANCE_UI_HOTFIX__ = "2026.07.14-r7.1.performance-fast-hotfix-5
 function target(){return document.getElementById("adminPanel");}
 function setStatus(text,type="success"){const el=document.getElementById("adminStatus");if(el){el.textContent=text;el.className=`status-pill ${type}`;}}
 
-export async function hydrateAdmin(){
+export async function hydrateAdmin(context={}){
   setStatus("Adminzugriff bestätigt","success");
   let integrity=null;
   try{integrity=await call("apiGetNameIntegrityStatus");}catch(error){integrity={cleanupStatus:"NICHT_PRUEFBAR",message:error.message};}
+  if(context.signal?.aborted||context.isCurrent?.()===false)return;
   renderAdminHome(integrity);
 }
 function action(id,icon,title,text){return `<button class="admin-action" type="button" data-admin-action="${escapeAttr(id)}"><strong>${icon} ${escapeHtml(title)}</strong><span>${escapeHtml(text)}</span></button>`;}
@@ -36,7 +37,9 @@ function renderAdminHome(integrity){
     action("clean","🧹","System bereinigen","Sicherheitsgeschützte Bereinigung auf den Grundstand.")
   ];
   const missingFirst=Number(integrity?.missingFirstCount||0),missingLast=Number(integrity?.missingLastCount||0),incompleteReq=Number(integrity?.incompleteRequestCount||0);
-  target().innerHTML=`<article class="card"><div class="section-title"><div><h3>AE-R7.1-01 – Namensintegrität</h3><p>Personenbezogene Anzeige ist auf technische IDs und Zählwerte begrenzt.</p></div>${statusBadge(integrity?.cleanupStatus||"NICHT_PRUEFBAR")}</div><div class="grid three" style="margin-top:14px"><div class="meta-item"><small>Benutzer ohne Vorname</small>${missingFirst}</div><div class="meta-item"><small>Benutzer ohne Nachname</small>${missingLast}</div><div class="meta-item"><small>Unvollständige Anträge</small>${incompleteReq}</div></div><p class="subtle">IDs: ${escapeHtml([...(integrity?.activeIncompleteIds||[]),...(integrity?.incompleteRequestIds||[])].join(", ")||"keine")}</p></article><section><div class="section-title"><div><h3>Administration → Fanclub</h3><p>Exakt vier verbindliche Unterseiten.</p></div></div><div class="admin-actions" style="margin-top:14px">${fan.join("")}</div></section><section><div class="section-title"><div><h3>Administration → Portal</h3><p>Exakt acht verbindliche Unterseiten.</p></div></div><div class="admin-actions" style="margin-top:14px">${portal.join("")}</div></section><article class="card"><h3>v3-Abgrenzung</h3><p>Fanbus-Fachlogik, Getränkeverwaltung, Push-Benachrichtigungen und Veranstaltungsmodul werden nicht vorgezogen.</p></article>`;
+  const panel=target();
+  if(!panel)return;
+  panel.innerHTML=`<article class="card"><div class="section-title"><div><h3>AE-R7.1-01 – Namensintegrität</h3><p>Personenbezogene Anzeige ist auf technische IDs und Zählwerte begrenzt.</p></div>${statusBadge(integrity?.cleanupStatus||"NICHT_PRUEFBAR")}</div><div class="grid three" style="margin-top:14px"><div class="meta-item"><small>Benutzer ohne Vorname</small>${missingFirst}</div><div class="meta-item"><small>Benutzer ohne Nachname</small>${missingLast}</div><div class="meta-item"><small>Unvollständige Anträge</small>${incompleteReq}</div></div><p class="subtle">IDs: ${escapeHtml([...(integrity?.activeIncompleteIds||[]),...(integrity?.incompleteRequestIds||[])].join(", ")||"keine")}</p></article><section><div class="section-title"><div><h3>Administration → Fanclub</h3><p>Exakt vier verbindliche Unterseiten.</p></div></div><div class="admin-actions" style="margin-top:14px">${fan.join("")}</div></section><section><div class="section-title"><div><h3>Administration → Portal</h3><p>Exakt acht verbindliche Unterseiten.</p></div></div><div class="admin-actions" style="margin-top:14px">${portal.join("")}</div></section><article class="card"><h3>v3-Abgrenzung</h3><p>Fanbus-Fachlogik, Getränkeverwaltung, Push-Benachrichtigungen und Veranstaltungsmodul werden nicht vorgezogen.</p></article>`;
   document.querySelectorAll("[data-admin-action]").forEach(b=>b.addEventListener("click",()=>runAction(b.dataset.adminAction)));
 }
 async function runAction(id){try{

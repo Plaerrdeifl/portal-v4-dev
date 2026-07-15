@@ -1,7 +1,11 @@
 import { CONFIG } from "./config.js";
 import { auth } from "./auth.js";
 import { currentRoute, fixedAuthenticatedOrder, navigate, routes } from "./router.js";
-export async function loadFragment(path){const r=await fetch(path,{cache:"no-cache"});if(!r.ok)throw new Error(`Datei konnte nicht geladen werden: ${path}`);return r.text();}
+export async function loadFragment(path,{signal}={}){
+  const response=await fetch(path,{cache:"no-store",signal});
+  if(!response.ok)throw new Error(`Datei konnte nicht geladen werden: ${path}`);
+  return response.text();
+}
 export async function mountComponents(){const [s,t]=await Promise.all([loadFragment("./components/sidebar.html"),loadFragment("./components/topbar.html")]);document.getElementById("sidebarSlot").innerHTML=s;document.getElementById("topbarSlot").innerHTML=t;}
 export function visibleRouteEntries(){if(!auth.isAuthenticated())return Object.entries(routes()).filter(([,r])=>r.public).sort((a,b)=>(a[1].publicOrder||0)-(b[1].publicOrder||0));if(auth.requiresProfile())return [["profile",routes().profile]];return fixedAuthenticatedOrder().filter(k=>auth.canAccessRoute(k)).map(k=>[k,routes()[k]]);}
 export function renderNavigation(){const nav=document.getElementById("mainNav");if(!nav)return;nav.replaceChildren(...visibleRouteEntries().map(([key,route])=>{const b=document.createElement("button");b.type="button";b.dataset.route=key;const icon=document.createElement("span");icon.className="nav-icon";icon.setAttribute("aria-hidden","true");icon.textContent=route.icon;const label=document.createElement("span");label.textContent=route.title;b.append(icon,label);return b;}));updateActiveNavigation();}
