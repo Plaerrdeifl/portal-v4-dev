@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b4f9c">
+  <meta name="theme-color" content="#041c33">
   <meta name="color-scheme" content="light">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="description" content="Plärrdeifl Portal – sichere PWA für Fanclub, Teams und Fanbusse.">
@@ -18,10 +18,11 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="preconnect" href="https://script.google.com" crossorigin>
   <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
-  <link rel="stylesheet" href="./css/tokens.css">
-  <link rel="stylesheet" href="./css/layout.css">
-  <link rel="stylesheet" href="./css/components.css">
-  <link rel="stylesheet" href="./css/mobile.css">
+  <link rel="stylesheet" href="./css/tokens.css?v=20260715-r71-m4-uiux-p1">
+  <link rel="stylesheet" href="./css/layout.css?v=20260715-r71-m4-uiux-p1">
+  <link rel="stylesheet" href="./css/components.css?v=20260715-r71-m4-uiux-p1">
+  <link rel="stylesheet" href="./css/mobile.css?v=20260715-r71-m4-uiux-p1">
+  <link rel="stylesheet" href="./css/uiux-p1.css?v=20260715-r71-m4-uiux-p1">
   <title>Plärrdeifl Portal</title>
 </head>
 <body>
@@ -30,8 +31,8 @@
   </noscript>
 
   <div id="appSplash" class="app-splash" aria-live="polite" aria-busy="true">
-    <img src="./assets/icons/icon-512.png" alt="Schweinfurter Plärrdeifl Logo">
-    <strong>APP wird geladen</strong>
+    <div class="splash-logo-shell"><img src="./assets/icons/icon-512.png" alt="Schweinfurter Plärrdeifl Logo"></div>
+    <div class="splash-wordmark" aria-label="Plärrdeifl Portal"><strong>Plärrdeifl</strong><span>PORTAL</span></div>
     <div class="splash-loading-dots" aria-label="Wird geladen">
       <span></span><span></span><span></span><span></span><span></span>
     </div>
@@ -54,6 +55,18 @@
     </div>
   </div>
 
+  <nav id="mobileNav" class="mobile-bottom-nav" aria-label="Mobile Hauptnavigation" hidden></nav>
+  <div id="mobileMoreBackdrop" class="mobile-more-backdrop" data-close-more hidden></div>
+  <section id="mobileMorePanel" class="mobile-more-panel" aria-label="Weitere Bereiche" aria-modal="true" role="dialog" hidden>
+    <div class="mobile-more-handle" aria-hidden="true"></div>
+    <header><div><strong>Weitere Bereiche</strong><span>Portalnavigation und Konto</span></div><button class="icon-button" type="button" data-close-more aria-label="Weitere Bereiche schließen">×</button></header>
+    <div id="mobileMoreRoutes" class="mobile-more-routes"></div>
+    <div class="mobile-more-actions">
+      <button id="mobileRefreshButton" class="mobile-more-action" type="button">Ansicht neu laden</button>
+      <button id="mobileLogoutButton" class="mobile-more-action danger" type="button">Abmelden</button>
+    </div>
+  </section>
+
   <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
   <div id="updateBanner" class="install-banner" hidden>
     <div><strong>Neue Portalversion verfügbar</strong><span>Die Aktualisierung wird erst nach deiner Bestätigung übernommen.</span></div>
@@ -61,6 +74,6 @@
     <button id="updateDismiss" class="icon-button" type="button" aria-label="Später aktualisieren">×</button>
   </div>
 
-  <script type="module" src="./js/app.js?v=20260715-r71-m4-performance-finish-2"></script>
+  <script type="module" src="./js/app.js?v=20260715-r71-m4-uiux-p1"></script>
 </body>
 </html>

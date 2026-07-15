@@ -1,4 +1,24 @@
-<section class="page">
-  <div class="page-header"><div><h2>Dashboard</h2><p>Was für dich jetzt wichtig ist.</p></div><span id="dashboardStatus" class="status-pill warning">Lade Daten</span></div>
-  <div id="dashboardWidgets" class="dashboard-widget-grid"><article class="card loading-card"><h3>Dashboard wird vorbereitet …</h3></article></div>
+<section class="page dashboard-page">
+  <header class="dashboard-hero">
+    <div class="dashboard-hero-copy">
+      <span class="dashboard-eyebrow">Deine Übersicht</span>
+      <h2>Dashboard</h2>
+      <p>Was für dich jetzt wichtig ist.</p>
+    </div>
+    <div class="dashboard-connection-card">
+      <span class="dashboard-connection-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.8 2.9 8.2 7 10 4.1-1.8 7-5.2 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-5"/></svg>
+      </span>
+      <span class="dashboard-connection-copy"><strong id="dashboardConnectionState">Sicher verbunden</strong><small>Backend online</small></span>
+      <span class="dashboard-connection-time"><i aria-hidden="true"></i><span id="dashboardConnectionTime">Gerade eben</span></span>
+    </div>
+  </header>
+
+  <div class="dashboard-content-surface">
+    <div class="dashboard-section-heading">
+      <div><span>Überblick</span><h3>Das ist gerade wichtig</h3></div>
+      <span id="dashboardStatus" class="status-pill warning">Lade Daten</span>
+    </div>
+    <div id="dashboardWidgets" class="dashboard-widget-grid"><article class="card loading-card"><h3>Dashboard wird vorbereitet …</h3></article></div>
+  </div>
 </section>

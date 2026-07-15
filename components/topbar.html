@@ -1,6 +1,12 @@
 <header class="topbar">
   <div class="topbar-leading">
-    <button id="mobileMenuToggle" class="icon-button mobile-menu-toggle" type="button" aria-label="Menü öffnen">☰</button>
+    <button id="mobileMenuToggle" class="icon-button mobile-menu-toggle" type="button" aria-label="Menü öffnen">
+      <span class="menu-lines" aria-hidden="true"><i></i><i></i><i></i></span>
+    </button>
+    <div class="mobile-brand" aria-label="Plärrdeifl Portal">
+      <img src="./assets/icons/icon-32.png" alt="">
+      <span><strong>Plärrdeifl</strong><small>PORTAL</small></span>
+    </div>
     <div class="topbar-title">
       <h1 id="routeTitle">Plärrdeifl Portal</h1>
       <p id="routeSubtitle">Login und Backend werden geprüft</p>
@@ -9,10 +15,10 @@
   <div class="topbar-actions">
     <span id="connectionStatus" class="status-pill warning">Backend wird geprüft</span>
     <div id="userSummary" class="user-summary" hidden>
-      <strong id="userSummaryName">Benutzer</strong>
-      <span id="userSummaryRole">Rolle</span>
+      <span id="userAvatar" class="user-avatar" aria-hidden="true">PD</span>
+      <span class="user-summary-copy"><strong id="userSummaryName">Benutzer</strong><small id="userSummaryRole">Rolle</small></span>
     </div>
-    <button id="refreshButton" class="icon-button" type="button" title="Ansicht neu laden" aria-label="Ansicht neu laden">↻</button>
-    <button id="logoutButton" class="icon-button" type="button" title="Abmelden" aria-label="Abmelden" hidden>↪</button>
+    <button id="refreshButton" class="icon-button desktop-utility" type="button" title="Ansicht neu laden" aria-label="Ansicht neu laden">↻</button>
+    <button id="logoutButton" class="icon-button desktop-utility" type="button" title="Abmelden" aria-label="Abmelden" hidden>↪</button>
   </div>
 </header>

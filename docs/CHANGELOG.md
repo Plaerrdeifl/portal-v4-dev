@@ -56,3 +56,11 @@ Produktiver Pull/Push/Deploymentnachweis, Bestandszahlen und -bereinigung, Live-
 - Offline-Navigation liefert eine eindeutige Offline-Seite statt eines erneut startenden Online-App-Shells.
 - Der Browser-Runner erzwingt für die Startmessung ein echtes neues Dokument und misst bis zum sichtbaren nutzbaren Dashboard.
 - Backend-Version 62 und alle fachlichen Rechte-/Schreibregeln bleiben unverändert.
+## 2026.07.15-r7.1.m4-uiux-p1
+
+- Neues visuelles Grundsystem in Petrol/Marineblau mit hellem Kartenbereich und blauem Hauptakzent.
+- Mobile Kopfzeile und feste Fünf-Punkt-Navigation mit Bereich „Mehr“.
+- Desktop-Seitenleiste, Benutzeranzeige, Buttons, Formulare, Dialoge und Statusflächen vereinheitlicht.
+- Dashboard als erste Referenzseite vollständig neu gestaltet.
+- Bestehende Fachlogik, Rollen, Rechte und Backend-Verträge unverändert.
+- App-Icon bleibt vorläufig als austauschbarer Logo-Platzhalter eingebunden.

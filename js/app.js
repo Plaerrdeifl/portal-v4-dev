@@ -1,8 +1,8 @@
 import { CONFIG } from "./config.js";
 import { auth } from "./auth.js";
 import { currentRoute, legacyRouteRedirect, navigate, routes } from "./router.js";
-import { hydratePage, preloadAuthenticatedModules } from "./pages.js?v=20260715-r71-m4-performance-finish-2";
-import { warmupAuthenticatedData, resetWarmup } from "./warmup.js?v=20260715-r71-m4-performance-finish-2";
+import { hydratePage, preloadAuthenticatedModules } from "./pages.js?v=20260715-r71-m4-uiux-p1";
+import { warmupAuthenticatedData, resetWarmup } from "./warmup.js?v=20260715-r71-m4-uiux-p1";
 import { initializeInstall } from "./install.js";
 import { storage } from "./storage.js";
 import {
