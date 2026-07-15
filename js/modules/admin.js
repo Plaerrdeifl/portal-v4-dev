@@ -10,13 +10,29 @@ window.__PD_PERFORMANCE_UI_HOTFIX__ = "2026.07.14-r7.1.performance-fast-hotfix-5
 
 function target(){return document.getElementById("adminPanel");}
 function setStatus(text,type="success"){const el=document.getElementById("adminStatus");if(el){el.textContent=text;el.className=`status-pill ${type}`;}}
+let lastIntegrity=null;
+let systemStatusCache=null;
+let systemStatusCachedAt=0;
+const SYSTEM_STATUS_CACHE_MS=5*60*1000;
+function metric(value){return value===null||value===undefined?"…":Number(value||0);}
+async function getSystemStatus(force=false){
+  if(!force&&systemStatusCache&&Date.now()-systemStatusCachedAt<SYSTEM_STATUS_CACHE_MS)return systemStatusCache;
+  const value=await call("apiGetSystemStatus");
+  systemStatusCache=value;systemStatusCachedAt=Date.now();return value;
+}
 
 export async function hydrateAdmin(context={}){
   setStatus("Adminzugriff bestätigt","success");
-  let integrity=null;
-  try{integrity=await call("apiGetNameIntegrityStatus");}catch(error){integrity={cleanupStatus:"NICHT_PRUEFBAR",message:error.message};}
-  if(context.signal?.aborted||context.isCurrent?.()===false)return;
-  renderAdminHome(integrity);
+  renderAdminHome(lastIntegrity);
+  try{
+    const integrity=await call("apiGetNameIntegrityStatus");
+    if(context.signal?.aborted||context.isCurrent?.()===false)return;
+    lastIntegrity=integrity;
+    renderAdminHome(integrity);
+  }catch(error){
+    if(context.signal?.aborted||context.isCurrent?.()===false)return;
+    setStatus("Namensprüfung später erneut versuchen","warning");
+  }
 }
 function action(id,icon,title,text){return `<button class="admin-action" type="button" data-admin-action="${escapeAttr(id)}"><strong>${icon} ${escapeHtml(title)}</strong><span>${escapeHtml(text)}</span></button>`;}
 function renderAdminHome(integrity){
@@ -36,7 +52,7 @@ function renderAdminHome(integrity){
     action("system","⚙️","Systemstatus","Tabellenstatus und Namensintegrität prüfen."),
     action("clean","🧹","System bereinigen","Sicherheitsgeschützte Bereinigung auf den Grundstand.")
   ];
-  const missingFirst=Number(integrity?.missingFirstCount||0),missingLast=Number(integrity?.missingLastCount||0),incompleteReq=Number(integrity?.incompleteRequestCount||0);
+  const missingFirst=metric(integrity?.missingFirstCount),missingLast=metric(integrity?.missingLastCount),incompleteReq=metric(integrity?.incompleteRequestCount);
   const panel=target();
   if(!panel)return;
   panel.innerHTML=`<article class="card"><div class="section-title"><div><h3>AE-R7.1-01 – Namensintegrität</h3><p>Personenbezogene Anzeige ist auf technische IDs und Zählwerte begrenzt.</p></div>${statusBadge(integrity?.cleanupStatus||"NICHT_PRUEFBAR")}</div><div class="grid three" style="margin-top:14px"><div class="meta-item"><small>Benutzer ohne Vorname</small>${missingFirst}</div><div class="meta-item"><small>Benutzer ohne Nachname</small>${missingLast}</div><div class="meta-item"><small>Unvollständige Anträge</small>${incompleteReq}</div></div><p class="subtle">IDs: ${escapeHtml([...(integrity?.activeIncompleteIds||[]),...(integrity?.incompleteRequestIds||[])].join(", ")||"keine")}</p></article><section><div class="section-title"><div><h3>Administration → Fanclub</h3><p>Exakt vier verbindliche Unterseiten.</p></div></div><div class="admin-actions" style="margin-top:14px">${fan.join("")}</div></section><section><div class="section-title"><div><h3>Administration → Portal</h3><p>Exakt acht verbindliche Unterseiten.</p></div></div><div class="admin-actions" style="margin-top:14px">${portal.join("")}</div></section><article class="card"><h3>v3-Abgrenzung</h3><p>Fanbus-Fachlogik, Getränkeverwaltung, Push-Benachrichtigungen und Veranstaltungsmodul werden nicht vorgezogen.</p></article>`;
@@ -55,14 +71,32 @@ async function runAction(id){try{
   if(id==="backup")return createBackup();
   if(id==="system")return openSystemWithNames();
   if(id==="clean")return openCleanSystem();
-}catch(error){showToast(error?.message||"Aktion fehlgeschlagen.","error",8000);const panel=target();if(panel)panel.innerHTML=errorPanel(error);}}
+}catch(error){showToast(error?.message||"Aktion fehlgeschlagen.","error",8000);}}
 function newRequestId(){return crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}`;}
 async function openOffices(){const data=await call("apiGetFanclubAdminConfig");const slots=data.slots||[],members=data.members||[];openDialog({title:"Fanclub-Ämter vergeben",kicker:"Fünf Amtsplätze gemeinsam",wide:true,body:`<form><div class="notice warning">Alle fünf Plätze müssen mit fünf unterschiedlichen aktiven PD-IDs gemeinsam gespeichert werden. Ein Benutzerkonto ist für die fachliche Besetzung nicht erforderlich.</div><div class="form-grid" style="margin-top:14px">${slots.map(slot=>`<label>${escapeHtml(slot.label)}<select name="${escapeAttr(slot.code)}" required>${optionList(members,slot.memberId,"Mitglied auswählen")}</select></label>`).join("")}</div></form>`,onSubmit:async form=>{const values=slots.map(slot=>form[slot.code]);if(new Set(values).size!==5)throw new Error("Alle fünf Amtsplätze müssen unterschiedlich besetzt sein.");await runWrite("Amtsplätze werden gemeinsam gespeichert …",()=>call("apiSaveOfficeSlots",{slots:slots.map(slot=>({code:slot.code,memberId:form[slot.code],revision:slot.revision}))}));closeDialog();}});}
 async function openContributionAdmin(){const data=await call("apiListContributionClasses");const rows=data.classes||[];openDialog({title:"Beiträge und Beitragsklassen",kicker:`${rows.length} Beitragsklasse(n)`,wide:true,body:`<div class="settings-grid">${rows.map(r=>`<article class="card"><h3>${escapeHtml(r.name||r.id)}</h3><p>${escapeHtml(String(r.amount??r.betrag??""))} € · ${escapeHtml(r.active||r.aktiv||"")}</p></article>`).join("")||empty("Keine Beitragsklassen vorhanden.")}</div><div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});}
 async function openSeasonClose(){const data=await call("apiListSeasons");openDialog({title:"Saison und Jahresabschluss",kicker:`${(data.seasons||[]).length} Saison(en)`,body:`<div class="settings-grid">${(data.seasons||[]).map(r=>`<article class="card"><strong>${escapeHtml(r.name||r.id)}</strong> ${statusBadge(r.status||r.active)}</article>`).join("")||empty("Keine Saison vorhanden.")}</div><div class="dialog-actions"><button id="adminNewSeason" class="button primary" type="button">Neue Saison starten</button><button id="adminYearClose" class="button secondary" type="button">Jahresabschluss</button><button class="button ghost" data-dialog-close>Schließen</button></div>`});document.getElementById("adminNewSeason")?.addEventListener("click",seasonDialog);document.getElementById("adminYearClose")?.addEventListener("click",yearCloseDialog);}
 function openFanclubSettings(){openDialog({title:"Fanclub-Einstellungen",kicker:"R7.1",body:`<form><label>Hinweis für interne Fanclubverwaltung<textarea name="hinweis" maxlength="1000"></textarea></label><div class="notice warning">Unveränderliche Systemregeln, Namenspflicht und Amtsplätze können hier nicht abgeschaltet werden.</div></form>`,onSubmit:async data=>{await runWrite("Fanclub-Einstellungen werden gespeichert …",()=>call("apiSaveFanclubSettings",data));closeDialog();}});}
 function openNavigationDashboard(){openDialog({title:"Navigation und Dashboard",kicker:"Darstellungskonfiguration",body:`<div class="notice warning">Die sechs Hauptbereiche, Reihenfolge, Grundsichtbarkeit und Admin-Gesamtzugriff sind unveränderliche Systemregeln.</div><div class="admin-actions" style="margin-top:14px"><button id="openNavigationPresentation" class="admin-action"><strong>🧭 Darstellung der Navigation</strong><span>Texte und Symbole nicht sicherheitskritisch pflegen.</span></button><button id="openDashboardPresentation" class="admin-action"><strong>📊 Dashboard-Widgets</strong><span>Widgetdarstellung verwalten.</span></button></div>`});document.getElementById("openNavigationPresentation")?.addEventListener("click",openPortalStructure);document.getElementById("openDashboardPresentation")?.addEventListener("click",openDashboardWidgets);}
-async function openSystemWithNames(){const [system,names]=await Promise.all([call("apiGetSystemStatus"),call("apiGetNameIntegrityStatus")]);openDialog({title:"Systemstatus",kicker:system.message||"DB_-Status",wide:true,body:`<div class="grid three"><article class="card stat-card"><h3>Fehlender Vorname</h3><strong>${Number(names.missingFirstCount||0)}</strong></article><article class="card stat-card"><h3>Fehlender Nachname</h3><strong>${Number(names.missingLastCount||0)}</strong></article><article class="card stat-card"><h3>Unvollständige Anträge</h3><strong>${Number(names.incompleteRequestCount||0)}</strong></article></div><p class="subtle">Betroffene IDs: ${escapeHtml([...(names.activeIncompleteIds||[]),...(names.incompleteRequestIds||[])].join(", ")||"keine")}</p>${system.warnings?.length?`<div class="notice warning">${system.warnings.map(escapeHtml).join("<br>")}</div>`:'<div class="notice success">Keine technischen Warnungen.</div>'}<div class="card table-card" style="margin-top:16px"><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Tabelle</th><th>Status</th><th>Datenzeilen</th></tr></thead><tbody>${(system.sheets||[]).map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${statusBadge(r.status)}</td><td>${Number(r.effectiveRows||0)}</td></tr>`).join("")}</tbody></table></div></div>`});}
+async function openSystemWithNames(){
+  const token=`system-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const dialog=openDialog({title:"Systemstatus",kicker:"Prüfung läuft im Hintergrund",wide:true,body:`<div class="notice warning"><strong>Systemstatus wird geladen …</strong><br>Die Administration bleibt während der Tabellenprüfung bedienbar.</div>${loading("Datenbanken werden geprüft …")}`});
+  dialog.dataset.loadToken=token;
+  try{
+    const namesPromise=lastIntegrity?Promise.resolve(lastIntegrity):call("apiGetNameIntegrityStatus");
+    const [system,names]=await Promise.all([getSystemStatus(),namesPromise]);
+    if(dialog.dataset.loadToken!==token||!dialog.open)return;
+    lastIntegrity=names;
+    document.getElementById("dialogKicker").textContent=system.message||"DB_-Status";
+    document.getElementById("dialogBody").innerHTML=`<div class="grid three"><article class="card stat-card"><h3>Fehlender Vorname</h3><strong>${Number(names.missingFirstCount||0)}</strong></article><article class="card stat-card"><h3>Fehlender Nachname</h3><strong>${Number(names.missingLastCount||0)}</strong></article><article class="card stat-card"><h3>Unvollständige Anträge</h3><strong>${Number(names.incompleteRequestCount||0)}</strong></article></div><p class="subtle">Betroffene IDs: ${escapeHtml([...(names.activeIncompleteIds||[]),...(names.incompleteRequestIds||[])].join(", ")||"keine")}</p>${system.warnings?.length?`<div class="notice warning">${system.warnings.map(escapeHtml).join("<br>")}</div>`:'<div class="notice success">Keine technischen Warnungen.</div>'}<div class="card table-card" style="margin-top:16px"><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Tabelle</th><th>Status</th><th>Datenzeilen</th></tr></thead><tbody>${(system.sheets||[]).map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${statusBadge(r.status)}</td><td>${Number(r.effectiveRows||0)}</td></tr>`).join("")}</tbody></table></div></div><div class="dialog-actions"><button id="systemStatusRefresh" class="button secondary" type="button">Neu prüfen</button><button class="button ghost" data-dialog-close>Schließen</button></div>`;
+    document.getElementById("systemStatusRefresh")?.addEventListener("click",()=>{systemStatusCache=null;systemStatusCachedAt=0;closeDialog();openSystemWithNames();});
+  }catch(error){
+    if(dialog.dataset.loadToken!==token||!dialog.open)return;
+    document.getElementById("dialogKicker").textContent="Prüfung fehlgeschlagen";
+    document.getElementById("dialogBody").innerHTML=`${errorPanel(error,"Systemstatus konnte nicht vollständig geladen werden")}<div class="dialog-actions"><button id="systemStatusRetry" class="button primary" type="button">Erneut versuchen</button><button class="button ghost" data-dialog-close>Schließen</button></div>`;
+    document.getElementById("systemStatusRetry")?.addEventListener("click",()=>{closeDialog();openSystemWithNames();});
+  }
+}
 function seasonDialog(){openDialog({title:"Neue Saison starten",kicker:"Fanclubverwaltung",body:`<form><label>Saison/Jahr<input name="seasonName" value="${new Date().getFullYear()+1}" required></label><div class="notice warning" style="margin-top:14px">Für beitragspflichtige Mitglieder werden Beiträge angelegt. Bestehende Saisonwerte werden serverseitig geprüft.</div></form>`,onSubmit:async data=>{await runWrite("Neue Saison wird angelegt …",()=>call("apiStartNewSeason",data.seasonName));closeDialog();}});}
 function yearCloseDialog(){openDialog({title:"Jahresabschluss",kicker:"Fanclubverwaltung",body:`<form><label>Jahr<input type="number" name="year" value="${new Date().getFullYear()}" required></label></form>`,onSubmit:async data=>{await runWrite("Jahresabschluss wird erstellt …",()=>call("apiCreateYearClose",Number(data.year)));closeDialog();}});}
 async function runDataCheck(){const result=await runWrite("Datenprüfung läuft …",()=>call("apiRunDataCheck"),"Datenprüfung abgeschlossen.");openDialog({title:"Datenprüfung",kicker:`${Number(result.count||0)} Hinweis(e)`,wide:true,body:`${result.issues?.length?`<div class="settings-grid">${result.issues.map(issue=>`<div class="card"><strong>${escapeHtml(issue[0]||"Hinweis")} · ${escapeHtml(issue[1]||"")}</strong><p>${escapeHtml(issue[2]||"")}</p></div>`).join("")}</div>`:'<div class="notice success">Keine fachlichen Probleme gefunden.</div>'}<div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});}

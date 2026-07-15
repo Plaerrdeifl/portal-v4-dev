@@ -1,6 +1,6 @@
-const CACHE_VERSION = "pd-portal-v3-r71-m4-20260715-ui-race-hotfix-1";
+const CACHE_VERSION = "pd-portal-v3-r71-m4-20260715-stability-hotfix-2";
 const APP_CACHE = `${CACHE_VERSION}-shell`;
-const BUILD_QUERY = "v=20260715-r71-m4-ui-race-hotfix-1";
+const BUILD_QUERY = "v=20260715-r71-m4-stability-hotfix-2";
 const SHELL = [
   "./",
   "./index.html",

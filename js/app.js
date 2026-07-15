@@ -1,12 +1,13 @@
 import { CONFIG } from "./config.js";
 import { auth } from "./auth.js";
 import { currentRoute, legacyRouteRedirect, navigate, routes } from "./router.js";
-import { hydratePage } from "./pages.js?v=20260715-r71-m4-ui-race-hotfix-1";
+import { hydratePage } from "./pages.js?v=20260715-r71-m4-stability-hotfix-2";
 import { initializeInstall } from "./install.js";
 import { storage } from "./storage.js";
 import {
   bindGlobalUi,
   escapeHtml,
+  hasFragment,
   loadFragment,
   mountComponents,
   renderNavigation,
@@ -20,12 +21,14 @@ import {
 let authReady = false;
 let routeRenderSequence = 0;
 let routeAbortController = null;
+let reconnectTimer = 0;
+let reconnectAttempt = 0;
+let reconnectRunning = false;
 
 function allowedRoute(key) {
   const route = routes()[key];
   if (!route) return false;
   if (route.public) return !auth.isAuthenticated();
-  if (route.system) return auth.canAccessRoute(key);
   return auth.canAccessRoute(key);
 }
 
@@ -38,11 +41,57 @@ function isCurrentRender(renderId, key) {
   return renderId === routeRenderSequence && currentRoute() === key;
 }
 
+function connectionLabel() {
+  const current = auth.current();
+  if (current.connectionPending) return { label: "Verbindung wird wiederhergestellt", type: "warning" };
+  if (auth.requiresProfile()) return { label: "Profil unvollständig", type: "warning" };
+  if (auth.isAuthenticated()) return { label: "Sicher verbunden", type: "success" };
+  return { label: "Öffentlicher Bereich", type: "success" };
+}
+
+function updateConnectionChrome() {
+  const { label, type } = connectionLabel();
+  setConnectionStatus(label, type);
+}
+
+function clearReconnectTimer() {
+  window.clearTimeout(reconnectTimer);
+  reconnectTimer = 0;
+}
+
+function scheduleReconnect(delay = null) {
+  if (!auth.current().connectionPending || reconnectRunning || reconnectTimer || !navigator.onLine) return;
+  const waitMs = delay ?? Math.min(30000, 1500 * Math.pow(2, reconnectAttempt));
+  reconnectTimer = window.setTimeout(async () => {
+    reconnectTimer = 0;
+    if (!auth.current().connectionPending || reconnectRunning || !navigator.onLine) return;
+    reconnectRunning = true;
+    try {
+      await auth.reconnect();
+      reconnectAttempt = 0;
+      renderNavigation();
+      updateUserChrome();
+      updateConnectionChrome();
+      await renderRoute();
+    } catch (error) {
+      reconnectAttempt += 1;
+      updateConnectionChrome();
+      scheduleReconnect();
+    } finally {
+      reconnectRunning = false;
+    }
+  }, waitMs);
+}
+
+function reconnectPanel(route) {
+  return `<section class="card"><h2>${escapeHtml(route.title)}</h2><div class="notice warning"><strong>Verbindung wird wiederhergestellt</strong><br>Deine Anmeldung bleibt erhalten. Das Portal versucht automatisch, die Backend-Verbindung neu aufzubauen.</div><div class="dialog-actions"><button id="routeReconnectButton" class="button primary" type="button">Jetzt erneut verbinden</button></div></section>`;
+}
+
 async function renderRoute() {
   if (legacyRouteRedirect()) return;
 
   let key = currentRoute();
-  if (!authReady && key !== "home") key = "home";
+  if (!authReady && key !== "home") return;
 
   if (auth.requiresProfile() && key !== "profile") {
     navigate("profile", null, true);
@@ -67,21 +116,34 @@ async function renderRoute() {
   setRouteHeader(route);
   updateActiveNavigation();
   view.setAttribute("aria-busy", "true");
-  view.innerHTML = '<div class="loading-panel"><span class="spinner" aria-hidden="true"></span><strong>Ansicht wird geladen …</strong></div>';
+  const fragmentPath = `./pages/${route.page}`;
+  if (!hasFragment(fragmentPath)) {
+    view.innerHTML = '<div class="loading-panel"><span class="spinner" aria-hidden="true"></span><strong>Ansicht wird geladen …</strong></div>';
+  }
 
   try {
-    const fragment = await loadFragment(`./pages/${route.page}`, { signal: controller.signal });
+    const fragment = await loadFragment(fragmentPath, { signal: controller.signal });
     if (!isCurrent()) return;
 
     view.innerHTML = fragment;
+
+    if (auth.current().connectionPending && !route.public && key !== "profile") {
+      view.innerHTML = reconnectPanel(route);
+      document.getElementById("routeReconnectButton")?.addEventListener("click", () => {
+        clearReconnectTimer();
+        scheduleReconnect(0);
+      });
+      scheduleReconnect();
+      return;
+    }
+
     await hydratePage(key, { signal: controller.signal, isCurrent });
     if (!isCurrent()) return;
-
     view.focus({ preventScroll: true });
   } catch (error) {
     if (error?.name === "AbortError" || !isCurrent()) return;
-
-    view.innerHTML = `<section class="card"><h2>Ansicht konnte nicht geladen werden</h2><p>${escapeHtml(error.message)}</p><button class="button secondary" type="button" onclick="location.reload()">Erneut versuchen</button></section>`;
+    view.innerHTML = `<section class="card"><h2>Ansicht konnte nicht geladen werden</h2><p>${escapeHtml(error.message)}</p><button id="routeRetryButton" class="button secondary" type="button">Erneut versuchen</button></section>`;
+    document.getElementById("routeRetryButton")?.addEventListener("click", renderRoute);
     showToast("Ansicht konnte nicht geladen werden.", "error");
   } finally {
     if (isCurrent()) view.removeAttribute("aria-busy");
@@ -138,27 +200,27 @@ async function registerServiceWorker() {
 async function refreshApp() {
   try {
     setConnectionStatus("Aktualisiere …", "warning");
+    if (auth.current().connectionPending) await auth.reconnect();
     if (auth.isAuthenticated() && !auth.requiresProfile()) await auth.refreshInitialData();
     renderNavigation();
     updateUserChrome();
     await renderRoute();
-    setConnectionStatus(
-      auth.requiresProfile() ? "Profil unvollständig" : auth.isAuthenticated() ? "Sicher verbunden" : "Öffentlicher Bereich",
-      auth.requiresProfile() ? "warning" : "success"
-    );
+    updateConnectionChrome();
   } catch (error) {
-    setConnectionStatus("Verbindungsfehler", "warning");
+    updateConnectionChrome();
     showToast(error.message || "Aktualisierung fehlgeschlagen.", "error", 6000);
+    if (auth.current().connectionPending) scheduleReconnect();
   }
 }
 
 async function logout() {
   try {
+    clearReconnectTimer();
     await auth.logout();
     renderNavigation();
     updateUserChrome();
     navigate("home");
-    setConnectionStatus("Öffentlicher Bereich", "success");
+    updateConnectionChrome();
   } catch (error) {
     showToast(error.message || "Abmeldung fehlgeschlagen.", "error");
   }
@@ -175,17 +237,23 @@ async function bootstrap() {
     window.addEventListener("pd-auth-change", () => {
       renderNavigation();
       updateUserChrome();
-      if (auth.requiresProfile() && currentRoute() !== "profile") navigate("profile", null, true);
+      updateConnectionChrome();
+      if (auth.requiresProfile() && currentRoute() !== "profile") {
+        navigate("profile", null, true);
+        return;
+      }
+      if (!auth.isAuthenticated() && !routes()[currentRoute()]?.public) {
+        navigate("home", null, true);
+        return;
+      }
+      if (auth.current().connectionPending) scheduleReconnect();
     });
 
     setConnectionStatus("Backend wird geprüft", "warning");
     try {
       await auth.initialize();
       authReady = true;
-      setConnectionStatus(
-        auth.requiresProfile() ? "Profil unvollständig" : auth.isAuthenticated() ? "Sicher verbunden" : "Öffentlicher Bereich",
-        auth.requiresProfile() ? "warning" : "success"
-      );
+      updateConnectionChrome();
     } catch (error) {
       authReady = true;
       setConnectionStatus("Backend nicht erreichbar", "warning");
@@ -194,10 +262,15 @@ async function bootstrap() {
 
     renderNavigation();
     updateUserChrome();
-    if (!location.hash) navigate(mandatoryRoute());
-    else if (!allowedRoute(currentRoute()) || (auth.requiresProfile() && currentRoute() !== "profile")) navigate(mandatoryRoute(), null, true);
-    else await renderRoute();
+    if (!location.hash) {
+      navigate(mandatoryRoute());
+    } else if (!allowedRoute(currentRoute()) || (auth.requiresProfile() && currentRoute() !== "profile")) {
+      navigate(mandatoryRoute(), null, true);
+    } else {
+      await renderRoute();
+    }
 
+    if (auth.current().connectionPending) scheduleReconnect();
     registerServiceWorker();
   } catch (error) {
     const splash = document.getElementById("appSplash");
@@ -205,10 +278,10 @@ async function bootstrap() {
   }
 }
 
-window.addEventListener("online", () => setConnectionStatus(
-  auth.requiresProfile() ? "Profil unvollständig" : auth.isAuthenticated() ? "Sicher verbunden" : "Öffentlicher Bereich",
-  auth.requiresProfile() ? "warning" : "success"
-));
+window.addEventListener("online", () => {
+  updateConnectionChrome();
+  if (auth.current().connectionPending) scheduleReconnect(0);
+});
 window.addEventListener("offline", () => setConnectionStatus("Offline", "warning"));
 
 bootstrap();

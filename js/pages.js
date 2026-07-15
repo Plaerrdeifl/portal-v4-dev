@@ -4,9 +4,10 @@ import { navigate } from "./router.js";
 import { googleIdentity } from "./google-identity.js";
 import { installState, requestInstall } from "./install.js";
 
-const FEATURE_BUILD = "20260715-r71-m4-ui-race-hotfix-1";
+const FEATURE_BUILD = "20260715-r71-m4-stability-hotfix-2";
 let loginController = null;
 let loginHydrationId = 0;
+let loginMountPromise = null;
 const moduleCache = new Map();
 const moduleFailures = new Map();
 
@@ -141,10 +142,12 @@ function registrationForm(registration) {
   });
 }
 
-async function hydrateLogin() {
+async function hydrateLogin(context = {}) {
   const hydrationId = ++loginHydrationId;
+  const isActive = () => !context.signal?.aborted && hydrationId === loginHydrationId && context.isCurrent?.() !== false;
   googleIdentity.destroyButton();
   loginController = null;
+  loginMountPromise = null;
   const current = auth.current();
   const retry = document.getElementById("loginRetryButton");
   const pill = document.getElementById("loginStatusPill");
@@ -164,11 +167,32 @@ async function hydrateLogin() {
 
   if (current.authenticated) {
     if (pill) {
-      pill.textContent = current.profileRequired ? "Profil unvollständig" : "Angemeldet";
-      pill.className = `status-pill ${current.profileRequired ? "warning" : "success"}`;
+      pill.textContent = current.connectionPending ? "Verbindung wird geprüft" : current.profileRequired ? "Profil unvollständig" : "Angemeldet";
+      pill.className = `status-pill ${current.connectionPending || current.profileRequired ? "warning" : "success"}`;
     }
-    setText("loginMessage", current.profileRequired ? "Vorname und Nachname müssen ergänzt werden." : `Du bist als ${current.user?.name || "Portaluser"} angemeldet.`);
-    slot.innerHTML = `<button id="loginHomeButton" class="button primary" type="button">${current.profileRequired ? "Profil vervollständigen" : "Zum Dashboard"}</button>`;
+    setText(
+      "loginMessage",
+      current.connectionPending
+        ? "Deine Anmeldung bleibt erhalten. Die Backend-Verbindung wird automatisch wiederhergestellt."
+        : current.profileRequired
+          ? "Vorname und Nachname müssen ergänzt werden."
+          : `Du bist als ${current.user?.name || "Portaluser"} angemeldet.`
+    );
+    slot.innerHTML = current.connectionPending
+      ? '<button id="loginReconnectButton" class="button primary" type="button">Jetzt erneut verbinden</button>'
+      : `<button id="loginHomeButton" class="button primary" type="button">${current.profileRequired ? "Profil vervollständigen" : "Zum Dashboard"}</button>`;
+    document.getElementById("loginReconnectButton")?.addEventListener("click", async () => {
+      const button = document.getElementById("loginReconnectButton");
+      if (button) { button.disabled = true; button.textContent = "Verbindung wird geprüft …"; }
+      try {
+        const result = await auth.reconnect();
+        if (!isActive()) return;
+        navigate(result.profileRequired ? "profile" : "dashboard");
+      } catch (error) {
+        showToast(error.message || "Verbindung konnte noch nicht hergestellt werden.", "error", 6500);
+        if (button) { button.disabled = false; button.textContent = "Jetzt erneut verbinden"; }
+      }
+    });
     document.getElementById("loginHomeButton")?.addEventListener("click", () => navigate(current.profileRequired ? "profile" : "dashboard"));
     return;
   }
@@ -179,35 +203,48 @@ async function hydrateLogin() {
   }
 
   const mount = async () => {
-    if (hydrationId !== loginHydrationId) return;
-    if (retry) retry.disabled = true;
-    setText("loginMessage", "Google-Anmeldung wird sicher vorbereitet …");
-    try {
-      loginController = await googleIdentity.renderButton(slot, {
-        clientId: current.backend.googleClientId,
-        onCredential: async ({ credential, nonce }) => {
-          const result = await auth.signInWithGoogleCredential(credential, nonce);
-          if (result.authenticated) {
-            googleIdentity.destroyButton();
-            navigate(result.profileRequired ? "profile" : "dashboard");
-            return { refresh: false };
+    if (!isActive()) return;
+    if (loginMountPromise) return loginMountPromise;
+    loginMountPromise = (async () => {
+      if (retry) retry.disabled = true;
+      setText("loginMessage", "Google-Anmeldung wird sicher vorbereitet …");
+      try {
+        loginController = await googleIdentity.renderButton(slot, {
+          clientId: current.backend.googleClientId,
+          onCredential: async ({ credential, nonce }) => {
+            const result = await auth.signInWithGoogleCredential(credential, nonce);
+            if (!isActive()) return { refresh: false };
+            if (result.authenticated) {
+              googleIdentity.destroyButton();
+              navigate(result.profileRequired ? "profile" : "dashboard");
+              return { refresh: false };
+            }
+            if (result.registration) {
+              registrationForm(result.registration);
+              return { refresh: false };
+            }
+            return { refresh: true };
+          },
+          onError: async error => {
+            if (isActive()) showToast(error.message || "Google-Anmeldung fehlgeschlagen.", "error", 6500);
           }
-          if (result.registration) {
-            registrationForm(result.registration);
-            return { refresh: false };
-          }
-          return { refresh: true };
-        },
-        onError: async error => showToast(error.message || "Google-Anmeldung fehlgeschlagen.", "error", 6500)
-      });
-      if (pill) {
-        pill.textContent = "Bereit";
-        pill.className = "status-pill success";
+        });
+        if (!isActive()) {
+          googleIdentity.destroyButton();
+          return;
+        }
+        if (pill) {
+          pill.textContent = "Bereit";
+          pill.className = "status-pill success";
+        }
+        setText("loginMessage", "Wähle dein Google-Konto aus.");
+      } finally {
+        if (retry && isActive()) retry.disabled = false;
       }
-      setText("loginMessage", "Wähle dein Google-Konto aus.");
-    } finally {
-      if (retry) retry.disabled = false;
-    }
+    })().finally(() => {
+      loginMountPromise = null;
+    });
+    return loginMountPromise;
   };
 
   retry?.addEventListener("click", mount);
@@ -226,7 +263,7 @@ export async function hydratePage(key, context = {}) {
   if (key === "about") return simple("publicAboutText", "about", "Hier entsteht die Vorstellung der Schweinfurter Plärrdeifl.");
   if (key === "contact") return simple("publicContactText", "contact", "Kontaktinformationen werden hier veröffentlicht.");
   if (key === "install") return hydrateInstall();
-  if (key === "login") return hydrateLogin();
+  if (key === "login") return hydrateLogin(context);
   if (key === "fanbuses") return;
   if (key === "profile") return feature("./modules/profile.js", "hydrateProfile", context);
   if (key === "dashboard") return feature("./modules/dashboard.js", "hydrateDashboard", context);
