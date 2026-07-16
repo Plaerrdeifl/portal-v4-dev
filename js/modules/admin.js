@@ -38,7 +38,7 @@ export async function hydrateAdmin(context={}){
     }
   });
 }
-function action(id,icon,title,text){return `<button class="admin-action" type="button" data-admin-action="${escapeAttr(id)}"><strong>${icon} ${escapeHtml(title)}</strong><span>${escapeHtml(text)}</span></button>`;}
+function action(id,icon,title,text){return `<button class="p3-admin-action" type="button" data-admin-action="${escapeAttr(id)}"><span class="p3-admin-action-icon" aria-hidden="true">${icon}</span><span class="p3-admin-action-copy"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(text)}</span></span></button>`;}
 function renderAdminHome(integrity){
   const fan=[
     action("offices","🏛️","Fanclub-Ämter vergeben","Alle fünf festen Amtsplätze gemeinsam speichern."),
@@ -51,7 +51,7 @@ function renderAdminHome(integrity){
     action("requests","✉️","Freischaltungsanträge","Vollständige Anträge prüfen und freigeben."),
     action("teamsFunctions","🤝","Teams und Teamfunktionen","Teammitgliedschaften und Funktionen verwalten."),
     action("rights","🔐","Portalrollen und Rechte","Rollenrechte verwalten; Admin-Override bleibt unveränderlich."),
-    action("navigationDashboard","🧭","Navigation und Dashboard","Nur Darstellung und Widgets konfigurieren; Hauptstruktur bleibt fest."),
+    action("navigationDashboard","🧭","Navigation und Dashboard","Darstellung und Widgets konfigurieren; Hauptstruktur bleibt fest."),
     action("backup","💾","Backups","Gesicherten Snapshot erstellen."),
     action("system","⚙️","Systemstatus","Tabellenstatus und Namensintegrität prüfen."),
     action("clean","🧹","System bereinigen","Sicherheitsgeschützte Bereinigung auf den Grundstand.")
@@ -59,8 +59,34 @@ function renderAdminHome(integrity){
   const missingFirst=metric(integrity?.missingFirstCount),missingLast=metric(integrity?.missingLastCount),incompleteReq=metric(integrity?.incompleteRequestCount);
   const panel=target();
   if(!panel)return;
-  panel.innerHTML=`<article class="card"><div class="section-title"><div><h3>AE-R7.1-01 – Namensintegrität</h3><p>Personenbezogene Anzeige ist auf technische IDs und Zählwerte begrenzt.</p></div>${statusBadge(integrity?.cleanupStatus||"NICHT_PRUEFBAR")}</div><div class="grid three" style="margin-top:14px"><div class="meta-item"><small>Benutzer ohne Vorname</small>${missingFirst}</div><div class="meta-item"><small>Benutzer ohne Nachname</small>${missingLast}</div><div class="meta-item"><small>Unvollständige Anträge</small>${incompleteReq}</div></div><p class="subtle">IDs: ${escapeHtml([...(integrity?.activeIncompleteIds||[]),...(integrity?.incompleteRequestIds||[])].join(", ")||"keine")}</p></article><section><div class="section-title"><div><h3>Administration → Fanclub</h3><p>Exakt vier verbindliche Unterseiten.</p></div></div><div class="admin-actions" style="margin-top:14px">${fan.join("")}</div></section><section><div class="section-title"><div><h3>Administration → Portal</h3><p>Exakt acht verbindliche Unterseiten.</p></div></div><div class="admin-actions" style="margin-top:14px">${portal.join("")}</div></section><article class="card"><h3>v3-Abgrenzung</h3><p>Fanbus-Fachlogik, Getränkeverwaltung, Push-Benachrichtigungen und Veranstaltungsmodul werden nicht vorgezogen.</p></article>`;
-  document.querySelectorAll("[data-admin-action]").forEach(b=>b.addEventListener("click",()=>runAction(b.dataset.adminAction)));
+  panel.innerHTML=`
+    <div class="p3-admin-home">
+      <article class="p3-admin-integrity">
+        <div class="section-title"><div><span class="p3-card-eyebrow">AE-R7.1-01</span><h3>Namensintegrität</h3><p>Personenbezogene Anzeige ist auf technische IDs und Zählwerte begrenzt.</p></div>${statusBadge(integrity?.cleanupStatus||"NICHT_PRUEFBAR")}</div>
+        <div class="p3-admin-summary-grid">
+          <div class="p3-admin-summary-item"><small>Benutzer ohne Vorname</small><strong>${missingFirst}</strong></div>
+          <div class="p3-admin-summary-item"><small>Benutzer ohne Nachname</small><strong>${missingLast}</strong></div>
+          <div class="p3-admin-summary-item"><small>Unvollständige Anträge</small><strong>${incompleteReq}</strong></div>
+        </div>
+        <p class="subtle">IDs: ${escapeHtml([...(integrity?.activeIncompleteIds||[]),...(integrity?.incompleteRequestIds||[])].join(", ")||"keine")}</p>
+      </article>
+
+      <section class="p3-admin-section fanclub">
+        <div class="p3-admin-section-head"><div><span>Fanclub</span><h3>Seltene Fanclubfunktionen</h3><p>Vier klar getrennte Verwaltungsbereiche.</p></div><span class="badge neutral">4 Bereiche</span></div>
+        <div class="p3-admin-actions">${fan.join("")}</div>
+      </section>
+
+      <section class="p3-admin-section portal">
+        <div class="p3-admin-section-head"><div><span>Portal</span><h3>Benutzer, Rechte und System</h3><p>Acht geschützte Bereiche für Portalverwaltung und Betrieb.</p></div><span class="badge neutral">8 Bereiche</span></div>
+        <div class="p3-admin-actions">${portal.join("")}</div>
+      </section>
+
+      <article class="p3-admin-boundary">
+        <span class="p3-admin-action-icon" aria-hidden="true">ⓘ</span>
+        <div><strong>Verbindliche v3-Abgrenzung</strong><p>Fanbus-Fachlogik, Getränkeverwaltung, Push-Benachrichtigungen und Veranstaltungsmodul werden nicht vorgezogen.</p></div>
+      </article>
+    </div>`;
+  document.querySelectorAll("[data-admin-action]").forEach(button=>button.addEventListener("click",()=>runAction(button.dataset.adminAction)));
 }
 async function runAction(id){try{
   if(id==="offices")return openOffices();
@@ -81,7 +107,7 @@ async function openOffices(){const data=await call("apiGetFanclubAdminConfig");c
 async function openContributionAdmin(){const data=await call("apiListContributionClasses");const rows=data.classes||[];openDialog({title:"Beiträge und Beitragsklassen",kicker:`${rows.length} Beitragsklasse(n)`,wide:true,body:`<div class="settings-grid">${rows.map(r=>`<article class="card"><h3>${escapeHtml(r.name||r.id)}</h3><p>${escapeHtml(String(r.amount??r.betrag??""))} € · ${escapeHtml(r.active||r.aktiv||"")}</p></article>`).join("")||empty("Keine Beitragsklassen vorhanden.")}</div><div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});}
 async function openSeasonClose(){const data=await call("apiListSeasons");openDialog({title:"Saison und Jahresabschluss",kicker:`${(data.seasons||[]).length} Saison(en)`,body:`<div class="settings-grid">${(data.seasons||[]).map(r=>`<article class="card"><strong>${escapeHtml(r.name||r.id)}</strong> ${statusBadge(r.status||r.active)}</article>`).join("")||empty("Keine Saison vorhanden.")}</div><div class="dialog-actions"><button id="adminNewSeason" class="button primary" type="button">Neue Saison starten</button><button id="adminYearClose" class="button secondary" type="button">Jahresabschluss</button><button class="button ghost" data-dialog-close>Schließen</button></div>`});document.getElementById("adminNewSeason")?.addEventListener("click",seasonDialog);document.getElementById("adminYearClose")?.addEventListener("click",yearCloseDialog);}
 function openFanclubSettings(){openDialog({title:"Fanclub-Einstellungen",kicker:"R7.1",body:`<form><label>Hinweis für interne Fanclubverwaltung<textarea name="hinweis" maxlength="1000"></textarea></label><div class="notice warning">Unveränderliche Systemregeln, Namenspflicht und Amtsplätze können hier nicht abgeschaltet werden.</div></form>`,onSubmit:async data=>{await runWrite("Fanclub-Einstellungen werden gespeichert …",()=>call("apiSaveFanclubSettings",data));closeDialog();}});}
-function openNavigationDashboard(){openDialog({title:"Navigation und Dashboard",kicker:"Darstellungskonfiguration",body:`<div class="notice warning">Die sechs Hauptbereiche, Reihenfolge, Grundsichtbarkeit und Admin-Gesamtzugriff sind unveränderliche Systemregeln.</div><div class="admin-actions" style="margin-top:14px"><button id="openNavigationPresentation" class="admin-action"><strong>🧭 Darstellung der Navigation</strong><span>Texte und Symbole nicht sicherheitskritisch pflegen.</span></button><button id="openDashboardPresentation" class="admin-action"><strong>📊 Dashboard-Widgets</strong><span>Widgetdarstellung verwalten.</span></button></div>`});document.getElementById("openNavigationPresentation")?.addEventListener("click",openPortalStructure);document.getElementById("openDashboardPresentation")?.addEventListener("click",openDashboardWidgets);}
+function openNavigationDashboard(){openDialog({title:"Navigation und Dashboard",kicker:"Darstellungskonfiguration",body:`<div class="notice warning">Die sechs Hauptbereiche, Reihenfolge, Grundsichtbarkeit und Admin-Gesamtzugriff sind unveränderliche Systemregeln.</div><div class="p3-admin-actions" style="margin-top:14px"><button id="openNavigationPresentation" class="p3-admin-action"><strong>🧭 Darstellung der Navigation</strong><span>Texte und Symbole nicht sicherheitskritisch pflegen.</span></button><button id="openDashboardPresentation" class="p3-admin-action"><strong>📊 Dashboard-Widgets</strong><span>Widgetdarstellung verwalten.</span></button></div>`});document.getElementById("openNavigationPresentation")?.addEventListener("click",openPortalStructure);document.getElementById("openDashboardPresentation")?.addEventListener("click",openDashboardWidgets);}
 function systemQuickBody(names){
   const backend=auth.current().backend||{};
   const connection=auth.current().connectionPending?"WIRD_WIEDERHERGESTELLT":"VERBUNDEN";

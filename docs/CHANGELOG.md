@@ -1,4 +1,14 @@
 # Changelog
+## 2026-07-16 – M4 UI/UX Paket 3
+
+- Teams vollständig als moderne Arbeitsansicht mit KPI-Zusammenfassung, Rollen- und Mitgliederkarten überarbeitet.
+- Teamverwaltung, Teamdetails und Teamfunktionen visuell vereinheitlicht, Fachlogik und Rechte unverändert.
+- Administration in klar getrennte Fanclub- und Portalbereiche mit geschützten Aktionskarten gegliedert.
+- Dialoge, Formulare und Verwaltungslisten für Desktop und Mobil vereinheitlicht.
+- Fanbusse als hochwertige v4-Vorschau gestaltet, weiterhin ohne vorgezogene Bus-Fachlogik.
+- Buildmarker und Service-Worker-Cache auf `2026.07.16-r7.1.m4-uiux-p3` erhöht.
+- Backend-Version 62, API-Verträge und R7.1-Fachentscheidungen unverändert.
+
 ## 2026-07-16 – M4 UI/UX Paket 2
 
 - Fanclub und Aufgaben vollständig an das neue App-Shell-Design angepasst.
