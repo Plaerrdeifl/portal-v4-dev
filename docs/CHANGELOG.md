@@ -64,3 +64,12 @@ Produktiver Pull/Push/Deploymentnachweis, Bestandszahlen und -bereinigung, Live-
 - Dashboard als erste Referenzseite vollständig neu gestaltet.
 - Bestehende Fachlogik, Rollen, Rechte und Backend-Verträge unverändert.
 - App-Icon bleibt vorläufig als austauschbarer Logo-Platzhalter eingebunden.
+
+## 2026.07.16-r7.1.m4-uiux-p1.1-mobile
+
+- Mobile Fachseiten werden strikt auf die Viewportbreite begrenzt.
+- Unterseiten-Tabs werden mobil vollständig als zweispaltiges Raster dargestellt; auf sehr schmalen Geräten einspaltig.
+- Teams-, Fanclub-, Aufgaben- und Admin-Inhalte können keine unsichtbare Seitenbreite mehr erzeugen.
+- Die mobile Desktop-Topbar-Überschrift bleibt absichtlich verborgen; die sichtbare Überschrift steht im jeweiligen Seiteninhalt.
+- Der Browser-Runner prüft mobil Hash, Ladezustand und sichtbare Inhaltsüberschrift statt das absichtlich verborgene Desktop-Element `#routeTitle`.
+- Fachlogik, Rollen, Rechte und Backend-Version 62 bleiben unverändert.
