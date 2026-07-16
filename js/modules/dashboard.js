@@ -3,7 +3,7 @@ import { navigate } from "../router.js";
 import { auth } from "../auth.js";
 import { storage } from "../storage.js";
 
-const DASHBOARD_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
+const DASHBOARD_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 const ICONS = Object.freeze({
   system: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8M12 18v3M6 11h3l2-4 3 8 2-4h2"/></svg>',
@@ -107,25 +107,35 @@ function render(payload, target, status, label) {
   if (status) { status.textContent = label || `${widgets.length} Widget${widgets.length === 1 ? "" : "s"}`; status.className = "status-pill success"; }
 }
 
-export async function hydrateDashboard() {
-  const target = document.getElementById("dashboardWidgets");
-  const status = document.getElementById("dashboardStatus");
-  updateHeroConnection();
-  const cached = readCached();
-  if (cached) render(cached, target, status, "Sofortansicht · wird aktualisiert");
-  else if (target) target.innerHTML = loading("Dashboard-Widgets werden geladen …");
+async function refreshDashboard(target, status, cached) {
   try {
     const payload = await call("apiGetMyDashboard");
     writeCached(payload);
+    if (!target?.isConnected || !String(location.hash || "").startsWith("#/dashboard")) return;
     const suffix = payload.cacheHit ? "Backend-Cache" : "Aktualisiert";
     render(payload, target, status, `${(payload.widgets || []).length} Widgets · ${suffix}`);
   } catch (error) {
+    if (!target?.isConnected || !String(location.hash || "").startsWith("#/dashboard")) return;
     if (!cached) {
-      if (target) target.innerHTML = errorPanel(error, "Dashboard konnte nicht geladen werden");
+      target.innerHTML = errorPanel(error, "Dashboard konnte nicht geladen werden");
       if (status) { status.textContent = "Fehler"; status.className = "status-pill warning"; }
     } else if (status) {
       status.textContent = "Sofortansicht · Aktualisierung fehlgeschlagen";
       status.className = "status-pill warning";
     }
   }
+}
+
+export async function hydrateDashboard() {
+  const target = document.getElementById("dashboardWidgets");
+  const status = document.getElementById("dashboardStatus");
+  updateHeroConnection();
+  const cached = readCached();
+  if (cached) {
+    render(cached, target, status, "Sofortansicht · wird aktualisiert");
+    window.setTimeout(() => refreshDashboard(target, status, cached), 80);
+    return;
+  }
+  if (target) target.innerHTML = loading("Dashboard-Widgets werden geladen …");
+  await refreshDashboard(target, status, null);
 }

@@ -1,4 +1,15 @@
 # Changelog
+## 2026-07-16 – M4 UI/UX Paket 2
+
+- Fanclub und Aufgaben vollständig an das neue App-Shell-Design angepasst.
+- Unterseiten-Navigation auf Desktop und Mobil vollständig sichtbar.
+- Mitglieder, Beiträge und Kassenbuch mit Desktoptabellen und eigenständigen Mobilkarten.
+- Fanclubübersicht, Konten und Zahlungsmeldungen als moderne KPI- und Kartenansichten.
+- Aufgaben mit Prioritätsleiste, Statusübersicht, Suche und lokalen Filtern.
+- Dashboard- und Teams-Sofortansichten nutzen einen 24-Stunden-Lesecache und aktualisieren im Hintergrund.
+- Buildmarker und Service-Worker-Cache auf `2026.07.16-r7.1.m4-uiux-p2` erhöht.
+- Backend, Rechte und API-Verträge unverändert.
+
 
 ## R7.1 Milestone 4 – Paketstand 14. Juli 2026
 

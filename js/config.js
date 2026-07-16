@@ -3,7 +3,7 @@ export const CONFIG = Object.freeze({
     name: "Plärrdeifl Portal",
     shortName: "Plärrdeifl",
     version: "v3.0.0 R7.1 M4",
-    build: "2026.07.16-r7.1.m4-uiux-p1.1-mobile",
+    build: "2026.07.16-r7.1.m4-uiux-p2",
     repository: "https://github.com/Plaerrdeifl/portal"
   },
   urls: {
@@ -22,7 +22,7 @@ export const CONFIG = Object.freeze({
     dataKey: "pd_portal_pwa_initial_r71_m4"
   },
   pwa: {
-    serviceWorker: "./service-worker.js?v=20260716-r71-m4-uiux-p11-mobile",
+    serviceWorker: "./service-worker.js?v=20260716-r71-m4-uiux-p2",
     installDismissKey: "pd_r71_m4_install_dismissed",
     updateReloadKey: "pd_r71_m4_update_reload",
     updateDismissKey: "pd_r71_m4_update_dismissed"

@@ -1,4 +1,4 @@
-const CACHE_VERSION="pd-portal-v3-r71-m4-20260716-uiux-p11-mobile";
+const CACHE_VERSION="pd-portal-v3-r71-m4-20260716-uiux-p2";
 const APP_CACHE=`${CACHE_VERSION}-shell`;
 const SHELL=[
   "./",
@@ -10,7 +10,8 @@ const SHELL=[
   "./css/layout.css",
   "./css/components.css",
   "./css/mobile.css",
-  "./css/uiux-p1.css?v=20260716-r71-m4-uiux-p11-mobile",
+  "./css/uiux-p1.css?v=20260716-r71-m4-uiux-p2",
+  "./css/uiux-p2.css?v=20260716-r71-m4-uiux-p2",
   "./js/config.js",
   "./js/storage.js",
   "./js/api.js",
@@ -20,8 +21,8 @@ const SHELL=[
   "./js/router.js",
   "./js/ui.js",
   "./js/warmup.js",
-  "./js/pages.js?v=20260716-r71-m4-uiux-p11-mobile",
-  "./js/app.js?v=20260716-r71-m4-uiux-p11-mobile",
+  "./js/pages.js?v=20260716-r71-m4-uiux-p2",
+  "./js/app.js?v=20260716-r71-m4-uiux-p2",
   "./components/sidebar.html",
   "./components/topbar.html",
   "./assets/icons/icon-32.png",

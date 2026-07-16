@@ -1,10 +1,12 @@
 import {
-  call, callBatch, closeDialog, confirmAction, empty, errorPanel, escapeAttr, escapeHtml, fmtDate,
+  call, callBatch, closeDialog, confirmAction, currentUser, empty, errorPanel, escapeAttr, escapeHtml, fmtDate,
   loading, normalize, openDialog, optionList, portal, runWrite, statusBadge, tabBar
 } from "./common.js";
 import { phase3State } from "./state.js";
+import { storage } from "../storage.js";
 
 const KEY = "teams:";
+const TEAM_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 let activeTab = "overview";
 function target(){ return document.getElementById("teamsPanel"); }
 function setStatus(text,type="success"){ const el=document.getElementById("teamsStatus"); if(el){el.textContent=text;el.className=`status-pill ${type}`;} }
@@ -36,7 +38,15 @@ export async function hydrateTeams(){
 }
 async function renderTab(tab){activeTab=tabs().some(x=>x.id===tab)?tab:(tabs()[0]?.id||"overview");renderTabs();target().innerHTML=loading();setStatus("Daten werden geladen","warning");try{if(activeTab==="overview")await renderTeamOverview();if(activeTab==="mine")await renderOverview();if(activeTab==="manage")await renderManagement(false);if(activeTab==="functions")await renderManagement(true);setStatus("Live verbunden","success");}catch(error){target().innerHTML=errorPanel(error);setStatus("Fehler","warning");}}
 
-async function workspaceData(force=false){let data=phase3State.get(KEY+"overview");if(!data||force)data=phase3State.set(KEY+"overview",await call("apiListPortalTeams"));return data||{teams:[]};}
+function workspaceCacheKey(){return `pd:r71:teams:${currentUser().userId||"anonymous"}`;}
+function readWorkspaceCache(){const cached=storage.get(workspaceCacheKey(),null);if(!cached?.savedAt||!cached?.payload)return null;if(Date.now()-Number(cached.savedAt)>TEAM_CACHE_MAX_AGE_MS)return null;return cached.payload;}
+function writeWorkspaceCache(payload){storage.set(workspaceCacheKey(),{savedAt:Date.now(),payload});}
+async function refreshWorkspace(){const data=await call("apiListPortalTeams");phase3State.set(KEY+"overview",data);writeWorkspaceCache(data);return data||{teams:[]};}
+async function workspaceData(force=false){
+  if(!force&&phase3State.has(KEY+"overview"))return phase3State.get(KEY+"overview");
+  if(!force){const cached=readWorkspaceCache();if(cached){phase3State.set(KEY+"overview",cached);window.setTimeout(()=>refreshWorkspace().catch(()=>null),120);return cached;}}
+  return refreshWorkspace();
+}
 async function renderTeamOverview(force=false){const data=await workspaceData(force);const teams=data.teams||[];target().innerHTML=`<div class="module-toolbar"><button id="refreshTeamOverview" class="button ghost">Aktualisieren</button></div><div class="list-grid">${teams.map(team=>`<article class="card entity-card"><div class="entity-head"><div><h3>${escapeHtml(team.name||"Team")}</h3><p>${escapeHtml(team.description||"Keine Beschreibung hinterlegt.")}</p></div><span class="badge neutral">${Number(team.memberCount)||0} Person(en)</span></div><div class="member-list">${(team.members||[]).map(member=>`<div class="member-line"><strong>${escapeHtml(member.name)}</strong><span>${escapeHtml(member.teamleiter?"Teamleiter":(member.role||"Mitglied"))}</span></div>`).join("")||empty("Keine aktiven Teammitglieder.")}</div></article>`).join("")||empty("Keine für dich sichtbaren aktiven Teams.")}</div>`;document.getElementById("refreshTeamOverview")?.addEventListener("click",()=>renderTeamOverview(true));}
 
 async function renderOverview(force=false){const data=await workspaceData(force);const teams=data.teams||[];target().innerHTML=`<div class="module-toolbar"><button id="refreshMyTeams" class="button ghost">Aktualisieren</button></div><div class="list-grid">${teams.map(team=>`<article class="card entity-card"><div class="entity-head"><div><h3>${escapeHtml(team.name||"Team")}</h3><p>${escapeHtml(team.description||"Keine Beschreibung hinterlegt.")}</p></div><span class="badge ${team.isLeader?"success":"neutral"}">${escapeHtml(team.isLeader?"Teamleiter":(team.myRole||"Mitglied"))}</span></div><dl class="detail-list"><div><dt>Eigene Teamrolle</dt><dd>${escapeHtml(team.myRole||"Mitglied")}</dd></div><div><dt>Teamleitung</dt><dd>${team.isLeader?"Ja":"Nein"}</dd></div><div><dt>Aufgabenleitung</dt><dd>${team.isTaskLead?"Ja":"Nein"}</dd></div></dl></article>`).join("")||empty("Du bist aktuell keinem aktiven Team zugeordnet.")}</div>`;document.getElementById("refreshMyTeams")?.addEventListener("click",()=>renderOverview(true));}
