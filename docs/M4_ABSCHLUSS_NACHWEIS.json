@@ -1,0 +1,285 @@
+{
+    "project":  "Plärrdeifl Portal v3",
+    "milestone":  "M4",
+    "status":  "FORMAL_ABGESCHLOSSEN",
+    "closedAt":  "2026-07-16T14:26:25.8692805+02:00",
+    "frontendBuild":  "2026.07.16-r7.1.m4-uiux-p3",
+    "frontendBaseCommit":  "f7e35ab2a9d3b94108c5f40ed8baa3ac0487f5bf",
+    "backendVersion":  69,
+    "productiveDeploymentId":  "AKfycbz6B2hdN-tytcK4_4uGgSzRvzvXpeLxYzwhhOxmeJKh6pQZ44JJccM5zuCehFc1oo_Olw",
+    "browser":  {
+                    "generatedAt":  "2026-07-16T06:49:07.190Z",
+                    "runnerVersion":  "1.7.0-uiux-p3-teams-admin",
+                    "steps":  36,
+                    "passed":  36,
+                    "warnings":  0,
+                    "failed":  0,
+                    "routes":  23,
+                    "startupMs":  8259,
+                    "horizontalOverflow":  false,
+                    "zoom200Overflow":  false,
+                    "offline":  "PASS"
+                },
+    "closeout":  {
+                     "generatedAt":  "2026-07-16T12:08:00.051Z",
+                     "version":  "2026.07.16-r7.1-m4-closeout-7",
+                     "tests":  14,
+                     "passed":  14,
+                     "failed":  0,
+                     "mode":  "EDITOR_OPERATOR_READ_ONLY_CLOSEOUT_AFTER_RECOVERY",
+                     "tablesChecked":  28,
+                     "syntheticResidues":  0,
+                     "recoveryStatus":  "BEREINIGT",
+                     "fullWriteRightsConcurrencyMatrixDeferredToM5":  true,
+                     "persistentBusinessWrites":  false,
+                     "finalBackup":  {
+                                         "backupId":  "BAK-00001",
+                                         "createdAt":  "2026-07-16T12:10:34.938Z",
+                                         "type":  "SHEETS_SNAPSHOT_3DB",
+                                         "folderId":  "1_sNYZ4fsNqQlpMUgBtqWIUJW05nTlGFV9jsiEHemDG4",
+                                         "snapshotCount":  28,
+                                         "databaseCount":  3,
+                                         "owners":  [
+                                                        "portal",
+                                                        "fanclub",
+                                                        "modules"
+                                                    ],
+                                         "archives":  [
+                                                          {
+                                                              "owner":  "portal",
+                                                              "tables":  [
+                                                                             {
+                                                                                 "owner":  "portal",
+                                                                                 "columnCount":  0,
+                                                                                 "rowCount":  0,
+                                                                                 "sha256":  "e4e4d2f9b5e6475793976bef456bfceaea9c47eee4d12392367a38f353021938",
+                                                                                 "table":  "DB_AuditLog"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "portal",
+                                                                                 "rowCount":  0,
+                                                                                 "columnCount":  0,
+                                                                                 "sha256":  "4c9531d84853e947365f67f21228149c73b6887d0a57f09912419cf9d8008d2a",
+                                                                                 "table":  "DB_Backups"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "portal",
+                                                                                 "rowCount":  0,
+                                                                                 "columnCount":  0,
+                                                                                 "sha256":  "437c0e96ddeb040317ff0b4d9228cc4e23d15fa6cefda7f848e27fb13f0d1464",
+                                                                                 "table":  "DB_Benutzer"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "portal",
+                                                                                 "columnCount":  0,
+                                                                                 "rowCount":  0,
+                                                                                 "sha256":  "d6e3a006a7acec7b7f716543ec692f1abb4e991ab769ee54c6ff98a9e90c6d9e",
+                                                                                 "table":  "DB_BenutzerAntraege"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "portal",
+                                                                                 "rowCount":  0,
+                                                                                 "columnCount":  0,
+                                                                                 "sha256":  "6b81e9422029acf16511eeb2332e7c3a7dff2d2692829d6d1f8e2b72b7f3fc09",
+                                                                                 "table":  "DB_BenutzerTeamfunktionen"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "portal",
+                                                                                 "columnCount":  0,
+                                                                                 "rowCount":  0,
+                                                                                 "sha256":  "b06a2792c5308e5b668793863eb12d0c49ad39ae10663bb9ccbcd821b65edeb8",
+                                                                                 "table":  "DB_Einstellungen"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "portal",
+                                                                                 "columnCount":  0,
+                                                                                 "rowCount":  0,
+                                                                                 "sha256":  "feff43d575e7e60127a2263ac7b7b61f6a9e2d52b177dc424ce014878441d4e4",
+                                                                                 "table":  "DB_Operationsjournal"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "portal",
+                                                                                 "rowCount":  46,
+                                                                                 "columnCount":  23,
+                                                                                 "sha256":  "65f486381433d60be73323f17d4a6a5a55951f5ff2de1a132a4a12f50d6b4fce",
+                                                                                 "table":  "DB_PortalNavigation"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "portal",
+                                                                                 "columnCount":  20,
+                                                                                 "rowCount":  24,
+                                                                                 "sha256":  "d23e47207526ec735af355cb59ab0eec4096d4dcd7da29c6bb7d7566ca1c04be",
+                                                                                 "table":  "DB_PortalWidgets"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "portal",
+                                                                                 "rowCount":  0,
+                                                                                 "columnCount":  0,
+                                                                                 "sha256":  "3376d558e729106e6d7efc195c97b1b6f667401e92024d4cee7166d0a9dfc60f",
+                                                                                 "table":  "DB_Portalrollen"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "portal",
+                                                                                 "columnCount":  0,
+                                                                                 "rowCount":  0,
+                                                                                 "sha256":  "98b63cceec0e9a0bdb6fc45f9b90fe8a8a7ce51e6cc04199e6a4cc30176205b8",
+                                                                                 "table":  "DB_PortalrollenRechte"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "portal",
+                                                                                 "columnCount":  0,
+                                                                                 "rowCount":  0,
+                                                                                 "sha256":  "9dccf6f9bc4cef97a07527f0b05fdd72ff6019f0d02cb80418afe7ec657f98b0",
+                                                                                 "table":  "DB_Sitzungen"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "portal",
+                                                                                 "columnCount":  0,
+                                                                                 "rowCount":  0,
+                                                                                 "sha256":  "370586e96719dd4081afda1a6c818142f5873b2fd7d0eca7baaab96d406f27c6",
+                                                                                 "table":  "DB_SystemLog"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "portal",
+                                                                                 "rowCount":  0,
+                                                                                 "columnCount":  0,
+                                                                                 "sha256":  "03d608b20c00c6679ddb50266822072d4ab96816a1b431783fa4f95627126a8a",
+                                                                                 "table":  "DB_TeamMitglieder"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "portal",
+                                                                                 "columnCount":  0,
+                                                                                 "rowCount":  0,
+                                                                                 "sha256":  "711ecf36644fc5ee060cb585e0ef5d9485eee6bd91f54bbcc39644826c3f725c",
+                                                                                 "table":  "DB_Teamfunktionen"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "portal",
+                                                                                 "rowCount":  0,
+                                                                                 "columnCount":  0,
+                                                                                 "sha256":  "e430057e387690aff43ce9e2296b89d289df656c8bd257a542158f31654875bb",
+                                                                                 "table":  "DB_Teams"
+                                                                             }
+                                                                         ],
+                                                              "spreadsheetUrl":  "https://docs.google.com/spreadsheets/d/1Eu5j4qxscrX6ulHx54oTpj-K1HzVAQijkMACbvjgeEA/edit",
+                                                              "tableCount":  16,
+                                                              "spreadsheetName":  "Plaerrdeifl_M4_portal_20260716_140920",
+                                                              "contentSha256":  "9ab7941165f0c3bb3eb60aff229bb63dd5baf21f348c055c7b8f0dc9cb07bbbe",
+                                                              "spreadsheetId":  "1Eu5j4qxscrX6ulHx54oTpj-K1HzVAQijkMACbvjgeEA"
+                                                          },
+                                                          {
+                                                              "owner":  "fanclub",
+                                                              "tables":  [
+                                                                             {
+                                                                                 "owner":  "fanclub",
+                                                                                 "rowCount":  0,
+                                                                                 "columnCount":  0,
+                                                                                 "sha256":  "4366a064d2e115bd534237908e60ae0adadc0c75a44a1aa90234cc70057a3455",
+                                                                                 "table":  "DB_Amtsplaetze"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "fanclub",
+                                                                                 "rowCount":  0,
+                                                                                 "columnCount":  0,
+                                                                                 "sha256":  "a03073f3b923ba49623a084bb31a0009f167c73098bf5774e19484f84ff7c2ca",
+                                                                                 "table":  "DB_Beitraege"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "fanclub",
+                                                                                 "rowCount":  0,
+                                                                                 "columnCount":  0,
+                                                                                 "sha256":  "1ec20361bd25e9ba978f3f076007ccc71b3f362aa9bd67be31364dd58c23c6b2",
+                                                                                 "table":  "DB_Beitragsklassen"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "fanclub",
+                                                                                 "rowCount":  0,
+                                                                                 "columnCount":  0,
+                                                                                 "sha256":  "cf821273832b7d40b76fe571a62627d05819ba0d065a5470731d825c2d77834a",
+                                                                                 "table":  "DB_Beitragszahlungsmeldungen"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "fanclub",
+                                                                                 "columnCount":  0,
+                                                                                 "rowCount":  0,
+                                                                                 "sha256":  "9ef4bff9f4a8738055aa884af7f5037adbcd0090a27cfb869ce10c1a0ec4c390",
+                                                                                 "table":  "DB_Jahresabschluesse"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "fanclub",
+                                                                                 "columnCount":  0,
+                                                                                 "rowCount":  0,
+                                                                                 "sha256":  "36811d03e4bda7b457c86345895e1539ba4e149ad3de2d9aa939d4e2fd520a35",
+                                                                                 "table":  "DB_Kassenbuch"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "fanclub",
+                                                                                 "rowCount":  0,
+                                                                                 "columnCount":  0,
+                                                                                 "sha256":  "4c947a0c015b03018e8f995973fe6603c779ac8f9a62fe4c4392e2461347f877",
+                                                                                 "table":  "DB_Konten"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "fanclub",
+                                                                                 "columnCount":  0,
+                                                                                 "rowCount":  0,
+                                                                                 "sha256":  "50018d38c3a18b5dffe1e849aa5c372eec5c9c90ddd427cbc1074686475ad5e5",
+                                                                                 "table":  "DB_Kontotypen"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "fanclub",
+                                                                                 "rowCount":  0,
+                                                                                 "columnCount":  0,
+                                                                                 "sha256":  "f6c09ed51bd0a160f783c789ba063493794d6b95843f0bf6246ddf8fb5a270bf",
+                                                                                 "table":  "DB_Mitglieder"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "fanclub",
+                                                                                 "rowCount":  0,
+                                                                                 "columnCount":  0,
+                                                                                 "sha256":  "dd8c772dfe9937cfd935ec46b424871aa95e3e54df2c96d07002b63b4e091c42",
+                                                                                 "table":  "DB_Saisons"
+                                                                             }
+                                                                         ],
+                                                              "spreadsheetUrl":  "https://docs.google.com/spreadsheets/d/13vwem5K2SMhgMsr5zdLjuf2nB3Zo8qVOZCjQxVnSmf0/edit",
+                                                              "tableCount":  10,
+                                                              "spreadsheetName":  "Plaerrdeifl_M4_fanclub_20260716_140920",
+                                                              "contentSha256":  "ec50794d25a984a29db015f512d8e98bde0abe23a4175683ad006bebba7edf14",
+                                                              "spreadsheetId":  "13vwem5K2SMhgMsr5zdLjuf2nB3Zo8qVOZCjQxVnSmf0"
+                                                          },
+                                                          {
+                                                              "owner":  "modules",
+                                                              "tables":  [
+                                                                             {
+                                                                                 "owner":  "modules",
+                                                                                 "columnCount":  0,
+                                                                                 "rowCount":  0,
+                                                                                 "sha256":  "9035c7e02ee1709a3392028bfac3a49e38ce20658eb3be3e10f7fd66a04a83ef",
+                                                                                 "table":  "DB_Aufgaben"
+                                                                             },
+                                                                             {
+                                                                                 "owner":  "modules",
+                                                                                 "rowCount":  0,
+                                                                                 "columnCount":  0,
+                                                                                 "sha256":  "9c4ace45784b58076de603032386a4ebf45874cfde25e7e7cc31eba491c25283",
+                                                                                 "table":  "DB_Aufgabennotizen"
+                                                                             }
+                                                                         ],
+                                                              "spreadsheetUrl":  "https://docs.google.com/spreadsheets/d/1MdCBfp4X7QzlvonEUDO2cZ8bdi4K9FtrEt-Nb-kE5I8/edit",
+                                                              "tableCount":  2,
+                                                              "spreadsheetName":  "Plaerrdeifl_M4_modules_20260716_140920",
+                                                              "contentSha256":  "1cacfabd2c4878d0ae1b8721efb44fce1ffb870a39cfc6165af7c2f2e09e0153",
+                                                              "spreadsheetId":  "1MdCBfp4X7QzlvonEUDO2cZ8bdi4K9FtrEt-Nb-kE5I8"
+                                                          }
+                                                      ]
+                                     }
+                 },
+    "evidenceSha256":  {
+                           "browser":  "bcfe56fbb5afa24273eb20007ed4b5df4c304176e2272dcc4b14da20a4fe9587",
+                           "closeout":  "b9dce564c12181e6024cc2951979185eaad56a8ec7edfe22cd6d65d3360cf247",
+                           "deployment":  "ed0db136529f7c3feddbfa77b921bbedd76c673ea1caaee286645f139f2b49b6"
+                       },
+    "finalTag":  "r7.1-m4-final",
+    "nextMilestone":  "M5",
+    "m5Started":  false
+}
