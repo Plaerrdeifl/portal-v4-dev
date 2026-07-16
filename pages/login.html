@@ -1,27 +1,33 @@
-<section class="page login-page">
-  <div class="page-header">
-    <div><h2>Mit Google anmelden</h2><p>Wähle dein freigeschaltetes Google-Konto. Identität, Rolle und Rechte werden ausschließlich serverseitig geprüft.</p></div>
-    <span id="loginStatusPill" class="status-pill warning">Nicht angemeldet</span>
+<section class="auth-page login-page" aria-labelledby="authTitle">
+  <div class="auth-brand-panel">
+    <div class="auth-brand-logo-shell"><img src="./assets/icons/icon-512.png" alt="Schweinfurter Plärrdeifl Logo"></div>
+    <div class="auth-brand-wordmark" aria-label="Plärrdeifl Portal"><strong>Plärrdeifl</strong><span>PORTAL</span></div>
+    <p>Sicherer Zugang für Fanclub, Teams und Vereinsorganisation.</p>
   </div>
-  <div class="grid two">
-    <article class="card login-card">
-      <div class="card-icon">🔐</div>
-      <h3>Plärrdeifl Portal öffnen</h3>
-      <p id="loginMessage">Google-Anmeldung wird vorbereitet …</p>
-      <div id="loginNotice" class="notice" hidden></div>
+  <div class="auth-card-wrap">
+    <article class="auth-card login-card">
+      <header class="auth-card-header">
+        <span id="authKicker" class="auth-eyebrow">Sicher anmelden</span>
+        <div class="auth-title-row">
+          <div class="auth-title-copy"><h2 id="authTitle">Willkommen zurück</h2><p id="loginMessage">Google-Anmeldung wird vorbereitet …</p></div>
+          <span id="loginStatusPill" class="status-pill warning">Nicht angemeldet</span>
+        </div>
+      </header>
+      <div id="loginNotice" class="notice" hidden aria-live="polite"></div>
       <div id="googleSignInButton" class="google-signin-slot" aria-label="Mit Google anmelden"></div>
       <div id="registrationSlot" hidden></div>
-      <div class="action-row">
-        <button id="loginRetryButton" class="button secondary" type="button">Anmeldung neu vorbereiten</button>
-      </div>
-    </article>
-    <article class="card">
-      <h3>Verbindungsstatus</h3>
-      <div class="info-list" style="margin-top:14px">
-        <div class="info-item"><span id="bridgeStatusIcon">…</span><div><strong>Apps-Script-Brücke</strong><small id="bridgeStatusText">Wird geprüft …</small></div></div>
-        <div class="info-item"><span>G</span><div><strong>Google-Anmeldung</strong><small id="oauthStatusText">Konfiguration wird gelesen …</small></div></div>
-        <div class="info-item"><span>🔒</span><div><strong>Rechteprüfung</strong><small>Rollen, Mitgliedschaft und Teamrechte werden ausschließlich serverseitig entschieden.</small></div></div>
-      </div>
+      <p class="auth-security-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-5"/></svg><span>Google bestätigt nur deine Identität. Rollen und Zugriffsrechte werden sicher im Portal verwaltet. Im Google-Dialog kannst du auch ein anderes Konto auswählen.</span></p>
+      <details class="auth-help">
+        <summary>Probleme bei der Anmeldung?</summary>
+        <div class="auth-help-content">
+          <div class="info-list">
+            <div class="info-item"><span id="bridgeStatusIcon">…</span><div><strong>Portalverbindung</strong><small id="bridgeStatusText">Wird geprüft …</small></div></div>
+            <div class="info-item"><span>G</span><div><strong>Google-Anmeldung</strong><small id="oauthStatusText">Konfiguration wird gelesen …</small></div></div>
+            <div class="info-item"><span>✓</span><div><strong>Rechteprüfung</strong><small>Rollen, Mitgliedschaft und Teamrechte werden ausschließlich serverseitig entschieden.</small></div></div>
+          </div>
+          <div class="action-row"><button id="loginRetryButton" class="button secondary" type="button">Anmeldung neu vorbereiten</button></div>
+        </div>
+      </details>
     </article>
   </div>
 </section>

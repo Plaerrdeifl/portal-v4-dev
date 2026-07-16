@@ -1,4 +1,4 @@
-const CACHE_VERSION="pd-portal-v3-r71-m4-20260716-corr2-mobile-login-logo";
+const CACHE_VERSION="pd-portal-v3-r71-m4-20260716-corr3-auth-mobile-navigation";
 const APP_CACHE=`${CACHE_VERSION}-shell`;
 const SHELL=[
   "./",
@@ -14,6 +14,7 @@ const SHELL=[
   "./css/uiux-p2.css?v=20260716-r71-m4-uiux-p3",
   "./css/uiux-p3.css?v=20260716-r71-m4-uiux-p3",
   "./css/m4-corr2.css?v=20260716-r71-m4-corr2-mobile-login-logo",
+  "./css/m4-corr3.css?v=20260716-r71-m4-corr3-auth-mobile-navigation",
   "./js/config.js",
   "./js/storage.js",
   "./js/api.js",
@@ -25,9 +26,12 @@ const SHELL=[
   "./js/warmup.js",
   "./js/pages.js?v=20260716-r71-m4-corr1-login",
   "./js/m4-corr2-login-overlay.js?v=20260716-r71-m4-corr2-mobile-login-logo",
-  "./js/app.js?v=20260716-r71-m4-corr2-mobile-login-logo",
+  "./js/m4-corr3-ux.js?v=20260716-r71-m4-corr3-auth-mobile-navigation",
+  "./js/app.js?v=20260716-r71-m4-corr3-auth-mobile-navigation",
   "./components/sidebar.html",
   "./components/topbar.html",
+  "./pages/login.html",
+  "./pages/profile.html",
   "./assets/icons/icon-32.png",
   "./assets/icons/icon-180.png",
   "./assets/icons/icon-192.png",

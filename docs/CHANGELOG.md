@@ -117,3 +117,17 @@ Produktiver Pull/Push/Deploymentnachweis, Bestandszahlen und -bereinigung, Live-
 - Das Logo auf der öffentlichen Startseite behält mit `height: auto` und `object-fit: contain` immer sein natürliches Seitenverhältnis.
 - Neuer Korrektur-Build: `2026.07.16-r7.1.m4-corr2-mobile-login-logo`.
 - Backend-Version 69, Deployment, Datenbanken, Rollen, Rechte und Fachlogik bleiben unverändert.
+
+## 2026-07-16 – M4 Corr3 Auth-UX und mobile Navigation
+
+- Login, Registrierung, Pending-Status und Profilvervollständigung verwenden ein eigenes kompaktes Auth-Layout aus dunklem Markenbereich und weißer Fokuskarte.
+- Google-Button, Status-, Fehler-, Offline- und Sitzungsablaufzustände bleiben innerhalb derselben Auth-Karte verständlich sichtbar.
+- Neue Nutzer sehen das bestätigte Google-Konto schreibgeschützt sowie getrennte Pflichtfelder für Vorname und Nachname.
+- Beim Abmelden erscheint sofort die Vollbildanzeige „Du wirst abgemeldet …“; Mehrfachauslösung wird verhindert.
+- Die verpflichtende Profilvervollständigung bietet weiterhin eine klar sichtbare sichere Abmeldung.
+- Mobile Bottom-Navigation enthält vier häufige Ziele plus „Mehr“ und passt sich den tatsächlich freigegebenen Hauptbereichen an.
+- Burger und „Mehr“ öffnen dieselbe vollständige Portalübersicht mit erlaubten Unterseiten, Konto, Verbindung, Aktualisieren, Installation und Abmeldung.
+- Navigations- und Aktionsbuttons verwenden konsistente Höhen und Schriftgrößen; Beschriftungen brechen nicht mehr um.
+- Weiße Innenränder um Logo-Shells wurden auf etwa zehn Prozent der bisherigen Stärke reduziert.
+- Neuer Korrektur-Build: `2026.07.16-r7.1.m4-corr3-auth-mobile-navigation`.
+- Backend-Version 69, Deployment, Datenbanken, Rollen, Rechte und Fachlogik bleiben unverändert.
