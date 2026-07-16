@@ -1,4 +1,4 @@
-const CACHE_VERSION="pd-portal-v3-r71-m4-20260716-corr1-login";
+const CACHE_VERSION="pd-portal-v3-r71-m4-20260716-corr2-mobile-login-logo";
 const APP_CACHE=`${CACHE_VERSION}-shell`;
 const SHELL=[
   "./",
@@ -13,6 +13,7 @@ const SHELL=[
   "./css/uiux-p1.css?v=20260716-r71-m4-uiux-p3",
   "./css/uiux-p2.css?v=20260716-r71-m4-uiux-p3",
   "./css/uiux-p3.css?v=20260716-r71-m4-uiux-p3",
+  "./css/m4-corr2.css?v=20260716-r71-m4-corr2-mobile-login-logo",
   "./js/config.js",
   "./js/storage.js",
   "./js/api.js",
@@ -23,7 +24,8 @@ const SHELL=[
   "./js/ui.js",
   "./js/warmup.js",
   "./js/pages.js?v=20260716-r71-m4-corr1-login",
-  "./js/app.js?v=20260716-r71-m4-corr1-login",
+  "./js/m4-corr2-login-overlay.js?v=20260716-r71-m4-corr2-mobile-login-logo",
+  "./js/app.js?v=20260716-r71-m4-corr2-mobile-login-logo",
   "./components/sidebar.html",
   "./components/topbar.html",
   "./assets/icons/icon-32.png",

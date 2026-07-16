@@ -108,3 +108,12 @@ Produktiver Pull/Push/Deploymentnachweis, Bestandszahlen und -bereinigung, Live-
 - Geschützte Deep Links werden über den Login hinweg erhalten und nach erfolgreicher Anmeldung wiederhergestellt.
 - Neuer Korrektur-Build: `2026.07.16-r7.1.m4-corr1-startup-login`.
 - Keine Backend-, Datenbank-, Rollen- oder Rechteänderung.
+
+## 2026-07-16 – M4 Corr2 mobiler Google-Login und Logo
+
+- Die Login-Übergangsansicht ist bereits statisch im Dokument vorhanden und wird auf Mobilgeräten unmittelbar nach der Google-Kontoauswahl eingeblendet.
+- Ein zusätzlicher, unabhängiger Beobachter aktiviert die Übergangsansicht schon beim Status „Google-Konto und Rechte werden geprüft“, bevor die Backend-Anmeldung abgeschlossen ist.
+- Während der Rechteprüfung wird das Google-Iframe vollständig ausgeblendet; Text und Button können sich nicht mehr überlagern oder gegenseitig zusammendrücken.
+- Das Logo auf der öffentlichen Startseite behält mit `height: auto` und `object-fit: contain` immer sein natürliches Seitenverhältnis.
+- Neuer Korrektur-Build: `2026.07.16-r7.1.m4-corr2-mobile-login-logo`.
+- Backend-Version 69, Deployment, Datenbanken, Rollen, Rechte und Fachlogik bleiben unverändert.

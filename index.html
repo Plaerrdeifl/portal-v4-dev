@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="./css/uiux-p1.css?v=20260716-r71-m4-uiux-p3">
   <link rel="stylesheet" href="./css/uiux-p2.css?v=20260716-r71-m4-uiux-p3">
   <link rel="stylesheet" href="./css/uiux-p3.css?v=20260716-r71-m4-uiux-p3">
+  <link rel="stylesheet" href="./css/m4-corr2.css?v=20260716-r71-m4-corr2-mobile-login-logo">
   <title>Plärrdeifl Portal</title>
 </head>
 <body>
@@ -42,6 +43,16 @@
       <span id="splashStatus">Portal wird vorbereitet …</span>
       <small id="splashDetail">Sichere App-Oberfläche wird geladen.</small>
       <button id="splashReloadButton" class="splash-reload" type="button" hidden>Verbindung neu starten</button>
+    </div>
+  </div>
+
+  <div id="authTransitionOverlay" class="app-splash auth-transition-overlay is-complete" aria-live="polite" aria-busy="false" aria-hidden="true">
+    <div class="splash-logo-shell"><img src="./assets/icons/icon-512.png" alt="Schweinfurter Plärrdeifl Logo"></div>
+    <div class="splash-wordmark" aria-label="Plärrdeifl Portal"><strong>Plärrdeifl</strong><span>PORTAL</span></div>
+    <div class="splash-loading-dots" aria-label="Wird geladen"><span></span><span></span><span></span><span></span><span></span></div>
+    <div class="splash-status" role="status">
+      <span id="authTransitionStatus">Google-Anmeldung wird geprüft …</span>
+      <small id="authTransitionDetail">Sitzung, Rechte und Zielseite werden geladen. Du bleibst im Portal.</small>
     </div>
   </div>
 
@@ -76,6 +87,7 @@
     <button id="updateDismiss" class="icon-button" type="button" aria-label="Später aktualisieren">×</button>
   </div>
 
-  <script type="module" src="./js/app.js?v=20260716-r71-m4-corr1-login"></script>
+  <script src="./js/m4-corr2-login-overlay.js?v=20260716-r71-m4-corr2-mobile-login-logo"></script>
+  <script type="module" src="./js/app.js?v=20260716-r71-m4-corr2-mobile-login-logo"></script>
 </body>
 </html>
