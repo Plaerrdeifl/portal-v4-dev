@@ -94,3 +94,17 @@ Produktiver Pull/Push/Deploymentnachweis, Bestandszahlen und -bereinigung, Live-
 - Die mobile Desktop-Topbar-Überschrift bleibt absichtlich verborgen; die sichtbare Überschrift steht im jeweiligen Seiteninhalt.
 - Der Browser-Runner prüft mobil Hash, Ladezustand und sichtbare Inhaltsüberschrift statt das absichtlich verborgene Desktop-Element `#routeTitle`.
 - Fachlogik, Rollen, Rechte und Backend-Version 62 bleiben unverändert.
+
+## 2026-07-16 – M4 corr1: frühe App-Shell
+
+- App-Shell, Navigation und Lade-/Skeletonzustand werden vor der langsamen Backend-Antwort sichtbar.
+- Service-Worker-Cache und Buildkennung auf `2026.07.16-r7.1.m4-corr1-startup-shell` angehoben.
+- Keine Backend- oder Fachlogikänderung.
+
+## 2026-07-16 – M4 Corr1 Startup-Shell und Login-Übergang
+
+- App-Shell und Skeleton werden vor der langsamen Backend-Antwort sichtbar.
+- Nach Google-Anmeldung erscheint bis zur fertigen Portalroute eine neutrale Portal-Ladeansicht statt des öffentlichen Bereichs.
+- Geschützte Deep Links werden über den Login hinweg erhalten und nach erfolgreicher Anmeldung wiederhergestellt.
+- Neuer Korrektur-Build: `2026.07.16-r7.1.m4-corr1-startup-login`.
+- Keine Backend-, Datenbank-, Rollen- oder Rechteänderung.

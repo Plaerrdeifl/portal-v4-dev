@@ -212,18 +212,39 @@ async function hydrateLogin(context = {}) {
         loginController = await googleIdentity.renderButton(slot, {
           clientId: current.backend.googleClientId,
           onCredential: async ({ credential, nonce }) => {
-            const result = await auth.signInWithGoogleCredential(credential, nonce);
-            if (!isActive()) return { refresh: false };
-            if (result.authenticated) {
-              googleIdentity.destroyButton();
-              navigate(result.profileRequired ? "profile" : "dashboard");
-              return { refresh: false };
+            window.dispatchEvent(new CustomEvent("pd-auth-transition", {
+              detail: {
+                phase: "start",
+                message: "Google-Anmeldung wird geprüft …",
+                detail: "Sitzung, Rechte und Zielseite werden geladen. Du bleibst im Portal."
+              }
+            }));
+            try {
+              const result = await auth.signInWithGoogleCredential(credential, nonce);
+              if (!isActive() && !result.authenticated) {
+                window.dispatchEvent(new CustomEvent("pd-auth-transition", { detail: { phase: "end" } }));
+                return { refresh: false };
+              }
+              if (result.authenticated) {
+                googleIdentity.destroyButton();
+                window.dispatchEvent(new CustomEvent("pd-auth-transition", {
+                  detail: {
+                    phase: "authenticated",
+                    fallbackRoute: result.profileRequired ? "profile" : "dashboard"
+                  }
+                }));
+                return { refresh: false };
+              }
+              window.dispatchEvent(new CustomEvent("pd-auth-transition", { detail: { phase: "end" } }));
+              if (result.registration) {
+                registrationForm(result.registration);
+                return { refresh: false };
+              }
+              return { refresh: true };
+            } catch (error) {
+              window.dispatchEvent(new CustomEvent("pd-auth-transition", { detail: { phase: "error" } }));
+              throw error;
             }
-            if (result.registration) {
-              registrationForm(result.registration);
-              return { refresh: false };
-            }
-            return { refresh: true };
           },
           onError: async error => {
             if (isActive()) showToast(error.message || "Google-Anmeldung fehlgeschlagen.", "error", 6500);

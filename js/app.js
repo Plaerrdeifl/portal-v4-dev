@@ -1,7 +1,7 @@
 import { CONFIG } from "./config.js";
 import { auth } from "./auth.js";
 import { currentRoute, legacyRouteRedirect, navigate, routes } from "./router.js";
-import { hydratePage, preloadAuthenticatedModules } from "./pages.js?v=20260715-r71-m4-uiux-p1";
+import { hydratePage, preloadAuthenticatedModules } from "./pages.js?v=20260716-r71-m4-corr1-login";
 import { warmupAuthenticatedData, resetWarmup } from "./warmup.js?v=20260715-r71-m4-uiux-p1";
 import { initializeInstall } from "./install.js";
 import { storage } from "./storage.js";
@@ -27,6 +27,9 @@ let reconnectAttempt = 0;
 let reconnectRunning = false;
 let startupProgressTimer = 0;
 let startupLongWaitTimer = 0;
+let authTransitionActive = false;
+let authTransitionStartedAt = 0;
+const POST_LOGIN_ROUTE_KEY = "pd_m4_post_login_route";
 
 function allowedRoute(key) {
   const route = routes()[key];
@@ -55,6 +58,106 @@ function connectionLabel() {
 function updateConnectionChrome() {
   const { label, type } = connectionLabel();
   setConnectionStatus(label, type);
+}
+
+function safeSessionGet(key) {
+  try { return String(window.sessionStorage.getItem(key) || ""); } catch (error) { return ""; }
+}
+
+function safeSessionSet(key, value) {
+  try { window.sessionStorage.setItem(key, String(value || "")); } catch (error) {}
+}
+
+function safeSessionRemove(key) {
+  try { window.sessionStorage.removeItem(key); } catch (error) {}
+}
+
+function protectedRouteHash(value) {
+  const hash = String(value || "");
+  if (!hash.startsWith("#/")) return "";
+  const key = hash.replace(/^#\/?/, "").split(/[?&]/)[0] || "";
+  const route = routes()[key];
+  if (!route || route.public || key === "profile") return "";
+  return hash;
+}
+
+function rememberPostLoginRoute(value = location.hash) {
+  const hash = protectedRouteHash(value);
+  if (hash) safeSessionSet(POST_LOGIN_ROUTE_KEY, hash);
+  return hash;
+}
+
+function peekPostLoginRoute() {
+  return protectedRouteHash(safeSessionGet(POST_LOGIN_ROUTE_KEY));
+}
+
+function clearPostLoginRoute() {
+  safeSessionRemove(POST_LOGIN_ROUTE_KEY);
+}
+
+function navigateAfterLogin(fallbackRoute = "dashboard") {
+  const savedHash = peekPostLoginRoute();
+  clearPostLoginRoute();
+  if (savedHash) {
+    const key = savedHash.replace(/^#\/?/, "").split(/[?&]/)[0] || "";
+    if (auth.canAccessRoute(key)) {
+      history.replaceState(null, "", savedHash);
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+      return key;
+    }
+  }
+  navigate(fallbackRoute, null, true);
+  return fallbackRoute;
+}
+
+function ensureAuthTransitionOverlay() {
+  let overlay = document.getElementById("authTransitionOverlay");
+  if (overlay) return overlay;
+  overlay = document.createElement("div");
+  overlay.id = "authTransitionOverlay";
+  overlay.className = "app-splash";
+  overlay.setAttribute("aria-live", "polite");
+  overlay.setAttribute("aria-busy", "true");
+  overlay.innerHTML = `<div class="splash-logo-shell"><img src="./assets/icons/icon-512.png" alt="Schweinfurter Plärrdeifl Logo"></div>
+    <div class="splash-wordmark" aria-label="Plärrdeifl Portal"><strong>Plärrdeifl</strong><span>PORTAL</span></div>
+    <div class="splash-loading-dots" aria-label="Wird geladen"><span></span><span></span><span></span><span></span><span></span></div>
+    <div class="splash-status" role="status"><span id="authTransitionStatus">Google-Anmeldung wird geprüft …</span><small id="authTransitionDetail">Sitzung, Rechte und Zielseite werden geladen. Du bleibst im Portal.</small></div>`;
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function showAuthTransition(detail = {}) {
+  authTransitionActive = true;
+  authTransitionStartedAt = performance.now();
+  document.documentElement.dataset.authTransitionState = "loading";
+  const overlay = ensureAuthTransitionOverlay();
+  overlay.classList.remove("is-complete");
+  overlay.setAttribute("aria-busy", "true");
+  const status = overlay.querySelector("#authTransitionStatus");
+  const detailNode = overlay.querySelector("#authTransitionDetail");
+  if (status) status.textContent = detail.message || "Google-Anmeldung wird geprüft …";
+  if (detailNode) detailNode.textContent = detail.detail || "Sitzung, Rechte und Zielseite werden geladen. Du bleibst im Portal.";
+  const shell = document.getElementById("appShell");
+  if (shell) {
+    shell.hidden = false;
+    shell.setAttribute("aria-busy", "true");
+  }
+  setConnectionStatus("Anmeldung wird geprüft", "warning");
+}
+
+function hideAuthTransition(state = "complete") {
+  if (!authTransitionActive && !document.getElementById("authTransitionOverlay")) return;
+  authTransitionActive = false;
+  document.documentElement.dataset.authTransitionState = state;
+  const overlay = document.getElementById("authTransitionOverlay");
+  if (overlay) {
+    overlay.setAttribute("aria-busy", "false");
+    overlay.classList.add("is-complete");
+    window.setTimeout(() => overlay.remove(), 220);
+  }
+  const shell = document.getElementById("appShell");
+  if (shell && document.documentElement.dataset.startupState === "complete") shell.removeAttribute("aria-busy");
+  updateConnectionChrome();
 }
 
 function clearReconnectTimer() {
@@ -102,7 +205,13 @@ async function renderRoute() {
   }
 
   if (!allowedRoute(key)) {
-    navigate(mandatoryRoute(), null, true);
+    const requestedRoute = routes()[key];
+    if (!auth.isAuthenticated() && requestedRoute && !requestedRoute.public) {
+      rememberPostLoginRoute(location.hash);
+      navigate("login", null, true);
+    } else {
+      navigate(mandatoryRoute(), null, true);
+    }
     return;
   }
 
@@ -149,7 +258,10 @@ async function renderRoute() {
     document.getElementById("routeRetryButton")?.addEventListener("click", renderRoute);
     showToast("Ansicht konnte nicht geladen werden.", "error");
   } finally {
-    if (isCurrent()) view.removeAttribute("aria-busy");
+    if (isCurrent()) {
+      view.removeAttribute("aria-busy");
+      if (authTransitionActive && auth.isAuthenticated() && !route.public) hideAuthTransition("complete");
+    }
   }
 }
 
@@ -240,11 +352,44 @@ function beginStartupProgress() {
   }, 15000);
 }
 
+function revealStartupShell() {
+  const shell = document.getElementById("appShell");
+  const splash = document.getElementById("appSplash");
+  const view = document.getElementById("view");
+  const title = document.getElementById("routeTitle");
+  const subtitle = document.getElementById("routeSubtitle");
+
+  if (view && !view.hasChildNodes()) {
+    view.innerHTML = '<div class="loading-panel" data-startup-skeleton><span class="spinner" aria-hidden="true"></span><strong>Portal wird geladen …</strong><span>Login, Sitzung und Backend werden geprüft.</span></div>';
+  }
+  if (title) title.textContent = "Plärrdeifl Portal";
+  if (subtitle) subtitle.textContent = "Login und Backend werden geprüft";
+
+  renderNavigation();
+  updateUserChrome();
+  setConnectionStatus("Backend wird geprüft", "warning");
+
+  if (shell) {
+    shell.hidden = false;
+    shell.setAttribute("aria-busy", "true");
+  }
+  document.documentElement.dataset.startupShellVisible = "true";
+
+  if (splash) {
+    splash.setAttribute("aria-busy", "false");
+    splash.classList.add("is-complete");
+    window.setTimeout(() => splash.remove(), 220);
+  }
+}
+
 function finishStartup() {
   clearStartupTimers();
   const shell = document.getElementById("appShell");
   const splash = document.getElementById("appSplash");
-  if (shell) shell.hidden = false;
+  if (shell) {
+    shell.hidden = false;
+    shell.removeAttribute("aria-busy");
+  }
   document.documentElement.dataset.startupState = "complete";
   document.documentElement.dataset.startupComplete = "true";
   if (!splash) return;
@@ -291,6 +436,8 @@ async function logout() {
   try {
     clearReconnectTimer();
     await auth.logout();
+    clearPostLoginRoute();
+    hideAuthTransition("cancelled");
     resetWarmup();
     renderNavigation();
     updateUserChrome();
@@ -309,6 +456,28 @@ async function bootstrap() {
     await mountComponents();
     bindGlobalUi({ onRefresh: refreshApp, onLogout: logout });
     window.addEventListener("hashchange", renderRoute);
+    window.addEventListener("pd-auth-transition", event => {
+      const detail = event.detail || {};
+      const phase = String(detail.phase || "");
+      if (phase === "start") {
+        showAuthTransition(detail);
+        return;
+      }
+      if (phase === "authenticated") {
+        if (!auth.isAuthenticated()) {
+          hideAuthTransition("failed");
+          return;
+        }
+        const fallback = auth.requiresProfile() ? "profile" : String(detail.fallbackRoute || "dashboard");
+        if (auth.requiresProfile()) {
+          navigate("profile", null, true);
+        } else {
+          navigateAfterLogin(fallback);
+        }
+        return;
+      }
+      if (phase === "end" || phase === "error" || phase === "cancel") hideAuthTransition(phase);
+    });
     window.addEventListener("pd-auth-change", () => {
       renderNavigation();
       updateUserChrome();
@@ -318,6 +487,7 @@ async function bootstrap() {
         return;
       }
       if (!auth.isAuthenticated() && !routes()[currentRoute()]?.public) {
+        if (authTransitionActive) return;
         resetWarmup();
         navigate("home", null, true);
         return;
@@ -329,8 +499,10 @@ async function bootstrap() {
     primeRouteFragments();
     setConnectionStatus("Backend wird geprüft", "warning");
     setStartupProgress("Sichere Verbindung wird aufgebaut …", "Login, Sitzung und Backend werden geprüft.");
+    const authInitialization = auth.initialize();
+    revealStartupShell();
     try {
-      await auth.initialize();
+      await authInitialization;
       authReady = true;
       updateConnectionChrome();
     } catch (error) {
@@ -346,6 +518,15 @@ async function bootstrap() {
     }
 
     let startRoute=currentRoute();
+    const savedPostLoginHash = auth.isAuthenticated() && !auth.requiresProfile() ? peekPostLoginRoute() : "";
+    if (savedPostLoginHash && routes()[startRoute]?.public) {
+      const savedKey = savedPostLoginHash.replace(/^#\/?/, "").split(/[?&]/)[0] || "";
+      if (auth.canAccessRoute(savedKey)) {
+        clearPostLoginRoute();
+        history.replaceState(null, "", savedPostLoginHash);
+        startRoute = savedKey;
+      }
+    }
     if (!location.hash || !allowedRoute(startRoute) || (auth.requiresProfile() && startRoute !== "profile")) {
       startRoute=mandatoryRoute();
       history.replaceState(null,"",`#/${startRoute}`);
