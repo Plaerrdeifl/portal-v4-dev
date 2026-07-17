@@ -131,3 +131,18 @@ Produktiver Pull/Push/Deploymentnachweis, Bestandszahlen und -bereinigung, Live-
 - Weiße Innenränder um Logo-Shells wurden auf etwa zehn Prozent der bisherigen Stärke reduziert.
 - Neuer Korrektur-Build: `2026.07.16-r7.1.m4-corr3-auth-mobile-navigation`.
 - Backend-Version 69, Deployment, Datenbanken, Rollen, Rechte und Fachlogik bleiben unverändert.
+
+
+## 2026-07-17 – M4 Corr4 gemeinsames Desktop-/Mobile-Layout
+
+- Desktop und Mobil verwenden dieselbe vertikale Auth-Komposition aus kompaktem Markenbereich und mittig überlappender Fokuskarte.
+- Die bisherige 50/50-Desktopteilung wurde entfernt; Login und Registrierung bleiben auf großen Monitoren kompakt und zentriert.
+- Desktop-Raster passen sich automatisch an verfügbare Breite und Browserzoom an, ohne Karten rechts abzuschneiden.
+- Die Desktop-Seitenleiste bleibt über die vollständige sichtbare Fensterhöhe erhalten.
+- Für tatsächlich breite Inhalte steht ein mitwandernder horizontaler Scrollbalken am unteren Fensterrand bereit.
+- Der nicht eindeutige Abmeldepfeil entfällt. Benutzername und Avatar öffnen ein verständliches Kontomenü mit Verbindungsstatus, Aktualisieren, Version und Abmelden.
+- Mobile Burger-/Mehr-Navigation und Abmeldeübergang bleiben unverändert erhalten.
+- Buttonhöhen und Schriftgrößen bleiben vereinheitlicht; Buttontexte werden nicht umgebrochen.
+- Neuer Korrektur-Build: `2026.07.17-r7.1.m4-corr4-desktop-mobile-layout`.
+- Backend-Version 69, Deployment, Datenbanken, Rollen, Rechte und Fachlogik bleiben unverändert.
+- Der bereits rote Workflow `PWA quality` wird bewusst nicht in Corr4 verändert und separat geprüft.

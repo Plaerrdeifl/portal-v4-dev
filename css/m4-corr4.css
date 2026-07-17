@@ -1,0 +1,209 @@
+/* Plärrdeifl Portal R7.1 M4 Corr4 – gemeinsames Desktop-/Mobile-Layout */
+
+/* Einheitliche Bediengrößen und keine Zeilenumbrüche auf Schaltflächen. */
+button,
+.button,
+.corr4-account-action{
+  white-space:nowrap;
+}
+.button,
+.corr4-account-action{
+  min-height:46px;
+  font-size:.86rem;
+  line-height:1.1;
+}
+.button.small{min-height:40px;font-size:.78rem}
+.button,
+.corr4-account-action,
+.mobile-nav-button,
+.mobile-menu-action{
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* Die bisherigen einzelnen Desktop-Symbole für Aktualisieren und Abmelden entfallen. */
+.desktop-utility{display:none!important}
+
+/* Authentifizierung: dieselbe vertikale Marken-/Karten-Komposition auf PC und Mobil. */
+html[data-route="login"] .app-main,
+html[data-route="profile"] .app-main{background:#f8fafc!important}
+html[data-route="login"] .view,
+html[data-route="profile"] .view{overflow:visible!important}
+.auth-page{
+  display:block;
+  width:100%;
+  min-height:100dvh;
+  overflow-x:hidden!important;
+  background:#f8fafc;
+  padding-bottom:40px;
+}
+.auth-brand-panel{
+  min-height:300px!important;
+  width:100%;
+  justify-content:flex-start!important;
+  padding:calc(34px + env(safe-area-inset-top)) 22px 86px!important;
+  background:radial-gradient(circle at 50% 8%,rgba(20,120,226,.35),transparent 31%),linear-gradient(160deg,#052b4d 0%,#031a30 58%,#020f1d 100%)!important;
+}
+.auth-brand-logo-shell{
+  width:106px!important;
+  border-radius:25px!important;
+  padding:1px!important;
+}
+.auth-brand-logo-shell img{border-radius:23px!important}
+.auth-brand-wordmark{margin-top:16px!important}
+.auth-brand-wordmark strong{font-size:2.35rem!important}
+.auth-brand-wordmark span{margin-top:9px!important;font-size:.82rem!important}
+.auth-brand-panel p{margin-top:14px!important;font-size:.88rem!important;max-width:520px!important}
+.auth-card-wrap{
+  display:block!important;
+  width:min(600px,100%);
+  margin:-62px auto 0!important;
+  padding:0 20px calc(38px + env(safe-area-inset-bottom))!important;
+  position:relative;
+  z-index:2;
+}
+.auth-card{
+  width:100%!important;
+  padding:30px 32px!important;
+  border-radius:27px!important;
+  box-shadow:0 24px 64px rgba(4,28,51,.16)!important;
+}
+.auth-card h2{font-size:clamp(1.82rem,3vw,2.25rem)!important}
+.auth-card .google-signin-slot{min-height:54px!important}
+
+/* Desktop-App-Shell: volle Höhe, sauber berechnete Breite und responsive Kartenraster. */
+@media (min-width:861px){
+  html,body{max-width:100%!important;overflow-x:hidden!important}
+  .app-shell{
+    width:100%;
+    min-height:100dvh;
+    grid-template-columns:var(--sidebar-width) minmax(0,1fr)!important;
+  }
+  .sidebar{
+    position:sticky!important;
+    top:0!important;
+    height:100dvh!important;
+    min-height:100dvh!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    align-self:start;
+  }
+  .app-main{width:100%;min-width:0;overflow-x:hidden!important}
+  .topbar{width:100%;min-width:0}
+  .view{
+    width:100%!important;
+    max-width:1500px!important;
+    min-width:0!important;
+    padding-left:clamp(24px,2.4vw,40px)!important;
+    padding-right:clamp(24px,2.4vw,40px)!important;
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+  .view::-webkit-scrollbar{height:0}
+  #view>.page,.page{width:100%;min-width:0;max-width:100%}
+  .p2-kpi-grid,.p3-kpi-grid{
+    grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr))!important;
+  }
+  .p2-quick-grid,.p3-team-grid,.p3-admin-actions{
+    grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))!important;
+  }
+  .p2-overview-heading,.p2-section-heading,.p3-section-heading,.p3-admin-section-head,
+  .module-toolbar,.p2-toolbar,.p3-toolbar{
+    min-width:0;
+    flex-wrap:wrap!important;
+  }
+  .p2-quick-action,.p3-admin-action,.p3-team-card,.p2-kpi,.p3-kpi{min-width:0!important}
+  .grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (min-width:861px) and (max-width:1180px){
+  .grid.three{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* Benutzername/Avatar ist der verständliche Einstieg in das Kontomenü. */
+.topbar-actions{position:relative}
+.user-summary.corr4-account-trigger{
+  cursor:pointer;
+  transition:border-color .16s ease,box-shadow .16s ease,background .16s ease;
+}
+.user-summary.corr4-account-trigger:hover,
+.user-summary.corr4-account-trigger:focus-visible,
+.user-summary.corr4-account-trigger[aria-expanded="true"]{
+  border-color:#9fcaf5;
+  background:#f7fbff;
+  box-shadow:0 0 0 3px rgba(22,137,255,.12);
+  outline:none;
+}
+.corr4-account-menu{
+  position:absolute;
+  right:0;
+  top:calc(100% + 12px);
+  z-index:180;
+  width:min(320px,calc(100vw - 30px));
+  padding:12px;
+  border:1px solid rgba(219,227,236,.98);
+  border-radius:20px;
+  background:#fff;
+  box-shadow:0 24px 65px rgba(4,28,51,.2);
+}
+.corr4-account-head{display:grid;grid-template-columns:44px minmax(0,1fr);gap:11px;align-items:center;padding:7px 7px 12px}
+.corr4-account-avatar{width:44px;height:44px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(135deg,#1689ff,#075da9);color:#fff;font-size:.76rem;font-weight:950}
+.corr4-account-copy{min-width:0;display:grid;gap:3px}
+.corr4-account-copy strong,.corr4-account-copy span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.corr4-account-copy strong{font-size:.9rem;color:var(--ink-950)}
+.corr4-account-copy span{font-size:.72rem;color:var(--ink-500)}
+.corr4-account-status{display:flex;align-items:center;gap:8px;margin:0 7px 10px;padding:10px 11px;border-radius:13px;background:#f4f8fc;color:var(--ink-600);font-size:.74rem}
+.corr4-account-status i{width:8px;height:8px;border-radius:50%;background:#25c978;flex:none}
+.corr4-account-status.warning i{background:#ffc400}
+.corr4-account-actions{display:grid;gap:7px;border-top:1px solid var(--line);padding-top:10px}
+.corr4-account-action{width:100%;border:0;border-radius:13px;padding:10px 12px;background:#f4f8fc;color:var(--ink-900);font-weight:850;text-align:left;cursor:pointer}
+.corr4-account-action:hover,.corr4-account-action:focus-visible{background:#eaf4ff;color:#075da9;outline:2px solid rgba(22,137,255,.18);outline-offset:1px}
+.corr4-account-action.danger{background:#fff1f2;color:#b42332}
+.corr4-account-action.danger:hover,.corr4-account-action.danger:focus-visible{background:#ffe5e8;color:#9f1827}
+.corr4-account-version{padding:10px 7px 3px;color:#8794a5;font-size:.68rem;line-height:1.4;overflow-wrap:anywhere}
+
+/* Mitwandernder horizontaler Scrollbalken für wirklich breite Desktop-Inhalte. */
+.corr4-horizontal-scrollbar{
+  position:fixed;
+  right:0;
+  bottom:0;
+  z-index:130;
+  height:17px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  border-top:1px solid #d8e2ec;
+  background:rgba(248,250,252,.97);
+  box-shadow:0 -5px 16px rgba(4,28,51,.08);
+}
+.corr4-horizontal-scrollbar>div{height:1px}
+.corr4-scroll-target{scrollbar-width:none!important}
+.corr4-scroll-target::-webkit-scrollbar{height:0!important}
+body.corr4-scrollbar-visible .app-footer{padding-bottom:32px}
+
+@media (max-width:860px){
+  .auth-page{padding-bottom:20px}
+  .auth-brand-panel{
+    min-height:270px!important;
+    padding:calc(28px + env(safe-area-inset-top)) 18px 74px!important;
+  }
+  .auth-brand-logo-shell{width:96px!important;border-radius:23px!important}
+  .auth-brand-logo-shell img{border-radius:21px!important}
+  .auth-brand-wordmark{margin-top:14px!important}
+  .auth-brand-wordmark strong{font-size:2.05rem!important}
+  .auth-brand-wordmark span{font-size:.75rem!important}
+  .auth-brand-panel p{margin-top:12px!important;font-size:.82rem!important}
+  .auth-card-wrap{width:100%;margin:-52px auto 0!important;padding:0 12px calc(24px + env(safe-area-inset-bottom))!important}
+  .auth-card{padding:24px 20px!important;border-radius:25px!important}
+  .auth-card h2{font-size:1.72rem!important}
+  .corr4-horizontal-scrollbar{display:none!important}
+}
+@media (max-width:360px){
+  .auth-brand-panel{min-height:252px!important;padding-left:14px!important;padding-right:14px!important}
+  .auth-brand-logo-shell{width:86px!important}
+  .auth-brand-wordmark strong{font-size:1.85rem!important}
+  .auth-card-wrap{padding-left:8px!important;padding-right:8px!important}
+  .auth-card{padding:21px 16px!important}
+}
+@media (prefers-reduced-motion:reduce){
+  .user-summary.corr4-account-trigger,.corr4-account-menu{transition:none!important}
+}

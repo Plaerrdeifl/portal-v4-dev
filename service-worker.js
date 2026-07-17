@@ -1,4 +1,4 @@
-const CACHE_VERSION="pd-portal-v3-r71-m4-20260716-corr3-auth-mobile-navigation";
+const CACHE_VERSION="pd-portal-v3-r71-m4-20260717-corr4-desktop-mobile-layout";
 const APP_CACHE=`${CACHE_VERSION}-shell`;
 const SHELL=[
   "./",
@@ -15,6 +15,7 @@ const SHELL=[
   "./css/uiux-p3.css?v=20260716-r71-m4-uiux-p3",
   "./css/m4-corr2.css?v=20260716-r71-m4-corr2-mobile-login-logo",
   "./css/m4-corr3.css?v=20260716-r71-m4-corr3-auth-mobile-navigation",
+  "./css/m4-corr4.css?v=20260717-r71-m4-corr4-desktop-mobile-layout",
   "./js/config.js",
   "./js/storage.js",
   "./js/api.js",
@@ -27,7 +28,8 @@ const SHELL=[
   "./js/pages.js?v=20260716-r71-m4-corr1-login",
   "./js/m4-corr2-login-overlay.js?v=20260716-r71-m4-corr2-mobile-login-logo",
   "./js/m4-corr3-ux.js?v=20260716-r71-m4-corr3-auth-mobile-navigation",
-  "./js/app.js?v=20260716-r71-m4-corr3-auth-mobile-navigation",
+  "./js/m4-corr4-layout.js?v=20260717-r71-m4-corr4-desktop-mobile-layout",
+  "./js/app.js?v=20260717-r71-m4-corr4-desktop-mobile-layout",
   "./components/sidebar.html",
   "./components/topbar.html",
   "./pages/login.html",
@@ -59,7 +61,7 @@ self.addEventListener("message",event=>{
 async function offlineDocument(){
   return (await caches.match("./offline.html",{ignoreSearch:true}))
     || new Response(
-      "<!doctype html><html lang=\"de\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Plärrdeifl Portal – Offline</title><body><main><h1>Gerade keine Verbindung</h1><p>Die Portaloberfläche ist installiert. Bitte stelle die Internetverbindung wieder her.</p></main></body></html>",
+      '<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Plärrdeifl Portal – Offline</title><body><main><h1>Gerade keine Verbindung</h1><p>Die Portaloberfläche ist installiert. Bitte stelle die Internetverbindung wieder her.</p></main></body></html>',
       {headers:{"Content-Type":"text/html; charset=utf-8"}}
     );
 }
