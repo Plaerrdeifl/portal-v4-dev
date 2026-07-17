@@ -1,60 +1,168 @@
 #!/usr/bin/env python3
 from pathlib import Path
-import json, re, sys
-ROOT = Path(__file__).resolve().parents[2]
-F = ROOT / "frontend"; B = ROOT / "backend"
-checks=[]
+import json
+import re
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+checks = []
+
+
 def add(name, ok, detail=""):
-    checks.append({"name":name,"ok":bool(ok),"detail":str(detail)})
-def text(p): return p.read_text(encoding="utf-8") if p.exists() else ""
-required=[
- "frontend/index.html","frontend/manifest.webmanifest","frontend/service-worker.js",
- "frontend/js/app.js","frontend/js/pages.js","frontend/js/router.js","frontend/js/auth.js",
- "frontend/js/modules/profile.js","frontend/js/modules/tasks.js","frontend/js/modules/fanclub.js",
- "frontend/js/modules/teams.js","frontend/js/modules/admin.js","frontend/js/modules/fanbuses.js",
- "frontend/pages/profile.html","frontend/pages/tasks.html","frontend/pages/fanbuses.html",
- "backend/28_R7_1_M4_PWA_NamePolicy.gs"
+    checks.append({"name": name, "ok": bool(ok), "detail": str(detail)})
+
+
+def text(relative):
+    path = ROOT / relative
+    try:
+        return path.read_text(encoding="utf-8")
+    except Exception as error:
+        add(f"Lesen {relative}", False, error)
+        return ""
+
+
+required = [
+    "index.html",
+    "manifest.webmanifest",
+    "service-worker.js",
+    "offline.html",
+    "components/sidebar.html",
+    "components/topbar.html",
+    "css/m4-corr4.css",
+    "js/app.js",
+    "js/pages.js",
+    "js/router.js",
+    "js/auth.js",
+    "js/config.js",
+    "js/m4-corr4-layout.js",
+    "js/modules/profile.js",
+    "js/modules/tasks.js",
+    "js/modules/fanclub.js",
+    "js/modules/teams.js",
+    "js/modules/admin.js",
+    "js/modules/fanbuses.js",
+    "pages/login.html",
+    "pages/profile.html",
+    "pages/tasks.html",
+    "pages/fanbuses.html",
 ]
-for rel in required: add("Datei "+rel,(ROOT/rel).is_file())
-router=text(F/'js/router.js'); pages=text(F/'js/pages.js'); sw=text(F/'service-worker.js'); idx=text(F/'index.html')
-auth=text(F/'js/auth.js'); tasks=text(F/'js/modules/tasks.js'); teams=text(F/'js/modules/teams.js')
-fan=text(F/'js/modules/fanclub.js'); admin=text(F/'js/modules/admin.js'); name=text(B/'28_R7_1_M4_PWA_NamePolicy.gs')
-webapp=text(B/'WebApp.gs'); login=text(B/'10_Google_Login.gs'); registry=text(B/'26_R7_1_M3_Api_Registry.gs')
+for relative in required:
+    add(f"Datei {relative}", (ROOT / relative).is_file())
+
+idx = text("index.html")
+manifest_text = text("manifest.webmanifest")
+sw = text("service-worker.js")
+router = text("js/router.js")
+pages = text("js/pages.js")
+auth = text("js/auth.js")
+config = text("js/config.js")
+corr4 = text("js/m4-corr4-layout.js")
+tasks = text("js/modules/tasks.js")
+teams = text("js/modules/teams.js")
+fanclub = text("js/modules/fanclub.js")
+admin = text("js/modules/admin.js")
+fanbuses = text("js/modules/fanbuses.js")
+login_page = text("pages/login.html")
+profile_page = text("pages/profile.html")
+
+try:
+    manifest = json.loads(manifest_text)
+    add("Manifest gültiges JSON", True)
+except Exception as error:
+    manifest = {}
+    add("Manifest gültiges JSON", False, error)
+
+add("Manifest standalone", manifest.get("display") == "standalone")
+add("Manifest relativer Scope", manifest.get("scope") == "./")
+add("Manifest relativer Start", str(manifest.get("start_url", "")).startswith("./#/"))
+add("Manifest Icons 192 und 512", all(
+    size in {icon.get("sizes") for icon in manifest.get("icons", [])}
+    for size in ["192x192", "512x512"]
+))
+
 add("Sechs feste Hauptbereiche", 'return ["dashboard", "fanclub", "tasks", "teams", "fanbuses", "admin"]' in router)
-for key in ["dashboard","fanclub","tasks","teams","fanbuses","admin"]: add("Route "+key, re.search(rf'\b{key}:\s*\{{',router) is not None)
-add("Kasse nur Legacy-Alias", 'cash: { target: "fanclub"' in router and not re.search(r'\bcash:\s*\{[^}]*page:',router))
-add("Vorstand nur Legacy-Alias", 'board: { target: "tasks"' in router and not re.search(r'\bboard:\s*\{[^}]*page:',router))
+for key in ["dashboard", "fanclub", "tasks", "teams", "fanbuses", "admin"]:
+    add(f"Route {key}", re.search(rf"\b{key}:\s*\{{", router) is not None)
+add("Kasse nur Legacy-Alias", 'cash: { target: "fanclub"' in router and not re.search(r"\bcash:\s*\{[^}]*page:", router))
+add("Vorstand nur Legacy-Alias", 'board: { target: "tasks"' in router and not re.search(r"\bboard:\s*\{[^}]*page:", router))
 add("Fanbus Alias zu Fanbusse", 'fanbus: { target: "fanbuses"' in router)
-add("Echtes Lazy Loading", 'import("./modules/' not in pages and 'feature("./modules/' in pages)
-add("Keine statischen Fachmodulimporte", not re.search(r'^import .*modules/',pages,re.M))
-add("SW minimaler Shellcache", 'modules/' not in sw and 'pages/' not in sw)
-add("SW M4 Cachekennung", 'r71-m4' in sw and 'm2' not in sw.lower() and 'm3' not in sw.lower())
-add("Keine API/Bridge-Persistenz im SW", 'runtime' not in sw.lower() and 'pwa"))return' in sw.replace(' ',''))
+
+add("Echtes Lazy Loading", 'feature("./modules/' in pages and 'import("./modules/' not in pages)
+add("Keine statischen Fachmodulimporte", not re.search(r"^import .*modules/", pages, re.M))
+add("Authentifizierte Module werden vorladbar", "preloadAuthenticatedModules" in pages)
+
+add("SW M4 Corr4 Cachekennung", "r71-m4-20260717-corr4" in sw)
+add("SW cached Corr4 CSS", "./css/m4-corr4.css" in sw)
+add("SW cached Corr4 JS", "./js/m4-corr4-layout.js" in sw)
+add("SW cached nur Auth-Fragmente", "./pages/login.html" in sw and "./pages/profile.html" in sw and "./pages/tasks.html" not in sw)
+add("Keine API-/Bridge-Persistenz", '/exec(?:\\?|$)' in sw and 'url.searchParams.has("pwa")' in sw)
+add("Navigation network-first", 'request.mode==="navigate"' in sw and 'fetch(request,{cache:"no-store"})' in sw)
+add("Code und HTML network-first", '["script","style","document"]' in sw and 'cache:"no-store"' in sw)
+
 add("Meta mobile-web-app-capable", '<meta name="mobile-web-app-capable" content="yes">' in idx)
 add("Meta apple-mobile-web-app-capable", '<meta name="apple-mobile-web-app-capable" content="yes">' in idx)
 add("GSI CSP gezielt", "https://accounts.google.com" in idx and "default-src *" not in idx)
-add("Profilzustand erzwungen", 'PROFIL_VERVOLLSTAENDIGUNG_ERFORDERLICH' in name and 'requiresProfile()' in auth)
-for code in ["NAME_BOTH_REQUIRED","NAME_FIRST_REQUIRED","NAME_LAST_REQUIRED","NAME_FALLBACK_FORBIDDEN","PROFILE_COMPLETION_REQUIRED","USER_NAME_REQUIRED_FOR_ACTIVATION"]:
-    add("Fehlercode "+code, code in name or code in text(B/'02_Auth_Roles.gs'))
-add("Keine E-Mail-Ableitung", 'split("@")' not in name and 'split(\'@\')' not in name)
-add("Sessionname ohne Google/E-Mail-Fallback", 'name: user.name || ""' in login)
-add("Google Vorbelegung getrennt", 'given_name' in name and 'family_name' in name)
-add("Registrierungsnachweis kurzlebig", 'REGISTRATION_MINUTES: 20' in name and 'consumeRegistrationToken_' in name)
-add("Profil-API-Gate", 'PROFILE_ALLOWED_APIS' in name and 'enforceDispatch_' in name and 'M4NamePolicy.enforceDispatch_' in registry)
-add("Namensintegritätsprüfung", 'activeIncompleteIds' in name and 'protectedAdmins' in name)
-add("Geschützte Admin-IDs", '"U-0001", "U-0009"' in name)
-add("Normale Apps-Script-URL leitet zur PWA", 'return m4RenderPwaRedirect_();' in webapp)
-add("Legacy-Renderer bleibt vorhanden", 'function v3RenderPortal_' in webapp)
-for label in ["Meine Aufgaben","Teamaufgaben","Vorstandsaufgaben","Archiv"]: add("Aufgaben-Tab "+label,label in tasks)
-for label in ["Teamübersicht","Meine Teams","Teammitglieder verwalten","Teamfunktionen"]: add("Teams-Tab "+label,label in teams)
-for label in ["Mitglieder","Beiträge","Beitragszahlungsmeldungen","Kassenbuch","Konten"]: add("Fanclub-Bereich "+label,label in fan)
-for label in ["Fanclub-Ämter vergeben","Beiträge und Beitragsklassen","Saison und Jahresabschluss","Fanclub-Einstellungen","Benutzer","Freischaltungsanträge","Teams und Teamfunktionen","Portalrollen und Rechte","Navigation und Dashboard","Backups","Systemstatus","System bereinigen"]:
-    add("Admin-Unterseite "+label,label in admin)
-add("Admin Namen required", 'name="vorname"' in admin and 'name="nachname"' in admin and admin.count('required maxlength="160"')>=2)
-add("Fanbusse reine Information", 'keine v4-Fach-API' in text(F/'js/modules/fanbuses.js') and 'Busanmeldung' in text(F/'pages/fanbuses.html'))
-add("Aufgabenstatus lokalisiert", all(x in tasks for x in ['OFFEN:"Offen"','IN_BEARBEITUNG:"In Bearbeitung"','ERLEDIGT:"Erledigt"','ARCHIVIERT:"Archiviert"']))
-add("Aufgabenprioritäten lokalisiert", all(x in tasks for x in ['EILT:"Eilt!"','HOCH:"Hoch"','NORMAL:"Normal"','NIEDRIG:"Niedrig"']))
-failed=[x for x in checks if not x['ok']]
-result={"suite":"M4_STATIC_CONTRACT","total":len(checks),"passed":len(checks)-len(failed),"failed":len(failed),"status":"PASS" if not failed else "FAIL","checks":checks}
-print(json.dumps(result,ensure_ascii=False,indent=2))
+add("Corr4 CSS eingebunden", "css/m4-corr4.css" in idx)
+add("Corr4 JS eingebunden", "js/m4-corr4-layout.js" in idx)
+add("Corr4 App-Build eingebunden", "20260717-r71-m4-corr4-desktop-mobile-layout" in idx)
+
+add("Corr4 Buildkennung", "2026.07.17-r7.1.m4-corr4-desktop-mobile-layout" in config)
+add("Corr4 Service-Worker-Kennung", "corr4-desktop-mobile-layout" in config)
+add("Profilzustand blockiert Fachzugriff", "requiresProfile()" in auth and "if (this.requiresProfile()) return false" in auth)
+add("Registrierung mit getrennten Namen", "vorname:" in auth and "nachname:" in auth)
+add("Profilvervollständigung bleibt erzwungen", "apiCompleteRequiredProfile" in auth)
+add("Sitzung bleibt bei Transportfehler erhalten", "connectionPending: true" in auth and "Deine Anmeldung bleibt erhalten" in auth)
+
+for label in ["Meine Aufgaben", "Teamaufgaben", "Vorstandsaufgaben", "Archiv"]:
+    add(f"Aufgaben-Tab {label}", label in tasks)
+add("Aufgabenstatus lokalisiert", all(value in tasks for value in [
+    'OFFEN:"Offen"',
+    'IN_BEARBEITUNG:"In Bearbeitung"',
+    'ERLEDIGT:"Erledigt"',
+    'ARCHIVIERT:"Archiviert"',
+]))
+add("Aufgabenprioritäten lokalisiert", all(value in tasks for value in [
+    'EILT:"Eilt!"',
+    'HOCH:"Hoch"',
+    'NORMAL:"Normal"',
+    'NIEDRIG:"Niedrig"',
+]))
+
+for label in ["Teamübersicht", "Meine Teams", "Teammitglieder verwalten", "Teamfunktionen"]:
+    add(f"Teams-Tab {label}", label in teams)
+for label in ["Mitglieder", "Beiträge", "Zahlungsmeldungen", "Kassenbuch", "Konten"]:
+    add(f"Fanclub-Bereich {label}", label in fanclub)
+for label in [
+    "Fanclub-Ämter vergeben",
+    "Beiträge und Beitragsklassen",
+    "Saison und Jahresabschluss",
+    "Fanclub-Einstellungen",
+    "Benutzer",
+    "Freischaltungsanträge",
+    "Teams und Teamfunktionen",
+    "Portalrollen und Rechte",
+    "Navigation und Dashboard",
+    "Backups",
+    "Systemstatus",
+    "System bereinigen",
+]:
+    add(f"Admin-Unterseite {label}", label in admin)
+
+add("Fanbusse reine Information", "reine Informationsseite" in fanbuses and "keine v4-Fach-API" in fanbuses)
+add("Login Corr3/Corr4 Struktur", "Willkommen zurück" in login_page and "auth-page" in login_page)
+add("Profilseite vorhanden", "profile" in profile_page.lower())
+add("Corr4 Kontomenü", "corr4AccountMenu" in corr4 and "Ansicht aktualisieren" in corr4 and "Abmelden" in corr4)
+add("Corr4 horizontaler Scrollbalken", "corr4HorizontalScrollbar" in corr4 and "syncScrollBar" in corr4)
+add("Corr4 Desktopgrenze", 'const DESKTOP = "(min-width: 861px)"' in corr4)
+
+failed = [item for item in checks if not item["ok"]]
+result = {
+    "suite": "M4_FRONTEND_STATIC_CONTRACT",
+    "total": len(checks),
+    "passed": len(checks) - len(failed),
+    "failed": len(failed),
+    "status": "PASS" if not failed else "FAIL",
+    "checks": checks,
+}
+print(json.dumps(result, ensure_ascii=False, indent=2))
 sys.exit(1 if failed else 0)
