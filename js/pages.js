@@ -4,7 +4,7 @@ import { navigate } from "./router.js";
 import { googleIdentity } from "./google-identity.js";
 import { installState, requestInstall } from "./install.js";
 
-const FEATURE_BUILD = "20260717-r71-m4-corr6-public-fast-start";
+const FEATURE_BUILD = "20260717-r71-m4-corr7-portal-separation";
 let loginController = null;
 let loginHydrationId = 0;
 let loginMountPromise = null;
@@ -23,9 +23,6 @@ function clean(value) {
     .trim();
 }
 
-function publicConfig() {
-  return auth.current().backend?.publicConfig || {};
-}
 
 function versionedModule(path, retry = 0) {
   const separator = path.includes("?") ? "&" : "?";
@@ -52,15 +49,6 @@ async function feature(path, exportName, context = {}) {
   }
 }
 
-async function hydrateHome() {
-  const config = publicConfig();
-  setText("publicHeadline", config.headline || "Herzlich willkommen bei den Schweinfurter Plärrdeifln");
-  setText("publicConstructionText", config.note || "Das Plärrdeifl Portal befindet sich noch im Aufbau.");
-}
-
-async function simple(id, key, fallback) {
-  setText(id, publicConfig()[key] || fallback);
-}
 
 async function hydrateInstall() {
   const button = document.getElementById("pageInstallButton");
@@ -307,11 +295,7 @@ export async function hydratePage(key, context = {}) {
     googleIdentity.destroyButton();
     loginController = null;
   }
-  if (key === "home") return hydrateHome();
-  if (key === "news") return simple("publicNewsText", "news", "Neuigkeiten werden hier veröffentlicht.");
-  if (key === "dates") return simple("publicDatesText", "dates", "Kommende Termine werden hier angekündigt.");
-  if (key === "about") return simple("publicAboutText", "about", "Hier entsteht die Vorstellung der Schweinfurter Plärrdeifl.");
-  if (key === "contact") return simple("publicContactText", "contact", "Kontaktinformationen werden hier veröffentlicht.");
+  if (["home", "news", "dates", "about", "contact"].includes(key)) return;
   if (key === "install") return hydrateInstall();
   if (key === "login") return hydrateLogin(context);
   if (key === "fanbuses") return;

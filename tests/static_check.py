@@ -31,6 +31,8 @@ required = [
     "css/m4-corr4.css",
     "css/m4-corr5.css",
     "css/m4-corr6.css",
+    "css/m4-corr7.css",
+    "docs/M4_CORR7_PORTAL_SEPARATION.md",
     "js/app.js",
     "js/pages.js",
     "js/router.js",
@@ -45,6 +47,11 @@ required = [
     "js/modules/admin.js",
     "js/modules/fanbuses.js",
     "pages/home.html",
+    "pages/news.html",
+    "pages/dates.html",
+    "pages/about.html",
+    "pages/contact.html",
+    "pages/install.html",
     "pages/login.html",
     "pages/profile.html",
     "pages/tasks.html",
@@ -66,7 +73,12 @@ corr3 = text("js/m4-corr3-ux.js")
 corr4 = text("js/m4-corr4-layout.js")
 corr5_css = text("css/m4-corr5.css")
 corr6_css = text("css/m4-corr6.css")
+corr7_css = text("css/m4-corr7.css")
 home_page = text("pages/home.html")
+news_page = text("pages/news.html")
+dates_page = text("pages/dates.html")
+about_page = text("pages/about.html")
+contact_page = text("pages/contact.html")
 tasks = text("js/modules/tasks.js")
 teams = text("js/modules/teams.js")
 fanclub = text("js/modules/fanclub.js")
@@ -101,12 +113,13 @@ add("Echtes Lazy Loading", 'feature("./modules/' in pages and 'import("./modules
 add("Keine statischen Fachmodulimporte", not re.search(r"^import .*modules/", pages, re.M))
 add("Authentifizierte Module werden vorladbar", "preloadAuthenticatedModules" in pages)
 
-add("SW M4 Corr6 Cachekennung", "r71-m4-20260717-corr6" in sw)
+add("SW M4 Corr7 Cachekennung", "r71-m4-20260717-corr7" in sw)
 add("SW cached Corr4 CSS", "./css/m4-corr4.css" in sw)
 add("SW cached Corr4 JS", "./js/m4-corr4-layout.js" in sw)
 add("SW cached Corr5 CSS", "./css/m4-corr5.css" in sw)
 add("SW cached Corr6 CSS", "./css/m4-corr6.css" in sw)
-add("SW cached öffentliche Startseite und Auth-Fragmente", "./pages/home.html" in sw and "./pages/login.html" in sw and "./pages/profile.html" in sw and "./pages/tasks.html" not in sw)
+add("SW cached Corr7 CSS", "./css/m4-corr7.css" in sw)
+add("SW cached alle öffentlichen Seiten und Auth-Fragmente", all(path in sw for path in ["./pages/home.html", "./pages/news.html", "./pages/dates.html", "./pages/about.html", "./pages/contact.html", "./pages/install.html", "./pages/login.html", "./pages/profile.html"]) and "./pages/tasks.html" not in sw)
 add("Keine API-/Bridge-Persistenz", '/exec(?:\\?|$)' in sw and 'url.searchParams.has("pwa")' in sw)
 add("Navigation network-first", 'request.mode==="navigate"' in sw and 'fetch(request,{cache:"no-store"})' in sw)
 add("Code und HTML network-first", '["script","style","document"]' in sw and 'cache:"no-store"' in sw)
@@ -117,17 +130,18 @@ add("GSI CSP gezielt", "https://accounts.google.com" in idx and "default-src *" 
 add("Corr4 CSS eingebunden", "css/m4-corr4.css" in idx)
 add("Corr5 CSS eingebunden", "css/m4-corr5.css" in idx)
 add("Corr6 CSS eingebunden", "css/m4-corr6.css" in idx)
+add("Corr7 CSS eingebunden", "css/m4-corr7.css" in idx)
 add("Corr4 JS eingebunden", "js/m4-corr4-layout.js" in idx)
-add("Corr6 App-Build eingebunden", "20260717-r71-m4-corr6-public-fast-start" in idx)
+add("Corr7 App-Build eingebunden", "20260717-r71-m4-corr7-portal-separation" in idx)
 add("Startseite sofort vorgerendert", "data-public-fast-start=\"true\"" in idx and "data-prerendered-public-home" in idx and "public-home-page" in idx)
 add("Öffentliche Kopfzeile sofort vorgerendert", 'id=\"mobileMenuToggle\"' in idx and 'id=\"topbarSlot\"' in idx and "Öffentlicher Bereich" in idx)
-add("Öffentliches Burger-Menü sofort vorgerendert", 'id=\"sidebar\"' in idx and 'id=\"mainNav\"' in idx and 'data-registration-route=\"true\"' in idx)
+add("Öffentliches Burger-Menü sofort vorgerendert", 'id=\"sidebar\"' in idx and 'id=\"mainNav\"' in idx and "Anmelden / Registrieren" in idx)
 add("Kein direkter Loginbutton auf Startseite", "publicLoginButton" not in idx and "publicLoginButton" not in home_page)
 add("Startseiten-Hinweis auf Burger-Menü", "public-menu-hint" in idx and "Menü oben links" in home_page)
 add("Keine Backend-Preconnects beim öffentlichen Start", 'rel=\"preconnect\"' not in idx)
 
-add("Corr6 Buildkennung", "2026.07.17-r7.1.m4-corr6-public-fast-start" in config)
-add("Corr6 Service-Worker-Kennung", "corr6-public-fast-start" in config)
+add("Corr7 Buildkennung", "2026.07.17-r7.1.m4-corr7-portal-separation" in config)
+add("Corr7 Service-Worker-Kennung", "corr7-portal-separation" in config)
 add("Profilzustand blockiert Fachzugriff", "requiresProfile()" in auth and "if (this.requiresProfile()) return false" in auth)
 add("Registrierung mit getrennten Namen", "vorname:" in auth and "nachname:" in auth)
 add("Profilvervollständigung bleibt erzwungen", "apiCompleteRequiredProfile" in auth)
@@ -185,14 +199,32 @@ add("Öffentlicher Bootstrap ohne pauschales auth.initialize", "const authInitia
 add("Öffentliche Fragmente werden getrennt vorgeladen", 'route.public && route.page !== "login.html"' in app)
 add("Vorgerenderte Startseite bleibt beim Bootstrap sichtbar", "usesPrerenderedHome" in app and "data-prerendered-public-home" in idx)
 add("Komponenten nutzen vorgerenderte Shell", "sidebarSlot?.hasChildNodes()" in ui and "topbarSlot?.hasChildNodes()" in ui)
-add("Gespeicherte Sitzung bietet Portal öffnen", "auth.hasPersistedSession()" in ui and 'title: "Portal öffnen"' in ui)
-add("Registrierung nur über Menü", "dataset.registrationRoute" in ui and 'intent: "register"' in ui)
-add("Mobiles Menü trennt öffentliche Seiten und Zugang", "Öffentliche Seiten" in corr3 and "Anmeldung und Portal" in corr3 and "data-ux-register" in corr3)
+
+add("Ein kombinierter öffentlicher Zugang", 'title: "Anmelden / Registrieren"' in ui and "createRegistrationButton" not in ui and "data-registration-route" not in idx)
+add("Gespeicherte Sitzung bietet Ins Portal", "auth.hasPersistedSession()" in ui and 'title: "Ins Portal"' in ui)
+add("Kein automatischer Portalstart", 'navigate(auth.requiresProfile() ? "profile" : "dashboard")' not in pages and "auth.initialize()" not in pages)
+add("Mobiles Menü nutzt genau den vorhandenen Zugang", "Portalzugang" in corr3 and "accessEntries" in corr3 and "data-ux-register" not in corr3)
+add("Portalmenü enthält keine öffentlichen Seiten", "Portalbereiche" in corr3 and "navigationSections" in corr3)
 add("Burger reagiert bereits vor Modul-Bootstrap", 'target.closest("#mobileMenuToggle")' in corr3)
-add("Desktop-Menü reagiert bereits vor Modul-Bootstrap", 'target.closest("#mainNav [data-route]")' in corr3 and 'target.closest("[data-registration-route]")' in corr3)
-add("Portal-öffnen-Label bleibt im mobilen Menü erhalten", 'clean(spans[spans.length - 1]?.textContent || button.textContent) || ROUTE_LABELS[key]' in corr3)
-add("Registrierungsabsicht bleibt bis Login erhalten", 'loginIntent() === "register"' in corr3 and "Portalzugang anfordern" in corr3)
-add("Öffentliche Startseite leitet nicht automatisch um", 'navigate(auth.requiresProfile() ? "profile" : "dashboard")' not in pages)
+add("Desktop-Menü reagiert bereits vor Modul-Bootstrap", 'target.closest("#mainNav [data-route]")' in corr3)
+add("Navigation wird nach jedem Routenwechsel neu erzeugt", re.search(r"async function handleRouteChange\(\) \{[^}]*renderNavigation\(\);[^}]*await renderRoute\(\);", app, re.S) is not None)
+add("Öffentliche und Portalnavigation werden getrennt", "publicAreaActive" in ui and "fixedAuthenticatedOrder" in ui and "route.public && key !== \"login\"" in ui)
+add("Öffentlicher Brandkontext", 'label = publicArea ? "ÖFFENTLICHER BEREICH" : "PORTAL"' in ui and 'id="brandContext"' in idx and 'id="mobileBrandContext"' in idx)
+
+add("Öffentliche HTML-Dateien sind Textquelle", "publicConfig" not in pages and "async function simple" not in pages and '["home", "news", "dates", "about", "contact"].includes(key)' in pages)
+add("Aktuell sichtbarer Startseitentext bleibt", "Herzlich willkommen bei den Schweinfurter Plärrdeifln" in home_page and "Das Plärrdeifl Portal befindet sich noch im Aufbau." in home_page)
+add("Aktuell sichtbarer Aktuelles-Text bleibt", "Neuigkeiten werden hier veröffentlicht." in news_page)
+add("Aktuell sichtbarer Termine-Text bleibt", "Kommende Termine werden hier angekündigt." in dates_page)
+add("Aktuell sichtbarer Über-uns-Text bleibt", "Hier entsteht die Vorstellung der Schweinfurter Plärrdeifl." in about_page)
+add("Aktuell sichtbarer Kontakt-Text bleibt", "Kontaktinformationen werden hier veröffentlicht." in contact_page)
+
+add("Corr7 entfernt weiße Logo-Träger", all(value in corr7_css for value in [".splash-logo-shell", ".brand-logo-shell", ".auth-brand-logo-shell", "background:transparent!important", "padding:0!important"]))
+add("Corr7 entfernt mobilen weißen Logorand", ".mobile-brand img" in corr7_css and "background:transparent!important" in corr7_css)
+add("Corr7 horizontaler Headerverlauf", "linear-gradient(90deg" in corr7_css and "--corr7-header-left" in corr7_css)
+add("Corr7 dezente Eisfläche", "--corr7-ice" in corr7_css and "radial-gradient(circle at 50% 50%" in corr7_css and "rgba(196,45,59,.07)" in corr7_css)
+add("Corr7 echtes Desktop-Authlayout", "grid-template-columns:minmax(320px,.86fr) minmax(0,1.14fr)" in corr7_css and 'html[data-route="login"] .app-shell' in corr7_css and "grid-template-columns:minmax(0,1fr)!important" in corr7_css)
+add("Corr7 Startseite ohne künstlichen Desktopscroll", 'html[data-route="home"] body{overflow-y:hidden!important}' in corr7_css and 'height:100dvh!important' in corr7_css)
+add("Corr7 Loginmobil bleibt responsiv", "@media (max-width:860px)" in corr7_css and "@media (max-width:520px)" in corr5_css)
 
 failed = [item for item in checks if not item["ok"]]
 result = {
