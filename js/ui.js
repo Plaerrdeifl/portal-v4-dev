@@ -68,14 +68,32 @@ export async function mountComponents() {
   if (topbarSlot) topbarSlot.innerHTML = topbar;
 }
 
+function publicAreaActive() {
+  return Boolean(routes()[currentRoute()]?.public) || !auth.isAuthenticated();
+}
+
+function syncBrandContext() {
+  const publicArea = publicAreaActive();
+  const label = publicArea ? "ÖFFENTLICHER BEREICH" : "PORTAL";
+  const sidebarContext = document.getElementById("brandContext");
+  const mobileContext = document.getElementById("mobileBrandContext");
+  const sidebarCaption = document.querySelector(".sidebar-caption");
+  if (sidebarContext) sidebarContext.textContent = label;
+  if (mobileContext) mobileContext.textContent = label;
+  if (sidebarCaption) sidebarCaption.textContent = publicArea ? "Öffentlicher Bereich" : "Vereinsportal";
+  document.documentElement.dataset.portalArea = publicArea ? "public" : "portal";
+}
+
 export function visibleRouteEntries() {
   const current = routes()[currentRoute()];
   if (current?.public || !auth.isAuthenticated()) {
     const entries = Object.entries(routes())
-      .filter(([, route]) => route.public)
+      .filter(([key, route]) => route.public && key !== "login")
       .sort((a, b) => (a[1].publicOrder || 0) - (b[1].publicOrder || 0));
     if (auth.hasPersistedSession()) {
-      entries.push(["dashboard", { ...routes().dashboard, title: "Portal öffnen", subtitle: "Gespeicherte Sitzung prüfen und Portal öffnen" }]);
+      entries.push(["dashboard", { ...routes().dashboard, title: "Ins Portal", subtitle: "Gespeicherte Sitzung prüfen und Portal öffnen" }]);
+    } else {
+      entries.push(["login", { ...routes().login, title: "Anmelden / Registrieren" }]);
     }
     return entries;
   }
@@ -98,33 +116,16 @@ function createRouteButton(key, route, className = "") {
   return button;
 }
 
-function createRegistrationButton() {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.dataset.registrationRoute = "true";
-  const icon = document.createElement("span");
-  icon.className = "nav-icon";
-  icon.setAttribute("aria-hidden", "true");
-  icon.innerHTML = iconMarkup("profile");
-  const label = document.createElement("span");
-  label.textContent = "Registrieren";
-  button.append(icon, label);
-  return button;
-}
 
 export function renderNavigation() {
   const entries = visibleRouteEntries();
   const nav = document.getElementById("mainNav");
   if (nav) {
     const buttons = entries.map(([key, route]) => createRouteButton(key, route));
-    const publicArea = Boolean(routes()[currentRoute()]?.public) || !auth.isAuthenticated();
-    if (publicArea) {
-      const loginIndex = entries.findIndex(([key]) => key === "login");
-      buttons.splice(loginIndex >= 0 ? loginIndex + 1 : buttons.length, 0, createRegistrationButton());
-    }
     nav.replaceChildren(...buttons);
-    window.dispatchEvent(new CustomEvent("pd-public-navigation-rendered"));
+    window.dispatchEvent(new CustomEvent("pd-navigation-rendered"));
   }
+  syncBrandContext();
 
   const mobileNav = document.getElementById("mobileNav");
   const moreRoutes = document.getElementById("mobileMoreRoutes");
@@ -157,17 +158,10 @@ export function renderNavigation() {
 
 export function updateActiveNavigation() {
   const active = currentRoute();
-  const hash = String(location.hash || "");
-  const query = hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : "";
-  const registrationIntent = active === "login" && new URLSearchParams(query).get("intent") === "register";
   document.querySelectorAll("[data-route]").forEach(element => {
-    const isActive = element.dataset.route === active && !(active === "login" && registrationIntent);
+    const isActive = element.dataset.route === active;
     element.classList.toggle("active", isActive);
     if (isActive) element.setAttribute("aria-current", "page"); else element.removeAttribute("aria-current");
-  });
-  document.querySelectorAll("[data-registration-route]").forEach(element => {
-    element.classList.toggle("active", registrationIntent);
-    if (registrationIntent) element.setAttribute("aria-current", "page"); else element.removeAttribute("aria-current");
   });
   const more = document.getElementById("mobileMoreToggle");
   if (more) {
@@ -178,6 +172,7 @@ export function updateActiveNavigation() {
 }
 
 export function updateUserChrome() {
+  syncBrandContext();
   const current = auth.current();
   const summary = document.getElementById("userSummary");
   const logout = document.getElementById("logoutButton");
@@ -201,15 +196,6 @@ export function updateUserChrome() {
 
 export function bindGlobalUi({ onRefresh, onLogout } = {}) {
   document.addEventListener("click", event => {
-    const registration = event.target.closest("[data-registration-route]");
-    if (registration) {
-      event.preventDefault();
-      const params = new URLSearchParams({ intent: "register" });
-      navigate("login", params);
-      closeMobileMenu();
-      closeMobileMore();
-      return;
-    }
     const target = event.target.closest("[data-route]");
     if (target) {
       event.preventDefault();
@@ -234,6 +220,7 @@ export function bindGlobalUi({ onRefresh, onLogout } = {}) {
 }
 
 export function setRouteHeader(route) {
+  syncBrandContext();
   const title = document.getElementById("routeTitle");
   const subtitle = document.getElementById("routeSubtitle");
   if (title) title.textContent = route.title;

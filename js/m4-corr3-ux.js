@@ -241,8 +241,7 @@
     const publicArea = PUBLIC_ROUTES.has(routeKey());
     const authenticated = Boolean(authState.authenticated);
     const publicEntries = entries.filter(entry => PUBLIC_CONTENT_ROUTES.has(entry.key));
-    const loginEntry = entries.find(entry => entry.key === "login");
-    const portalEntries = entries.filter(entry => !PUBLIC_ROUTES.has(entry.key) && entry.key !== "profile");
+    const accessEntries = entries.filter(entry => !PUBLIC_CONTENT_ROUTES.has(entry.key) && entry.key !== "profile");
     const signature = JSON.stringify({ entries: entries.map(item => item.key), role, connection, version, standalone, publicArea, authenticated, user: userName(), permissions: authState.user?.permissions || {}, portal: authState.portal || {}, team: authState.user?.teamRights || [], offices: authState.user?.officeCodes || [] });
     if (menu.dataset.signature === signature) {
       syncActiveNavigation();
@@ -253,16 +252,16 @@
       ? `<section class="mobile-menu-account"><span class="mobile-menu-avatar" aria-hidden="true">${escapeHtml(initials())}</span><span class="mobile-menu-account-copy"><strong>${escapeHtml(userName())}</strong><span>${escapeHtml(role || "Portaluser")}</span></span><span class="mobile-menu-connection ${authState.connectionPending ? "warning" : ""}"><i aria-hidden="true"></i>${escapeHtml(connection)}</span></section>`
       : "";
     const publicMarkup = publicEntries.map(routeMarkup).join("");
-    const loginMarkup = loginEntry ? routeMarkup(loginEntry) : "";
-    const registrationMarkup = '<button class="mobile-menu-route" type="button" data-ux-register="true"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><span class="mobile-menu-route-label">Registrieren</span></button>';
-    const portalMarkup = portalEntries.map(routeMarkup).join("");
+    const accessMarkup = accessEntries.map(routeMarkup).join("");
     const logoutMarkup = authenticated ? '<button id="uxLogoutButton" class="mobile-menu-action danger" type="button">Abmelden</button>' : "";
+    const navigationSections = publicArea
+      ? `<section class="mobile-menu-section"><div class="mobile-menu-section-title">Öffentliche Seiten</div>${publicMarkup}</section><section class="mobile-menu-section"><div class="mobile-menu-section-title">Portalzugang</div>${accessMarkup}</section>`
+      : `<section class="mobile-menu-section"><div class="mobile-menu-section-title">Portalbereiche</div>${accessMarkup}</section>`;
 
     menu.dataset.signature = signature;
     menu.innerHTML = `<div class="mobile-full-menu-header"><strong>${publicArea ? "Öffentlicher Bereich" : "Portalübersicht"}</strong><button class="mobile-full-menu-close" type="button" data-ux-close-menu aria-label="Menü schließen">×</button></div>
       ${accountMarkup}
-      <section class="mobile-menu-section"><div class="mobile-menu-section-title">Öffentliche Seiten</div>${publicMarkup}</section>
-      <section class="mobile-menu-section"><div class="mobile-menu-section-title">Anmeldung und Portal</div>${loginMarkup}${registrationMarkup}${portalMarkup}</section>
+      ${navigationSections}
       <section class="mobile-menu-section"><div class="mobile-menu-section-title">App und Konto</div><div class="mobile-menu-actions"><button id="uxRefreshButton" class="mobile-menu-action" type="button">Ansicht aktualisieren</button>${standalone ? "" : '<button id="uxInstallButton" class="mobile-menu-action" type="button">App installieren</button>'}${logoutMarkup}</div><div class="mobile-menu-version">${escapeHtml(version)} · Öffentliche Seiten laden ohne Anmeldung. Backend und Rechte werden erst beim Portalzugang geprüft.</div></section>`;
     syncActiveNavigation();
   }
@@ -452,13 +451,6 @@
       return;
     }
 
-    if (target.closest("[data-registration-route]")) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      location.hash = "#/login?intent=register";
-      closeMenu();
-      return;
-    }
 
     const immediateRoute = target.closest("#mainNav [data-route]");
     if (immediateRoute) {
@@ -476,13 +468,6 @@
       return;
     }
 
-    if (target.closest("[data-ux-register]")) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      location.hash = "#/login?intent=register";
-      closeMenu();
-      return;
-    }
 
     const uxRoute = target.closest("[data-ux-route]");
     if (uxRoute) {

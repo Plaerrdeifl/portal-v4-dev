@@ -1,7 +1,7 @@
 import { CONFIG } from "./config.js";
 import { auth } from "./auth.js";
 import { currentRoute, legacyRouteRedirect, navigate, routes } from "./router.js";
-import { hydratePage, preloadAuthenticatedModules } from "./pages.js?v=20260717-r71-m4-corr6-public-fast-start";
+import { hydratePage, preloadAuthenticatedModules } from "./pages.js?v=20260717-r71-m4-corr7-portal-separation";
 import { warmupAuthenticatedData, resetWarmup } from "./warmup.js?v=20260715-r71-m4-uiux-p1";
 import { initializeInstall } from "./install.js";
 import { storage } from "./storage.js";
@@ -66,6 +66,9 @@ async function ensureAuthenticationForRoute(key = currentRoute()) {
 async function handleRouteChange() {
   const key = currentRoute();
   await ensureAuthenticationForRoute(key);
+  renderNavigation();
+  updateUserChrome();
+  updateConnectionChrome();
   await renderRoute();
 }
 
