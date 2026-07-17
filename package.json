@@ -1,0 +1,18 @@
+{
+  "name": "portal-v4-dev",
+  "version": "1.0.0",
+  "description": "Build: `2026.07.12-pwa-abnahme-r3`",
+  "main": "app.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "devDependencies": {
+    "supabase": "2.109.1"
+  }
+}
