@@ -4,7 +4,7 @@ import { navigate } from "./router.js";
 import { googleIdentity } from "./google-identity.js";
 import { installState, requestInstall } from "./install.js";
 
-const FEATURE_BUILD = "20260715-r71-m4-uiux-p1";
+const FEATURE_BUILD = "20260717-r71-m4-corr6-public-fast-start";
 let loginController = null;
 let loginHydrationId = 0;
 let loginMountPromise = null;
@@ -53,10 +53,6 @@ async function feature(path, exportName, context = {}) {
 }
 
 async function hydrateHome() {
-  if (auth.isAuthenticated()) {
-    navigate(auth.requiresProfile() ? "profile" : "dashboard");
-    return;
-  }
   const config = publicConfig();
   setText("publicHeadline", config.headline || "Herzlich willkommen bei den Schweinfurter Plärrdeifln");
   setText("publicConstructionText", config.note || "Das Plärrdeifl Portal befindet sich noch im Aufbau.");
@@ -149,6 +145,14 @@ async function hydrateLogin(context = {}) {
   loginController = null;
   loginMountPromise = null;
   const current = auth.current();
+  const hash = String(location.hash || "");
+  const query = hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : "";
+  const registrationIntent = new URLSearchParams(query).get("intent") === "register";
+  if (!current.registration && !current.authenticated) {
+    setText("authKicker", registrationIntent ? "Sicher registrieren" : "Sicher anmelden");
+    setText("authTitle", registrationIntent ? "Portalzugang anfordern" : "Willkommen zurück");
+    if (registrationIntent) setText("loginMessage", "Bestätige zuerst dein Google-Konto. Anschließend kannst du deinen Freischaltungsantrag vervollständigen.");
+  }
   const retry = document.getElementById("loginRetryButton");
   const pill = document.getElementById("loginStatusPill");
   const slot = document.getElementById("googleSignInButton");

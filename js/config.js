@@ -3,7 +3,7 @@ export const CONFIG = Object.freeze({
     name: "Plärrdeifl Portal",
     shortName: "Plärrdeifl",
     version: "v3.0.0 R7.1 M4",
-    build: "2026.07.17-r7.1.m4-corr5-responsive-auth-instant-home",
+    build: "2026.07.17-r7.1.m4-corr6-public-fast-start",
     repository: "https://github.com/Plaerrdeifl/portal"
   },
   urls: {
@@ -22,7 +22,7 @@ export const CONFIG = Object.freeze({
     dataKey: "pd_portal_pwa_initial_r71_m4"
   },
   pwa: {
-    serviceWorker: "./service-worker.js?v=20260717-r71-m4-corr5-responsive-auth-instant-home",
+    serviceWorker: "./service-worker.js?v=20260717-r71-m4-corr6-public-fast-start",
     installDismissKey: "pd_r71_m4_install_dismissed",
     updateReloadKey: "pd_r71_m4_update_reload",
     updateDismissKey: "pd_r71_m4_update_dismissed"

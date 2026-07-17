@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de" data-startup-state="starting" data-instant-home="true" data-route="home">
+<html lang="de" data-startup-state="complete" data-instant-home="true" data-public-fast-start="true" data-route="home">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -16,8 +16,6 @@
   <link rel="icon" type="image/x-icon" href="./favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/icon-32.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="preconnect" href="https://script.google.com" crossorigin>
-  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
   <link rel="stylesheet" href="./css/tokens.css?v=20260716-r71-m4-uiux-p3">
   <link rel="stylesheet" href="./css/layout.css?v=20260716-r71-m4-uiux-p3">
   <link rel="stylesheet" href="./css/components.css?v=20260716-r71-m4-uiux-p3">
@@ -29,6 +27,7 @@
   <link rel="stylesheet" href="./css/m4-corr3.css?v=20260716-r71-m4-corr3-auth-mobile-navigation">
   <link rel="stylesheet" href="./css/m4-corr4.css?v=20260717-r71-m4-corr4-desktop-mobile-layout">
   <link rel="stylesheet" href="./css/m4-corr5.css?v=20260717-r71-m4-corr5-responsive-auth-instant-home">
+  <link rel="stylesheet" href="./css/m4-corr6.css?v=20260717-r71-m4-corr6-public-fast-start">
   <title>Plärrdeifl Portal</title>
 </head>
 <body>
@@ -60,18 +59,87 @@
   </div>
 
   <div id="appShell" class="app-shell">
-    <div id="sidebarSlot"></div>
+    <div id="sidebarSlot">
+      <div id="mobileBackdrop" class="mobile-backdrop" data-close-menu></div>
+      <aside id="sidebar" class="sidebar" aria-label="Hauptnavigation">
+        <div class="brand">
+          <div class="brand-logo-shell"><img src="./assets/icons/icon-192.png" alt="Schweinfurter Plärrdeifl"></div>
+          <div class="brand-wordmark"><strong>Plärrdeifl</strong><span>PORTAL</span></div>
+        </div>
+        <div class="sidebar-caption">Öffentlicher Bereich</div>
+        <nav id="mainNav" class="nav">
+            <button type="button" data-route="home" class="active"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg></span><span>Startseite</span></button>
+            <button type="button" data-route="news"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span><span>Aktuelles</span></button>
+            <button type="button" data-route="dates"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></span><span>Termine</span></button>
+            <button type="button" data-route="about"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></span><span>Über uns</span></button>
+            <button type="button" data-route="contact"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span><span>Kontakt</span></button>
+            <button type="button" data-route="install"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 18h4M12 5v8m-3-3 3 3 3-3"/></svg></span><span>Portal installieren</span></button>
+            <button type="button" data-route="login"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span><span>Anmelden</span></button>
+            <button type="button" data-registration-route="true"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><span>Registrieren</span></button>
+        </nav>
+        <div class="sidebar-footer">
+          <div class="sidebar-security"><span aria-hidden="true">✓</span><div><strong>Öffentliche Seiten</strong><small>Anmeldung erst nach bewusster Auswahl</small></div></div>
+        </div>
+        <div id="mobileFullMenu" class="mobile-full-menu">
+          <div class="mobile-full-menu-header"><strong>Öffentlicher Bereich</strong><button class="mobile-full-menu-close" type="button" data-ux-close-menu aria-label="Menü schließen">×</button></div>
+          <section class="mobile-menu-section">
+            <div class="mobile-menu-section-title">Öffentliche Seiten</div>
+            <button class="mobile-menu-route active" type="button" data-ux-route="home"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg></span><span class="mobile-menu-route-label">Startseite</span></button>
+            <button class="mobile-menu-route" type="button" data-ux-route="news"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span><span class="mobile-menu-route-label">Aktuelles</span></button>
+            <button class="mobile-menu-route" type="button" data-ux-route="dates"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></span><span class="mobile-menu-route-label">Termine</span></button>
+            <button class="mobile-menu-route" type="button" data-ux-route="about"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></span><span class="mobile-menu-route-label">Über uns</span></button>
+            <button class="mobile-menu-route" type="button" data-ux-route="contact"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span><span class="mobile-menu-route-label">Kontakt</span></button>
+            <button class="mobile-menu-route" type="button" data-ux-route="install"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 18h4M12 5v8m-3-3 3 3 3-3"/></svg></span><span class="mobile-menu-route-label">Portal installieren</span></button>
+          </section>
+          <section class="mobile-menu-section">
+            <div class="mobile-menu-section-title">Anmeldung und Portal</div>
+            <button class="mobile-menu-route" type="button" data-ux-route="login"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span><span class="mobile-menu-route-label">Anmelden</span></button>
+            <button class="mobile-menu-route" type="button" data-ux-register="true"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><span class="mobile-menu-route-label">Registrieren</span></button>
+          </section>
+          <section class="mobile-menu-section">
+            <div class="mobile-menu-section-title">App</div>
+            <div class="mobile-menu-actions"><button id="uxRefreshButton" class="mobile-menu-action" type="button">Ansicht aktualisieren</button><button id="uxInstallButton" class="mobile-menu-action" type="button">App installieren</button></div>
+            <div class="mobile-menu-version">R7.1 · Milestone 4 · Öffentliche Seiten laden ohne Anmeldung.</div>
+          </section>
+        </div>
+      </aside>
+    </div>
     <div class="app-main">
-      <div id="topbarSlot"></div>
+      <div id="topbarSlot">
+        <header class="topbar">
+          <div class="topbar-leading">
+            <button id="mobileMenuToggle" class="icon-button mobile-menu-toggle" type="button" aria-label="Menü öffnen">
+              <span class="menu-lines" aria-hidden="true"><i></i><i></i><i></i></span>
+            </button>
+            <div class="mobile-brand" aria-label="Plärrdeifl Portal">
+              <img src="./assets/icons/icon-32.png" alt="">
+              <span><strong>Plärrdeifl</strong><small>PORTAL</small></span>
+            </div>
+            <div class="topbar-title">
+              <h1 id="routeTitle">Start</h1>
+              <p id="routeSubtitle">Öffentlicher Bereich</p>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <span id="connectionStatus" class="status-pill success">Öffentlicher Bereich</span>
+            <div id="userSummary" class="user-summary" hidden>
+              <span id="userAvatar" class="user-avatar" aria-hidden="true">PD</span>
+              <span class="user-summary-copy"><strong id="userSummaryName">Benutzer</strong><small id="userSummaryRole">Rolle</small></span>
+            </div>
+            <button id="refreshButton" class="icon-button desktop-utility" type="button" title="Ansicht neu laden" aria-label="Ansicht neu laden">↻</button>
+            <button id="logoutButton" class="icon-button desktop-utility" type="button" title="Abmelden" aria-label="Abmelden" hidden>↪</button>
+          </div>
+        </header>
+      </div>
       <main id="view" class="view" tabindex="-1" aria-live="polite">
-        <section class="page public-landing public-home-page">
+        <section class="page public-landing public-home-page" data-prerendered-public-home>
           <div class="hero public-welcome-hero">
             <div class="public-welcome-content">
               <img id="publicLogo" src="./assets/icons/icon-512.png" alt="Schweinfurter Plärrdeifl Logo">
-              <h2 id="publicHeadline">Herzlich willkommen</h2>
+              <h2 id="publicHeadline">Herzlich willkommen bei den Schweinfurter Plärrdeifln</h2>
               <p id="publicConstructionText">Das Plärrdeifl Portal befindet sich noch im Aufbau. Die öffentlichen Inhalte werden Schritt für Schritt ergänzt.</p>
               <p id="publicAboutText">Öffentliche Informationen und der geschützte Mitgliederbereich sind in einer gemeinsamen PWA verbunden.</p>
-              <a id="publicLoginButton" class="button button-primary" href="#/login">Mit Google anmelden</a>
+              <p class="public-menu-hint"><strong>Anmelden oder registrieren:</strong> Öffne das Menü oben links. Erst dort wird die Anmeldung oder Registrierung gestartet.</p>
             </div>
           </div>
         </section>
@@ -103,8 +171,8 @@
   </div>
 
   <script src="./js/m4-corr2-login-overlay.js?v=20260716-r71-m4-corr2-mobile-login-logo"></script>
-  <script src="./js/m4-corr3-ux.js?v=20260716-r71-m4-corr3-auth-mobile-navigation"></script>
+  <script src="./js/m4-corr3-ux.js?v=20260717-r71-m4-corr6-public-fast-start"></script>
   <script src="./js/m4-corr4-layout.js?v=20260717-r71-m4-corr4-desktop-mobile-layout"></script>
-  <script type="module" src="./js/app.js?v=20260717-r71-m4-corr5-responsive-auth-instant-home"></script>
+  <script type="module" src="./js/app.js?v=20260717-r71-m4-corr6-public-fast-start"></script>
 </body>
 </html>

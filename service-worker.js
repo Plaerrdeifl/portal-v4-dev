@@ -1,4 +1,4 @@
-const CACHE_VERSION="pd-portal-v3-r71-m4-20260717-corr5-responsive-auth-instant-home";
+const CACHE_VERSION="pd-portal-v3-r71-m4-20260717-corr6-public-fast-start";
 const APP_CACHE=`${CACHE_VERSION}-shell`;
 const SHELL=[
   "./",
@@ -17,6 +17,7 @@ const SHELL=[
   "./css/m4-corr3.css?v=20260716-r71-m4-corr3-auth-mobile-navigation",
   "./css/m4-corr4.css?v=20260717-r71-m4-corr4-desktop-mobile-layout",
   "./css/m4-corr5.css?v=20260717-r71-m4-corr5-responsive-auth-instant-home",
+  "./css/m4-corr6.css?v=20260717-r71-m4-corr6-public-fast-start",
   "./js/config.js",
   "./js/storage.js",
   "./js/api.js",
@@ -26,13 +27,14 @@ const SHELL=[
   "./js/router.js",
   "./js/ui.js",
   "./js/warmup.js",
-  "./js/pages.js?v=20260716-r71-m4-corr1-login",
+  "./js/pages.js?v=20260717-r71-m4-corr6-public-fast-start",
   "./js/m4-corr2-login-overlay.js?v=20260716-r71-m4-corr2-mobile-login-logo",
-  "./js/m4-corr3-ux.js?v=20260716-r71-m4-corr3-auth-mobile-navigation",
+  "./js/m4-corr3-ux.js?v=20260717-r71-m4-corr6-public-fast-start",
   "./js/m4-corr4-layout.js?v=20260717-r71-m4-corr4-desktop-mobile-layout",
-  "./js/app.js?v=20260717-r71-m4-corr5-responsive-auth-instant-home",
+  "./js/app.js?v=20260717-r71-m4-corr6-public-fast-start",
   "./components/sidebar.html",
   "./components/topbar.html",
+  "./pages/home.html",
   "./pages/login.html",
   "./pages/profile.html",
   "./assets/icons/icon-32.png",
