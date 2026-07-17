@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de" data-startup-state="starting">
+<html lang="de" data-startup-state="starting" data-instant-home="true" data-route="home">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -28,6 +28,7 @@
   <link rel="stylesheet" href="./css/m4-corr2.css?v=20260716-r71-m4-corr2-mobile-login-logo">
   <link rel="stylesheet" href="./css/m4-corr3.css?v=20260716-r71-m4-corr3-auth-mobile-navigation">
   <link rel="stylesheet" href="./css/m4-corr4.css?v=20260717-r71-m4-corr4-desktop-mobile-layout">
+  <link rel="stylesheet" href="./css/m4-corr5.css?v=20260717-r71-m4-corr5-responsive-auth-instant-home">
   <title>Plärrdeifl Portal</title>
 </head>
 <body>
@@ -35,7 +36,7 @@
     <div class="noscript">Für das Plärrdeifl Portal muss JavaScript aktiviert sein.</div>
   </noscript>
 
-  <div id="appSplash" class="app-splash" aria-live="polite" aria-busy="true">
+  <div id="appSplash" class="app-splash" aria-live="polite" aria-busy="false" hidden>
     <div class="splash-logo-shell"><img src="./assets/icons/icon-512.png" alt="Schweinfurter Plärrdeifl Logo"></div>
     <div class="splash-wordmark" aria-label="Plärrdeifl Portal"><strong>Plärrdeifl</strong><span>PORTAL</span></div>
     <div class="splash-loading-dots" aria-label="Wird geladen">
@@ -58,11 +59,23 @@
     </div>
   </div>
 
-  <div id="appShell" class="app-shell" hidden>
+  <div id="appShell" class="app-shell">
     <div id="sidebarSlot"></div>
     <div class="app-main">
       <div id="topbarSlot"></div>
-      <main id="view" class="view" tabindex="-1" aria-live="polite"></main>
+      <main id="view" class="view" tabindex="-1" aria-live="polite">
+        <section class="page public-landing public-home-page">
+          <div class="hero public-welcome-hero">
+            <div class="public-welcome-content">
+              <img id="publicLogo" src="./assets/icons/icon-512.png" alt="Schweinfurter Plärrdeifl Logo">
+              <h2 id="publicHeadline">Herzlich willkommen</h2>
+              <p id="publicConstructionText">Das Plärrdeifl Portal befindet sich noch im Aufbau. Die öffentlichen Inhalte werden Schritt für Schritt ergänzt.</p>
+              <p id="publicAboutText">Öffentliche Informationen und der geschützte Mitgliederbereich sind in einer gemeinsamen PWA verbunden.</p>
+              <a id="publicLoginButton" class="button button-primary" href="#/login">Mit Google anmelden</a>
+            </div>
+          </div>
+        </section>
+      </main>
       <footer class="app-footer">
         <span>Plärrdeifl Portal</span>
         <span id="buildLabel">v3.0.0 · R7.1 M4</span>
@@ -92,6 +105,6 @@
   <script src="./js/m4-corr2-login-overlay.js?v=20260716-r71-m4-corr2-mobile-login-logo"></script>
   <script src="./js/m4-corr3-ux.js?v=20260716-r71-m4-corr3-auth-mobile-navigation"></script>
   <script src="./js/m4-corr4-layout.js?v=20260717-r71-m4-corr4-desktop-mobile-layout"></script>
-  <script type="module" src="./js/app.js?v=20260717-r71-m4-corr4-desktop-mobile-layout"></script>
+  <script type="module" src="./js/app.js?v=20260717-r71-m4-corr5-responsive-auth-instant-home"></script>
 </body>
 </html>
