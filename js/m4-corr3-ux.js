@@ -4,6 +4,7 @@
   const SESSION_KEY = "pd_portal_pwa_session_r71_m4";
   const POST_LOGIN_KEY = "pd_m4_post_login_route";
   const PUBLIC_ROUTES = new Set(["home", "login", "news", "dates", "about", "contact", "install"]);
+  const PUBLIC_CONTENT_ROUTES = new Set(["home", "news", "dates", "about", "contact", "install"]);
   const AUTH_ROUTES = new Set(["login", "profile"]);
   const ROUTE_LABELS = Object.freeze({ dashboard: "Dashboard", fanclub: "Fanclub", tasks: "Aufgaben", teams: "Teams", fanbuses: "Fanbusse", admin: "Administration" });
   let authState = {};
@@ -23,6 +24,12 @@
     const hash = String(location.hash || "");
     const query = hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : "";
     return new URLSearchParams(query).get("tab") || "";
+  }
+
+  function loginIntent() {
+    const hash = String(location.hash || "");
+    const query = hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : "";
+    return new URLSearchParams(query).get("intent") || "";
   }
 
   function setRouteState() {
@@ -88,7 +95,7 @@
       if (!key || entries.some(item => item.key === key)) return;
       const icon = button.querySelector(".nav-icon")?.innerHTML || "";
       const spans = button.querySelectorAll("span");
-      const label = ROUTE_LABELS[key] || clean(spans[spans.length - 1]?.textContent || button.textContent || key);
+      const label = clean(spans[spans.length - 1]?.textContent || button.textContent) || ROUTE_LABELS[key] || key;
       entries.push({ key, icon, label });
     });
     return entries;
@@ -228,20 +235,35 @@
 
     const entries = routeEntries();
     const role = clean(authState.user?.role || (authState.user?.isAdmin ? "Admin" : "Portaluser"));
-    const connection = clean(document.getElementById("connectionStatus")?.textContent || (authState.connectionPending ? "Verbindung wird wiederhergestellt" : "Sicher verbunden"));
+    const connection = clean(document.getElementById("connectionStatus")?.textContent || (authState.connectionPending ? "Verbindung wird wiederhergestellt" : "Öffentlicher Bereich"));
     const version = clean(document.getElementById("buildLabel")?.textContent || "R7.1 · Milestone 4");
     const standalone = window.matchMedia?.("(display-mode: standalone)")?.matches || Boolean(navigator.standalone);
-    const signature = JSON.stringify({ entries: entries.map(item => item.key), role, connection, version, standalone, user: userName(), permissions: authState.user?.permissions || {}, portal: authState.portal || {}, team: authState.user?.teamRights || [], offices: authState.user?.officeCodes || [] });
+    const publicArea = PUBLIC_ROUTES.has(routeKey());
+    const authenticated = Boolean(authState.authenticated);
+    const publicEntries = entries.filter(entry => PUBLIC_CONTENT_ROUTES.has(entry.key));
+    const loginEntry = entries.find(entry => entry.key === "login");
+    const portalEntries = entries.filter(entry => !PUBLIC_ROUTES.has(entry.key) && entry.key !== "profile");
+    const signature = JSON.stringify({ entries: entries.map(item => item.key), role, connection, version, standalone, publicArea, authenticated, user: userName(), permissions: authState.user?.permissions || {}, portal: authState.portal || {}, team: authState.user?.teamRights || [], offices: authState.user?.officeCodes || [] });
     if (menu.dataset.signature === signature) {
       syncActiveNavigation();
       return;
     }
 
+    const accountMarkup = authenticated
+      ? `<section class="mobile-menu-account"><span class="mobile-menu-avatar" aria-hidden="true">${escapeHtml(initials())}</span><span class="mobile-menu-account-copy"><strong>${escapeHtml(userName())}</strong><span>${escapeHtml(role || "Portaluser")}</span></span><span class="mobile-menu-connection ${authState.connectionPending ? "warning" : ""}"><i aria-hidden="true"></i>${escapeHtml(connection)}</span></section>`
+      : "";
+    const publicMarkup = publicEntries.map(routeMarkup).join("");
+    const loginMarkup = loginEntry ? routeMarkup(loginEntry) : "";
+    const registrationMarkup = '<button class="mobile-menu-route" type="button" data-ux-register="true"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><span class="mobile-menu-route-label">Registrieren</span></button>';
+    const portalMarkup = portalEntries.map(routeMarkup).join("");
+    const logoutMarkup = authenticated ? '<button id="uxLogoutButton" class="mobile-menu-action danger" type="button">Abmelden</button>' : "";
+
     menu.dataset.signature = signature;
-    menu.innerHTML = `<div class="mobile-full-menu-header"><strong>Portalübersicht</strong><button class="mobile-full-menu-close" type="button" data-ux-close-menu aria-label="Menü schließen">×</button></div>
-      <section class="mobile-menu-account"><span class="mobile-menu-avatar" aria-hidden="true">${escapeHtml(initials())}</span><span class="mobile-menu-account-copy"><strong>${escapeHtml(userName())}</strong><span>${escapeHtml(role || "Portaluser")}</span></span><span class="mobile-menu-connection ${authState.connectionPending ? "warning" : ""}"><i aria-hidden="true"></i>${escapeHtml(connection)}</span></section>
-      <section class="mobile-menu-section"><div class="mobile-menu-section-title">Alle Bereiche</div>${entries.map(routeMarkup).join("")}</section>
-      <section class="mobile-menu-section"><div class="mobile-menu-section-title">App und Konto</div><div class="mobile-menu-actions"><button id="uxRefreshButton" class="mobile-menu-action" type="button">Ansicht aktualisieren</button>${standalone ? "" : '<button id="uxInstallButton" class="mobile-menu-action" type="button">App installieren</button>'}<button id="uxLogoutButton" class="mobile-menu-action danger" type="button">Abmelden</button></div><div class="mobile-menu-version">${escapeHtml(version)} · Backend und Rechte werden weiterhin serverseitig geprüft.</div></section>`;
+    menu.innerHTML = `<div class="mobile-full-menu-header"><strong>${publicArea ? "Öffentlicher Bereich" : "Portalübersicht"}</strong><button class="mobile-full-menu-close" type="button" data-ux-close-menu aria-label="Menü schließen">×</button></div>
+      ${accountMarkup}
+      <section class="mobile-menu-section"><div class="mobile-menu-section-title">Öffentliche Seiten</div>${publicMarkup}</section>
+      <section class="mobile-menu-section"><div class="mobile-menu-section-title">Anmeldung und Portal</div>${loginMarkup}${registrationMarkup}${portalMarkup}</section>
+      <section class="mobile-menu-section"><div class="mobile-menu-section-title">App und Konto</div><div class="mobile-menu-actions"><button id="uxRefreshButton" class="mobile-menu-action" type="button">Ansicht aktualisieren</button>${standalone ? "" : '<button id="uxInstallButton" class="mobile-menu-action" type="button">App installieren</button>'}${logoutMarkup}</div><div class="mobile-menu-version">${escapeHtml(version)} · Öffentliche Seiten laden ohne Anmeldung. Backend und Rechte werden erst beim Portalzugang geprüft.</div></section>`;
     syncActiveNavigation();
   }
 
@@ -344,8 +366,12 @@
       return;
     }
 
-    setText("authKicker", "Sicher anmelden");
-    setText("authTitle", /Sitzung.*abgelaufen|erneut anmelden/i.test(notice) ? "Sitzung abgelaufen" : "Willkommen zurück");
+    const wantsRegistration = loginIntent() === "register";
+    setText("authKicker", wantsRegistration ? "Sicher registrieren" : "Sicher anmelden");
+    setText("authTitle", /Sitzung.*abgelaufen|erneut anmelden/i.test(notice) ? "Sitzung abgelaufen" : wantsRegistration ? "Portalzugang anfordern" : "Willkommen zurück");
+    if (wantsRegistration && !notice) {
+      setText("loginMessage", "Bestätige zuerst dein Google-Konto. Anschließend kannst du deinen Freischaltungsantrag vervollständigen.");
+    }
     if (/Sitzung.*abgelaufen|erneut anmelden/i.test(notice)) {
       setLoginNotice("Deine Sitzung ist abgelaufen. Melde dich erneut mit Google an; deine gewünschte Zielseite bleibt gespeichert.", "warning");
     } else if (/Offline|Verbindung/i.test(notice)) {
@@ -419,10 +445,42 @@
       return;
     }
 
+    if (target.closest("#mobileMenuToggle")) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openMenu();
+      return;
+    }
+
+    if (target.closest("[data-registration-route]")) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      location.hash = "#/login?intent=register";
+      closeMenu();
+      return;
+    }
+
+    const immediateRoute = target.closest("#mainNav [data-route]");
+    if (immediateRoute) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      location.hash = `#/${immediateRoute.dataset.route}`;
+      closeMenu();
+      return;
+    }
+
     if (target.closest("#mobileMoreToggle") || target.closest("[data-ux-more]")) {
       event.preventDefault();
       event.stopImmediatePropagation();
       openMenu();
+      return;
+    }
+
+    if (target.closest("[data-ux-register]")) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      location.hash = "#/login?intent=register";
+      closeMenu();
       return;
     }
 

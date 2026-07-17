@@ -1,7 +1,7 @@
 import { CONFIG } from "./config.js";
 import { auth } from "./auth.js";
 import { currentRoute, legacyRouteRedirect, navigate, routes } from "./router.js";
-import { hydratePage, preloadAuthenticatedModules } from "./pages.js?v=20260716-r71-m4-corr1-login";
+import { hydratePage, preloadAuthenticatedModules } from "./pages.js?v=20260717-r71-m4-corr6-public-fast-start";
 import { warmupAuthenticatedData, resetWarmup } from "./warmup.js?v=20260715-r71-m4-uiux-p1";
 import { initializeInstall } from "./install.js";
 import { storage } from "./storage.js";
@@ -34,13 +34,39 @@ const POST_LOGIN_ROUTE_KEY = "pd_m4_post_login_route";
 function allowedRoute(key) {
   const route = routes()[key];
   if (!route) return false;
-  if (route.public) return !auth.isAuthenticated();
+  if (route.public) return true;
   return auth.canAccessRoute(key);
 }
 
 function mandatoryRoute() {
   if (auth.requiresProfile()) return "profile";
   return auth.isAuthenticated() ? "dashboard" : "home";
+}
+
+function routeNeedsAuthentication(key) {
+  const route = routes()[key];
+  return Boolean(route && (!route.public || key === "login"));
+}
+
+async function ensureAuthenticationForRoute(key = currentRoute()) {
+  if (!routeNeedsAuthentication(key) || authReady) return;
+  setConnectionStatus("Anmeldung wird vorbereitet", "warning");
+  try {
+    await auth.initialize();
+  } catch (error) {
+    showToast(error.message || "Backend-Verbindung fehlgeschlagen.", "error", 8000);
+  } finally {
+    authReady = true;
+    renderNavigation();
+    updateUserChrome();
+    updateConnectionChrome();
+  }
+}
+
+async function handleRouteChange() {
+  const key = currentRoute();
+  await ensureAuthenticationForRoute(key);
+  await renderRoute();
 }
 
 function isCurrentRender(renderId, key) {
@@ -197,7 +223,9 @@ async function renderRoute() {
   if (legacyRouteRedirect()) return;
 
   let key = currentRoute();
-  if (!authReady && key !== "home") return;
+  const requestedRoute = routes()[key];
+  if (!requestedRoute) return;
+  if (!authReady && routeNeedsAuthentication(key)) return;
 
   if (auth.requiresProfile() && key !== "profile") {
     navigate("profile", null, true);
@@ -205,7 +233,6 @@ async function renderRoute() {
   }
 
   if (!allowedRoute(key)) {
-    const requestedRoute = routes()[key];
     if (!auth.isAuthenticated() && requestedRoute && !requestedRoute.public) {
       rememberPostLoginRoute(location.hash);
       navigate("login", null, true);
@@ -229,11 +256,17 @@ async function renderRoute() {
   updateActiveNavigation();
   view.setAttribute("aria-busy", "true");
   const fragmentPath = `./pages/${route.page}`;
-  if (!hasFragment(fragmentPath)) {
+  const usesPrerenderedHome = key === "home" && Boolean(view.querySelector("[data-prerendered-public-home]"));
+  if (!usesPrerenderedHome && !hasFragment(fragmentPath)) {
     view.innerHTML = '<div class="loading-panel"><span class="spinner" aria-hidden="true"></span><strong>Ansicht wird geladen …</strong></div>';
   }
 
   try {
+    if (usesPrerenderedHome) {
+      await hydratePage(key, { signal: controller.signal, isCurrent });
+      if (isCurrent()) view.focus({ preventScroll: true });
+      return;
+    }
     const fragment = await loadFragment(fragmentPath, { signal: controller.signal });
     if (!isCurrent()) return;
 
@@ -409,7 +442,7 @@ function failStartup(error) {
 }
 
 function primeRouteFragments() {
-  const entries = Object.values(routes());
+  const entries = Object.values(routes()).filter(route => route.public && route.page !== "login.html");
   const schedule = window.requestIdleCallback || (callback => window.setTimeout(callback, 500));
   schedule(() => {
     entries.forEach(route => loadFragment(`./pages/${route.page}`).catch(() => null));
@@ -450,12 +483,10 @@ async function logout() {
 
 async function bootstrap() {
   try {
-    beginStartupProgress();
     initializeInstall();
-    setStartupProgress("App-Oberfläche wird vorbereitet …", "Navigation und Bedienoberfläche werden geladen.");
     await mountComponents();
     bindGlobalUi({ onRefresh: refreshApp, onLogout: logout });
-    window.addEventListener("hashchange", renderRoute);
+    window.addEventListener("hashchange", () => { handleRouteChange().catch(failStartup); });
     window.addEventListener("pd-auth-transition", event => {
       const detail = event.detail || {};
       const phase = String(detail.phase || "");
@@ -497,52 +528,16 @@ async function bootstrap() {
 
     registerServiceWorker();
     primeRouteFragments();
-    setConnectionStatus("Backend wird geprüft", "warning");
-    setStartupProgress("Sichere Verbindung wird aufgebaut …", "Login, Sitzung und Backend werden geprüft.");
-    const authInitialization = auth.initialize();
-    revealStartupShell();
-    try {
-      await authInitialization;
-      authReady = true;
-      updateConnectionChrome();
-    } catch (error) {
-      authReady = true;
-      setConnectionStatus("Backend nicht erreichbar", "warning");
-      showToast(error.message || "Backend-Verbindung fehlgeschlagen.", "error", 8000);
-    }
 
+    if (!location.hash) history.replaceState(null, "", "#/home");
     renderNavigation();
     updateUserChrome();
-    if (auth.isAuthenticated() && !auth.requiresProfile()) {
-      setStartupProgress("Benutzerprofil und Rechte sind geladen …", "Die erste Portalansicht wird jetzt vollständig vorbereitet.");
-    }
-
-    let startRoute=currentRoute();
-    const savedPostLoginHash = auth.isAuthenticated() && !auth.requiresProfile() ? peekPostLoginRoute() : "";
-    if (savedPostLoginHash && routes()[startRoute]?.public) {
-      const savedKey = savedPostLoginHash.replace(/^#\/?/, "").split(/[?&]/)[0] || "";
-      if (auth.canAccessRoute(savedKey)) {
-        clearPostLoginRoute();
-        history.replaceState(null, "", savedPostLoginHash);
-        startRoute = savedKey;
-      }
-    }
-    if (!location.hash || !allowedRoute(startRoute) || (auth.requiresProfile() && startRoute !== "profile")) {
-      startRoute=mandatoryRoute();
-      history.replaceState(null,"",`#/${startRoute}`);
-    }
-    setStartupProgress("Startansicht wird geladen …", "Das Portal wird erst angezeigt, wenn die erste Ansicht nutzbar ist.");
-    await renderRoute();
-
-    if (auth.current().connectionPending) scheduleReconnect();
+    updateConnectionChrome();
+    await handleRouteChange();
     finishStartup();
 
-    if (auth.isAuthenticated() && !auth.requiresProfile() && !auth.current().connectionPending) {
-      // Fachdatencaches sofort im Hintergrund anstoßen, damit der erste Wechsel
-      // zu Aufgaben/Fanclub denselben laufenden Request wiederverwendet.
+    if (authReady && auth.isAuthenticated() && !auth.requiresProfile() && !auth.current().connectionPending) {
       window.setTimeout(() => warmupAuthenticatedData().catch(() => null), 0);
-
-      // Reine Modulimporte bleiben bewusst im Idle-Zeitfenster.
       const schedule = window.requestIdleCallback || (callback => window.setTimeout(callback, 350));
       schedule(() => preloadAuthenticatedModules().catch(() => null));
     }
