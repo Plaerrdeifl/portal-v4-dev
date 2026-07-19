@@ -1,18 +1,28 @@
 {
   "name": "portal-v4-dev",
   "version": "1.0.0",
-  "description": "Build: `2026.07.12-pwa-abnahme-r3`",
+  "description": "Plärrdeifl Portal – Supabase DEV",
   "main": "app.js",
   "directories": {
     "doc": "docs",
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test",
+    "supabase:version": "supabase --version",
+    "supabase:status": "supabase status",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:db:reset": "supabase db reset"
   },
   "keywords": [],
   "type": "commonjs",
   "devDependencies": {
     "supabase": "2.109.1"
-  }
+  },
+  "private": true,
+  "engines": {
+    "node": ">=24.18.0 <25"
+  },
+  "packageManager": "npm@12.0.1"
 }

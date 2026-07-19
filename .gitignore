@@ -3,3 +3,9 @@ Thumbs.db
 desktop.ini
 node_modules/
 *.log
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.*.example
