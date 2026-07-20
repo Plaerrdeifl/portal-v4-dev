@@ -26,6 +26,34 @@ function memberOptions() {
   }));
 }
 
+async function loadMemberMatch(email, userId = "") {
+  try {
+    return await call("member_match", { email, userId });
+  } catch (error) {
+    return {
+      status: "ERROR",
+      count: 0,
+      member: null,
+      message: error?.message || "Automatische Erkennung nicht verfügbar."
+    };
+  }
+}
+
+function memberMatchNotice(match) {
+  if (!match || match.status === "NONE") return "";
+
+  if (match.status === "MATCH" && match.member) {
+    const label = `${match.member.memberCode} · ${match.member.firstName} ${match.member.lastName}`;
+    return `<div class="v4-member-match success"><strong>Mitglied automatisch erkannt</strong><span>${escapeHtml(label)} wurde anhand der E-Mail-Adresse vorausgewählt. Bitte prüfen und bestätigen.</span></div>`;
+  }
+
+  if (match.status === "AMBIGUOUS") {
+    return `<div class="v4-member-match warning"><strong>Keine automatische Zuordnung</strong><span>${escapeHtml(String(match.count))} aktive Mitglieder verwenden diese E-Mail-Adresse. Bitte manuell auswählen.</span></div>`;
+  }
+
+  return `<div class="v4-member-match warning"><strong>Automatische Erkennung nicht verfügbar</strong><span>${escapeHtml(match.message || "Bitte Mitglied manuell auswählen.")}</span></div>`;
+}
+
 function tabs() {
   return [
     ...(snapshot?.canManageUsers ? [["requests", "Freischaltungen"], ["users", "Benutzer"]] : []),
@@ -48,13 +76,16 @@ function renderTabs(panel) {
   }));
 }
 
-function approveRequest(request) {
+async function approveRequest(request) {
+  const match = await loadMemberMatch(request.email);
+  const suggestedMemberId = match.status === "MATCH" ? match.member?.id || "" : "";
+
   openDialog({
     title: "Freischaltung bestätigen",
     kicker: `${request.firstName} ${request.lastName}`,
-    body: `<form class="form-grid">
+    body: `${memberMatchNotice(match)}<form class="form-grid">
       <label class="full">Portalrolle<select name="roleId" required>${optionList(activeRoles().map(role => ({ value: role.id, label: role.name })), "", "Rolle auswählen")}</select></label>
-      <label class="full">Mitglied verknüpfen<select name="memberId">${optionList(memberOptions(), "", "Keine Mitgliedsverknüpfung")}</select></label>
+      <label class="full">Mitglied verknüpfen<select name="memberId">${optionList(memberOptions(), suggestedMemberId, "Keine Mitgliedsverknüpfung")}</select></label>
     </form>`,
     submitLabel: "Freischalten",
     onSubmit: async values => {
@@ -84,15 +115,18 @@ function renderRequests(panel) {
   panel.innerHTML = `<div class="v4-toolbar"><div><h3>Freischaltungsanträge</h3><p>${pending.length} offene Anträge</p></div></div>
     ${pending.length ? `<div class="v4-card-grid">${pending.map(request => `<article class="card"><header class="v4-card-header"><div><h3>${escapeHtml(request.firstName)} ${escapeHtml(request.lastName)}</h3><p>${escapeHtml(request.email)}</p></div>${statusBadge(request.status)}</header><p>Beantragt: ${escapeHtml(fmtDateTime(request.requestedAt))}</p><footer class="v4-card-actions"><button class="button small primary" data-approve-request="${escapeAttr(request.id)}" type="button">Freischalten</button><button class="button small danger" data-reject-request="${escapeAttr(request.id)}" type="button">Ablehnen</button></footer></article>`).join("")}</div>` : empty("Keine offenen Freischaltungsanträge.")}
     ${completed.length ? `<details class="v4-history"><summary>Bearbeitete Anträge (${completed.length})</summary><div class="v4-table-wrap"><table class="v4-table"><thead><tr><th>Name</th><th>E-Mail</th><th>Status</th><th>Grund</th></tr></thead><tbody>${completed.map(request => `<tr><td>${escapeHtml(request.firstName)} ${escapeHtml(request.lastName)}</td><td>${escapeHtml(request.email)}</td><td>${statusBadge(request.status)}</td><td>${escapeHtml(request.decisionReason || "–")}</td></tr>`).join("")}</tbody></table></div></details>` : ""}`;
-  panel.querySelectorAll("[data-approve-request]").forEach(button => button.addEventListener("click", () => approveRequest(pending.find(request => request.id === button.dataset.approveRequest))));
+  panel.querySelectorAll("[data-approve-request]").forEach(button => button.addEventListener("click", async () => approveRequest(pending.find(request => request.id === button.dataset.approveRequest))));
   panel.querySelectorAll("[data-reject-request]").forEach(button => button.addEventListener("click", () => rejectRequest(pending.find(request => request.id === button.dataset.rejectRequest))));
 }
 
-function editUser(user) {
+async function editUser(user) {
+  const match = user.memberId ? null : await loadMemberMatch(user.email, user.id);
+  const selectedMemberId = user.memberId || (match?.status === "MATCH" ? match.member?.id || "" : "");
+
   openDialog({
     title: "Portalbenutzer bearbeiten",
     kicker: `${user.userCode} · ${user.firstName} ${user.lastName}`,
-    body: `<form class="form-grid">
+    body: `${memberMatchNotice(match)}<form class="form-grid">
       <input type="hidden" name="id" value="${escapeAttr(user.id)}">
       <label class="full">Portalrolle<select name="roleId" required>${optionList(activeRoles().map(role => ({ value: role.id, label: role.name })), user.roleId)}</select></label>
       <label>Status<select name="status">${optionList([
@@ -100,7 +134,7 @@ function editUser(user) {
         { value: "INACTIVE", label: "Inaktiv" },
         { value: "BLOCKED", label: "Gesperrt" }
       ], user.status)}</select></label>
-      <label>Mitgliedsverknüpfung<select name="memberId">${optionList(memberOptions(), user.memberId || "", "Keine Verknüpfung")}</select></label>
+      <label>Mitgliedsverknüpfung<select name="memberId">${optionList(memberOptions(), selectedMemberId, "Keine Verknüpfung")}</select></label>
     </form>`,
     onSubmit: async values => {
       snapshot = await runWrite(() => call("save_user", values), "Benutzer wurde aktualisiert.");
@@ -113,7 +147,7 @@ function renderUsers(panel) {
   const users = snapshot.users || [];
   panel.innerHTML = `<div class="v4-toolbar"><div><h3>Portalbenutzer</h3><p>${users.length} Benutzer · ${snapshot.activeAdminCount} aktive Administratoren</p></div></div>
     ${users.length ? `<div class="v4-table-wrap"><table class="v4-table"><thead><tr><th>ID</th><th>Name</th><th>Rolle</th><th>Mitglied</th><th>Status</th><th></th></tr></thead><tbody>${users.map(user => `<tr><td><strong>${escapeHtml(user.userCode)}</strong></td><td>${escapeHtml(user.firstName)} ${escapeHtml(user.lastName)}<small>${escapeHtml(user.email)}</small></td><td>${escapeHtml(user.roleName)}</td><td>${escapeHtml(user.memberCode || "–")}</td><td>${statusBadge(user.status)}</td><td><button class="button small secondary" data-edit-user="${escapeAttr(user.id)}" type="button">Bearbeiten</button></td></tr>`).join("")}</tbody></table></div>` : empty("Noch keine Portalbenutzer.")}`;
-  panel.querySelectorAll("[data-edit-user]").forEach(button => button.addEventListener("click", () => editUser(users.find(user => user.id === button.dataset.editUser))));
+  panel.querySelectorAll("[data-edit-user]").forEach(button => button.addEventListener("click", async () => editUser(users.find(user => user.id === button.dataset.editUser))));
 }
 
 function roleForm(role = {}) {

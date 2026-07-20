@@ -35,7 +35,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260719225500_create_application_schemas.sql",
     "20260719230000_create_portal_core_tables.sql",
     "20260719230100_seed_portal_core_authorization.sql",
-    "20260719230200_create_portal_core_api.sql"
+    "20260719230200_create_portal_core_api.sql",
+    "20260720152000_add_member_email_match_suggestion.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
@@ -88,4 +89,43 @@ test("route click handling ignores the html route marker", async () => {
     /closest\("button\[data-route\], a\[data-route\]"\)/
   );
   assert.doesNotMatch(ui, /closest\("\[data-route\]"\)/);
+});
+
+
+test("member email match migration is safe and confirmable", async () => {
+  const migration = await read(
+    "supabase/migrations/20260720152000_add_member_email_match_suggestion.sql"
+  );
+  const admin = await read("js/modules/admin.js");
+
+  assert.ok(
+    migration.includes(
+      "create or replace function app_private.api_member_match"
+    )
+  );
+  assert.ok(
+    migration.includes("require_capability('users.manage')")
+  );
+  assert.ok(
+    migration.includes("when 'member_match'")
+  );
+  assert.ok(
+    migration.includes("lower(btrim(coalesce(member.email")
+  );
+  assert.ok(
+    migration.includes("user_member_links")
+  );
+
+  assert.ok(
+    admin.includes('call("member_match"')
+  );
+  assert.ok(
+    admin.includes("Mitglied automatisch erkannt")
+  );
+  assert.ok(
+    admin.includes("Bitte prüfen und bestätigen")
+  );
+  assert.ok(
+    admin.includes("AMBIGUOUS")
+  );
 });

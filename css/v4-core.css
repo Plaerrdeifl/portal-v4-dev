@@ -110,3 +110,25 @@
     font-size:.76rem;
   }
 }
+
+
+/* V4 Core: automatische Mitgliedererkennung */
+.v4-member-match{
+  margin:0 0 16px;
+  padding:13px 15px;
+  border:1px solid rgba(14,116,144,.25);
+  border-radius:12px;
+  background:rgba(14,116,144,.08);
+}
+.v4-member-match strong,
+.v4-member-match span{
+  display:block;
+}
+.v4-member-match span{
+  margin-top:4px;
+  line-height:1.45;
+}
+.v4-member-match.warning{
+  border-color:rgba(180,83,9,.28);
+  background:rgba(180,83,9,.08);
+}
