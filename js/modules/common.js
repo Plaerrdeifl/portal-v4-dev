@@ -70,7 +70,7 @@ export function statusBadge(value) {
   const normalized = String(value || "").toUpperCase();
   const type = ["ACTIVE", "APPROVED", "DONE"].includes(normalized)
     ? "success"
-    : ["PENDING", "WAITING", "IN_PROGRESS"].includes(normalized)
+    : ["PENDING", "IN_PROGRESS"].includes(normalized)
       ? "warning"
       : ["BLOCKED", "REJECTED"].includes(normalized)
         ? "danger"

@@ -38,7 +38,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260719230200_create_portal_core_api.sql",
     "20260720152000_add_member_email_match_suggestion.sql",
     "20260720161000_add_admin_team_delete.sql",
-    "20260720174500_make_team_codes_internal.sql"
+    "20260720174500_make_team_codes_internal.sql",
+    "20260720201500_harden_task_workflow.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
@@ -258,11 +259,64 @@ test("public mobile navigation remains visible and usable", async () => {
 
   assert.match(
     html,
-    /v4-core\.css\?v=20260720-public-mobile-nav/
+    /v4-core\.css\?v=20260720-task-workflow/
   );
 
   assert.match(
     worker,
-    /pd-portal-v4-core-20260720-2/
+    /pd-portal-v4-core-20260720-3/
   );
+});
+
+test("task workflow is revision-safe and archived without hard delete", async () => {
+  const migration = await read(
+    "supabase/migrations/20260720201500_harden_task_workflow.sql"
+  );
+  const tasks = await read("js/modules/tasks.js");
+  const common = await read("js/modules/common.js");
+  const css = await read("css/v4-core.css");
+  const html = await read("index.html");
+  const worker = await read("service-worker.js");
+
+  assert.match(
+    migration,
+    /add column if not exists archived_by uuid/
+  );
+  assert.match(
+    migration,
+    /check \(status in \('OPEN', 'IN_PROGRESS', 'DONE', 'ARCHIVED'\)\)/
+  );
+  assert.match(
+    migration,
+    /create or replace function app_private\.api_archive_task/
+  );
+  assert.match(
+    migration,
+    /when 'archive_task'/
+  );
+  assert.match(
+    migration,
+    /TASK_REOPENED/
+  );
+  assert.match(
+    migration,
+    /Die Aufgabe wurde zwischenzeitlich geändert/
+  );
+  assert.doesNotMatch(
+    migration,
+    /delete from app_modules\.tasks/i
+  );
+
+  assert.match(tasks, /Meine Aufgaben/);
+  assert.match(tasks, /Teamaufgaben/);
+  assert.match(tasks, /Vorstandsaufgaben/);
+  assert.match(tasks, /call\("archive_task"/);
+  assert.match(tasks, /revision: task\.revision/);
+  assert.match(tasks, /ownNoteRevision/);
+  assert.doesNotMatch(tasks, /WAITING|Warten/);
+  assert.doesNotMatch(common, /"WAITING"/);
+
+  assert.match(css, /gehärteter Aufgabenworkflow/);
+  assert.match(html, /20260720-task-workflow/);
+  assert.match(worker, /pd-portal-v4-core-20260720-3/);
 });

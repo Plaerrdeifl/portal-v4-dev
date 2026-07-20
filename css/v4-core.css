@@ -147,3 +147,29 @@
     display:none!important;
   }
 }
+
+/* V4 Core: gehärteter Aufgabenworkflow */
+.v4-assignment-reason small{
+  display:block;
+  margin-top:7px;
+  color:var(--ink-500);
+  line-height:1.4;
+}
+.v4-assignment-reason[hidden]{
+  display:none!important;
+}
+.v4-task-card[data-status="ARCHIVED"]{
+  border-style:dashed;
+  background:var(--surface-soft);
+}
+.v4-task-card[data-status="ARCHIVED"] .v4-card-actions{
+  display:none;
+}
+.v4-task-card .button.danger{
+  margin-left:auto;
+}
+@media(max-width:620px){
+  .v4-task-card .button.danger{
+    margin-left:0;
+  }
+}
