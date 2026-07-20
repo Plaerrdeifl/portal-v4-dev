@@ -2,7 +2,7 @@
   "id": "./",
   "name": "Plärrdeifl Portal",
   "short_name": "Plärrdeifl",
-  "description": "Plärrdeifl Portal v3 – Fanclub, Teams, Aufgaben und Verwaltung.",
+  "description": "Plärrdeifl Portal V4 Core – Fanclub, Teams, Aufgaben und sichere Supabase-Anmeldung.",
   "lang": "de-DE",
   "start_url": "./#/home",
   "scope": "./",

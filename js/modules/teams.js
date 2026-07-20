@@ -1,196 +1,149 @@
 import {
-  call, callBatch, closeDialog, confirmAction, currentUser, empty, errorPanel, escapeAttr, escapeHtml, fmtDate,
-  loading, normalize, openDialog, optionList, portal, runWrite, statusBadge, tabBar
+  call,
+  confirmAction,
+  empty,
+  errorPanel,
+  escapeAttr,
+  escapeHtml,
+  openDialog,
+  optionList,
+  runWrite,
+  statusBadge
 } from "./common.js";
-import { phase3State } from "./state.js";
-import { storage } from "../storage.js";
 
-const KEY = "teams:";
-const TEAM_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
-let activeTab = "overview";
-function target(){ return document.getElementById("teamsPanel"); }
-function setStatus(text,type="success"){ const el=document.getElementById("teamsStatus"); if(el){el.textContent=text;el.className=`status-pill ${type}`;} }
-function requestedTab(){ const h=String(location.hash||""); return new URLSearchParams(h.includes("?")?h.slice(h.indexOf("?")+1):"").get("tab")||""; }
-function initials(value=""){const parts=String(value||"").trim().split(/\s+/).filter(Boolean);return (parts[0]?.[0]||"T")+(parts.length>1?(parts.at(-1)?.[0]||""):"");}
-function teamRoleLabel(team={}){return team.isLeader?"Teamleiter":(team.myRole||team.teamrolle||"Mitglied");}
-function setTab(tab){ const next=`#/teams?tab=${encodeURIComponent(tab)}`; if(location.hash===next) renderTab(tab); else location.hash=next; }
-function tabs(){ const p=portal(); return [
-  {id:"overview",label:"Teamübersicht",icon:"📋",show:true},
-  {id:"mine",label:"Meine Teams",icon:"👥",show:true},
-  {id:"manage",label:"Teammitglieder verwalten",icon:"🛠️",show:Boolean(p.teamLeader)||Boolean(p.teamAdmin)},
-  {id:"functions",label:"Teamfunktionen",icon:"⚙️",show:Boolean(p.teamAdmin)}
-].filter(x=>x.show); }
-function renderTabs(){ const items=tabs(); if(!items.some(x=>x.id===activeTab))activeTab=items[0]?.id||"overview"; const el=document.getElementById("teamsTabs"); if(el){el.innerHTML=tabBar(items,activeTab,"teams");el.querySelectorAll('[data-module-tab="teams"]').forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));} }
+let snapshot = null;
 
-async function prefetchTeams(){
-  const calls=[];
-  const available=tabs();
-  if(!phase3State.has(KEY+"overview"))calls.push({id:"overview",functionName:"apiListPortalTeams",args:[]});
-  if(available.some(item=>item.id==="manage"||item.id==="functions")&&!phase3State.has(KEY+"all"))calls.push({id:"all",functionName:"apiListTeams",args:[]});
-  if(!calls.length)return;
-  const bundle=await callBatch(calls);
-  Object.entries(bundle?.results||{}).forEach(([id,value])=>phase3State.set(KEY+id,value));
+function teamForm(team = {}) {
+  return `<form class="form-grid">
+    <input type="hidden" name="id" value="${escapeAttr(team.id || "")}">
+    <label>Technischer Code<input name="code" required pattern="[A-Z][A-Z0-9_]{1,63}" maxlength="64" value="${escapeAttr(team.code || "")}" placeholder="BUS_ORGA"></label>
+    <label>Name<input name="name" required maxlength="160" value="${escapeAttr(team.name || "")}"></label>
+    <label class="full">Beschreibung<textarea name="description" maxlength="2000" rows="4">${escapeHtml(team.description || "")}</textarea></label>
+    <label class="checkbox-row full"><input name="active" type="checkbox" ${team.active !== false ? "checked" : ""}> Team ist aktiv</label>
+  </form>`;
 }
 
-export async function hydrateTeams(){
-  const req=requestedTab();
-  activeTab=tabs().some(x=>x.id===req)?req:(tabs()[0]?.id||"overview");
-  renderTabs();
-  await renderTab(activeTab);
-}
-async function renderTab(tab){activeTab=tabs().some(x=>x.id===tab)?tab:(tabs()[0]?.id||"overview");renderTabs();target().innerHTML=loading();setStatus("Daten werden geladen","warning");try{if(activeTab==="overview")await renderTeamOverview();if(activeTab==="mine")await renderOverview();if(activeTab==="manage")await renderManagement(false);if(activeTab==="functions")await renderManagement(true);setStatus("Live verbunden","success");}catch(error){target().innerHTML=errorPanel(error);setStatus("Fehler","warning");}}
-
-function workspaceCacheKey(){return `pd:r71:teams:${currentUser().userId||"anonymous"}`;}
-function readWorkspaceCache(){const cached=storage.get(workspaceCacheKey(),null);if(!cached?.savedAt||!cached?.payload)return null;if(Date.now()-Number(cached.savedAt)>TEAM_CACHE_MAX_AGE_MS)return null;return cached.payload;}
-function writeWorkspaceCache(payload){storage.set(workspaceCacheKey(),{savedAt:Date.now(),payload});}
-async function refreshWorkspace(){const data=await call("apiListPortalTeams");phase3State.set(KEY+"overview",data);writeWorkspaceCache(data);return data||{teams:[]};}
-async function workspaceData(force=false){
-  if(!force&&phase3State.has(KEY+"overview"))return phase3State.get(KEY+"overview");
-  if(!force){const cached=readWorkspaceCache();if(cached){phase3State.set(KEY+"overview",cached);window.setTimeout(()=>refreshWorkspace().catch(()=>null),120);return cached;}}
-  return refreshWorkspace();
-}
-async function renderTeamOverview(force=false){
-  const data=await workspaceData(force);
-  const teams=data.teams||[];
-  const visibleMembers=teams.reduce((sum,team)=>sum+Number(team.memberCount||team.members?.length||0),0);
-  const led=teams.filter(team=>team.isLeader||team.myRole==="TEAMLEITER"||team.myRole==="CO_TEAMLEITER").length;
-  target().innerHTML=`
-    <div class="p3-section-heading"><div><span>Übersicht</span><h3>Deine sichtbaren Teams</h3><p>Teamrollen und Mitglieder ohne private Kontaktdaten.</p></div><button id="refreshTeamOverview" class="button ghost">Aktualisieren</button></div>
-    <div class="p3-kpi-grid">
-      <article class="p3-kpi"><div class="p3-kpi-head"><span class="p3-kpi-icon">▦</span><span>Teams</span></div><strong class="p3-kpi-value">${teams.length}</strong><small>für dich sichtbar</small></article>
-      <article class="p3-kpi tone-green"><div class="p3-kpi-head"><span class="p3-kpi-icon">●</span><span>Mitglieder</span></div><strong class="p3-kpi-value">${visibleMembers}</strong><small>aktive Zuordnungen</small></article>
-      <article class="p3-kpi tone-purple"><div class="p3-kpi-head"><span class="p3-kpi-icon">★</span><span>Leitungsrollen</span></div><strong class="p3-kpi-value">${led}</strong><small>Team- oder Co-Leitung</small></article>
-    </div>
-    <div class="p3-team-grid">${teams.map(team=>`
-      <article class="p3-team-card">
-        <div class="p3-team-card-head"><div class="p3-team-card-title"><span class="p3-team-avatar">${escapeHtml(initials(team.name))}</span><div><h3>${escapeHtml(team.name||"Team")}</h3><span class="subtle">${Number(team.memberCount||team.members?.length||0)} Person(en)</span></div></div><span class="p3-team-role ${team.isLeader?"lead":""}">${escapeHtml(teamRoleLabel(team))}</span></div>
-        <div class="p3-team-card-body"><p class="p3-team-description">${escapeHtml(team.description||team.beschreibung||"Keine Beschreibung hinterlegt.")}</p><div class="p3-team-member-list">${(team.members||[]).slice(0,8).map(member=>`<div class="p3-team-member"><div class="p3-team-member-copy"><span class="p3-mini-avatar">${escapeHtml(initials(member.name))}</span><strong>${escapeHtml(member.name)}</strong></div><span>${escapeHtml(member.teamleiter?"Teamleiter":(member.role||member.teamrolle||"Mitglied"))}</span></div>`).join("")||empty("Keine aktiven Teammitglieder.")}</div></div>
-      </article>`).join("")||empty("Keine für dich sichtbaren aktiven Teams.")}
-    </div>`;
-  document.getElementById("refreshTeamOverview")?.addEventListener("click",()=>renderTeamOverview(true));
+function normalizeCheckbox(values, name) {
+  return { ...values, [name]: values[name] === "on" };
 }
 
-async function renderOverview(force=false){
-  const data=await workspaceData(force);
-  const teams=data.teams||[];
-  target().innerHTML=`
-    <div class="p3-section-heading"><div><span>Persönlich</span><h3>Meine Teamzuordnungen</h3><p>Deine Rolle und Zuständigkeit je Team.</p></div><button id="refreshMyTeams" class="button ghost">Aktualisieren</button></div>
-    <div class="p3-team-grid">${teams.map(team=>`
-      <article class="p3-team-card">
-        <div class="p3-team-card-head"><div class="p3-team-card-title"><span class="p3-team-avatar">${escapeHtml(initials(team.name))}</span><div><h3>${escapeHtml(team.name||"Team")}</h3><span class="subtle">${escapeHtml(team.description||team.beschreibung||"Keine Beschreibung hinterlegt.")}</span></div></div><span class="p3-team-role ${team.isLeader?"lead":""}">${escapeHtml(teamRoleLabel(team))}</span></div>
-        <div class="p3-team-meta"><div><small>Eigene Teamrolle</small><strong>${escapeHtml(team.myRole||"Mitglied")}</strong></div><div><small>Teamleitung</small><strong>${team.isLeader?"Ja":"Nein"}</strong></div><div><small>Aufgabenleitung</small><strong>${team.isTaskLead?"Ja":"Nein"}</strong></div><div><small>Mitglieder</small><strong>${Number(team.memberCount||team.members?.length||0)}</strong></div></div>
-      </article>`).join("")||empty("Du bist aktuell keinem aktiven Team zugeordnet.")}
-    </div>`;
-  document.getElementById("refreshMyTeams")?.addEventListener("click",()=>renderOverview(true));
-}
-
-async function renderTasks(force=false){let data=phase3State.get(KEY+"tasks");if(!data||force)data=phase3State.set(KEY+"tasks",await call("apiListMyTeamTasks",{status:"alle"}));const tasks=data.tasks||[];target().innerHTML=`<div class="module-toolbar"><input id="teamTaskSearch" class="grow" placeholder="Teamaufgabe suchen …"><select id="teamTaskStatus"><option value="offen">Offen</option><option value="alle">Alle</option><option value="erledigt">Erledigt</option></select><button id="newTeamTask" class="button primary">+ Aufgabe</button><button id="refreshTeamTasks" class="button ghost">Aktualisieren</button></div><div id="teamTaskResults"></div>`;const render=()=>{const q=normalize(document.getElementById("teamTaskSearch")?.value);const s=document.getElementById("teamTaskStatus")?.value||"offen";const list=tasks.filter(t=>(!q||normalize([t.aufgabe,t.team,t.verantwortlich,t.status].join(" ")).includes(q))&&(s==="alle"||(s==="offen"?!t.erledigt:!!t.erledigt)));document.getElementById("teamTaskResults").innerHTML=`<div class="list-grid">${list.map(t=>`<article class="card task-card ${normalize(t.prioritaet)==="dringend"?"priority-urgent":normalize(t.prioritaet)==="hoch"?"priority-high":""}"><div class="entity-head"><div><div class="task-title">${escapeHtml(t.aufgabe)}</div><span class="subtle">${escapeHtml(t.team||"Team")}</span></div>${statusBadge(t.status)}</div><div class="meta-grid"><div class="meta-item"><small>Verantwortlich</small>${escapeHtml(t.verantwortlich||"–")}</div><div class="meta-item"><small>Priorität</small>${escapeHtml(t.prioritaet||"Normal")}</div></div>${t.notiz?`<p>${escapeHtml(t.notiz)}</p>`:""}<div class="button-row"><button class="button small ghost" data-edit-team-task="${escapeAttr(t.id)}">Bearbeiten</button>${!t.erledigt?`<button class="button small primary" data-complete-team-task="${escapeAttr(t.id)}">${String(t.status||"").toUpperCase()==="OFFEN"?"Beginnen":"Erledigen"}</button>`:""}</div></article>`).join("")||empty("Keine Teamaufgaben gefunden.")}</div>`;document.querySelectorAll("[data-edit-team-task]").forEach(b=>b.addEventListener("click",()=>openTaskForm(tasks.find(t=>String(t.id)===b.dataset.editTeamTask),data.meta||{})));document.querySelectorAll("[data-complete-team-task]").forEach(b=>b.addEventListener("click",()=>completeTask(tasks.find(t=>String(t.id)===b.dataset.completeTeamTask))));};render();document.getElementById("teamTaskSearch")?.addEventListener("input",render);document.getElementById("teamTaskStatus")?.addEventListener("change",render);document.getElementById("newTeamTask")?.addEventListener("click",()=>openTaskForm({},data.meta||{}));document.getElementById("refreshTeamTasks")?.addEventListener("click",()=>renderTasks(true));}
-function openTaskForm(task = {}, meta = {}) {
-  const teams = meta.teamsDetailed || (meta.teams || []).map(name => ({ id: name, name }));
-  const selectedTeam = task.teamId || teams[0]?.id || "";
-  const optionsFor = teamId => (meta.verantwortlicheByTeam?.[teamId] || []).map(item => ({
-    value: item.id || item.value,
-    label: item.name || item.label || item.id || item.value
-  }));
-
+function openTeam(team = null) {
   openDialog({
-    title: task.id ? "Aufgabe bearbeiten" : "Teamaufgabe anlegen",
-    kicker: task.team || "Team",
-    body: `<form>
-      <input type="hidden" name="id" value="${escapeAttr(task.id || "")}">
-      <input type="hidden" name="revision" value="${escapeAttr(task.revision || "")}">
-      <input type="hidden" name="ownNoteRevision" value="${escapeAttr(task.ownNoteRevision || "")}">
-      <div class="form-grid">
-        <label class="full">Aufgabe<input name="aufgabe" value="${escapeAttr(task.aufgabe || "")}" required></label>
-        <label>Team<select id="teamTaskTeam" name="teamId" required>${optionList(teams.map(t => ({ value: t.id, label: t.name })), selectedTeam, "Team auswählen")}</select></label>
-        <label>Priorität<select name="prioritaet">${optionList(meta.prioritaeten || ["NIEDRIG", "NORMAL", "HOCH", "EILT"], task.prioritaet || "NORMAL")}</select></label>
-        <label>Status<select name="status">${optionList(meta.statusListe || ["OFFEN", "IN_BEARBEITUNG", "ERLEDIGT", "ARCHIVIERT"], task.status || "OFFEN")}</select></label>
-        <label class="full">Verantwortlich<select id="teamTaskResponsible" name="verantwortlichId">${optionList(optionsFor(selectedTeam), task.verantwortlichId || "", "Nicht zugewiesen")}</select></label>
-        <label class="full">Notiz<textarea name="notiz">${escapeHtml(task.notiz || "")}</textarea></label>
-        <div class="notice full">Aufgaben dürfen nur aktiven Mitgliedern des ausgewählten Teams zugewiesen werden.</div>
-      </div>
-    </form>`,
-    onSubmit: async data => {
-      await runWrite("Aufgabe wird gespeichert …", () => call("apiSaveTask", data));
-      closeDialog();
-      phase3State.remove(KEY + "tasks");
-      await renderTasks(true);
+    title: team ? "Team bearbeiten" : "Team anlegen",
+    kicker: "Teams",
+    body: teamForm(team || {}),
+    onSubmit: async values => {
+      snapshot = await runWrite(
+        () => call("save_team", normalizeCheckbox(values, "active")),
+        team ? "Team wurde aktualisiert." : "Team wurde angelegt."
+      );
+      render();
     }
   });
-
-  const teamSelect = document.getElementById("teamTaskTeam");
-  const responsible = document.getElementById("teamTaskResponsible");
-  teamSelect?.addEventListener("change", () => {
-    if (responsible) responsible.innerHTML = optionList(optionsFor(teamSelect.value), "", "Nicht zugewiesen");
-  });
 }
-async function completeTask(task){if(!task)return;const next=String(task.status||"").toUpperCase()==="OFFEN"?"IN_BEARBEITUNG":"ERLEDIGT";await runWrite(next==="IN_BEARBEITUNG"?"Aufgabe wird begonnen …":"Aufgabe wird erledigt …",()=>call("apiSetTaskStatus",{id:task.id,revision:task.revision,status:next}));phase3State.remove(KEY+"tasks");await renderTasks(true);}
 
-async function teamData(force=false){let data=phase3State.get(KEY+"all");if(!data||force)data=phase3State.set(KEY+"all",await call("apiListTeams"));return data||{teams:[],meta:{}};}
-async function renderManagement(adminMode,force=false){
-  const data=await teamData(force);
-  const teams=data.teams||[];
-  const visible=adminMode?teams:teams.filter(t=>t.canManage!==false&&t.aktiv==="JA");
-  const active=visible.filter(t=>t.aktiv==="JA"),inactive=visible.filter(t=>t.aktiv!=="JA");
-  target().innerHTML=`
-    <div class="p3-toolbar"><div class="p3-toolbar-copy"><strong>${adminMode?"Teams und Teamfunktionen":"Teammitglieder verwalten"}</strong><small>${adminMode?"Portalweite Teamverwaltung":"Nur Teams mit eigener Leitungsberechtigung"}</small></div><div class="p3-toolbar-actions">${adminMode?'<button id="newTeam" class="button primary">+ Team</button>':""}<button id="refreshTeamManagement" class="button ghost">Aktualisieren</button></div></div>
-    <div class="p3-team-grid">${teamCards(active,adminMode,false)||empty("Keine aktiven Teams.")}</div>
-    ${adminMode&&inactive.length?`<section class="p3-inactive-section"><div class="p3-section-heading"><div><span>Archiviert</span><h3>Deaktivierte Teams</h3><p>Bleiben nachvollziehbar und können kontrolliert reaktiviert werden.</p></div></div><div class="p3-team-grid" style="margin-top:14px">${teamCards(inactive,true,true)}</div></section>`:""}`;
-  bindTeamCardActions(teams,data.meta||{},adminMode);
-  document.getElementById("newTeam")?.addEventListener("click",()=>openTeamForm({},data.meta||{},adminMode));
-  document.getElementById("refreshTeamManagement")?.addEventListener("click",()=>renderManagement(adminMode,true));
+function membershipForm(team, membership = {}) {
+  const users = snapshot?.users || [];
+  const roles = snapshot?.canCreateTeam
+    ? [
+        { value: "LEAD", label: "Teamleiter" },
+        { value: "CO_LEAD", label: "Co-Teamleiter" },
+        { value: "MEMBER", label: "Mitglied" }
+      ]
+    : [
+        { value: "CO_LEAD", label: "Co-Teamleiter" },
+        { value: "MEMBER", label: "Mitglied" }
+      ];
+  return `<form class="form-grid">
+    <input type="hidden" name="teamId" value="${escapeAttr(team.id)}">
+    <label class="full">Portalbenutzer<select name="userId" required ${membership.userId ? "disabled" : ""}>${optionList(users.map(user => ({ value: user.id, label: `${user.userCode} · ${user.name}` })), membership.userId || "", "Benutzer auswählen")}</select>${membership.userId ? `<input type="hidden" name="userId" value="${escapeAttr(membership.userId)}">` : ""}</label>
+    <label class="full">Teamrolle<select name="role">${optionList(roles, membership.role || "MEMBER")}</select></label>
+  </form>`;
 }
-function teamCards(list,adminMode,inactive){return list.map(team=>`
-  <article class="p3-team-card ${inactive?"is-inactive":""}">
-    <div class="p3-team-card-head"><div class="p3-team-card-title"><span class="p3-team-avatar">${escapeHtml(initials(team.name))}</span><div><h3>${escapeHtml(team.name)}</h3><span class="subtle">${Number(team.memberCount)||0} Person(en)</span></div></div>${statusBadge(team.aktiv)}</div>
-    <p class="p3-team-description">${escapeHtml(team.beschreibung||"Keine Beschreibung.")}</p>
-    <div class="button-row"><button class="button small primary" data-team-details="${escapeAttr(team.id)}">Personen</button><button class="button small ghost" data-team-edit="${escapeAttr(team.id)}">Bearbeiten</button><button class="button small secondary" data-team-add-member="${escapeAttr(team.id)}">Benutzer dazu</button>${adminMode?`<button class="button small ${inactive?"secondary":"danger"}" data-team-toggle="${escapeAttr(team.id)}" data-revision="${escapeAttr(team.revision || 0)}" data-active="${inactive?"true":"false"}">${inactive?"Aktivieren":"Deaktivieren"}</button>`:""}</div>
-  </article>`).join("");}
-function bindTeamCardActions(teams,meta,adminMode){document.querySelectorAll("[data-team-details]").forEach(b=>b.addEventListener("click",()=>openTeamDetails(b.dataset.teamDetails,meta,adminMode)));document.querySelectorAll("[data-team-edit]").forEach(b=>b.addEventListener("click",()=>openTeamForm(teams.find(t=>t.id===b.dataset.teamEdit)||{},meta,adminMode)));document.querySelectorAll("[data-team-add-member]").forEach(b=>b.addEventListener("click",()=>openTeamMemberForm({},b.dataset.teamAddMember,teams,meta,adminMode)));document.querySelectorAll("[data-team-toggle]").forEach(b=>b.addEventListener("click",()=>toggleTeam(b.dataset.teamToggle,b.dataset.active==="true",Number(b.dataset.revision),adminMode)));}
-async function openTeamDetails(teamId, meta, adminMode) {
-  const data = await call("apiGetTeamDetails", teamId);
-  const team = data.team || {};
-  const members = data.members || [];
 
+function openMembership(team, membership = null) {
   openDialog({
-    title: `Team: ${team.name || teamId}`,
-    kicker: `${members.length} Person(en)`,
-    wide: true,
-    body: `<div class="p3-toolbar"><div class="p3-toolbar-copy"><strong>Teammitglieder</strong><small>Rollen und aktive Zuordnungen</small></div><div class="p3-toolbar-actions"><button id="addMemberFromDetails" class="button primary">+ Benutzer dazu</button></div></div>
-      ${members.length ? `<div class="card table-card"><div class="data-table-wrap"><table class="data-table">
-        <thead><tr><th>Name</th><th>Rolle</th><th>Status</th><th>Aktionen</th></tr></thead>
-        <tbody>${members.map(member => `<tr>
-          <td><strong>${escapeHtml(member.name)}</strong></td>
-          <td>${escapeHtml(member.teamrolle || "Mitglied")}</td>
-          <td>${statusBadge(member.aktiv)}</td>
-          <td><div class="button-row">
-            <button class="button small ghost" data-edit-team-member="${escapeAttr(member.id)}">Bearbeiten</button>
-            <button class="button small ${member.aktiv === "JA" ? "danger" : "secondary"}" data-toggle-team-member="${escapeAttr(member.id)}" data-revision="${escapeAttr(member.revision || 0)}" data-active="${member.aktiv === "JA" ? "false" : "true"}">${member.aktiv === "JA" ? "Deaktivieren" : "Aktivieren"}</button>
-          </div></td>
-        </tr>`).join("")}</tbody>
-      </table></div></div>` : empty("Noch keine Personen zugeordnet.")}
-      <div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`
+    title: membership ? "Teamrolle bearbeiten" : "Teammitglied hinzufügen",
+    kicker: team.name,
+    body: membershipForm(team, membership || {}),
+    onSubmit: async values => {
+      snapshot = await runWrite(
+        () => call("save_team_member", values),
+        "Teammitgliedschaft wurde gespeichert."
+      );
+      render();
+    }
   });
-
-  document.getElementById("addMemberFromDetails")?.addEventListener("click", () =>
-    openTeamMemberForm({}, teamId, phase3State.get(KEY + "all")?.teams || [], meta, adminMode)
-  );
-  document.querySelectorAll("[data-edit-team-member]").forEach(button => button.addEventListener("click", () =>
-    openTeamMemberForm(members.find(member => member.id === button.dataset.editTeamMember) || {}, teamId, phase3State.get(KEY + "all")?.teams || [], meta, adminMode)
-  ));
-  document.querySelectorAll("[data-toggle-team-member]").forEach(button => button.addEventListener("click", async () => {
-    const active = button.dataset.active === "true";
-    await runWrite(active ? "Teammitglied wird aktiviert …" : "Teammitglied wird deaktiviert …", () => call("apiSetTeamMemberActive", button.dataset.toggleTeamMember, active, Number(button.dataset.revision)));
-    phase3State.remove(KEY + "all");
-    phase3State.remove(KEY + "overview");
-    phase3State.remove(KEY + "tasks");
-    closeDialog();
-    await renderManagement(adminMode, true);
-    await openTeamDetails(teamId, meta, adminMode);
-  }));
 }
-function openTeamForm(team={},meta={},adminMode=false){openDialog({title:team.id?"Team bearbeiten":"Team anlegen",kicker:team.id||"Neues Team",body:`<form><input type="hidden" name="id" value="${escapeAttr(team.id||"")}"><input type="hidden" name="revision" value="${escapeAttr(team.revision||"")}"><div class="form-grid"><label>Teamname<input name="name" value="${escapeAttr(team.name||"")}" required></label><label>Aktiv<select name="aktiv">${optionList(["JA","NEIN"],team.aktiv||"JA")}</select></label><label>Sortierung<input name="sortierung" inputmode="numeric" value="${escapeAttr(team.sortierung||"")}"></label><label class="full">Beschreibung<textarea name="beschreibung">${escapeHtml(team.beschreibung||"")}</textarea></label></div></form>`,onSubmit:async data=>{await runWrite("Team wird gespeichert …",()=>call("apiSaveTeam",data));closeDialog();phase3State.remove(KEY+"all");phase3State.remove(KEY+"overview");await renderManagement(adminMode,true);}});}
-async function loadMemberOptions(teamId){const result=await call("apiListTeamMemberOptions",teamId);return result.members||[];}
-async function openTeamMemberForm(member={},teamId,teams,meta,adminMode){const options=await loadMemberOptions(teamId);openDialog({title:member.id?"Teamzuordnung bearbeiten":"Benutzer zu Team",kicker:teamId,body:`<form><input type="hidden" name="id" value="${escapeAttr(member.id||"")}"><input type="hidden" name="revision" value="${escapeAttr(member.revision||"")}"><input type="hidden" name="aktiv" value="${escapeAttr(member.aktiv||"JA")}"><div class="form-grid"><label>Team<select name="teamId" required>${optionList((teams||[]).filter(t=>t.aktiv==="JA").map(t=>({value:t.id,label:t.name})),member.teamId||teamId,"Team auswählen")}</select></label><label>Benutzer<select name="benutzerId" required>${optionList(options.map(m=>({value:m.id,label:`${m.name}${m.mitgliedsId?" · Mitglied":" · Portaluser"}`})),member.benutzerId||member.mitgliedsId||"","Benutzer auswählen")}</select></label><label>Teamrolle<select name="teamrolle">${optionList(meta.teamRollen||["MITGLIED","CO_TEAMLEITER","TEAMLEITER"],member.teamrolle||"MITGLIED")}</select></label><label class="check-row"><input type="checkbox" name="teamleiter" ${member.teamleiter?"checked":""}> Teamleiter</label><label class="check-row full"><input type="checkbox" name="aufgabenleitung" ${member.aufgabenleitung?"checked":""}> Bei Aufgaben bevorzugen</label><label class="full">Bemerkung<textarea name="bemerkung">${escapeHtml(member.bemerkung||"")}</textarea></label></div>${member.id?`<div class="danger-zone card" style="margin-top:16px"><p>Nur diese Teamzuordnung wird entfernt.</p><button id="removeTeamMember" class="button danger" type="button">Aus Team entfernen</button></div>`:""}</form>`,onSubmit:async data=>{await runWrite("Teammitglied wird gespeichert …",()=>call("apiSaveTeamMember",data));closeDialog();phase3State.remove(KEY+"all");phase3State.remove(KEY+"overview");phase3State.remove(KEY+"tasks");await renderManagement(adminMode,true);}});document.getElementById("removeTeamMember")?.addEventListener("click",async()=>{if(!await confirmAction({title:"Aus Team entfernen",message:"Diese Teamzuordnung wirklich entfernen?",confirmText:"Entfernen"}))return;await runWrite("Teamzuordnung wird entfernt …",()=>call("apiRemoveTeamMember",member.id,member.revision));closeDialog();phase3State.remove(KEY+"all");phase3State.remove(KEY+"overview");await renderManagement(adminMode,true);});}
-async function toggleTeam(id,active,revision,adminMode){await runWrite(active?"Team wird aktiviert …":"Team wird deaktiviert …",()=>call("apiSetTeamActive",id,active,revision));phase3State.remove(KEY+"all");await renderManagement(adminMode,true);}
-async function deleteTeam(){ throw new Error("Teams werden in R7.1 nicht physisch gelöscht. Bitte deaktivieren."); }
+
+async function removeMembership(team, membership) {
+  if (!await confirmAction(`${membership.name} aus dem Team entfernen?`)) return;
+  snapshot = await runWrite(
+    () => call("remove_team_member", { teamId: team.id, userId: membership.userId }),
+    "Teammitglied wurde entfernt."
+  );
+  render();
+}
+
+function roleLabel(role) {
+  return { LEAD: "Teamleiter", CO_LEAD: "Co-Teamleiter", MEMBER: "Mitglied" }[role] || role;
+}
+
+function teamCard(team) {
+  const activeMembers = (team.members || []).filter(member => member.active);
+  return `<article class="card v4-team-card">
+    <header class="v4-card-header">
+      <div><span class="subtle">${escapeHtml(team.code)}</span><h3>${escapeHtml(team.name)}</h3><p>${escapeHtml(team.description || "Keine Beschreibung")}</p></div>
+      ${statusBadge(team.active ? "ACTIVE" : "INACTIVE")}
+    </header>
+    <div class="v4-team-members">
+      ${activeMembers.length ? activeMembers.map(member => `<div class="v4-list-row">
+        <div><strong>${escapeHtml(member.name)}</strong><small>${escapeHtml(member.userCode)} · ${escapeHtml(roleLabel(member.role))}</small></div>
+        ${team.canManage ? `<div class="row-actions"><button class="button small secondary" data-edit-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}" type="button">Rolle</button><button class="button small ghost" data-remove-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}" type="button">Entfernen</button></div>` : ""}
+      </div>`).join("") : '<p class="subtle">Noch keine aktiven Teammitglieder.</p>'}
+    </div>
+    ${team.canManage ? `<footer class="v4-card-actions"><button class="button small primary" data-add-team-member="${escapeAttr(team.id)}" type="button">Mitglied hinzufügen</button>${snapshot.canCreateTeam ? `<button class="button small secondary" data-edit-team="${escapeAttr(team.id)}" type="button">Team bearbeiten</button>` : ""}</footer>` : ""}
+  </article>`;
+}
+
+function render() {
+  const panel = document.getElementById("teamsPanel");
+  if (!panel || !snapshot) return;
+  const teams = snapshot.teams || [];
+  const tabs = document.getElementById("teamsTabs");
+  if (tabs) tabs.innerHTML = `<div class="v4-toolbar"><div><strong>${teams.length} sichtbare Teams</strong><p>Teamleiter und Co-Teamleiter verwalten ihre eigenen Teams.</p></div>${snapshot.canCreateTeam ? '<button id="addTeamButton" class="button primary" type="button">Team anlegen</button>' : ""}</div>`;
+  panel.innerHTML = teams.length ? `<div class="v4-card-grid">${teams.map(teamCard).join("")}</div>` : empty("Dir ist noch kein Team zugeordnet.");
+  document.getElementById("addTeamButton")?.addEventListener("click", () => openTeam());
+  panel.querySelectorAll("[data-edit-team]").forEach(button => button.addEventListener("click", () => openTeam(teams.find(team => team.id === button.dataset.editTeam))));
+  panel.querySelectorAll("[data-add-team-member]").forEach(button => button.addEventListener("click", () => openMembership(teams.find(team => team.id === button.dataset.addTeamMember))));
+  panel.querySelectorAll("[data-edit-team-member]").forEach(button => button.addEventListener("click", () => {
+    const [teamId, userId] = button.dataset.editTeamMember.split(":");
+    const team = teams.find(item => item.id === teamId);
+    openMembership(team, team.members.find(item => item.userId === userId));
+  }));
+  panel.querySelectorAll("[data-remove-team-member]").forEach(button => button.addEventListener("click", async () => {
+    const [teamId, userId] = button.dataset.removeTeamMember.split(":");
+    const team = teams.find(item => item.id === teamId);
+    try { await removeMembership(team, team.members.find(item => item.userId === userId)); }
+    catch (error) { panel.insertAdjacentHTML("afterbegin", errorPanel(error, "Teammitglied konnte nicht entfernt werden")); }
+  }));
+  const status = document.getElementById("teamsStatus");
+  if (status) { status.textContent = "Aktuell"; status.className = "status-pill success"; }
+}
+
+export async function hydrateTeams(context = {}) {
+  const panel = document.getElementById("teamsPanel");
+  if (!panel) return;
+  panel.innerHTML = '<article class="card loading-card"><h3>Teams werden geladen …</h3></article>';
+  try {
+    snapshot = await call("teams_snapshot");
+    if (context.isCurrent && !context.isCurrent()) return;
+    render();
+  } catch (error) {
+    panel.innerHTML = errorPanel(error);
+    const status = document.getElementById("teamsStatus");
+    if (status) { status.textContent = "Fehler"; status.className = "status-pill error"; }
+  }
+}
+
+export function noop() {}

@@ -1,522 +1,215 @@
-import { auth } from "../auth.js";
-import { performanceMonitor } from "../performance.js";
 import {
-  call, canRead, canWrite, closeDialog, confirmAction, empty, errorPanel, escapeAttr,
-  escapeHtml, fmtDate, isAdmin, loading, openDialog, optionList, runWrite, showToast, statusBadge
+  call,
+  confirmAction,
+  empty,
+  errorPanel,
+  escapeAttr,
+  escapeHtml,
+  fmtDateTime,
+  openDialog,
+  optionList,
+  runWrite,
+  statusBadge
 } from "./common.js";
-import { phase3State } from "./state.js";
 
-window.__PD_PERFORMANCE_UI_HOTFIX__ = "2026.07.14-r7.1.performance-fast-hotfix-5";
+let snapshot = null;
+let activeTab = "requests";
 
-function target(){return document.getElementById("adminPanel");}
-function setStatus(text,type="success"){const el=document.getElementById("adminStatus");if(el){el.textContent=text;el.className=`status-pill ${type}`;}}
-let lastIntegrity=null;
-let systemStatusCache=null;
-let systemStatusCachedAt=0;
-const SYSTEM_STATUS_CACHE_MS=5*60*1000;
-function metric(value){return value===null||value===undefined?"…":Number(value||0);}
-async function getSystemStatus(force=false){
-  if(!force&&systemStatusCache&&Date.now()-systemStatusCachedAt<SYSTEM_STATUS_CACHE_MS)return systemStatusCache;
-  const value=await call("apiGetSystemStatus");
-  systemStatusCache=value;systemStatusCachedAt=Date.now();return value;
+function activeRoles() {
+  return (snapshot?.roles || []).filter(role => role.active);
 }
 
-export async function hydrateAdmin(context={}){
-  setStatus("Adminzugriff bestätigt","success");
-  const cachedIntegrity=phase3State.get("admin:nameIntegrity",lastIntegrity);
-  if(cachedIntegrity)lastIntegrity=cachedIntegrity;
-  renderAdminHome(lastIntegrity);
-  Promise.resolve().then(async()=>{
-    try{
-      const integrity=await phase3State.once("admin:nameIntegrity",()=>call("apiGetNameIntegrityStatus"));
-      if(context.signal?.aborted||context.isCurrent?.()===false)return;
-      lastIntegrity=integrity;
-      renderAdminHome(integrity);
-    }catch(error){
-      if(context.signal?.aborted||context.isCurrent?.()===false)return;
-      setStatus("Namensprüfung später erneut versuchen","warning");
-    }
-  });
-}
-function action(id,icon,title,text){return `<button class="p3-admin-action" type="button" data-admin-action="${escapeAttr(id)}"><span class="p3-admin-action-icon" aria-hidden="true">${icon}</span><span class="p3-admin-action-copy"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(text)}</span></span></button>`;}
-function renderAdminHome(integrity){
-  const fan=[
-    action("offices","🏛️","Fanclub-Ämter vergeben","Alle fünf festen Amtsplätze gemeinsam speichern."),
-    action("contributionAdmin","💶","Beiträge und Beitragsklassen","Beitragsklassen und Beitragsgrundlagen verwalten."),
-    action("seasonClose","📅","Saison und Jahresabschluss","Saisons pflegen und Jahresabschluss ausführen."),
-    action("fanclubSettings","🛠️","Fanclub-Einstellungen","Fachliche Fanclub-Einstellungen verwalten.")
-  ];
-  const portal=[
-    action("users","👤","Benutzer","Benutzerkonten mit getrenntem Vor- und Nachnamen verwalten."),
-    action("requests","✉️","Freischaltungsanträge","Vollständige Anträge prüfen und freigeben."),
-    action("teamsFunctions","🤝","Teams und Teamfunktionen","Teammitgliedschaften und Funktionen verwalten."),
-    action("rights","🔐","Portalrollen und Rechte","Rollenrechte verwalten; Admin-Override bleibt unveränderlich."),
-    action("navigationDashboard","🧭","Navigation und Dashboard","Darstellung und Widgets konfigurieren; Hauptstruktur bleibt fest."),
-    action("backup","💾","Backups","Gesicherten Snapshot erstellen."),
-    action("system","⚙️","Systemstatus","Tabellenstatus und Namensintegrität prüfen."),
-    action("clean","🧹","System bereinigen","Sicherheitsgeschützte Bereinigung auf den Grundstand.")
-  ];
-  const missingFirst=metric(integrity?.missingFirstCount),missingLast=metric(integrity?.missingLastCount),incompleteReq=metric(integrity?.incompleteRequestCount);
-  const panel=target();
-  if(!panel)return;
-  panel.innerHTML=`
-    <div class="p3-admin-home">
-      <article class="p3-admin-integrity">
-        <div class="section-title"><div><span class="p3-card-eyebrow">AE-R7.1-01</span><h3>Namensintegrität</h3><p>Personenbezogene Anzeige ist auf technische IDs und Zählwerte begrenzt.</p></div>${statusBadge(integrity?.cleanupStatus||"NICHT_PRUEFBAR")}</div>
-        <div class="p3-admin-summary-grid">
-          <div class="p3-admin-summary-item"><small>Benutzer ohne Vorname</small><strong>${missingFirst}</strong></div>
-          <div class="p3-admin-summary-item"><small>Benutzer ohne Nachname</small><strong>${missingLast}</strong></div>
-          <div class="p3-admin-summary-item"><small>Unvollständige Anträge</small><strong>${incompleteReq}</strong></div>
-        </div>
-        <p class="subtle">IDs: ${escapeHtml([...(integrity?.activeIncompleteIds||[]),...(integrity?.incompleteRequestIds||[])].join(", ")||"keine")}</p>
-      </article>
-
-      <section class="p3-admin-section fanclub">
-        <div class="p3-admin-section-head"><div><span>Fanclub</span><h3>Seltene Fanclubfunktionen</h3><p>Vier klar getrennte Verwaltungsbereiche.</p></div><span class="badge neutral">4 Bereiche</span></div>
-        <div class="p3-admin-actions">${fan.join("")}</div>
-      </section>
-
-      <section class="p3-admin-section portal">
-        <div class="p3-admin-section-head"><div><span>Portal</span><h3>Benutzer, Rechte und System</h3><p>Acht geschützte Bereiche für Portalverwaltung und Betrieb.</p></div><span class="badge neutral">8 Bereiche</span></div>
-        <div class="p3-admin-actions">${portal.join("")}</div>
-      </section>
-
-      <article class="p3-admin-boundary">
-        <span class="p3-admin-action-icon" aria-hidden="true">ⓘ</span>
-        <div><strong>Verbindliche v3-Abgrenzung</strong><p>Fanbus-Fachlogik, Getränkeverwaltung, Push-Benachrichtigungen und Veranstaltungsmodul werden nicht vorgezogen.</p></div>
-      </article>
-    </div>`;
-  document.querySelectorAll("[data-admin-action]").forEach(button=>button.addEventListener("click",()=>runAction(button.dataset.adminAction)));
-}
-async function runAction(id){try{
-  if(id==="offices")return openOffices();
-  if(id==="contributionAdmin")return openContributionAdmin();
-  if(id==="seasonClose")return openSeasonClose();
-  if(id==="fanclubSettings")return openFanclubSettings();
-  if(id==="requests")return openRequests();
-  if(id==="users")return openUsers();
-  if(id==="teamsFunctions"){location.hash="#/teams?tab=functions";return;}
-  if(id==="rights")return openRoleRights();
-  if(id==="navigationDashboard")return openNavigationDashboard();
-  if(id==="backup")return createBackup();
-  if(id==="system")return openSystemWithNames();
-  if(id==="clean")return openCleanSystem();
-}catch(error){showToast(error?.message||"Aktion fehlgeschlagen.","error",8000);}}
-function newRequestId(){return crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}`;}
-async function openOffices(){const data=await call("apiGetFanclubAdminConfig");const slots=data.slots||[],members=data.members||[];openDialog({title:"Fanclub-Ämter vergeben",kicker:"Fünf Amtsplätze gemeinsam",wide:true,body:`<form><div class="notice warning">Alle fünf Plätze müssen mit fünf unterschiedlichen aktiven PD-IDs gemeinsam gespeichert werden. Ein Benutzerkonto ist für die fachliche Besetzung nicht erforderlich.</div><div class="form-grid" style="margin-top:14px">${slots.map(slot=>`<label>${escapeHtml(slot.label)}<select name="${escapeAttr(slot.code)}" required>${optionList(members,slot.memberId,"Mitglied auswählen")}</select></label>`).join("")}</div></form>`,onSubmit:async form=>{const values=slots.map(slot=>form[slot.code]);if(new Set(values).size!==5)throw new Error("Alle fünf Amtsplätze müssen unterschiedlich besetzt sein.");await runWrite("Amtsplätze werden gemeinsam gespeichert …",()=>call("apiSaveOfficeSlots",{slots:slots.map(slot=>({code:slot.code,memberId:form[slot.code],revision:slot.revision}))}));closeDialog();}});}
-async function openContributionAdmin(){const data=await call("apiListContributionClasses");const rows=data.classes||[];openDialog({title:"Beiträge und Beitragsklassen",kicker:`${rows.length} Beitragsklasse(n)`,wide:true,body:`<div class="settings-grid">${rows.map(r=>`<article class="card"><h3>${escapeHtml(r.name||r.id)}</h3><p>${escapeHtml(String(r.amount??r.betrag??""))} € · ${escapeHtml(r.active||r.aktiv||"")}</p></article>`).join("")||empty("Keine Beitragsklassen vorhanden.")}</div><div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});}
-async function openSeasonClose(){const data=await call("apiListSeasons");openDialog({title:"Saison und Jahresabschluss",kicker:`${(data.seasons||[]).length} Saison(en)`,body:`<div class="settings-grid">${(data.seasons||[]).map(r=>`<article class="card"><strong>${escapeHtml(r.name||r.id)}</strong> ${statusBadge(r.status||r.active)}</article>`).join("")||empty("Keine Saison vorhanden.")}</div><div class="dialog-actions"><button id="adminNewSeason" class="button primary" type="button">Neue Saison starten</button><button id="adminYearClose" class="button secondary" type="button">Jahresabschluss</button><button class="button ghost" data-dialog-close>Schließen</button></div>`});document.getElementById("adminNewSeason")?.addEventListener("click",seasonDialog);document.getElementById("adminYearClose")?.addEventListener("click",yearCloseDialog);}
-function openFanclubSettings(){openDialog({title:"Fanclub-Einstellungen",kicker:"R7.1",body:`<form><label>Hinweis für interne Fanclubverwaltung<textarea name="hinweis" maxlength="1000"></textarea></label><div class="notice warning">Unveränderliche Systemregeln, Namenspflicht und Amtsplätze können hier nicht abgeschaltet werden.</div></form>`,onSubmit:async data=>{await runWrite("Fanclub-Einstellungen werden gespeichert …",()=>call("apiSaveFanclubSettings",data));closeDialog();}});}
-function openNavigationDashboard(){openDialog({title:"Navigation und Dashboard",kicker:"Darstellungskonfiguration",body:`<div class="notice warning">Die sechs Hauptbereiche, Reihenfolge, Grundsichtbarkeit und Admin-Gesamtzugriff sind unveränderliche Systemregeln.</div><div class="p3-admin-actions" style="margin-top:14px"><button id="openNavigationPresentation" class="p3-admin-action"><strong>🧭 Darstellung der Navigation</strong><span>Texte und Symbole nicht sicherheitskritisch pflegen.</span></button><button id="openDashboardPresentation" class="p3-admin-action"><strong>📊 Dashboard-Widgets</strong><span>Widgetdarstellung verwalten.</span></button></div>`});document.getElementById("openNavigationPresentation")?.addEventListener("click",openPortalStructure);document.getElementById("openDashboardPresentation")?.addEventListener("click",openDashboardWidgets);}
-function systemQuickBody(names){
-  const backend=auth.current().backend||{};
-  const connection=auth.current().connectionPending?"WIRD_WIEDERHERGESTELLT":"VERBUNDEN";
-  return `<div class="grid three"><article class="card stat-card"><h3>Backend</h3><strong>${escapeHtml(connection)}</strong><small>${escapeHtml(backend.version||backend.build||"Version nicht gemeldet")}</small></article><article class="card stat-card"><h3>Fehlender Vorname</h3><strong>${metric(names?.missingFirstCount)}</strong></article><article class="card stat-card"><h3>Fehlender Nachname</h3><strong>${metric(names?.missingLastCount)}</strong></article></div><div class="grid two" style="margin-top:14px"><article class="card stat-card"><h3>Unvollständige Anträge</h3><strong>${metric(names?.incompleteRequestCount)}</strong><small>${escapeHtml([...(names?.incompleteRequestIds||[])].join(", ")||"keine")}</small></article><article class="card stat-card"><h3>Aktive unvollständige Benutzer</h3><strong>${Number((names?.activeIncompleteIds||[]).length)}</strong><small>${escapeHtml([...(names?.activeIncompleteIds||[])].join(", ")||"keine")}</small></article></div><div class="notice success" style="margin-top:14px"><strong>Schnellstatus geladen.</strong><br>Die vollständige Prüfung aller Datenbanktabellen wird nur noch auf ausdrücklichen Wunsch gestartet und blockiert die Administration nicht.</div><div id="systemDeepResult" style="margin-top:14px"></div><div class="dialog-actions"><button id="systemDeepCheck" class="button primary" type="button">Vollständige Datenbankprüfung starten</button><button class="button ghost" data-dialog-close>Schließen</button></div>`;
-}
-
-async function loadSystemNames(dialog,token){
-  try{
-    const names=lastIntegrity||phase3State.get("admin:nameIntegrity")||await phase3State.once("admin:nameIntegrity",()=>call("apiGetNameIntegrityStatus"));
-    if(dialog.dataset.loadToken!==token||!dialog.open)return;
-    lastIntegrity=names;
-    document.getElementById("dialogBody").innerHTML=systemQuickBody(names);
-    bindSystemDeepCheck(dialog,token);
-  }catch(error){
-    if(dialog.dataset.loadToken!==token||!dialog.open)return;
-    document.getElementById("dialogBody").innerHTML=`${errorPanel(error,"Namensintegrität konnte nicht geladen werden")}<div id="systemDeepResult" style="margin-top:14px"></div><div class="dialog-actions"><button id="systemDeepCheck" class="button primary" type="button">Datenbankprüfung trotzdem starten</button><button class="button ghost" data-dialog-close>Schließen</button></div>`;
-    bindSystemDeepCheck(dialog,token);
-  }
-}
-
-function bindSystemDeepCheck(dialog,token){
-  document.getElementById("systemDeepCheck")?.addEventListener("click",()=>runDeepSystemCheck(dialog,token));
-}
-
-async function runDeepSystemCheck(dialog,token){
-  const button=document.getElementById("systemDeepCheck");
-  const target=document.getElementById("systemDeepResult");
-  if(button){button.disabled=true;button.textContent="Prüfung läuft …";}
-  if(target)target.innerHTML=loading("Alle R7.1-Tabellen werden vollständig geprüft …");
-  try{
-    const system=await getSystemStatus(true);
-    if(dialog.dataset.loadToken!==token||!dialog.open)return;
-    if(target)target.innerHTML=`${system.warnings?.length?`<div class="notice warning">${system.warnings.map(escapeHtml).join("<br>")}</div>`:'<div class="notice success">Keine technischen Warnungen.</div>'}<div class="card table-card" style="margin-top:14px"><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Tabelle</th><th>Status</th><th>Datenzeilen</th><th>Physische Zeilen</th></tr></thead><tbody>${(system.sheets||[]).map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${statusBadge(r.status)}</td><td>${Number(r.effectiveRows||0)}</td><td>${Number(r.physicalRows||0)}</td></tr>`).join("")}</tbody></table></div></div>`;
-    if(button){button.textContent="Erneut vollständig prüfen";button.disabled=false;}
-  }catch(error){
-    if(dialog.dataset.loadToken!==token||!dialog.open)return;
-    if(target)target.innerHTML=errorPanel(error,"Vollständige Datenbankprüfung fehlgeschlagen");
-    if(button){button.textContent="Erneut versuchen";button.disabled=false;}
-  }
-}
-
-async function openSystemWithNames(){
-  const token=`system-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  const names=lastIntegrity||phase3State.get("admin:nameIntegrity");
-  const dialog=openDialog({title:"Systemstatus",kicker:"Schnellstatus",wide:true,body:names?systemQuickBody(names):`${loading("Namensintegrität wird geladen …")}<div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});
-  dialog.dataset.loadToken=token;
-  if(names)bindSystemDeepCheck(dialog,token);
-  else loadSystemNames(dialog,token);
-}
-
-function seasonDialog(){openDialog({title:"Neue Saison starten",kicker:"Fanclubverwaltung",body:`<form><label>Saison/Jahr<input name="seasonName" value="${new Date().getFullYear()+1}" required></label><div class="notice warning" style="margin-top:14px">Für beitragspflichtige Mitglieder werden Beiträge angelegt. Bestehende Saisonwerte werden serverseitig geprüft.</div></form>`,onSubmit:async data=>{await runWrite("Neue Saison wird angelegt …",()=>call("apiStartNewSeason",data.seasonName));closeDialog();}});}
-function yearCloseDialog(){openDialog({title:"Jahresabschluss",kicker:"Fanclubverwaltung",body:`<form><label>Jahr<input type="number" name="year" value="${new Date().getFullYear()}" required></label></form>`,onSubmit:async data=>{await runWrite("Jahresabschluss wird erstellt …",()=>call("apiCreateYearClose",Number(data.year)));closeDialog();}});}
-async function runDataCheck(){const result=await runWrite("Datenprüfung läuft …",()=>call("apiRunDataCheck"),"Datenprüfung abgeschlossen.");openDialog({title:"Datenprüfung",kicker:`${Number(result.count||0)} Hinweis(e)`,wide:true,body:`${result.issues?.length?`<div class="settings-grid">${result.issues.map(issue=>`<div class="card"><strong>${escapeHtml(issue[0]||"Hinweis")} · ${escapeHtml(issue[1]||"")}</strong><p>${escapeHtml(issue[2]||"")}</p></div>`).join("")}</div>`:'<div class="notice success">Keine fachlichen Probleme gefunden.</div>'}<div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});}
-
-async function openUsers(force=false){let data=phase3State.get("admin:roles");if(!data||force)data=phase3State.set("admin:roles",await call("apiListRoles"));const users=data.roles||[];const roleNames=data.meta?.rollen||[];openDialog({title:"Benutzer",kicker:`${users.length} Benutzer`,wide:true,body:`<div class="module-toolbar"><input id="adminUserSearch" class="grow" placeholder="Benutzer suchen …">${canWrite("Rollen")?'<button id="adminNewUser" class="button primary">+ Benutzer</button>':""}<button id="adminUsersRefresh" class="button ghost">Aktualisieren</button></div><div id="adminUserResults" style="margin-top:16px"></div><div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});const render=()=>{const q=String(document.getElementById("adminUserSearch")?.value||"").toLowerCase();const list=users.filter(u=>!q||[u.id,u.name,u.email,u.rolle,u.mitgliedsId].join(" ").toLowerCase().includes(q));document.getElementById("adminUserResults").innerHTML=list.length?`<div class="card table-card"><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Benutzer</th><th>Rolle</th><th>Google</th><th>Status</th><th></th></tr></thead><tbody>${list.map(u=>`<tr><td><strong>${escapeHtml(u.name||u.email||u.id)}</strong><div class="subtle">${escapeHtml(u.id)}${u.mitgliedsId?` · ${escapeHtml(u.mitgliedsId)}`:""}</div></td><td>${escapeHtml(u.rolle)}</td><td>${u.googleVerknuepft?'<span class="badge success">Verbunden</span>':'<span class="badge neutral">Nicht verbunden</span>'}</td><td>${statusBadge(u.aktiv)}</td><td>${canWrite("Rollen")?`<div class="button-row"><button class="button small ghost" data-user-edit="${escapeAttr(u.id)}">Bearbeiten</button><button class="button small ${u.aktiv==="JA"?"danger":"secondary"}" data-user-toggle="${escapeAttr(u.id)}" data-active="${u.aktiv==="JA"?"false":"true"}">${u.aktiv==="JA"?"Deaktivieren":"Aktivieren"}</button>${u.googleVerknuepft?`<button class="button small ghost" data-user-unlink="${escapeAttr(u.id)}">Google lösen</button>`:""}</div>`:""}</td></tr>`).join("")}</tbody></table></div></div>`:empty("Keine Benutzer gefunden.");document.querySelectorAll("[data-user-edit]").forEach(b=>b.addEventListener("click",()=>openUserForm(users.find(u=>u.id===b.dataset.userEdit),roleNames,data.meta||{})));document.querySelectorAll("[data-user-toggle]").forEach(b=>b.addEventListener("click",()=>toggleUser(b.dataset.userToggle,b.dataset.active==="true")));document.querySelectorAll("[data-user-unlink]").forEach(b=>b.addEventListener("click",()=>unlinkUser(b.dataset.userUnlink)));};render();document.getElementById("adminUserSearch")?.addEventListener("input",render);document.getElementById("adminNewUser")?.addEventListener("click",()=>openUserForm({},roleNames,data.meta||{}));document.getElementById("adminUsersRefresh")?.addEventListener("click",()=>{closeDialog();phase3State.remove("admin:roles");openUsers(true);});}
-function openUserForm(user={},roles=[],meta={}){
-  const members=(meta.members||[]).map(item=>({value:item.id||item.value,label:item.name||item.label||item.id||item.value}));
-  const selectedOffice=(user.officeSlots||[])[0]||"";
-  const officeOptions=(meta.officeSlots||[]).map(slot=>({
-    value:slot.code,
-    label:`${slot.label}${slot.memberId&&slot.memberId!==user.mitgliedsId?` · belegt durch ${slot.memberName||slot.memberId}`:""}`,
-    disabled:Boolean(slot.memberId&&slot.memberId!==user.mitgliedsId)
+function memberOptions() {
+  return (snapshot?.members || []).filter(member => member.status === "ACTIVE").map(member => ({
+    value: member.id,
+    label: `${member.memberCode} · ${member.firstName} ${member.lastName}`
   }));
-  const officeHtml=[`<option value="">Kein Amt</option>`].concat(officeOptions.map(item=>`<option value="${escapeAttr(item.value)}" ${item.value===selectedOffice?"selected":""} ${item.disabled?"disabled":""}>${escapeHtml(item.label)}</option>`)).join("");
+}
+
+function tabs() {
+  return [
+    ...(snapshot?.canManageUsers ? [["requests", "Freischaltungen"], ["users", "Benutzer"]] : []),
+    ...(snapshot?.canManageRoles ? [["roles", "Rollen & Rechte"]] : []),
+    ...(snapshot?.canReadAudit ? [["audit", "Audit"]] : [])
+  ];
+}
+
+function renderTabs(panel) {
+  const counts = {
+    requests: (snapshot.requests || []).filter(request => request.status === "PENDING").length,
+    users: (snapshot.users || []).length,
+    roles: (snapshot.roles || []).length,
+    audit: (snapshot.audit || []).length
+  };
+  panel.innerHTML = `<div class="v4-tabs v4-admin-tabs">${tabs().map(([key, label]) => `<button class="v4-tab ${activeTab === key ? "active" : ""}" data-admin-tab="${key}" type="button">${escapeHtml(label)} <span>${counts[key]}</span></button>`).join("")}</div><div id="adminTabPanel"></div>`;
+  panel.querySelectorAll("[data-admin-tab]").forEach(button => button.addEventListener("click", () => {
+    activeTab = button.dataset.adminTab;
+    render();
+  }));
+}
+
+function approveRequest(request) {
   openDialog({
-    title:user.id?"Benutzer bearbeiten":"Benutzer anlegen",
-    kicker:user.id||"Neues Benutzerkonto",
-    body:`<form><input type="hidden" name="id" value="${escapeAttr(user.id||"")}"><div class="form-grid"><label>Vorname *<input name="vorname" value="${escapeAttr(user.vorname||"")}" required maxlength="160"></label><label>Nachname *<input name="nachname" value="${escapeAttr(user.nachname||"")}" required maxlength="160"></label><div class="notice full">Der Anzeigename wird ausschließlich aus dem geprüften Vor- und Nachnamen gebildet. E-Mail und Google-Anzeigename sind kein Ersatz.</div><label>Google-E-Mail<input type="email" name="email" value="${escapeAttr(user.email||"")}"></label><label>Mitglied<select name="mitgliedsId">${optionList(members,user.mitgliedsId||"","Keine Mitgliedsverknüpfung")}</select></label><label>Portalrolle<select name="rolle">${optionList(roles,user.rolle||roles[0],"Rolle auswählen")}</select></label><label>Aktiv<select name="aktiv">${optionList(["JA","NEIN"],user.aktiv||"JA")}</select></label><label>Fester Amtsplatz<select name="officeSlot">${officeHtml}</select></label><label class="full">Bemerkung<textarea name="bemerkung">${escapeHtml(user.bemerkung||"")}</textarea></label><div class="notice full"><strong>R7.1:</strong> Ein Benutzer besitzt genau eine Portalrolle. Ein fester Amtsplatz ist nur mit einer Mitgliedsverknüpfung möglich.</div></div></form>`,
-    onSubmit:async data=>{
-      data.officeSlots=data.officeSlot?[data.officeSlot]:[];
-      delete data.officeSlot;
-      await runWrite("Benutzer wird gespeichert …",()=>call("apiSaveRole",data));
-      closeDialog();phase3State.remove("admin:roles");openUsers(true);
+    title: "Freischaltung bestätigen",
+    kicker: `${request.firstName} ${request.lastName}`,
+    body: `<form class="form-grid">
+      <label class="full">Portalrolle<select name="roleId" required>${optionList(activeRoles().map(role => ({ value: role.id, label: role.name })), "", "Rolle auswählen")}</select></label>
+      <label class="full">Mitglied verknüpfen<select name="memberId">${optionList(memberOptions(), "", "Keine Mitgliedsverknüpfung")}</select></label>
+    </form>`,
+    submitLabel: "Freischalten",
+    onSubmit: async values => {
+      snapshot = await runWrite(() => call("approve_request", { id: request.id, ...values }), "Portalzugang wurde freigeschaltet.");
+      render();
     }
   });
 }
-async function toggleUser(id,active){await runWrite(active?"Benutzer wird aktiviert …":"Benutzer wird deaktiviert …",()=>call("apiSetRoleActive",id,active));closeDialog();phase3State.remove("admin:roles");openUsers(true);}
-async function unlinkUser(id){if(!await confirmAction({title:"Google-Verknüpfung lösen",message:"Der Benutzer muss sich danach erneut mit dem hinterlegten Google-Konto verbinden.",confirmText:"Verknüpfung lösen"}))return;await runWrite("Google-Verknüpfung wird gelöst …",()=>call("apiResetGoogleLink",id));closeDialog();phase3State.remove("admin:roles");openUsers(true);}
 
-async function openRequests(){const data=await call("apiListAccessRequests",{status:"alle"});const rows=data.requests||[];openDialog({title:"Freischaltungsanträge",kicker:`${rows.length} Antrag/Anträge`,wide:true,body:rows.length?`<div class="settings-grid">${rows.map(r=>`<article class="card"><div class="entity-head"><div><h3>${escapeHtml([r.vorname,r.nachname].filter(Boolean).join(" ")||"Unvollständiger Name")}</h3><span class="subtle">${escapeHtml(r.email||"")} · ${escapeHtml(fmtDate(r.antragAm))}</span></div>${statusBadge(r.status)}</div><div class="button-row" style="margin-top:14px">${canWrite("Benutzeranträge")&&String(r.status).toLowerCase()==="offen"&&r.vorname&&r.nachname?`<button class="button small primary" data-request-approve="${escapeAttr(r.id)}">Freigeben</button><button class="button small danger" data-request-reject="${escapeAttr(r.id)}">Ablehnen</button>`:""}</div></article>`).join("")}</div>`:empty("Keine Freischaltungsanträge vorhanden.")});document.querySelectorAll("[data-request-approve]").forEach(b=>b.addEventListener("click",()=>approveRequest(rows.find(r=>r.id===b.dataset.requestApprove),data.meta||{})));document.querySelectorAll("[data-request-reject]").forEach(b=>b.addEventListener("click",()=>rejectRequest(b.dataset.requestReject)));}
-function approveRequest(request,meta){if(!request?.vorname||!request?.nachname){showToast("Antrag ist unvollständig und kann nicht genehmigt werden.","error",6500);return;}openDialog({title:"Benutzer freigeben",kicker:request.email||request.id,body:`<form><input type="hidden" name="antragId" value="${escapeAttr(request.id)}"><div class="form-grid"><label>Rolle<select name="rolle">${optionList(meta.roles||[],"","Rolle auswählen")}</select></label><label>Mitglieds-ID<select name="mitgliedsId">${optionList(meta.members||[],"","Keine Verknüpfung")}</select></label><label class="full">Bemerkung<textarea name="bemerkung"></textarea></label></div></form>`,onSubmit:async data=>{await runWrite("Antrag wird freigegeben …",()=>call("apiApproveAccessRequest",data));closeDialog();openRequests();}});}
-async function rejectRequest(id){if(!await confirmAction({title:"Antrag ablehnen",message:"Der Freischaltungsantrag wird abgelehnt.",confirmText:"Ablehnen"}))return;await runWrite("Antrag wird abgelehnt …",()=>call("apiRejectAccessRequest",{antragId:id,bemerkung:"Über PWA abgelehnt"}));closeDialog();openRequests();}
-
-async function openAccountTypes(){
-  const data=await call("apiListAccountTypes");
-  const rows=data.types||[];
-  openDialog({title:"Kontotypen",kicker:`${rows.length} Typ(en)`,wide:true,body:`<div class="module-toolbar">${isAdmin()?'<button id="newAccountType" class="button primary">+ Kontotyp</button>':""}<button id="refreshAccountTypes" class="button ghost">Aktualisieren</button></div><div class="settings-grid" style="margin-top:16px">${rows.map(item=>`<article class="card"><div class="entity-head"><div><h3>${escapeHtml(item.name)}</h3><span class="subtle">${escapeHtml(item.id)}</span></div>${statusBadge(item.aktiv)}</div><p>${escapeHtml(item.bemerkung||"")}</p>${isAdmin()?`<div class="button-row"><button class="button small ghost" data-account-type-edit="${escapeAttr(item.id)}">Bearbeiten</button><button class="button small ${item.aktiv==="JA"?"danger":"secondary"}" data-account-type-toggle="${escapeAttr(item.id)}" data-active="${item.aktiv==="JA"?"false":"true"}">${item.aktiv==="JA"?"Deaktivieren":"Aktivieren"}</button></div>`:""}</article>`).join("")||empty("Keine Kontotypen vorhanden.")}</div><div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});
-  document.getElementById("newAccountType")?.addEventListener("click",()=>openAccountTypeForm({}));
-  document.getElementById("refreshAccountTypes")?.addEventListener("click",()=>{closeDialog();openAccountTypes();});
-  document.querySelectorAll("[data-account-type-edit]").forEach(button=>button.addEventListener("click",()=>openAccountTypeForm(rows.find(item=>item.id===button.dataset.accountTypeEdit)||{})));
-  document.querySelectorAll("[data-account-type-toggle]").forEach(button=>button.addEventListener("click",async()=>{await runWrite("Kontotyp wird aktualisiert …",()=>call("apiSetAccountTypeActive",button.dataset.accountTypeToggle,button.dataset.active==="true"));closeDialog();await openAccountTypes();}));
-}
-function openAccountTypeForm(item={}){
-  openDialog({title:item.id?"Kontotyp bearbeiten":"Kontotyp anlegen",kicker:item.id||"Neuer Kontotyp",body:`<form><input type="hidden" name="id" value="${escapeAttr(item.id||"")}"><div class="form-grid"><label class="full">Name<input name="name" value="${escapeAttr(item.name||"")}" required></label><label>Sortierung<input type="number" name="sortierung" value="${escapeAttr(item.sortierung||0)}"></label><label>Aktiv<select name="aktiv">${optionList(["JA","NEIN"],item.aktiv||"JA")}</select></label><label class="full">Bemerkung<textarea name="bemerkung">${escapeHtml(item.bemerkung||"")}</textarea></label></div></form>`,onSubmit:async form=>{await runWrite("Kontotyp wird gespeichert …",()=>call("apiSaveAccountType",form));closeDialog();await openAccountTypes();}});
-}
-
-async function createBackup(){const result=await runWrite("Backup wird erstellt …",()=>call("apiCreateBackup"),"Backup wurde erstellt.");openDialog({title:"Backup abgeschlossen",kicker:"Portalverwaltung",body:`<div class="notice success">${escapeHtml(result.message||"Backup wurde erstellt.")}</div><div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});}
-async function openSystem(){const data=await call("apiGetSystemStatus");openDialog({title:"Systemstatus",kicker:data.message||"DB_-Status",wide:true,body:`${data.warnings?.length?`<div class="notice warning">${data.warnings.map(escapeHtml).join("<br>")}</div>`:'<div class="notice success">Keine technischen Warnungen.</div>'}<div class="card table-card" style="margin-top:16px"><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Tabelle</th><th>Status</th><th>Datenzeilen</th><th>Physische Zeilen</th></tr></thead><tbody>${(data.sheets||[]).map(s=>`<tr><td>${escapeHtml(s.name)}</td><td>${statusBadge(s.status)}</td><td>${Number(s.effectiveRows||0)}</td><td>${Number(s.physicalRows||0)}</td></tr>`).join("")}</tbody></table></div></div><div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});}
-function performanceTimeout_(promise, timeoutMs) {
-  let timer = null;
-  const timeout = new Promise((_, reject) => {
-    timer = window.setTimeout(() => {
-      const error = new Error(
-        "Die Serverdiagnose wurde nach 25 Sekunden beendet. Andere Portalbereiche bleiben nutzbar."
-      );
-      error.code = "PERFORMANCE_DIAGNOSTIC_TIMEOUT";
-      reject(error);
-    }, Math.max(1000, Number(timeoutMs) || 25000));
-  });
-  return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timer));
-}
-
-async function openPerformanceDiagnostics(){
-  const initialClient=performanceMonitor.summary();
+function rejectRequest(request) {
   openDialog({
-    title:"Performance & Persistenz",
-    kicker:"Schnelldiagnose wird geladen",
-    wide:true,
-    body:`
-      <div class="grid three">
-        <article class="card stat-card"><div class="card-icon">🌐</div><h3>Browseraufrufe</h3><strong>${Number(initialClient.count||0)}</strong><small>Ø ${Number(initialClient.averageClientMs||0)} ms</small></article>
-        <article class="card stat-card"><div class="card-icon">⏱️</div><h3>Serverdiagnose</h3><strong>läuft</strong><small>Abbruch automatisch nach 25 Sekunden</small></article>
-        <article class="card stat-card"><div class="card-icon">🛡️</div><h3>Modus</h3><strong>Nur lesen</strong><small>Keine Fachdatenänderung</small></article>
-      </div>
-      <div style="margin-top:16px">${loading("Nur ID-Spalten und die letzten 50 Auditzeilen werden geprüft …")}</div>
-      <div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`
+    title: "Antrag ablehnen",
+    kicker: `${request.firstName} ${request.lastName}`,
+    body: '<form><label>Begründung<textarea name="reason" maxlength="1000" rows="5" required></textarea></label></form>',
+    submitLabel: "Ablehnen",
+    danger: true,
+    onSubmit: async values => {
+      snapshot = await runWrite(() => call("reject_request", { id: request.id, reason: values.reason || "" }), "Antrag wurde abgelehnt.");
+      render();
+    }
   });
+}
 
-  let data;
+function renderRequests(panel) {
+  const pending = (snapshot.requests || []).filter(request => request.status === "PENDING");
+  const completed = (snapshot.requests || []).filter(request => request.status !== "PENDING");
+  panel.innerHTML = `<div class="v4-toolbar"><div><h3>Freischaltungsanträge</h3><p>${pending.length} offene Anträge</p></div></div>
+    ${pending.length ? `<div class="v4-card-grid">${pending.map(request => `<article class="card"><header class="v4-card-header"><div><h3>${escapeHtml(request.firstName)} ${escapeHtml(request.lastName)}</h3><p>${escapeHtml(request.email)}</p></div>${statusBadge(request.status)}</header><p>Beantragt: ${escapeHtml(fmtDateTime(request.requestedAt))}</p><footer class="v4-card-actions"><button class="button small primary" data-approve-request="${escapeAttr(request.id)}" type="button">Freischalten</button><button class="button small danger" data-reject-request="${escapeAttr(request.id)}" type="button">Ablehnen</button></footer></article>`).join("")}</div>` : empty("Keine offenen Freischaltungsanträge.")}
+    ${completed.length ? `<details class="v4-history"><summary>Bearbeitete Anträge (${completed.length})</summary><div class="v4-table-wrap"><table class="v4-table"><thead><tr><th>Name</th><th>E-Mail</th><th>Status</th><th>Grund</th></tr></thead><tbody>${completed.map(request => `<tr><td>${escapeHtml(request.firstName)} ${escapeHtml(request.lastName)}</td><td>${escapeHtml(request.email)}</td><td>${statusBadge(request.status)}</td><td>${escapeHtml(request.decisionReason || "–")}</td></tr>`).join("")}</tbody></table></div></details>` : ""}`;
+  panel.querySelectorAll("[data-approve-request]").forEach(button => button.addEventListener("click", () => approveRequest(pending.find(request => request.id === button.dataset.approveRequest))));
+  panel.querySelectorAll("[data-reject-request]").forEach(button => button.addEventListener("click", () => rejectRequest(pending.find(request => request.id === button.dataset.rejectRequest))));
+}
+
+function editUser(user) {
+  openDialog({
+    title: "Portalbenutzer bearbeiten",
+    kicker: `${user.userCode} · ${user.firstName} ${user.lastName}`,
+    body: `<form class="form-grid">
+      <input type="hidden" name="id" value="${escapeAttr(user.id)}">
+      <label class="full">Portalrolle<select name="roleId" required>${optionList(activeRoles().map(role => ({ value: role.id, label: role.name })), user.roleId)}</select></label>
+      <label>Status<select name="status">${optionList([
+        { value: "ACTIVE", label: "Aktiv" },
+        { value: "INACTIVE", label: "Inaktiv" },
+        { value: "BLOCKED", label: "Gesperrt" }
+      ], user.status)}</select></label>
+      <label>Mitgliedsverknüpfung<select name="memberId">${optionList(memberOptions(), user.memberId || "", "Keine Verknüpfung")}</select></label>
+    </form>`,
+    onSubmit: async values => {
+      snapshot = await runWrite(() => call("save_user", values), "Benutzer wurde aktualisiert.");
+      render();
+    }
+  });
+}
+
+function renderUsers(panel) {
+  const users = snapshot.users || [];
+  panel.innerHTML = `<div class="v4-toolbar"><div><h3>Portalbenutzer</h3><p>${users.length} Benutzer · ${snapshot.activeAdminCount} aktive Administratoren</p></div></div>
+    ${users.length ? `<div class="v4-table-wrap"><table class="v4-table"><thead><tr><th>ID</th><th>Name</th><th>Rolle</th><th>Mitglied</th><th>Status</th><th></th></tr></thead><tbody>${users.map(user => `<tr><td><strong>${escapeHtml(user.userCode)}</strong></td><td>${escapeHtml(user.firstName)} ${escapeHtml(user.lastName)}<small>${escapeHtml(user.email)}</small></td><td>${escapeHtml(user.roleName)}</td><td>${escapeHtml(user.memberCode || "–")}</td><td>${statusBadge(user.status)}</td><td><button class="button small secondary" data-edit-user="${escapeAttr(user.id)}" type="button">Bearbeiten</button></td></tr>`).join("")}</tbody></table></div>` : empty("Noch keine Portalbenutzer.")}`;
+  panel.querySelectorAll("[data-edit-user]").forEach(button => button.addEventListener("click", () => editUser(users.find(user => user.id === button.dataset.editUser))));
+}
+
+function roleForm(role = {}) {
+  return `<form class="form-grid">
+    <input type="hidden" name="id" value="${escapeAttr(role.id || "")}">
+    <label>Technischer Code<input name="code" required pattern="[A-Z][A-Z0-9_]{1,63}" maxlength="64" value="${escapeAttr(role.code || "")}"></label>
+    <label>Anzeigename<input name="name" required maxlength="120" value="${escapeAttr(role.name || "")}"></label>
+    <label>Sortierung<input name="sortOrder" type="number" min="0" max="100000" value="${escapeAttr(role.sortOrder ?? 100)}"></label>
+    <label class="checkbox-row"><input name="active" type="checkbox" ${role.active !== false ? "checked" : ""}> Rolle aktiv</label>
+    <label class="full">Beschreibung<textarea name="description" maxlength="2000" rows="4">${escapeHtml(role.description || "")}</textarea></label>
+  </form>`;
+}
+
+function editRole(role = null) {
+  openDialog({
+    title: role ? "Rolle bearbeiten" : "Rolle anlegen",
+    kicker: "Dynamische Portalrollen",
+    body: roleForm(role || {}),
+    onSubmit: async values => {
+      snapshot = await runWrite(() => call("save_role", { ...values, active: values.active === "on", sortOrder: Number(values.sortOrder || 100) }), role ? "Rolle wurde aktualisiert." : "Rolle wurde angelegt.");
+      render();
+    }
+  });
+}
+
+function editPermissions(role) {
+  const grouped = new Map();
+  for (const capability of snapshot.capabilities || []) {
+    if (!grouped.has(capability.category)) grouped.set(capability.category, []);
+    grouped.get(capability.category).push(capability);
+  }
+  openDialog({
+    title: "Berechtigungen zuweisen",
+    kicker: role.name,
+    body: `<form><div class="v4-capability-groups">${[...grouped.entries()].map(([category, capabilities]) => `<fieldset><legend>${escapeHtml(category)}</legend>${capabilities.map(capability => `<label class="v4-capability"><input type="checkbox" name="capability" value="${escapeAttr(capability.code)}" ${(role.capabilities || []).includes(capability.code) ? "checked" : ""}><span><strong>${escapeHtml(capability.name)}</strong><small>${escapeHtml(capability.description)}</small><code>${escapeHtml(capability.code)}</code></span></label>`).join("")}</fieldset>`).join("")}</div></form>`,
+    onSubmit: async () => {
+      const checked = [...document.querySelectorAll('#v4DialogBody input[name="capability"]:checked')].map(input => input.value);
+      snapshot = await runWrite(() => call("set_role_capabilities", { roleId: role.id, capabilities: checked }), "Rollenrechte wurden aktualisiert.");
+      render();
+    }
+  });
+}
+
+async function deleteRole(role) {
+  if (!await confirmAction(`Rolle „${role.name}“ endgültig löschen?`)) return;
+  snapshot = await runWrite(() => call("delete_role", { id: role.id }), "Rolle wurde gelöscht.");
+  render();
+}
+
+function renderRoles(panel) {
+  const roles = snapshot.roles || [];
+  panel.innerHTML = `<div class="v4-toolbar"><div><h3>Portalrollen und Berechtigungen</h3><p>Rollen sind frei verwaltbar. Der letzte vollständige administrative Zugriff bleibt geschützt.</p></div><button id="addRoleButton" class="button primary" type="button">Rolle anlegen</button></div>
+    <div class="v4-card-grid">${roles.map(role => `<article class="card"><header class="v4-card-header"><div><span class="subtle">${escapeHtml(role.code)}</span><h3>${escapeHtml(role.name)}</h3><p>${escapeHtml(role.description || "Keine Beschreibung")}</p></div>${statusBadge(role.active ? "ACTIVE" : "INACTIVE")}</header><p><strong>${role.capabilities?.length || 0}</strong> Berechtigungen · <strong>${role.assignedUsers}</strong> Benutzer</p><footer class="v4-card-actions"><button class="button small secondary" data-role-permissions="${escapeAttr(role.id)}" type="button">Rechte</button><button class="button small primary" data-edit-role="${escapeAttr(role.id)}" type="button">Bearbeiten</button><button class="button small danger" data-delete-role="${escapeAttr(role.id)}" type="button" ${role.assignedUsers ? "disabled" : ""}>Löschen</button></footer></article>`).join("")}</div>`;
+  document.getElementById("addRoleButton")?.addEventListener("click", () => editRole());
+  panel.querySelectorAll("[data-edit-role]").forEach(button => button.addEventListener("click", () => editRole(roles.find(role => role.id === button.dataset.editRole))));
+  panel.querySelectorAll("[data-role-permissions]").forEach(button => button.addEventListener("click", () => editPermissions(roles.find(role => role.id === button.dataset.rolePermissions))));
+  panel.querySelectorAll("[data-delete-role]").forEach(button => button.addEventListener("click", async () => {
+    try { await deleteRole(roles.find(role => role.id === button.dataset.deleteRole)); }
+    catch (error) { panel.insertAdjacentHTML("afterbegin", errorPanel(error, "Rolle konnte nicht gelöscht werden")); }
+  }));
+}
+
+function renderAudit(panel) {
+  const events = snapshot.audit || [];
+  panel.innerHTML = `<div class="v4-toolbar"><div><h3>Audit-Protokoll</h3><p>Die letzten ${events.length} sicherheits- und fachrelevanten Ereignisse.</p></div></div>
+    ${events.length ? `<div class="v4-table-wrap"><table class="v4-table"><thead><tr><th>Zeit</th><th>Aktion</th><th>Objekt</th><th>Akteur</th></tr></thead><tbody>${events.map(event => `<tr><td>${escapeHtml(fmtDateTime(event.occurredAt))}</td><td><code>${escapeHtml(event.action)}</code></td><td>${escapeHtml(event.entityType)}<small>${escapeHtml(event.entityId || "")}</small></td><td>${escapeHtml(event.actorUserId || "System")}</td></tr>`).join("")}</tbody></table></div>` : empty("Noch keine Audit-Ereignisse.")}`;
+}
+
+function render() {
+  const root = document.getElementById("adminPanel");
+  if (!root || !snapshot) return;
+  const availableTabs = tabs();
+  if (!availableTabs.some(([key]) => key === activeTab)) activeTab = availableTabs[0]?.[0] || "audit";
+  renderTabs(root);
+  const panel = document.getElementById("adminTabPanel");
+  if (activeTab === "users") renderUsers(panel);
+  else if (activeTab === "roles") renderRoles(panel);
+  else if (activeTab === "audit") renderAudit(panel);
+  else renderRequests(panel);
+  const status = document.getElementById("adminStatus");
+  if (status) { status.textContent = "Administrationszugriff aktiv"; status.className = "status-pill success"; }
+}
+
+export async function hydrateAdmin(context = {}) {
+  const panel = document.getElementById("adminPanel");
+  if (!panel) return;
+  panel.innerHTML = '<article class="card loading-card"><h3>Administration wird geladen …</h3></article>';
   try {
-    data=await performanceTimeout_(call("apiGetPerformanceDiagnostics"),25000);
-  } catch(error) {
-    openDialog({
-      title:"Performance & Persistenz",
-      kicker:"Schnelldiagnose nicht abgeschlossen",
-      wide:true,
-      body:`
-        ${errorPanel(error,"Diagnose wurde kontrolliert beendet")}
-        <div class="notice warning" style="margin-top:14px">
-          Das Portal bleibt nutzbar. Öffne im Apps-Script-Editor „Ausführungen“ und prüfe den jüngsten Aufruf von <strong>den Backend-Aufruf</strong> bzw. <strong>apiGetPerformanceDiagnostics</strong>.
-        </div>
-        <div class="dialog-actions"><button id="performanceRetry" class="button primary" type="button">Erneut versuchen</button><button class="button ghost" data-dialog-close>Schließen</button></div>`
-    });
-    document.getElementById("performanceRetry")?.addEventListener("click",()=>{closeDialog();openPerformanceDiagnostics();});
-    return;
+    snapshot = await call("admin_snapshot");
+    if (context.isCurrent && !context.isCurrent()) return;
+    render();
+  } catch (error) {
+    panel.innerHTML = errorPanel(error, "Administration konnte nicht geladen werden");
+    const status = document.getElementById("adminStatus");
+    if (status) { status.textContent = "Kein Zugriff"; status.className = "status-pill error"; }
   }
-
-  const client=performanceMonitor.summary();
-  const domains=data.domains||[];
-  const recent=data.performance?.recent||[];
-  const slow=data.performance?.slowCalls||[];
-  const stages=data.diagnostics?.stageTimings||[];
-  openDialog({
-    title:"Performance & Persistenz",
-    kicker:`${recent.length} Serveraufrufe · ${client.count} Browseraufrufe`,
-    wide:true,
-    body:`
-      <div class="grid three">
-        <article class="card stat-card"><div class="card-icon">⏱️</div><h3>Diagnose</h3><strong>${Number(data.durationMs||0)} ms</strong><small>Schnellpfad</small></article>
-        <article class="card stat-card"><div class="card-icon">🌐</div><h3>Browser Ø</h3><strong>${Number(client.averageClientMs||0)} ms</strong><small>Maximum ${Number(client.maximumClientMs||0)} ms</small></article>
-        <article class="card stat-card"><div class="card-icon">⚠️</div><h3>Langsame Aufrufe</h3><strong>${slow.length}</strong><small>Schwelle ${Number(data.performance?.slowThresholdMs||2500)} ms</small></article>
-      </div>
-      <article class="card" style="margin-top:16px"><div class="section-title"><div><h3>Persistenz je Fachbereich</h3><p>Gezählt werden ausschließlich belegte ID-Zellen in den R7.1-Tabellen.</p></div></div>
-        <div class="settings-grid" style="margin-top:14px">${domains.map(domain=>`<div class="card"><div class="entity-head"><div><strong>${escapeHtml(domain.label)}</strong><div class="subtle">${escapeHtml(domain.evidence||"")}</div></div><span class="badge ${domain.persisted?"success":"warning"}">${domain.persisted?"Bestätigt":"Noch offen"}</span></div><p class="subtle">${escapeHtml((domain.tables||[]).join(", "))}</p></div>`).join("")}</div>
-      </article>
-      <article class="card" style="margin-top:16px"><div class="section-title"><div><h3>Diagnosestufen</h3><p>Damit ist sofort sichtbar, welche Datenbank Zeit benötigt.</p></div></div>
-        ${stages.length?`<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Stufe</th><th>Dauer</th></tr></thead><tbody>${stages.map(row=>`<tr><td>${escapeHtml(row.stage||"")}</td><td>${Number(row.durationMs||0)} ms</td></tr>`).join("")}</tbody></table></div>`:empty("Keine Stufenmessung vorhanden.")}
-      </article>
-      <article class="card" style="margin-top:16px"><div class="section-title"><div><h3>Letzte Serveraufrufe</h3><p>Die langsamsten Aufrufe lassen sich damit gezielt nachstellen.</p></div></div>
-        ${recent.length?`<div class="data-table-wrap"><table class="data-table"><thead><tr><th>API</th><th>Server</th><th>Status</th><th>Zugriffe</th></tr></thead><tbody>${recent.slice(0,20).map(row=>`<tr><td>${escapeHtml(row.functionName||"")}</td><td>${Number(row.durationMs||0)} ms</td><td>${row.ok?statusBadge(row.slow?"Langsam":"OK"):statusBadge("Fehler")}</td><td>${escapeHtml(Object.entries(row.counters||{}).map(([key,value])=>`${key}: ${value}`).join(" · ")||"–")}</td></tr>`).join("")}</tbody></table></div>`:empty("Noch keine Laufzeitdaten vorhanden.")}
-      </article>
-      <div class="dialog-actions"><button id="performanceClearClient" class="button ghost" type="button">Browsermessung leeren</button><button id="performanceRefresh" class="button primary" type="button">Neu messen</button><button class="button ghost" data-dialog-close>Schließen</button></div>`
-  });
-  document.getElementById("performanceClearClient")?.addEventListener("click",()=>{performanceMonitor.clear();closeDialog();openPerformanceDiagnostics();});
-  document.getElementById("performanceRefresh")?.addEventListener("click",()=>{closeDialog();openPerformanceDiagnostics();});
-}
-async function openAudit(){const data=await call("apiListAuditLog",{max:200});const rows=data.entries||data.logs||data.items||[];openDialog({title:"Audit-Log",kicker:`${rows.length} Einträge`,wide:true,body:rows.length?`<div class="card table-card"><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Zeit</th><th>Aktion</th><th>Bereich</th><th>Benutzer</th><th>Details</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${escapeHtml(r.zeitpunkt||r.timestamp||"")}</td><td>${escapeHtml(r.aktion||r.action||"")}</td><td>${escapeHtml(r.bereich||r.area||"")}</td><td>${escapeHtml(r.benutzer||r.user||"")}</td><td>${escapeHtml(r.bemerkung||r.details||"")}</td></tr>`).join("")}</tbody></table></div></div>`:empty("Noch keine Audit-Einträge vorhanden.")});}
-async function openCleanSystem(){const preview=await call("apiGetCleanSystemPreview");openDialog({title:"Grundsystem herstellen",kicker:preview.ready?"Bereit":"Sicherheitsabbruch",wide:true,body:`<div class="notice ${preview.ready?"warning":"error"}">${escapeHtml(preview.message||"")}</div><div class="grid three" style="margin-top:16px"><article class="card"><h3>Erhaltene Google-Benutzer</h3><strong>${Number(preview.googleLinkedCount||preview.linkedUsers?.length||0)}</strong></article><article class="card"><h3>Zielrollen</h3><strong>${Number(preview.targetRoles?.length||7)}</strong></article><article class="card"><h3>Konten / Teams</h3><strong>5 / 3</strong></article></div>${preview.ready?`<form id="cleanSystemForm" style="margin-top:16px"><label>Bestätigungstext<input name="confirmation" autocomplete="off" placeholder="GRUNDSYSTEM HERSTELLEN" required></label><label class="check-row" style="margin-top:14px"><input type="checkbox" name="secondConfirmation"> Automatisches Backup und endgültige Bereinigung bestätigen</label><div class="dialog-actions"><button class="button ghost" data-dialog-close type="button">Abbrechen</button><button class="button danger" type="submit">Grundsystem herstellen</button></div></form>`:'<div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>'}`});const form=document.getElementById("cleanSystemForm");form?.addEventListener("submit",async event=>{event.preventDefault();const confirmation=form.elements.confirmation.value;const secondConfirmation=form.elements.secondConfirmation.checked;if(confirmation!=="GRUNDSYSTEM HERSTELLEN"||!secondConfirmation){throw new Error("Bestätigung ist unvollständig.");}if(!await confirmAction({title:"Letzte Sicherheitsabfrage",message:"Alle Bewegungs- und Testdaten werden nach einem Backup gelöscht.",confirmText:"Endgültig ausführen",phrase:"JETZT BEREINIGEN"}))return;await runWrite("Grundsystem wird hergestellt …",()=>call("apiResetToCleanSystem",{confirmation,secondConfirmation}));closeDialog();location.reload();});}
-
-
-function roleChecks(roles, selected, name="roles"){
-  const selectedKeys=(selected||[]).map(value=>String(value||"").toLowerCase());
-  return `<div class="role-check-grid">${(roles||[]).map(role=>`<label class="check-row"><input type="checkbox" name="${escapeAttr(name)}" value="${escapeAttr(role)}" ${selectedKeys.includes(String(role).toLowerCase())?"checked":""}> ${escapeHtml(role)}</label>`).join("")}</div>`;
 }
 
-async function openPortalStructure(){
-  const data=await call("apiGetPortalAdminConfig");
-  const items=(data.appNavigation||[]).sort((a,b)=>Number(a.order||0)-Number(b.order||0));
-  openDialog({title:"Portalstruktur",kicker:"Portalverwaltung",wide:true,body:`<div class="notice success">Sichtbarkeit und Darstellung sind konfigurierbar. Die fachliche Zugriffskontrolle bleibt zusätzlich serverseitig geschützt.</div><div class="settings-grid" style="margin-top:16px">${items.map(item=>`<article class="card settings-row portal-structure-row"><div><strong>${escapeHtml(item.icon||"•")} ${escapeHtml(item.label||item.key)}</strong><div class="subtle">${escapeHtml(item.description||"")}</div></div><div><span class="badge ${item.active?"success":"neutral"}">${item.active?"Aktiv":"Inaktiv"}</span></div><div>Position ${Number(item.order||0)}</div><div>${(item.roles||[]).length?escapeHtml(item.roles.join(", ")):"Alle berechtigten Rollen"}</div><button class="button small ghost" data-edit-nav="${escapeAttr(item.key)}">Bearbeiten</button></article>`).join("")}</div><div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});
-  document.querySelectorAll("[data-edit-nav]").forEach(button=>button.addEventListener("click",()=>openNavigationItem(items.find(item=>item.key===button.dataset.editNav),data.roles||[])));
-}
-function openNavigationItem(item,roles){
-  openDialog({title:"Navigationsbereich bearbeiten",kicker:item.label||item.key,body:`<form><input type="hidden" name="key" value="${escapeAttr(item.key)}"><div class="form-grid"><label>Bezeichnung<input name="label" value="${escapeAttr(item.label||"")}" required></label><label>Symbol<input name="icon" value="${escapeAttr(item.icon||"")}" maxlength="8"></label><label>Reihenfolge<input type="number" name="order" min="1" max="9999" value="${Number(item.order||10)}"></label><label>Aktiv<select name="active">${optionList([{value:"true",label:"Ja"},{value:"false",label:"Nein"}],String(item.active))}</select></label><label class="full">Beschreibung<input name="description" value="${escapeAttr(item.description||"")}"></label><div class="full"><strong>Sichtbar für Rollen</strong><p class="subtle">Leer bedeutet: alle Benutzer, die den serverseitigen Sicherheitsvertrag erfüllen.</p>${roleChecks(roles,item.roles)}</div></div></form>`,onSubmit:async form=>{form.active=String(form.active)==="true";await runWrite("Portalstruktur wird gespeichert …",()=>call("apiSavePortalNavigationItem",form));closeDialog();await openPortalStructure();}});
-}
-
-async function openDashboardWidgets(){
-  const data=await call("apiGetDashboardAdminConfig");
-  const widgets=(data.widgets||[]).sort((a,b)=>Number(a.order||0)-Number(b.order||0));
-  openDialog({title:"Dashboard verwalten",kicker:"Widget-Konfiguration",wide:true,body:`<div class="notice success">Neue v4-Module können später eigene Widgets registrieren, ohne das Dashboard umzubauen.</div><div class="settings-grid" style="margin-top:16px">${widgets.map(widget=>`<article class="card settings-row dashboard-config-row"><div><strong>${escapeHtml(widget.icon||"•")} ${escapeHtml(widget.label||widget.key)}</strong><div class="subtle">${escapeHtml(widget.description||"")}</div></div><div><span class="badge ${widget.active?"success":"neutral"}">${widget.active?"Aktiv":"Inaktiv"}</span></div><div>Position ${Number(widget.order||0)} · ${escapeHtml(widget.size||"M")}</div><div>${escapeHtml((widget.roles||[]).join(", "))}</div><button class="button small ghost" data-edit-widget="${escapeAttr(widget.key)}">Bearbeiten</button></article>`).join("")}</div><div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`});
-  document.querySelectorAll("[data-edit-widget]").forEach(button=>button.addEventListener("click",()=>openWidgetItem(widgets.find(widget=>widget.key===button.dataset.editWidget),data.roles||[],data.sizes||["S","M","L"])));
-}
-function openWidgetItem(widget,roles,sizes){
-  openDialog({title:"Dashboard-Widget bearbeiten",kicker:widget.label||widget.key,body:`<form><input type="hidden" name="key" value="${escapeAttr(widget.key)}"><div class="form-grid"><label>Bezeichnung<input name="label" value="${escapeAttr(widget.label||"")}" required></label><label>Symbol<input name="icon" value="${escapeAttr(widget.icon||"")}" maxlength="8"></label><label>Reihenfolge<input type="number" name="order" min="1" max="9999" value="${Number(widget.order||10)}"></label><label>Größe<select name="size">${optionList(sizes,widget.size||"M")}</select></label><label>Aktiv<select name="active">${optionList([{value:"true",label:"Ja"},{value:"false",label:"Nein"}],String(widget.active))}</select></label><label class="full">Beschreibung<input name="description" value="${escapeAttr(widget.description||"")}"></label><div class="full"><strong>Sichtbar für Rollen</strong>${roleChecks(roles,widget.roles)}</div></div></form>`,onSubmit:async form=>{form.active=String(form.active)==="true";await runWrite("Dashboard-Widget wird gespeichert …",()=>call("apiSaveDashboardWidget",form));closeDialog();await openDashboardWidgets();}});
-}
-
-
-
-const V3_ROLE_RIGHTS_EXCLUDED_AREAS = new Set(["Bus-Orga", "Getränke"]);
-
-function rolePermissionKey(role, area) {
-  return `${role}::${area}`;
-}
-
-function normalizePermission(permission = {}) {
-  const admin = Boolean(permission.admin);
-  const write = admin || Boolean(permission.schreiben ?? permission.write);
-  const read = write || Boolean(permission.lesen ?? permission.read);
-  return { lesen: read, schreiben: write, admin };
-}
-
-function rolePermissionFromBundle(bundle, role, area) {
-  const rows = bundle?.rolePermissions || bundle?.meta?.rolePermissions || [];
-  const row = rows.find(item => String(item.rolle || "") === String(role || "") && String(item.bereich || "") === String(area || ""));
-  return normalizePermission(row || {});
-}
-
-function roleAreaLabel(bundle, area) {
-  return String(bundle?.meta?.areaLabels?.[area] || area || "Bereich");
-}
-
-function activeRoleDefinitions(bundle) {
-  const definitions = bundle?.roleDefinitions || bundle?.meta?.roleDefinitions || [];
-  const active = definitions.filter(item => String(item.aktiv || "JA") === "JA");
-  if (active.length) return active;
-  return (bundle?.meta?.rollen || []).map(name => ({ name, aktiv: "JA", assignedUsers: 0, activeUsers: 0 }));
-}
-
-async function openRoleRights(force = false) {
-  let bundle = phase3State.get("admin:roles");
-  if (!bundle || force) bundle = phase3State.set("admin:roles", await call("apiListRoles"));
-
-  const definitions = activeRoleDefinitions(bundle);
-  const roles = definitions.map(item => item.name).filter(Boolean);
-  const allAreas = bundle?.meta?.areas || [];
-  const areas = allAreas.filter(area => !V3_ROLE_RIGHTS_EXCLUDED_AREAS.has(area));
-  const selectedRole = roles.includes("Admin") ? "Admin" : (roles[0] || "");
-  const pending = new Map();
-
-  if (!roles.length) {
-    openDialog({
-      title: "Rollen & Rechte",
-      kicker: "Portalverwaltung",
-      body: `<div class="notice error">Es wurden keine aktiven Rollen gefunden. Bitte zuerst das Grundsystem prüfen.</div><div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button></div>`
-    });
-    return;
-  }
-
-  openDialog({
-    title: "Rollen & Rechte",
-    kicker: "Fachliche Berechtigungen",
-    wide: true,
-    body: `
-      <div class="notice warning"><strong>Zwei getrennte Ebenen:</strong><br>
-        Unter <strong>Portalstruktur</strong> stellst du ein, welche Rolle einen Hauptbereich in der Navigation sieht.
-        Hier legst du fest, ob die Rolle die zugehörigen Daten tatsächlich <strong>lesen</strong>, <strong>bearbeiten</strong> oder <strong>administrieren</strong> darf.
-      </div>
-      <div class="module-toolbar role-rights-toolbar" style="margin-top:16px">
-        <label class="role-rights-role-select">Rolle
-          <select id="roleRightsRole">${optionList(roles, selectedRole)}</select>
-        </label>
-        <button id="roleRightsOpenStructure" class="button ghost" type="button">🧭 Portalstruktur öffnen</button>
-        <button id="roleRightsRefresh" class="button ghost" type="button">Aktualisieren</button>
-      </div>
-      <div id="roleRightsRoleSummary" class="role-rights-summary"></div>
-      <div id="roleRightsMatrix" style="margin-top:16px"></div>
-      <div class="dialog-actions role-rights-actions">
-        <span id="roleRightsDirty" class="subtle">Keine ungespeicherten Änderungen</span>
-        <button class="button ghost" type="button" id="roleRightsDiscard" disabled>Änderungen verwerfen</button>
-        <button class="button primary" type="button" id="roleRightsSave" ${canWrite("Rollen") ? "" : "disabled"}>Rechte speichern</button>
-        <button class="button ghost" type="button" data-dialog-close>Schließen</button>
-      </div>`
-  });
-
-  const roleSelect = document.getElementById("roleRightsRole");
-  const matrix = document.getElementById("roleRightsMatrix");
-  const dirtyLabel = document.getElementById("roleRightsDirty");
-  const saveButton = document.getElementById("roleRightsSave");
-  const discardButton = document.getElementById("roleRightsDiscard");
-
-  const roleDefinition = role => definitions.find(item => String(item.name) === String(role)) || {};
-  const currentPermission = (role, area) => pending.get(rolePermissionKey(role, area)) || rolePermissionFromBundle(bundle, role, area);
-  const updateDirty = () => {
-    const count = pending.size;
-    if (dirtyLabel) dirtyLabel.textContent = count ? `${count} geänderte Bereich(e) noch nicht gespeichert` : "Keine ungespeicherten Änderungen";
-    if (discardButton) discardButton.disabled = count === 0;
-    if (saveButton) saveButton.disabled = !canWrite("Rollen") || count === 0;
-  };
-
-  const syncPermissionInputs = (role, area, changedKind) => {
-    const base = `rr_${String(role).replace(/[^a-zA-Z0-9_-]/g, "_")}_${String(area).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
-    const readInput = document.getElementById(`${base}_read`);
-    const writeInput = document.getElementById(`${base}_write`);
-    const adminInput = document.getElementById(`${base}_admin`);
-    if (!readInput || !writeInput || !adminInput) return;
-
-    if (changedKind === "admin" && adminInput.checked) {
-      writeInput.checked = true;
-      readInput.checked = true;
-    }
-    if (changedKind === "write" && writeInput.checked) readInput.checked = true;
-    if (changedKind === "write" && !writeInput.checked) adminInput.checked = false;
-    if (changedKind === "read" && !readInput.checked) {
-      writeInput.checked = false;
-      adminInput.checked = false;
-    }
-
-    const permission = normalizePermission({
-      lesen: readInput.checked,
-      schreiben: writeInput.checked,
-      admin: adminInput.checked
-    });
-    readInput.checked = permission.lesen;
-    writeInput.checked = permission.schreiben;
-    adminInput.checked = permission.admin;
-    pending.set(rolePermissionKey(role, area), { rolle: role, bereich: area, ...permission, aktiv: "JA" });
-    updateDirty();
-  };
-
-  const renderMatrix = () => {
-    const role = roleSelect?.value || selectedRole;
-    const definition = roleDefinition(role);
-    const summary = document.getElementById("roleRightsRoleSummary");
-    if (summary) summary.innerHTML = `
-      <span class="badge success">Aktiv</span>
-      <strong>${escapeHtml(role)}</strong>
-      <span>${Number(definition.assignedUsers || 0)} Benutzer · ${Number(definition.activeUsers || 0)} aktiv</span>
-      ${role === "Admin" ? '<span class="badge warning">System/Admin muss mindestens einmal erhalten bleiben</span>' : ""}`;
-
-    matrix.innerHTML = `
-      <div class="permission-grid role-rights-grid">
-        <div class="permission-row permission-row-head" aria-hidden="true">
-          <strong>Fachbereich</strong><strong>Lesen</strong><strong>Schreiben</strong><strong>Admin</strong>
-        </div>
-        ${areas.map(area => {
-          const permission = currentPermission(role, area);
-          const safeRole = String(role).replace(/[^a-zA-Z0-9_-]/g, "_");
-          const safeArea = String(area).replace(/[^a-zA-Z0-9_-]/g, "_");
-          const base = `rr_${safeRole}_${safeArea}`;
-          const disabled = canWrite("Rollen") ? "" : "disabled";
-          return `<div class="permission-row" data-rights-area="${escapeAttr(area)}">
-            <div><strong>${escapeHtml(roleAreaLabel(bundle, area))}</strong><div class="subtle">${escapeHtml(area)}</div></div>
-            <label title="Lesen"><input id="${base}_read" type="checkbox" aria-label="${escapeAttr(roleAreaLabel(bundle, area))}: Lesen" ${permission.lesen ? "checked" : ""} ${disabled}></label>
-            <label title="Schreiben"><input id="${base}_write" type="checkbox" aria-label="${escapeAttr(roleAreaLabel(bundle, area))}: Schreiben" ${permission.schreiben ? "checked" : ""} ${disabled}></label>
-            <label title="Admin"><input id="${base}_admin" type="checkbox" aria-label="${escapeAttr(roleAreaLabel(bundle, area))}: Admin" ${permission.admin ? "checked" : ""} ${disabled}></label>
-          </div>`;
-        }).join("")}
-      </div>
-      <div class="notice" style="margin-top:14px"><strong>v3-Abgrenzung:</strong> Bus-Orga und Getränke werden hier bewusst noch nicht angeboten. Diese Fachrechte werden erst mit den entsprechenden v4-Modulen freigeschaltet.</div>`;
-
-    areas.forEach(area => {
-      const safeRole = String(role).replace(/[^a-zA-Z0-9_-]/g, "_");
-      const safeArea = String(area).replace(/[^a-zA-Z0-9_-]/g, "_");
-      const base = `rr_${safeRole}_${safeArea}`;
-      document.getElementById(`${base}_read`)?.addEventListener("change", () => syncPermissionInputs(role, area, "read"));
-      document.getElementById(`${base}_write`)?.addEventListener("change", () => syncPermissionInputs(role, area, "write"));
-      document.getElementById(`${base}_admin`)?.addEventListener("change", () => syncPermissionInputs(role, area, "admin"));
-    });
-    updateDirty();
-  };
-
-  roleSelect?.addEventListener("change", renderMatrix);
-  document.getElementById("roleRightsOpenStructure")?.addEventListener("click", async () => {
-    closeDialog();
-    await openPortalStructure();
-  });
-  document.getElementById("roleRightsRefresh")?.addEventListener("click", async () => {
-    closeDialog();
-    phase3State.remove("admin:roles");
-    await openRoleRights(true);
-  });
-  discardButton?.addEventListener("click", () => {
-    pending.clear();
-    renderMatrix();
-  });
-  saveButton?.addEventListener("click", async () => {
-    const changes = Array.from(pending.values());
-    if (!changes.length) return;
-    saveButton.disabled = true;
-    try {
-      await runWrite("Rollenrechte werden gespeichert …", () => call("apiSaveRolePermissionsBatch", changes), "Rollenrechte wurden gespeichert.");
-      pending.clear();
-      phase3State.remove("admin:roles");
-      try { await auth.refreshInitialData(); } catch (error) {}
-      closeDialog();
-      if (auth.canReadArea("Rollen")) await openRoleRights(true);
-      else {
-        showToast("Rollenrechte gespeichert. Dein eigener Zugriff auf die Rechteverwaltung ist jetzt eingeschränkt.", "warning", 6500);
-        renderAdminHome();
-      }
-    } catch (error) {
-      saveButton.disabled = false;
-      showToast(error?.message || "Rollenrechte konnten nicht gespeichert werden.", "error", 6500);
-    }
-  });
-
-  renderMatrix();
-}
-
-async function openPortalAppearance(){
-  const data=await call("apiGetPortalAdminConfig");const s=data.settings||{};
-  openDialog({title:"Portal & Startseite",kicker:"Darstellung",wide:true,body:`<form><div class="form-grid"><label>Portalname<input name="Portal.App.Name" value="${escapeAttr(s["Portal.App.Name"]||"Plärrdeifl Portal")}"></label><label>Kurzname<input name="Portal.App.ShortName" value="${escapeAttr(s["Portal.App.ShortName"]||"Plärrdeifl")}"></label><label>Grundfarbe<input type="color" name="Portal.Brand.PrimaryColor" value="${escapeAttr(s["Portal.Brand.PrimaryColor"]||"#0b4f9c")}"></label><label>Logo-URL<input type="url" name="Portal.Brand.LogoUrl" value="${escapeAttr(s["Portal.Brand.LogoUrl"]||"")}" placeholder="https://…"></label><label class="full">Öffentliche Überschrift<input name="Portal.Public.Headline" value="${escapeAttr(s["Portal.Public.Headline"]||"")}"></label><label class="full">Öffentlicher Text<textarea name="Portal.Public.Text">${escapeHtml(s["Portal.Public.Text"]||"")}</textarea></label><label class="full">Hinweis unter Anmeldung<input name="Portal.Public.Note" value="${escapeAttr(s["Portal.Public.Note"]||"")}"></label><label class="full">Über uns<textarea name="Portal.Public.About">${escapeHtml(s["Portal.Public.About"]||"")}</textarea></label><label class="full">Kontakt<textarea name="Portal.Public.Contact">${escapeHtml(s["Portal.Public.Contact"]||"")}</textarea></label><label class="full">Öffentlich · Aktuelles<textarea name="Portal.Public.News">${escapeHtml(s["Portal.Public.News"]||"")}</textarea></label><label class="full">Öffentlich · Termine<textarea name="Portal.Public.Dates">${escapeHtml(s["Portal.Public.Dates"]||"")}</textarea></label><label class="full">Dashboard · Aktuelles<textarea name="Portal.Dashboard.News">${escapeHtml(s["Portal.Dashboard.News"]||"")}</textarea></label><label class="full">Dashboard · Termine<textarea name="Portal.Dashboard.Dates">${escapeHtml(s["Portal.Dashboard.Dates"]||"")}</textarea></label><label class="full">Dashboard · Fanfahrten<textarea name="Portal.Dashboard.Fantrips">${escapeHtml(s["Portal.Dashboard.Fantrips"]||"")}</textarea></label><label class="full">Dashboard · Dokumente<textarea name="Portal.Dashboard.Documents">${escapeHtml(s["Portal.Dashboard.Documents"]||"")}</textarea></label></div></form>`,onSubmit:async form=>{await runWrite("Portal-Einstellungen werden gespeichert …",()=>call("apiSavePortalSettings",form));closeDialog();location.reload();}});
-}
+export function noop() {}

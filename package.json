@@ -1,26 +1,24 @@
 {
   "name": "portal-v4-dev",
-  "version": "1.0.0",
-  "description": "Plärrdeifl Portal – Supabase DEV",
-  "main": "app.js",
-  "directories": {
-    "doc": "docs",
-    "test": "tests"
-  },
+  "version": "4.0.0-core.1",
+  "description": "Plärrdeifl Portal V4 Core – Supabase DEV",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "test": "node --test",
+    "dev": "node scripts/serve.mjs",
+    "runtime:local": "node scripts/write-runtime-config.mjs --url http://127.0.0.1:54321 --environment LOCAL",
+    "test": "node --test tests/*.test.mjs",
+    "check:static": "python tests/static_check.py",
     "supabase:version": "supabase --version",
     "supabase:status": "supabase status",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
-    "supabase:db:reset": "supabase db reset"
+    "supabase:db:reset": "supabase db reset",
+    "supabase:db:push:dry": "supabase db push --linked --dry-run"
   },
-  "keywords": [],
-  "type": "commonjs",
   "devDependencies": {
     "supabase": "2.109.1"
   },
-  "private": true,
   "engines": {
     "node": ">=24.18.0 <25"
   },

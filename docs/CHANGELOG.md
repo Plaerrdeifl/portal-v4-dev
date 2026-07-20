@@ -1,4 +1,13 @@
 # Changelog
+
+## 2026-07-19 – V4 Supabase Portal Core
+
+- aktiven Apps-Script-Bridgepfad durch Supabase Auth und PostgreSQL-RPC ersetzt
+- dynamische Rollen, Berechtigungen, Benutzer, Mitglieder, feste Ämter, Teams und Aufgaben aufgebaut
+- RLS, Audit, geschützte Erstinitialisierung und lokale End-to-End-Prüfung ergänzt
+- Frontendbereiche auf den Supabase-Core umgestellt
+- DEV-Runtime und migrationsbasierten Deploy vorbereitet
+
 ## 2026-07-16 – M4 UI/UX Paket 3
 
 - Teams vollständig als moderne Arbeitsansicht mit KPI-Zusammenfassung, Rollen- und Mitgliederkarten überarbeitet.

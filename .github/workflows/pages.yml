@@ -2,11 +2,9 @@ name: Deploy portal to GitHub Pages
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -22,7 +20,6 @@ jobs:
   build:
     name: Prüfen und Pages-Artefakt erstellen
     runs-on: ubuntu-latest
-
     steps:
       - name: Repository auschecken
         uses: actions/checkout@v6
@@ -31,24 +28,46 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "24"
-          package-manager-cache: false
+          cache: npm
 
       - name: Python einrichten
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
-      - name: Statische Vertragsprüfung
-        run: python tests/static_check.py
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Core-Vertragstests
+        run: npm test
+
+      - name: Statische Prüfung
+        run: npm run check:static
 
       - name: JavaScript-Syntax prüfen
-        run: find js -name '*.js' -print0 | xargs -0 -n1 node --check
+        run: find js scripts -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n1 node --check
+
+      - name: Öffentliche Supabase-Runtime erzeugen
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          SUPABASE_URL: ${{ vars.PORTAL_SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.PORTAL_SUPABASE_PUBLISHABLE_KEY }}
+        run: node scripts/write-runtime-config.mjs --environment PROD
+
+      - name: Service-Role-Leak verhindern
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: |
+          if grep -Eiq 'service[_-]?role' js/runtime-config.js; then
+            echo 'Unzulässiger Service-Role-Wert in Runtime-Konfiguration.'
+            exit 1
+          fi
 
       - name: GitHub Pages konfigurieren
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: actions/configure-pages@v5
 
       - name: Pages-Artefakt erstellen
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v4
         with:
           path: "."
@@ -58,11 +77,9 @@ jobs:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
-
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
     steps:
       - name: Pages-Artefakt veröffentlichen
         id: deployment

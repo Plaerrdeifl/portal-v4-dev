@@ -1,195 +1,152 @@
 import {
-  call, canRead, canWrite, closeDialog, confirmAction, currentUser, escapeAttr, escapeHtml,
-  fmtDate, fmtMoney, normalize, openDialog, optionList, runWrite, showToast, statusBadge, today
+  call,
+  confirmAction,
+  empty,
+  errorPanel,
+  escapeAttr,
+  escapeHtml,
+  fmtDate,
+  openDialog,
+  optionList,
+  runWrite,
+  statusBadge
 } from "./common.js";
-import { phase3State } from "./state.js";
 
-const KEY = "fanclub:";
-let activeTab = "overview";
-let moduleName = "fanclub";
+let snapshot = null;
+let activeTab = "members";
 
-const ICONS = Object.freeze({
-  overview: '<svg viewBox="0 0 24 24"><path d="M3 11 12 3l9 8v9H3z"/><path d="M9 20v-6h6v6"/></svg>',
-  members: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 20a6 6 0 0 1 12 0M14 20a5 5 0 0 1 7 0"/></svg>',
-  contributions: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h.01M17 15h.01M8 12h8"/></svg>',
-  paymentReports: '<svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>',
-  cashbook: '<svg viewBox="0 0 24 24"><path d="M5 3h14v18H5zM9 3v18M12 8h4M12 12h4M12 16h3"/></svg>',
-  accounts: '<svg viewBox="0 0 24 24"><path d="M3 10h18M5 10v8M9 10v8M15 10v8M19 10v8M3 19h18M12 3l9 5H3z"/></svg>',
-  search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>',
-  people: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 5a3 3 0 0 1 0 6M15 15a5 5 0 0 1 6 5"/></svg>',
-  shield: '<svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-5"/></svg>',
-  layers: '<svg viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5zM3 12l9 5 9-5M3 16l9 5 9-5"/></svg>',
-  empty: '<svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/></svg>'
-});
+function memberName(member) {
+  return `${member.firstName || ""} ${member.lastName || ""}`.trim();
+}
 
-function target() { return document.getElementById(`${moduleName}Panel`); }
-function setStatus(text, type = "success") { const el = document.getElementById(`${moduleName}Status`); if (el) { el.textContent = text; el.className = `status-pill ${type}`; } }
-function queryTab() { const hash = String(location.hash || ""); const query = hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : ""; return new URLSearchParams(query).get("tab") || ""; }
-function setTabHash(tab) { const next = `#/${moduleName}?tab=${encodeURIComponent(tab)}`; if (location.hash === next) renderTab(tab); else location.hash = next; }
-function isBoardUser() { const user = currentUser(); return Boolean(user.isAdmin || user.isBoard || (user.officeCodes || []).length); }
 function tabs() {
-  return [
-    { id: "overview", label: "Übersicht", hint: "Fanclub-Start", show: true },
-    { id: "members", label: "Mitglieder", hint: "Liste & Details", show: canRead("Mitglieder") },
-    { id: "contributions", label: "Beiträge", hint: "Soll & offen", show: canRead("Beiträge") },
-    { id: "paymentReports", label: "Zahlungsmeldungen", hint: "Prüfen", show: canRead("Beiträge") && isBoardUser() },
-    { id: "cashbook", label: "Kassenbuch", hint: "Buchungen", show: canRead("Kasse") },
-    { id: "accounts", label: "Konten", hint: "Salden", show: canRead("Konten") }
-  ].filter(item => item.show);
+  const slot = document.getElementById("fanclubTabs");
+  if (!slot) return;
+  slot.innerHTML = `
+    <div class="v4-tabs" role="tablist">
+      <button class="v4-tab ${activeTab === "members" ? "active" : ""}" data-tab="members" type="button">Mitglieder</button>
+      <button class="v4-tab ${activeTab === "offices" ? "active" : ""}" data-tab="offices" type="button">Ämter</button>
+    </div>`;
+  slot.querySelectorAll("[data-tab]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeTab = button.dataset.tab;
+      tabs();
+      render();
+    });
+  });
 }
-function renderTabs() {
-  const items = tabs();
-  if (!items.some(item => item.id === activeTab)) activeTab = items[0]?.id || "overview";
-  const wrap = document.getElementById(`${moduleName}Tabs`);
-  if (!wrap) return;
-  wrap.innerHTML = `<div class="p2-module-tabs" style="--p2-tab-count:${items.length}" role="tablist">${items.map(item => `<button type="button" class="p2-module-tab ${item.id === activeTab ? "active" : ""}" data-fanclub-tab="${escapeAttr(item.id)}" role="tab" aria-selected="${item.id === activeTab}"><span class="p2-tab-icon" aria-hidden="true">${ICONS[item.id]}</span><span class="p2-tab-copy"><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.hint)}</small></span></button>`).join("")}</div>`;
-  wrap.querySelectorAll("[data-fanclub-tab]").forEach(button => button.addEventListener("click", () => setTabHash(button.dataset.fanclubTab)));
-}
-function initials(value) { const parts = String(value || "").trim().split(/\s+/).filter(Boolean); return (parts.slice(0, 2).map(part => part[0]).join("") || "PD").toUpperCase(); }
-function person(name, sub = "") { return `<div class="p2-person"><span class="p2-avatar" aria-hidden="true">${escapeHtml(initials(name))}</span><span class="p2-person-copy"><strong>${escapeHtml(name || "Unbekannt")}</strong>${sub ? `<span>${escapeHtml(sub)}</span>` : ""}</span></div>`; }
-function emptyState(title, text) { return `<div class="p2-empty"><span class="p2-empty-icon" aria-hidden="true">${ICONS.empty}</span><strong>${escapeHtml(title)}</strong><p>${escapeHtml(text)}</p></div>`; }
-function searchField(id, placeholder) { return `<div class="p2-search">${ICONS.search}<input id="${escapeAttr(id)}" placeholder="${escapeAttr(placeholder)}"></div>`; }
-function kpi(label, value, detail, icon, tone = "") { return `<article class="p2-kpi ${escapeAttr(tone)}"><div class="p2-kpi-head"><span class="p2-kpi-icon" aria-hidden="true">${icon}</span><span>${escapeHtml(label)}</span></div><strong class="p2-kpi-value">${value}</strong><small>${escapeHtml(detail)}</small></article>`; }
 
-async function hydrateModule(name, fallback) {
-  moduleName = name;
-  const requested = queryTab();
-  activeTab = tabs().some(item => item.id === requested) ? requested : (tabs()[0]?.id || fallback);
-  renderTabs();
-  await renderTab(activeTab);
+function memberForm(member = {}) {
+  return `<form class="form-grid">
+    <input type="hidden" name="id" value="${escapeAttr(member.id || "")}">
+    <label>Vorname<input name="firstName" required maxlength="160" value="${escapeAttr(member.firstName || "")}"></label>
+    <label>Nachname<input name="lastName" required maxlength="160" value="${escapeAttr(member.lastName || "")}"></label>
+    <label>E-Mail<input name="email" type="email" maxlength="320" value="${escapeAttr(member.email || "")}"></label>
+    <label>Telefon<input name="phone" maxlength="80" value="${escapeAttr(member.phone || "")}"></label>
+    <label>Straße<input name="street" maxlength="160" value="${escapeAttr(member.street || "")}"></label>
+    <label>Hausnummer<input name="houseNumber" maxlength="40" value="${escapeAttr(member.houseNumber || "")}"></label>
+    <label>PLZ<input name="postalCode" maxlength="20" value="${escapeAttr(member.postalCode || "")}"></label>
+    <label>Ort<input name="city" maxlength="160" value="${escapeAttr(member.city || "")}"></label>
+    <label>Eintritt<input name="joinedOn" type="date" value="${escapeAttr(member.joinedOn || "")}"></label>
+    <label>Austritt<input name="leftOn" type="date" value="${escapeAttr(member.leftOn || "")}"></label>
+    <label>Status<select name="status">${optionList([
+      { value: "ACTIVE", label: "Aktiv" },
+      { value: "INACTIVE", label: "Inaktiv" }
+    ], member.status || "ACTIVE")}</select></label>
+    <label class="full">Notizen<textarea name="notes" rows="4" maxlength="4000">${escapeHtml(member.notes || "")}</textarea></label>
+  </form>`;
 }
-export async function hydrateFanclub() { return hydrateModule("fanclub", "overview"); }
-export async function hydrateCash() { location.hash = "#/fanclub?tab=contributions"; }
 
-async function renderTab(tab) {
-  activeTab = tabs().some(item => item.id === tab) ? tab : (tabs()[0]?.id || "overview");
-  renderTabs();
-  setStatus("Daten werden geladen", "warning");
-  const panel = target();
-  if (panel) panel.innerHTML = '<div class="loading-panel"><span class="spinner" aria-hidden="true"></span><strong>Fanclubdaten werden geladen …</strong></div>';
+function openMember(member = null) {
+  openDialog({
+    title: member ? `${member.memberCode} bearbeiten` : "Mitglied anlegen",
+    kicker: "Fanclub",
+    body: memberForm(member || {}),
+    onSubmit: async values => {
+      snapshot = await runWrite(
+        () => call("save_member", values),
+        member ? "Mitglied wurde aktualisiert." : "Mitglied wurde angelegt."
+      );
+      renderAll();
+    }
+  });
+}
+
+function renderMembers(panel) {
+  const members = snapshot?.members || [];
+  panel.innerHTML = `
+    <div class="v4-toolbar">
+      <div><h3>Mitglieder</h3><p>${members.length} Einträge</p></div>
+      ${snapshot?.canManageMembers ? '<button id="addMemberButton" class="button primary" type="button">Mitglied anlegen</button>' : ""}
+    </div>
+    ${members.length ? `<div class="v4-table-wrap"><table class="v4-table"><thead><tr><th>PD-ID</th><th>Name</th><th>Kontakt</th><th>Ort</th><th>Status</th><th></th></tr></thead><tbody>${members.map(member => `<tr>
+      <td><strong>${escapeHtml(member.memberCode)}</strong></td>
+      <td>${escapeHtml(memberName(member))}<small>${member.joinedOn ? `Seit ${escapeHtml(fmtDate(member.joinedOn))}` : ""}</small></td>
+      <td>${escapeHtml(member.email || "–")}<small>${escapeHtml(member.phone || "")}</small></td>
+      <td>${escapeHtml([member.postalCode, member.city].filter(Boolean).join(" ") || "–")}</td>
+      <td>${statusBadge(member.status)}</td>
+      <td>${snapshot.canManageMembers ? `<button class="button small secondary" type="button" data-edit-member="${escapeAttr(member.id)}">Bearbeiten</button>` : ""}</td>
+    </tr>`).join("")}</tbody></table></div>` : empty("Noch keine Mitglieder angelegt.")}`;
+  document.getElementById("addMemberButton")?.addEventListener("click", () => openMember());
+  panel.querySelectorAll("[data-edit-member]").forEach(button => {
+    button.addEventListener("click", () => openMember(members.find(item => item.id === button.dataset.editMember)));
+  });
+}
+
+function renderOffices(panel) {
+  const members = (snapshot?.members || []).filter(member => member.status === "ACTIVE");
+  const offices = snapshot?.offices || [];
+  panel.innerHTML = `
+    <div class="v4-toolbar"><div><h3>Fünf feste Amtsplätze</h3><p>Jedes aktive Mitglied kann höchstens ein Amt besitzen.</p></div></div>
+    <form id="officeForm" class="v4-office-grid">
+      ${offices.map(office => `<label class="card"><span>${escapeHtml(office.label)}</span><select name="${escapeAttr(office.code)}" ${snapshot.canManageOffices ? "" : "disabled"}>${optionList(members.map(member => ({ value: member.id, label: `${member.memberCode} · ${memberName(member)}` })), office.memberId || "", "Unbesetzt")}</select></label>`).join("")}
+      ${snapshot.canManageOffices ? '<div class="full dialog-actions"><button class="button primary" type="submit">Alle Amtsplätze speichern</button></div>' : ""}
+    </form>`;
+  document.getElementById("officeForm")?.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!await confirmAction("Alle fünf Amtsplätze mit dieser Besetzung speichern?")) return;
+    const form = event.currentTarget;
+    const slots = offices.map(office => ({
+      code: office.code,
+      memberId: form.elements.namedItem(office.code)?.value || ""
+    }));
+    try {
+      snapshot = await runWrite(() => call("save_offices", { slots }), "Amtsplätze wurden gespeichert.");
+      renderAll();
+    } catch (error) {
+      const panelNode = document.getElementById("fanclubPanel");
+      panelNode.insertAdjacentHTML("afterbegin", errorPanel(error, "Amtsplätze konnten nicht gespeichert werden"));
+    }
+  });
+}
+
+function render() {
+  const panel = document.getElementById("fanclubPanel");
+  if (!panel || !snapshot) return;
+  if (activeTab === "offices") renderOffices(panel);
+  else renderMembers(panel);
+}
+
+function renderAll() {
+  tabs();
+  render();
+  const status = document.getElementById("fanclubStatus");
+  if (status) { status.textContent = "Aktuell"; status.className = "status-pill success"; }
+}
+
+export async function hydrateFanclub(context = {}) {
+  const panel = document.getElementById("fanclubPanel");
+  if (!panel) return;
+  panel.innerHTML = '<article class="card loading-card"><h3>Fanclubdaten werden geladen …</h3></article>';
   try {
-    if (activeTab === "overview") await renderOverview();
-    if (activeTab === "members") await renderMembers();
-    if (activeTab === "contributions") await renderContributions();
-    if (activeTab === "paymentReports") await renderPaymentReports();
-    if (activeTab === "cashbook") await renderCashbook();
-    if (activeTab === "accounts") await renderAccounts();
-    setStatus("Live verbunden", "success");
+    snapshot = await call("fanclub_snapshot");
+    if (context.isCurrent && !context.isCurrent()) return;
+    renderAll();
   } catch (error) {
-    if (panel) panel.innerHTML = `<div class="notice error"><strong>Daten konnten nicht geladen werden</strong><br>${escapeHtml(error?.message || String(error || "Unbekannter Fehler"))}</div>`;
-    setStatus("Fehler", "warning");
+    panel.innerHTML = errorPanel(error);
+    const status = document.getElementById("fanclubStatus");
+    if (status) { status.textContent = "Fehler"; status.className = "status-pill error"; }
   }
 }
 
-async function renderOverview(force = false) {
-  const data = await phase3State.once(KEY + "overview", () => call("apiListActiveMemberNames"), { force });
-  const names = Array.isArray(data?.names) ? data.names : [];
-  const areas = tabs().filter(item => item.id !== "overview");
-  const user = currentUser();
-  target().innerHTML = `<div class="p2-overview-heading"><div><span>Dein Fanclub</span><h3>Alles Wichtige auf einen Blick</h3><p>Die Kacheln richten sich automatisch nach deinen Rechten.</p></div><button class="button ghost small" id="fanclubOverviewRefresh">Aktualisieren</button></div>
-    <div class="p2-kpi-grid">${kpi("Aktive Mitglieder", String(names.length), "Aktueller Namensbestand", ICONS.people, "tone-green")}${kpi("Freigegebene Bereiche", String(areas.length), "Nur erlaubte Module", ICONS.layers, "tone-teal")}${kpi("Dein Zugang", escapeHtml(user.role || "Portaluser"), user.isAdmin ? "Vollzugriff" : "Serverseitig geprüft", ICONS.shield, "tone-purple")}</div>
-    <section class="p2-panel-card"><div class="p2-section-heading"><div><span>Schnellzugriff</span><h3>Fanclubbereiche</h3><p>Direkt zum gewünschten Arbeitsbereich wechseln.</p></div></div><div class="p2-quick-grid" style="margin-top:15px">${areas.map(item => `<button class="p2-quick-action" type="button" data-fanclub-open="${escapeAttr(item.id)}"><span class="p2-quick-icon" aria-hidden="true">${ICONS[item.id]}</span><span class="p2-quick-copy"><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.hint)}</small></span><span class="p2-quick-arrow" aria-hidden="true">›</span></button>`).join("") || emptyState("Keine weiteren Bereiche", "Für deinen Zugang sind derzeit keine weiteren Fanclubmodule freigeschaltet.")}</div></section>
-    <section class="p2-panel-card"><div class="p2-section-heading"><div><span>Mitglieder</span><h3>Aktive Fanclubmitglieder</h3><p>In der Übersicht werden bewusst keine Kontaktdaten angezeigt.</p></div>${canRead("Mitglieder") ? '<button class="button secondary small" data-fanclub-open="members">Alle anzeigen</button>' : ""}</div><div class="p2-member-preview" style="margin-top:15px">${names.slice(0, 10).map(name => `<div class="member-line"><span class="p2-member-preview-copy"><span class="p2-avatar" aria-hidden="true">${escapeHtml(initials(name))}</span><strong>${escapeHtml(name)}</strong></span><span class="badge success">Aktiv</span></div>`).join("") || emptyState("Noch keine aktiven Mitglieder", "Sobald aktive Mitglieder vorhanden sind, erscheinen sie hier.")}</div></section>`;
-  target().querySelectorAll("[data-fanclub-open]").forEach(button => button.addEventListener("click", () => setTabHash(button.dataset.fanclubOpen)));
-  document.getElementById("fanclubOverviewRefresh")?.addEventListener("click", () => renderOverview(true));
-}
-
-async function getMembers(force = false) { let data = phase3State.get(KEY + "members"); if (!data || force) data = phase3State.set(KEY + "members", await call("apiListMembers")); return data || { members: [], meta: {} }; }
-function responsiveEntityTable(headers, desktopRows, mobileCards, emptyTitle, emptyText) {
-  if (!desktopRows.length) return emptyState(emptyTitle, emptyText);
-  const head = headers.map(header => `<th>${escapeHtml(header)}</th>`).join("");
-  const body = desktopRows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>`).join("");
-  return `<div class="p2-panel-card p2-data-table-card"><div class="data-table-wrap"><table class="data-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div></div><div class="p2-mobile-cards">${mobileCards.join("")}</div>`;
-}
-async function renderMembers(force = false) {
-  const data = await getMembers(force);
-  const members = data.members || [];
-  target().innerHTML = `<div class="p2-section-heading"><div><span>Mitgliederverwaltung</span><h3>Mitglieder</h3><p>Suche, Status und Detailansicht für den Fanclubbestand.</p></div></div><div class="p2-toolbar">${searchField("memberSearch", "Mitglied suchen …")}<select id="memberStatus"><option value="">Alle Status</option>${optionList(data.meta?.statusListe || [])}</select><div class="p2-toolbar-actions">${canWrite("Mitglieder") ? '<button id="newMember" class="button primary" type="button">+ Mitglied</button>' : ""}<button id="refreshMembers" class="button ghost" type="button">Aktualisieren</button></div></div><div id="memberResultMeta" class="p2-result-meta"></div><div id="memberResults"></div>`;
-  const draw = () => {
-    const query = normalize(document.getElementById("memberSearch")?.value);
-    const status = String(document.getElementById("memberStatus")?.value || "");
-    const full = String(data.view || "").toUpperCase() === "FULL";
-    const list = members.filter(member => (!query || normalize([member.id, member.vorname, member.nachname, member.name, member.ort, member.status].join(" ")).includes(query)) && (!status || member.status === status));
-    const meta = document.getElementById("memberResultMeta"); if (meta) meta.innerHTML = `<span><strong>${list.length}</strong> von ${members.length} Mitgliedern</span><span>${full ? "Vollständige Detailansicht erlaubt" : "Eingeschränkte Ansicht"}</span>`;
-    const desktopRows = list.map(member => { const first = member.vorname || String(member.name || "").split(" ")[0] || "–"; const last = member.nachname || String(member.name || "").split(" ").slice(1).join(" ") || "–"; const name = [first, last].filter(value => value !== "–").join(" ") || member.name || member.id; return [person(name, member.id || ""), escapeHtml(member.ort || "–"), statusBadge(member.status), full ? `<button class="button small ghost" data-member-id="${escapeAttr(member.id)}">Details</button>` : ""]; });
-    const mobileCards = list.map(member => { const name = member.name || [member.vorname, member.nachname].filter(Boolean).join(" ") || member.id; return `<article class="p2-mobile-entity"><div class="p2-mobile-entity-head">${person(name, member.id || "")}${statusBadge(member.status)}</div><div class="p2-mobile-entity-grid"><div class="p2-mobile-field"><small>Wohnort</small><div>${escapeHtml(member.ort || "–")}</div></div><div class="p2-mobile-field"><small>Mitgliedsstatus</small><div>${escapeHtml(member.status || "–")}</div></div></div>${full ? `<button class="button ghost" data-member-id="${escapeAttr(member.id)}">Vollständige Daten</button>` : ""}</article>`; });
-    document.getElementById("memberResults").innerHTML = responsiveEntityTable(["Mitglied", "Wohnort", "Status", ""], desktopRows, mobileCards, "Keine Mitglieder gefunden", "Passe Suche oder Statusfilter an.");
-    if (full) document.querySelectorAll("[data-member-id]").forEach(button => button.addEventListener("click", () => openMember(button.dataset.memberId)));
-  };
-  draw();
-  document.getElementById("memberSearch")?.addEventListener("input", draw); document.getElementById("memberStatus")?.addEventListener("change", draw); document.getElementById("newMember")?.addEventListener("click", () => openMemberForm(null, data.meta)); document.getElementById("refreshMembers")?.addEventListener("click", () => renderMembers(true));
-}
-async function openMember(id) {
-  try {
-    const member = await call("apiGetMember", id);
-    const address = [member.strasse, member.hausnummer, [member.plz, member.ort].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-    openDialog({ title: member.name || "Mitglied", kicker: member.id || "Mitglied", wide: true, body: `<div class="p2-form-intro">Persönliche Daten werden nur Benutzern mit entsprechender Berechtigung angezeigt.</div><div class="grid two"><article class="card"><h3>Mitgliedschaft</h3><p>${statusBadge(member.status)} · ${escapeHtml(member.mitgliedschaft || "–")}</p><p style="margin-top:12px"><strong>Eintritt:</strong> ${escapeHtml(fmtDate(member.eintritt))}<br><strong>Geburtstag:</strong> ${escapeHtml(fmtDate(member.geburtsdatum))}</p></article><article class="card"><h3>Kontakt</h3><p>${escapeHtml(address || "–")}<br>${escapeHtml(member.telefon || "–")}<br>${escapeHtml(member.email || "–")}</p></article></div>${member.contribution ? `<article class="card"><h3>Aktueller Beitrag</h3><p>Soll ${fmtMoney(member.contribution.soll)} · Gezahlt ${fmtMoney(member.contribution.gezahlt)} · Offen <strong>${fmtMoney(member.contribution.offen)}</strong></p></article>` : ""}<div class="dialog-actions"><button class="button ghost" data-dialog-close>Schließen</button>${canWrite("Mitglieder") ? '<button id="editMember" class="button primary" type="button">Bearbeiten</button>' : ""}</div>` });
-    document.getElementById("editMember")?.addEventListener("click", () => openMemberForm(member, phase3State.get(KEY + "members")?.meta || {}));
-  } catch (error) { showToast(error.message, "error", 6000); }
-}
-function openMemberForm(member = {}, meta = {}) {
-  member = member || {};
-  openDialog({ title: member.id ? "Mitglied bearbeiten" : "Mitglied anlegen", kicker: member.id || "Neue Mitgliedschaft", wide: true, body: `<form><input type="hidden" name="id" value="${escapeAttr(member.id || "")}"><div class="form-grid"><div class="p2-form-section">Mitgliedschaft</div><label>Status<select name="status">${optionList(meta.statusListe || ["Aktiv", "Passiv", "Ehrenmitglied", "Ausgetreten"], member.status || "Aktiv")}</select></label><label>Mitgliedschaft<select name="mitgliedschaft">${optionList(meta.mitgliedschaften || ["Vollzahler"], member.mitgliedschaft || "Vollzahler")}</select></label><div class="p2-form-section">Person</div><label>Vorname<input name="vorname" value="${escapeAttr(member.vorname || "")}"></label><label>Nachname<input name="nachname" value="${escapeAttr(member.nachname || "")}"></label><label>Geburtstag<input type="date" name="geburtsdatum" value="${escapeAttr(member.geburtsdatum || "")}"></label><label>Eintritt<input type="date" name="eintritt" value="${escapeAttr(member.eintritt || today())}"></label><div class="p2-form-section">Kontakt</div><label>Telefon<input name="telefon" value="${escapeAttr(member.telefon || "")}"></label><label>E-Mail<input type="email" name="email" value="${escapeAttr(member.email || "")}"></label><label>Straße<input name="strasse" value="${escapeAttr(member.strasse || "")}"></label><label>Hausnummer<input name="hausnummer" value="${escapeAttr(member.hausnummer || "")}"></label><label>PLZ<input name="plz" inputmode="numeric" value="${escapeAttr(member.plz || "")}"></label><label>Ort<input name="ort" value="${escapeAttr(member.ort || "")}"></label><label class="full">Bemerkung<textarea name="bemerkung">${escapeHtml(member.bemerkung || "")}</textarea></label></div></form>`, onSubmit: async data => { await runWrite("Mitglied wird gespeichert …", () => call("apiSaveMember", data)); closeDialog(); phase3State.remove(KEY + "members"); phase3State.remove(KEY + "overview"); await renderMembers(true); } });
-}
-
-async function renderContributions(force = false) {
-  let data = phase3State.get(KEY + "contributions"); if (!data || force) data = phase3State.set(KEY + "contributions", await call("apiListContributions", { status: "alle" }));
-  const list = data.contributions || [];
-  const totals = list.reduce((sum, item) => { sum.due += Number(item.soll || 0); sum.paid += Number(item.gezahlt || 0); sum.open += Number(item.offen || 0); return sum; }, { due: 0, paid: 0, open: 0 });
-  target().innerHTML = `<div class="p2-section-heading"><div><span>Beitragsverwaltung</span><h3>Beiträge</h3><p>Offene Beträge und Zahlungen transparent zusammengefasst.</p></div></div><div class="p2-kpi-grid">${kpi("Soll", fmtMoney(totals.due), "Gesamter Beitragswert", ICONS.contributions, "")}${kpi("Gezahlt", fmtMoney(totals.paid), "Bereits bestätigt", ICONS.shield, "tone-green")}${kpi("Offen", fmtMoney(totals.open), `${list.filter(item => Number(item.offen) > 0).length} offene Beiträge`, ICONS.paymentReports, totals.open > 0 ? "tone-yellow" : "tone-green")}</div><div class="p2-toolbar">${searchField("contributionSearch", "Mitglied oder Beitragsklasse suchen …")}<select id="contributionStatus"><option value="offen">Offen</option><option value="bezahlt">Bezahlt</option><option value="alle">Alle</option></select><div class="p2-toolbar-actions"><button id="refreshContributions" class="button ghost">Aktualisieren</button></div></div><div id="contributionResultMeta" class="p2-result-meta"></div><div id="contributionResults"></div>`;
-  const draw = () => {
-    const query = normalize(document.getElementById("contributionSearch")?.value); const status = document.getElementById("contributionStatus")?.value || "offen";
-    const filtered = list.filter(item => (!query || normalize([item.id, item.name, item.beitragsklasse, item.status].join(" ")).includes(query)) && (status === "alle" || (status === "offen" ? Number(item.offen) > 0 : Number(item.offen) <= 0 && Number(item.gezahlt) > 0)));
-    const meta = document.getElementById("contributionResultMeta"); if (meta) meta.innerHTML = `<span><strong>${filtered.length}</strong> von ${list.length} Beiträgen</span><span>${status === "offen" ? "Offene Beiträge" : status === "bezahlt" ? "Bezahlte Beiträge" : "Alle Beiträge"}</span>`;
-    const rows = filtered.map(item => [person(item.name || item.id, item.beitragsklasse || ""), `<span class="p2-money">${fmtMoney(item.soll)}</span>`, `<span class="p2-money positive">${fmtMoney(item.gezahlt)}</span>`, `<span class="p2-money ${Number(item.offen) > 0 ? "open" : "positive"}">${fmtMoney(item.offen)}</span>`, statusBadge(Number(item.offen) > 0 ? "Offen" : "Bezahlt"), canWrite("Beiträge") && Number(item.offen) > 0 ? `<button class="button small primary" data-pay-member="${escapeAttr(item.id)}">Buchen</button>` : ""]);
-    const cards = filtered.map(item => `<article class="p2-mobile-entity"><div class="p2-mobile-entity-head">${person(item.name || item.id, item.beitragsklasse || "")}${statusBadge(Number(item.offen) > 0 ? "Offen" : "Bezahlt")}</div><div class="p2-mobile-entity-grid"><div class="p2-mobile-field"><small>Soll</small><div class="p2-money">${fmtMoney(item.soll)}</div></div><div class="p2-mobile-field"><small>Gezahlt</small><div class="p2-money positive">${fmtMoney(item.gezahlt)}</div></div><div class="p2-mobile-field"><small>Offen</small><div class="p2-money ${Number(item.offen) > 0 ? "open" : "positive"}">${fmtMoney(item.offen)}</div></div></div>${canWrite("Beiträge") && Number(item.offen) > 0 ? `<button class="button primary" data-pay-member="${escapeAttr(item.id)}">Zahlung buchen</button>` : ""}</article>`);
-    document.getElementById("contributionResults").innerHTML = responsiveEntityTable(["Mitglied", "Soll", "Gezahlt", "Offen", "Status", ""], rows, cards, "Keine Beiträge gefunden", "Passe Suche oder Filter an.");
-    document.querySelectorAll("[data-pay-member]").forEach(button => button.addEventListener("click", () => openContributionPayment(filtered.find(item => String(item.id) === button.dataset.payMember), data.meta || {})));
-  };
-  draw(); document.getElementById("contributionSearch")?.addEventListener("input", draw); document.getElementById("contributionStatus")?.addEventListener("change", draw); document.getElementById("refreshContributions")?.addEventListener("click", () => renderContributions(true));
-}
-async function accountData(force = false) { let data = phase3State.get(KEY + "accounts"); if (!data || force) data = phase3State.set(KEY + "accounts", await call("apiListAccounts")); return data || { accounts: [], inactive: [], meta: {} }; }
-async function openContributionPayment(contribution, meta) {
-  if (!contribution) return; const accounts = await accountData(); const accountOptions = (accounts.accounts || []).filter(account => account.aktiv !== "NEIN").map(account => ({ value: account.id, label: account.name }));
-  openDialog({ title: "Beitragszahlung buchen", kicker: contribution.name || contribution.id, body: `<form><div class="p2-form-intro">Der vorgeschlagene Betrag entspricht dem aktuell offenen Beitrag.</div><input type="hidden" name="beitragId" value="${escapeAttr(contribution.id)}"><div class="form-grid"><label>Betrag<input name="betrag" inputmode="decimal" value="${escapeAttr(contribution.offen || contribution.soll || "")}" required></label><label>Datum<input type="date" name="datum" value="${today()}" required></label><label>Zahlungsart<select name="zahlungsart">${optionList(meta.zahlungsarten || ["Bar", "Überweisung", "PayPal", "Lastschrift", "Sonstiges"], "Bar")}</select></label><label>Konto<select name="kontoId" required>${optionList(accountOptions, accountOptions.find(account => account.label === "Kasse")?.value || accountOptions[0]?.value || "", "Konto auswählen")}</select></label><label class="full">Bemerkung<input name="bemerkung"></label></div></form>`, onSubmit: async data => { data.requestId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`; await runWrite("Beitragszahlung wird gemeldet …", () => call("apiBookContribution", data)); closeDialog(); phase3State.remove(KEY + "contributions"); await renderContributions(true); } });
-}
-
-async function renderPaymentReports(force = false) {
-  let data = phase3State.get(KEY + "paymentReports"); if (!data || force) data = phase3State.set(KEY + "paymentReports", await call("apiListPaymentReports", {}));
-  const reports = data.reports || []; const user = currentUser(); const offices = (user.officeCodes || user.offices || []).map(value => String(value || "").toUpperCase()); const reviewer = Boolean(user.isAdmin || offices.includes("KASSIER")); const pending = reports.filter(report => String(report.status).toUpperCase() === "BESTÄTIGUNG_AUSSTEHEND").length;
-  target().innerHTML = `<div class="p2-section-heading"><div><span>Vier-Augen-Prinzip</span><h3>Beitragszahlungsmeldungen</h3><p>Erst die Bestätigung durch Kassier oder Admin erzeugt eine Buchung.</p></div><button id="refreshPaymentReports" class="button ghost small">Aktualisieren</button></div><div class="p2-kpi-grid">${kpi("Meldungen", String(reports.length), "Gesamter Vorgang", ICONS.paymentReports, "")}${kpi("Ausstehend", String(pending), "Noch zu prüfen", ICONS.shield, pending ? "tone-yellow" : "tone-green")}${kpi("Prüfrecht", reviewer ? "Ja" : "Nein", reviewer ? "Kassier oder Admin" : "Nur Lesezugriff", ICONS.people, "tone-purple")}</div><div class="p2-report-list">${reports.map(report => `<article class="p2-report-card"><div class="p2-mobile-entity-head"><div><span class="subtle">${escapeHtml(report.memberId || report.contributionId || report.id)}</span><div class="p2-report-amount">${fmtMoney(report.amount)}</div></div>${statusBadge(report.status)}</div><div class="p2-task-meta"><div><small>Zahlungsdatum</small><span>${escapeHtml(fmtDate(report.paymentDate))}</span></div><div><small>Vorgang</small><span>${escapeHtml(report.id || "–")}</span></div></div>${report.reason ? `<div class="notice warning"><strong>Begründung:</strong> ${escapeHtml(report.reason)}</div>` : ""}${report.note ? `<p class="p2-task-description">${escapeHtml(report.note)}</p>` : ""}<div class="p2-task-actions">${reviewer && String(report.status).toUpperCase() === "BESTÄTIGUNG_AUSSTEHEND" ? `<button class="button small primary" data-report-confirm="${escapeAttr(report.id)}">Bestätigen</button><button class="button small secondary" data-report-return="${escapeAttr(report.id)}">Zur Korrektur</button><button class="button small danger" data-report-reject="${escapeAttr(report.id)}">Ablehnen</button>` : ""}</div></article>`).join("") || emptyState("Keine Zahlungsmeldungen", "Neue Meldungen erscheinen automatisch in diesem Bereich.")}</div>`;
-  document.getElementById("refreshPaymentReports")?.addEventListener("click", () => renderPaymentReports(true));
-  target().querySelectorAll("[data-report-confirm]").forEach(button => button.addEventListener("click", () => paymentReportAction("apiConfirmPaymentReport", reports.find(report => report.id === button.dataset.reportConfirm), "Bestätigen")));
-  target().querySelectorAll("[data-report-return]").forEach(button => button.addEventListener("click", () => paymentReportAction("apiReturnPaymentReport", reports.find(report => report.id === button.dataset.reportReturn), "Zur Korrektur zurückgeben", true)));
-  target().querySelectorAll("[data-report-reject]").forEach(button => button.addEventListener("click", () => paymentReportAction("apiRejectPaymentReport", reports.find(report => report.id === button.dataset.reportReject), "Ablehnen", true)));
-}
-function paymentReportAction(apiName, report, title, reasonRequired = false) { if (!report) return; openDialog({ title, kicker: report.id, body: `<form><input type="hidden" name="reportId" value="${escapeAttr(report.id)}"><input type="hidden" name="revision" value="${escapeAttr(report.revision)}">${reasonRequired ? '<label>Begründung<textarea name="reason" required maxlength="1000"></textarea></label>' : '<div class="notice warning">Erst die Bestätigung erzeugt die gesicherte Buchung.</div>'}</form>`, onSubmit: async form => { form.requestId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`; await runWrite("Zahlungsmeldung wird verarbeitet …", () => call(apiName, form)); closeDialog(); phase3State.remove(KEY + "paymentReports"); await renderPaymentReports(true); } }); }
-
-async function renderCashbook(force = false) {
-  let data = phase3State.get(KEY + "cashbook"); if (!data || force) data = phase3State.set(KEY + "cashbook", await call("apiListBookings", { max: 100 }));
-  const list = data.bookings || []; const totals = list.reduce((sum, booking) => { const value = Number(booking.betrag || 0); if (/ausgabe/i.test(booking.art || "")) sum.expense += Math.abs(value); else sum.income += Math.abs(value); return sum; }, { income: 0, expense: 0 });
-  target().innerHTML = `<div class="p2-section-heading"><div><span>Finanzen</span><h3>Kassenbuch</h3><p>Die letzten Buchungen mit Suche und sicheren Aktionen.</p></div></div><div class="p2-kpi-grid">${kpi("Einnahmen", fmtMoney(totals.income), "In der aktuellen Liste", ICONS.contributions, "tone-green")}${kpi("Ausgaben", fmtMoney(totals.expense), "In der aktuellen Liste", ICONS.cashbook, "tone-red")}${kpi("Differenz", fmtMoney(totals.income - totals.expense), `${list.length} Buchungen geladen`, ICONS.accounts, totals.income - totals.expense >= 0 ? "tone-teal" : "tone-red")}</div><div class="p2-toolbar single-filter">${searchField("bookingSearch", "Buchung suchen …")}<div class="p2-toolbar-actions">${canWrite("Kasse") ? '<button id="newBooking" class="button primary">+ Buchung</button><button id="newTransfer" class="button secondary">Umbuchung</button>' : ""}<button id="refreshCashbook" class="button ghost">Aktualisieren</button></div></div><div id="bookingResultMeta" class="p2-result-meta"></div><div id="bookingResults"></div>`;
-  const draw = () => {
-    const query = normalize(document.getElementById("bookingSearch")?.value); const filtered = list.filter(booking => !query || normalize([booking.buchungsNr, booking.datum, booking.art, booking.kategorie, booking.beschreibung, booking.konto, booking.status, booking.betrag].join(" ")).includes(query));
-    const meta = document.getElementById("bookingResultMeta"); if (meta) meta.innerHTML = `<span><strong>${filtered.length}</strong> von ${list.length} Buchungen</span><span>Maximal 100 Einträge</span>`;
-    const rows = filtered.map(booking => [escapeHtml(fmtDate(booking.datum)), `<strong>${escapeHtml(booking.beschreibung || booking.kategorie || booking.buchungsNr)}</strong><div class="subtle">${escapeHtml(booking.buchungsNr || "")}</div>`, escapeHtml(booking.konto || "–"), `<span class="p2-money ${/ausgabe/i.test(booking.art || "") ? "negative" : "positive"}">${fmtMoney(booking.betrag)}</span><div class="subtle">${escapeHtml(booking.art || "")}</div>`, statusBadge(booking.status || "Aktiv"), canWrite("Kasse") && !/storniert/i.test(booking.status || "") ? `<div class="button-row"><button class="button small ghost" data-edit-booking="${escapeAttr(booking.buchungsNr)}">Bearbeiten</button><button class="button small danger" data-cancel-booking="${escapeAttr(booking.buchungsNr)}">Stornieren</button></div>` : ""]);
-    const cards = filtered.map(booking => `<article class="p2-mobile-entity"><div class="p2-mobile-entity-head"><div><strong>${escapeHtml(booking.beschreibung || booking.kategorie || booking.buchungsNr)}</strong><div class="subtle">${escapeHtml(fmtDate(booking.datum))} · ${escapeHtml(booking.buchungsNr || "")}</div></div>${statusBadge(booking.status || "Aktiv")}</div><div class="p2-mobile-entity-grid"><div class="p2-mobile-field"><small>Konto</small><div>${escapeHtml(booking.konto || "–")}</div></div><div class="p2-mobile-field"><small>Betrag</small><div class="p2-money ${/ausgabe/i.test(booking.art || "") ? "negative" : "positive"}">${fmtMoney(booking.betrag)}</div></div></div>${canWrite("Kasse") && !/storniert/i.test(booking.status || "") ? `<div class="button-row"><button class="button ghost" data-edit-booking="${escapeAttr(booking.buchungsNr)}">Bearbeiten</button><button class="button danger" data-cancel-booking="${escapeAttr(booking.buchungsNr)}">Stornieren</button></div>` : ""}</article>`);
-    document.getElementById("bookingResults").innerHTML = responsiveEntityTable(["Datum", "Buchung", "Konto", "Betrag", "Status", ""], rows, cards, "Keine Buchungen gefunden", "Passe die Suche an.");
-    document.querySelectorAll("[data-edit-booking]").forEach(button => button.addEventListener("click", () => openBookingForm(filtered.find(booking => booking.buchungsNr === button.dataset.editBooking), data.meta || {}))); document.querySelectorAll("[data-cancel-booking]").forEach(button => button.addEventListener("click", () => cancelBooking(button.dataset.cancelBooking)));
-  };
-  draw(); document.getElementById("bookingSearch")?.addEventListener("input", draw); document.getElementById("newBooking")?.addEventListener("click", () => openBookingForm({}, data.meta || {})); document.getElementById("newTransfer")?.addEventListener("click", openTransferForm); document.getElementById("refreshCashbook")?.addEventListener("click", () => renderCashbook(true));
-}
-async function openBookingForm(booking = {}, meta = {}) { const accounts = await accountData(); const names = (accounts.accounts || []).filter(account => account.aktiv !== "NEIN").map(account => account.name); openDialog({ title: booking.buchungsNr ? "Buchung bearbeiten" : "Freie Buchung", kicker: booking.buchungsNr || "Neue Buchung", body: `<form><input type="hidden" name="buchungsNr" value="${escapeAttr(booking.buchungsNr || "")}"><input type="hidden" name="mitglied" value="${escapeAttr(booking.mitglied || "")}"><input type="hidden" name="mitgliedsId" value="${escapeAttr(booking.mitgliedsId || "")}"><input type="hidden" name="beleg" value="${escapeAttr(booking.beleg || "")}"><div class="form-grid"><label>Art<select name="art">${optionList(["Einnahme", "Ausgabe"], booking.art || "Einnahme")}</select></label><label>Betrag<input name="betrag" inputmode="decimal" value="${escapeAttr(booking.betrag || "")}" required></label><label>Datum<input type="date" name="datum" value="${escapeAttr(booking.datum || today())}" required></label><label>Konto<select name="konto" required>${optionList(names, booking.konto || "", "Konto auswählen")}</select></label><label>Kategorie<select name="kategorie">${optionList(meta.kategorien || ["Sonstiges"], booking.kategorie || "", "Kategorie auswählen")}</select></label><label class="full">Beschreibung<input name="beschreibung" value="${escapeAttr(booking.beschreibung || "")}"></label><label class="full">Bemerkung<input name="bemerkung" value="${escapeAttr(booking.bemerkung || "")}"></label></div></form>`, onSubmit: async data => { await runWrite("Buchung wird gespeichert …", () => call("apiSaveBooking", data)); closeDialog(); phase3State.remove(KEY + "cashbook"); phase3State.remove(KEY + "accounts"); await renderCashbook(true); } }); }
-async function cancelBooking(no) { if (!await confirmAction({ title: "Buchung stornieren", message: `Buchung ${no} wirklich stornieren?`, confirmText: "Stornieren" })) return; await runWrite("Storno wird verarbeitet …", () => call("apiCancelBooking", no)); phase3State.remove(KEY + "cashbook"); phase3State.remove(KEY + "accounts"); await renderCashbook(true); }
-async function openTransferForm() { const accounts = await accountData(); const names = (accounts.accounts || []).filter(account => account.aktiv !== "NEIN").map(account => account.name); openDialog({ title: "Umbuchung", kicker: "Zwischen Konten", body: `<form><div class="p2-form-intro">Von- und Zielkonto müssen unterschiedlich sein.</div><div class="form-grid"><label>Von Konto<select name="vonKonto" required>${optionList(names, "", "Konto auswählen")}</select></label><label>Nach Konto<select name="nachKonto" required>${optionList(names, "", "Konto auswählen")}</select></label><label>Betrag<input name="betrag" inputmode="decimal" required></label><label>Datum<input type="date" name="datum" value="${today()}" required></label><label class="full">Beschreibung<input name="beschreibung"></label><label class="full">Bemerkung<input name="bemerkung"></label></div></form>`, onSubmit: async data => { await runWrite("Umbuchung wird gebucht …", () => call("apiCreateTransfer", data)); closeDialog(); phase3State.remove(KEY + "cashbook"); phase3State.remove(KEY + "accounts"); await renderCashbook(true); } }); }
-
-async function renderAccounts(force = false) {
-  const data = await accountData(force); const active = data.accounts || []; const inactive = data.inactive || []; const total = active.reduce((sum, account) => sum + Number(account.saldo || 0), 0);
-  const cards = (list, isInactive = false) => list.map(account => `<article class="p2-account-card"><div class="p2-account-head"><div><h3>${escapeHtml(account.name)}</h3><small>${escapeHtml(account.typ || "Konto")} · ${escapeHtml(account.id || "")}</small></div>${statusBadge(account.aktiv)}</div><strong class="p2-account-balance">${fmtMoney(account.saldo)}</strong>${canWrite("Konten") ? `<div class="button-row"><button class="button small ghost" data-edit-account="${escapeAttr(account.id)}">Bearbeiten</button><button class="button small ${account.aktiv === "JA" ? "danger" : "secondary"}" data-toggle-account="${escapeAttr(account.id)}" data-revision="${escapeAttr(account.revision || 0)}" data-active="${account.aktiv === "JA" ? "false" : "true"}">${account.aktiv === "JA" ? "Deaktivieren" : "Aktivieren"}</button>${isInactive ? `<button class="button small danger" data-delete-account="${escapeAttr(account.id)}" data-revision="${escapeAttr(account.revision || 0)}">Löschen</button>` : ""}</div>` : ""}</article>`).join("");
-  target().innerHTML = `<div class="p2-section-heading"><div><span>Kontenübersicht</span><h3>Konten</h3><p>Aktive Konten und Salden in einer klaren Finanzansicht.</p></div></div><div class="p2-kpi-grid">${kpi("Gesamtsaldo", fmtMoney(total), "Summe aktiver Konten", ICONS.accounts, total >= 0 ? "tone-green" : "tone-red")}${kpi("Aktive Konten", String(active.length), "Für Buchungen verfügbar", ICONS.shield, "tone-teal")}${kpi("Deaktiviert", String(inactive.length), "Nicht mehr auswählbar", ICONS.layers, "tone-purple")}</div><div class="p2-toolbar single-filter"><div class="p2-result-meta"><span><strong>${active.length}</strong> aktive Konten</span></div><div class="p2-toolbar-actions">${canWrite("Konten") ? '<button id="newAccount" class="button primary">+ Konto</button><button id="recalcAccounts" class="button secondary">Salden aktualisieren</button>' : ""}<button id="refreshAccounts" class="button ghost">Aktualisieren</button></div></div><div class="p2-account-grid">${cards(active) || emptyState("Keine aktiven Konten", "Lege ein Konto an, um Buchungen zu verwalten.")}</div>${inactive.length ? `<section class="p2-panel-card"><div class="p2-section-heading"><div><span>Archiviert</span><h3>Deaktivierte Konten</h3></div></div><div class="p2-account-grid" style="margin-top:15px">${cards(inactive, true)}</div></section>` : ""}`;
-  const all = active.concat(inactive); document.querySelectorAll("[data-edit-account]").forEach(button => button.addEventListener("click", () => openAccountForm(all.find(account => account.id === button.dataset.editAccount), data.meta || {}))); document.querySelectorAll("[data-toggle-account]").forEach(button => button.addEventListener("click", () => toggleAccount(button.dataset.toggleAccount, button.dataset.active === "true", Number(button.dataset.revision)))); document.querySelectorAll("[data-delete-account]").forEach(button => button.addEventListener("click", () => deleteAccount(button.dataset.deleteAccount, Number(button.dataset.revision)))); document.getElementById("newAccount")?.addEventListener("click", () => openAccountForm({}, data.meta || {})); document.getElementById("recalcAccounts")?.addEventListener("click", recalcAccounts); document.getElementById("refreshAccounts")?.addEventListener("click", () => renderAccounts(true));
-}
-function openAccountForm(account = {}, meta = {}) { openDialog({ title: account.id ? "Konto bearbeiten" : "Konto anlegen", kicker: account.id || "Neues Konto", body: `<form><input type="hidden" name="id" value="${escapeAttr(account.id || "")}"><input type="hidden" name="revision" value="${escapeAttr(account.revision || "")}"><div class="form-grid"><label>Name<input name="name" value="${escapeAttr(account.name || "")}" required></label><label>Kontotyp<select name="typ">${optionList(meta.kontotypen || ["Kasse", "Bank", "PayPal", "Fond", "Bus-Kasse"], account.typ || "")}</select></label><label>Startbestand<input name="startbestand" inputmode="decimal" value="${escapeAttr(account.startbestand || 0)}"></label><label>Aktiv<select name="aktiv">${optionList(["JA", "NEIN"], account.aktiv || "JA")}</select></label><label class="full">Bemerkung<input name="bemerkung" value="${escapeAttr(account.bemerkung || "")}"></label></div></form>`, onSubmit: async data => { await runWrite("Konto wird gespeichert …", () => call("apiSaveAccount", data)); closeDialog(); phase3State.remove(KEY + "accounts"); await renderAccounts(true); } }); }
-async function toggleAccount(id, active, revision) { await runWrite(active ? "Konto wird aktiviert …" : "Konto wird deaktiviert …", () => call("apiSetAccountActive", id, active, revision)); phase3State.remove(KEY + "accounts"); await renderAccounts(true); }
-async function deleteAccount(id, revision) { if (!await confirmAction({ title: "Konto endgültig löschen", message: "Nur ein deaktiviertes, unbenutztes Konto mit Saldo 0,00 € kann gelöscht werden.", confirmText: "Konto löschen" })) return; await runWrite("Konto wird gelöscht …", () => call("apiDeleteAccount", id, revision)); phase3State.remove(KEY + "accounts"); await renderAccounts(true); }
-async function recalcAccounts() { await runWrite("Kontosalden werden neu berechnet …", () => call("apiRecalcAccounts")); phase3State.remove(KEY + "accounts"); await renderAccounts(true); }
+export function noop() {}

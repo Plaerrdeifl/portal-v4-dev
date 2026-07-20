@@ -184,7 +184,7 @@ export function updateUserChrome() {
     const first = current.user.firstName || current.user.vorname || "";
     const last = current.user.lastName || current.user.nachname || "";
     const name = `${first} ${last}`.trim() || current.user.name || "Profil unvollständig";
-    const role = current.profileRequired ? "Profilvervollständigung erforderlich" : (current.user.role || "Portaluser");
+    const role = current.status !== "ACTIVE" ? "Portalzugang noch nicht aktiv" : (current.user.role || "Portaluser");
     const nameNode = document.getElementById("userSummaryName");
     const roleNode = document.getElementById("userSummaryRole");
     const avatar = document.getElementById("userAvatar");

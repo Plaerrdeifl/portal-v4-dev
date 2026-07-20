@@ -1,0 +1,73 @@
+/* Plärrdeifl Portal V4 Core – Supabase UI additions */
+
+#mobileFullMenu{display:none!important}
+.v4-google-button{width:100%;min-height:50px;font-size:1rem}
+.v4-google-button span{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#fff;color:#174ea6;font-weight:900}
+
+.v4-toolbar{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.v4-toolbar h3,.v4-toolbar p{margin:0}.v4-toolbar p{margin-top:4px;color:var(--ink-500)}
+.v4-tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 1px 8px;scrollbar-width:thin}
+.v4-tab{border:1px solid var(--line);background:#fff;color:var(--ink-700);border-radius:999px;padding:10px 14px;font-weight:850;cursor:pointer;white-space:nowrap}
+.v4-tab:hover{border-color:var(--blue-700)}.v4-tab.active{background:var(--blue-800);border-color:var(--blue-800);color:#fff;box-shadow:0 7px 18px rgba(11,79,156,.2)}
+.v4-tab span{display:inline-grid;place-items:center;min-width:22px;height:22px;margin-left:6px;padding:0 6px;border-radius:999px;background:rgba(11,79,156,.09);font-size:.72rem}.v4-tab.active span{background:rgba(255,255,255,.2)}
+
+.v4-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.v4-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px}
+.v4-card-header h3,.v4-card-header p{margin:0}.v4-card-header p{margin-top:5px;color:var(--ink-500);line-height:1.45}
+.v4-card-actions,.row-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.v4-card-actions{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.badge-stack{display:flex;gap:6px;align-items:flex-end;flex-direction:column}.badge.error{background:#fff0f1;color:#8a1c27}
+
+.v4-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:16px;background:#fff}
+.v4-table{width:100%;border-collapse:collapse;min-width:760px}
+.v4-table th,.v4-table td{padding:13px 15px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.v4-table th{font-size:.76rem;color:var(--ink-500);text-transform:uppercase;letter-spacing:.04em;background:var(--surface-soft)}
+.v4-table tr:last-child td{border-bottom:0}.v4-table tbody tr:hover{background:#f9fbff}.v4-table small{display:block;color:var(--ink-500);margin-top:4px}
+
+.v4-metric-card{display:flex;align-items:center;gap:16px;min-height:145px}
+.v4-metric-card strong{display:block;font-size:2rem;line-height:1;color:var(--blue-800)}
+.v4-metric-card h3{margin:8px 0 2px}.v4-metric-card p{margin:0;color:var(--ink-500)}
+.v4-metric-icon{display:grid;place-items:center;width:52px;height:52px;border-radius:16px;background:var(--blue-050);font-size:1.6rem;flex:none}
+
+.v4-office-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.v4-office-grid .card{display:grid;gap:10px}.v4-office-grid .card span{font-weight:850;color:var(--ink-900)}
+.v4-office-grid .full{grid-column:1/-1}
+
+.v4-team-card,.v4-task-card{display:grid;align-content:start}.v4-team-members{display:grid;gap:8px}
+.v4-list-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border-radius:13px;background:var(--surface-soft)}
+.v4-list-row strong,.v4-list-row small{display:block}.v4-list-row small{margin-top:3px;color:var(--ink-500)}
+
+.v4-task-card[data-priority="URGENT"]{border-left:5px solid var(--danger)}
+.v4-task-card[data-priority="HIGH"]{border-left:5px solid var(--warning)}
+.v4-meta-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
+.v4-meta-grid div{padding:10px;border-radius:12px;background:var(--surface-soft)}
+.v4-meta-grid dt{font-size:.72rem;text-transform:uppercase;color:var(--ink-500);font-weight:850}.v4-meta-grid dd{margin:4px 0 0;font-weight:750}
+.v4-note-preview{padding:12px;border-radius:13px;background:#fff8e7;border:1px solid #f3d99a}.v4-note-preview p{margin:5px 0 0;white-space:pre-wrap}
+.v4-status-select{width:auto;min-width:145px}
+
+.v4-dialog{border:0;padding:0;background:transparent;width:min(760px,calc(100% - 24px));max-height:calc(100dvh - 24px)}
+.v4-dialog::backdrop{background:rgba(4,18,38,.64);backdrop-filter:blur(3px)}
+.v4-dialog-shell{background:#fff;border-radius:22px;box-shadow:var(--shadow-md);overflow:hidden}
+.v4-dialog-shell>header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:20px 22px;border-bottom:1px solid var(--line)}
+.v4-dialog-shell>header h2{margin:3px 0 0}.v4-dialog-shell #v4DialogBody{padding:22px;max-height:calc(100dvh - 120px);overflow:auto}
+.checkbox-row{display:flex!important;align-items:center;gap:10px}.checkbox-row input{width:19px;height:19px;min-height:auto}
+
+.v4-capability-groups{display:grid;gap:14px}.v4-capability-groups fieldset{border:1px solid var(--line);border-radius:15px;padding:14px}.v4-capability-groups legend{font-weight:900;padding:0 7px}
+.v4-capability{display:flex;grid-template-columns:none;align-items:flex-start;gap:10px;padding:10px;border-radius:12px}.v4-capability:hover{background:var(--surface-soft)}
+.v4-capability input{width:19px;height:19px;min-height:auto;flex:none;margin-top:2px}.v4-capability strong,.v4-capability small,.v4-capability code{display:block}.v4-capability small{color:var(--ink-500);margin:3px 0}.v4-capability code{font-size:.72rem;color:var(--blue-800)}
+.v4-history{margin-top:20px}.v4-history summary{cursor:pointer;font-weight:850;padding:12px 0}
+.v4-admin-tabs{margin-bottom:18px}
+
+.loading-card,.empty-card{min-height:130px;display:grid;place-content:center;text-align:center}.empty-card p{margin:0;color:var(--ink-500)}
+
+@media(max-width:900px){
+  .v4-card-grid,.v4-office-grid{grid-template-columns:1fr}
+  .v4-meta-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:620px){
+  .v4-toolbar{align-items:stretch}.v4-toolbar>.button{width:100%}
+  .v4-card-actions{align-items:stretch}.v4-card-actions>.button,.v4-card-actions>.v4-status-select{flex:1 1 140px}
+  .v4-list-row{align-items:flex-start;flex-direction:column}.row-actions{width:100%}.row-actions .button{flex:1}
+  .v4-meta-grid{grid-template-columns:1fr}
+  .v4-dialog-shell #v4DialogBody{padding:16px}.v4-dialog-shell>header{padding:17px}
+  .form-grid{grid-template-columns:1fr}.form-grid .full{grid-column:auto}
+}
