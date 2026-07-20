@@ -40,7 +40,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260720161000_add_admin_team_delete.sql",
     "20260720174500_make_team_codes_internal.sql",
     "20260720201500_harden_task_workflow.sql",
-    "20260720223000_restore_archived_tasks.sql"
+    "20260720223000_restore_archived_tasks.sql",
+    "20260720234500_add_contribution_management.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
@@ -260,12 +261,12 @@ test("public mobile navigation remains visible and usable", async () => {
 
   assert.match(
     html,
-    /v4-core\.css\?v=20260720-task-restore/
+    /v4-core\.css\?v=20260720-contributions-foundation/
   );
 
   assert.match(
     worker,
-    /pd-portal-v4-core-20260720-5/
+    /pd-portal-v4-core-20260720-6/
   );
 });
 
@@ -318,8 +319,8 @@ test("task workflow is revision-safe and archived without hard delete", async ()
   assert.doesNotMatch(common, /"WAITING"/);
 
   assert.match(css, /gehärteter Aufgabenworkflow/);
-  assert.match(html, /20260720-task-restore/);
-  assert.match(worker, /pd-portal-v4-core-20260720-5/);
+  assert.match(html, /20260720-contributions-foundation/);
+  assert.match(worker, /pd-portal-v4-core-20260720-6/);
 });
 
 test("task status uses a constrained dropdown", async () => {
@@ -368,4 +369,50 @@ test("archived tasks can be restored through an audited action", async () => {
     css,
     /\.v4-task-card\[data-status="ARCHIVED"\] \.v4-card-actions\{\s*display:none/
   );
+});
+
+test("contribution workflow is permissioned and ledger-backed", async () => {
+  const migration = await read(
+    "supabase/migrations/20260720234500_add_contribution_management.sql"
+  );
+  const fanclub = await read("js/modules/fanclub.js");
+  const css = await read("css/v4-core.css");
+
+  for (const table of [
+    "contribution_seasons",
+    "contribution_classes",
+    "member_contributions",
+    "finance_accounts",
+    "contribution_payment_reports",
+    "finance_entries"
+  ]) {
+    assert.match(
+      migration,
+      new RegExp(`create table app_fanclub\\.${table}`)
+    );
+  }
+
+  assert.match(migration, /'KASSE',[\s\S]+?'Kasse',[\s\S]+?'CASH'/);
+  assert.match(migration, /can_report_contribution_payment/);
+  assert.match(migration, /when 'save_contribution_season'/);
+  assert.match(migration, /when 'save_contribution_class'/);
+  assert.match(migration, /when 'save_member_contribution'/);
+  assert.match(migration, /when 'report_contribution_payment'/);
+  assert.match(migration, /when 'review_contribution_payment'/);
+  assert.match(migration, /CONTRIBUTION_PAYMENT_CONFIRMED/);
+  assert.match(migration, /insert into app_fanclub\.finance_entries/);
+  assert.doesNotMatch(migration, /update app_fanclub\.finance_entries/i);
+  assert.doesNotMatch(migration, /delete from app_fanclub\.finance_entries/i);
+
+  assert.match(fanclub, /\["contributions", "Beiträge"\]/);
+  assert.match(fanclub, /call\("save_contribution_season"/);
+  assert.match(fanclub, /call\("save_contribution_class"/);
+  assert.match(fanclub, /call\("save_member_contribution"/);
+  assert.match(fanclub, /call\("report_contribution_payment"/);
+  assert.match(fanclub, /call\("review_contribution_payment"/);
+  assert.match(fanclub, /account\.code === "KASSE"/);
+  assert.match(fanclub, /optionList\(PAYMENT_METHODS, "CASH"\)/);
+  assert.match(fanclub, /Number\(contribution\.reportableAmount\) > 0/);
+
+  assert.match(css, /V4 Core: Beitragsverwaltung/);
 });
