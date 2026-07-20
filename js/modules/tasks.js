@@ -255,6 +255,23 @@ async function archiveTask(task) {
   renderAll();
 }
 
+async function restoreTask(task) {
+  const confirmed = await confirmAction(
+    `Aufgabe „${task.title}“ wiederherstellen? Sie wird wieder als offene Aufgabe geführt.`
+  );
+  if (!confirmed) return;
+
+  snapshot = await runWrite(
+    () => call("restore_task", {
+      id: task.id,
+      revision: task.revision
+    }),
+    "Aufgabe wurde wiederhergestellt."
+  );
+  activeFilter = task.context === "BOARD" ? "board" : "team";
+  renderAll();
+}
+
 function visibleTasks() {
   const tasks = snapshot?.tasks || [];
   const userId = currentUser().id;
@@ -366,6 +383,7 @@ function taskCard(task) {
     ${archivedInfo}
     <footer class="v4-card-actions">
       ${statusSelect(task)}
+      ${task.canRestore ? `<button class="button small primary" type="button" data-restore-task="${escapeAttr(task.id)}">Wiederherstellen</button>` : ""}
       ${task.status !== "ARCHIVED" ? `<button class="button small secondary" type="button" data-task-note="${escapeAttr(task.id)}">Notiz</button>` : ""}
       ${task.canManage ? `<button class="button small secondary" type="button" data-edit-task="${escapeAttr(task.id)}">Bearbeiten</button>` : ""}
       ${task.canArchive ? `<button class="button small danger" type="button" data-archive-task="${escapeAttr(task.id)}">Archivieren</button>` : ""}
@@ -479,6 +497,24 @@ function render() {
         panel.insertAdjacentHTML(
           "afterbegin",
           errorPanel(error, "Aufgabe konnte nicht archiviert werden")
+        );
+      }
+    });
+  });
+
+  panel.querySelectorAll("[data-restore-task]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const task = taskFromButton(button, "restoreTask");
+      if (!task) return;
+
+      button.disabled = true;
+      try {
+        await restoreTask(task);
+      } catch (error) {
+        button.disabled = false;
+        panel.insertAdjacentHTML(
+          "afterbegin",
+          errorPanel(error, "Aufgabe konnte nicht wiederhergestellt werden")
         );
       }
     });

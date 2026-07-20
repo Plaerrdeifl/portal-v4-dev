@@ -39,7 +39,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260720152000_add_member_email_match_suggestion.sql",
     "20260720161000_add_admin_team_delete.sql",
     "20260720174500_make_team_codes_internal.sql",
-    "20260720201500_harden_task_workflow.sql"
+    "20260720201500_harden_task_workflow.sql",
+    "20260720223000_restore_archived_tasks.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
@@ -259,12 +260,12 @@ test("public mobile navigation remains visible and usable", async () => {
 
   assert.match(
     html,
-    /v4-core\.css\?v=20260720-task-status-select/
+    /v4-core\.css\?v=20260720-task-restore/
   );
 
   assert.match(
     worker,
-    /pd-portal-v4-core-20260720-4/
+    /pd-portal-v4-core-20260720-5/
   );
 });
 
@@ -317,8 +318,8 @@ test("task workflow is revision-safe and archived without hard delete", async ()
   assert.doesNotMatch(common, /"WAITING"/);
 
   assert.match(css, /gehärteter Aufgabenworkflow/);
-  assert.match(html, /20260720-task-workflow/);
-  assert.match(worker, /pd-portal-v4-core-20260720-4/);
+  assert.match(html, /20260720-task-restore/);
+  assert.match(worker, /pd-portal-v4-core-20260720-5/);
 });
 
 test("task status uses a constrained dropdown", async () => {
@@ -330,4 +331,41 @@ test("task status uses a constrained dropdown", async () => {
   assert.match(tasks, /Offen \(wieder öffnen\)/);
   assert.doesNotMatch(tasks, /data-task-next-status/);
   assert.doesNotMatch(tasks, /function workflowButton\(task\)/);
+});
+test("archived tasks can be restored through an audited action", async () => {
+  const migration = await read(
+    "supabase/migrations/20260720223000_restore_archived_tasks.sql"
+  );
+  const tasks = await read("js/modules/tasks.js");
+  const css = await read("css/v4-core.css");
+
+  assert.match(
+    migration,
+    /create or replace function app_private\.api_restore_task/
+  );
+  assert.match(migration, /when 'restore_task'/);
+  assert.match(migration, /TASK_RESTORED/);
+  assert.match(migration, /'canRestore'/);
+  assert.match(migration, /set status = 'OPEN'/);
+  assert.match(migration, /archived_at = null/);
+  assert.match(migration, /archived_by = null/);
+  assert.match(
+    migration,
+    /task_can_reopen_or_archive\(v_actor, v_id\)/
+  );
+
+  assert.match(tasks, /async function restoreTask\(task\)/);
+  assert.match(tasks, /call\("restore_task"/);
+  assert.match(tasks, /data-restore-task=/);
+  assert.match(tasks, />Wiederherstellen<\/button>/);
+  assert.doesNotMatch(tasks, /value: "RESTORE"/);
+
+  assert.match(
+    css,
+    /\.v4-task-card\[data-status="ARCHIVED"\] \.v4-card-actions/
+  );
+  assert.doesNotMatch(
+    css,
+    /\.v4-task-card\[data-status="ARCHIVED"\] \.v4-card-actions\{\s*display:none/
+  );
 });

@@ -163,7 +163,7 @@
   background:var(--surface-soft);
 }
 .v4-task-card[data-status="ARCHIVED"] .v4-card-actions{
-  display:none;
+  justify-content:flex-end;
 }
 .v4-task-card .button.danger{
   margin-left:auto;
