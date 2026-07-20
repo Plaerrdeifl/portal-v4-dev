@@ -14,7 +14,8 @@
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:db:reset": "supabase db reset",
-    "supabase:db:push:dry": "supabase db push --linked --dry-run"
+    "supabase:db:push:dry": "supabase db push --linked --dry-run",
+    "build": "node scripts/build-static.mjs"
   },
   "devDependencies": {
     "supabase": "2.109.1"

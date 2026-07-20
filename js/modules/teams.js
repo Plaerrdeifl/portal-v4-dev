@@ -85,6 +85,15 @@ async function removeMembership(team, membership) {
   render();
 }
 
+async function deleteTeam(team) {
+  if (!await confirmAction(`Team „${team.name}“ endgültig löschen? Mitgliedschaften und Teamfunktionen werden dabei entfernt.`)) return;
+  snapshot = await runWrite(
+    () => call("delete_team", { id: team.id }),
+    "Team wurde gelöscht."
+  );
+  render();
+}
+
 function roleLabel(role) {
   return { LEAD: "Teamleiter", CO_LEAD: "Co-Teamleiter", MEMBER: "Mitglied" }[role] || role;
 }
@@ -102,7 +111,7 @@ function teamCard(team) {
         ${team.canManage ? `<div class="row-actions"><button class="button small secondary" data-edit-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}" type="button">Rolle</button><button class="button small ghost" data-remove-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}" type="button">Entfernen</button></div>` : ""}
       </div>`).join("") : '<p class="subtle">Noch keine aktiven Teammitglieder.</p>'}
     </div>
-    ${team.canManage ? `<footer class="v4-card-actions"><button class="button small primary" data-add-team-member="${escapeAttr(team.id)}" type="button">Mitglied hinzufügen</button>${snapshot.canCreateTeam ? `<button class="button small secondary" data-edit-team="${escapeAttr(team.id)}" type="button">Team bearbeiten</button>` : ""}</footer>` : ""}
+    ${team.canManage ? `<footer class="v4-card-actions"><button class="button small primary" data-add-team-member="${escapeAttr(team.id)}" type="button">Mitglied hinzufügen</button>${snapshot.canCreateTeam ? `<button class="button small secondary" data-edit-team="${escapeAttr(team.id)}" type="button">Team bearbeiten</button><button class="button small danger" data-delete-team="${escapeAttr(team.id)}" type="button">Team löschen</button>` : ""}</footer>` : ""}
   </article>`;
 }
 
@@ -115,6 +124,11 @@ function render() {
   panel.innerHTML = teams.length ? `<div class="v4-card-grid">${teams.map(teamCard).join("")}</div>` : empty("Dir ist noch kein Team zugeordnet.");
   document.getElementById("addTeamButton")?.addEventListener("click", () => openTeam());
   panel.querySelectorAll("[data-edit-team]").forEach(button => button.addEventListener("click", () => openTeam(teams.find(team => team.id === button.dataset.editTeam))));
+  panel.querySelectorAll("[data-delete-team]").forEach(button => button.addEventListener("click", async () => {
+    const team = teams.find(item => item.id === button.dataset.deleteTeam);
+    try { await deleteTeam(team); }
+    catch (error) { panel.insertAdjacentHTML("afterbegin", errorPanel(error, "Team konnte nicht gelöscht werden")); }
+  }));
   panel.querySelectorAll("[data-add-team-member]").forEach(button => button.addEventListener("click", () => openMembership(teams.find(team => team.id === button.dataset.addTeamMember))));
   panel.querySelectorAll("[data-edit-team-member]").forEach(button => button.addEventListener("click", () => {
     const [teamId, userId] = button.dataset.editTeamMember.split(":");

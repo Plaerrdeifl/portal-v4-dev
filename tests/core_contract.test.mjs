@@ -36,7 +36,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260719230000_create_portal_core_tables.sql",
     "20260719230100_seed_portal_core_authorization.sql",
     "20260719230200_create_portal_core_api.sql",
-    "20260720152000_add_member_email_match_suggestion.sql"
+    "20260720152000_add_member_email_match_suggestion.sql",
+    "20260720161000_add_admin_team_delete.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
@@ -128,4 +129,70 @@ test("member email match migration is safe and confirmable", async () => {
   assert.ok(
     admin.includes("AMBIGUOUS")
   );
+});
+
+
+test("admins can delete unused teams safely", async () => {
+  const migration = await read(
+    "supabase/migrations/20260720161000_add_admin_team_delete.sql"
+  );
+  const teams = await read("js/modules/teams.js");
+
+  assert.ok(
+    migration.includes(
+      "create or replace function app_private.api_delete_team"
+    )
+  );
+  assert.ok(
+    migration.includes("require_capability('teams.manage')")
+  );
+  assert.ok(
+    migration.includes("from app_modules.tasks")
+  );
+  assert.ok(
+    migration.includes("delete from app_portal.teams")
+  );
+  assert.ok(
+    migration.includes("TEAM_DELETED")
+  );
+  assert.ok(
+    migration.includes("when 'delete_team'")
+  );
+
+  assert.ok(
+    teams.includes('call("delete_team"')
+  );
+  assert.ok(
+    teams.includes("data-delete-team")
+  );
+  assert.ok(
+    teams.includes("Team löschen")
+  );
+});
+
+
+test("Vercel DEV deployment publishes only the static build", async () => {
+  const pkg = JSON.parse(await read("package.json"));
+  const vercel = JSON.parse(await read("vercel.json"));
+  const build = await read("scripts/build-static.mjs");
+  const ignore = await read(".gitignore");
+
+  assert.equal(pkg.scripts.build, "node scripts/build-static.mjs");
+  assert.equal(vercel.buildCommand, "npm run build");
+  assert.equal(vercel.outputDirectory, "dist");
+
+  for (const directory of [
+    "assets",
+    "components",
+    "css",
+    "js",
+    "pages"
+  ]) {
+    assert.ok(build.includes(`"${directory}"`));
+  }
+
+  assert.ok(build.includes("write-runtime-config.mjs"));
+  assert.ok(build.includes("SUPABASE_PUBLISHABLE_KEY"));
+  assert.doesNotMatch(build, /service[_-]?role/i);
+  assert.match(ignore, /^\/dist\/$/m);
 });

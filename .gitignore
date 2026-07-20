@@ -12,3 +12,4 @@ node_modules/
 
 # Generated public Supabase runtime configuration
 /js/runtime-config.js
+/dist/
