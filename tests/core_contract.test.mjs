@@ -235,3 +235,34 @@ test("team codes are generated internally and hidden from the UI", async () => {
     /BUS_ORGA/
   );
 });
+
+test("public mobile navigation remains visible and usable", async () => {
+  const css = await read("css/v4-core.css");
+  const html = await read("index.html");
+  const worker = await read("service-worker.js");
+
+  assert.match(
+    css,
+    /html\[data-route="home"\] #mobileMenuToggle[\s\S]*?display:grid!important/
+  );
+
+  assert.match(
+    css,
+    /\.sidebar #mainNav[\s\S]*?display:grid!important/
+  );
+
+  assert.match(
+    css,
+    /#mobileFullMenu[\s\S]*?display:none!important/
+  );
+
+  assert.match(
+    html,
+    /v4-core\.css\?v=20260720-public-mobile-nav/
+  );
+
+  assert.match(
+    worker,
+    /pd-portal-v4-core-20260720-2/
+  );
+});

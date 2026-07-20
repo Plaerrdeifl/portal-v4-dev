@@ -132,3 +132,18 @@
   border-color:rgba(180,83,9,.28);
   background:rgba(180,83,9,.08);
 }
+
+/* V4 Core: öffentliche mobile Navigation */
+@media(max-width:860px){
+  html[data-route="home"] #mobileMenuToggle{
+    display:grid!important;
+  }
+
+  .sidebar #mainNav{
+    display:grid!important;
+  }
+
+  #mobileFullMenu{
+    display:none!important;
+  }
+}
