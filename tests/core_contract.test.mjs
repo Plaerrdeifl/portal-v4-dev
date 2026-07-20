@@ -79,3 +79,13 @@ test("package is ESM-ready and pinned to the agreed toolchain", async () => {
   assert.equal(pkg.engines.node, ">=24.18.0 <25");
   assert.equal(pkg.packageManager, "npm@12.0.1");
 });
+
+
+test("route click handling ignores the html route marker", async () => {
+  const ui = await read("js/ui.js");
+  assert.match(
+    ui,
+    /closest\("button\[data-route\], a\[data-route\]"\)/
+  );
+  assert.doesNotMatch(ui, /closest\("\[data-route\]"\)/);
+});

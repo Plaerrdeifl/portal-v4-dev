@@ -196,7 +196,7 @@ export function updateUserChrome() {
 
 export function bindGlobalUi({ onRefresh, onLogout } = {}) {
   document.addEventListener("click", event => {
-    const target = event.target.closest("[data-route]");
+    const target = event.target.closest("button[data-route], a[data-route]");
     if (target) {
       event.preventDefault();
       const params = new URLSearchParams();
