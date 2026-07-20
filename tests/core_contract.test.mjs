@@ -259,12 +259,12 @@ test("public mobile navigation remains visible and usable", async () => {
 
   assert.match(
     html,
-    /v4-core\.css\?v=20260720-task-workflow/
+    /v4-core\.css\?v=20260720-task-status-select/
   );
 
   assert.match(
     worker,
-    /pd-portal-v4-core-20260720-3/
+    /pd-portal-v4-core-20260720-4/
   );
 });
 
@@ -318,5 +318,16 @@ test("task workflow is revision-safe and archived without hard delete", async ()
 
   assert.match(css, /gehärteter Aufgabenworkflow/);
   assert.match(html, /20260720-task-workflow/);
-  assert.match(worker, /pd-portal-v4-core-20260720-3/);
+  assert.match(worker, /pd-portal-v4-core-20260720-4/);
+});
+
+test("task status uses a constrained dropdown", async () => {
+  const tasks = await read("js/modules/tasks.js");
+
+  assert.match(tasks, /function statusOptions\(task\)/);
+  assert.match(tasks, /function statusSelect\(task\)/);
+  assert.match(tasks, /data-task-status=/);
+  assert.match(tasks, /Offen \(wieder öffnen\)/);
+  assert.doesNotMatch(tasks, /data-task-next-status/);
+  assert.doesNotMatch(tasks, /function workflowButton\(task\)/);
 });

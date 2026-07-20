@@ -281,35 +281,54 @@ function visibleTasks() {
   );
 }
 
-function workflowButton(task) {
-  if (task.status === "OPEN" && task.canChangeStatus) {
-    return `<button
-      class="button small primary"
-      type="button"
-      data-task-next-status="IN_PROGRESS"
-      data-task-id="${escapeAttr(task.id)}"
-    >In Bearbeitung</button>`;
+function statusOptions(task) {
+  if (task.status === "OPEN") {
+    return task.canChangeStatus
+      ? [
+          { value: "OPEN", label: "Offen" },
+          { value: "IN_PROGRESS", label: "In Bearbeitung" }
+        ]
+      : [{ value: "OPEN", label: "Offen" }];
   }
 
-  if (task.status === "IN_PROGRESS" && task.canChangeStatus) {
-    return `<button
-      class="button small primary"
-      type="button"
-      data-task-next-status="DONE"
-      data-task-id="${escapeAttr(task.id)}"
-    >Erledigen</button>`;
+  if (task.status === "IN_PROGRESS") {
+    return task.canChangeStatus
+      ? [
+          { value: "IN_PROGRESS", label: "In Bearbeitung" },
+          { value: "DONE", label: "Erledigt" }
+        ]
+      : [{ value: "IN_PROGRESS", label: "In Bearbeitung" }];
   }
 
-  if (task.status === "DONE" && task.canReopen) {
-    return `<button
-      class="button small secondary"
-      type="button"
-      data-task-next-status="OPEN"
-      data-task-id="${escapeAttr(task.id)}"
-    >Wieder öffnen</button>`;
+  if (task.status === "DONE") {
+    return task.canReopen
+      ? [
+          { value: "DONE", label: "Erledigt" },
+          { value: "OPEN", label: "Offen (wieder öffnen)" }
+        ]
+      : [{ value: "DONE", label: "Erledigt" }];
   }
 
-  return "";
+  return [{ value: task.status, label: label(STATUSES, task.status) }];
+}
+
+function statusSelect(task) {
+  if (task.status === "ARCHIVED") return "";
+
+  const options = statusOptions(task);
+  const disabled = options.length < 2 ? "disabled" : "";
+
+  return `<label class="v4-task-status-control">
+    <span class="sr-only">Status für ${escapeHtml(task.title)}</span>
+    <select
+      class="v4-status-select"
+      data-task-status="${escapeAttr(task.id)}"
+      aria-label="Aufgabenstatus"
+      ${disabled}
+    >
+      ${optionList(options, task.status)}
+    </select>
+  </label>`;
 }
 
 function taskCard(task) {
@@ -346,7 +365,7 @@ function taskCard(task) {
     ${task.ownNote ? `<div class="v4-note-preview"><strong>Meine Notiz</strong><p>${escapeHtml(task.ownNote)}</p></div>` : ""}
     ${archivedInfo}
     <footer class="v4-card-actions">
-      ${workflowButton(task)}
+      ${statusSelect(task)}
       ${task.status !== "ARCHIVED" ? `<button class="button small secondary" type="button" data-task-note="${escapeAttr(task.id)}">Notiz</button>` : ""}
       ${task.canManage ? `<button class="button small secondary" type="button" data-edit-task="${escapeAttr(task.id)}">Bearbeiten</button>` : ""}
       ${task.canArchive ? `<button class="button small danger" type="button" data-archive-task="${escapeAttr(task.id)}">Archivieren</button>` : ""}
@@ -423,16 +442,22 @@ function render() {
     });
   });
 
-  panel.querySelectorAll("[data-task-next-status]").forEach(button => {
-    button.addEventListener("click", async () => {
-      const task = taskFromButton(button, "taskId");
+  panel.querySelectorAll("[data-task-status]").forEach(select => {
+    select.addEventListener("change", async () => {
+      const task = taskFromButton(select, "taskStatus");
       if (!task) return;
 
-      button.disabled = true;
+      const previousStatus = task.status;
+      const nextStatus = select.value;
+
+      if (nextStatus === previousStatus) return;
+
+      select.disabled = true;
       try {
-        await setStatus(task, button.dataset.taskNextStatus);
+        await setStatus(task, nextStatus);
       } catch (error) {
-        button.disabled = false;
+        select.value = previousStatus;
+        select.disabled = false;
         panel.insertAdjacentHTML(
           "afterbegin",
           errorPanel(error, "Status konnte nicht geändert werden")
