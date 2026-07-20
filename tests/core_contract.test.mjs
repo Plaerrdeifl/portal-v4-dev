@@ -37,7 +37,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260719230100_seed_portal_core_authorization.sql",
     "20260719230200_create_portal_core_api.sql",
     "20260720152000_add_member_email_match_suggestion.sql",
-    "20260720161000_add_admin_team_delete.sql"
+    "20260720161000_add_admin_team_delete.sql",
+    "20260720174500_make_team_codes_internal.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
@@ -195,4 +196,42 @@ test("Vercel DEV deployment publishes only the static build", async () => {
   assert.ok(build.includes("SUPABASE_PUBLISHABLE_KEY"));
   assert.doesNotMatch(build, /service[_-]?role/i);
   assert.match(ignore, /^\/dist\/$/m);
+});
+
+
+test("team codes are generated internally and hidden from the UI", async () => {
+  const migration = await read(
+    "supabase/migrations/20260720174500_make_team_codes_internal.sql"
+  );
+  const teams = await read("js/modules/teams.js");
+
+  assert.match(
+    migration,
+    /create or replace function app_private\.team_code_base/
+  );
+  assert.match(
+    migration,
+    /create or replace function app_private\.next_team_code/
+  );
+  assert.match(
+    migration,
+    /v_code := app_private\.next_team_code\(v_name\)/
+  );
+  assert.doesNotMatch(
+    migration,
+    /set code = v_code/
+  );
+
+  assert.doesNotMatch(
+    teams,
+    /name="code"/
+  );
+  assert.doesNotMatch(
+    teams,
+    /team\.code/
+  );
+  assert.doesNotMatch(
+    teams,
+    /BUS_ORGA/
+  );
 });

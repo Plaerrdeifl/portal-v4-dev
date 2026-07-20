@@ -16,8 +16,7 @@ let snapshot = null;
 function teamForm(team = {}) {
   return `<form class="form-grid">
     <input type="hidden" name="id" value="${escapeAttr(team.id || "")}">
-    <label>Technischer Code<input name="code" required pattern="[A-Z][A-Z0-9_]{1,63}" maxlength="64" value="${escapeAttr(team.code || "")}" placeholder="BUS_ORGA"></label>
-    <label>Name<input name="name" required maxlength="160" value="${escapeAttr(team.name || "")}"></label>
+    <label class="full">Name<input name="name" required maxlength="160" value="${escapeAttr(team.name || "")}"></label>
     <label class="full">Beschreibung<textarea name="description" maxlength="2000" rows="4">${escapeHtml(team.description || "")}</textarea></label>
     <label class="checkbox-row full"><input name="active" type="checkbox" ${team.active !== false ? "checked" : ""}> Team ist aktiv</label>
   </form>`;
@@ -102,7 +101,7 @@ function teamCard(team) {
   const activeMembers = (team.members || []).filter(member => member.active);
   return `<article class="card v4-team-card">
     <header class="v4-card-header">
-      <div><span class="subtle">${escapeHtml(team.code)}</span><h3>${escapeHtml(team.name)}</h3><p>${escapeHtml(team.description || "Keine Beschreibung")}</p></div>
+      <div><h3>${escapeHtml(team.name)}</h3><p>${escapeHtml(team.description || "Keine Beschreibung")}</p></div>
       ${statusBadge(team.active ? "ACTIVE" : "INACTIVE")}
     </header>
     <div class="v4-team-members">
