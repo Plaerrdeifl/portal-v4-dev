@@ -40,3 +40,7 @@ Die Runtime-Datei `js/runtime-config.js` wird generiert und nicht committed.
 - `app_private` wird nicht über die Data API exponiert.
 
 Siehe `docs/SUPABASE_TARGET_ARCHITECTURE.md` und `docs/V4_CORE_IMPLEMENTATION.md`.
+
+## Verbindlicher UX-Standard
+
+Für alle bestehenden und zukünftigen Portalmodule gilt `docs/UX_INTERACTION_STANDARD.md`.

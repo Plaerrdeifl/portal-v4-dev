@@ -19,6 +19,12 @@ let snapshot = null;
 let activeTab = "members";
 let activeContributionSeasonId = "";
 let activeFinanceAccountId = "ALL";
+let memberSearchQuery = "";
+let showInactiveMembers = false;
+let boardEditMode = false;
+let financeEntrySearchQuery = "";
+let visibleCashbookEntries = 12;
+const CASHBOOK_PAGE_SIZE = 12;
 
 const MONEY = new Intl.NumberFormat("de-DE", {
   style: "currency",
@@ -40,8 +46,8 @@ const PAYMENT_STATUS = {
 };
 
 const ACCOUNT_TYPES = [
-  { value: "CASH", label: "Kasse" },
-  { value: "BANK", label: "Bank" },
+  { value: "CASH", label: "Bar" },
+  { value: "BANK", label: "Bankkonto" },
   { value: "PAYPAL", label: "PayPal" },
   { value: "OTHER", label: "Sonstiges" }
 ];
@@ -313,27 +319,66 @@ async function openMemberDetail(member) {
 function renderMembers(panel) {
   const members = snapshot?.members || [];
   const canViewDetails = Boolean(snapshot?.canViewMemberDetails);
+  const canShowInactive = canViewDetails;
+  const statusFilteredMembers = members.filter(member => (
+    member.status === "ACTIVE"
+    || (canShowInactive && showInactiveMembers)
+  ));
 
   panel.innerHTML = `
-    <div class="v4-toolbar v4-section-heading">
-      <div><h3>Unsere Mitglieder</h3></div>
-      ${snapshot?.canManageMembers ? '<button id="addMemberButton" class="button primary" type="button">Mitglied anlegen</button>' : ""}
+    <div class="v4-heading-row v4-section-heading">
+      <h3>Unsere Mitglieder</h3>
+      ${snapshot?.canManageMembers ? '<button id="addMemberButton" class="button secondary v4-heading-action" type="button">+ Mitglied</button>' : ""}
     </div>
-    ${members.length ? `
-      <div class="v4-table-wrap v4-desktop-table"><table class="v4-table v4-member-table"><thead><tr><th>Name</th><th>Mitglied seit</th><th>Status</th></tr></thead><tbody>${members.map(member => `<tr>
-        <td class="v4-member-name-cell"><strong>${escapeHtml(memberName(member))}</strong>${canViewDetails ? `<button class="button small secondary" type="button" data-view-member="${escapeAttr(member.id)}">Anzeigen</button>` : ""}</td>
+    <div class="v4-member-filterbar">
+      <label class="v4-compact-search">
+        <span class="sr-only">Mitglieder durchsuchen</span>
+        <input id="memberSearchInput" type="search" placeholder="Mitglieder durchsuchen …" autocomplete="off" value="${escapeAttr(memberSearchQuery)}">
+      </label>
+      ${canShowInactive ? `<label class="v4-compact-check"><input id="showInactiveMembers" type="checkbox" ${showInactiveMembers ? "checked" : ""}> <span>Inaktive anzeigen</span></label>` : ""}
+    </div>
+    ${statusFilteredMembers.length ? `
+      <div class="v4-table-wrap v4-desktop-table"><table class="v4-table v4-member-table"><thead><tr><th>Name</th><th>Mitglied seit</th><th>Status</th><th></th></tr></thead><tbody>${statusFilteredMembers.map(member => `<tr data-member-search="${escapeAttr(memberName(member).toLocaleLowerCase("de-DE"))}">
+        <td><strong>${escapeHtml(memberName(member))}</strong></td>
         <td>${escapeHtml(fmtDate(member.joinedOn))}</td>
         <td>${memberStatusBadge(member.status)}</td>
+        <td>${canViewDetails ? `<button class="button small secondary v4-row-action" type="button" data-view-member="${escapeAttr(member.id)}">Details <span aria-hidden="true">›</span></button>` : ""}</td>
       </tr>`).join("")}</tbody></table></div>
-      <div class="v4-mobile-records v4-member-mobile-list" aria-label="Mitgliederliste">${members.map(member => `<article class="v4-mobile-record v4-member-mobile-card">
-        <div class="v4-mobile-record-head"><strong>${escapeHtml(memberName(member))}</strong>${memberStatusBadge(member.status)}</div>
-        ${canViewDetails ? `<button class="button small secondary" type="button" data-view-member="${escapeAttr(member.id)}">Anzeigen</button>` : ""}
-        <small>Mitglied seit ${escapeHtml(fmtDate(member.joinedOn))}</small>
-      </article>`).join("")}</div>
-    ` : empty("Noch keine Mitglieder angelegt.")}`;
+      <div class="v4-mobile-records v4-member-mobile-list" aria-label="Mitgliederliste">${statusFilteredMembers.map(member => {
+        const content = `<span class="v4-member-compact-copy"><strong>${escapeHtml(memberName(member))}</strong><small>Mitglied seit ${escapeHtml(fmtDate(member.joinedOn))}</small></span><span class="v4-member-compact-status">${memberStatusBadge(member.status)}</span>${canViewDetails ? '<span class="v4-row-chevron" aria-hidden="true">›</span>' : ""}`;
+        return canViewDetails
+          ? `<button class="v4-member-compact-row" type="button" data-view-member="${escapeAttr(member.id)}" data-member-search="${escapeAttr(memberName(member).toLocaleLowerCase("de-DE"))}">${content}</button>`
+          : `<article class="v4-member-compact-row is-static" data-member-search="${escapeAttr(memberName(member).toLocaleLowerCase("de-DE"))}">${content}</article>`;
+      }).join("")}</div>
+      <div id="memberSearchEmpty" class="v4-inline-empty" hidden>Keine passenden Mitglieder gefunden.</div>
+    ` : empty(showInactiveMembers ? "Noch keine Mitglieder angelegt." : "Keine aktiven Mitglieder vorhanden.")}`;
+
+  const applyMemberSearch = () => {
+    const query = memberSearchQuery.trim().toLocaleLowerCase("de-DE");
+    let matches = 0;
+    panel.querySelectorAll("[data-member-search]").forEach(row => {
+      const visible = !query || row.dataset.memberSearch.includes(query);
+      row.hidden = !visible;
+      if (visible && row.classList.contains("v4-member-compact-row")) matches += 1;
+    });
+    const emptyNode = document.getElementById("memberSearchEmpty");
+    if (emptyNode) emptyNode.hidden = matches > 0;
+  };
 
   document.getElementById("addMemberButton")
     ?.addEventListener("click", () => openMemberEditor());
+
+  document.getElementById("memberSearchInput")
+    ?.addEventListener("input", event => {
+      memberSearchQuery = event.currentTarget.value;
+      applyMemberSearch();
+    });
+
+  document.getElementById("showInactiveMembers")
+    ?.addEventListener("change", event => {
+      showInactiveMembers = event.currentTarget.checked;
+      renderMembers(panel);
+    });
 
   panel.querySelectorAll("[data-view-member]").forEach(button => {
     button.addEventListener("click", async () => {
@@ -349,28 +394,46 @@ function renderMembers(panel) {
       }
     });
   });
+
+  applyMemberSearch();
 }
 
 function renderOffices(panel) {
   const members = (snapshot?.members || []).filter(member => member.status === "ACTIVE");
   const offices = snapshot?.offices || [];
   const canManageBoard = Boolean(snapshot?.canManageOffices && auth.isAdmin());
+  const editing = canManageBoard && boardEditMode;
 
   panel.innerHTML = `
-    <div class="v4-toolbar v4-section-heading"><div><h3>Unser Vorstand</h3></div></div>
+    <div class="v4-heading-row v4-section-heading">
+      <h3>Unser Vorstand</h3>
+      ${canManageBoard && !editing ? '<button id="manageBoardButton" class="button secondary v4-heading-action" type="button">Verwalten <span aria-hidden="true">›</span></button>' : ""}
+    </div>
     <form id="officeForm" class="v4-office-grid v4-board-grid">
       ${offices.map((office, index) => {
         const assignedName = office.memberName || "Unbesetzt";
         return `<article class="card v4-office-card" data-office-code="${escapeAttr(office.code)}">
           <span class="v4-office-title">${escapeHtml(officeDisplayLabel(office, index))}</span>
-          ${canManageBoard
+          ${editing
             ? `<label><span class="sr-only">Besetzung auswählen</span><select name="${escapeAttr(office.code)}" data-office-select>${optionList(members.map(member => ({ value: member.id, label: memberName(member) })), office.memberId || "", "Unbesetzt")}</select></label>`
             : `<strong class="v4-board-name">${escapeHtml(assignedName)}</strong>`}
           <div class="v4-board-contact" data-board-phone>${boardContact({ phone: office.memberPhone || "" })}</div>
         </article>`;
       }).join("")}
-      ${canManageBoard ? '<div class="full v4-board-save"><button class="button primary" type="submit">Vorstand speichern</button></div>' : ""}
+      ${editing ? '<div class="full v4-board-save"><button id="cancelBoardButton" class="button secondary" type="button">Abbrechen</button><button class="button primary" type="submit">Vorstand speichern</button></div>' : ""}
     </form>`;
+
+  document.getElementById("manageBoardButton")
+    ?.addEventListener("click", () => {
+      boardEditMode = true;
+      renderOffices(panel);
+    });
+
+  document.getElementById("cancelBoardButton")
+    ?.addEventListener("click", () => {
+      boardEditMode = false;
+      renderOffices(panel);
+    });
 
   panel.querySelectorAll("[data-office-select]").forEach(select => {
     select.addEventListener("change", async () => {
@@ -387,7 +450,7 @@ function renderOffices(panel) {
     });
   });
 
-  if (!canManageBoard) return;
+  if (!editing) return;
   document.getElementById("officeForm")?.addEventListener("submit", async event => {
     event.preventDefault();
     if (!await confirmAction("Vorstandsbesetzung mit diesen Angaben speichern?")) return;
@@ -401,6 +464,7 @@ function renderOffices(panel) {
         () => call("save_offices", { slots }),
         "Vorstandsbesetzung wurde gespeichert."
       );
+      boardEditMode = false;
       renderAll();
     } catch (error) {
       const panelNode = document.getElementById("fanclubPanel");
@@ -677,37 +741,35 @@ function renderContributionClasses() {
   const classes = contributionClasses();
 
   return `<section class="card v4-contribution-config">
-    <div class="v4-toolbar">
-      <div>
-        <h3>Beitragsklassen</h3>
-        <p>Beträge werden bei der Zuordnung als Sollbetrag festgeschrieben.</p>
-      </div>
-      <button id="addContributionClassButton" class="button secondary" type="button">
-        Beitragsklasse anlegen
-      </button>
+    <div class="v4-heading-row">
+      <h3>Beitragsklassen</h3>
+      <button id="addContributionClassButton" class="button secondary v4-heading-action" type="button">+ Beitragsklasse</button>
     </div>
-    ${classes.length ? `<div class="v4-table-wrap"><table class="v4-table">
-      <thead><tr><th>Bezeichnung</th><th>Betrag</th><th>Status</th><th></th></tr></thead>
-      <tbody>${classes.map(item => `<tr>
-        <td><strong>${escapeHtml(item.name)}</strong></td>
-        <td class="v4-money">${escapeHtml(money(item.amount))}</td>
-        <td>${memberStatusBadge(item.active ? "ACTIVE" : "INACTIVE")}</td>
-        <td><button class="button small secondary" type="button" data-edit-contribution-class="${escapeAttr(item.id)}">Bearbeiten</button></td>
-      </tr>`).join("")}</tbody>
-    </table></div>` : empty("Noch keine Beitragsklassen angelegt.")}
+    <p class="v4-section-note">Beträge werden bei der Zuordnung als Sollbetrag festgeschrieben.</p>
+    ${classes.length ? `<div class="v4-settings-list" aria-label="Beitragsklassen">${classes.map(item => `<button class="v4-settings-row" type="button" data-edit-contribution-class="${escapeAttr(item.id)}">
+      <span class="v4-settings-row-copy"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(money(item.amount))}</small></span>
+      <span class="v4-settings-row-end"><span class="v4-inline-state ${item.active ? "is-active" : "is-inactive"}"><i aria-hidden="true"></i>${item.active ? "Aktiv" : "Inaktiv"}</span><span class="v4-row-chevron" aria-hidden="true">›</span></span>
+    </button>`).join("")}</div>` : empty("Noch keine Beitragsklassen angelegt.")}
   </section>`;
 }
 
-function contributionIsPaid(contribution) {
-  return Boolean(contribution)
-    && Number(contribution.openAmount || 0) <= 0
-    && Number(contribution.pendingAmount || 0) <= 0;
+function contributionStatus(contribution) {
+  if (!contribution) {
+    return { key: "unassigned", label: "Nicht zugeordnet" };
+  }
+  if (Number(contribution.pendingAmount || 0) > 0) {
+    return { key: "pending", label: "In Prüfung" };
+  }
+  if (Number(contribution.openAmount || 0) > 0) {
+    return { key: "open", label: "Offen" };
+  }
+  return { key: "paid", label: "Bezahlt" };
 }
 
 function contributionStatusIndicator(contribution) {
-  const paid = contributionIsPaid(contribution);
-  return `<span class="v4-contribution-status ${paid ? "is-paid" : "is-open"}">
-    <i aria-hidden="true"></i><span>${paid ? "Bezahlt" : "Offen"}</span>
+  const status = contributionStatus(contribution);
+  return `<span class="v4-contribution-status is-${status.key}">
+    <i aria-hidden="true"></i><span>${escapeHtml(status.label)}</span>
   </span>`;
 }
 
@@ -801,13 +863,32 @@ function renderPaymentReports(reports) {
       <td class="v4-money">${escapeHtml(money(report.amount))}</td>
       <td>${escapeHtml(fmtDate(report.paidOn))}<small>${escapeHtml(report.accountName)} · ${escapeHtml(report.paymentMethodLabel)}</small></td>
       <td>${paymentStatusBadge(report.status)}</td>
-      <td><button class="button small secondary" type="button" data-open-payment-report="${escapeAttr(report.id)}">Anzeigen</button></td>
+      <td><button class="button small secondary v4-row-action" type="button" data-open-payment-report="${escapeAttr(report.id)}">Details <span aria-hidden="true">›</span></button></td>
     </tr>`).join("")}</tbody>
   </table></div>
   <div class="v4-mobile-records v4-payment-mobile-list">${reports.map(report => `<button class="v4-compact-row" type="button" data-open-payment-report="${escapeAttr(report.id)}">
     <span><strong>${escapeHtml(report.memberName)}</strong><small>${escapeHtml(fmtDate(report.paidOn))}</small></span>
     <span class="v4-compact-row-end"><strong>${escapeHtml(money(report.amount))}</strong>${paymentStatusBadge(report.status)}</span>
+    <span class="v4-row-chevron" aria-hidden="true">›</span>
   </button>`).join("")}</div>`;
+}
+
+function openContributionManagement(season) {
+  const dialog = openDialog({
+    title: "Beitragsjahr verwalten",
+    kicker: "Beiträge",
+    body: `<div class="v4-management-grid">
+      <button class="button secondary" type="button" data-contribution-management="create">Beitragsjahr anlegen</button>
+      <button class="button secondary" type="button" data-contribution-management="edit" ${season ? "" : "disabled"}>Aktuelles Jahr bearbeiten</button>
+    </div>`
+  });
+
+  dialog.querySelector('[data-contribution-management="create"]')
+    ?.addEventListener("click", () => openSeason());
+  dialog.querySelector('[data-contribution-management="edit"]')
+    ?.addEventListener("click", () => {
+      if (season) openSeason(season);
+    });
 }
 
 function renderContributions(panel) {
@@ -827,24 +908,19 @@ function renderContributions(panel) {
   );
 
   panel.innerHTML = `
-    <div class="v4-toolbar">
-      <div><h3>Mitgliedsbeiträge</h3></div>
-      <div class="v4-inline-actions">
-        ${seasons.length ? `<select id="contributionSeasonSelect" aria-label="Beitragsjahr">
-          ${optionList(
-            seasons.map(item => ({
-              value: item.id,
-              label: `${item.name}${item.active ? "" : " · inaktiv"}`
-            })),
-            activeContributionSeasonId
-          )}
-        </select>` : ""}
-        ${snapshot?.canManageFinance ? `
-          <button id="addContributionSeasonButton" class="button secondary" type="button">Beitragsjahr anlegen</button>
-          ${season ? '<button id="editContributionSeasonButton" class="button secondary" type="button">Jahr bearbeiten</button>' : ""}
-        ` : ""}
-      </div>
+    <div class="v4-heading-row">
+      <h3>Mitgliedsbeiträge</h3>
+      ${snapshot?.canManageFinance ? '<button id="contributionManagementButton" class="button secondary v4-heading-action" type="button">Verwalten <span aria-hidden="true">›</span></button>' : ""}
     </div>
+    ${seasons.length ? `<div class="v4-contribution-season-control"><select id="contributionSeasonSelect" aria-label="Beitragsjahr">
+      ${optionList(
+        seasons.map(item => ({
+          value: item.id,
+          label: `${item.name}${item.active ? "" : " · inaktiv"}`
+        })),
+        activeContributionSeasonId
+      )}
+    </select></div>` : ""}
 
     ${!season ? empty("Noch kein Beitragsjahr angelegt.") : `
       <div class="v4-finance-summary">
@@ -855,7 +931,7 @@ function renderContributions(panel) {
       </div>
 
       <section class="card v4-contribution-members-section">
-        <div class="v4-toolbar">
+        <div class="v4-heading-row v4-subheading-row">
           <div><h3>Beiträge je Mitglied</h3><p>${escapeHtml(season.name)}</p></div>
         </div>
         ${members.length ? `
@@ -872,7 +948,7 @@ function renderContributions(panel) {
                 <td class="v4-money">${escapeHtml(money(contribution?.paidAmount))}</td>
                 <td class="v4-money">${escapeHtml(money(contribution?.pendingAmount))}</td>
                 <td class="v4-money"><strong>${escapeHtml(money(contribution?.openAmount))}</strong></td>
-                <td><button class="button small secondary" type="button" data-open-contribution-member="${escapeAttr(member.id)}">Anzeigen</button></td>
+                <td><button class="button small secondary v4-row-action" type="button" data-open-contribution-member="${escapeAttr(member.id)}">Details <span aria-hidden="true">›</span></button></td>
               </tr>`;
             }).join("")}</tbody>
           </table></div>
@@ -880,14 +956,14 @@ function renderContributions(panel) {
             const contribution = contributionFor(member.id);
             return `<button class="v4-contribution-mobile-card" type="button" data-open-contribution-member="${escapeAttr(member.id)}">
               <strong>${escapeHtml(memberName(member))}</strong>
-              ${contributionStatusIndicator(contribution)}
+              <span class="v4-contribution-row-end">${contributionStatusIndicator(contribution)}<span class="v4-row-chevron" aria-hidden="true">›</span></span>
             </button>`;
           }).join("")}</div>
         ` : empty("Noch keine Mitglieder angelegt.")}
       </section>
 
       <section class="card v4-payment-report-section">
-        <div class="v4-toolbar"><div><h3>Zahlungsmeldungen</h3></div></div>
+        <div class="v4-heading-row v4-subheading-row"><h3>Zahlungsmeldungen</h3></div>
         ${renderPaymentReports(reports)}
       </section>
     `}
@@ -901,13 +977,8 @@ function renderContributions(panel) {
       render();
     });
 
-  document.getElementById("addContributionSeasonButton")
-    ?.addEventListener("click", () => openSeason());
-
-  document.getElementById("editContributionSeasonButton")
-    ?.addEventListener("click", () => {
-      if (season) openSeason(season);
-    });
+  document.getElementById("contributionManagementButton")
+    ?.addEventListener("click", () => openContributionManagement(season));
 
   document.getElementById("addContributionClassButton")
     ?.addEventListener("click", () => openContributionClass());
@@ -1170,9 +1241,9 @@ function renderFinanceAccounts() {
 
   return `<div class="v4-account-grid v4-account-grid-compact">
     ${accounts.map(account => `<button class="card v4-account-card v4-account-card-button ${account.active ? "" : "is-inactive"}" type="button" data-open-finance-account="${escapeAttr(account.id)}">
-      <span class="v4-account-name">${escapeHtml(account.name)}</span>
-      <strong class="v4-account-balance">${escapeHtml(money(account.balance))}</strong>
+      <span class="v4-account-card-head"><span class="v4-account-name">${escapeHtml(account.name)}</span><span class="v4-row-chevron" aria-hidden="true">›</span></span>
       <small class="v4-account-meta">${escapeHtml(accountTypeLabel(account.accountType))}${account.active ? "" : " · inaktiv"}</small>
+      <strong class="v4-account-balance">${escapeHtml(money(account.balance))}</strong>
     </button>`).join("")}
   </div>`;
 }
@@ -1190,6 +1261,7 @@ function compactFinanceEntries(entries, { showAccount = true, showBalance = fals
         <strong>${escapeHtml(signedMoney(entry))}</strong>
         ${showBalance && entry.runningBalance !== undefined ? `<small>Saldo ${escapeHtml(money(entry.runningBalance))}</small>` : ""}
       </span>
+      <span class="v4-row-chevron" aria-hidden="true">›</span>
     </button>`).join("")}
   </div>`;
 }
@@ -1240,6 +1312,7 @@ function financeAccountDetailMarkup(account, entries) {
     <strong class="v4-account-detail-balance">${escapeHtml(money(account.balance))}</strong>
   </div>
   <div class="v4-detail-grid v4-account-detail-grid">
+    <div><span>Kontotyp</span><strong>${escapeHtml(accountTypeLabel(account.accountType))}</strong></div>
     <div><span>Status</span><strong>${account.active ? "Aktiv" : "Inaktiv"}</strong></div>
     <div><span>Buchungen</span><strong>${entries.length}</strong></div>
   </div>
@@ -1286,7 +1359,7 @@ function openFinanceManagement() {
     title: "Verwaltung",
     kicker: "Kasse",
     body: `<div class="v4-management-grid">
-      <button class="button primary" type="button" data-finance-management="income">Einnahme</button>
+      <button class="button secondary" type="button" data-finance-management="income">Einnahme</button>
       <button class="button secondary" type="button" data-finance-management="expense">Ausgabe</button>
       <button class="button secondary" type="button" data-finance-management="transfer" ${canTransfer ? "" : "disabled"}>Umbuchung</button>
       <button class="button secondary" type="button" data-finance-management="account">Konto anlegen</button>
@@ -1310,10 +1383,10 @@ function renderCashbookEntries(entries) {
 
   return `<div class="v4-ledger-search">
     <label class="sr-only" for="financeEntrySearch">Buchungen durchsuchen</label>
-    <input id="financeEntrySearch" type="search" placeholder="Buchungen durchsuchen …" autocomplete="off">
+    <input id="financeEntrySearch" type="search" placeholder="Buchungen durchsuchen …" autocomplete="off" value="${escapeAttr(financeEntrySearchQuery)}">
   </div>
   <div id="financeLedgerList" class="v4-cashbook-ledger" aria-label="Alle Buchungen">
-    ${entries.map(entry => {
+    ${entries.map((entry, index) => {
       const search = [
         entry.entryNo,
         entry.bookedOn,
@@ -1321,17 +1394,52 @@ function renderCashbookEntries(entries) {
         entry.description,
         entry.paymentMethodLabel,
         entry.createdByName,
-        sourceTypeLabel(entry.sourceType)
+        sourceTypeLabel(entry.sourceType),
+        entry.amount,
+        signedMoney(entry)
       ].join(" ").toLocaleLowerCase("de-DE");
-      return `<button class="v4-compact-entry ${entry.isReversed ? "is-reversed" : ""}" type="button" data-open-finance-entry="${escapeAttr(entry.id)}" data-finance-search="${escapeAttr(search)}">
+      return `<button class="v4-compact-entry ${entry.isReversed ? "is-reversed" : ""}" type="button" data-open-finance-entry="${escapeAttr(entry.id)}" data-finance-search="${escapeAttr(search)}" data-finance-index="${index}" ${index >= visibleCashbookEntries ? "hidden" : ""}>
         <span class="v4-compact-entry-main">
           <strong>${escapeHtml(entry.description)}</strong>
           <small>${escapeHtml(fmtDate(entry.bookedOn))} · ${escapeHtml(entry.accountName)}</small>
         </span>
         <span class="v4-compact-entry-amount ${entry.entryType === "INCOME" ? "is-positive" : "is-negative"}"><strong>${escapeHtml(signedMoney(entry))}</strong></span>
+        <span class="v4-row-chevron" aria-hidden="true">›</span>
       </button>`;
     }).join("")}
-  </div>`;
+  </div>
+  <div id="financeSearchEmpty" class="v4-inline-empty" hidden>Keine passenden Buchungen gefunden.</div>
+  <div class="v4-load-more-row"><button id="showMoreFinanceEntries" class="button secondary v4-heading-action" type="button">Weitere Buchungen anzeigen</button></div>`;
+}
+
+function applyCashbookEntryVisibility(panel, entries) {
+  const query = financeEntrySearchQuery.trim().toLocaleLowerCase("de-DE");
+  const rows = [...panel.querySelectorAll("[data-finance-search]")];
+  let matching = 0;
+  let shown = 0;
+
+  rows.forEach(row => {
+    const matches = !query || row.dataset.financeSearch.includes(query);
+    if (matches) matching += 1;
+    const visible = matches && (Boolean(query) || shown < visibleCashbookEntries);
+    row.hidden = !visible;
+    if (visible) shown += 1;
+  });
+
+  const emptyNode = document.getElementById("financeSearchEmpty");
+  if (emptyNode) emptyNode.hidden = matching > 0;
+
+  const moreButton = document.getElementById("showMoreFinanceEntries");
+  if (moreButton) {
+    moreButton.hidden = Boolean(query) || visibleCashbookEntries >= matching;
+  }
+
+  const countNode = document.getElementById("financeEntryCount");
+  if (countNode) {
+    countNode.textContent = query
+      ? `${matching} Treffer`
+      : `${entries.length} Einträge über alle Konten`;
+  }
 }
 
 function renderCashbook(panel) {
@@ -1339,15 +1447,15 @@ function renderCashbook(panel) {
   const entries = financeEntries();
 
   panel.innerHTML = `
-    <div class="v4-toolbar">
-      <div><h3>Unsere Fanclub-Kassen</h3></div>
-      ${snapshot.canManageFinance ? '<button id="financeManagementButton" class="button primary" type="button">Verwaltung</button>' : ""}
+    <div class="v4-heading-row">
+      <h3>Unsere Fanclub-Kassen</h3>
+      ${snapshot.canManageFinance ? '<button id="financeManagementButton" class="button secondary v4-heading-action" type="button">Verwaltung <span aria-hidden="true">›</span></button>' : ""}
     </div>
 
     ${renderFinanceAccounts()}
 
     <section class="card v4-cashbook-section v4-cashbook-compact-section">
-      <div class="v4-toolbar"><div><h3>Buchungen</h3><p>${entries.length} Einträge über alle Konten</p></div></div>
+      <div class="v4-heading-row v4-subheading-row"><div><h3>Buchungen</h3><p id="financeEntryCount">${entries.length} Einträge über alle Konten</p></div></div>
       ${renderCashbookEntries(entries)}
     </section>
   `;
@@ -1364,13 +1472,18 @@ function renderCashbook(panel) {
 
   const searchInput = document.getElementById("financeEntrySearch");
   searchInput?.addEventListener("input", () => {
-    const query = searchInput.value.trim().toLocaleLowerCase("de-DE");
-    panel.querySelectorAll("[data-finance-search]").forEach(row => {
-      row.hidden = Boolean(query) && !row.dataset.financeSearch.includes(query);
-    });
+    financeEntrySearchQuery = searchInput.value;
+    applyCashbookEntryVisibility(panel, entries);
   });
 
+  document.getElementById("showMoreFinanceEntries")
+    ?.addEventListener("click", () => {
+      visibleCashbookEntries += CASHBOOK_PAGE_SIZE;
+      applyCashbookEntryVisibility(panel, entries);
+    });
+
   bindCompactFinanceEntries(panel, entries);
+  applyCashbookEntryVisibility(panel, entries);
 }
 
 function render() {

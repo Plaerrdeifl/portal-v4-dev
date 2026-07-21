@@ -1519,3 +1519,79 @@ html[data-portal-area="portal"] .sidebar .nav button[data-route="home"]{margin-t
 @media(max-width:390px){
   .v4-management-grid{grid-template-columns:1fr}
 }
+
+/* Projektweiter UX-Interaktionsstandard: kompakte Listen, kleine Verwaltungsaktionen, Drill-down */
+.v4-heading-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.v4-heading-row h3,.v4-heading-row p{margin:0}
+.v4-heading-row p{margin-top:3px;color:var(--ink-500)}
+.button.v4-heading-action{min-height:36px!important;padding:7px 11px!important;border-color:#d4dbe6!important;background:#edf1f6!important;color:#314156!important;box-shadow:none!important;font-size:.82rem!important}
+.button.v4-heading-action:hover{border-color:#bdc8d7!important;background:#e4e9f0!important;color:#17283d!important}
+.v4-row-action{display:inline-flex;align-items:center;gap:6px}
+.v4-row-chevron{display:inline-flex;align-items:center;justify-content:center;flex:none;color:var(--ink-400);font-size:1.28rem;font-weight:900;line-height:1}
+.v4-member-filterbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px}
+.v4-compact-search{flex:1 1 260px}
+.v4-compact-search input,.v4-ledger-search input{min-height:40px!important;padding:8px 11px!important}
+.v4-compact-check{display:inline-flex!important;align-items:center;gap:7px;white-space:nowrap;font-size:.8rem;font-weight:800;color:var(--ink-600)}
+.v4-compact-check input{width:17px!important;height:17px!important;min-height:0!important;margin:0}
+.v4-member-mobile-list{gap:7px!important}
+.v4-member-compact-row{width:100%;min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:10px 12px;border:1px solid rgba(126,145,171,.22);border-radius:14px;background:#fff;color:inherit;text-align:left;box-shadow:var(--shadow-sm)}
+button.v4-member-compact-row{cursor:pointer}
+button.v4-member-compact-row:hover{border-color:var(--blue-400);background:var(--blue-050)}
+.v4-member-compact-row.is-static{grid-template-columns:minmax(0,1fr) auto}
+.v4-member-compact-copy strong,.v4-member-compact-copy small{display:block;min-width:0}
+.v4-member-compact-copy strong{font-size:.94rem;overflow-wrap:anywhere}
+.v4-member-compact-copy small{margin-top:2px;color:var(--ink-500);font-size:.72rem}
+.v4-member-compact-status .badge{padding:5px 9px;font-size:.7rem}
+.v4-inline-empty{padding:12px;border:1px dashed var(--line);border-radius:12px;color:var(--ink-500);font-size:.82rem;text-align:center}
+.v4-board-save{gap:8px;flex-wrap:wrap}
+.v4-section-note{margin:0 0 10px;color:var(--ink-500);font-size:.78rem}
+.v4-settings-list{display:grid;gap:7px}
+.v4-settings-row{width:100%;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid rgba(126,145,171,.2);border-radius:13px;background:#fff;color:inherit;text-align:left;cursor:pointer}
+.v4-settings-row:hover{border-color:var(--blue-400);background:var(--blue-050)}
+.v4-settings-row-copy strong,.v4-settings-row-copy small{display:block}
+.v4-settings-row-copy small{margin-top:2px;color:var(--ink-500)}
+.v4-settings-row-end{display:inline-flex;align-items:center;gap:10px;flex:none}
+.v4-inline-state{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:900}
+.v4-inline-state i{width:8px;height:8px;border-radius:50%;background:var(--ink-400)}
+.v4-inline-state.is-active{color:#137747}.v4-inline-state.is-active i{background:#1b9a5a}
+.v4-inline-state.is-inactive{color:var(--ink-500)}
+.v4-contribution-season-control{margin:0 0 12px}
+.v4-contribution-season-control select{width:100%;min-height:42px}
+.v4-subheading-row{margin-bottom:9px}
+.v4-contribution-row-end{display:inline-flex;align-items:center;gap:9px;flex:none}
+.v4-contribution-status.is-unassigned{color:var(--ink-500)}
+.v4-contribution-status.is-unassigned i{background:var(--ink-400);box-shadow:0 0 0 4px rgba(112,127,147,.1)}
+.v4-contribution-status.is-open{color:#9b2533}
+.v4-contribution-status.is-open i{background:var(--danger);box-shadow:0 0 0 4px rgba(194,37,55,.1)}
+.v4-contribution-status.is-pending{color:#946200}
+.v4-contribution-status.is-pending i{background:#e6a400;box-shadow:0 0 0 4px rgba(230,164,0,.12)}
+.v4-contribution-status.is-paid{color:#137747}
+.v4-contribution-status.is-paid i{background:#1b9a5a;box-shadow:0 0 0 4px rgba(27,154,90,.11)}
+.v4-account-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.v4-account-card-button{min-height:0!important;padding:10px 11px!important;gap:2px!important}
+.v4-account-name{font-size:.82rem!important;line-height:1.18}
+.v4-account-meta{display:block!important;font-size:.68rem!important;line-height:1.2;color:var(--ink-500)!important}
+.v4-account-balance{margin-top:4px;font-size:1rem!important;line-height:1.1}
+.v4-compact-entry-list,.v4-cashbook-ledger{max-height:none!important;overflow:visible!important;overscroll-behavior:auto!important;padding-right:0!important}
+.v4-compact-entry{grid-template-columns:minmax(0,1fr) auto auto;display:grid;align-items:center;padding:8px 9px!important}
+.v4-load-more-row{display:flex;justify-content:center;margin-top:10px}
+.v4-dialog-ledger{margin-top:14px}
+.v4-cashbook-compact-section{margin-top:12px!important}
+.fanclub-page{padding-bottom:calc(var(--mobile-nav-height,84px) + var(--safe-bottom,0px) + 48px)!important}
+
+@media(max-width:860px){
+  .v4-heading-row{margin-bottom:9px}
+  .v4-member-filterbar{align-items:stretch;flex-direction:column;margin-bottom:8px}
+  .v4-compact-check{padding:0 2px}
+  .v4-board-grid .v4-board-save .button{width:auto!important;flex:1 1 140px}
+  .v4-contribution-config,.v4-contribution-members-section,.v4-payment-report-section,.v4-cashbook-compact-section{padding:11px!important}
+  .v4-contribution-mobile-list{gap:6px!important}
+  .v4-contribution-mobile-card{min-height:48px;padding:9px 10px!important;border-radius:13px!important}
+  .v4-contribution-mobile-card>strong{font-size:.84rem}
+  .v4-contribution-status{font-size:.7rem!important;gap:6px!important}
+  .v4-account-grid-compact{gap:7px!important}
+  .v4-account-card-button{min-height:74px!important}
+  .v4-ledger-search{margin-bottom:7px!important}
+  .v4-compact-entry-main strong{font-size:.8rem!important}
+  .v4-compact-entry-main small,.v4-compact-entry-amount strong{font-size:.71rem!important}
+}

@@ -78,6 +78,6 @@ test("fanclub mobile review is compact and drill-down based", async () => {
   assert.doesNotMatch(app, /window\.setTimeout\(\(\) => \{\s*auth\.initialize/);
   assert.match(pages, /nextState\.status === "ACTIVE"/);
   assert.match(index, /data-auth-ready="false"/);
-  assert.match(index, /20260721-fanclub-finalization-1/);
-  assert.match(worker, /pd-portal-v4-fanclub-finalization-20260721-1/);
+  assert.match(index, /20260721-fanclub-compact-r2-1/);
+  assert.match(worker, /pd-portal-v4-fanclub-compact-r2-20260721-1/);
 });
