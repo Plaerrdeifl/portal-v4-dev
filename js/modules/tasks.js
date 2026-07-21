@@ -12,9 +12,11 @@ import {
   runWrite,
   statusBadge
 } from "./common.js";
+import { navigate, routeParams } from "../router.js";
 
 let snapshot = null;
 let activeFilter = "mine";
+let activeArchiveTeamId = "";
 
 const PRIORITIES = [
   { value: "URGENT", label: "Eilt" },
@@ -272,6 +274,45 @@ async function restoreTask(task) {
   renderAll();
 }
 
+function openPermanentDelete(task) {
+  openDialog({
+    title: "Archivierte Aufgabe endgültig löschen",
+    kicker: task.title,
+    danger: true,
+    submitLabel: "Endgültig löschen",
+    body: `<form>
+      <div class="notice error">
+        <strong>Diese Aktion kann nicht rückgängig gemacht werden.</strong>
+        <p>Die Aufgabe und alle persönlichen Notizen werden endgültig entfernt. Im Audit bleibt ein Aufgabenschnappschuss ohne Notizinhalte erhalten.</p>
+      </div>
+      <label>Zur Bestätigung exakt <strong>LÖSCHEN</strong> eingeben
+        <input
+          name="confirmation"
+          required
+          autocomplete="off"
+          pattern="LÖSCHEN"
+        >
+      </label>
+    </form>`,
+    onSubmit: async values => {
+      if (values.confirmation !== "LÖSCHEN") {
+        throw new Error("Bitte LÖSCHEN exakt eingeben.");
+      }
+
+      snapshot = await runWrite(
+        () => call("delete_archived_task", {
+          id: task.id,
+          revision: task.revision,
+          confirmation: values.confirmation
+        }),
+        "Archivierte Aufgabe wurde endgültig gelöscht."
+      );
+      activeFilter = "archive";
+      renderAll();
+    }
+  });
+}
+
 function visibleTasks() {
   const tasks = snapshot?.tasks || [];
   const userId = currentUser().id;
@@ -290,7 +331,10 @@ function visibleTasks() {
   }
 
   if (activeFilter === "archive") {
-    return tasks.filter(task => task.status === "ARCHIVED");
+    return tasks.filter(task => (
+      task.status === "ARCHIVED"
+      && (!activeArchiveTeamId || task.teamId === activeArchiveTeamId)
+    ));
   }
 
   return tasks.filter(
@@ -384,6 +428,7 @@ function taskCard(task) {
     <footer class="v4-card-actions">
       ${statusSelect(task)}
       ${task.canRestore ? `<button class="button small primary" type="button" data-restore-task="${escapeAttr(task.id)}">Wiederherstellen</button>` : ""}
+      ${task.canDeletePermanently ? `<button class="button small danger" type="button" data-delete-archived-task="${escapeAttr(task.id)}">Endgültig löschen</button>` : ""}
       ${task.status !== "ARCHIVED" ? `<button class="button small secondary" type="button" data-task-note="${escapeAttr(task.id)}">Notiz</button>` : ""}
       ${task.canManage ? `<button class="button small secondary" type="button" data-edit-task="${escapeAttr(task.id)}">Bearbeiten</button>` : ""}
       ${task.canArchive ? `<button class="button small danger" type="button" data-archive-task="${escapeAttr(task.id)}">Archivieren</button>` : ""}
@@ -410,6 +455,12 @@ function renderTabs() {
     ["archive", "Archiv"]
   ];
 
+  const archiveTeamName = activeArchiveTeamId
+    ? (snapshot?.tasks || []).find(
+        task => task.teamId === activeArchiveTeamId
+      )?.teamName || "gewähltes Team"
+    : "";
+
   slot.innerHTML = `<div class="v4-toolbar">
     <div class="v4-tabs">
       ${filters.map(([key, text]) => `<button
@@ -419,17 +470,32 @@ function renderTabs() {
       >${text}<span>${filterCount(key)}</span></button>`).join("")}
     </div>
     ${canCreateTask() ? '<button id="addTaskButton" class="button primary" type="button">Aufgabe erstellen</button>' : ""}
-  </div>`;
+  </div>
+  ${activeFilter === "archive" && activeArchiveTeamId ? `<div class="notice v4-task-archive-filter">
+    <strong>Archiv gefiltert: ${escapeHtml(archiveTeamName)}</strong>
+    <button id="clearTaskArchiveFilter" class="button small secondary" type="button">Filter aufheben</button>
+  </div>` : ""}`;
 
   slot.querySelectorAll("[data-task-filter]").forEach(button => {
     button.addEventListener("click", () => {
       activeFilter = button.dataset.taskFilter;
+      if (activeFilter !== "archive") activeArchiveTeamId = "";
       renderAll();
     });
   });
 
   document.getElementById("addTaskButton")
     ?.addEventListener("click", () => openTask());
+
+  document.getElementById("clearTaskArchiveFilter")
+    ?.addEventListener("click", () => {
+      activeArchiveTeamId = "";
+      navigate(
+        "tasks",
+        new URLSearchParams({ tab: "archive" }),
+        true
+      );
+    });
 }
 
 function taskFromButton(button, datasetKey) {
@@ -519,6 +585,13 @@ function render() {
       }
     });
   });
+
+  panel.querySelectorAll("[data-delete-archived-task]").forEach(button => {
+    button.addEventListener("click", () => {
+      const task = taskFromButton(button, "deleteArchivedTask");
+      if (task) openPermanentDelete(task);
+    });
+  });
 }
 
 function renderAll() {
@@ -535,6 +608,13 @@ function renderAll() {
 export async function hydrateTasks(context = {}) {
   const panel = document.getElementById("tasksPanel");
   if (!panel) return;
+
+  const params = routeParams();
+  const requestedTab = params.get("tab");
+  if (["mine", "team", "board", "archive"].includes(requestedTab)) {
+    activeFilter = requestedTab;
+  }
+  activeArchiveTeamId = params.get("teamId") || "";
 
   panel.innerHTML = '<article class="card loading-card"><h3>Aufgaben werden geladen …</h3></article>';
 

@@ -16,6 +16,7 @@ import {
 let snapshot = null;
 let activeTab = "members";
 let activeContributionSeasonId = "";
+let activeFinanceAccountId = "ALL";
 
 const MONEY = new Intl.NumberFormat("de-DE", {
   style: "currency",
@@ -32,8 +33,21 @@ const PAYMENT_METHODS = [
 const PAYMENT_STATUS = {
   PENDING: { label: "Offen", type: "warning" },
   CONFIRMED: { label: "Bestätigt", type: "success" },
-  REJECTED: { label: "Abgelehnt", type: "danger" }
+  REJECTED: { label: "Abgelehnt", type: "danger" },
+  REVERSED: { label: "Storniert", type: "neutral" }
 };
+
+const ACCOUNT_TYPES = [
+  { value: "CASH", label: "Kasse" },
+  { value: "BANK", label: "Bank" },
+  { value: "PAYPAL", label: "PayPal" },
+  { value: "OTHER", label: "Sonstiges" }
+];
+
+const ENTRY_TYPES = [
+  { value: "INCOME", label: "Einnahme" },
+  { value: "EXPENSE", label: "Ausgabe" }
+];
 
 function memberName(member) {
   return `${member.firstName || ""} ${member.lastName || ""}`.trim();
@@ -62,6 +76,67 @@ function contributionSeasons() {
 
 function contributionClasses() {
   return snapshot?.contributionClasses || [];
+}
+
+function financeAccounts() {
+  return snapshot?.financeAccounts || [];
+}
+
+function financeEntries() {
+  return snapshot?.financeEntries || [];
+}
+
+function accountTypeLabel(value) {
+  return ACCOUNT_TYPES.find(item => item.value === value)?.label || value || "–";
+}
+
+function entryTypeLabel(value) {
+  return ENTRY_TYPES.find(item => item.value === value)?.label || value || "–";
+}
+
+function sourceTypeLabel(value) {
+  const labels = {
+    CONTRIBUTION_PAYMENT: "Mitgliedsbeitrag",
+    FREE_INCOME: "Freie Einnahme",
+    FREE_EXPENSE: "Freie Ausgabe",
+    TRANSFER_OUT: "Umbuchung Ausgang",
+    TRANSFER_IN: "Umbuchung Eingang",
+    REVERSAL: "Storno",
+    REVERSAL_TRANSFER_OUT: "Storno Umbuchung",
+    REVERSAL_TRANSFER_IN: "Storno Umbuchung"
+  };
+  return labels[value] || value || "–";
+}
+
+function signedMoney(entry) {
+  const amount = Number(entry.amount || 0);
+  return money(entry.entryType === "EXPENSE" ? -amount : amount);
+}
+
+function selectedFinanceEntries() {
+  const entries = financeEntries();
+  if (activeFinanceAccountId === "ALL") return entries;
+  return entries.filter(entry => entry.accountId === activeFinanceAccountId);
+}
+
+function accountStatementEntries(accountId) {
+  const ordered = financeEntries()
+    .filter(entry => entry.accountId === accountId)
+    .slice()
+    .sort((left, right) => {
+      const dateCompare = String(left.bookedOn || "").localeCompare(
+        String(right.bookedOn || "")
+      );
+      if (dateCompare) return dateCompare;
+      return Number(left.entryNo || 0) - Number(right.entryNo || 0);
+    });
+
+  let runningBalance = 0;
+
+  return ordered.map(entry => {
+    runningBalance += Number(entry.signedAmount || 0);
+    return { ...entry, runningBalance };
+  }).reverse();
 }
 
 function selectedSeason() {
@@ -94,7 +169,12 @@ function tabs() {
   const items = [
     ["members", "Mitglieder"],
     ["offices", "Ämter"],
-    ...(snapshot?.canReadFinance ? [["contributions", "Beiträge"]] : [])
+    ...(snapshot?.canReadFinance
+      ? [
+          ["contributions", "Beiträge"],
+          ["cashbook", "Kassenbuch"]
+        ]
+      : [])
   ];
 
   if (!items.some(([key]) => key === activeTab)) {
@@ -551,6 +631,9 @@ function renderPaymentReports(reports) {
         ${report.status === "REJECTED" && report.rejectionReason
           ? `<small>${escapeHtml(report.rejectionReason)}</small>`
           : ""}
+        ${report.status === "REVERSED" && report.reversalReason
+          ? `<small>${escapeHtml(report.reversalReason)}</small>`
+          : ""}
       </div></td>
     </tr>`).join("")}</tbody>
   </table></div>`;
@@ -722,6 +805,440 @@ function renderContributions(panel) {
   });
 }
 
+function ensureFinanceAccountFilter() {
+  if (
+    activeFinanceAccountId !== "ALL"
+    && !financeAccounts().some(account => account.id === activeFinanceAccountId)
+  ) {
+    activeFinanceAccountId = "ALL";
+  }
+}
+
+function accountForm(account = {}) {
+  const isDefaultCash = account.code === "KASSE";
+
+  return `<form class="form-grid">
+    <input type="hidden" name="id" value="${escapeAttr(account.id || "")}">
+    <input type="hidden" name="revision" value="${escapeAttr(account.revision || "")}">
+    <label>Kurzcode
+      <input
+        name="code"
+        required
+        maxlength="32"
+        value="${escapeAttr(account.code || "")}"
+        placeholder="BANK"
+        ${isDefaultCash ? "readonly" : ""}
+      >
+    </label>
+    <label>Bezeichnung
+      <input name="name" required maxlength="120" value="${escapeAttr(account.name || "")}" placeholder="Bankkonto">
+    </label>
+    <label>Kontotyp
+      <select name="accountType" ${isDefaultCash ? "disabled" : ""}>
+        ${optionList(ACCOUNT_TYPES, account.accountType || "BANK")}
+      </select>
+      ${isDefaultCash ? '<input type="hidden" name="accountType" value="CASH">' : ""}
+    </label>
+    <label>Status
+      ${isDefaultCash
+        ? '<input value="Aktiv" disabled><input type="hidden" name="active" value="true">'
+        : `<select name="active">${optionList([
+            { value: "true", label: "Aktiv" },
+            { value: "false", label: "Inaktiv" }
+          ], String(account.active ?? true))}</select>`}
+    </label>
+  </form>`;
+}
+
+function openFinanceAccount(account = null) {
+  openDialog({
+    title: account ? "Konto bearbeiten" : "Konto anlegen",
+    kicker: "Kassenbuch",
+    body: accountForm(account || {}),
+    onSubmit: async values => {
+      snapshot = await runWrite(
+        () => call("save_finance_account", values),
+        account ? "Konto wurde aktualisiert." : "Konto wurde angelegt."
+      );
+      ensureFinanceAccountFilter();
+      renderAll();
+    }
+  });
+}
+
+async function deleteFinanceAccount(account) {
+  const confirmed = await confirmAction(
+    `Unbenutztes Konto „${account.name}“ endgültig löschen?`
+  );
+  if (!confirmed) return;
+
+  snapshot = await runWrite(
+    () => call("delete_finance_account", {
+      id: account.id,
+      revision: account.revision
+    }),
+    "Konto wurde gelöscht."
+  );
+  ensureFinanceAccountFilter();
+  renderAll();
+}
+
+function financeEntryForm(entryType) {
+  const accounts = financeAccounts().filter(account => account.active);
+  const preferred = accounts.find(account => account.code === "KASSE")
+    || accounts[0]
+    || {};
+
+  return `<form class="form-grid">
+    <input type="hidden" name="entryType" value="${escapeAttr(entryType)}">
+    <label>Konto
+      <select name="accountId" required>
+        ${optionList(
+          accounts.map(account => ({
+            value: account.id,
+            label: `${account.name} · ${accountTypeLabel(account.accountType)}`
+          })),
+          preferred.id || "",
+          "Konto auswählen"
+        )}
+      </select>
+    </label>
+    <label>Betrag
+      <input name="amount" required type="number" min="0.01" max="999999.99" step="0.01">
+    </label>
+    <label>Buchungsdatum
+      <input name="bookedOn" required type="date" value="${localDate()}">
+    </label>
+    <label>Zahlungsart
+      <select name="paymentMethod">
+        ${optionList(PAYMENT_METHODS, preferred.accountType === "CASH" ? "CASH" : "BANK")}
+      </select>
+    </label>
+    <label class="full">Beschreibung
+      <input name="description" required maxlength="500" placeholder="${entryType === "INCOME" ? "Grund der Einnahme" : "Grund der Ausgabe"}">
+    </label>
+  </form>`;
+}
+
+function openFinanceEntry(entryType) {
+  openDialog({
+    title: entryType === "INCOME" ? "Einnahme buchen" : "Ausgabe buchen",
+    kicker: "Kassenbuch",
+    body: financeEntryForm(entryType),
+    onSubmit: async values => {
+      snapshot = await runWrite(
+        () => call("create_finance_entry", values),
+        entryType === "INCOME"
+          ? "Einnahme wurde gebucht."
+          : "Ausgabe wurde gebucht."
+      );
+      renderAll();
+    }
+  });
+}
+
+function transferForm() {
+  const accounts = financeAccounts().filter(account => account.active);
+
+  return `<form class="form-grid">
+    <label>Von Konto
+      <select name="fromAccountId" required>
+        ${optionList(
+          accounts.map(account => ({
+            value: account.id,
+            label: account.name
+          })),
+          "",
+          "Quellkonto auswählen"
+        )}
+      </select>
+    </label>
+    <label>Nach Konto
+      <select name="toAccountId" required>
+        ${optionList(
+          accounts.map(account => ({
+            value: account.id,
+            label: account.name
+          })),
+          "",
+          "Zielkonto auswählen"
+        )}
+      </select>
+    </label>
+    <label>Betrag
+      <input name="amount" required type="number" min="0.01" max="999999.99" step="0.01">
+    </label>
+    <label>Buchungsdatum
+      <input name="bookedOn" required type="date" value="${localDate()}">
+    </label>
+    <label class="full">Beschreibung
+      <input name="description" required maxlength="500" placeholder="Grund der Umbuchung">
+    </label>
+  </form>`;
+}
+
+function openFinanceTransfer() {
+  openDialog({
+    title: "Umbuchung",
+    kicker: "Kassenbuch",
+    body: transferForm(),
+    onSubmit: async values => {
+      snapshot = await runWrite(
+        () => call("transfer_finance", values),
+        "Umbuchung wurde gebucht."
+      );
+      renderAll();
+    }
+  });
+}
+
+function reversalForm(entry) {
+  return `<form class="form-grid">
+    <input type="hidden" name="id" value="${escapeAttr(entry.id)}">
+    <label class="full">Originalbuchung
+      <input value="${escapeAttr(`#${entry.entryNo} · ${entry.accountName} · ${signedMoney(entry)} · ${entry.description}`)}" disabled>
+    </label>
+    <label>Stornodatum
+      <input name="bookedOn" required type="date" value="${localDate()}">
+    </label>
+    <label class="full">Stornogrund
+      <textarea name="reason" required maxlength="1000" rows="4"></textarea>
+    </label>
+  </form>`;
+}
+
+function openFinanceReversal(entry) {
+  openDialog({
+    title: entry.sourceType.startsWith("TRANSFER")
+      ? "Umbuchung stornieren"
+      : "Buchung stornieren",
+    kicker: "Kassenbuch",
+    body: reversalForm(entry),
+    onSubmit: async values => {
+      snapshot = await runWrite(
+        () => call("reverse_finance_entry", values),
+        entry.sourceType.startsWith("TRANSFER")
+          ? "Umbuchung wurde vollständig storniert."
+          : "Buchung wurde storniert."
+      );
+      renderAll();
+    }
+  });
+}
+
+function renderFinanceAccounts() {
+  const accounts = financeAccounts();
+
+  if (!accounts.length) {
+    return empty("Noch keine Finanzkonten angelegt.");
+  }
+
+  return `<div class="v4-account-grid">
+    ${accounts.map(account => `<article class="card v4-account-card ${account.active ? "" : "is-inactive"}">
+      <div>
+        <span class="subtle">${escapeHtml(accountTypeLabel(account.accountType))}</span>
+        <h3>${escapeHtml(account.name)}</h3>
+        <small>${escapeHtml(account.code)}</small>
+      </div>
+      <strong class="v4-account-balance">${escapeHtml(money(account.balance))}</strong>
+      <div class="v4-inline-actions">
+        ${statusBadge(account.active ? "ACTIVE" : "INACTIVE")}
+        <button class="button small primary" type="button" data-view-finance-account="${escapeAttr(account.id)}">Kontoauszug</button>
+        ${snapshot.canManageFinance ? `<button class="button small secondary" type="button" data-edit-finance-account="${escapeAttr(account.id)}">Bearbeiten</button>` : ""}
+        ${snapshot.canManageFinance && account.canDelete ? `<button class="button small danger" type="button" data-delete-finance-account="${escapeAttr(account.id)}">Löschen</button>` : ""}
+      </div>
+    </article>`).join("")}
+  </div>`;
+}
+
+function renderAccountStatement(account, entries) {
+  if (!entries.length) {
+    return empty(`Für ${account.name} liegen noch keine Buchungen vor.`);
+  }
+
+  return `<div class="v4-table-wrap"><table class="v4-table v4-account-statement">
+    <thead><tr>
+      <th>Datum</th>
+      <th>Nr.</th>
+      <th>Buchung</th>
+      <th>Einnahme</th>
+      <th>Ausgabe</th>
+      <th>Saldo</th>
+      <th>Zahlungsart</th>
+      <th></th>
+    </tr></thead>
+    <tbody>${entries.map(entry => `<tr class="${entry.isReversed ? "is-reversed" : ""}">
+      <td>${escapeHtml(fmtDate(entry.bookedOn))}</td>
+      <td><strong>#${escapeHtml(entry.entryNo)}</strong></td>
+      <td>
+        <strong>${escapeHtml(entry.description)}</strong>
+        <small>${escapeHtml(sourceTypeLabel(entry.sourceType))}</small>
+        ${entry.counterAccountName ? `<small>Gegenkonto: ${escapeHtml(entry.counterAccountName)}</small>` : ""}
+        ${entry.isReversed ? `<small>Storniert${entry.reversalReason ? `: ${escapeHtml(entry.reversalReason)}` : ""}</small>` : ""}
+        ${entry.reversesEntryId ? '<small>Stornobuchung</small>' : ""}
+      </td>
+      <td class="v4-money is-positive">${entry.entryType === "INCOME" ? escapeHtml(money(entry.amount)) : "–"}</td>
+      <td class="v4-money is-negative">${entry.entryType === "EXPENSE" ? escapeHtml(money(entry.amount)) : "–"}</td>
+      <td class="v4-money"><strong>${escapeHtml(money(entry.runningBalance))}</strong></td>
+      <td>${escapeHtml(entry.paymentMethodLabel)}</td>
+      <td>${entry.canReverse ? `<button class="button small danger" type="button" data-reverse-finance-entry="${escapeAttr(entry.id)}">Stornieren</button>` : ""}</td>
+    </tr>`).join("")}</tbody>
+  </table></div>`;
+}
+
+function renderCashbookEntries(entries) {
+  if (!entries.length) {
+    return empty("Für die gewählte Ansicht liegen noch keine Buchungen vor.");
+  }
+
+  return `<div class="v4-table-wrap"><table class="v4-table v4-cashbook-table">
+    <thead><tr>
+      <th>Nr.</th>
+      <th>Datum</th>
+      <th>Konto</th>
+      <th>Buchung</th>
+      <th>Zahlungsart</th>
+      <th>Betrag</th>
+      <th>Erfasst</th>
+      <th></th>
+    </tr></thead>
+    <tbody>${entries.map(entry => `<tr class="${entry.isReversed ? "is-reversed" : ""}">
+      <td><strong>#${escapeHtml(entry.entryNo)}</strong></td>
+      <td>${escapeHtml(fmtDate(entry.bookedOn))}</td>
+      <td>${escapeHtml(entry.accountName)}${entry.counterAccountName ? `<small>Gegenkonto: ${escapeHtml(entry.counterAccountName)}</small>` : ""}</td>
+      <td>
+        <strong>${escapeHtml(entry.description)}</strong>
+        <small>${escapeHtml(sourceTypeLabel(entry.sourceType))}</small>
+        ${entry.isReversed ? `<small>Storniert${entry.reversalReason ? `: ${escapeHtml(entry.reversalReason)}` : ""}</small>` : ""}
+        ${entry.reversesEntryId ? '<small>Stornobuchung</small>' : ""}
+      </td>
+      <td>${escapeHtml(entry.paymentMethodLabel)}</td>
+      <td class="v4-money ${entry.entryType === "INCOME" ? "is-positive" : "is-negative"}">
+        <strong>${escapeHtml(signedMoney(entry))}</strong>
+      </td>
+      <td>${escapeHtml(entry.createdByName)}<small>${escapeHtml(fmtDateTime(entry.createdAt))}</small></td>
+      <td>${entry.canReverse ? `<button class="button small danger" type="button" data-reverse-finance-entry="${escapeAttr(entry.id)}">Stornieren</button>` : ""}</td>
+    </tr>`).join("")}</tbody>
+  </table></div>`;
+}
+
+function renderCashbook(panel) {
+  ensureFinanceAccountFilter();
+
+  const accounts = financeAccounts();
+  const selectedAccount = accounts.find(
+    account => account.id === activeFinanceAccountId
+  ) || null;
+  const entries = selectedAccount
+    ? accountStatementEntries(selectedAccount.id)
+    : selectedFinanceEntries();
+
+  panel.innerHTML = `
+    <div class="v4-toolbar">
+      <div>
+        <h3>Kassenbuch und Konten</h3>
+        <p>Buchungen bleiben unverändert; Korrekturen erfolgen ausschließlich als Storno.</p>
+      </div>
+      <div class="v4-inline-actions">
+        <select id="financeAccountFilter" aria-label="Kontoauszug auswählen">
+          ${optionList([
+            { value: "ALL", label: "Gesamtes Kassenbuch" },
+            ...accounts.map(account => ({
+              value: account.id,
+              label: `Kontoauszug · ${account.name}${account.active ? "" : " · inaktiv"}`
+            }))
+          ], activeFinanceAccountId)}
+        </select>
+        ${snapshot.canManageFinance ? `
+          <button id="addFinanceIncomeButton" class="button primary" type="button">Einnahme</button>
+          <button id="addFinanceExpenseButton" class="button secondary" type="button">Ausgabe</button>
+          <button id="addFinanceTransferButton" class="button secondary" type="button" ${accounts.filter(account => account.active).length < 2 ? "disabled" : ""}>Umbuchung</button>
+          <button id="addFinanceAccountButton" class="button secondary" type="button">Konto anlegen</button>
+        ` : ""}
+      </div>
+    </div>
+
+    ${renderFinanceAccounts()}
+
+    <section class="card v4-cashbook-section">
+      <div class="v4-toolbar">
+        <div>
+          <h3>${selectedAccount ? `Kontoauszug · ${escapeHtml(selectedAccount.name)}` : "Gesamtes Kassenbuch"}</h3>
+          <p>${selectedAccount
+            ? `${entries.length} Buchungen · aktueller Saldo ${escapeHtml(money(selectedAccount.balance))}`
+            : `${entries.length} Buchungen über alle Konten`}</p>
+        </div>
+      </div>
+      ${selectedAccount
+        ? renderAccountStatement(selectedAccount, entries)
+        : renderCashbookEntries(entries)}
+    </section>
+  `;
+
+  document.getElementById("financeAccountFilter")
+    ?.addEventListener("change", event => {
+      activeFinanceAccountId = event.currentTarget.value;
+      render();
+    });
+
+  document.getElementById("addFinanceIncomeButton")
+    ?.addEventListener("click", () => openFinanceEntry("INCOME"));
+
+  document.getElementById("addFinanceExpenseButton")
+    ?.addEventListener("click", () => openFinanceEntry("EXPENSE"));
+
+  document.getElementById("addFinanceTransferButton")
+    ?.addEventListener("click", () => openFinanceTransfer());
+
+  document.getElementById("addFinanceAccountButton")
+    ?.addEventListener("click", () => openFinanceAccount());
+
+  panel.querySelectorAll("[data-view-finance-account]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeFinanceAccountId = button.dataset.viewFinanceAccount;
+      render();
+    });
+  });
+
+  panel.querySelectorAll("[data-edit-finance-account]").forEach(button => {
+    button.addEventListener("click", () => {
+      const account = accounts.find(
+        item => item.id === button.dataset.editFinanceAccount
+      );
+      if (account) openFinanceAccount(account);
+    });
+  });
+
+  panel.querySelectorAll("[data-delete-finance-account]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const account = accounts.find(
+        item => item.id === button.dataset.deleteFinanceAccount
+      );
+      if (!account) return;
+
+      button.disabled = true;
+      try {
+        await deleteFinanceAccount(account);
+      } catch (error) {
+        button.disabled = false;
+        panel.insertAdjacentHTML(
+          "afterbegin",
+          errorPanel(error, "Konto konnte nicht gelöscht werden")
+        );
+      }
+    });
+  });
+
+  panel.querySelectorAll("[data-reverse-finance-entry]").forEach(button => {
+    button.addEventListener("click", () => {
+      const entry = financeEntries().find(
+        item => item.id === button.dataset.reverseFinanceEntry
+      );
+      if (entry) openFinanceReversal(entry);
+    });
+  });
+}
+
 function render() {
   const panel = document.getElementById("fanclubPanel");
   if (!panel || !snapshot) return;
@@ -730,6 +1247,8 @@ function render() {
     renderOffices(panel);
   } else if (activeTab === "contributions") {
     renderContributions(panel);
+  } else if (activeTab === "cashbook") {
+    renderCashbook(panel);
   } else {
     renderMembers(panel);
   }
@@ -737,6 +1256,7 @@ function render() {
 
 function renderAll() {
   ensureContributionSeason();
+  ensureFinanceAccountFilter();
   tabs();
   render();
 

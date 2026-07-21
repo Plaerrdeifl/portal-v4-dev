@@ -10,6 +10,7 @@ import {
   runWrite,
   statusBadge
 } from "./common.js";
+import { navigate } from "../router.js";
 
 let snapshot = null;
 
@@ -53,6 +54,7 @@ function membershipForm(team, membership = {}) {
         { value: "CO_LEAD", label: "Co-Teamleiter" },
         { value: "MEMBER", label: "Mitglied" }
       ];
+
   return `<form class="form-grid">
     <input type="hidden" name="teamId" value="${escapeAttr(team.id)}">
     <label class="full">Portalbenutzer<select name="userId" required ${membership.userId ? "disabled" : ""}>${optionList(users.map(user => ({ value: user.id, label: `${user.userCode} · ${user.name}` })), membership.userId || "", "Benutzer auswählen")}</select>${membership.userId ? `<input type="hidden" name="userId" value="${escapeAttr(membership.userId)}">` : ""}</label>
@@ -76,16 +78,44 @@ function openMembership(team, membership = null) {
 }
 
 async function removeMembership(team, membership) {
-  if (!await confirmAction(`${membership.name} aus dem Team entfernen?`)) return;
+  if (!await confirmAction(`${membership.name} aus dem Team entfernen?`)) {
+    return;
+  }
+
   snapshot = await runWrite(
-    () => call("remove_team_member", { teamId: team.id, userId: membership.userId }),
+    () => call("remove_team_member", {
+      teamId: team.id,
+      userId: membership.userId
+    }),
     "Teammitglied wurde entfernt."
   );
   render();
 }
 
 async function deleteTeam(team) {
-  if (!await confirmAction(`Team „${team.name}“ endgültig löschen? Mitgliedschaften und Teamfunktionen werden dabei entfernt.`)) return;
+  if (Number(team.taskCount || 0) > 0) {
+    const details = [
+      Number(team.activeTaskCount || 0) > 0
+        ? `${team.activeTaskCount} nicht archivierte`
+        : "",
+      Number(team.archivedTaskCount || 0) > 0
+        ? `${team.archivedTaskCount} archivierte`
+        : ""
+    ].filter(Boolean).join(" und ");
+
+    window.alert(
+      `Team „${team.name}“ kann noch nicht gelöscht werden. `
+      + `${details} Aufgabe(n) sind zugeordnet.`
+    );
+    return;
+  }
+
+  if (!await confirmAction(
+    `Team „${team.name}“ endgültig löschen? Mitgliedschaften und Teamfunktionen werden dabei entfernt.`
+  )) {
+    return;
+  }
+
   snapshot = await runWrite(
     () => call("delete_team", { id: team.id }),
     "Team wurde gelöscht."
@@ -93,61 +123,183 @@ async function deleteTeam(team) {
   render();
 }
 
+function openTeamArchive(team) {
+  const params = new URLSearchParams({
+    tab: "archive",
+    teamId: team.id
+  });
+  navigate("tasks", params);
+}
+
 function roleLabel(role) {
-  return { LEAD: "Teamleiter", CO_LEAD: "Co-Teamleiter", MEMBER: "Mitglied" }[role] || role;
+  return {
+    LEAD: "Teamleiter",
+    CO_LEAD: "Co-Teamleiter",
+    MEMBER: "Mitglied"
+  }[role] || role;
+}
+
+function taskDependencyNotice(team) {
+  const active = Number(team.activeTaskCount || 0);
+  const archived = Number(team.archivedTaskCount || 0);
+
+  if (!active && !archived) return "";
+
+  return `<div class="notice warning v4-team-task-dependency">
+    <strong>Team kann noch nicht gelöscht werden</strong>
+    <p>
+      ${active ? `${active} nicht archivierte Aufgabe(n).` : ""}
+      ${archived ? `${archived} archivierte Aufgabe(n).` : ""}
+    </p>
+    ${archived ? `<button class="button small secondary" type="button" data-open-team-archive="${escapeAttr(team.id)}">Archivierte Aufgaben anzeigen</button>` : ""}
+  </div>`;
 }
 
 function teamCard(team) {
   const activeMembers = (team.members || []).filter(member => member.active);
+  const taskCount = Number(team.taskCount || 0);
+
   return `<article class="card v4-team-card">
     <header class="v4-card-header">
-      <div><h3>${escapeHtml(team.name)}</h3><p>${escapeHtml(team.description || "Keine Beschreibung")}</p></div>
+      <div>
+        <h3>${escapeHtml(team.name)}</h3>
+        <p>${escapeHtml(team.description || "Keine Beschreibung")}</p>
+      </div>
       ${statusBadge(team.active ? "ACTIVE" : "INACTIVE")}
     </header>
+
     <div class="v4-team-members">
       ${activeMembers.length ? activeMembers.map(member => `<div class="v4-list-row">
-        <div><strong>${escapeHtml(member.name)}</strong><small>${escapeHtml(member.userCode)} · ${escapeHtml(roleLabel(member.role))}</small></div>
-        ${team.canManage ? `<div class="row-actions"><button class="button small secondary" data-edit-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}" type="button">Rolle</button><button class="button small ghost" data-remove-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}" type="button">Entfernen</button></div>` : ""}
+        <div>
+          <strong>${escapeHtml(member.name)}</strong>
+          <small>${escapeHtml(member.userCode)} · ${escapeHtml(roleLabel(member.role))}</small>
+        </div>
+        ${team.canManage ? `<div class="row-actions">
+          <button class="button small secondary" data-edit-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}" type="button">Rolle</button>
+          <button class="button small ghost" data-remove-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}" type="button">Entfernen</button>
+        </div>` : ""}
       </div>`).join("") : '<p class="subtle">Noch keine aktiven Teammitglieder.</p>'}
     </div>
-    ${team.canManage ? `<footer class="v4-card-actions"><button class="button small primary" data-add-team-member="${escapeAttr(team.id)}" type="button">Mitglied hinzufügen</button>${snapshot.canCreateTeam ? `<button class="button small secondary" data-edit-team="${escapeAttr(team.id)}" type="button">Team bearbeiten</button><button class="button small danger" data-delete-team="${escapeAttr(team.id)}" type="button">Team löschen</button>` : ""}</footer>` : ""}
+
+    ${taskDependencyNotice(team)}
+
+    ${team.canManage ? `<footer class="v4-card-actions">
+      <button class="button small primary" data-add-team-member="${escapeAttr(team.id)}" type="button">Mitglied hinzufügen</button>
+      ${snapshot.canCreateTeam ? `
+        <button class="button small secondary" data-edit-team="${escapeAttr(team.id)}" type="button">Team bearbeiten</button>
+        <button
+          class="button small danger"
+          data-delete-team="${escapeAttr(team.id)}"
+          type="button"
+          ${taskCount > 0 ? 'title="Vor der Löschung müssen alle Teamaufgaben endgültig entfernt werden."' : ""}
+        >Team löschen</button>
+      ` : ""}
+    </footer>` : ""}
   </article>`;
 }
 
 function render() {
   const panel = document.getElementById("teamsPanel");
   if (!panel || !snapshot) return;
+
   const teams = snapshot.teams || [];
   const tabs = document.getElementById("teamsTabs");
-  if (tabs) tabs.innerHTML = `<div class="v4-toolbar"><div><strong>${teams.length} sichtbare Teams</strong><p>Teamleiter und Co-Teamleiter verwalten ihre eigenen Teams.</p></div>${snapshot.canCreateTeam ? '<button id="addTeamButton" class="button primary" type="button">Team anlegen</button>' : ""}</div>`;
-  panel.innerHTML = teams.length ? `<div class="v4-card-grid">${teams.map(teamCard).join("")}</div>` : empty("Dir ist noch kein Team zugeordnet.");
-  document.getElementById("addTeamButton")?.addEventListener("click", () => openTeam());
-  panel.querySelectorAll("[data-edit-team]").forEach(button => button.addEventListener("click", () => openTeam(teams.find(team => team.id === button.dataset.editTeam))));
-  panel.querySelectorAll("[data-delete-team]").forEach(button => button.addEventListener("click", async () => {
-    const team = teams.find(item => item.id === button.dataset.deleteTeam);
-    try { await deleteTeam(team); }
-    catch (error) { panel.insertAdjacentHTML("afterbegin", errorPanel(error, "Team konnte nicht gelöscht werden")); }
-  }));
-  panel.querySelectorAll("[data-add-team-member]").forEach(button => button.addEventListener("click", () => openMembership(teams.find(team => team.id === button.dataset.addTeamMember))));
-  panel.querySelectorAll("[data-edit-team-member]").forEach(button => button.addEventListener("click", () => {
-    const [teamId, userId] = button.dataset.editTeamMember.split(":");
-    const team = teams.find(item => item.id === teamId);
-    openMembership(team, team.members.find(item => item.userId === userId));
-  }));
-  panel.querySelectorAll("[data-remove-team-member]").forEach(button => button.addEventListener("click", async () => {
-    const [teamId, userId] = button.dataset.removeTeamMember.split(":");
-    const team = teams.find(item => item.id === teamId);
-    try { await removeMembership(team, team.members.find(item => item.userId === userId)); }
-    catch (error) { panel.insertAdjacentHTML("afterbegin", errorPanel(error, "Teammitglied konnte nicht entfernt werden")); }
-  }));
+
+  if (tabs) {
+    tabs.innerHTML = `<div class="v4-toolbar">
+      <div>
+        <strong>${teams.length} sichtbare Teams</strong>
+        <p>Teamleiter und Co-Teamleiter verwalten ihre eigenen Teams.</p>
+      </div>
+      ${snapshot.canCreateTeam ? '<button id="addTeamButton" class="button primary" type="button">Team anlegen</button>' : ""}
+    </div>`;
+  }
+
+  panel.innerHTML = teams.length
+    ? `<div class="v4-card-grid">${teams.map(teamCard).join("")}</div>`
+    : empty("Dir ist noch kein Team zugeordnet.");
+
+  document.getElementById("addTeamButton")
+    ?.addEventListener("click", () => openTeam());
+
+  panel.querySelectorAll("[data-edit-team]").forEach(button => {
+    button.addEventListener("click", () => {
+      openTeam(teams.find(team => team.id === button.dataset.editTeam));
+    });
+  });
+
+  panel.querySelectorAll("[data-delete-team]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const team = teams.find(item => item.id === button.dataset.deleteTeam);
+      try {
+        await deleteTeam(team);
+      } catch (error) {
+        panel.insertAdjacentHTML(
+          "afterbegin",
+          errorPanel(error, "Team konnte nicht gelöscht werden")
+        );
+      }
+    });
+  });
+
+  panel.querySelectorAll("[data-open-team-archive]").forEach(button => {
+    button.addEventListener("click", () => {
+      const team = teams.find(item => item.id === button.dataset.openTeamArchive);
+      if (team) openTeamArchive(team);
+    });
+  });
+
+  panel.querySelectorAll("[data-add-team-member]").forEach(button => {
+    button.addEventListener("click", () => {
+      openMembership(
+        teams.find(team => team.id === button.dataset.addTeamMember)
+      );
+    });
+  });
+
+  panel.querySelectorAll("[data-edit-team-member]").forEach(button => {
+    button.addEventListener("click", () => {
+      const [teamId, userId] = button.dataset.editTeamMember.split(":");
+      const team = teams.find(item => item.id === teamId);
+      openMembership(
+        team,
+        team.members.find(item => item.userId === userId)
+      );
+    });
+  });
+
+  panel.querySelectorAll("[data-remove-team-member]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const [teamId, userId] = button.dataset.removeTeamMember.split(":");
+      const team = teams.find(item => item.id === teamId);
+
+      try {
+        await removeMembership(
+          team,
+          team.members.find(item => item.userId === userId)
+        );
+      } catch (error) {
+        panel.insertAdjacentHTML(
+          "afterbegin",
+          errorPanel(error, "Teammitglied konnte nicht entfernt werden")
+        );
+      }
+    });
+  });
+
   const status = document.getElementById("teamsStatus");
-  if (status) { status.textContent = "Aktuell"; status.className = "status-pill success"; }
+  if (status) {
+    status.textContent = "Aktuell";
+    status.className = "status-pill success";
+  }
 }
 
 export async function hydrateTeams(context = {}) {
   const panel = document.getElementById("teamsPanel");
   if (!panel) return;
+
   panel.innerHTML = '<article class="card loading-card"><h3>Teams werden geladen …</h3></article>';
+
   try {
     snapshot = await call("teams_snapshot");
     if (context.isCurrent && !context.isCurrent()) return;
@@ -155,7 +307,10 @@ export async function hydrateTeams(context = {}) {
   } catch (error) {
     panel.innerHTML = errorPanel(error);
     const status = document.getElementById("teamsStatus");
-    if (status) { status.textContent = "Fehler"; status.className = "status-pill error"; }
+    if (status) {
+      status.textContent = "Fehler";
+      status.className = "status-pill error";
+    }
   }
 }
 

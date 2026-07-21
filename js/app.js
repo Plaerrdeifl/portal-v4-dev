@@ -1,4 +1,5 @@
 import { CONFIG } from "./config.js";
+import { api } from "./api.js";
 import { auth } from "./auth.js";
 import {
   currentRoute,
@@ -22,31 +23,47 @@ import {
 
 let renderSequence = 0;
 let authEventQueued = false;
+let apiActivity = api.activity();
 
 function connectionState() {
   const current = auth.current();
+
+  if (!navigator.onLine) {
+    return { label: "Offline", type: "error" };
+  }
+
   if (!CONFIG.supabase.configured) {
-    return { label: "Supabase nicht konfiguriert", type: "warning" };
+    return { label: "Fehler", type: "error" };
   }
-  if (current.busy) {
-    return { label: "Portalstatus wird geprüft", type: "warning" };
+
+  if (current.error || apiActivity.error) {
+    return { label: "Fehler", type: "error" };
   }
+
+  if (current.busy || apiActivity.busy) {
+    return { label: "Lädt", type: "loading" };
+  }
+
   if (!current.authenticated) {
-    return { label: "Öffentlicher Bereich", type: "success" };
+    return { label: "Online", type: "success" };
   }
+
   if (current.status === "ACTIVE") {
-    return { label: "Sicher verbunden", type: "success" };
+    return { label: "Live", type: "success" };
   }
+
   if (current.status === "BLOCKED") {
-    return { label: "Zugang gesperrt", type: "error" };
+    return { label: "Gesperrt", type: "error" };
   }
-  return { label: "Registrierung unvollständig", type: "warning" };
+
+  return { label: "Prüfung", type: "loading" };
 }
 
 function updateChrome() {
   renderNavigation();
   updateUserChrome();
   updateActiveNavigation();
+
   const connection = connectionState();
   setConnectionStatus(connection.label, connection.type);
 }
@@ -77,7 +94,9 @@ async function renderRoute() {
 
   const requested = currentRoute();
   await ensureAuthForRoute(requested);
+
   const allowed = enforceRoute(requested);
+
   if (allowed !== requested) {
     navigate(allowed, null, true);
     return;
@@ -85,6 +104,7 @@ async function renderRoute() {
 
   const route = routes()[allowed];
   const renderId = ++renderSequence;
+
   setRouteHeader(route);
   updateChrome();
   document.documentElement.dataset.route = allowed;
@@ -93,46 +113,93 @@ async function renderRoute() {
   if (!view) return;
 
   try {
-    const html = await loadFragment(`./pages/${route.page}`, { force: true });
-    if (renderId !== renderSequence || currentRoute() !== allowed) return;
-    view.innerHTML = html;
-    await hydratePage(allowed, {
-      isCurrent: () => renderId === renderSequence && currentRoute() === allowed
+    const html = await loadFragment(`./pages/${route.page}`, {
+      force: true
     });
+
+    if (
+      renderId !== renderSequence
+      || currentRoute() !== allowed
+    ) {
+      return;
+    }
+
+    view.innerHTML = html;
+
+    await hydratePage(allowed, {
+      isCurrent: () =>
+        renderId === renderSequence
+        && currentRoute() === allowed
+    });
+
     if (renderId !== renderSequence) return;
+
     view.focus({ preventScroll: true });
-    window.scrollTo({ top: 0, behavior: "instant" });
+    view.scrollTo({ top: 0, behavior: "instant" });
   } catch (error) {
     if (renderId !== renderSequence) return;
-    view.innerHTML = `<section class="page"><article class="card notice error"><h2>Seite konnte nicht geladen werden</h2><p>${String(error?.message || error)}</p></article></section>`;
-    showToast(error?.message || "Seite konnte nicht geladen werden.", "error", 7000);
+
+    view.innerHTML = `<section class="page">
+      <article class="card notice error">
+        <h2>Seite konnte nicht geladen werden</h2>
+        <p>${String(error?.message || error)}</p>
+      </article>
+    </section>`;
+
+    showToast(
+      error?.message || "Seite konnte nicht geladen werden.",
+      "error",
+      7000
+    );
   }
 }
 
 function handleAuthChange() {
   if (authEventQueued) return;
+
   authEventQueued = true;
+
   window.setTimeout(async () => {
     authEventQueued = false;
     updateChrome();
+
     const current = auth.current();
 
-    if (current.authenticated && !current.busy && current.status !== "LOADING") {
+    if (
+      current.authenticated
+      && !current.busy
+      && current.status !== "LOADING"
+    ) {
       const postLogin = auth.consumePostLoginRoute();
+
       if (postLogin) {
-        const target = current.status === "ACTIVE" ? postLogin : "#/profile";
+        const target =
+          current.status === "ACTIVE"
+            ? postLogin
+            : "#/profile";
+
         if (location.hash !== target) {
           location.hash = target;
           return;
         }
       }
+
       if (currentRoute() === "login") {
-        navigate(current.status === "ACTIVE" ? "dashboard" : "profile", null, true);
+        navigate(
+          current.status === "ACTIVE"
+            ? "dashboard"
+            : "profile",
+          null,
+          true
+        );
         return;
       }
     }
 
-    if (!current.authenticated && !routes()[currentRoute()]?.public) {
+    if (
+      !current.authenticated
+      && !routes()[currentRoute()]?.public
+    ) {
       navigate("login", null, true);
       return;
     }
@@ -143,11 +210,18 @@ function handleAuthChange() {
 
 async function refreshCurrentView() {
   try {
-    if (auth.isAuthenticated()) await auth.refresh();
+    if (auth.isAuthenticated()) {
+      await auth.refresh();
+    }
+
     await renderRoute();
     showToast("Ansicht wurde aktualisiert.", "success");
   } catch (error) {
-    showToast(error?.message || "Aktualisierung fehlgeschlagen.", "error", 6500);
+    showToast(
+      error?.message || "Aktualisierung fehlgeschlagen.",
+      "error",
+      6500
+    );
   }
 }
 
@@ -157,47 +231,75 @@ async function logout() {
     navigate("home", null, true);
     showToast("Du wurdest abgemeldet.", "success");
   } catch (error) {
-    showToast(error?.message || "Abmeldung fehlgeschlagen.", "error", 6500);
+    showToast(
+      error?.message || "Abmeldung fehlgeschlagen.",
+      "error",
+      6500
+    );
   }
 }
 
 async function bootstrap() {
   await mountComponents();
+
   bindGlobalUi({
     onRefresh: refreshCurrentView,
     onLogout: logout
   });
+
   initializeInstall();
 
   window.addEventListener("pd-update-available", () => {
     const banner = document.getElementById("updateBanner");
     if (banner) banner.hidden = false;
   });
-  document.getElementById("updateButton")?.addEventListener("click", () => activateUpdate());
-  document.getElementById("updateDismiss")?.addEventListener("click", () => {
-    const banner = document.getElementById("updateBanner");
-    if (banner) banner.hidden = true;
-  });
-  navigator.serviceWorker?.addEventListener("controllerchange", () => location.reload());
+
+  document.getElementById("updateButton")
+    ?.addEventListener("click", () => activateUpdate());
+
+  document.getElementById("updateDismiss")
+    ?.addEventListener("click", () => {
+      const banner = document.getElementById("updateBanner");
+      if (banner) banner.hidden = true;
+    });
+
+  navigator.serviceWorker?.addEventListener(
+    "controllerchange",
+    () => location.reload()
+  );
 
   window.addEventListener("hashchange", renderRoute);
   window.addEventListener("pd-auth-change", handleAuthChange);
+  window.addEventListener("pd-api-state", event => {
+    apiActivity = event.detail || api.activity();
+    const connection = connectionState();
+    setConnectionStatus(connection.label, connection.type);
+  });
+
   window.addEventListener("online", refreshCurrentView);
   window.addEventListener("offline", updateChrome);
 
-  if (!location.hash) history.replaceState(null, "", "#/home");
+  if (!location.hash) {
+    history.replaceState(null, "", "#/home");
+  }
+
   await renderRoute();
 
   window.setTimeout(() => {
     auth.initialize().catch(error => {
-      console.error("Supabase Auth konnte nicht initialisiert werden", error);
+      console.error(
+        "Supabase Auth konnte nicht initialisiert werden",
+        error
+      );
     });
   }, 80);
-
-  document.getElementById("buildLabel").textContent = `${CONFIG.app.version} · ${CONFIG.app.build}`;
 }
 
 bootstrap().catch(error => {
   console.error(error);
-  showToast(error?.message || "Portalstart fehlgeschlagen.", "error", 9000);
+  showToast(
+    error?.message || "Portalstart fehlgeschlagen.",
+    "error",
+    9000
+  );
 });

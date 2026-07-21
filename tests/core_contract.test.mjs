@@ -41,7 +41,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260720174500_make_team_codes_internal.sql",
     "20260720201500_harden_task_workflow.sql",
     "20260720223000_restore_archived_tasks.sql",
-    "20260720234500_add_contribution_management.sql"
+    "20260720234500_add_contribution_management.sql",
+    "20260721013000_add_finance_task_profile_workflows.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
@@ -261,12 +262,12 @@ test("public mobile navigation remains visible and usable", async () => {
 
   assert.match(
     html,
-    /v4-core\.css\?v=20260720-contributions-foundation/
+    /v4-core\.css\?v=20260721-portal-design-profile/
   );
 
   assert.match(
     worker,
-    /pd-portal-v4-core-20260720-6/
+    /pd-portal-v4-core-20260721-8/
   );
 });
 
@@ -319,8 +320,8 @@ test("task workflow is revision-safe and archived without hard delete", async ()
   assert.doesNotMatch(common, /"WAITING"/);
 
   assert.match(css, /gehärteter Aufgabenworkflow/);
-  assert.match(html, /20260720-contributions-foundation/);
-  assert.match(worker, /pd-portal-v4-core-20260720-6/);
+  assert.match(html, /20260721-portal-design-profile/);
+  assert.match(worker, /pd-portal-v4-core-20260721-8/);
 });
 
 test("task status uses a constrained dropdown", async () => {
@@ -415,4 +416,166 @@ test("contribution workflow is permissioned and ledger-backed", async () => {
   assert.match(fanclub, /Number\(contribution\.reportableAmount\) > 0/);
 
   assert.match(css, /V4 Core: Beitragsverwaltung/);
+});
+
+test("finance ledger is immutable, transferable, reversible and statement-ready", async () => {
+  const migration = await read(
+    "supabase/migrations/20260721013000_add_finance_task_profile_workflows.sql"
+  );
+  const fanclub = await read("js/modules/fanclub.js");
+  const css = await read("css/v4-core.css");
+
+  assert.match(migration, /add column operation_id uuid not null/);
+  assert.match(migration, /add column reverses_entry_id uuid/);
+  assert.match(migration, /REVERSED/);
+  assert.match(migration, /create or replace function app_private\.api_save_finance_account/);
+  assert.match(migration, /create or replace function app_private\.api_delete_finance_account/);
+  assert.match(migration, /create or replace function app_private\.api_create_finance_entry/);
+  assert.match(migration, /create or replace function app_private\.api_transfer_finance/);
+  assert.match(migration, /create or replace function app_private\.api_reverse_finance_entry/);
+  assert.match(migration, /FINANCE_TRANSFER_CREATED/);
+  assert.match(migration, /FINANCE_TRANSFER_REVERSED/);
+  assert.match(migration, /FINANCE_ENTRY_REVERSED/);
+  assert.match(
+    migration,
+    /Das Konto wurde bereits verwendet und kann nur deaktiviert werden/
+  );
+  assert.doesNotMatch(migration, /update app_fanclub\.finance_entries/i);
+  assert.doesNotMatch(migration, /delete from app_fanclub\.finance_entries/i);
+
+  assert.match(fanclub, /\["cashbook", "Kassenbuch"\]/);
+  assert.match(fanclub, /call\("save_finance_account"/);
+  assert.match(fanclub, /call\("delete_finance_account"/);
+  assert.match(fanclub, /call\("create_finance_entry"/);
+  assert.match(fanclub, /call\("transfer_finance"/);
+  assert.match(fanclub, /call\("reverse_finance_entry"/);
+  assert.match(fanclub, /data-reverse-finance-entry=/);
+  assert.match(fanclub, /data-view-finance-account=/);
+  assert.match(fanclub, /function accountStatementEntries\(accountId\)/);
+  assert.match(fanclub, /Kontoauszug/);
+  assert.match(fanclub, /runningBalance/);
+  assert.doesNotMatch(migration, /limit 1000/i);
+  assert.doesNotMatch(
+    fanclub,
+    /data-edit-finance-entry|data-delete-finance-entry/
+  );
+
+  assert.match(
+    css,
+    /V4 Core: Konten, Kassenbuch und Aufgabenbereinigung/
+  );
+});
+
+test("admins can permanently delete archived tasks before deleting a team", async () => {
+  const migration = await read(
+    "supabase/migrations/20260721013000_add_finance_task_profile_workflows.sql"
+  );
+  const tasks = await read("js/modules/tasks.js");
+  const teams = await read("js/modules/teams.js");
+
+  assert.match(
+    migration,
+    /create or replace function app_private\.api_delete_archived_task/
+  );
+  assert.match(migration, /require_capability\('portal\.admin'\)/);
+  assert.match(migration, /v_task\.status <> 'ARCHIVED'/);
+  assert.match(migration, /v_confirmation <> 'LÖSCHEN'/);
+  assert.match(migration, /TASK_PERMANENTLY_DELETED/);
+  assert.match(migration, /delete from app_modules\.tasks/);
+  assert.match(migration, /'canDeletePermanently'/);
+  assert.match(migration, /'archivedTaskCount'/);
+  assert.match(
+    migration,
+    /Diese müssen im Aufgabenarchiv durch einen Admin endgültig gelöscht werden/
+  );
+
+  assert.match(tasks, /call\("delete_archived_task"/);
+  assert.match(tasks, /data-delete-archived-task=/);
+  assert.match(tasks, /Endgültig löschen/);
+  assert.match(tasks, /pattern="LÖSCHEN"/);
+  assert.match(tasks, /activeArchiveTeamId/);
+
+  assert.match(teams, /data-open-team-archive=/);
+  assert.match(teams, /Archivierte Aufgaben anzeigen/);
+  assert.match(teams, /team\.archivedTaskCount/);
+  assert.match(teams, /navigate\("tasks", params\)/);
+});
+
+test("portal shell is compact, safe-area aware and profile-managed", async () => {
+  const migration = await read(
+    "supabase/migrations/20260721013000_add_finance_task_profile_workflows.sql"
+  );
+  const api = await read("js/api.js");
+  const app = await read("js/app.js");
+  const ui = await read("js/ui.js");
+  const admin = await read("js/modules/admin.js");
+  const topbar = await read("components/topbar.html");
+  const sidebar = await read("components/sidebar.html");
+  const index = await read("index.html");
+  const css = await read("css/v4-core.css");
+  const dashboard = await read("pages/dashboard.html");
+  const tasksPage = await read("pages/tasks.html");
+  const fanclubPage = await read("pages/fanclub.html");
+  const teamsPage = await read("pages/teams.html");
+  const adminPage = await read("pages/admin.html");
+
+  assert.match(
+    migration,
+    /create table app_portal\.profile_change_requests/
+  );
+  assert.match(
+    migration,
+    /create or replace function app_private\.api_submit_profile_change_request/
+  );
+  assert.match(
+    migration,
+    /create or replace function app_private\.api_review_profile_change_request/
+  );
+  assert.match(migration, /PROFILE_CHANGE_REQUEST_APPROVED/);
+  assert.match(migration, /when 'submit_profile_change_request'/);
+  assert.match(migration, /when 'review_profile_change_request'/);
+
+  assert.match(api, /pd-api-state/);
+  assert.match(api, /pendingRequests/);
+  assert.match(app, /label: "Live"/);
+  assert.match(app, /label: "Lädt"/);
+  assert.match(ui, /avatar_url/);
+  assert.match(ui, /userAvatarImage/);
+  assert.match(ui, /submit_profile_change_request/);
+  assert.match(ui, /data-user-logout/);
+  assert.match(ui, /body\.classList\.toggle\(\s*"overlay-open"/);
+
+  assert.match(admin, /\["profileChanges", "Datenänderungen"\]/);
+  assert.match(admin, /review_profile_change_request/);
+  assert.match(admin, /renderProfileChanges/);
+
+  assert.match(topbar, /id="connectionStatus"/);
+  assert.match(topbar, /id="userAvatarImage"/);
+  assert.doesNotMatch(topbar, /logoutButton|Abmelden/);
+  assert.match(sidebar, /mobile-sidebar-close/);
+  assert.doesNotMatch(sidebar, /R7\.1|Milestone 4/);
+
+  assert.doesNotMatch(index, /id="buildLabel"/);
+  assert.doesNotMatch(index, /mobileLogoutButton|id="logoutButton"/);
+
+  for (const source of [
+    dashboard,
+    tasksPage,
+    fanclubPage,
+    teamsPage,
+    adminPage
+  ]) {
+    assert.doesNotMatch(
+      source,
+      /dashboard-hero|p2-module-hero|p3-module-hero/
+    );
+  }
+
+  assert.doesNotMatch(dashboard, /Sicher verbunden/);
+  assert.match(css, /height:100dvh/);
+  assert.match(css, /overflow:hidden!important/);
+  assert.match(css, /width:min\(240px,65vw\)!important/);
+  assert.match(css, /linear-gradient\(145deg,#f2f5f9/);
+  assert.match(css, /body\.overlay-open \.view/);
+  assert.match(css, /env\(safe-area-inset-top\)/);
 });

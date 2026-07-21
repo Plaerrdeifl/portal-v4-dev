@@ -57,6 +57,7 @@ function memberMatchNotice(match) {
 function tabs() {
   return [
     ...(snapshot?.canManageUsers ? [["requests", "Freischaltungen"], ["users", "Benutzer"]] : []),
+    ...(snapshot?.canReviewProfileChanges ? [["profileChanges", "Datenänderungen"]] : []),
     ...(snapshot?.canManageRoles ? [["roles", "Rollen & Rechte"]] : []),
     ...(snapshot?.canReadAudit ? [["audit", "Audit"]] : [])
   ];
@@ -66,6 +67,7 @@ function renderTabs(panel) {
   const counts = {
     requests: (snapshot.requests || []).filter(request => request.status === "PENDING").length,
     users: (snapshot.users || []).length,
+    profileChanges: (snapshot.profileChangeRequests || []).filter(request => request.status === "PENDING").length,
     roles: (snapshot.roles || []).length,
     audit: (snapshot.audit || []).length
   };
@@ -210,6 +212,137 @@ function renderRoles(panel) {
   }));
 }
 
+function profileDataRows(request) {
+  const labels = {
+    firstName: "Vorname",
+    lastName: "Nachname",
+    email: "E-Mail",
+    phone: "Telefon",
+    street: "Straße",
+    houseNumber: "Hausnummer",
+    postalCode: "PLZ",
+    city: "Ort"
+  };
+  const current = request.currentData || {};
+  const requested = request.requestedData || {};
+
+  return Object.entries(labels).map(([key, label]) => `<tr>
+    <th>${escapeHtml(label)}</th>
+    <td>${escapeHtml(current[key] || "–")}</td>
+    <td>${escapeHtml(requested[key] || "–")}</td>
+  </tr>`).join("");
+}
+
+function reviewProfileChange(request, decision) {
+  const approve = decision === "APPROVED";
+
+  openDialog({
+    title: approve
+      ? "Datenänderung freigeben"
+      : "Datenänderung ablehnen",
+    kicker: `${request.memberCode} · ${request.userName}`,
+    danger: !approve,
+    submitLabel: approve ? "Freigeben" : "Ablehnen",
+    body: `<form>
+      <div class="v4-table-wrap">
+        <table class="v4-table v4-profile-change-table">
+          <thead><tr><th>Feld</th><th>Aktuell</th><th>Beantragt</th></tr></thead>
+          <tbody>${profileDataRows(request)}</tbody>
+        </table>
+      </div>
+      <div class="notice">
+        <strong>Begründung des Nutzers</strong>
+        <p>${escapeHtml(request.reason || "–")}</p>
+      </div>
+      <label>${approve ? "Interne Notiz (optional)" : "Ablehnungsgrund"}
+        <textarea
+          name="reason"
+          maxlength="1000"
+          rows="4"
+          ${approve ? "" : "required minlength=\"3\""}
+        ></textarea>
+      </label>
+    </form>`,
+    onSubmit: async values => {
+      snapshot = await runWrite(
+        () => call("review_profile_change_request", {
+          id: request.id,
+          revision: request.revision,
+          decision,
+          reason: values.reason || ""
+        }),
+        approve
+          ? "Mitgliedsdaten wurden aktualisiert."
+          : "Änderungsanfrage wurde abgelehnt."
+      );
+      render();
+    }
+  });
+}
+
+function renderProfileChanges(panel) {
+  const requests = snapshot.profileChangeRequests || [];
+  const pending = requests.filter(request => request.status === "PENDING");
+  const completed = requests.filter(request => request.status !== "PENDING");
+
+  panel.innerHTML = `<div class="v4-toolbar">
+    <div>
+      <h3>Änderungsanfragen zu Mitgliedsdaten</h3>
+      <p>${pending.length} offene Anfrage(n)</p>
+    </div>
+  </div>
+  ${pending.length ? `<div class="v4-card-grid">
+    ${pending.map(request => `<article class="card">
+      <header class="v4-card-header">
+        <div>
+          <span class="subtle">${escapeHtml(request.memberCode)}</span>
+          <h3>${escapeHtml(request.userName)}</h3>
+          <p>${escapeHtml(request.reason)}</p>
+        </div>
+        ${statusBadge(request.status)}
+      </header>
+      <p>Beantragt: ${escapeHtml(fmtDateTime(request.requestedAt))}</p>
+      <footer class="v4-card-actions">
+        <button class="button small primary" type="button" data-approve-profile-change="${escapeAttr(request.id)}">Freigeben</button>
+        <button class="button small danger" type="button" data-reject-profile-change="${escapeAttr(request.id)}">Ablehnen</button>
+      </footer>
+    </article>`).join("")}
+  </div>` : empty("Keine offenen Datenänderungsanfragen.")}
+  ${completed.length ? `<details class="v4-history">
+    <summary>Bearbeitete Anfragen (${completed.length})</summary>
+    <div class="v4-table-wrap">
+      <table class="v4-table">
+        <thead><tr><th>Mitglied</th><th>Nutzer</th><th>Status</th><th>Bearbeitet</th><th>Grund</th></tr></thead>
+        <tbody>${completed.map(request => `<tr>
+          <td>${escapeHtml(request.memberCode)}</td>
+          <td>${escapeHtml(request.userName)}</td>
+          <td>${statusBadge(request.status)}</td>
+          <td>${escapeHtml(fmtDateTime(request.reviewedAt))}<small>${escapeHtml(request.reviewedByName || "")}</small></td>
+          <td>${escapeHtml(request.decisionReason || "–")}</td>
+        </tr>`).join("")}</tbody>
+      </table>
+    </div>
+  </details>` : ""}`;
+
+  panel.querySelectorAll("[data-approve-profile-change]").forEach(button => {
+    button.addEventListener("click", () => {
+      const request = pending.find(
+        item => item.id === button.dataset.approveProfileChange
+      );
+      if (request) reviewProfileChange(request, "APPROVED");
+    });
+  });
+
+  panel.querySelectorAll("[data-reject-profile-change]").forEach(button => {
+    button.addEventListener("click", () => {
+      const request = pending.find(
+        item => item.id === button.dataset.rejectProfileChange
+      );
+      if (request) reviewProfileChange(request, "REJECTED");
+    });
+  });
+}
+
 function renderAudit(panel) {
   const events = snapshot.audit || [];
   panel.innerHTML = `<div class="v4-toolbar"><div><h3>Audit-Protokoll</h3><p>Die letzten ${events.length} sicherheits- und fachrelevanten Ereignisse.</p></div></div>
@@ -224,6 +357,7 @@ function render() {
   renderTabs(root);
   const panel = document.getElementById("adminTabPanel");
   if (activeTab === "users") renderUsers(panel);
+  else if (activeTab === "profileChanges") renderProfileChanges(panel);
   else if (activeTab === "roles") renderRoles(panel);
   else if (activeTab === "audit") renderAudit(panel);
   else renderRequests(panel);

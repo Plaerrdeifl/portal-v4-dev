@@ -1,10 +1,19 @@
 import { CONFIG } from "./config.js";
+import { api } from "./api.js";
 import { auth } from "./auth.js";
-import { currentRoute, fixedAuthenticatedOrder, navigate, routes } from "./router.js";
+import {
+  currentRoute,
+  fixedAuthenticatedOrder,
+  navigate,
+  routes
+} from "./router.js";
 
 const fragmentCache = new Map();
 const fragmentPromises = new Map();
 const MOBILE_PRIMARY = ["dashboard", "fanclub", "tasks", "teams"];
+
+let globalRefresh = null;
+let globalLogout = null;
 
 const ICONS = Object.freeze({
   home: '<svg viewBox="0 0 24 24"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>',
@@ -33,24 +42,47 @@ function fragmentKey(path) {
 }
 
 function abortError() {
-  try { return new DOMException("Abgebrochen", "AbortError"); }
-  catch (error) { const fallback = new Error("Abgebrochen"); fallback.name = "AbortError"; return fallback; }
+  try {
+    return new DOMException("Abgebrochen", "AbortError");
+  } catch (error) {
+    const fallback = new Error("Abgebrochen");
+    fallback.name = "AbortError";
+    return fallback;
+  }
 }
 
-export function hasFragment(path) { return fragmentCache.has(fragmentKey(path)); }
+export function hasFragment(path) {
+  return fragmentCache.has(fragmentKey(path));
+}
 
 export async function loadFragment(path, { signal, force = false } = {}) {
   const key = fragmentKey(path);
   if (!force && fragmentCache.has(key)) return fragmentCache.get(key);
   if (signal?.aborted) throw abortError();
+
   let promise = !force ? fragmentPromises.get(key) : null;
+
   if (!promise) {
     promise = fetch(path, { cache: "no-store" })
-      .then(response => { if (!response.ok) throw new Error(`Datei konnte nicht geladen werden: ${path}`); return response.text(); })
-      .then(text => { fragmentCache.set(key, text); return text; })
-      .finally(() => { if (fragmentPromises.get(key) === promise) fragmentPromises.delete(key); });
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Datei konnte nicht geladen werden: ${path}`);
+        }
+        return response.text();
+      })
+      .then(text => {
+        fragmentCache.set(key, text);
+        return text;
+      })
+      .finally(() => {
+        if (fragmentPromises.get(key) === promise) {
+          fragmentPromises.delete(key);
+        }
+      });
+
     fragmentPromises.set(key, promise);
   }
+
   const text = await promise;
   if (signal?.aborted) throw abortError();
   return text;
@@ -59,13 +91,20 @@ export async function loadFragment(path, { signal, force = false } = {}) {
 export async function mountComponents() {
   const sidebarSlot = document.getElementById("sidebarSlot");
   const topbarSlot = document.getElementById("topbarSlot");
-  if (sidebarSlot?.hasChildNodes() && topbarSlot?.hasChildNodes()) return;
+
+  if (sidebarSlot?.hasChildNodes() && topbarSlot?.hasChildNodes()) {
+    ensureUserMenu();
+    return;
+  }
+
   const [sidebar, topbar] = await Promise.all([
     loadFragment("./components/sidebar.html"),
     loadFragment("./components/topbar.html")
   ]);
+
   if (sidebarSlot) sidebarSlot.innerHTML = sidebar;
   if (topbarSlot) topbarSlot.innerHTML = topbar;
+  ensureUserMenu();
 }
 
 function publicAreaActive() {
@@ -78,27 +117,58 @@ function syncBrandContext() {
   const sidebarContext = document.getElementById("brandContext");
   const mobileContext = document.getElementById("mobileBrandContext");
   const sidebarCaption = document.querySelector(".sidebar-caption");
+
   if (sidebarContext) sidebarContext.textContent = label;
   if (mobileContext) mobileContext.textContent = label;
-  if (sidebarCaption) sidebarCaption.textContent = publicArea ? "Öffentlicher Bereich" : "Vereinsportal";
-  document.documentElement.dataset.portalArea = publicArea ? "public" : "portal";
+  if (sidebarCaption) {
+    sidebarCaption.textContent = publicArea
+      ? "Öffentlicher Bereich"
+      : "Vereinsportal";
+  }
+
+  document.documentElement.dataset.portalArea = publicArea
+    ? "public"
+    : "portal";
 }
 
 export function visibleRouteEntries() {
   const current = routes()[currentRoute()];
+
   if (current?.public || !auth.isAuthenticated()) {
     const entries = Object.entries(routes())
       .filter(([key, route]) => route.public && key !== "login")
-      .sort((a, b) => (a[1].publicOrder || 0) - (b[1].publicOrder || 0));
+      .sort(
+        (left, right) =>
+          (left[1].publicOrder || 0) - (right[1].publicOrder || 0)
+      );
+
     if (auth.hasPersistedSession()) {
-      entries.push(["dashboard", { ...routes().dashboard, title: "Ins Portal", subtitle: "Gespeicherte Sitzung prüfen und Portal öffnen" }]);
+      entries.push([
+        "dashboard",
+        {
+          ...routes().dashboard,
+          title: "Ins Portal",
+          subtitle: "Gespeicherte Sitzung prüfen und Portal öffnen"
+        }
+      ]);
     } else {
-      entries.push(["login", { ...routes().login, title: "Anmelden / Registrieren" }]);
+      entries.push([
+        "login",
+        {
+          ...routes().login,
+          title: "Anmelden / Registrieren"
+        }
+      ]);
     }
+
     return entries;
   }
+
   if (auth.requiresProfile()) return [["profile", routes().profile]];
-  return fixedAuthenticatedOrder().filter(key => auth.canAccessRoute(key)).map(key => [key, routes()[key]]);
+
+  return fixedAuthenticatedOrder()
+    .filter(key => auth.canAccessRoute(key))
+    .map(key => [key, routes()[key]]);
 }
 
 function createRouteButton(key, route, className = "") {
@@ -106,175 +176,608 @@ function createRouteButton(key, route, className = "") {
   button.type = "button";
   button.dataset.route = key;
   if (className) button.className = className;
+
   const icon = document.createElement("span");
   icon.className = "nav-icon";
   icon.setAttribute("aria-hidden", "true");
   icon.innerHTML = iconMarkup(key);
+
   const label = document.createElement("span");
   label.textContent = route.title;
+
   button.append(icon, label);
   return button;
 }
 
-
 export function renderNavigation() {
   const entries = visibleRouteEntries();
   const nav = document.getElementById("mainNav");
+
   if (nav) {
-    const buttons = entries.map(([key, route]) => createRouteButton(key, route));
+    const buttons = entries.map(([key, route]) =>
+      createRouteButton(key, route)
+    );
     nav.replaceChildren(...buttons);
     window.dispatchEvent(new CustomEvent("pd-navigation-rendered"));
   }
+
   syncBrandContext();
 
   const mobileNav = document.getElementById("mobileNav");
   const moreRoutes = document.getElementById("mobileMoreRoutes");
-  const authenticated = auth.isAuthenticated() && !auth.requiresProfile() && !routes()[currentRoute()]?.public;
+  const authenticated =
+    auth.isAuthenticated()
+    && !auth.requiresProfile()
+    && !routes()[currentRoute()]?.public;
+
   if (mobileNav) {
     mobileNav.hidden = !authenticated;
+
     if (authenticated) {
       const entryMap = new Map(entries);
-      const primary = MOBILE_PRIMARY.filter(key => entryMap.has(key)).map(key => createRouteButton(key, entryMap.get(key), "mobile-nav-button"));
-      const extras = entries.filter(([key]) => !MOBILE_PRIMARY.includes(key));
+      const primary = MOBILE_PRIMARY
+        .filter(key => entryMap.has(key))
+        .map(key =>
+          createRouteButton(
+            key,
+            entryMap.get(key),
+            "mobile-nav-button"
+          )
+        );
+
+      const extras = entries.filter(
+        ([key]) => !MOBILE_PRIMARY.includes(key)
+      );
+
       if (extras.length) {
         const more = document.createElement("button");
         more.type = "button";
         more.id = "mobileMoreToggle";
         more.className = "mobile-nav-button";
         more.setAttribute("aria-haspopup", "dialog");
-        more.innerHTML = `<span class="nav-icon" aria-hidden="true">${iconMarkup("more")}</span><span>Mehr</span>`;
+        more.innerHTML =
+          `<span class="nav-icon" aria-hidden="true">${iconMarkup("more")}</span>`
+          + "<span>Mehr</span>";
         primary.push(more);
       }
+
       mobileNav.replaceChildren(...primary);
-      if (moreRoutes) moreRoutes.replaceChildren(...extras.map(([key, route]) => createRouteButton(key, route, "mobile-more-route")));
+
+      if (moreRoutes) {
+        moreRoutes.replaceChildren(
+          ...extras.map(([key, route]) =>
+            createRouteButton(key, route, "mobile-more-route")
+          )
+        );
+      }
     } else {
       mobileNav.replaceChildren();
       if (moreRoutes) moreRoutes.replaceChildren();
       closeMobileMore();
     }
   }
+
   updateActiveNavigation();
 }
 
 export function updateActiveNavigation() {
   const active = currentRoute();
+
   document.querySelectorAll("[data-route]").forEach(element => {
     const isActive = element.dataset.route === active;
     element.classList.toggle("active", isActive);
-    if (isActive) element.setAttribute("aria-current", "page"); else element.removeAttribute("aria-current");
+
+    if (isActive) {
+      element.setAttribute("aria-current", "page");
+    } else {
+      element.removeAttribute("aria-current");
+    }
   });
+
   const more = document.getElementById("mobileMoreToggle");
   if (more) {
-    const isExtra = auth.isAuthenticated() && !MOBILE_PRIMARY.includes(active);
+    const isExtra =
+      auth.isAuthenticated() && !MOBILE_PRIMARY.includes(active);
     more.classList.toggle("active", isExtra);
     more.classList.toggle("more-active", isExtra);
   }
 }
 
+function avatarMetadata(current) {
+  return current.session?.user?.user_metadata || {};
+}
+
+function avatarUrl(current) {
+  const metadata = avatarMetadata(current);
+  return String(
+    metadata.avatar_url
+    || metadata.picture
+    || ""
+  ).trim();
+}
+
+function ensureUserMenu() {
+  if (document.getElementById("userMenuPanel")) return;
+
+  const backdrop = document.createElement("div");
+  backdrop.id = "userMenuBackdrop";
+  backdrop.className = "user-menu-backdrop";
+  backdrop.dataset.closeUserMenu = "";
+  backdrop.hidden = true;
+
+  const panel = document.createElement("section");
+  panel.id = "userMenuPanel";
+  panel.className = "user-menu-panel";
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-modal", "true");
+  panel.setAttribute("aria-label", "Benutzermenü");
+  panel.hidden = true;
+
+  document.body.append(backdrop, panel);
+}
+
+function profileField(label, value) {
+  return `<div class="user-profile-value">
+    <span>${escapeHtml(label)}</span>
+    <strong>${escapeHtml(value || "–")}</strong>
+  </div>`;
+}
+
+function memberRequestForm(member, pending) {
+  if (!member) {
+    return `<div class="notice">
+      <strong>Keine Mitgliedsverknüpfung</strong>
+      <p>Für dieses Portalprofil sind derzeit keine geschützten Fanclubdaten hinterlegt.</p>
+    </div>`;
+  }
+
+  const requestData = pending?.requestedData || member;
+
+  return `<form id="memberChangeRequestForm" class="form-grid user-profile-form">
+    <label>Vorname
+      <input name="firstName" required maxlength="160" value="${escapeAttr(requestData.firstName || "")}">
+    </label>
+    <label>Nachname
+      <input name="lastName" required maxlength="160" value="${escapeAttr(requestData.lastName || "")}">
+    </label>
+    <label>E-Mail
+      <input name="email" type="email" maxlength="320" value="${escapeAttr(requestData.email || "")}">
+    </label>
+    <label>Telefon
+      <input name="phone" maxlength="80" value="${escapeAttr(requestData.phone || "")}">
+    </label>
+    <label>Straße
+      <input name="street" maxlength="160" value="${escapeAttr(requestData.street || "")}">
+    </label>
+    <label>Hausnummer
+      <input name="houseNumber" maxlength="40" value="${escapeAttr(requestData.houseNumber || "")}">
+    </label>
+    <label>PLZ
+      <input name="postalCode" maxlength="20" value="${escapeAttr(requestData.postalCode || "")}">
+    </label>
+    <label>Ort
+      <input name="city" maxlength="160" value="${escapeAttr(requestData.city || "")}">
+    </label>
+    <label class="full">Grund der Änderung
+      <textarea name="reason" required minlength="3" maxlength="1000" rows="3">${escapeHtml(pending?.reason || "")}</textarea>
+    </label>
+    <div class="full dialog-actions">
+      <button class="button primary" type="submit">
+        ${pending ? "Offene Anfrage aktualisieren" : "Änderung beim Admin anfragen"}
+      </button>
+    </div>
+  </form>`;
+}
+
+function renderUserMenu() {
+  ensureUserMenu();
+
+  const panel = document.getElementById("userMenuPanel");
+  if (!panel) return;
+
+  const current = auth.current();
+  const profile = current.bootstrap?.profile || {};
+  const portal = profile.portal || current.user || {};
+  const member = profile.member || null;
+  const pending = profile.pendingRequest || null;
+  const fullName =
+    `${portal.firstName || ""} ${portal.lastName || ""}`.trim()
+    || current.user?.name
+    || "Benutzer";
+
+  panel.innerHTML = `<header class="user-menu-header">
+    <div>
+      <span class="subtle">Benutzermenü</span>
+      <h2>${escapeHtml(fullName)}</h2>
+      <p>${escapeHtml(portal.roleName || current.user?.role || "Portaluser")}</p>
+    </div>
+    <button class="icon-button" type="button" data-close-user-menu aria-label="Benutzermenü schließen">×</button>
+  </header>
+
+  <div class="user-menu-scroll">
+    <section class="user-menu-section">
+      <h3>Portalprofil</h3>
+      <div class="user-profile-grid">
+        ${profileField("Portal-ID", portal.userCode)}
+        ${profileField("Google-/Login-E-Mail", portal.email || current.session?.user?.email)}
+      </div>
+      ${current.user ? `<form id="directProfileForm" class="form-grid user-profile-form">
+        <label>Vorname
+          <input name="firstName" required maxlength="160" value="${escapeAttr(portal.firstName || "")}">
+        </label>
+        <label>Nachname
+          <input name="lastName" required maxlength="160" value="${escapeAttr(portal.lastName || "")}">
+        </label>
+        <div class="full dialog-actions">
+          <button class="button primary" type="submit">Portalprofil speichern</button>
+        </div>
+      </form>` : `<div class="notice">
+        <strong>Profil noch nicht freigeschaltet</strong>
+        <p>Die Profildaten können nach der Freischaltung bearbeitet werden.</p>
+      </div>`}
+    </section>
+
+    <section class="user-menu-section">
+      <div class="user-menu-section-heading">
+        <div>
+          <h3>Geschützte Mitgliedsdaten</h3>
+          <p>${member
+            ? `${escapeHtml(member.memberCode)} · Änderungen werden durch einen Admin geprüft.`
+            : "Keine offiziellen Mitgliedsdaten verknüpft."}</p>
+        </div>
+        ${pending ? '<span class="badge warning">Anfrage offen</span>' : ""}
+      </div>
+      ${memberRequestForm(member, pending)}
+    </section>
+
+    <section class="user-menu-section user-menu-actions">
+      <button class="button secondary" type="button" data-user-refresh>Ansicht aktualisieren</button>
+      <button class="button danger" type="button" data-user-logout>Abmelden</button>
+    </section>
+  </div>`;
+
+  panel.querySelector("#directProfileForm")
+    ?.addEventListener("submit", async event => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      if (!form.reportValidity()) return;
+
+      const button = form.querySelector('button[type="submit"]');
+      if (button) button.disabled = true;
+
+      try {
+        const values = Object.fromEntries(new FormData(form).entries());
+        await auth.updateProfile({
+          firstName: values.firstName,
+          lastName: values.lastName
+        });
+        updateUserChrome();
+        renderUserMenu();
+        showToast("Portalprofil wurde aktualisiert.", "success");
+      } catch (error) {
+        showToast(
+          error?.message || "Portalprofil konnte nicht gespeichert werden.",
+          "error",
+          6500
+        );
+      } finally {
+        if (button) button.disabled = false;
+      }
+    });
+
+  panel.querySelector("#memberChangeRequestForm")
+    ?.addEventListener("submit", async event => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      if (!form.reportValidity()) return;
+
+      const button = form.querySelector('button[type="submit"]');
+      if (button) button.disabled = true;
+
+      try {
+        const values = Object.fromEntries(new FormData(form).entries());
+        await api.call("submit_profile_change_request", {
+          member: {
+            firstName: values.firstName,
+            lastName: values.lastName,
+            email: values.email,
+            phone: values.phone,
+            street: values.street,
+            houseNumber: values.houseNumber,
+            postalCode: values.postalCode,
+            city: values.city
+          },
+          reason: values.reason
+        });
+        await auth.refresh();
+        renderUserMenu();
+        showToast(
+          "Änderungsanfrage wurde an die Administration gesendet.",
+          "success"
+        );
+      } catch (error) {
+        showToast(
+          error?.message || "Änderungsanfrage konnte nicht gesendet werden.",
+          "error",
+          6500
+        );
+      } finally {
+        if (button) button.disabled = false;
+      }
+    });
+}
+
+function updateOverlayLock() {
+  const sidebarOpen =
+    document.getElementById("sidebar")?.classList.contains("open");
+  const moreOpen =
+    document.getElementById("mobileMorePanel")?.hidden === false;
+  const userMenuOpen =
+    document.getElementById("userMenuPanel")?.hidden === false;
+
+  document.body.classList.toggle(
+    "overlay-open",
+    Boolean(sidebarOpen || moreOpen || userMenuOpen)
+  );
+}
+
+function openUserMenu() {
+  closeMobileMenu();
+  closeMobileMore();
+  ensureUserMenu();
+  renderUserMenu();
+
+  const panel = document.getElementById("userMenuPanel");
+  const backdrop = document.getElementById("userMenuBackdrop");
+  const toggle = document.getElementById("userSummary");
+
+  if (!panel || !backdrop) return;
+
+  panel.hidden = false;
+  backdrop.hidden = false;
+  toggle?.setAttribute("aria-expanded", "true");
+  updateOverlayLock();
+
+  window.setTimeout(() => {
+    panel.querySelector("[data-close-user-menu]")?.focus();
+  }, 0);
+}
+
+function closeUserMenu() {
+  const panel = document.getElementById("userMenuPanel");
+  const backdrop = document.getElementById("userMenuBackdrop");
+  const toggle = document.getElementById("userSummary");
+
+  if (panel) panel.hidden = true;
+  if (backdrop) backdrop.hidden = true;
+  toggle?.setAttribute("aria-expanded", "false");
+  updateOverlayLock();
+}
+
 export function updateUserChrome() {
   syncBrandContext();
+
   const current = auth.current();
   const summary = document.getElementById("userSummary");
-  const logout = document.getElementById("logoutButton");
-  const mobileLogout = document.getElementById("mobileLogoutButton");
+  const nameNode = document.getElementById("userSummaryName");
+  const roleNode = document.getElementById("userSummaryRole");
+  const avatar = document.getElementById("userAvatar");
+  const image = document.getElementById("userAvatarImage");
+  const initials = document.getElementById("userAvatarInitials");
+
   if (summary) summary.hidden = !current.authenticated;
-  if (logout) logout.hidden = !current.authenticated;
-  if (mobileLogout) mobileLogout.hidden = !current.authenticated;
-  if (current.authenticated && current.user) {
-    const first = current.user.firstName || current.user.vorname || "";
-    const last = current.user.lastName || current.user.nachname || "";
-    const name = `${first} ${last}`.trim() || current.user.name || "Profil unvollständig";
-    const role = current.status !== "ACTIVE" ? "Portalzugang noch nicht aktiv" : (current.user.role || "Portaluser");
-    const nameNode = document.getElementById("userSummaryName");
-    const roleNode = document.getElementById("userSummaryRole");
-    const avatar = document.getElementById("userAvatar");
-    if (nameNode) nameNode.textContent = name;
-    if (roleNode) roleNode.textContent = role;
-    if (avatar) avatar.textContent = `${first.charAt(0)}${last.charAt(0)}`.trim().toUpperCase() || "PD";
+
+  if (!current.authenticated || !current.user) {
+    closeUserMenu();
+    return;
   }
+
+  const first = current.user.firstName || current.user.vorname || "";
+  const last = current.user.lastName || current.user.nachname || "";
+  const name =
+    `${first} ${last}`.trim()
+    || current.user.name
+    || "Profil unvollständig";
+  const role =
+    current.status !== "ACTIVE"
+      ? "Portalzugang noch nicht aktiv"
+      : current.user.role || "Portaluser";
+  const photo = avatarUrl(current);
+  const fallback =
+    `${first.charAt(0)}${last.charAt(0)}`.trim().toUpperCase()
+    || "PD";
+
+  if (nameNode) nameNode.textContent = name;
+  if (roleNode) roleNode.textContent = role;
+
+  if (initials) {
+    initials.textContent = fallback;
+    initials.hidden = Boolean(photo);
+  }
+
+  if (image) {
+    image.hidden = !photo;
+    image.removeAttribute("src");
+
+    if (photo) {
+      image.src = photo;
+      image.alt = "";
+      image.onerror = () => {
+        image.hidden = true;
+        if (initials) initials.hidden = false;
+        avatar?.classList.remove("has-photo");
+      };
+    }
+  }
+
+  avatar?.classList.toggle("has-photo", Boolean(photo));
 }
 
 export function bindGlobalUi({ onRefresh, onLogout } = {}) {
+  globalRefresh = onRefresh || null;
+  globalLogout = onLogout || null;
+  ensureUserMenu();
+
   document.addEventListener("click", event => {
-    const target = event.target.closest("button[data-route], a[data-route]");
-    if (target) {
+    const routeTarget = event.target.closest("button[data-route], a[data-route]");
+
+    if (routeTarget) {
       event.preventDefault();
       const params = new URLSearchParams();
-      if (target.dataset.openTab) params.set("tab", target.dataset.openTab);
-      navigate(target.dataset.route, params);
+
+      if (routeTarget.dataset.openTab) {
+        params.set("tab", routeTarget.dataset.openTab);
+      }
+
+      navigate(routeTarget.dataset.route, params);
       closeMobileMenu();
+      closeMobileMore();
+      closeUserMenu();
+      return;
+    }
+
+    if (event.target.closest("[data-close-menu]")) {
+      closeMobileMenu();
+      return;
+    }
+
+    if (event.target.closest("[data-close-more]")) {
       closeMobileMore();
       return;
     }
-    if (event.target.closest("[data-close-menu]")) closeMobileMenu();
-    if (event.target.closest("[data-close-more]")) closeMobileMore();
-    if (event.target.closest("#mobileMoreToggle")) openMobileMore();
+
+    if (event.target.closest("[data-close-user-menu]")) {
+      closeUserMenu();
+      return;
+    }
+
+    if (event.target.closest("#mobileMoreToggle")) {
+      openMobileMore();
+      return;
+    }
+
+    if (event.target.closest("#userSummary")) {
+      openUserMenu();
+      return;
+    }
+
+    if (event.target.closest("[data-user-refresh]")) {
+      closeUserMenu();
+      globalRefresh?.();
+      return;
+    }
+
+    if (event.target.closest("[data-user-logout]")) {
+      closeUserMenu();
+      globalLogout?.();
+    }
   });
-  document.getElementById("mobileMenuToggle")?.addEventListener("click", openMobileMenu);
-  document.getElementById("refreshButton")?.addEventListener("click", () => onRefresh?.());
-  document.getElementById("logoutButton")?.addEventListener("click", () => onLogout?.());
-  document.getElementById("mobileRefreshButton")?.addEventListener("click", () => { closeMobileMore(); onRefresh?.(); });
-  document.getElementById("mobileLogoutButton")?.addEventListener("click", () => { closeMobileMore(); onLogout?.(); });
-  document.addEventListener("keydown", event => { if (event.key === "Escape") { closeMobileMenu(); closeMobileMore(); } });
-  document.getElementById("buildLabel").textContent = `${CONFIG.app.version} · ${CONFIG.app.build}`;
+
+  document.getElementById("mobileMenuToggle")
+    ?.addEventListener("click", openMobileMenu);
+
+  document.getElementById("mobileRefreshButton")
+    ?.addEventListener("click", () => {
+      closeMobileMore();
+      globalRefresh?.();
+    });
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      closeMobileMenu();
+      closeMobileMore();
+      closeUserMenu();
+    }
+  });
 }
 
 export function setRouteHeader(route) {
   syncBrandContext();
+
   const title = document.getElementById("routeTitle");
   const subtitle = document.getElementById("routeSubtitle");
+
   if (title) title.textContent = route.title;
   if (subtitle) subtitle.textContent = route.subtitle;
+
   document.title = `${route.title} · ${CONFIG.app.name}`;
 }
 
 export function showToast(message, type = "info", duration = 3200) {
   const region = document.getElementById("toastRegion");
   if (!region) return;
+
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
   toast.textContent = message;
   region.appendChild(toast);
+
   setTimeout(() => toast.remove(), duration);
 }
 
 export function setConnectionStatus(label, type = "success") {
   const status = document.getElementById("connectionStatus");
-  if (status) { status.textContent = label; status.className = `status-pill ${type}`; }
+  if (!status) return;
+
+  const text = status.querySelector("[data-status-text]");
+  if (text) text.textContent = label;
+  else status.textContent = label;
+
+  status.className = `connection-indicator ${type}`;
+  status.dataset.state = type;
 }
 
 export function openMobileMenu() {
   closeMobileMore();
+  closeUserMenu();
   document.getElementById("sidebar")?.classList.add("open");
   document.getElementById("mobileBackdrop")?.classList.add("show");
+  updateOverlayLock();
 }
 
 export function closeMobileMenu() {
   document.getElementById("sidebar")?.classList.remove("open");
   document.getElementById("mobileBackdrop")?.classList.remove("show");
+  updateOverlayLock();
 }
 
 export function openMobileMore() {
   closeMobileMenu();
+  closeUserMenu();
+
   const panel = document.getElementById("mobileMorePanel");
   const backdrop = document.getElementById("mobileMoreBackdrop");
+
   if (!panel || !backdrop) return;
+
   panel.hidden = false;
   backdrop.hidden = false;
-  document.body.classList.add("mobile-more-open");
+  updateOverlayLock();
   panel.querySelector("button")?.focus();
 }
 
 export function closeMobileMore() {
   const panel = document.getElementById("mobileMorePanel");
   const backdrop = document.getElementById("mobileMoreBackdrop");
+
   if (panel) panel.hidden = true;
   if (backdrop) backdrop.hidden = true;
-  document.body.classList.remove("mobile-more-open");
+  updateOverlayLock();
 }
 
 export function escapeHtml(value) {
-  return String(value || "").replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
+  return String(value || "").replace(
+    /[&<>'"]/g,
+    character => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "'": "&#39;",
+      '"': "&quot;"
+    })[character]
+  );
 }
 
-export function escapeAttr(value) { return escapeHtml(value).replace(/`/g, "&#96;"); }
+export function escapeAttr(value) {
+  return escapeHtml(value).replace(/`/g, "&#96;");
+}
