@@ -2,9 +2,109 @@ import { auth } from "../auth.js";
 import { navigate } from "../router.js";
 import { escapeHtml, showToast } from "../ui.js";
 
+let releaseProfileViewport = () => {};
+
+export function normalizeRequiredName(value) {
+  return String(value ?? "").trim();
+}
+
+function fieldErrorNode(input) {
+  const errorId = String(input?.getAttribute("aria-describedby") || "")
+    .split(/\s+/)
+    .find(Boolean);
+  return errorId ? document.getElementById(errorId) : null;
+}
+
+function setNameValidity(input, label) {
+  if (!input) return "";
+  const value = normalizeRequiredName(input.value);
+  const message = value ? "" : label + " ist erforderlich.";
+  input.value = value;
+  input.setCustomValidity(message);
+  const error = fieldErrorNode(input);
+  if (error) error.textContent = message;
+  return value;
+}
+
+function scrollProfileControlIntoView(control) {
+  if (!control) return;
+  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  window.setTimeout(() => {
+    if (!document.contains(control)) return;
+    control.scrollIntoView({
+      block: "center",
+      inline: "nearest",
+      behavior: reducedMotion ? "auto" : "smooth"
+    });
+  }, 80);
+}
+
+function bindProfileViewport(form) {
+  releaseProfileViewport();
+  const viewport = window.visualViewport;
+
+  const updateKeyboardInset = () => {
+    const inset = viewport
+      ? Math.max(
+        0,
+        window.innerHeight - viewport.height - Number(viewport.offsetTop || 0)
+      )
+      : 0;
+    document.documentElement.style.setProperty(
+      "--profile-keyboard-inset",
+      String(Math.round(inset)) + "px"
+    );
+
+    const active = document.activeElement;
+    if (inset > 0 && active && form.contains(active)) {
+      scrollProfileControlIntoView(active);
+    }
+  };
+
+  const onFocusIn = event => {
+    if (event.target?.matches?.("input, select, textarea, button")) {
+      scrollProfileControlIntoView(event.target);
+    }
+  };
+
+  form.addEventListener("focusin", onFocusIn);
+  viewport?.addEventListener("resize", updateKeyboardInset);
+  viewport?.addEventListener("scroll", updateKeyboardInset);
+  updateKeyboardInset();
+
+  const cleanup = () => {
+    form.removeEventListener("focusin", onFocusIn);
+    viewport?.removeEventListener("resize", updateKeyboardInset);
+    viewport?.removeEventListener("scroll", updateKeyboardInset);
+    window.removeEventListener("hashchange", cleanup);
+    document.documentElement.style.removeProperty("--profile-keyboard-inset");
+    if (releaseProfileViewport === cleanup) releaseProfileViewport = () => {};
+  };
+
+  releaseProfileViewport = cleanup;
+  window.addEventListener("hashchange", cleanup, { once: true });
+}
+
+function validateProfileNames(first, last) {
+  const firstName = setNameValidity(first, "Vorname");
+  const lastName = setNameValidity(last, "Nachname");
+  const invalid = !firstName ? first : (!lastName ? last : null);
+
+  if (invalid) {
+    try {
+      invalid.focus({ preventScroll: true });
+    } catch (error) {
+      invalid.focus();
+    }
+    scrollProfileControlIntoView(invalid);
+  }
+
+  return { valid: Boolean(firstName && lastName), firstName, lastName };
+}
+
 function fieldValue(id, fallback = "") {
   const input = document.getElementById(id);
-  if (input && !input.value) input.value = fallback || "";
+  if (input && !input.value) input.value = normalizeRequiredName(fallback);
   return input;
 }
 
@@ -53,6 +153,7 @@ function bindCommon() {
 }
 
 export async function hydrateProfile() {
+  releaseProfileViewport();
   await auth.initialize();
   const current = auth.current();
 
@@ -125,17 +226,34 @@ export async function hydrateProfile() {
   const submit = form?.querySelector('button[type="submit"]');
   if (submit) submit.textContent = isInitialization ? "Portal initialisieren" : "Freischaltung beantragen";
 
+  for (const [input, label] of [[first, "Vorname"], [last, "Nachname"]]) {
+    input?.addEventListener("input", () => {
+      input.setCustomValidity("");
+      const error = fieldErrorNode(input);
+      if (error) error.textContent = "";
+    });
+    input?.addEventListener("blur", () => setNameValidity(input, label));
+  }
+
+  form?.addEventListener("invalid", event => {
+    scrollProfileControlIntoView(event.target);
+  }, true);
+
+  if (form) bindProfileViewport(form);
+
   form?.addEventListener("submit", async event => {
     event.preventDefault();
-    if (!form.reportValidity()) return;
+    const names = validateProfileNames(first, last);
+    if (!names.valid || !form.reportValidity()) return;
+
     const button = form.querySelector('button[type="submit"]');
     button.disabled = true;
     const original = button.textContent;
     button.textContent = "Wird sicher gespeichert …";
     try {
       const payload = {
-        firstName: first?.value || "",
-        lastName: last?.value || ""
+        firstName: names.firstName,
+        lastName: names.lastName
       };
       if (isInitialization) {
         payload.token = document.getElementById("profileBootstrapToken")?.value || "";
@@ -152,7 +270,7 @@ export async function hydrateProfile() {
       button.disabled = false;
       button.textContent = original;
     }
-  }, { once: true });
+  });
 
   bindCommon();
 }

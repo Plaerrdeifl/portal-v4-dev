@@ -207,9 +207,9 @@ export function renderNavigation() {
   syncBrandContext();
 
   const mobileNav = document.getElementById("mobileNav");
+  const profileRequired = auth.requiresProfile();
   const authenticated =
     auth.isAuthenticated()
-    && !auth.requiresProfile()
     && !routes()[currentRoute()]?.public;
 
   if (mobileNav) {
@@ -217,19 +217,23 @@ export function renderNavigation() {
 
     if (authenticated) {
       const entryMap = new Map(entries);
-      const primary = MOBILE_PRIMARY
-        .filter(key => entryMap.has(key))
-        .map(key =>
-          createRouteButton(
-            key,
-            entryMap.get(key),
-            "mobile-nav-button"
-          )
-        );
+      const primary = profileRequired
+        ? [createRouteButton("profile", routes().profile, "mobile-nav-button")]
+        : MOBILE_PRIMARY
+          .filter(key => entryMap.has(key))
+          .map(key =>
+            createRouteButton(
+              key,
+              entryMap.get(key),
+              "mobile-nav-button"
+            )
+          );
 
-      const extras = entries.filter(
-        ([key]) => !MOBILE_PRIMARY.includes(key)
-      );
+      const extras = profileRequired
+        ? []
+        : entries.filter(
+          ([key]) => !MOBILE_PRIMARY.includes(key)
+        );
 
       if (extras.length) {
         const more = document.createElement("button");

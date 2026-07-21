@@ -1328,3 +1328,15 @@ body.overlay-open .view{overflow:hidden!important;touch-action:none}
     bottom:calc(var(--mobile-nav-height) + var(--safe-bottom) + 10px);
   }
 }
+/* Mobile Profilregistrierung mit virtueller Tastatur */
+:root{--profile-keyboard-inset:0px}
+html[data-route="profile"]{scroll-padding-bottom:calc(var(--mobile-nav-height) + var(--safe-bottom) + var(--profile-keyboard-inset) + 32px)}
+html[data-route="profile"] body{height:auto!important;min-height:100dvh;overflow-y:auto!important;overscroll-behavior-y:auto}
+html[data-route="profile"] .app-shell,html[data-route="profile"] .app-main,html[data-route="profile"] .view,html[data-route="profile"] .auth-page{height:auto!important;min-height:100dvh;overflow-y:visible!important}
+html[data-route="profile"] .auth-profile-card input{scroll-margin-top:calc(var(--safe-top) + 24px);scroll-margin-bottom:calc(var(--mobile-nav-height) + var(--safe-bottom) + var(--profile-keyboard-inset) + 32px)}
+@media(max-width:860px){html[data-route="profile"] .app-main{padding-bottom:calc(var(--mobile-nav-height) + var(--safe-bottom))!important}
+html[data-route="profile"] .app-main,html[data-route="profile"] .view{overflow:visible!important}
+html[data-route="profile"] .view{padding-bottom:0!important}
+html[data-route="profile"] .auth-page{padding-bottom:0!important;overflow:visible!important}
+html[data-route="profile"] .auth-card-wrap{padding-bottom:calc(32px + var(--profile-keyboard-inset))!important}
+html[data-route="profile"] .auth-profile-card{scroll-margin-bottom:calc(var(--mobile-nav-height) + var(--safe-bottom) + var(--profile-keyboard-inset) + 24px)}}
