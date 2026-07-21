@@ -93,6 +93,37 @@ function registerAuthListener(client) {
   authSubscription = data.subscription;
 }
 
+const OAUTH_POPUP_NAME = "pdGoogleAuth";
+
+function supportsOAuthPopup() {
+  return window.matchMedia(
+    "(min-width: 720px) and (pointer: fine)"
+  ).matches;
+}
+
+function oauthPopupFeatures() {
+  const width = Math.min(520, Math.max(420, window.screen.availWidth - 80));
+  const height = Math.min(720, Math.max(620, window.screen.availHeight - 80));
+  const left = Math.max(
+    0,
+    Math.round(window.screenX + (window.outerWidth - width) / 2)
+  );
+  const top = Math.max(
+    0,
+    Math.round(window.screenY + (window.outerHeight - height) / 2)
+  );
+
+  return [
+    "popup=yes",
+    `width=${width}`,
+    `height=${height}`,
+    `left=${left}`,
+    `top=${top}`,
+    "resizable=yes",
+    "scrollbars=yes"
+  ].join(",");
+}
+
 export const auth = Object.freeze({
   async initialize() {
     if (state.initialized) return this.current();
@@ -214,19 +245,69 @@ export const auth = Object.freeze({
 
   async signInWithGoogle() {
     const client = getSupabaseClient();
-    const base = new URL(location.href);
-    base.hash = "";
-    base.search = "";
-    const { error } = await client.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: base.toString(),
-        queryParams: {
-          prompt: "select_account"
+    const redirect = new URL(location.href);
+    redirect.hash = "";
+    redirect.search = "";
+
+    const popup = supportsOAuthPopup()
+      ? window.open(
+          "about:blank",
+          OAUTH_POPUP_NAME,
+          oauthPopupFeatures()
+        )
+      : null;
+
+    try {
+      const { data, error } = await client.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: redirect.toString(),
+          skipBrowserRedirect: true,
+          queryParams: {
+            prompt: "select_account"
+          }
         }
+      });
+
+      if (error) throw error;
+      if (!data?.url) {
+        throw new Error("Google-Anmeldung konnte nicht geöffnet werden.");
       }
-    });
+
+      if (popup) {
+        document.body.classList.add("oauth-popup-open");
+        popup.location.replace(data.url);
+        popup.focus();
+        return { mode: "popup", popup };
+      }
+
+      location.assign(data.url);
+      return { mode: "redirect", popup: null };
+    } catch (error) {
+      popup?.close();
+      document.body.classList.remove("oauth-popup-open");
+      throw error;
+    }
+  },
+
+  async syncSession() {
+    const client = getSupabaseClient();
+    const { data, error } = await client.auth.getSession();
+
     if (error) throw error;
+
+    state.session = data.session || null;
+    state.initialized = true;
+
+    if (state.session) {
+      await refreshBootstrap();
+    } else {
+      state.bootstrap = null;
+      state.error = null;
+      emit();
+    }
+
+    return this.current();
   },
 
   async submitAccessRequest(data) {

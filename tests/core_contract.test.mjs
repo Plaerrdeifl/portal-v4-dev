@@ -506,7 +506,7 @@ test("portal profile privacy and account creation contracts remain intact", asyn
 
   assert.match(login, /public-login-inline/);
   assert.doesNotMatch(login, /auth-page|auth-brand-panel|auth-card-wrap/);
-  assert.match(login, /data-route="home"/);
+  assert.doesNotMatch(login, /data-route="home"/);
 
   const accountStart = fanclub.indexOf("function accountForm(account = {})");
   const accountEnd = fanclub.indexOf(

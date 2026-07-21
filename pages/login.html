@@ -1,60 +1,17 @@
 <section class="page public-login-inline" aria-labelledby="authTitle">
   <header class="public-login-intro">
-    <span id="authKicker" class="public-login-eyebrow">Mitgliederbereich</span>
-    <div class="public-login-title-row">
-      <div>
-        <h2 id="authTitle">Anmelden oder registrieren</h2>
-        <p id="loginMessage">Google-Anmeldung wird vorbereitet …</p>
-      </div>
-      <span id="loginStatusPill" class="status-pill warning">Nicht angemeldet</span>
-    </div>
+    <h2 id="authTitle">Anmelden oder registrieren</h2>
+    <p id="loginMessage">Google-Anmeldung wird vorbereitet …</p>
   </header>
 
-  <div class="public-login-layout">
-    <article class="card public-login-main">
-      <div id="loginNotice" class="notice" hidden aria-live="polite"></div>
-      <div id="googleSignInButton" class="google-signin-slot" aria-label="Mit Google anmelden"></div>
-      <div id="registrationSlot" hidden></div>
+  <article class="card public-login-main">
+    <div id="loginNotice" class="notice" hidden aria-live="polite"></div>
+    <div id="googleSignInButton" class="google-signin-slot" aria-label="Mit Google anmelden"></div>
+    <div id="registrationSlot" hidden></div>
 
-      <div class="public-login-note">
-        <span aria-hidden="true">✓</span>
-        <p>Google bestätigt deine Identität. Rollen, Mitgliedschaft und Zugriffsrechte werden anschließend sicher im Portal geprüft.</p>
-      </div>
-    </article>
-
-    <aside class="card public-login-help-card">
-      <h3>So funktioniert die Anmeldung</h3>
-
-      <div class="info-list">
-        <div class="info-item">
-          <span id="bridgeStatusIcon">…</span>
-          <div>
-            <strong>Portalverbindung</strong>
-            <small id="bridgeStatusText">Wird geprüft …</small>
-          </div>
-        </div>
-
-        <div class="info-item">
-          <span>G</span>
-          <div>
-            <strong>Google-Konto</strong>
-            <small id="oauthStatusText">Konfiguration wird gelesen …</small>
-          </div>
-        </div>
-
-        <div class="info-item">
-          <span>✓</span>
-          <div>
-            <strong>Freischaltung</strong>
-            <small>Neue Benutzer schließen nach der Google-Anmeldung ihre Registrierung direkt im Portal ab.</small>
-          </div>
-        </div>
-      </div>
-
-      <div class="public-login-actions">
-        <button id="loginRetryButton" class="button secondary" type="button">Erneut prüfen</button>
-        <button class="button ghost" type="button" data-route="home">Zur Startseite</button>
-      </div>
-    </aside>
-  </div>
+    <div class="public-login-note">
+      <span aria-hidden="true">✓</span>
+      <p>Google bestätigt deine Identität. Rollen, Mitgliedschaft und Zugriffsrechte werden anschließend sicher im Portal geprüft.</p>
+    </div>
+  </article>
 </section>

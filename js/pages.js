@@ -41,100 +41,109 @@ function hydrateInstall() {
 
 async function hydrateLogin() {
   await auth.initialize();
-  const current = auth.current();
-  const slot = document.getElementById("googleSignInButton");
-  const retry = document.getElementById("loginRetryButton");
-  const pill = document.getElementById("loginStatusPill");
 
-  setText(
-    "bridgeStatusText",
-    CONFIG.supabase.configured
-      ? `Supabase ${CONFIG.supabase.environment} ist konfiguriert.`
-      : "Supabase-Verbindung fehlt."
-  );
-  setText(
-    "oauthStatusText",
-    CONFIG.supabase.configured
-      ? "Google-Anmeldung wird durch Supabase Auth verarbeitet."
-      : "Google-Anmeldung ist noch nicht verfügbar."
-  );
+  const slot = document.getElementById("googleSignInButton");
 
   const render = () => {
     const state = auth.current();
     if (!slot) return;
 
     if (!CONFIG.supabase.configured) {
-      if (pill) {
-        pill.textContent = "Nicht konfiguriert";
-        pill.className = "status-pill warning";
-      }
-      setText("loginMessage", "Die lokale Runtime-Konfiguration wurde noch nicht erzeugt.");
-      slot.innerHTML = '<div class="notice warning">Führe den V4-Core-Operator aus oder hinterlege die Supabase-DEV-Konfiguration.</div>';
+      setText(
+        "loginMessage",
+        "Die lokale Runtime-Konfiguration wurde noch nicht erzeugt."
+      );
+      slot.innerHTML =
+        '<div class="notice warning">Die Supabase-DEV-Verbindung ist noch nicht verfügbar.</div>';
       return;
     }
 
     if (!state.authenticated) {
-      if (pill) {
-        pill.textContent = "Bereit";
-        pill.className = "status-pill success";
-      }
-      setText("loginMessage", "Melde dich sicher mit deinem Google-Konto an.");
-      slot.innerHTML = '<button id="supabaseGoogleLogin" class="button primary v4-google-button" type="button"><span aria-hidden="true">G</span> Mit Google anmelden</button>';
-      document.getElementById("supabaseGoogleLogin")?.addEventListener("click", async event => {
-        const button = event.currentTarget;
-        button.disabled = true;
-        button.textContent = "Weiter zu Google …";
-        try {
-          auth.rememberPostLoginRoute("#/dashboard");
-          await auth.signInWithGoogle();
-        } catch (error) {
-          showToast(error?.message || "Google-Anmeldung konnte nicht gestartet werden.", "error", 6500);
-          button.disabled = false;
-          button.innerHTML = '<span aria-hidden="true">G</span> Mit Google anmelden';
-        }
-      });
+      setText(
+        "loginMessage",
+        "Melde dich sicher mit deinem Google-Konto an."
+      );
+      slot.innerHTML =
+        '<button id="supabaseGoogleLogin" class="button primary v4-google-button" type="button">'
+        + '<span aria-hidden="true">G</span> Mit Google anmelden</button>';
+
+      document.getElementById("supabaseGoogleLogin")
+        ?.addEventListener("click", async event => {
+          const button = event.currentTarget;
+          button.disabled = true;
+          button.textContent = "Weiter zu Google …";
+
+          try {
+            auth.rememberPostLoginRoute("#/dashboard");
+            const result = await auth.signInWithGoogle();
+
+            if (result?.mode === "popup" && result.popup) {
+              const popup = result.popup;
+              const monitor = window.setInterval(() => {
+                if (!popup.closed) return;
+
+                window.clearInterval(monitor);
+                document.body.classList.remove("oauth-popup-open");
+
+                if (
+                  document.body.contains(button)
+                  && !auth.isAuthenticated()
+                ) {
+                  button.disabled = false;
+                  button.innerHTML =
+                    '<span aria-hidden="true">G</span> Mit Google anmelden';
+                }
+              }, 400);
+            }
+          } catch (error) {
+            showToast(
+              error?.message
+                || "Google-Anmeldung konnte nicht gestartet werden.",
+              "error",
+              6500
+            );
+            button.disabled = false;
+            button.innerHTML =
+              '<span aria-hidden="true">G</span> Mit Google anmelden';
+          }
+        });
+
       return;
     }
 
     if (state.busy || state.status === "LOADING") {
-      if (pill) {
-        pill.textContent = "Wird geprüft";
-        pill.className = "status-pill warning";
-      }
-      setText("loginMessage", "Portalstatus und Berechtigungen werden geladen …");
-      slot.innerHTML = '<div class="notice">Anmeldung wird geprüft …</div>';
+      setText(
+        "loginMessage",
+        "Portalstatus und Berechtigungen werden geladen …"
+      );
+      slot.innerHTML =
+        '<div class="notice">Anmeldung wird geprüft …</div>';
       return;
     }
 
     if (state.status === "ACTIVE") {
-      if (pill) {
-        pill.textContent = "Angemeldet";
-        pill.className = "status-pill success";
-      }
-      setText("loginMessage", `Du bist als ${state.user?.name || "Portaluser"} angemeldet.`);
-      slot.innerHTML = '<button id="loginDashboardButton" class="button primary" type="button">Zum Dashboard</button>';
-      document.getElementById("loginDashboardButton")?.addEventListener("click", () => navigate("dashboard"));
+      setText(
+        "loginMessage",
+        `Du bist als ${state.user?.name || "Portaluser"} angemeldet.`
+      );
+      slot.innerHTML =
+        '<button id="loginDashboardButton" class="button primary" type="button">Zum Dashboard</button>';
+      document.getElementById("loginDashboardButton")
+        ?.addEventListener("click", () => navigate("dashboard"));
       return;
     }
 
-    if (pill) {
-      pill.textContent = state.status === "PENDING" ? "Freigabe ausstehend" : "Angaben erforderlich";
-      pill.className = "status-pill warning";
-    }
-    setText("loginMessage", "Dein Konto ist angemeldet. Schließe jetzt die Portalregistrierung ab.");
-    slot.innerHTML = '<button id="loginProfileButton" class="button primary" type="button">Registrierung fortsetzen</button>';
-    document.getElementById("loginProfileButton")?.addEventListener("click", () => navigate("profile"));
+    setText(
+      "loginMessage",
+      "Dein Konto ist angemeldet. Schließe jetzt die Portalregistrierung ab."
+    );
+    slot.innerHTML =
+      '<button id="loginProfileButton" class="button primary" type="button">Registrierung fortsetzen</button>';
+    document.getElementById("loginProfileButton")
+      ?.addEventListener("click", () => navigate("profile"));
   };
 
   render();
-  retry?.addEventListener("click", async () => {
-    try {
-      await auth.refresh();
-      render();
-    } catch (error) {
-      showToast(error?.message || "Status konnte nicht aktualisiert werden.", "error", 6500);
-    }
-  });
 }
 
 export function preloadAuthenticatedModules(keys = ["dashboard", "fanclub", "tasks", "teams", "admin"]) {

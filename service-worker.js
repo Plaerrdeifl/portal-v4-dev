@@ -1,4 +1,4 @@
-const CACHE_VERSION = "pd-portal-v4-frontend-foundation-20260721-6";
+const CACHE_VERSION = "pd-portal-v4-login-experience-20260721-1";
 const APP_CACHE = `${CACHE_VERSION}-shell`;
 const SHELL = [
   "./",
@@ -12,6 +12,7 @@ const SHELL = [
   "./js/supabase-client.js",
   "./js/api.js",
   "./js/auth.js",
+  "./js/oauth-return-guard.js",
   "./js/install.js",
   "./js/router.js",
   "./js/ui.js",
