@@ -203,60 +203,9 @@ export function renderNavigation() {
 
   syncBrandContext();
 
-  const mobileNav = document.getElementById("mobileNav");
-  const moreRoutes = document.getElementById("mobileMoreRoutes");
-  const authenticated =
-    auth.isAuthenticated()
-    && !auth.requiresProfile()
-    && !routes()[currentRoute()]?.public;
-
-  if (mobileNav) {
-    mobileNav.hidden = !authenticated;
-
-    if (authenticated) {
-      const entryMap = new Map(entries);
-      const primary = MOBILE_PRIMARY
-        .filter(key => entryMap.has(key))
-        .map(key =>
-          createRouteButton(
-            key,
-            entryMap.get(key),
-            "mobile-nav-button"
-          )
-        );
-
-      const extras = entries.filter(
-        ([key]) => !MOBILE_PRIMARY.includes(key)
-      );
-
-      if (extras.length) {
-        const more = document.createElement("button");
-        more.type = "button";
-        more.id = "mobileMoreToggle";
-        more.className = "mobile-nav-button";
-        more.setAttribute("aria-haspopup", "dialog");
-        more.innerHTML =
-          `<span class="nav-icon" aria-hidden="true">${iconMarkup("more")}</span>`
-          + "<span>Mehr</span>";
-        primary.push(more);
-      }
-
-      mobileNav.replaceChildren(...primary);
-
-      if (moreRoutes) {
-        moreRoutes.replaceChildren(
-          ...extras.map(([key, route]) =>
-            createRouteButton(key, route, "mobile-more-route")
-          )
-        );
-      }
-    } else {
-      mobileNav.replaceChildren();
-      if (moreRoutes) moreRoutes.replaceChildren();
-      closeMobileMore();
-    }
-  }
-
+  document.getElementById("mobileNav")?.remove();
+  document.getElementById("mobileMoreBackdrop")?.remove();
+  document.getElementById("mobileMorePanel")?.remove();
   updateActiveNavigation();
 }
 
@@ -369,6 +318,163 @@ function memberRequestForm(member, pending) {
   </form>`;
 }
 
+function ensureProfileDetailsDialog() {
+  if (document.getElementById("userProfileDialog")) return;
+
+  const dialog = document.createElement("dialog");
+  dialog.id = "userProfileDialog";
+  dialog.className = "user-profile-dialog";
+  dialog.setAttribute("aria-label", "Profil und Daten");
+  dialog.addEventListener("click", event => {
+    if (event.target === dialog) dialog.close();
+  });
+  document.body.append(dialog);
+}
+
+function renderProfileDetails() {
+  ensureProfileDetailsDialog();
+
+  const dialog = document.getElementById("userProfileDialog");
+  if (!dialog) return;
+
+  const current = auth.current();
+  const profile = current.bootstrap?.profile || {};
+  const portal = profile.portal || current.user || {};
+  const member = profile.member || null;
+  const pending = profile.pendingRequest || null;
+
+  dialog.innerHTML = `<div class="user-profile-dialog-shell">
+    <header class="user-profile-dialog-header">
+      <div>
+        <span class="subtle">Konto</span>
+        <h2>Profil und Daten</h2>
+        <p>Portaldaten direkt bearbeiten; geschützte Mitgliedsdaten als Anfrage senden.</p>
+      </div>
+      <button class="icon-button" type="button" data-close-profile-details aria-label="Profil und Daten schließen">×</button>
+    </header>
+
+    <div class="user-profile-dialog-body">
+      <section class="user-menu-section">
+        <h3>Portalprofil</h3>
+        <div class="user-profile-grid">
+          ${profileField("Portal-ID", portal.userCode)}
+          ${profileField("Login-E-Mail", portal.email || current.session?.user?.email)}
+        </div>
+        ${current.user ? `<form id="directProfileForm" class="form-grid user-profile-form">
+          <label>Vorname
+            <input name="firstName" required maxlength="160" value="${escapeAttr(portal.firstName || "")}">
+          </label>
+          <label>Nachname
+            <input name="lastName" required maxlength="160" value="${escapeAttr(portal.lastName || "")}">
+          </label>
+          <div class="full dialog-actions">
+            <button class="button primary" type="submit">Portalprofil speichern</button>
+          </div>
+        </form>` : `<div class="notice">
+          <strong>Profil noch nicht freigeschaltet</strong>
+          <p>Die Portaldaten können nach der Freischaltung bearbeitet werden.</p>
+        </div>`}
+      </section>
+
+      <section class="user-menu-section">
+        <div class="user-menu-section-heading">
+          <div>
+            <h3>Geschützte Mitgliedsdaten</h3>
+            <p>${member
+              ? `${escapeHtml(member.memberCode)} · Änderungen werden von einem Admin geprüft.`
+              : "Keine offiziellen Mitgliedsdaten verknüpft."}</p>
+          </div>
+          ${pending ? '<span class="badge warning">Anfrage offen</span>' : ""}
+        </div>
+        ${memberRequestForm(member, pending)}
+      </section>
+    </div>
+  </div>`;
+
+  dialog.querySelector("[data-close-profile-details]")
+    ?.addEventListener("click", () => dialog.close());
+
+  dialog.querySelector("#directProfileForm")
+    ?.addEventListener("submit", async event => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      if (!form.reportValidity()) return;
+
+      const button = form.querySelector('button[type="submit"]');
+      if (button) button.disabled = true;
+
+      try {
+        const values = Object.fromEntries(new FormData(form).entries());
+        await auth.updateProfile({
+          firstName: values.firstName,
+          lastName: values.lastName
+        });
+        updateUserChrome();
+        renderProfileDetails();
+        showToast("Portalprofil wurde aktualisiert.", "success");
+      } catch (error) {
+        showToast(
+          error?.message || "Portalprofil konnte nicht gespeichert werden.",
+          "error",
+          6500
+        );
+      } finally {
+        if (button) button.disabled = false;
+      }
+    });
+
+  dialog.querySelector("#memberChangeRequestForm")
+    ?.addEventListener("submit", async event => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      if (!form.reportValidity()) return;
+
+      const button = form.querySelector('button[type="submit"]');
+      if (button) button.disabled = true;
+
+      try {
+        const values = Object.fromEntries(new FormData(form).entries());
+        await api.call("submit_profile_change_request", {
+          member: {
+            firstName: values.firstName,
+            lastName: values.lastName,
+            email: values.email,
+            phone: values.phone,
+            street: values.street,
+            houseNumber: values.houseNumber,
+            postalCode: values.postalCode,
+            city: values.city
+          },
+          reason: values.reason
+        });
+        await auth.refresh();
+        renderProfileDetails();
+        showToast(
+          "Änderungsanfrage wurde an die Administration gesendet.",
+          "success"
+        );
+      } catch (error) {
+        showToast(
+          error?.message || "Änderungsanfrage konnte nicht gesendet werden.",
+          "error",
+          6500
+        );
+      } finally {
+        if (button) button.disabled = false;
+      }
+    });
+}
+
+function openProfileDetails() {
+  closeUserMenu();
+  renderProfileDetails();
+
+  const dialog = document.getElementById("userProfileDialog");
+  if (!dialog) return;
+
+  if (!dialog.open) dialog.showModal();
+}
+
 function renderUserMenu() {
   ensureUserMenu();
 
@@ -394,117 +500,25 @@ function renderUserMenu() {
     <button class="icon-button" type="button" data-close-user-menu aria-label="Benutzermenü schließen">×</button>
   </header>
 
-  <div class="user-menu-scroll">
-    <section class="user-menu-section">
-      <h3>Portalprofil</h3>
-      <div class="user-profile-grid">
-        ${profileField("Portal-ID", portal.userCode)}
-        ${profileField("Google-/Login-E-Mail", portal.email || current.session?.user?.email)}
-      </div>
-      ${current.user ? `<form id="directProfileForm" class="form-grid user-profile-form">
-        <label>Vorname
-          <input name="firstName" required maxlength="160" value="${escapeAttr(portal.firstName || "")}">
-        </label>
-        <label>Nachname
-          <input name="lastName" required maxlength="160" value="${escapeAttr(portal.lastName || "")}">
-        </label>
-        <div class="full dialog-actions">
-          <button class="button primary" type="submit">Portalprofil speichern</button>
-        </div>
-      </form>` : `<div class="notice">
-        <strong>Profil noch nicht freigeschaltet</strong>
-        <p>Die Profildaten können nach der Freischaltung bearbeitet werden.</p>
-      </div>`}
-    </section>
+  <div class="user-menu-content">
+    <div class="user-profile-grid">
+      ${profileField("Portal-ID", portal.userCode)}
+      ${profileField("Login-E-Mail", portal.email || current.session?.user?.email)}
+      ${member ? profileField("Mitglied", member.memberCode) : ""}
+    </div>
+    ${pending ? `<div class="notice warning">
+      <strong>Datenänderung in Prüfung</strong>
+      <p>Eine Änderungsanfrage ist bereits offen.</p>
+    </div>` : ""}
+    <button class="button primary user-profile-open-button" type="button" data-open-profile-details>
+      Profil und Daten öffnen
+    </button>
+  </div>
 
-    <section class="user-menu-section">
-      <div class="user-menu-section-heading">
-        <div>
-          <h3>Geschützte Mitgliedsdaten</h3>
-          <p>${member
-            ? `${escapeHtml(member.memberCode)} · Änderungen werden durch einen Admin geprüft.`
-            : "Keine offiziellen Mitgliedsdaten verknüpft."}</p>
-        </div>
-        ${pending ? '<span class="badge warning">Anfrage offen</span>' : ""}
-      </div>
-      ${memberRequestForm(member, pending)}
-    </section>
-
-    <section class="user-menu-section user-menu-actions">
-      <button class="button secondary" type="button" data-user-refresh>Ansicht aktualisieren</button>
-      <button class="button danger" type="button" data-user-logout>Abmelden</button>
-    </section>
-  </div>`;
-
-  panel.querySelector("#directProfileForm")
-    ?.addEventListener("submit", async event => {
-      event.preventDefault();
-      const form = event.currentTarget;
-      if (!form.reportValidity()) return;
-
-      const button = form.querySelector('button[type="submit"]');
-      if (button) button.disabled = true;
-
-      try {
-        const values = Object.fromEntries(new FormData(form).entries());
-        await auth.updateProfile({
-          firstName: values.firstName,
-          lastName: values.lastName
-        });
-        updateUserChrome();
-        renderUserMenu();
-        showToast("Portalprofil wurde aktualisiert.", "success");
-      } catch (error) {
-        showToast(
-          error?.message || "Portalprofil konnte nicht gespeichert werden.",
-          "error",
-          6500
-        );
-      } finally {
-        if (button) button.disabled = false;
-      }
-    });
-
-  panel.querySelector("#memberChangeRequestForm")
-    ?.addEventListener("submit", async event => {
-      event.preventDefault();
-      const form = event.currentTarget;
-      if (!form.reportValidity()) return;
-
-      const button = form.querySelector('button[type="submit"]');
-      if (button) button.disabled = true;
-
-      try {
-        const values = Object.fromEntries(new FormData(form).entries());
-        await api.call("submit_profile_change_request", {
-          member: {
-            firstName: values.firstName,
-            lastName: values.lastName,
-            email: values.email,
-            phone: values.phone,
-            street: values.street,
-            houseNumber: values.houseNumber,
-            postalCode: values.postalCode,
-            city: values.city
-          },
-          reason: values.reason
-        });
-        await auth.refresh();
-        renderUserMenu();
-        showToast(
-          "Änderungsanfrage wurde an die Administration gesendet.",
-          "success"
-        );
-      } catch (error) {
-        showToast(
-          error?.message || "Änderungsanfrage konnte nicht gesendet werden.",
-          "error",
-          6500
-        );
-      } finally {
-        if (button) button.disabled = false;
-      }
-    });
+  <footer class="user-menu-footer">
+    <button class="button secondary" type="button" data-user-refresh>Aktualisieren</button>
+    <button class="button danger" type="button" data-user-logout>Abmelden</button>
+  </footer>`;
 }
 
 function updateOverlayLock() {
@@ -658,6 +672,11 @@ export function bindGlobalUi({ onRefresh, onLogout } = {}) {
 
     if (event.target.closest("#userSummary")) {
       openUserMenu();
+      return;
+    }
+
+    if (event.target.closest("[data-open-profile-details]")) {
+      openProfileDetails();
       return;
     }
 

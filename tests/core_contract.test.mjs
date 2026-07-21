@@ -262,12 +262,12 @@ test("public mobile navigation remains visible and usable", async () => {
 
   assert.match(
     html,
-    /v4-core\.css\?v=20260721-portal-design-profile/
+    /v4-core\.css\?v=20260721-ui-correction/
   );
 
   assert.match(
     worker,
-    /pd-portal-v4-core-20260721-8/
+    /pd-portal-v4-core-20260721-9/
   );
 });
 
@@ -320,8 +320,8 @@ test("task workflow is revision-safe and archived without hard delete", async ()
   assert.doesNotMatch(common, /"WAITING"/);
 
   assert.match(css, /gehärteter Aufgabenworkflow/);
-  assert.match(html, /20260721-portal-design-profile/);
-  assert.match(worker, /pd-portal-v4-core-20260721-8/);
+  assert.match(html, /20260721-ui-correction/);
+  assert.match(worker, /pd-portal-v4-core-20260721-9/);
 });
 
 test("task status uses a constrained dropdown", async () => {
@@ -578,4 +578,42 @@ test("portal shell is compact, safe-area aware and profile-managed", async () =>
   assert.match(css, /linear-gradient\(145deg,#f2f5f9/);
   assert.match(css, /body\.overlay-open \.view/);
   assert.match(css, /env\(safe-area-inset-top\)/);
+});
+
+test("mobile UI correction removes the bottom bar and separates profile editing", async () => {
+  const html = await read("index.html");
+  const home = await read("pages/home.html");
+  const ui = await read("js/ui.js");
+  const css = await read("css/v4-core.css");
+
+  assert.equal(html.includes('id="mobileNav"'), false);
+  assert.equal(html.includes('id="mobileMorePanel"'), false);
+  assert.equal(home.includes("public-welcome-hero"), false);
+  assert.equal(home.includes("publicLogo"), false);
+  assert.equal(home.includes("public-home-card"), true);
+  assert.equal(ui.includes("data-open-profile-details"), true);
+  assert.equal(ui.includes("function openProfileDetails()"), true);
+  assert.equal(ui.includes("user-menu-footer"), true);
+  assert.equal(ui.includes("data-user-logout"), true);
+
+  const menuStart = ui.indexOf("function renderUserMenu()");
+  const menuEnd = ui.indexOf("function updateOverlayLock()", menuStart);
+  assert.equal(menuStart >= 0, true);
+  assert.equal(menuEnd > menuStart, true);
+
+  const menuSource = ui.slice(menuStart, menuEnd);
+  assert.equal(menuSource.includes("directProfileForm"), false);
+  assert.equal(menuSource.includes("memberChangeRequestForm"), false);
+
+  assert.equal(
+    css.includes("gezielte UI-Korrektur 2026-07-21"),
+    true
+  );
+  assert.equal(css.includes(".mobile-bottom-nav,"), true);
+  assert.equal(css.includes(".mobile-more-panel{"), true);
+  assert.equal(css.includes("display:none!important"), true);
+  assert.equal(
+    css.includes("linear-gradient(135deg,#102a46"),
+    true
+  );
 });
