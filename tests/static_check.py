@@ -53,7 +53,7 @@ for reference in parser.references:
         require(target.is_file(), f"Referenzierte Datei fehlt: {reference}")
 
 require("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" in index, "Supabase JS fehlt im Entry Point.")
-require("./css/v4-core.css" in index, "V4-Core-CSS fehlt im Entry Point.")
+require("./css/app.css" in index, "Kanonische app.css fehlt im Entry Point.")
 require("script.google.com/macros" not in index, "Legacy Apps Script ist im Entry Point aktiv.")
 require("google-identity.js" not in index, "Legacy Google GIS ist im Entry Point aktiv.")
 require("upgrade-insecure-requests" not in index, "CSP würde lokale Supabase-HTTP-Verbindung hochstufen.")
@@ -85,8 +85,6 @@ for path in ROOT.rglob("*.js"):
     if path.name == "runtime-config.example.js":
         continue
     content = path.read_text(encoding="utf-8")
-    if path.relative_to(ROOT).as_posix() in {"js/google-identity.js", "js/m4-corr2-login-overlay.js", "js/m4-corr3-ux.js", "js/m4-corr4-layout.js"}:
-        continue
     require("google.script.run" not in content, f"Aktiver Legacy-Aufruf in {path.relative_to(ROOT)}")
 
 if ERRORS:

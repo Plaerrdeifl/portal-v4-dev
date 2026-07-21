@@ -1,4 +1,4 @@
-const CACHE_VERSION = "pd-portal-v4-core-20260721-10";
+const CACHE_VERSION = "pd-portal-v4-frontend-foundation-20260721-6";
 const APP_CACHE = `${CACHE_VERSION}-shell`;
 const SHELL = [
   "./",
@@ -7,19 +7,7 @@ const SHELL = [
   "./favicon.ico",
   "./manifest.webmanifest",
   "./css/tokens.css",
-  "./css/layout.css",
-  "./css/components.css",
-  "./css/mobile.css",
-  "./css/uiux-p1.css",
-  "./css/uiux-p2.css",
-  "./css/uiux-p3.css",
-  "./css/m4-corr2.css",
-  "./css/m4-corr3.css",
-  "./css/m4-corr4.css",
-  "./css/m4-corr5.css",
-  "./css/m4-corr6.css",
-  "./css/m4-corr7.css",
-  "./css/v4-core.css",
+  "./css/app.css",
   "./js/config.js",
   "./js/supabase-client.js",
   "./js/api.js",

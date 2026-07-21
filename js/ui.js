@@ -206,9 +206,51 @@ export function renderNavigation() {
 
   syncBrandContext();
 
-  document.getElementById("mobileNav")?.remove();
-  document.getElementById("mobileMoreBackdrop")?.remove();
-  document.getElementById("mobileMorePanel")?.remove();
+  const mobileNav = document.getElementById("mobileNav");
+  const authenticated =
+    auth.isAuthenticated()
+    && !auth.requiresProfile()
+    && !routes()[currentRoute()]?.public;
+
+  if (mobileNav) {
+    mobileNav.hidden = !authenticated;
+
+    if (authenticated) {
+      const entryMap = new Map(entries);
+      const primary = MOBILE_PRIMARY
+        .filter(key => entryMap.has(key))
+        .map(key =>
+          createRouteButton(
+            key,
+            entryMap.get(key),
+            "mobile-nav-button"
+          )
+        );
+
+      const extras = entries.filter(
+        ([key]) => !MOBILE_PRIMARY.includes(key)
+      );
+
+      if (extras.length) {
+        const more = document.createElement("button");
+        more.type = "button";
+        more.id = "mobileMoreToggle";
+        more.className = "mobile-nav-button";
+        more.setAttribute("aria-controls", "sidebar");
+        more.setAttribute("aria-expanded", "false");
+        more.setAttribute("aria-label", "Vollständige Navigation öffnen");
+        more.innerHTML =
+          `<span class="nav-icon" aria-hidden="true">${iconMarkup("more")}</span>`
+          + "<span>Mehr</span>";
+        primary.push(more);
+      }
+
+      mobileNav.replaceChildren(...primary);
+    } else {
+      mobileNav.replaceChildren();
+    }
+  }
+
   updateActiveNavigation();
 }
 
@@ -227,9 +269,12 @@ export function updateActiveNavigation() {
   });
 
   const more = document.getElementById("mobileMoreToggle");
+
   if (more) {
     const isExtra =
-      auth.isAuthenticated() && !MOBILE_PRIMARY.includes(active);
+      auth.isAuthenticated()
+      && !MOBILE_PRIMARY.includes(active);
+
     more.classList.toggle("active", isExtra);
     more.classList.toggle("more-active", isExtra);
   }
@@ -525,20 +570,17 @@ function renderUserMenu() {
 function updateOverlayLock() {
   const sidebarOpen =
     document.getElementById("sidebar")?.classList.contains("open");
-  const moreOpen =
-    document.getElementById("mobileMorePanel")?.hidden === false;
   const userMenuOpen =
     document.getElementById("userMenuPanel")?.hidden === false;
 
   document.body.classList.toggle(
     "overlay-open",
-    Boolean(sidebarOpen || moreOpen || userMenuOpen)
+    Boolean(sidebarOpen || userMenuOpen)
   );
 }
 
 function openUserMenu() {
   closeMobileMenu();
-  closeMobileMore();
   ensureUserMenu();
   renderUserMenu();
 
@@ -646,18 +688,12 @@ export function bindGlobalUi({ onRefresh, onLogout } = {}) {
 
       navigate(routeTarget.dataset.route, params);
       closeMobileMenu();
-      closeMobileMore();
-      closeUserMenu();
+          closeUserMenu();
       return;
     }
 
     if (event.target.closest("[data-close-menu]")) {
       closeMobileMenu();
-      return;
-    }
-
-    if (event.target.closest("[data-close-more]")) {
-      closeMobileMore();
       return;
     }
 
@@ -667,7 +703,7 @@ export function bindGlobalUi({ onRefresh, onLogout } = {}) {
     }
 
     if (event.target.closest("#mobileMoreToggle")) {
-      openMobileMore();
+      openMobileMenu();
       return;
     }
 
@@ -696,17 +732,10 @@ export function bindGlobalUi({ onRefresh, onLogout } = {}) {
   document.getElementById("mobileMenuToggle")
     ?.addEventListener("click", openMobileMenu);
 
-  document.getElementById("mobileRefreshButton")
-    ?.addEventListener("click", () => {
-      closeMobileMore();
-      globalRefresh?.();
-    });
-
   document.addEventListener("keydown", event => {
     if (event.key === "Escape") {
       closeMobileMenu();
-      closeMobileMore();
-      closeUserMenu();
+          closeUserMenu();
     }
   });
 }
@@ -748,40 +777,23 @@ export function setConnectionStatus(label, type = "success") {
 }
 
 export function openMobileMenu() {
-  closeMobileMore();
   closeUserMenu();
   document.getElementById("sidebar")?.classList.add("open");
   document.getElementById("mobileBackdrop")?.classList.add("show");
+  document.getElementById("mobileMenuToggle")
+    ?.setAttribute("aria-expanded", "true");
+  document.getElementById("mobileMoreToggle")
+    ?.setAttribute("aria-expanded", "true");
   updateOverlayLock();
 }
 
 export function closeMobileMenu() {
   document.getElementById("sidebar")?.classList.remove("open");
   document.getElementById("mobileBackdrop")?.classList.remove("show");
-  updateOverlayLock();
-}
-
-export function openMobileMore() {
-  closeMobileMenu();
-  closeUserMenu();
-
-  const panel = document.getElementById("mobileMorePanel");
-  const backdrop = document.getElementById("mobileMoreBackdrop");
-
-  if (!panel || !backdrop) return;
-
-  panel.hidden = false;
-  backdrop.hidden = false;
-  updateOverlayLock();
-  panel.querySelector("button")?.focus();
-}
-
-export function closeMobileMore() {
-  const panel = document.getElementById("mobileMorePanel");
-  const backdrop = document.getElementById("mobileMoreBackdrop");
-
-  if (panel) panel.hidden = true;
-  if (backdrop) backdrop.hidden = true;
+  document.getElementById("mobileMenuToggle")
+    ?.setAttribute("aria-expanded", "false");
+  document.getElementById("mobileMoreToggle")
+    ?.setAttribute("aria-expanded", "false");
   updateOverlayLock();
 }
 

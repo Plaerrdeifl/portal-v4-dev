@@ -1,41 +1,60 @@
-<section class="page public-login-page" aria-labelledby="authTitle">
-  <article class="card public-login-card">
-    <header class="auth-card-header">
-      <span id="authKicker" class="auth-eyebrow">Sicher anmelden</span>
-      <div class="auth-title-row">
-        <div class="auth-title-copy">
-          <h2 id="authTitle">Willkommen zurück</h2>
-          <p id="loginMessage">Google-Anmeldung wird vorbereitet …</p>
-        </div>
-        <span id="loginStatusPill" class="status-pill warning">Nicht angemeldet</span>
+<section class="page public-login-inline" aria-labelledby="authTitle">
+  <header class="public-login-intro">
+    <span id="authKicker" class="public-login-eyebrow">Mitgliederbereich</span>
+    <div class="public-login-title-row">
+      <div>
+        <h2 id="authTitle">Anmelden oder registrieren</h2>
+        <p id="loginMessage">Google-Anmeldung wird vorbereitet …</p>
       </div>
-    </header>
+      <span id="loginStatusPill" class="status-pill warning">Nicht angemeldet</span>
+    </div>
+  </header>
 
-    <div id="loginNotice" class="notice" hidden aria-live="polite"></div>
-    <div id="googleSignInButton" class="google-signin-slot" aria-label="Mit Google anmelden"></div>
-    <div id="registrationSlot" hidden></div>
+  <div class="public-login-layout">
+    <article class="card public-login-main">
+      <div id="loginNotice" class="notice" hidden aria-live="polite"></div>
+      <div id="googleSignInButton" class="google-signin-slot" aria-label="Mit Google anmelden"></div>
+      <div id="registrationSlot" hidden></div>
 
-    <p class="auth-security-note">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/>
-        <path d="m9 12 2 2 4-5"/>
-      </svg>
-      <span>Google bestätigt nur deine Identität. Rollen und Zugriffsrechte werden sicher im Portal verwaltet.</span>
-    </p>
+      <div class="public-login-note">
+        <span aria-hidden="true">✓</span>
+        <p>Google bestätigt deine Identität. Rollen, Mitgliedschaft und Zugriffsrechte werden anschließend sicher im Portal geprüft.</p>
+      </div>
+    </article>
 
-    <details class="auth-help">
-      <summary>Probleme bei der Anmeldung?</summary>
-      <div class="auth-help-content">
-        <div class="info-list">
-          <div class="info-item"><span id="bridgeStatusIcon">…</span><div><strong>Portalverbindung</strong><small id="bridgeStatusText">Wird geprüft …</small></div></div>
-          <div class="info-item"><span>G</span><div><strong>Google-Anmeldung</strong><small id="oauthStatusText">Konfiguration wird gelesen …</small></div></div>
-          <div class="info-item"><span>✓</span><div><strong>Rechteprüfung</strong><small>Rollen, Mitgliedschaft und Teamrechte werden ausschließlich serverseitig entschieden.</small></div></div>
+    <aside class="card public-login-help-card">
+      <h3>So funktioniert die Anmeldung</h3>
+
+      <div class="info-list">
+        <div class="info-item">
+          <span id="bridgeStatusIcon">…</span>
+          <div>
+            <strong>Portalverbindung</strong>
+            <small id="bridgeStatusText">Wird geprüft …</small>
+          </div>
         </div>
-        <div class="action-row">
-          <button id="loginRetryButton" class="button secondary" type="button">Anmeldung neu vorbereiten</button>
-          <button class="button ghost" type="button" data-route="home">Zur Startseite</button>
+
+        <div class="info-item">
+          <span>G</span>
+          <div>
+            <strong>Google-Konto</strong>
+            <small id="oauthStatusText">Konfiguration wird gelesen …</small>
+          </div>
+        </div>
+
+        <div class="info-item">
+          <span>✓</span>
+          <div>
+            <strong>Freischaltung</strong>
+            <small>Neue Benutzer schließen nach der Google-Anmeldung ihre Registrierung direkt im Portal ab.</small>
+          </div>
         </div>
       </div>
-    </details>
-  </article>
+
+      <div class="public-login-actions">
+        <button id="loginRetryButton" class="button secondary" type="button">Erneut prüfen</button>
+        <button class="button ghost" type="button" data-route="home">Zur Startseite</button>
+      </div>
+    </aside>
+  </div>
 </section>

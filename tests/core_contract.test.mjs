@@ -88,7 +88,6 @@ test("package is ESM-ready and pinned to the agreed toolchain", async () => {
   assert.equal(pkg.packageManager, "npm@12.0.1");
 });
 
-
 test("route click handling ignores the html route marker", async () => {
   const ui = await read("js/ui.js");
   assert.match(
@@ -97,7 +96,6 @@ test("route click handling ignores the html route marker", async () => {
   );
   assert.doesNotMatch(ui, /closest\("\[data-route\]"\)/);
 });
-
 
 test("member email match migration is safe and confirmable", async () => {
   const migration = await read(
@@ -137,7 +135,6 @@ test("member email match migration is safe and confirmable", async () => {
   );
 });
 
-
 test("admins can delete unused teams safely", async () => {
   const migration = await read(
     "supabase/migrations/20260720161000_add_admin_team_delete.sql"
@@ -176,7 +173,6 @@ test("admins can delete unused teams safely", async () => {
   );
 });
 
-
 test("Vercel DEV deployment publishes only the static build", async () => {
   const pkg = JSON.parse(await read("package.json"));
   const vercel = JSON.parse(await read("vercel.json"));
@@ -202,7 +198,6 @@ test("Vercel DEV deployment publishes only the static build", async () => {
   assert.doesNotMatch(build, /service[_-]?role/i);
   assert.match(ignore, /^\/dist\/$/m);
 });
-
 
 test("team codes are generated internally and hidden from the UI", async () => {
   const migration = await read(
@@ -241,90 +236,6 @@ test("team codes are generated internally and hidden from the UI", async () => {
   );
 });
 
-test("public mobile navigation remains visible and usable", async () => {
-  const css = await read("css/v4-core.css");
-  const html = await read("index.html");
-  const worker = await read("service-worker.js");
-
-  assert.match(
-    css,
-    /html\[data-route="home"\] #mobileMenuToggle[\s\S]*?display:grid!important/
-  );
-
-  assert.match(
-    css,
-    /\.sidebar #mainNav[\s\S]*?display:grid!important/
-  );
-
-  assert.match(
-    css,
-    /#mobileFullMenu[\s\S]*?display:none!important/
-  );
-
-  assert.match(
-    html,
-    /v4-core\.css\?v=20260721-targeted-fixes/
-  );
-
-  assert.match(
-    worker,
-    /pd-portal-v4-core-20260721-10/
-  );
-});
-
-test("task workflow is revision-safe and archived without hard delete", async () => {
-  const migration = await read(
-    "supabase/migrations/20260720201500_harden_task_workflow.sql"
-  );
-  const tasks = await read("js/modules/tasks.js");
-  const common = await read("js/modules/common.js");
-  const css = await read("css/v4-core.css");
-  const html = await read("index.html");
-  const worker = await read("service-worker.js");
-
-  assert.match(
-    migration,
-    /add column if not exists archived_by uuid/
-  );
-  assert.match(
-    migration,
-    /check \(status in \('OPEN', 'IN_PROGRESS', 'DONE', 'ARCHIVED'\)\)/
-  );
-  assert.match(
-    migration,
-    /create or replace function app_private\.api_archive_task/
-  );
-  assert.match(
-    migration,
-    /when 'archive_task'/
-  );
-  assert.match(
-    migration,
-    /TASK_REOPENED/
-  );
-  assert.match(
-    migration,
-    /Die Aufgabe wurde zwischenzeitlich geändert/
-  );
-  assert.doesNotMatch(
-    migration,
-    /delete from app_modules\.tasks/i
-  );
-
-  assert.match(tasks, /Meine Aufgaben/);
-  assert.match(tasks, /Teamaufgaben/);
-  assert.match(tasks, /Vorstandsaufgaben/);
-  assert.match(tasks, /call\("archive_task"/);
-  assert.match(tasks, /revision: task\.revision/);
-  assert.match(tasks, /ownNoteRevision/);
-  assert.doesNotMatch(tasks, /WAITING|Warten/);
-  assert.doesNotMatch(common, /"WAITING"/);
-
-  assert.match(css, /gehärteter Aufgabenworkflow/);
-  assert.match(html, /20260721-targeted-fixes/);
-  assert.match(worker, /pd-portal-v4-core-20260721-10/);
-});
-
 test("task status uses a constrained dropdown", async () => {
   const tasks = await read("js/modules/tasks.js");
 
@@ -334,137 +245,6 @@ test("task status uses a constrained dropdown", async () => {
   assert.match(tasks, /Offen \(wieder öffnen\)/);
   assert.doesNotMatch(tasks, /data-task-next-status/);
   assert.doesNotMatch(tasks, /function workflowButton\(task\)/);
-});
-test("archived tasks can be restored through an audited action", async () => {
-  const migration = await read(
-    "supabase/migrations/20260720223000_restore_archived_tasks.sql"
-  );
-  const tasks = await read("js/modules/tasks.js");
-  const css = await read("css/v4-core.css");
-
-  assert.match(
-    migration,
-    /create or replace function app_private\.api_restore_task/
-  );
-  assert.match(migration, /when 'restore_task'/);
-  assert.match(migration, /TASK_RESTORED/);
-  assert.match(migration, /'canRestore'/);
-  assert.match(migration, /set status = 'OPEN'/);
-  assert.match(migration, /archived_at = null/);
-  assert.match(migration, /archived_by = null/);
-  assert.match(
-    migration,
-    /task_can_reopen_or_archive\(v_actor, v_id\)/
-  );
-
-  assert.match(tasks, /async function restoreTask\(task\)/);
-  assert.match(tasks, /call\("restore_task"/);
-  assert.match(tasks, /data-restore-task=/);
-  assert.match(tasks, />Wiederherstellen<\/button>/);
-  assert.doesNotMatch(tasks, /value: "RESTORE"/);
-
-  assert.match(
-    css,
-    /\.v4-task-card\[data-status="ARCHIVED"\] \.v4-card-actions/
-  );
-  assert.doesNotMatch(
-    css,
-    /\.v4-task-card\[data-status="ARCHIVED"\] \.v4-card-actions\{\s*display:none/
-  );
-});
-
-test("contribution workflow is permissioned and ledger-backed", async () => {
-  const migration = await read(
-    "supabase/migrations/20260720234500_add_contribution_management.sql"
-  );
-  const fanclub = await read("js/modules/fanclub.js");
-  const css = await read("css/v4-core.css");
-
-  for (const table of [
-    "contribution_seasons",
-    "contribution_classes",
-    "member_contributions",
-    "finance_accounts",
-    "contribution_payment_reports",
-    "finance_entries"
-  ]) {
-    assert.match(
-      migration,
-      new RegExp(`create table app_fanclub\\.${table}`)
-    );
-  }
-
-  assert.match(migration, /'KASSE',[\s\S]+?'Kasse',[\s\S]+?'CASH'/);
-  assert.match(migration, /can_report_contribution_payment/);
-  assert.match(migration, /when 'save_contribution_season'/);
-  assert.match(migration, /when 'save_contribution_class'/);
-  assert.match(migration, /when 'save_member_contribution'/);
-  assert.match(migration, /when 'report_contribution_payment'/);
-  assert.match(migration, /when 'review_contribution_payment'/);
-  assert.match(migration, /CONTRIBUTION_PAYMENT_CONFIRMED/);
-  assert.match(migration, /insert into app_fanclub\.finance_entries/);
-  assert.doesNotMatch(migration, /update app_fanclub\.finance_entries/i);
-  assert.doesNotMatch(migration, /delete from app_fanclub\.finance_entries/i);
-
-  assert.match(fanclub, /\["contributions", "Beiträge"\]/);
-  assert.match(fanclub, /call\("save_contribution_season"/);
-  assert.match(fanclub, /call\("save_contribution_class"/);
-  assert.match(fanclub, /call\("save_member_contribution"/);
-  assert.match(fanclub, /call\("report_contribution_payment"/);
-  assert.match(fanclub, /call\("review_contribution_payment"/);
-  assert.match(fanclub, /account\.code === "KASSE"/);
-  assert.match(fanclub, /optionList\(PAYMENT_METHODS, "CASH"\)/);
-  assert.match(fanclub, /Number\(contribution\.reportableAmount\) > 0/);
-
-  assert.match(css, /V4 Core: Beitragsverwaltung/);
-});
-
-test("finance ledger is immutable, transferable, reversible and statement-ready", async () => {
-  const migration = await read(
-    "supabase/migrations/20260721013000_add_finance_task_profile_workflows.sql"
-  );
-  const fanclub = await read("js/modules/fanclub.js");
-  const css = await read("css/v4-core.css");
-
-  assert.match(migration, /add column operation_id uuid not null/);
-  assert.match(migration, /add column reverses_entry_id uuid/);
-  assert.match(migration, /REVERSED/);
-  assert.match(migration, /create or replace function app_private\.api_save_finance_account/);
-  assert.match(migration, /create or replace function app_private\.api_delete_finance_account/);
-  assert.match(migration, /create or replace function app_private\.api_create_finance_entry/);
-  assert.match(migration, /create or replace function app_private\.api_transfer_finance/);
-  assert.match(migration, /create or replace function app_private\.api_reverse_finance_entry/);
-  assert.match(migration, /FINANCE_TRANSFER_CREATED/);
-  assert.match(migration, /FINANCE_TRANSFER_REVERSED/);
-  assert.match(migration, /FINANCE_ENTRY_REVERSED/);
-  assert.match(
-    migration,
-    /Das Konto wurde bereits verwendet und kann nur deaktiviert werden/
-  );
-  assert.doesNotMatch(migration, /update app_fanclub\.finance_entries/i);
-  assert.doesNotMatch(migration, /delete from app_fanclub\.finance_entries/i);
-
-  assert.match(fanclub, /\["cashbook", "Kassenbuch"\]/);
-  assert.match(fanclub, /call\("save_finance_account"/);
-  assert.match(fanclub, /call\("delete_finance_account"/);
-  assert.match(fanclub, /call\("create_finance_entry"/);
-  assert.match(fanclub, /call\("transfer_finance"/);
-  assert.match(fanclub, /call\("reverse_finance_entry"/);
-  assert.match(fanclub, /data-reverse-finance-entry=/);
-  assert.match(fanclub, /data-view-finance-account=/);
-  assert.match(fanclub, /function accountStatementEntries\(accountId\)/);
-  assert.match(fanclub, /Kontoauszug/);
-  assert.match(fanclub, /runningBalance/);
-  assert.doesNotMatch(migration, /limit 1000/i);
-  assert.doesNotMatch(
-    fanclub,
-    /data-edit-finance-entry|data-delete-finance-entry/
-  );
-
-  assert.match(
-    css,
-    /V4 Core: Konten, Kassenbuch und Aufgabenbereinigung/
-  );
 });
 
 test("admins can permanently delete archived tasks before deleting a team", async () => {
@@ -502,39 +282,198 @@ test("admins can permanently delete archived tasks before deleting a team", asyn
   assert.match(teams, /navigate\("tasks", params\)/);
 });
 
-test("portal shell is compact, safe-area aware and profile-managed", async () => {
+test("task workflow remains revision-safe and archived without hard delete", async () => {
+  const migration = await read(
+    "supabase/migrations/20260720201500_harden_task_workflow.sql"
+  );
+  const tasks = await read("js/modules/tasks.js");
+  const common = await read("js/modules/common.js");
+
+  assert.match(migration, /add column if not exists archived_by uuid/);
+  assert.match(
+    migration,
+    /check \(status in \('OPEN', 'IN_PROGRESS', 'DONE', 'ARCHIVED'\)\)/
+  );
+  assert.match(
+    migration,
+    /create or replace function app_private\.api_archive_task/
+  );
+  assert.match(migration, /when 'archive_task'/);
+  assert.match(migration, /TASK_REOPENED/);
+  assert.match(migration, /Die Aufgabe wurde zwischenzeitlich geändert/);
+  assert.doesNotMatch(migration, /delete from app_modules\.tasks/i);
+
+  assert.match(tasks, /Meine Aufgaben/);
+  assert.match(tasks, /Teamaufgaben/);
+  assert.match(tasks, /Vorstandsaufgaben/);
+  assert.match(tasks, /call\("archive_task"/);
+  assert.match(tasks, /revision: task\.revision/);
+  assert.match(tasks, /ownNoteRevision/);
+  assert.doesNotMatch(tasks, /WAITING|Warten/);
+  assert.doesNotMatch(common, /"WAITING"/);
+});
+
+test("archived tasks remain restorable through an audited action", async () => {
+  const migration = await read(
+    "supabase/migrations/20260720223000_restore_archived_tasks.sql"
+  );
+  const tasks = await read("js/modules/tasks.js");
+
+  assert.match(
+    migration,
+    /create or replace function app_private\.api_restore_task/
+  );
+  assert.match(migration, /when 'restore_task'/);
+  assert.match(migration, /TASK_RESTORED/);
+  assert.match(migration, /'canRestore'/);
+  assert.match(migration, /set status = 'OPEN'/);
+  assert.match(migration, /archived_at = null/);
+  assert.match(migration, /archived_by = null/);
+  assert.match(
+    migration,
+    /task_can_reopen_or_archive\(v_actor, v_id\)/
+  );
+
+  assert.match(tasks, /async function restoreTask\(task\)/);
+  assert.match(tasks, /call\("restore_task"/);
+  assert.match(tasks, /data-restore-task=/);
+  assert.match(tasks, />Wiederherstellen<\/button>/);
+  assert.doesNotMatch(tasks, /value: "RESTORE"/);
+});
+
+test("contribution workflow remains permissioned and ledger-backed", async () => {
+  const migration = await read(
+    "supabase/migrations/20260720234500_add_contribution_management.sql"
+  );
+  const fanclub = await read("js/modules/fanclub.js");
+
+  for (const table of [
+    "contribution_seasons",
+    "contribution_classes",
+    "member_contributions",
+    "finance_accounts",
+    "contribution_payment_reports",
+    "finance_entries"
+  ]) {
+    assert.match(
+      migration,
+      new RegExp(`create table app_fanclub\\.${table}`)
+    );
+  }
+
+  assert.match(migration, /'KASSE',[\s\S]+?'Kasse',[\s\S]+?'CASH'/);
+  assert.match(migration, /can_report_contribution_payment/);
+  assert.match(migration, /when 'save_contribution_season'/);
+  assert.match(migration, /when 'save_contribution_class'/);
+  assert.match(migration, /when 'save_member_contribution'/);
+  assert.match(migration, /when 'report_contribution_payment'/);
+  assert.match(migration, /when 'review_contribution_payment'/);
+  assert.match(migration, /CONTRIBUTION_PAYMENT_CONFIRMED/);
+  assert.match(migration, /insert into app_fanclub\.finance_entries/);
+  assert.doesNotMatch(migration, /update app_fanclub\.finance_entries/i);
+  assert.doesNotMatch(migration, /delete from app_fanclub\.finance_entries/i);
+
+  assert.match(fanclub, /\["contributions", "Beiträge"\]/);
+  assert.match(fanclub, /call\("save_contribution_season"/);
+  assert.match(fanclub, /call\("save_contribution_class"/);
+  assert.match(fanclub, /call\("save_member_contribution"/);
+  assert.match(fanclub, /call\("report_contribution_payment"/);
+  assert.match(fanclub, /call\("review_contribution_payment"/);
+  assert.match(fanclub, /account\.code === "KASSE"/);
+  assert.match(fanclub, /optionList\(PAYMENT_METHODS, "CASH"\)/);
+  assert.match(fanclub, /Number\(contribution\.reportableAmount\) > 0/);
+});
+
+test("finance ledger remains immutable transferable reversible and statement-ready", async () => {
   const migration = await read(
     "supabase/migrations/20260721013000_add_finance_task_profile_workflows.sql"
+  );
+  const fanclub = await read("js/modules/fanclub.js");
+
+  assert.match(migration, /add column operation_id uuid not null/);
+  assert.match(migration, /add column reverses_entry_id uuid/);
+  assert.match(migration, /REVERSED/);
+  assert.match(
+    migration,
+    /create or replace function app_private\.api_save_finance_account/
+  );
+  assert.match(
+    migration,
+    /create or replace function app_private\.api_delete_finance_account/
+  );
+  assert.match(
+    migration,
+    /create or replace function app_private\.api_create_finance_entry/
+  );
+  assert.match(
+    migration,
+    /create or replace function app_private\.api_transfer_finance/
+  );
+  assert.match(
+    migration,
+    /create or replace function app_private\.api_reverse_finance_entry/
+  );
+  assert.match(migration, /FINANCE_TRANSFER_CREATED/);
+  assert.match(migration, /FINANCE_TRANSFER_REVERSED/);
+  assert.match(migration, /FINANCE_ENTRY_REVERSED/);
+  assert.match(
+    migration,
+    /Das Konto wurde bereits verwendet und kann nur deaktiviert werden/
+  );
+  assert.doesNotMatch(migration, /update app_fanclub\.finance_entries/i);
+  assert.doesNotMatch(migration, /delete from app_fanclub\.finance_entries/i);
+  assert.doesNotMatch(migration, /limit 1000/i);
+
+  assert.match(fanclub, /\["cashbook", "Kassenbuch"\]/);
+  assert.match(fanclub, /call\("save_finance_account"/);
+  assert.match(fanclub, /call\("delete_finance_account"/);
+  assert.match(fanclub, /call\("create_finance_entry"/);
+  assert.match(fanclub, /call\("transfer_finance"/);
+  assert.match(fanclub, /call\("reverse_finance_entry"/);
+  assert.match(fanclub, /data-reverse-finance-entry=/);
+  assert.match(fanclub, /data-view-finance-account=/);
+  assert.match(fanclub, /function accountStatementEntries\(accountId\)/);
+  assert.match(fanclub, /Kontoauszug/);
+  assert.match(fanclub, /runningBalance/);
+  assert.doesNotMatch(
+    fanclub,
+    /data-edit-finance-entry|data-delete-finance-entry/
+  );
+});
+
+test("portal profile privacy and account creation contracts remain intact", async () => {
+  const profileMigration = await read(
+    "supabase/migrations/20260721013000_add_finance_task_profile_workflows.sql"
+  );
+  const accountMigration = await read(
+    "supabase/migrations/20260721095000_add_finance_account_opening_balance.sql"
   );
   const api = await read("js/api.js");
   const app = await read("js/app.js");
   const ui = await read("js/ui.js");
   const admin = await read("js/modules/admin.js");
+  const teams = await read("js/modules/teams.js");
+  const fanclub = await read("js/modules/fanclub.js");
   const topbar = await read("components/topbar.html");
   const sidebar = await read("components/sidebar.html");
   const index = await read("index.html");
-  const css = await read("css/v4-core.css");
-  const dashboard = await read("pages/dashboard.html");
-  const tasksPage = await read("pages/tasks.html");
-  const fanclubPage = await read("pages/fanclub.html");
-  const teamsPage = await read("pages/teams.html");
-  const adminPage = await read("pages/admin.html");
+  const login = await read("pages/login.html");
 
   assert.match(
-    migration,
+    profileMigration,
     /create table app_portal\.profile_change_requests/
   );
   assert.match(
-    migration,
+    profileMigration,
     /create or replace function app_private\.api_submit_profile_change_request/
   );
   assert.match(
-    migration,
+    profileMigration,
     /create or replace function app_private\.api_review_profile_change_request/
   );
-  assert.match(migration, /PROFILE_CHANGE_REQUEST_APPROVED/);
-  assert.match(migration, /when 'submit_profile_change_request'/);
-  assert.match(migration, /when 'review_profile_change_request'/);
+  assert.match(profileMigration, /PROFILE_CHANGE_REQUEST_APPROVED/);
+  assert.match(profileMigration, /when 'submit_profile_change_request'/);
+  assert.match(profileMigration, /when 'review_profile_change_request'/);
 
   assert.match(api, /pd-api-state/);
   assert.match(api, /pendingRequests/);
@@ -545,119 +484,68 @@ test("portal shell is compact, safe-area aware and profile-managed", async () =>
   assert.match(ui, /submit_profile_change_request/);
   assert.match(ui, /data-user-logout/);
   assert.match(ui, /body\.classList\.toggle\(\s*"overlay-open"/);
+  assert.doesNotMatch(ui, /profileField\("Portal-ID"/);
+  assert.doesNotMatch(ui, /member\.memberCode/);
 
   assert.match(admin, /\["profileChanges", "Datenänderungen"\]/);
   assert.match(admin, /review_profile_change_request/);
   assert.match(admin, /renderProfileChanges/);
+  assert.doesNotMatch(teams, /user\.userCode|member\.userCode/);
 
+  assert.match(topbar, /id="portalHomeButton"/);
   assert.match(topbar, /id="connectionStatus"/);
   assert.match(topbar, /id="userAvatarImage"/);
   assert.doesNotMatch(topbar, /logoutButton|Abmelden/);
   assert.match(sidebar, /mobile-sidebar-close/);
   assert.doesNotMatch(sidebar, /R7\.1|Milestone 4/);
 
+  assert.match(index, /id="mobileNav"/);
+  assert.doesNotMatch(index, /id="mobileMorePanel"|id="mobileMoreBackdrop"/);
   assert.doesNotMatch(index, /id="buildLabel"/);
   assert.doesNotMatch(index, /mobileLogoutButton|id="logoutButton"/);
 
-  for (const source of [
-    dashboard,
-    tasksPage,
-    fanclubPage,
-    teamsPage,
-    adminPage
-  ]) {
-    assert.doesNotMatch(
-      source,
-      /dashboard-hero|p2-module-hero|p3-module-hero/
-    );
-  }
-
-  assert.doesNotMatch(dashboard, /Sicher verbunden/);
-  assert.match(css, /height:100dvh/);
-  assert.match(css, /overflow:hidden!important/);
-  assert.match(css, /width:min\(240px,65vw\)!important/);
-  assert.match(css, /linear-gradient\(145deg,#f2f5f9/);
-  assert.match(css, /body\.overlay-open \.view/);
-  assert.match(css, /env\(safe-area-inset-top\)/);
-});
-
-test("mobile UI correction removes the bottom bar and separates profile editing", async () => {
-  const html = await read("index.html");
-  const home = await read("pages/home.html");
-  const ui = await read("js/ui.js");
-  const css = await read("css/v4-core.css");
-
-  assert.equal(html.includes('id="mobileNav"'), false);
-  assert.equal(html.includes('id="mobileMorePanel"'), false);
-  assert.equal(home.includes("public-welcome-hero"), false);
-  assert.equal(home.includes("publicLogo"), false);
-  assert.equal(home.includes("public-home-card"), true);
-  assert.equal(ui.includes("data-open-profile-details"), true);
-  assert.equal(ui.includes("function openProfileDetails()"), true);
-  assert.equal(ui.includes("user-menu-footer"), true);
-  assert.equal(ui.includes("data-user-logout"), true);
-
-  const menuStart = ui.indexOf("function renderUserMenu()");
-  const menuEnd = ui.indexOf("function updateOverlayLock()", menuStart);
-  assert.equal(menuStart >= 0, true);
-  assert.equal(menuEnd > menuStart, true);
-
-  const menuSource = ui.slice(menuStart, menuEnd);
-  assert.equal(menuSource.includes("directProfileForm"), false);
-  assert.equal(menuSource.includes("memberChangeRequestForm"), false);
-
-  assert.equal(
-    css.includes("gezielte UI-Korrektur 2026-07-21"),
-    true
-  );
-  assert.equal(css.includes(".mobile-bottom-nav,"), true);
-  assert.equal(css.includes(".mobile-more-panel{"), true);
-  assert.equal(css.includes("display:none!important"), true);
-  assert.equal(
-    css.includes("linear-gradient(135deg,#102a46"),
-    true
-  );
-});
-
-test("targeted portal privacy dashboard login and finance fixes are enforced", async () => {
-  const migration = await read(
-    "supabase/migrations/20260721095000_add_finance_account_opening_balance.sql"
-  );
-  const topbar = await read("components/topbar.html");
-  const ui = await read("js/ui.js");
-  const teams = await read("js/modules/teams.js");
-  const fanclub = await read("js/modules/fanclub.js");
-  const login = await read("pages/login.html");
-  const css = await read("css/v4-core.css");
-
-  assert.equal(topbar.includes('id="portalHomeButton"'), true);
-  assert.equal(ui.includes('portalHomeButton.hidden = publicArea'), true);
-  assert.equal(ui.includes('profileField("Portal-ID"'), false);
-  assert.equal(ui.includes("member.memberCode"), false);
-  assert.equal(teams.includes("user.userCode"), false);
-  assert.equal(teams.includes("member.userCode"), false);
+  assert.match(login, /public-login-inline/);
+  assert.doesNotMatch(login, /auth-page|auth-brand-panel|auth-card-wrap/);
+  assert.match(login, /data-route="home"/);
 
   const accountStart = fanclub.indexOf("function accountForm(account = {})");
-  const accountEnd = fanclub.indexOf("function openFinanceAccount", accountStart);
+  const accountEnd = fanclub.indexOf(
+    "function openFinanceAccount",
+    accountStart
+  );
   assert.equal(accountStart >= 0, true);
   assert.equal(accountEnd > accountStart, true);
+
   const accountFormSource = fanclub.slice(accountStart, accountEnd);
-  assert.equal(accountFormSource.includes('name="code"'), false);
-  assert.equal(accountFormSource.includes('name="openingBalance"'), true);
-  assert.equal(accountFormSource.includes('name="openingBalanceDate"'), true);
-  assert.equal(accountFormSource.includes('placeholder="Bankkonto"'), false);
-  assert.equal(fanclub.includes("<small>${escapeHtml(account.code)}</small>"), false);
-  assert.equal(fanclub.includes('OPENING_BALANCE: "Startsaldo"'), true);
+  assert.doesNotMatch(accountFormSource, /name="code"/);
+  assert.match(accountFormSource, /name="openingBalance"/);
+  assert.match(accountFormSource, /name="openingBalanceDate"/);
+  assert.doesNotMatch(accountFormSource, /placeholder="Bankkonto"/);
+  assert.doesNotMatch(
+    fanclub,
+    /<small>\$\{escapeHtml\(account\.code\)\}<\/small>/
+  );
+  assert.match(fanclub, /OPENING_BALANCE: "Startsaldo"/);
 
-  assert.equal(migration.includes("'KONTO_'"), true);
-  assert.equal(migration.includes("'OPENING_BALANCE'"), true);
-  assert.equal(migration.includes("'Startsaldo'"), true);
-  assert.equal(migration.includes("set name = v_name"), true);
-  assert.equal(migration.includes("set code = v_code"), false);
+  assert.match(accountMigration, /'KONTO_'/);
+  assert.match(accountMigration, /'OPENING_BALANCE'/);
+  assert.match(accountMigration, /'Startsaldo'/);
+  assert.match(accountMigration, /set name = v_name/);
+  assert.doesNotMatch(accountMigration, /set code = v_code/);
+});
 
-  assert.equal(login.includes("public-login-page"), true);
-  assert.equal(login.includes("auth-brand-panel"), false);
-  assert.equal(login.includes('data-route="home"'), true);
-  assert.equal(css.includes("gezielte Portal-, Datenschutz- und Finanzkorrekturen"), true);
-  assert.equal(css.includes("repeat(auto-fit,minmax(175px,1fr))"), true);
+test("mobile navigation keeps the bottom bar and More opens the full sidebar", async () => {
+  const index = await read("index.html");
+  const ui = await read("js/ui.js");
+
+  assert.match(index, /id="mobileNav"/);
+  assert.doesNotMatch(index, /id="mobileMorePanel"|id="mobileMoreBackdrop"/);
+  assert.match(ui, /MOBILE_PRIMARY/);
+  assert.match(ui, /more\.id = "mobileMoreToggle"/);
+  assert.match(ui, /event\.target\.closest\("#mobileMoreToggle"\)/);
+  assert.match(
+    ui,
+    /event\.target\.closest\("#mobileMoreToggle"\)[\s\S]*?openMobileMenu\(\)/
+  );
+  assert.doesNotMatch(ui, /openMobileMore|closeMobileMore|mobileMoreRoutes/);
 });

@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "node scripts/serve.mjs",
     "runtime:local": "node scripts/write-runtime-config.mjs --url http://127.0.0.1:54321 --environment LOCAL",
-    "test": "node --test tests/*.test.mjs",
+    "test": "node scripts/check-frontend-foundation.mjs && node --test tests/*.test.mjs",
     "check:static": "python tests/static_check.py",
     "supabase:version": "supabase --version",
     "supabase:status": "supabase status",
@@ -15,7 +15,8 @@
     "supabase:stop": "supabase stop",
     "supabase:db:reset": "supabase db reset",
     "supabase:db:push:dry": "supabase db push --linked --dry-run",
-    "build": "node scripts/build-static.mjs"
+    "build": "node scripts/build-static.mjs",
+    "check:frontend": "node scripts/check-frontend-foundation.mjs"
   },
   "devDependencies": {
     "supabase": "2.109.1"
