@@ -80,7 +80,9 @@ test("official Google Identity Services replaces the manual OAuth window", async
   assert.equal(googleSignIn.includes('theme: "filled_blue"'), true);
   assert.equal(googleSignIn.includes('shape: "pill"'), true);
   assert.equal(googleSignIn.includes("width: 320"), true);
-  assert.equal(googleSignIn.includes("use_fedcm_for_prompt: true"), true);
+  assert.equal(googleSignIn.includes("use_fedcm_for_button: true"), true);
+  assert.equal(googleSignIn.includes("button_auto_select: false"), true);
+  assert.equal(googleSignIn.includes("use_fedcm_for_prompt"), false);
   assert.equal(googleSignIn.includes('crypto.subtle.digest("SHA-256"'), true);
 
   assert.equal(pages.includes("renderGoogleSignInButton"), true);
@@ -97,9 +99,9 @@ test("official Google Identity Services replaces the manual OAuth window", async
   assert.equal(index.includes("https://accounts.google.com"), true);
   assert.equal(worker.includes("./js/google-signin.js"), true);
   assert.equal(worker.includes("./js/oauth-return-guard.js"), false);
-  assert.equal(index.includes("20260721-google-identity-1"), true);
+  assert.equal(index.includes("20260721-google-fedcm-button-1"), true);
   assert.equal(
-    worker.includes("pd-portal-v4-google-identity-20260721-1"),
+    worker.includes("pd-portal-v4-google-fedcm-button-20260721-1"),
     true
   );
 });

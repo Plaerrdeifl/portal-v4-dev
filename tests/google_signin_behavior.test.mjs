@@ -58,7 +58,12 @@ test("Google Identity Services is initialized once with popup UX and a nonce", a
   assert.equal(initializeOptions.client_id, "123456789-example.apps.googleusercontent.com");
   assert.equal(initializeOptions.ux_mode, "popup");
   assert.equal(initializeOptions.auto_select, false);
-  assert.equal(initializeOptions.use_fedcm_for_prompt, true);
+  assert.equal(initializeOptions.use_fedcm_for_button, true);
+  assert.equal(initializeOptions.button_auto_select, false);
+  assert.equal(
+    Object.hasOwn(initializeOptions, "use_fedcm_for_prompt"),
+    false
+  );
   assert.match(initializeOptions.nonce, /^[a-f0-9]{64}$/);
 
   assert.equal(renderOptions.theme, "filled_blue");

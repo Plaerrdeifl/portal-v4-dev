@@ -106,7 +106,8 @@ async function initializeGoogleIdentity(clientId, onCredential) {
       nonce: noncePair.hashedNonce,
       auto_select: false,
       itp_support: true,
-      use_fedcm_for_prompt: true
+      use_fedcm_for_button: true,
+      button_auto_select: false
     });
 
     initializedClientId = normalizedClientId;

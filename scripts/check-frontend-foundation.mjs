@@ -141,11 +141,18 @@ for (const required of [
   "https://accounts.google.com/gsi/client",
   'ux_mode: "popup"',
   "renderButton",
-  "use_fedcm_for_prompt: true"
+  "use_fedcm_for_button: true",
+  "button_auto_select: false"
 ]) {
   if (!googleSignIn.includes(required)) {
     throw new Error(`Google Identity Services unvollständig: ${required}`);
   }
+}
+
+if (googleSignIn.includes("use_fedcm_for_prompt")) {
+  throw new Error(
+    "Der veraltete FedCM-Prompt-Schalter darf nicht verwendet werden."
+  );
 }
 
 if (
