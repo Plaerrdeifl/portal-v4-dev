@@ -87,10 +87,14 @@ async function hydrateLogin() {
             setStatus("Google-Anmeldung wird sicher geprüft …");
 
             try {
-              auth.rememberPostLoginRoute("#/dashboard");
-              await auth.signInWithGoogleIdToken(
+              const nextState = await auth.signInWithGoogleIdToken(
                 response?.credential,
                 nonce
+              );
+              navigate(
+                nextState.status === "ACTIVE" ? "dashboard" : "profile",
+                null,
+                true
               );
             } catch (error) {
               showToast(

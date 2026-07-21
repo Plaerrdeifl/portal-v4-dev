@@ -24,6 +24,7 @@ import {
 let renderSequence = 0;
 let authEventQueued = false;
 let apiActivity = api.activity();
+let authTransitionActive = false;
 
 function connectionState() {
   const current = auth.current();
@@ -57,6 +58,19 @@ function connectionState() {
   }
 
   return { label: "Lädt …", type: "loading" };
+}
+
+function setAuthTransition(active, status = "Portal wird vorbereitet …") {
+  authTransitionActive = Boolean(active);
+  document.documentElement.dataset.authReady = active ? "false" : "true";
+
+  const splash = document.getElementById("appSplash");
+  if (!splash) return;
+
+  splash.hidden = !active;
+  splash.setAttribute("aria-busy", active ? "true" : "false");
+  const statusNode = document.getElementById("splashStatus");
+  if (statusNode && status) statusNode.textContent = status;
 }
 
 function updateChrome() {
@@ -155,7 +169,7 @@ async function renderRoute() {
 }
 
 function handleAuthChange() {
-  if (authEventQueued) return;
+  if (authTransitionActive || authEventQueued) return;
 
   authEventQueued = true;
 
@@ -226,9 +240,13 @@ async function refreshCurrentView() {
 }
 
 async function logout() {
+  setAuthTransition(true, "Abmeldung wird abgeschlossen …");
+
   try {
+    history.replaceState(null, "", "#/home");
     await auth.logout();
-    navigate("home", null, true);
+    updateChrome();
+    await renderRoute();
     showToast("Du wurdest abgemeldet.", "success");
   } catch (error) {
     showToast(
@@ -236,10 +254,15 @@ async function logout() {
       "error",
       6500
     );
+  } finally {
+    setAuthTransition(false);
   }
 }
 
 async function bootstrap() {
+  setAuthTransition(true, "Portalstatus wird geprüft …");
+  const hadInitialHash = Boolean(location.hash);
+
   await mountComponents();
 
   bindGlobalUi({
@@ -269,7 +292,6 @@ async function bootstrap() {
   );
 
   window.addEventListener("hashchange", renderRoute);
-  window.addEventListener("pd-auth-change", handleAuthChange);
   window.addEventListener("pd-api-state", event => {
     apiActivity = event.detail || api.activity();
     const connection = connectionState();
@@ -279,23 +301,25 @@ async function bootstrap() {
   window.addEventListener("online", refreshCurrentView);
   window.addEventListener("offline", updateChrome);
 
-  if (!location.hash) {
-    history.replaceState(null, "", "#/home");
+  await auth.initialize();
+  window.addEventListener("pd-auth-change", handleAuthChange);
+
+  if (!hadInitialHash) {
+    const current = auth.current();
+    const initialRoute = !current.authenticated
+      ? "home"
+      : current.status === "ACTIVE"
+        ? "dashboard"
+        : "profile";
+    history.replaceState(null, "", `#/${initialRoute}`);
   }
 
   await renderRoute();
-
-  window.setTimeout(() => {
-    auth.initialize().catch(error => {
-      console.error(
-        "Supabase Auth konnte nicht initialisiert werden",
-        error
-      );
-    });
-  }, 80);
+  setAuthTransition(false);
 }
 
 bootstrap().catch(error => {
+  setAuthTransition(false);
   console.error(error);
   showToast(
     error?.message || "Portalstart fehlgeschlagen.",

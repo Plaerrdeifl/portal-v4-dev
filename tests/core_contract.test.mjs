@@ -43,7 +43,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260720223000_restore_archived_tasks.sql",
     "20260720234500_add_contribution_management.sql",
     "20260721013000_add_finance_task_profile_workflows.sql",
-    "20260721095000_add_finance_account_opening_balance.sql"
+    "20260721095000_add_finance_account_opening_balance.sql",
+    "20260721193000_finalize_fanclub_review.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
@@ -430,8 +431,8 @@ test("finance ledger remains immutable transferable reversible and statement-rea
   assert.match(fanclub, /call\("create_finance_entry"/);
   assert.match(fanclub, /call\("transfer_finance"/);
   assert.match(fanclub, /call\("reverse_finance_entry"/);
-  assert.match(fanclub, /data-reverse-finance-entry=/);
-  assert.match(fanclub, /data-view-finance-account=/);
+  assert.match(fanclub, /data-dialog-reverse-entry=/);
+  assert.match(fanclub, /data-open-finance-account=/);
   assert.match(fanclub, /function accountStatementEntries\(accountId\)/);
   assert.match(fanclub, /Kontoauszug/);
   assert.match(fanclub, /runningBalance/);

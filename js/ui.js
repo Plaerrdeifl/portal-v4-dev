@@ -169,9 +169,20 @@ export function visibleRouteEntries() {
 
   if (auth.requiresProfile()) return [["profile", routes().profile]];
 
-  return fixedAuthenticatedOrder()
+  const entries = fixedAuthenticatedOrder()
     .filter(key => auth.canAccessRoute(key))
     .map(key => [key, routes()[key]]);
+
+  entries.push([
+    "home",
+    {
+      ...routes().home,
+      title: "Zur Startseite",
+      subtitle: "Öffentlichen Bereich öffnen"
+    }
+  ]);
+
+  return entries;
 }
 
 function createRouteButton(key, route, className = "") {

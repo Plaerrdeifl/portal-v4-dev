@@ -11,6 +11,7 @@ import {
   openDialog,
   optionList,
   runWrite,
+  showToast,
   statusBadge
 } from "./common.js";
 
@@ -231,9 +232,15 @@ function tabs() {
   });
 }
 
+function memberStatusBadge(status) {
+  const active = String(status || "").toUpperCase() === "ACTIVE";
+  return `<span class="badge ${active ? "success" : "neutral"}">${active ? "Aktiv" : "Inaktiv"}</span>`;
+}
+
 function memberForm(member = {}) {
   return `<form class="form-grid">
     <input type="hidden" name="id" value="${escapeAttr(member.id || "")}">
+    <input type="hidden" name="revision" value="${escapeAttr(member.revision || "")}">
     <label>Vorname<input name="firstName" required maxlength="160" value="${escapeAttr(member.firstName || "")}"></label>
     <label>Nachname<input name="lastName" required maxlength="160" value="${escapeAttr(member.lastName || "")}"></label>
     <label>E-Mail<input name="email" type="email" maxlength="320" value="${escapeAttr(member.email || "")}"></label>
@@ -252,23 +259,60 @@ function memberForm(member = {}) {
   </form>`;
 }
 
-function openMember(member = null) {
+function memberDetailMarkup(member) {
+  const address = [
+    [member.street, member.houseNumber].filter(Boolean).join(" "),
+    [member.postalCode, member.city].filter(Boolean).join(" ")
+  ].filter(Boolean).join(", ") || "–";
+
+  return `<div class="v4-detail-grid v4-member-detail-grid">
+    <div><span>Vorname</span><strong>${escapeHtml(member.firstName || "–")}</strong></div>
+    <div><span>Nachname</span><strong>${escapeHtml(member.lastName || "–")}</strong></div>
+    <div><span>E-Mail</span><strong>${escapeHtml(member.email || "–")}</strong></div>
+    <div><span>Telefon</span><strong>${escapeHtml(member.phone || "–")}</strong></div>
+    <div class="full"><span>Adresse</span><strong>${escapeHtml(address)}</strong></div>
+    <div><span>Mitglied seit</span><strong>${escapeHtml(fmtDate(member.joinedOn))}</strong></div>
+    <div><span>Austritt</span><strong>${escapeHtml(fmtDate(member.leftOn))}</strong></div>
+    <div><span>Status</span><strong>${memberStatusBadge(member.status)}</strong></div>
+    <div class="full"><span>Notizen</span><strong class="v4-preserve-lines">${escapeHtml(member.notes || "–")}</strong></div>
+  </div>
+  <div class="dialog-actions v4-detail-actions">
+    <button class="button primary" type="button" data-edit-member-detail>Bearbeiten</button>
+  </div>`;
+}
+
+function openMemberEditor(member = null) {
+  const existing = Boolean(member?.id);
   openDialog({
-    title: member ? `${member.memberCode} bearbeiten` : "Mitglied anlegen",
+    title: existing ? `${memberName(member)} bearbeiten` : "Mitglied anlegen",
     kicker: "Fanclub",
     body: memberForm(member || {}),
+    submitLabel: "Speichern",
     onSubmit: async values => {
       snapshot = await runWrite(
         () => call("save_member", values),
-        member ? "Mitglied wurde aktualisiert." : "Mitglied wurde angelegt."
+        existing ? "Mitglied wurde aktualisiert." : "Mitglied wurde angelegt."
       );
       renderAll();
     }
   });
 }
 
+async function openMemberDetail(member) {
+  const detail = await call("member_detail", { id: member.id });
+  const dialog = openDialog({
+    title: memberName(detail),
+    kicker: "Mitgliedsdaten",
+    body: memberDetailMarkup(detail)
+  });
+
+  dialog.querySelector("[data-edit-member-detail]")
+    ?.addEventListener("click", () => openMemberEditor(detail));
+}
+
 function renderMembers(panel) {
   const members = snapshot?.members || [];
+  const canViewDetails = Boolean(snapshot?.canViewMemberDetails);
 
   panel.innerHTML = `
     <div class="v4-toolbar v4-section-heading">
@@ -276,30 +320,33 @@ function renderMembers(panel) {
       ${snapshot?.canManageMembers ? '<button id="addMemberButton" class="button primary" type="button">Mitglied anlegen</button>' : ""}
     </div>
     ${members.length ? `
-      <div class="v4-table-wrap v4-desktop-table"><table class="v4-table"><thead><tr><th>Name</th><th>Kontakt</th><th>Ort</th><th>Status</th><th></th></tr></thead><tbody>${members.map(member => `<tr>
-        <td>${escapeHtml(memberName(member))}<small>${member.joinedOn ? `Seit ${escapeHtml(fmtDate(member.joinedOn))}` : ""}</small></td>
-        <td>${escapeHtml(member.email || "–")}<small>${escapeHtml(member.phone || "")}</small></td>
-        <td>${escapeHtml([member.postalCode, member.city].filter(Boolean).join(" ") || "–")}</td>
-        <td>${statusBadge(member.status)}</td>
-        <td>${snapshot.canManageMembers ? `<button class="button small secondary" type="button" data-edit-member="${escapeAttr(member.id)}">Bearbeiten</button>` : ""}</td>
+      <div class="v4-table-wrap v4-desktop-table"><table class="v4-table v4-member-table"><thead><tr><th>Name</th><th>Mitglied seit</th><th>Status</th></tr></thead><tbody>${members.map(member => `<tr>
+        <td class="v4-member-name-cell"><strong>${escapeHtml(memberName(member))}</strong>${canViewDetails ? `<button class="button small secondary" type="button" data-view-member="${escapeAttr(member.id)}">Anzeigen</button>` : ""}</td>
+        <td>${escapeHtml(fmtDate(member.joinedOn))}</td>
+        <td>${memberStatusBadge(member.status)}</td>
       </tr>`).join("")}</tbody></table></div>
-      <div class="v4-mobile-records" aria-label="Mitgliederliste">${members.map(member => `<article class="v4-mobile-record">
-        <div class="v4-mobile-record-head"><strong>${escapeHtml(memberName(member))}</strong>${statusBadge(member.status)}</div>
-        ${member.joinedOn ? `<small>Mitglied seit ${escapeHtml(fmtDate(member.joinedOn))}</small>` : ""}
-        <div class="v4-mobile-record-grid">
-          <div><span>E-Mail</span><strong>${escapeHtml(member.email || "–")}</strong></div>
-          <div><span>Telefon</span><strong>${escapeHtml(member.phone || "–")}</strong></div>
-          <div class="full"><span>Ort</span><strong>${escapeHtml([member.postalCode, member.city].filter(Boolean).join(" ") || "–")}</strong></div>
-        </div>
-        ${snapshot.canManageMembers ? `<button class="button secondary" type="button" data-edit-member="${escapeAttr(member.id)}">Bearbeiten</button>` : ""}
+      <div class="v4-mobile-records v4-member-mobile-list" aria-label="Mitgliederliste">${members.map(member => `<article class="v4-mobile-record v4-member-mobile-card">
+        <div class="v4-mobile-record-head"><strong>${escapeHtml(memberName(member))}</strong>${memberStatusBadge(member.status)}</div>
+        ${canViewDetails ? `<button class="button small secondary" type="button" data-view-member="${escapeAttr(member.id)}">Anzeigen</button>` : ""}
+        <small>Mitglied seit ${escapeHtml(fmtDate(member.joinedOn))}</small>
       </article>`).join("")}</div>
     ` : empty("Noch keine Mitglieder angelegt.")}`;
 
-  document.getElementById("addMemberButton")?.addEventListener("click", () => openMember());
-  panel.querySelectorAll("[data-edit-member]").forEach(button => {
-    button.addEventListener("click", () => {
-      const member = members.find(item => item.id === button.dataset.editMember);
-      if (member) openMember(member);
+  document.getElementById("addMemberButton")
+    ?.addEventListener("click", () => openMemberEditor());
+
+  panel.querySelectorAll("[data-view-member]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const member = members.find(item => item.id === button.dataset.viewMember);
+      if (!member) return;
+      button.disabled = true;
+      try {
+        await openMemberDetail(member);
+      } catch (error) {
+        showToast(error?.message || "Mitgliedsdaten konnten nicht geladen werden.", "error", 6500);
+      } finally {
+        button.disabled = false;
+      }
     });
   });
 }
@@ -313,23 +360,30 @@ function renderOffices(panel) {
     <div class="v4-toolbar v4-section-heading"><div><h3>Unser Vorstand</h3></div></div>
     <form id="officeForm" class="v4-office-grid v4-board-grid">
       ${offices.map((office, index) => {
-        const assigned = officeMember(office, members);
-        return `<article class="card v4-office-card">
+        const assignedName = office.memberName || "Unbesetzt";
+        return `<article class="card v4-office-card" data-office-code="${escapeAttr(office.code)}">
           <span class="v4-office-title">${escapeHtml(officeDisplayLabel(office, index))}</span>
           ${canManageBoard
             ? `<label><span class="sr-only">Besetzung auswählen</span><select name="${escapeAttr(office.code)}" data-office-select>${optionList(members.map(member => ({ value: member.id, label: memberName(member) })), office.memberId || "", "Unbesetzt")}</select></label>`
-            : `<strong class="v4-board-name">${escapeHtml(assigned ? memberName(assigned) : "Unbesetzt")}</strong>`}
-          <div class="v4-board-contact" data-board-phone>${boardContact(assigned)}</div>
+            : `<strong class="v4-board-name">${escapeHtml(assignedName)}</strong>`}
+          <div class="v4-board-contact" data-board-phone>${boardContact({ phone: office.memberPhone || "" })}</div>
         </article>`;
       }).join("")}
-      ${canManageBoard ? '<div class="full dialog-actions"><button class="button primary" type="submit">Vorstand speichern</button></div>' : ""}
+      ${canManageBoard ? '<div class="full v4-board-save"><button class="button primary" type="submit">Vorstand speichern</button></div>' : ""}
     </form>`;
 
   panel.querySelectorAll("[data-office-select]").forEach(select => {
-    select.addEventListener("change", () => {
-      const member = members.find(item => item.id === select.value) || null;
+    select.addEventListener("change", async () => {
       const contact = select.closest(".v4-office-card")?.querySelector("[data-board-phone]");
-      if (contact) contact.innerHTML = boardContact(member);
+      if (!contact) return;
+      contact.innerHTML = "";
+      if (!select.value) return;
+      try {
+        const detail = await call("member_detail", { id: select.value });
+        if (select.value === detail.id) contact.innerHTML = boardContact(detail);
+      } catch (error) {
+        console.error("Telefonnummer konnte nicht geladen werden", error);
+      }
     });
   });
 
@@ -359,11 +413,8 @@ function seasonForm(season = {}) {
   return `<form class="form-grid">
     <input type="hidden" name="id" value="${escapeAttr(season.id || "")}">
     <input type="hidden" name="revision" value="${escapeAttr(season.revision || "")}">
-    <label>Kurzcode
-      <input name="code" required maxlength="32" value="${escapeAttr(season.code || "")}" placeholder="2026">
-    </label>
-    <label>Bezeichnung
-      <input name="name" required maxlength="120" value="${escapeAttr(season.name || "")}" placeholder="Beitragsjahr 2026">
+    <label class="full">Bezeichnung
+      <input name="name" required maxlength="120" value="${escapeAttr(season.name || "")}" placeholder="Saison 2026/2027">
     </label>
     <label>Beginn
       <input name="startsOn" required type="date" value="${escapeAttr(season.startsOn || "")}">
@@ -402,10 +453,7 @@ function classForm(contributionClass = {}) {
   return `<form class="form-grid">
     <input type="hidden" name="id" value="${escapeAttr(contributionClass.id || "")}">
     <input type="hidden" name="revision" value="${escapeAttr(contributionClass.revision || "")}">
-    <label>Kurzcode
-      <input name="code" required maxlength="32" value="${escapeAttr(contributionClass.code || "")}" placeholder="STANDARD">
-    </label>
-    <label>Bezeichnung
+    <label class="full">Bezeichnung
       <input name="name" required maxlength="120" value="${escapeAttr(contributionClass.name || "")}" placeholder="Standardbeitrag">
     </label>
     <label>Betrag
@@ -459,7 +507,7 @@ function assignmentForm(member, contribution = {}) {
     <input type="hidden" name="seasonId" value="${escapeAttr(activeContributionSeasonId)}">
     <input type="hidden" name="memberId" value="${escapeAttr(member.id)}">
     <label class="full">Mitglied
-      <input value="${escapeAttr(`${member.memberCode} · ${memberName(member)}`)}" disabled>
+      <input value="${escapeAttr(`${memberName(member)}`)}" disabled>
     </label>
     <label class="full">Beitragsklasse
       <select name="contributionClassId" required>
@@ -511,7 +559,7 @@ function paymentForm(contribution) {
   return `<form class="form-grid">
     <input type="hidden" name="memberContributionId" value="${escapeAttr(contribution.id)}">
     <label class="full">Mitglied
-      <input value="${escapeAttr(`${contribution.memberCode} · ${contribution.memberName}`)}" disabled>
+      <input value="${escapeAttr(`${contribution.memberName}`)}" disabled>
     </label>
     <label>Betrag
       <input
@@ -564,7 +612,7 @@ function openPaymentReport(contribution) {
 
 async function confirmPayment(report) {
   const confirmed = await confirmAction(
-    `${money(report.amount)} für ${report.memberCode} als bezahlt bestätigen?`
+    `${money(report.amount)} für ${report.memberName} als bezahlt bestätigen?`
   );
   if (!confirmed) return;
 
@@ -593,7 +641,7 @@ function rejectPaymentForm(report) {
 function openRejectPayment(report) {
   openDialog({
     title: "Beitragszahlung ablehnen",
-    kicker: `${report.memberCode} · ${money(report.amount)}`,
+    kicker: `${report.memberName} · ${money(report.amount)}`,
     body: rejectPaymentForm(report),
     onSubmit: async values => {
       snapshot = await runWrite(
@@ -639,16 +687,100 @@ function renderContributionClasses() {
       </button>
     </div>
     ${classes.length ? `<div class="v4-table-wrap"><table class="v4-table">
-      <thead><tr><th>Code</th><th>Bezeichnung</th><th>Betrag</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Bezeichnung</th><th>Betrag</th><th>Status</th><th></th></tr></thead>
       <tbody>${classes.map(item => `<tr>
-        <td><strong>${escapeHtml(item.code)}</strong></td>
-        <td>${escapeHtml(item.name)}</td>
+        <td><strong>${escapeHtml(item.name)}</strong></td>
         <td class="v4-money">${escapeHtml(money(item.amount))}</td>
-        <td>${statusBadge(item.active ? "ACTIVE" : "INACTIVE")}</td>
+        <td>${memberStatusBadge(item.active ? "ACTIVE" : "INACTIVE")}</td>
         <td><button class="button small secondary" type="button" data-edit-contribution-class="${escapeAttr(item.id)}">Bearbeiten</button></td>
       </tr>`).join("")}</tbody>
     </table></div>` : empty("Noch keine Beitragsklassen angelegt.")}
   </section>`;
+}
+
+function contributionIsPaid(contribution) {
+  return Boolean(contribution)
+    && Number(contribution.openAmount || 0) <= 0
+    && Number(contribution.pendingAmount || 0) <= 0;
+}
+
+function contributionStatusIndicator(contribution) {
+  const paid = contributionIsPaid(contribution);
+  return `<span class="v4-contribution-status ${paid ? "is-paid" : "is-open"}">
+    <i aria-hidden="true"></i><span>${paid ? "Bezahlt" : "Offen"}</span>
+  </span>`;
+}
+
+function contributionDetailMarkup(member, contribution) {
+  return `<div class="v4-detail-grid">
+    <div class="full"><span>Beitragsjahr</span><strong>${escapeHtml(selectedSeason()?.name || "–")}</strong></div>
+    <div class="full"><span>Beitragsklasse</span><strong>${escapeHtml(contribution?.contributionClassName || "Nicht zugeordnet")}</strong></div>
+    <div><span>Soll</span><strong>${escapeHtml(money(contribution?.amountDue))}</strong></div>
+    <div><span>Bestätigt</span><strong>${escapeHtml(money(contribution?.paidAmount))}</strong></div>
+    <div><span>In Prüfung</span><strong>${escapeHtml(money(contribution?.pendingAmount))}</strong></div>
+    <div><span>Offen</span><strong>${escapeHtml(money(contribution?.openAmount))}</strong></div>
+    <div class="full"><span>Status</span><strong>${contributionStatusIndicator(contribution)}</strong></div>
+    ${contribution?.notes ? `<div class="full"><span>Notiz</span><strong class="v4-preserve-lines">${escapeHtml(contribution.notes)}</strong></div>` : ""}
+  </div>
+  <div class="dialog-actions v4-detail-actions">
+    ${snapshot.canManageFinance ? `<button class="button secondary" type="button" data-dialog-assign-contribution="${escapeAttr(member.id)}">${contribution ? "Zuordnung ändern" : "Beitrag zuordnen"}</button>` : ""}
+    ${contribution && snapshot.canReportPayments && Number(contribution.reportableAmount) > 0
+      ? `<button class="button primary" type="button" data-dialog-report-contribution="${escapeAttr(contribution.id)}">Zahlung melden</button>`
+      : ""}
+  </div>`;
+}
+
+function openContributionDetails(member) {
+  const contribution = contributionFor(member.id);
+  const dialog = openDialog({
+    title: memberName(member),
+    kicker: "Mitgliedsbeitrag",
+    body: contributionDetailMarkup(member, contribution)
+  });
+
+  dialog.querySelector("[data-dialog-assign-contribution]")
+    ?.addEventListener("click", () => openAssignment(member));
+
+  dialog.querySelector("[data-dialog-report-contribution]")
+    ?.addEventListener("click", () => {
+      if (contribution) openPaymentReport(contribution);
+    });
+}
+
+function paymentReportDetailMarkup(report) {
+  return `<div class="v4-detail-grid">
+    <div class="full"><span>Mitglied</span><strong>${escapeHtml(report.memberName)}</strong></div>
+    <div><span>Betrag</span><strong>${escapeHtml(money(report.amount))}</strong></div>
+    <div><span>Status</span><strong>${paymentStatusBadge(report.status)}</strong></div>
+    <div><span>Zahlungsdatum</span><strong>${escapeHtml(fmtDate(report.paidOn))}</strong></div>
+    <div><span>Konto</span><strong>${escapeHtml(report.accountName)}</strong></div>
+    <div><span>Zahlungsart</span><strong>${escapeHtml(report.paymentMethodLabel)}</strong></div>
+    <div><span>Gemeldet von</span><strong>${escapeHtml(report.reportedByName || "–")}</strong></div>
+    <div><span>Gemeldet am</span><strong>${escapeHtml(fmtDateTime(report.reportedAt))}</strong></div>
+    ${report.rejectionReason ? `<div class="full"><span>Ablehnungsgrund</span><strong>${escapeHtml(report.rejectionReason)}</strong></div>` : ""}
+    ${report.reversalReason ? `<div class="full"><span>Stornogrund</span><strong>${escapeHtml(report.reversalReason)}</strong></div>` : ""}
+  </div>
+  ${report.status === "PENDING" && snapshot.canManageFinance ? `<div class="dialog-actions v4-detail-actions">
+    <button class="button primary" type="button" data-dialog-confirm-payment="${escapeAttr(report.id)}">Bestätigen</button>
+    <button class="button danger" type="button" data-dialog-reject-payment="${escapeAttr(report.id)}">Ablehnen</button>
+  </div>` : ""}`;
+}
+
+function openPaymentReportDetails(report) {
+  const dialog = openDialog({
+    title: "Zahlungsmeldung",
+    kicker: selectedSeason()?.name || "Beiträge",
+    body: paymentReportDetailMarkup(report)
+  });
+
+  dialog.querySelector("[data-dialog-confirm-payment]")
+    ?.addEventListener("click", async () => {
+      await confirmPayment(report);
+      dialog.close();
+    });
+
+  dialog.querySelector("[data-dialog-reject-payment]")
+    ?.addEventListener("click", () => openRejectPayment(report));
 }
 
 function renderPaymentReports(reports) {
@@ -656,35 +788,26 @@ function renderPaymentReports(reports) {
     return empty("Für dieses Beitragsjahr liegen noch keine Zahlungsmeldungen vor.");
   }
 
-  return `<div class="v4-table-wrap"><table class="v4-table">
+  return `<div class="v4-table-wrap v4-desktop-table"><table class="v4-table">
     <thead><tr>
       <th>Mitglied</th>
       <th>Betrag</th>
       <th>Zahlung</th>
-      <th>Gemeldet</th>
       <th>Status</th>
       <th></th>
     </tr></thead>
     <tbody>${reports.map(report => `<tr>
-      <td><strong>${escapeHtml(report.memberCode)}</strong><small>${escapeHtml(report.memberName)}</small></td>
+      <td><strong>${escapeHtml(report.memberName)}</strong></td>
       <td class="v4-money">${escapeHtml(money(report.amount))}</td>
       <td>${escapeHtml(fmtDate(report.paidOn))}<small>${escapeHtml(report.accountName)} · ${escapeHtml(report.paymentMethodLabel)}</small></td>
-      <td>${escapeHtml(report.reportedByName)}<small>${escapeHtml(fmtDateTime(report.reportedAt))}</small></td>
       <td>${paymentStatusBadge(report.status)}</td>
-      <td><div class="v4-inline-actions">
-        ${report.status === "PENDING" && snapshot.canManageFinance ? `
-          <button class="button small primary" type="button" data-confirm-contribution-payment="${escapeAttr(report.id)}">Bestätigen</button>
-          <button class="button small danger" type="button" data-reject-contribution-payment="${escapeAttr(report.id)}">Ablehnen</button>
-        ` : ""}
-        ${report.status === "REJECTED" && report.rejectionReason
-          ? `<small>${escapeHtml(report.rejectionReason)}</small>`
-          : ""}
-        ${report.status === "REVERSED" && report.reversalReason
-          ? `<small>${escapeHtml(report.reversalReason)}</small>`
-          : ""}
-      </div></td>
+      <td><button class="button small secondary" type="button" data-open-payment-report="${escapeAttr(report.id)}">Anzeigen</button></td>
     </tr>`).join("")}</tbody>
-  </table></div>`;
+  </table></div>
+  <div class="v4-mobile-records v4-payment-mobile-list">${reports.map(report => `<button class="v4-compact-row" type="button" data-open-payment-report="${escapeAttr(report.id)}">
+    <span><strong>${escapeHtml(report.memberName)}</strong><small>${escapeHtml(fmtDate(report.paidOn))}</small></span>
+    <span class="v4-compact-row-end"><strong>${escapeHtml(money(report.amount))}</strong>${paymentStatusBadge(report.status)}</span>
+  </button>`).join("")}</div>`;
 }
 
 function renderContributions(panel) {
@@ -731,44 +854,40 @@ function renderContributions(panel) {
         <article class="card"><span>In Prüfung</span><strong>${escapeHtml(money(summary.pending))}</strong></article>
       </div>
 
-      <section class="card">
+      <section class="card v4-contribution-members-section">
         <div class="v4-toolbar">
           <div><h3>Beiträge je Mitglied</h3><p>${escapeHtml(season.name)}</p></div>
         </div>
-        ${members.length ? `<div class="v4-table-wrap"><table class="v4-table">
-          <thead><tr>
-            <th>Mitglied</th>
-            <th>Beitragsklasse</th>
-            <th>Soll</th>
-            <th>Bestätigt</th>
-            <th>In Prüfung</th>
-            <th>Offen</th>
-            <th></th>
-          </tr></thead>
-          <tbody>${members.map(member => {
+        ${members.length ? `
+          <div class="v4-table-wrap v4-desktop-table"><table class="v4-table">
+            <thead><tr>
+              <th>Mitglied</th><th>Beitragsklasse</th><th>Soll</th><th>Bestätigt</th><th>In Prüfung</th><th>Offen</th><th></th>
+            </tr></thead>
+            <tbody>${members.map(member => {
+              const contribution = contributionFor(member.id);
+              return `<tr>
+                <td><strong>${escapeHtml(memberName(member))}</strong></td>
+                <td>${escapeHtml(contribution?.contributionClassName || "Nicht zugeordnet")}</td>
+                <td class="v4-money">${escapeHtml(money(contribution?.amountDue))}</td>
+                <td class="v4-money">${escapeHtml(money(contribution?.paidAmount))}</td>
+                <td class="v4-money">${escapeHtml(money(contribution?.pendingAmount))}</td>
+                <td class="v4-money"><strong>${escapeHtml(money(contribution?.openAmount))}</strong></td>
+                <td><button class="button small secondary" type="button" data-open-contribution-member="${escapeAttr(member.id)}">Anzeigen</button></td>
+              </tr>`;
+            }).join("")}</tbody>
+          </table></div>
+          <div class="v4-contribution-mobile-list">${members.map(member => {
             const contribution = contributionFor(member.id);
-            return `<tr>
-              <td><strong>${escapeHtml(member.memberCode)}</strong><small>${escapeHtml(memberName(member))}</small></td>
-              <td>${escapeHtml(contribution?.contributionClassName || "Nicht zugeordnet")}</td>
-              <td class="v4-money">${escapeHtml(money(contribution?.amountDue))}</td>
-              <td class="v4-money">${escapeHtml(money(contribution?.paidAmount))}</td>
-              <td class="v4-money">${escapeHtml(money(contribution?.pendingAmount))}</td>
-              <td class="v4-money"><strong>${escapeHtml(money(contribution?.openAmount))}</strong></td>
-              <td><div class="v4-inline-actions">
-                ${snapshot.canManageFinance ? `<button class="button small secondary" type="button" data-assign-contribution="${escapeAttr(member.id)}">${contribution ? "Zuordnung ändern" : "Beitrag zuordnen"}</button>` : ""}
-                ${contribution && snapshot.canReportPayments && Number(contribution.reportableAmount) > 0
-                  ? `<button class="button small primary" type="button" data-report-contribution-payment="${escapeAttr(contribution.id)}">Zahlung melden</button>`
-                  : ""}
-              </div></td>
-            </tr>`;
-          }).join("")}</tbody>
-        </table></div>` : empty("Noch keine Mitglieder angelegt.")}
+            return `<button class="v4-contribution-mobile-card" type="button" data-open-contribution-member="${escapeAttr(member.id)}">
+              <strong>${escapeHtml(memberName(member))}</strong>
+              ${contributionStatusIndicator(contribution)}
+            </button>`;
+          }).join("")}</div>
+        ` : empty("Noch keine Mitglieder angelegt.")}
       </section>
 
-      <section class="card">
-        <div class="v4-toolbar">
-          <div><h3>Zahlungsmeldungen</h3><p>Offene Meldungen werden vor der Buchung geprüft.</p></div>
-        </div>
+      <section class="card v4-payment-report-section">
+        <div class="v4-toolbar"><div><h3>Zahlungsmeldungen</h3></div></div>
         ${renderPaymentReports(reports)}
       </section>
     `}
@@ -802,50 +921,17 @@ function renderContributions(panel) {
     });
   });
 
-  panel.querySelectorAll("[data-assign-contribution]").forEach(button => {
+  panel.querySelectorAll("[data-open-contribution-member]").forEach(button => {
     button.addEventListener("click", () => {
-      const member = members.find(
-        item => item.id === button.dataset.assignContribution
-      );
-      if (member) openAssignment(member);
+      const member = members.find(item => item.id === button.dataset.openContributionMember);
+      if (member) openContributionDetails(member);
     });
   });
 
-  panel.querySelectorAll("[data-report-contribution-payment]").forEach(button => {
+  panel.querySelectorAll("[data-open-payment-report]").forEach(button => {
     button.addEventListener("click", () => {
-      const contribution = (snapshot?.memberContributions || []).find(
-        item => item.id === button.dataset.reportContributionPayment
-      );
-      if (contribution) openPaymentReport(contribution);
-    });
-  });
-
-  panel.querySelectorAll("[data-confirm-contribution-payment]").forEach(button => {
-    button.addEventListener("click", async () => {
-      const report = reports.find(
-        item => item.id === button.dataset.confirmContributionPayment
-      );
-      if (!report) return;
-
-      button.disabled = true;
-      try {
-        await confirmPayment(report);
-      } catch (error) {
-        button.disabled = false;
-        panel.insertAdjacentHTML(
-          "afterbegin",
-          errorPanel(error, "Zahlung konnte nicht bestätigt werden")
-        );
-      }
-    });
-  });
-
-  panel.querySelectorAll("[data-reject-contribution-payment]").forEach(button => {
-    button.addEventListener("click", () => {
-      const report = reports.find(
-        item => item.id === button.dataset.rejectContributionPayment
-      );
-      if (report) openRejectPayment(report);
+      const report = reports.find(item => item.id === button.dataset.openPaymentReport);
+      if (report) openPaymentReportDetails(report);
     });
   });
 }
@@ -1082,206 +1168,209 @@ function renderFinanceAccounts() {
     return empty("Noch keine Finanzkonten angelegt.");
   }
 
-  return `<div class="v4-account-grid">
-    ${accounts.map(account => `<article class="card v4-account-card ${account.active ? "" : "is-inactive"}">
-      <div>
-        <span class="subtle">${escapeHtml(accountTypeLabel(account.accountType))}</span>
-        <h3>${escapeHtml(account.name)}</h3>
-      </div>
+  return `<div class="v4-account-grid v4-account-grid-compact">
+    ${accounts.map(account => `<button class="card v4-account-card v4-account-card-button ${account.active ? "" : "is-inactive"}" type="button" data-open-finance-account="${escapeAttr(account.id)}">
+      <span class="v4-account-name">${escapeHtml(account.name)}</span>
       <strong class="v4-account-balance">${escapeHtml(money(account.balance))}</strong>
-      <div class="v4-inline-actions">
-        ${statusBadge(account.active ? "ACTIVE" : "INACTIVE")}
-        <button class="button small primary" type="button" data-view-finance-account="${escapeAttr(account.id)}">Kontoauszug</button>
-        ${snapshot.canManageFinance ? `<button class="button small secondary" type="button" data-edit-finance-account="${escapeAttr(account.id)}">Bearbeiten</button>` : ""}
-        ${snapshot.canManageFinance && account.canDelete ? `<button class="button small danger" type="button" data-delete-finance-account="${escapeAttr(account.id)}">Löschen</button>` : ""}
-      </div>
-    </article>`).join("")}
+      <small class="v4-account-meta">${escapeHtml(accountTypeLabel(account.accountType))}${account.active ? "" : " · inaktiv"}</small>
+    </button>`).join("")}
   </div>`;
 }
 
-function renderAccountStatement(account, entries) {
-  if (!entries.length) {
-    return empty(`Für ${account.name} liegen noch keine Buchungen vor.`);
-  }
+function compactFinanceEntries(entries, { showAccount = true, showBalance = false } = {}) {
+  if (!entries.length) return empty("Noch keine Buchungen vorhanden.");
 
-  return `<div class="v4-table-wrap"><table class="v4-table v4-account-statement">
-    <thead><tr>
-      <th>Datum</th>
-      <th>Nr.</th>
-      <th>Buchung</th>
-      <th>Einnahme</th>
-      <th>Ausgabe</th>
-      <th>Saldo</th>
-      <th>Zahlungsart</th>
-      <th></th>
-    </tr></thead>
-    <tbody>${entries.map(entry => `<tr class="${entry.isReversed ? "is-reversed" : ""}">
-      <td>${escapeHtml(fmtDate(entry.bookedOn))}</td>
-      <td><strong>#${escapeHtml(entry.entryNo)}</strong></td>
-      <td>
+  return `<div class="v4-compact-entry-list">
+    ${entries.map(entry => `<button class="v4-compact-entry ${entry.isReversed ? "is-reversed" : ""}" type="button" data-open-finance-entry="${escapeAttr(entry.id)}">
+      <span class="v4-compact-entry-main">
         <strong>${escapeHtml(entry.description)}</strong>
-        <small>${escapeHtml(sourceTypeLabel(entry.sourceType))}</small>
-        ${entry.counterAccountName ? `<small>Gegenkonto: ${escapeHtml(entry.counterAccountName)}</small>` : ""}
-        ${entry.isReversed ? `<small>Storniert${entry.reversalReason ? `: ${escapeHtml(entry.reversalReason)}` : ""}</small>` : ""}
-        ${entry.reversesEntryId ? '<small>Stornobuchung</small>' : ""}
-      </td>
-      <td class="v4-money is-positive">${entry.entryType === "INCOME" ? escapeHtml(money(entry.amount)) : "–"}</td>
-      <td class="v4-money is-negative">${entry.entryType === "EXPENSE" ? escapeHtml(money(entry.amount)) : "–"}</td>
-      <td class="v4-money"><strong>${escapeHtml(money(entry.runningBalance))}</strong></td>
-      <td>${escapeHtml(entry.paymentMethodLabel)}</td>
-      <td>${entry.canReverse ? `<button class="button small danger" type="button" data-reverse-finance-entry="${escapeAttr(entry.id)}">Stornieren</button>` : ""}</td>
-    </tr>`).join("")}</tbody>
-  </table></div>`;
+        <small>${escapeHtml(fmtDate(entry.bookedOn))}${showAccount ? ` · ${escapeHtml(entry.accountName)}` : ""}</small>
+      </span>
+      <span class="v4-compact-entry-amount ${entry.entryType === "INCOME" ? "is-positive" : "is-negative"}">
+        <strong>${escapeHtml(signedMoney(entry))}</strong>
+        ${showBalance && entry.runningBalance !== undefined ? `<small>Saldo ${escapeHtml(money(entry.runningBalance))}</small>` : ""}
+      </span>
+    </button>`).join("")}
+  </div>`;
+}
+
+function financeEntryDetailMarkup(entry) {
+  return `<div class="v4-detail-grid">
+    <div><span>Buchungsnummer</span><strong>#${escapeHtml(entry.entryNo)}</strong></div>
+    <div><span>Datum</span><strong>${escapeHtml(fmtDate(entry.bookedOn))}</strong></div>
+    <div class="full"><span>Beschreibung</span><strong>${escapeHtml(entry.description)}</strong></div>
+    <div><span>Konto</span><strong>${escapeHtml(entry.accountName)}</strong></div>
+    <div><span>Betrag</span><strong class="${entry.entryType === "INCOME" ? "is-positive" : "is-negative"}">${escapeHtml(signedMoney(entry))}</strong></div>
+    <div><span>Buchungsart</span><strong>${escapeHtml(entryTypeLabel(entry.entryType))}</strong></div>
+    <div><span>Herkunft</span><strong>${escapeHtml(sourceTypeLabel(entry.sourceType))}</strong></div>
+    <div><span>Zahlungsart</span><strong>${escapeHtml(entry.paymentMethodLabel || "–")}</strong></div>
+    <div><span>Gegenkonto</span><strong>${escapeHtml(entry.counterAccountName || "–")}</strong></div>
+    ${entry.runningBalance !== undefined ? `<div><span>Saldo danach</span><strong>${escapeHtml(money(entry.runningBalance))}</strong></div>` : ""}
+    <div><span>Erfasst von</span><strong>${escapeHtml(entry.createdByName || "–")}</strong></div>
+    <div><span>Erfasst am</span><strong>${escapeHtml(fmtDateTime(entry.createdAt))}</strong></div>
+    ${entry.isReversed ? `<div class="full"><span>Storniert</span><strong>${escapeHtml(entry.reversalReason || "Ja")}</strong></div>` : ""}
+    ${entry.reversesEntryId ? '<div class="full"><span>Hinweis</span><strong>Diese Buchung ist eine Stornobuchung.</strong></div>' : ""}
+  </div>
+  ${entry.canReverse ? `<div class="dialog-actions v4-detail-actions"><button class="button danger" type="button" data-dialog-reverse-entry="${escapeAttr(entry.id)}">Stornieren</button></div>` : ""}`;
+}
+
+function openFinanceEntryDetails(entry) {
+  const dialog = openDialog({
+    title: `Buchung #${entry.entryNo}`,
+    kicker: "Kasse",
+    body: financeEntryDetailMarkup(entry)
+  });
+
+  dialog.querySelector("[data-dialog-reverse-entry]")
+    ?.addEventListener("click", () => openFinanceReversal(entry));
+}
+
+function bindCompactFinanceEntries(scope, entries) {
+  scope.querySelectorAll("[data-open-finance-entry]").forEach(button => {
+    button.addEventListener("click", () => {
+      const entry = entries.find(item => item.id === button.dataset.openFinanceEntry);
+      if (entry) openFinanceEntryDetails(entry);
+    });
+  });
+}
+
+function financeAccountDetailMarkup(account, entries) {
+  return `<div class="v4-account-detail-head">
+    <div><span>${escapeHtml(accountTypeLabel(account.accountType))}</span><strong>${escapeHtml(account.name)}</strong></div>
+    <strong class="v4-account-detail-balance">${escapeHtml(money(account.balance))}</strong>
+  </div>
+  <div class="v4-detail-grid v4-account-detail-grid">
+    <div><span>Status</span><strong>${account.active ? "Aktiv" : "Inaktiv"}</strong></div>
+    <div><span>Buchungen</span><strong>${entries.length}</strong></div>
+  </div>
+  ${snapshot.canManageFinance ? `<div class="dialog-actions v4-detail-actions">
+    <button class="button secondary" type="button" data-dialog-edit-account="${escapeAttr(account.id)}">Bearbeiten</button>
+    ${account.canDelete ? `<button class="button danger" type="button" data-dialog-delete-account="${escapeAttr(account.id)}">Löschen</button>` : ""}
+  </div>` : ""}
+  <section class="v4-dialog-ledger">
+    <div class="v4-dialog-section-title"><h3>Kontoauszug</h3><span>${entries.length} Buchungen</span></div>
+    ${compactFinanceEntries(entries, { showAccount: false, showBalance: true })}
+  </section>`;
+}
+
+function openFinanceAccountDetails(account) {
+  const entries = accountStatementEntries(account.id);
+  const dialog = openDialog({
+    title: account.name,
+    kicker: "Konto",
+    body: financeAccountDetailMarkup(account, entries)
+  });
+
+  dialog.querySelector("[data-dialog-edit-account]")
+    ?.addEventListener("click", () => openFinanceAccount(account));
+
+  dialog.querySelector("[data-dialog-delete-account]")
+    ?.addEventListener("click", async buttonEvent => {
+      const button = buttonEvent.currentTarget;
+      button.disabled = true;
+      try {
+        await deleteFinanceAccount(account);
+        dialog.close();
+      } catch (error) {
+        button.disabled = false;
+        showToast(error?.message || "Konto konnte nicht gelöscht werden.", "error", 6500);
+      }
+    });
+
+  bindCompactFinanceEntries(dialog, entries);
+}
+
+function openFinanceManagement() {
+  const canTransfer = financeAccounts().filter(account => account.active).length >= 2;
+  const dialog = openDialog({
+    title: "Verwaltung",
+    kicker: "Kasse",
+    body: `<div class="v4-management-grid">
+      <button class="button primary" type="button" data-finance-management="income">Einnahme</button>
+      <button class="button secondary" type="button" data-finance-management="expense">Ausgabe</button>
+      <button class="button secondary" type="button" data-finance-management="transfer" ${canTransfer ? "" : "disabled"}>Umbuchung</button>
+      <button class="button secondary" type="button" data-finance-management="account">Konto anlegen</button>
+    </div>`
+  });
+
+  dialog.querySelector('[data-finance-management="income"]')
+    ?.addEventListener("click", () => openFinanceEntry("INCOME"));
+  dialog.querySelector('[data-finance-management="expense"]')
+    ?.addEventListener("click", () => openFinanceEntry("EXPENSE"));
+  dialog.querySelector('[data-finance-management="transfer"]')
+    ?.addEventListener("click", () => openFinanceTransfer());
+  dialog.querySelector('[data-finance-management="account"]')
+    ?.addEventListener("click", () => openFinanceAccount());
 }
 
 function renderCashbookEntries(entries) {
   if (!entries.length) {
-    return empty("Für die gewählte Ansicht liegen noch keine Buchungen vor.");
+    return empty("Noch keine Buchungen vorhanden.");
   }
 
-  return `<div class="v4-table-wrap"><table class="v4-table v4-cashbook-table">
-    <thead><tr>
-      <th>Nr.</th>
-      <th>Datum</th>
-      <th>Konto</th>
-      <th>Buchung</th>
-      <th>Zahlungsart</th>
-      <th>Betrag</th>
-      <th>Erfasst</th>
-      <th></th>
-    </tr></thead>
-    <tbody>${entries.map(entry => `<tr class="${entry.isReversed ? "is-reversed" : ""}">
-      <td><strong>#${escapeHtml(entry.entryNo)}</strong></td>
-      <td>${escapeHtml(fmtDate(entry.bookedOn))}</td>
-      <td>${escapeHtml(entry.accountName)}${entry.counterAccountName ? `<small>Gegenkonto: ${escapeHtml(entry.counterAccountName)}</small>` : ""}</td>
-      <td>
-        <strong>${escapeHtml(entry.description)}</strong>
-        <small>${escapeHtml(sourceTypeLabel(entry.sourceType))}</small>
-        ${entry.isReversed ? `<small>Storniert${entry.reversalReason ? `: ${escapeHtml(entry.reversalReason)}` : ""}</small>` : ""}
-        ${entry.reversesEntryId ? '<small>Stornobuchung</small>' : ""}
-      </td>
-      <td>${escapeHtml(entry.paymentMethodLabel)}</td>
-      <td class="v4-money ${entry.entryType === "INCOME" ? "is-positive" : "is-negative"}">
-        <strong>${escapeHtml(signedMoney(entry))}</strong>
-      </td>
-      <td>${escapeHtml(entry.createdByName)}<small>${escapeHtml(fmtDateTime(entry.createdAt))}</small></td>
-      <td>${entry.canReverse ? `<button class="button small danger" type="button" data-reverse-finance-entry="${escapeAttr(entry.id)}">Stornieren</button>` : ""}</td>
-    </tr>`).join("")}</tbody>
-  </table></div>`;
+  return `<div class="v4-ledger-search">
+    <label class="sr-only" for="financeEntrySearch">Buchungen durchsuchen</label>
+    <input id="financeEntrySearch" type="search" placeholder="Buchungen durchsuchen …" autocomplete="off">
+  </div>
+  <div id="financeLedgerList" class="v4-cashbook-ledger" aria-label="Alle Buchungen">
+    ${entries.map(entry => {
+      const search = [
+        entry.entryNo,
+        entry.bookedOn,
+        entry.accountName,
+        entry.description,
+        entry.paymentMethodLabel,
+        entry.createdByName,
+        sourceTypeLabel(entry.sourceType)
+      ].join(" ").toLocaleLowerCase("de-DE");
+      return `<button class="v4-compact-entry ${entry.isReversed ? "is-reversed" : ""}" type="button" data-open-finance-entry="${escapeAttr(entry.id)}" data-finance-search="${escapeAttr(search)}">
+        <span class="v4-compact-entry-main">
+          <strong>${escapeHtml(entry.description)}</strong>
+          <small>${escapeHtml(fmtDate(entry.bookedOn))} · ${escapeHtml(entry.accountName)}</small>
+        </span>
+        <span class="v4-compact-entry-amount ${entry.entryType === "INCOME" ? "is-positive" : "is-negative"}"><strong>${escapeHtml(signedMoney(entry))}</strong></span>
+      </button>`;
+    }).join("")}
+  </div>`;
 }
 
 function renderCashbook(panel) {
-  ensureFinanceAccountFilter();
-
   const accounts = financeAccounts();
-  const selectedAccount = accounts.find(
-    account => account.id === activeFinanceAccountId
-  ) || null;
-  const entries = selectedAccount
-    ? accountStatementEntries(selectedAccount.id)
-    : selectedFinanceEntries();
+  const entries = financeEntries();
 
   panel.innerHTML = `
     <div class="v4-toolbar">
       <div><h3>Unsere Fanclub-Kassen</h3></div>
-      <div class="v4-inline-actions">
-        <select id="financeAccountFilter" aria-label="Kontoauszug auswählen">
-          ${optionList([
-            { value: "ALL", label: "Alle Fanclub-Kassen" },
-            ...accounts.map(account => ({
-              value: account.id,
-              label: `Kontoauszug · ${account.name}${account.active ? "" : " · inaktiv"}`
-            }))
-          ], activeFinanceAccountId)}
-        </select>
-        ${snapshot.canManageFinance ? `
-          <button id="addFinanceIncomeButton" class="button primary" type="button">Einnahme</button>
-          <button id="addFinanceExpenseButton" class="button secondary" type="button">Ausgabe</button>
-          <button id="addFinanceTransferButton" class="button secondary" type="button" ${accounts.filter(account => account.active).length < 2 ? "disabled" : ""}>Umbuchung</button>
-          <button id="addFinanceAccountButton" class="button secondary" type="button">Konto anlegen</button>
-        ` : ""}
-      </div>
+      ${snapshot.canManageFinance ? '<button id="financeManagementButton" class="button primary" type="button">Verwaltung</button>' : ""}
     </div>
 
     ${renderFinanceAccounts()}
 
-    <section class="card v4-cashbook-section">
-      <div class="v4-toolbar">
-        <div>
-          <h3>${selectedAccount ? `Kontoauszug · ${escapeHtml(selectedAccount.name)}` : "Alle Fanclub-Kassen"}</h3>
-          <p>${selectedAccount
-            ? `${entries.length} Buchungen · aktueller Saldo ${escapeHtml(money(selectedAccount.balance))}`
-            : `${entries.length} Buchungen über alle Konten`}</p>
-        </div>
-      </div>
-      ${selectedAccount
-        ? renderAccountStatement(selectedAccount, entries)
-        : renderCashbookEntries(entries)}
+    <section class="card v4-cashbook-section v4-cashbook-compact-section">
+      <div class="v4-toolbar"><div><h3>Buchungen</h3><p>${entries.length} Einträge über alle Konten</p></div></div>
+      ${renderCashbookEntries(entries)}
     </section>
   `;
 
-  document.getElementById("financeAccountFilter")
-    ?.addEventListener("change", event => {
-      activeFinanceAccountId = event.currentTarget.value;
-      render();
-    });
+  document.getElementById("financeManagementButton")
+    ?.addEventListener("click", () => openFinanceManagement());
 
-  document.getElementById("addFinanceIncomeButton")
-    ?.addEventListener("click", () => openFinanceEntry("INCOME"));
-
-  document.getElementById("addFinanceExpenseButton")
-    ?.addEventListener("click", () => openFinanceEntry("EXPENSE"));
-
-  document.getElementById("addFinanceTransferButton")
-    ?.addEventListener("click", () => openFinanceTransfer());
-
-  document.getElementById("addFinanceAccountButton")
-    ?.addEventListener("click", () => openFinanceAccount());
-
-  panel.querySelectorAll("[data-view-finance-account]").forEach(button => {
+  panel.querySelectorAll("[data-open-finance-account]").forEach(button => {
     button.addEventListener("click", () => {
-      activeFinanceAccountId = button.dataset.viewFinanceAccount;
-      render();
+      const account = accounts.find(item => item.id === button.dataset.openFinanceAccount);
+      if (account) openFinanceAccountDetails(account);
     });
   });
 
-  panel.querySelectorAll("[data-edit-finance-account]").forEach(button => {
-    button.addEventListener("click", () => {
-      const account = accounts.find(
-        item => item.id === button.dataset.editFinanceAccount
-      );
-      if (account) openFinanceAccount(account);
+  const searchInput = document.getElementById("financeEntrySearch");
+  searchInput?.addEventListener("input", () => {
+    const query = searchInput.value.trim().toLocaleLowerCase("de-DE");
+    panel.querySelectorAll("[data-finance-search]").forEach(row => {
+      row.hidden = Boolean(query) && !row.dataset.financeSearch.includes(query);
     });
   });
 
-  panel.querySelectorAll("[data-delete-finance-account]").forEach(button => {
-    button.addEventListener("click", async () => {
-      const account = accounts.find(
-        item => item.id === button.dataset.deleteFinanceAccount
-      );
-      if (!account) return;
-
-      button.disabled = true;
-      try {
-        await deleteFinanceAccount(account);
-      } catch (error) {
-        button.disabled = false;
-        panel.insertAdjacentHTML(
-          "afterbegin",
-          errorPanel(error, "Konto konnte nicht gelöscht werden")
-        );
-      }
-    });
-  });
-
-  panel.querySelectorAll("[data-reverse-finance-entry]").forEach(button => {
-    button.addEventListener("click", () => {
-      const entry = financeEntries().find(
-        item => item.id === button.dataset.reverseFinanceEntry
-      );
-      if (entry) openFinanceReversal(entry);
-    });
-  });
+  bindCompactFinanceEntries(panel, entries);
 }
 
 function render() {
