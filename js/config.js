@@ -21,7 +21,7 @@ export const CONFIG = Object.freeze({
     postLoginRouteKey: "pd_v4_post_login_route"
   },
   pwa: {
-    serviceWorker: "./service-worker.js?v=20260721-login-experience-1",
+    serviceWorker: "./service-worker.js?v=20260721-login-popup-2",
     installDismissKey: "pd_v4_install_dismissed",
     updateReloadKey: "pd_v4_update_reload",
     updateDismissKey: "pd_v4_update_dismissed"

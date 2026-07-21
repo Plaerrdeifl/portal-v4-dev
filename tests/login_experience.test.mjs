@@ -54,8 +54,8 @@ test("Google OAuth uses a desktop popup and callback never renders home first", 
 
   assert.equal(auth.includes("skipBrowserRedirect: true"), true);
   assert.equal(auth.includes('window.open('), true);
-  assert.equal(auth.includes('width=${width}'), true);
-  assert.equal(auth.includes('height=${height}'), true);
+  assert.equal(auth.includes('width=${geometry.width}'), true);
+  assert.equal(auth.includes('height=${geometry.height}'), true);
   assert.equal(auth.includes("async syncSession()"), true);
 
   assert.equal(app.includes("async function prepareOAuthReturn()"), true);
@@ -68,4 +68,47 @@ test("Google OAuth uses a desktop popup and callback never renders home first", 
   assert.equal(guard.includes('dataset.oauthReturn = "true"'), true);
   assert.equal(index.includes("./js/oauth-return-guard.js"), true);
   assert.equal(worker.includes("./js/oauth-return-guard.js"), true);
+});
+
+test("desktop Google button is compact and popup is centered over the browser", async () => {
+  const [auth, css, index, config, worker] = await Promise.all([
+    read("js/auth.js"),
+    read("css/app.css"),
+    read("index.html"),
+    read("js/config.js"),
+    read("service-worker.js")
+  ]);
+
+  assert.equal(auth.includes("const width = Math.min(440, availableWidth)"), true);
+  assert.equal(auth.includes("const height = Math.min(600, availableHeight)"), true);
+  assert.equal(auth.includes("window.screenLeft"), true);
+  assert.equal(auth.includes("window.screenTop"), true);
+  assert.equal(
+    auth.includes("popup.resizeTo(geometry.width, geometry.height)"),
+    true
+  );
+  assert.equal(
+    auth.includes("popup.moveTo(geometry.left, geometry.top)"),
+    true
+  );
+  assert.equal(
+    auth.includes("oauthPopupFeatures(popupGeometry)"),
+    true
+  );
+  assert.equal(
+    auth.includes("positionOAuthPopup(popup, popupGeometry)"),
+    true
+  );
+
+  assert.equal(css.includes("width:min(320px,100%)"), true);
+  assert.equal(css.includes("justify-content:center"), true);
+  assert.equal(css.includes("background:rgba(3,25,46,.18)"), true);
+  assert.equal(css.includes("backdrop-filter:blur(1px)"), true);
+
+  assert.equal(index.includes("20260721-login-popup-2"), true);
+  assert.equal(config.includes("20260721-login-popup-2"), true);
+  assert.equal(
+    worker.includes("pd-portal-v4-login-popup-20260721-2"),
+    true
+  );
 });

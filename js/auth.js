@@ -101,27 +101,56 @@ function supportsOAuthPopup() {
   ).matches;
 }
 
-function oauthPopupFeatures() {
-  const width = Math.min(520, Math.max(420, window.screen.availWidth - 80));
-  const height = Math.min(720, Math.max(620, window.screen.availHeight - 80));
+function oauthPopupGeometry() {
+  const availableWidth = Math.max(360, window.screen.availWidth - 40);
+  const availableHeight = Math.max(520, window.screen.availHeight - 40);
+  const width = Math.min(440, availableWidth);
+  const height = Math.min(600, availableHeight);
+  const browserLeft = Number.isFinite(window.screenLeft)
+    ? window.screenLeft
+    : window.screenX;
+  const browserTop = Number.isFinite(window.screenTop)
+    ? window.screenTop
+    : window.screenY;
+  const browserWidth = window.outerWidth || window.innerWidth || width;
+  const browserHeight = window.outerHeight || window.innerHeight || height;
   const left = Math.max(
     0,
-    Math.round(window.screenX + (window.outerWidth - width) / 2)
+    Math.round(browserLeft + (browserWidth - width) / 2)
   );
   const top = Math.max(
     0,
-    Math.round(window.screenY + (window.outerHeight - height) / 2)
+    Math.round(browserTop + (browserHeight - height) / 2)
   );
 
+  return { width, height, left, top };
+}
+
+function oauthPopupFeatures(geometry) {
   return [
     "popup=yes",
-    `width=${width}`,
-    `height=${height}`,
-    `left=${left}`,
-    `top=${top}`,
+    `width=${geometry.width}`,
+    `height=${geometry.height}`,
+    `left=${geometry.left}`,
+    `top=${geometry.top}`,
     "resizable=yes",
     "scrollbars=yes"
   ].join(",");
+}
+
+function positionOAuthPopup(popup, geometry) {
+  if (!popup || !geometry) return;
+
+  try {
+    popup.resizeTo(geometry.width, geometry.height);
+    popup.moveTo(geometry.left, geometry.top);
+    popup.focus();
+  } catch (error) {
+    console.debug(
+      "Das Google-Anmeldefenster konnte nicht nachpositioniert werden",
+      error
+    );
+  }
 }
 
 export const auth = Object.freeze({
@@ -249,13 +278,18 @@ export const auth = Object.freeze({
     redirect.hash = "";
     redirect.search = "";
 
-    const popup = supportsOAuthPopup()
+    const popupGeometry = supportsOAuthPopup()
+      ? oauthPopupGeometry()
+      : null;
+    const popup = popupGeometry
       ? window.open(
           "about:blank",
           OAUTH_POPUP_NAME,
-          oauthPopupFeatures()
+          oauthPopupFeatures(popupGeometry)
         )
       : null;
+
+    positionOAuthPopup(popup, popupGeometry);
 
     try {
       const { data, error } = await client.auth.signInWithOAuth({
@@ -277,7 +311,11 @@ export const auth = Object.freeze({
       if (popup) {
         document.body.classList.add("oauth-popup-open");
         popup.location.replace(data.url);
-        popup.focus();
+        positionOAuthPopup(popup, popupGeometry);
+        window.setTimeout(
+          () => positionOAuthPopup(popup, popupGeometry),
+          120
+        );
         return { mode: "popup", popup };
       }
 

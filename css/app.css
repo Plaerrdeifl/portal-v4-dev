@@ -1079,11 +1079,14 @@ body.overlay-open .view{overflow:hidden!important;touch-action:none}
   max-width:none;
   min-height:50px;
   margin:0;
-  justify-content:stretch;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
 .public-login-main .google-signin-slot .button{
-  width:100%;
+  width:min(320px,100%);
+  margin-inline:auto;
 }
 
 .public-login-note{
@@ -1144,9 +1147,9 @@ body.oauth-popup-open::after{
   position:fixed;
   z-index:800;
   inset:0;
-  background:rgba(3,25,46,.34);
-  backdrop-filter:blur(2px);
-  -webkit-backdrop-filter:blur(2px);
+  background:rgba(3,25,46,.18);
+  backdrop-filter:blur(1px);
+  -webkit-backdrop-filter:blur(1px);
 }
 
 @media(max-width:860px){
