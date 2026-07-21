@@ -197,9 +197,12 @@ export function renderNavigation() {
   const nav = document.getElementById("mainNav");
 
   if (nav) {
-    const buttons = entries.map(([key, route]) =>
-      createRouteButton(key, route)
-    );
+    const sidebarEntries = [...entries].sort(([leftKey], [rightKey]) => {
+      if (leftKey === "install") return 1;
+      if (rightKey === "install") return -1;
+      return 0;
+    });
+    const buttons = sidebarEntries.map(([key, route]) => createRouteButton(key, route));
     nav.replaceChildren(...buttons);
     window.dispatchEvent(new CustomEvent("pd-navigation-rendered"));
   }
@@ -208,33 +211,18 @@ export function renderNavigation() {
 
   const mobileNav = document.getElementById("mobileNav");
   const profileRequired = auth.requiresProfile();
-  const authenticated =
-    auth.isAuthenticated()
-    && !routes()[currentRoute()]?.public;
+  const authenticated = auth.isAuthenticated() && !routes()[currentRoute()]?.public;
 
   if (mobileNav) {
     mobileNav.hidden = !authenticated;
-
     if (authenticated) {
       const entryMap = new Map(entries);
       const primary = profileRequired
         ? [createRouteButton("profile", routes().profile, "mobile-nav-button")]
-        : MOBILE_PRIMARY
-          .filter(key => entryMap.has(key))
-          .map(key =>
-            createRouteButton(
-              key,
-              entryMap.get(key),
-              "mobile-nav-button"
-            )
+        : MOBILE_PRIMARY.filter(key => entryMap.has(key)).map(key =>
+            createRouteButton(key, entryMap.get(key), "mobile-nav-button")
           );
-
-      const extras = profileRequired
-        ? []
-        : entries.filter(
-          ([key]) => !MOBILE_PRIMARY.includes(key)
-        );
-
+      const extras = profileRequired ? [] : entries.filter(([key]) => !MOBILE_PRIMARY.includes(key));
       if (extras.length) {
         const more = document.createElement("button");
         more.type = "button";
@@ -243,12 +231,9 @@ export function renderNavigation() {
         more.setAttribute("aria-controls", "sidebar");
         more.setAttribute("aria-expanded", "false");
         more.setAttribute("aria-label", "Vollständige Navigation öffnen");
-        more.innerHTML =
-          `<span class="nav-icon" aria-hidden="true">${iconMarkup("more")}</span>`
-          + "<span>Mehr</span>";
+        more.innerHTML = `<span class="nav-icon" aria-hidden="true">${iconMarkup("more")}</span><span>Mehr</span>`;
         primary.push(more);
       }
-
       mobileNav.replaceChildren(...primary);
     } else {
       mobileNav.replaceChildren();
@@ -674,10 +659,33 @@ export function updateUserChrome() {
   avatar?.classList.toggle("has-photo", Boolean(photo));
 }
 
+export function prepareResponsiveTables(root = document) {
+  root.querySelectorAll?.(".v4-table").forEach(table => {
+    const labels = [...table.querySelectorAll("thead th")].map(cell =>
+      String(cell.textContent || "").trim()
+    );
+    table.querySelectorAll("tbody tr").forEach(row => {
+      [...row.children].forEach((cell, index) => {
+        const label = labels[index] || "";
+        if (label) cell.dataset.label = label;
+        else cell.removeAttribute("data-label");
+      });
+    });
+  });
+}
+
 export function bindGlobalUi({ onRefresh, onLogout } = {}) {
   globalRefresh = onRefresh || null;
   globalLogout = onLogout || null;
   ensureUserMenu();
+
+  const view = document.getElementById("view");
+  if (view && view.dataset.responsiveTablesBound !== "true") {
+    view.dataset.responsiveTablesBound = "true";
+    const observer = new MutationObserver(() => prepareResponsiveTables(view));
+    observer.observe(view, { childList: true, subtree: true });
+    prepareResponsiveTables(view);
+  }
 
   document.addEventListener("click", event => {
     const routeTarget = event.target.closest("button[data-route], a[data-route]");

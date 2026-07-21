@@ -41,11 +41,11 @@ function connectionState() {
   }
 
   if (current.busy || apiActivity.busy) {
-    return { label: "Lädt", type: "loading" };
+    return { label: "Lädt …", type: "loading" };
   }
 
   if (!current.authenticated) {
-    return { label: "Online", type: "success" };
+    return { label: "Live", type: "success" };
   }
 
   if (current.status === "ACTIVE") {
@@ -53,10 +53,10 @@ function connectionState() {
   }
 
   if (current.status === "BLOCKED") {
-    return { label: "Gesperrt", type: "error" };
+    return { label: "Fehler", type: "error" };
   }
 
-  return { label: "Prüfung", type: "loading" };
+  return { label: "Lädt …", type: "loading" };
 }
 
 function updateChrome() {

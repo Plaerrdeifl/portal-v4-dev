@@ -1,3 +1,4 @@
+import { auth } from "../auth.js";
 import {
   call,
   confirmAction,
@@ -51,6 +52,37 @@ const ENTRY_TYPES = [
 
 function memberName(member) {
   return `${member.firstName || ""} ${member.lastName || ""}`.trim();
+}
+
+function officeDisplayLabel(office, index) {
+  const original = String(office?.label || "").trim();
+  const replacements = new Map([
+    ["vorstand 1", "1. Vorstand"],
+    ["vorstand 2", "2. Vorstand"],
+    ["vorstand 3", "3. Vorstand"]
+  ]);
+  const normalized = original.toLocaleLowerCase("de-DE");
+  if (replacements.has(normalized)) return replacements.get(normalized);
+  if (/^vorstand\s*[123]$/i.test(original)) {
+    return original.replace(/^vorstand\s*([123])$/i, "$1. Vorstand");
+  }
+  if (/vorstand/i.test(original) && index < 3) return `${index + 1}. Vorstand`;
+  return original || `Vorstandsamt ${index + 1}`;
+}
+
+function officeMember(office, members) {
+  return members.find(member => member.id === office.memberId) || null;
+}
+
+function phoneHref(value) {
+  return String(value || "").trim().replace(/[^+\d]/g, "");
+}
+
+function boardContact(member) {
+  const phone = String(member?.phone || "").trim();
+  if (!phone) return "";
+  const href = phoneHref(phone);
+  return `<a class="v4-board-phone" href="tel:${escapeAttr(href)}">${escapeHtml(phone)}</a>`;
 }
 
 function money(value) {
@@ -169,27 +201,26 @@ function tabs() {
 
   const items = [
     ["members", "Mitglieder"],
-    ["offices", "Ämter"],
+    ["offices", "Vorstand"],
     ...(snapshot?.canReadFinance
       ? [
           ["contributions", "Beiträge"],
-          ["cashbook", "Kassenbuch"]
+          ["cashbook", "Kasse"]
         ]
       : [])
   ];
 
-  if (!items.some(([key]) => key === activeTab)) {
-    activeTab = "members";
-  }
+  if (!items.some(([key]) => key === activeTab)) activeTab = "members";
 
-  slot.innerHTML = `
-    <div class="v4-tabs" role="tablist">
-      ${items.map(([key, text]) => `<button
-        class="v4-tab ${activeTab === key ? "active" : ""}"
-        data-tab="${key}"
-        type="button"
-      >${text}</button>`).join("")}
-    </div>`;
+  slot.innerHTML = `<div class="v4-tabs" role="tablist">
+    ${items.map(([key, text]) => `<button
+      class="v4-tab ${activeTab === key ? "active" : ""}"
+      data-tab="${key}"
+      type="button"
+      role="tab"
+      aria-selected="${activeTab === key ? "true" : "false"}"
+    >${text}</button>`).join("")}
+  </div>`;
 
   slot.querySelectorAll("[data-tab]").forEach(button => {
     button.addEventListener("click", () => {
@@ -238,73 +269,88 @@ function openMember(member = null) {
 
 function renderMembers(panel) {
   const members = snapshot?.members || [];
-  const showMemberCodes = Boolean(snapshot?.canManageMembers);
 
   panel.innerHTML = `
-    <div class="v4-toolbar">
-      <div><h3>Mitglieder</h3><p>${members.length} Einträge</p></div>
+    <div class="v4-toolbar v4-section-heading">
+      <div><h3>Unsere Mitglieder</h3></div>
       ${snapshot?.canManageMembers ? '<button id="addMemberButton" class="button primary" type="button">Mitglied anlegen</button>' : ""}
     </div>
-    ${members.length ? `<div class="v4-table-wrap"><table class="v4-table"><thead><tr>${showMemberCodes ? "<th>PD-ID</th>" : ""}<th>Name</th><th>Kontakt</th><th>Ort</th><th>Status</th><th></th></tr></thead><tbody>${members.map(member => `<tr>
-      ${showMemberCodes ? `<td><strong>${escapeHtml(member.memberCode)}</strong></td>` : ""}
-      <td>${escapeHtml(memberName(member))}<small>${member.joinedOn ? `Seit ${escapeHtml(fmtDate(member.joinedOn))}` : ""}</small></td>
-      <td>${escapeHtml(member.email || "–")}<small>${escapeHtml(member.phone || "")}</small></td>
-      <td>${escapeHtml([member.postalCode, member.city].filter(Boolean).join(" ") || "–")}</td>
-      <td>${statusBadge(member.status)}</td>
-      <td>${snapshot.canManageMembers ? `<button class="button small secondary" type="button" data-edit-member="${escapeAttr(member.id)}">Bearbeiten</button>` : ""}</td>
-    </tr>`).join("")}</tbody></table></div>` : empty("Noch keine Mitglieder angelegt.")}`;
+    ${members.length ? `
+      <div class="v4-table-wrap v4-desktop-table"><table class="v4-table"><thead><tr><th>Name</th><th>Kontakt</th><th>Ort</th><th>Status</th><th></th></tr></thead><tbody>${members.map(member => `<tr>
+        <td>${escapeHtml(memberName(member))}<small>${member.joinedOn ? `Seit ${escapeHtml(fmtDate(member.joinedOn))}` : ""}</small></td>
+        <td>${escapeHtml(member.email || "–")}<small>${escapeHtml(member.phone || "")}</small></td>
+        <td>${escapeHtml([member.postalCode, member.city].filter(Boolean).join(" ") || "–")}</td>
+        <td>${statusBadge(member.status)}</td>
+        <td>${snapshot.canManageMembers ? `<button class="button small secondary" type="button" data-edit-member="${escapeAttr(member.id)}">Bearbeiten</button>` : ""}</td>
+      </tr>`).join("")}</tbody></table></div>
+      <div class="v4-mobile-records" aria-label="Mitgliederliste">${members.map(member => `<article class="v4-mobile-record">
+        <div class="v4-mobile-record-head"><strong>${escapeHtml(memberName(member))}</strong>${statusBadge(member.status)}</div>
+        ${member.joinedOn ? `<small>Mitglied seit ${escapeHtml(fmtDate(member.joinedOn))}</small>` : ""}
+        <div class="v4-mobile-record-grid">
+          <div><span>E-Mail</span><strong>${escapeHtml(member.email || "–")}</strong></div>
+          <div><span>Telefon</span><strong>${escapeHtml(member.phone || "–")}</strong></div>
+          <div class="full"><span>Ort</span><strong>${escapeHtml([member.postalCode, member.city].filter(Boolean).join(" ") || "–")}</strong></div>
+        </div>
+        ${snapshot.canManageMembers ? `<button class="button secondary" type="button" data-edit-member="${escapeAttr(member.id)}">Bearbeiten</button>` : ""}
+      </article>`).join("")}</div>
+    ` : empty("Noch keine Mitglieder angelegt.")}`;
 
-  document.getElementById("addMemberButton")
-    ?.addEventListener("click", () => openMember());
-
+  document.getElementById("addMemberButton")?.addEventListener("click", () => openMember());
   panel.querySelectorAll("[data-edit-member]").forEach(button => {
     button.addEventListener("click", () => {
-      const member = members.find(
-        item => item.id === button.dataset.editMember
-      );
+      const member = members.find(item => item.id === button.dataset.editMember);
       if (member) openMember(member);
     });
   });
 }
 
 function renderOffices(panel) {
-  const members = (snapshot?.members || []).filter(
-    member => member.status === "ACTIVE"
-  );
+  const members = (snapshot?.members || []).filter(member => member.status === "ACTIVE");
   const offices = snapshot?.offices || [];
+  const canManageBoard = Boolean(snapshot?.canManageOffices && auth.isAdmin());
 
   panel.innerHTML = `
-    <div class="v4-toolbar"><div><h3>Fünf feste Amtsplätze</h3><p>Jedes aktive Mitglied kann höchstens ein Amt besitzen.</p></div></div>
-    <form id="officeForm" class="v4-office-grid">
-      ${offices.map(office => `<label class="card"><span>${escapeHtml(office.label)}</span><select name="${escapeAttr(office.code)}" ${snapshot.canManageOffices ? "" : "disabled"}>${optionList(members.map(member => ({ value: member.id, label: memberName(member) })), office.memberId || "", "Unbesetzt")}</select></label>`).join("")}
-      ${snapshot.canManageOffices ? '<div class="full dialog-actions"><button class="button primary" type="submit">Alle Amtsplätze speichern</button></div>' : ""}
+    <div class="v4-toolbar v4-section-heading"><div><h3>Unser Vorstand</h3></div></div>
+    <form id="officeForm" class="v4-office-grid v4-board-grid">
+      ${offices.map((office, index) => {
+        const assigned = officeMember(office, members);
+        return `<article class="card v4-office-card">
+          <span class="v4-office-title">${escapeHtml(officeDisplayLabel(office, index))}</span>
+          ${canManageBoard
+            ? `<label><span class="sr-only">Besetzung auswählen</span><select name="${escapeAttr(office.code)}" data-office-select>${optionList(members.map(member => ({ value: member.id, label: memberName(member) })), office.memberId || "", "Unbesetzt")}</select></label>`
+            : `<strong class="v4-board-name">${escapeHtml(assigned ? memberName(assigned) : "Unbesetzt")}</strong>`}
+          <div class="v4-board-contact" data-board-phone>${boardContact(assigned)}</div>
+        </article>`;
+      }).join("")}
+      ${canManageBoard ? '<div class="full dialog-actions"><button class="button primary" type="submit">Vorstand speichern</button></div>' : ""}
     </form>`;
 
+  panel.querySelectorAll("[data-office-select]").forEach(select => {
+    select.addEventListener("change", () => {
+      const member = members.find(item => item.id === select.value) || null;
+      const contact = select.closest(".v4-office-card")?.querySelector("[data-board-phone]");
+      if (contact) contact.innerHTML = boardContact(member);
+    });
+  });
+
+  if (!canManageBoard) return;
   document.getElementById("officeForm")?.addEventListener("submit", async event => {
     event.preventDefault();
-
-    if (!await confirmAction("Alle fünf Amtsplätze mit dieser Besetzung speichern?")) {
-      return;
-    }
-
+    if (!await confirmAction("Vorstandsbesetzung mit diesen Angaben speichern?")) return;
     const form = event.currentTarget;
     const slots = offices.map(office => ({
       code: office.code,
       memberId: form.elements.namedItem(office.code)?.value || ""
     }));
-
     try {
       snapshot = await runWrite(
         () => call("save_offices", { slots }),
-        "Amtsplätze wurden gespeichert."
+        "Vorstandsbesetzung wurde gespeichert."
       );
       renderAll();
     } catch (error) {
       const panelNode = document.getElementById("fanclubPanel");
-      panelNode.insertAdjacentHTML(
-        "afterbegin",
-        errorPanel(error, "Amtsplätze konnten nicht gespeichert werden")
-      );
+      panelNode.insertAdjacentHTML("afterbegin", errorPanel(error, "Vorstand konnte nicht gespeichert werden"));
     }
   });
 }
@@ -659,10 +705,7 @@ function renderContributions(panel) {
 
   panel.innerHTML = `
     <div class="v4-toolbar">
-      <div>
-        <h3>Mitgliedsbeiträge</h3>
-        <p>Zahlungen werden gemeldet und erst durch Kassier oder Admin verbindlich gebucht.</p>
-      </div>
+      <div><h3>Mitgliedsbeiträge</h3></div>
       <div class="v4-inline-actions">
         ${seasons.length ? `<select id="contributionSeasonSelect" aria-label="Beitragsjahr">
           ${optionList(
@@ -859,7 +902,7 @@ function accountForm(account = {}) {
 function openFinanceAccount(account = null) {
   openDialog({
     title: account ? "Konto bearbeiten" : "Konto anlegen",
-    kicker: "Kassenbuch",
+    kicker: "Kasse",
     body: accountForm(account || {}),
     onSubmit: async values => {
       snapshot = await runWrite(
@@ -929,7 +972,7 @@ function financeEntryForm(entryType) {
 function openFinanceEntry(entryType) {
   openDialog({
     title: entryType === "INCOME" ? "Einnahme buchen" : "Ausgabe buchen",
-    kicker: "Kassenbuch",
+    kicker: "Kasse",
     body: financeEntryForm(entryType),
     onSubmit: async values => {
       snapshot = await runWrite(
@@ -986,7 +1029,7 @@ function transferForm() {
 function openFinanceTransfer() {
   openDialog({
     title: "Umbuchung",
-    kicker: "Kassenbuch",
+    kicker: "Kasse",
     body: transferForm(),
     onSubmit: async values => {
       snapshot = await runWrite(
@@ -1018,7 +1061,7 @@ function openFinanceReversal(entry) {
     title: entry.sourceType.startsWith("TRANSFER")
       ? "Umbuchung stornieren"
       : "Buchung stornieren",
-    kicker: "Kassenbuch",
+    kicker: "Kasse",
     body: reversalForm(entry),
     onSubmit: async values => {
       snapshot = await runWrite(
@@ -1140,14 +1183,11 @@ function renderCashbook(panel) {
 
   panel.innerHTML = `
     <div class="v4-toolbar">
-      <div>
-        <h3>Kassenbuch und Konten</h3>
-        <p>Buchungen bleiben unverändert; Korrekturen erfolgen ausschließlich als Storno.</p>
-      </div>
+      <div><h3>Unsere Fanclub-Kassen</h3></div>
       <div class="v4-inline-actions">
         <select id="financeAccountFilter" aria-label="Kontoauszug auswählen">
           ${optionList([
-            { value: "ALL", label: "Gesamtes Kassenbuch" },
+            { value: "ALL", label: "Alle Fanclub-Kassen" },
             ...accounts.map(account => ({
               value: account.id,
               label: `Kontoauszug · ${account.name}${account.active ? "" : " · inaktiv"}`
@@ -1168,7 +1208,7 @@ function renderCashbook(panel) {
     <section class="card v4-cashbook-section">
       <div class="v4-toolbar">
         <div>
-          <h3>${selectedAccount ? `Kontoauszug · ${escapeHtml(selectedAccount.name)}` : "Gesamtes Kassenbuch"}</h3>
+          <h3>${selectedAccount ? `Kontoauszug · ${escapeHtml(selectedAccount.name)}` : "Alle Fanclub-Kassen"}</h3>
           <p>${selectedAccount
             ? `${entries.length} Buchungen · aktueller Saldo ${escapeHtml(money(selectedAccount.balance))}`
             : `${entries.length} Buchungen über alle Konten`}</p>

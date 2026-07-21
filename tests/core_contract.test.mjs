@@ -424,7 +424,7 @@ test("finance ledger remains immutable transferable reversible and statement-rea
   assert.doesNotMatch(migration, /delete from app_fanclub\.finance_entries/i);
   assert.doesNotMatch(migration, /limit 1000/i);
 
-  assert.match(fanclub, /\["cashbook", "Kassenbuch"\]/);
+  assert.match(fanclub, /\["cashbook", "Kasse"\]/);
   assert.match(fanclub, /call\("save_finance_account"/);
   assert.match(fanclub, /call\("delete_finance_account"/);
   assert.match(fanclub, /call\("create_finance_entry"/);
@@ -478,7 +478,7 @@ test("portal profile privacy and account creation contracts remain intact", asyn
   assert.match(api, /pd-api-state/);
   assert.match(api, /pendingRequests/);
   assert.match(app, /label: "Live"/);
-  assert.match(app, /label: "Lädt"/);
+  assert.match(app, /label: "Lädt …"/);
   assert.match(ui, /avatar_url/);
   assert.match(ui, /userAvatarImage/);
   assert.match(ui, /submit_profile_change_request/);
