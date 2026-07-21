@@ -99,6 +99,7 @@ function sourceTypeLabel(value) {
     CONTRIBUTION_PAYMENT: "Mitgliedsbeitrag",
     FREE_INCOME: "Freie Einnahme",
     FREE_EXPENSE: "Freie Ausgabe",
+    OPENING_BALANCE: "Startsaldo",
     TRANSFER_OUT: "Umbuchung Ausgang",
     TRANSFER_IN: "Umbuchung Eingang",
     REVERSAL: "Storno",
@@ -237,14 +238,15 @@ function openMember(member = null) {
 
 function renderMembers(panel) {
   const members = snapshot?.members || [];
+  const showMemberCodes = Boolean(snapshot?.canManageMembers);
 
   panel.innerHTML = `
     <div class="v4-toolbar">
       <div><h3>Mitglieder</h3><p>${members.length} Einträge</p></div>
       ${snapshot?.canManageMembers ? '<button id="addMemberButton" class="button primary" type="button">Mitglied anlegen</button>' : ""}
     </div>
-    ${members.length ? `<div class="v4-table-wrap"><table class="v4-table"><thead><tr><th>PD-ID</th><th>Name</th><th>Kontakt</th><th>Ort</th><th>Status</th><th></th></tr></thead><tbody>${members.map(member => `<tr>
-      <td><strong>${escapeHtml(member.memberCode)}</strong></td>
+    ${members.length ? `<div class="v4-table-wrap"><table class="v4-table"><thead><tr>${showMemberCodes ? "<th>PD-ID</th>" : ""}<th>Name</th><th>Kontakt</th><th>Ort</th><th>Status</th><th></th></tr></thead><tbody>${members.map(member => `<tr>
+      ${showMemberCodes ? `<td><strong>${escapeHtml(member.memberCode)}</strong></td>` : ""}
       <td>${escapeHtml(memberName(member))}<small>${member.joinedOn ? `Seit ${escapeHtml(fmtDate(member.joinedOn))}` : ""}</small></td>
       <td>${escapeHtml(member.email || "–")}<small>${escapeHtml(member.phone || "")}</small></td>
       <td>${escapeHtml([member.postalCode, member.city].filter(Boolean).join(" ") || "–")}</td>
@@ -274,7 +276,7 @@ function renderOffices(panel) {
   panel.innerHTML = `
     <div class="v4-toolbar"><div><h3>Fünf feste Amtsplätze</h3><p>Jedes aktive Mitglied kann höchstens ein Amt besitzen.</p></div></div>
     <form id="officeForm" class="v4-office-grid">
-      ${offices.map(office => `<label class="card"><span>${escapeHtml(office.label)}</span><select name="${escapeAttr(office.code)}" ${snapshot.canManageOffices ? "" : "disabled"}>${optionList(members.map(member => ({ value: member.id, label: `${member.memberCode} · ${memberName(member)}` })), office.memberId || "", "Unbesetzt")}</select></label>`).join("")}
+      ${offices.map(office => `<label class="card"><span>${escapeHtml(office.label)}</span><select name="${escapeAttr(office.code)}" ${snapshot.canManageOffices ? "" : "disabled"}>${optionList(members.map(member => ({ value: member.id, label: memberName(member) })), office.memberId || "", "Unbesetzt")}</select></label>`).join("")}
       ${snapshot.canManageOffices ? '<div class="full dialog-actions"><button class="button primary" type="submit">Alle Amtsplätze speichern</button></div>' : ""}
     </form>`;
 
@@ -816,22 +818,13 @@ function ensureFinanceAccountFilter() {
 
 function accountForm(account = {}) {
   const isDefaultCash = account.code === "KASSE";
+  const isNewAccount = !account.id;
 
   return `<form class="form-grid">
     <input type="hidden" name="id" value="${escapeAttr(account.id || "")}">
     <input type="hidden" name="revision" value="${escapeAttr(account.revision || "")}">
-    <label>Kurzcode
-      <input
-        name="code"
-        required
-        maxlength="32"
-        value="${escapeAttr(account.code || "")}"
-        placeholder="BANK"
-        ${isDefaultCash ? "readonly" : ""}
-      >
-    </label>
     <label>Bezeichnung
-      <input name="name" required maxlength="120" value="${escapeAttr(account.name || "")}" placeholder="Bankkonto">
+      <input name="name" required maxlength="120" value="${escapeAttr(account.name || "")}">
     </label>
     <label>Kontotyp
       <select name="accountType" ${isDefaultCash ? "disabled" : ""}>
@@ -847,6 +840,19 @@ function accountForm(account = {}) {
             { value: "false", label: "Inaktiv" }
           ], String(account.active ?? true))}</select>`}
     </label>
+    ${isNewAccount ? `<label>Startsaldo
+      <input
+        name="openingBalance"
+        type="number"
+        min="-999999.99"
+        max="999999.99"
+        step="0.01"
+        inputmode="decimal"
+      >
+    </label>
+    <label>Stand zum
+      <input name="openingBalanceDate" type="date" value="${localDate()}">
+    </label>` : ""}
   </form>`;
 }
 
@@ -1038,7 +1044,6 @@ function renderFinanceAccounts() {
       <div>
         <span class="subtle">${escapeHtml(accountTypeLabel(account.accountType))}</span>
         <h3>${escapeHtml(account.name)}</h3>
-        <small>${escapeHtml(account.code)}</small>
       </div>
       <strong class="v4-account-balance">${escapeHtml(money(account.balance))}</strong>
       <div class="v4-inline-actions">

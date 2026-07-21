@@ -126,6 +126,9 @@ function syncBrandContext() {
       : "Vereinsportal";
   }
 
+  const portalHomeButton = document.getElementById("portalHomeButton");
+  if (portalHomeButton) portalHomeButton.hidden = publicArea;
+
   document.documentElement.dataset.portalArea = publicArea
     ? "public"
     : "portal";
@@ -356,8 +359,7 @@ function renderProfileDetails() {
     <div class="user-profile-dialog-body">
       <section class="user-menu-section">
         <h3>Portalprofil</h3>
-        <div class="user-profile-grid">
-          ${profileField("Portal-ID", portal.userCode)}
+        <div class="user-profile-grid user-profile-grid-single">
           ${profileField("Login-E-Mail", portal.email || current.session?.user?.email)}
         </div>
         ${current.user ? `<form id="directProfileForm" class="form-grid user-profile-form">
@@ -381,7 +383,7 @@ function renderProfileDetails() {
           <div>
             <h3>Geschützte Mitgliedsdaten</h3>
             <p>${member
-              ? `${escapeHtml(member.memberCode)} · Änderungen werden von einem Admin geprüft.`
+              ? "Mitgliedsdaten sind verknüpft. Änderungen werden von einem Admin geprüft."
               : "Keine offiziellen Mitgliedsdaten verknüpft."}</p>
           </div>
           ${pending ? '<span class="badge warning">Anfrage offen</span>' : ""}
@@ -502,9 +504,8 @@ function renderUserMenu() {
 
   <div class="user-menu-content">
     <div class="user-profile-grid">
-      ${profileField("Portal-ID", portal.userCode)}
       ${profileField("Login-E-Mail", portal.email || current.session?.user?.email)}
-      ${member ? profileField("Mitglied", member.memberCode) : ""}
+      ${member ? profileField("Mitgliedschaft", "Verknüpft") : ""}
     </div>
     ${pending ? `<div class="notice warning">
       <strong>Datenänderung in Prüfung</strong>

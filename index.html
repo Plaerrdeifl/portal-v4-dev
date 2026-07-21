@@ -29,7 +29,7 @@
   <link rel="stylesheet" href="./css/m4-corr5.css?v=20260717-r71-m4-corr5-responsive-auth-instant-home">
   <link rel="stylesheet" href="./css/m4-corr6.css?v=20260717-r71-m4-corr6-public-fast-start">
   <link rel="stylesheet" href="./css/m4-corr7.css?v=20260717-r71-m4-corr7-portal-separation">
-  <link rel="stylesheet" href="./css/v4-core.css?v=20260721-ui-correction">
+  <link rel="stylesheet" href="./css/v4-core.css?v=20260721-targeted-fixes">
   <title>Plärrdeifl Portal</title>
 </head>
 <body>
@@ -87,6 +87,17 @@
               <img src="./assets/icons/icon-32.png" alt="">
               <span><strong>Plärrdeifl</strong><small id="mobileBrandContext">ÖFFENTLICHER BEREICH</small></span>
             </div>
+            <button
+              id="portalHomeButton"
+              class="topbar-home-button"
+              type="button"
+              data-route="home"
+              aria-label="Zur öffentlichen Startseite"
+              hidden
+            >
+              <span aria-hidden="true">⌂</span>
+              <span>Startseite</span>
+            </button>
           </div>
           <div class="topbar-actions">
             <span id="connectionStatus" class="connection-indicator success" data-state="success" aria-live="polite">
@@ -142,6 +153,6 @@
 
   <script src="./js/runtime-config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7"></script>
-  <script type="module" src="./js/app.js?v=20260721-ui-correction"></script>
+  <script type="module" src="./js/app.js?v=20260721-targeted-fixes"></script>
 </body>
 </html>

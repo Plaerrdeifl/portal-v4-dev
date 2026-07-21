@@ -57,7 +57,7 @@ function membershipForm(team, membership = {}) {
 
   return `<form class="form-grid">
     <input type="hidden" name="teamId" value="${escapeAttr(team.id)}">
-    <label class="full">Portalbenutzer<select name="userId" required ${membership.userId ? "disabled" : ""}>${optionList(users.map(user => ({ value: user.id, label: `${user.userCode} · ${user.name}` })), membership.userId || "", "Benutzer auswählen")}</select>${membership.userId ? `<input type="hidden" name="userId" value="${escapeAttr(membership.userId)}">` : ""}</label>
+    <label class="full">Portalbenutzer<select name="userId" required ${membership.userId ? "disabled" : ""}>${optionList(users.map(user => ({ value: user.id, label: user.name })), membership.userId || "", "Benutzer auswählen")}</select>${membership.userId ? `<input type="hidden" name="userId" value="${escapeAttr(membership.userId)}">` : ""}</label>
     <label class="full">Teamrolle<select name="role">${optionList(roles, membership.role || "MEMBER")}</select></label>
   </form>`;
 }
@@ -172,7 +172,7 @@ function teamCard(team) {
       ${activeMembers.length ? activeMembers.map(member => `<div class="v4-list-row">
         <div>
           <strong>${escapeHtml(member.name)}</strong>
-          <small>${escapeHtml(member.userCode)} · ${escapeHtml(roleLabel(member.role))}</small>
+          <small>${escapeHtml(roleLabel(member.role))}</small>
         </div>
         ${team.canManage ? `<div class="row-actions">
           <button class="button small secondary" data-edit-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}" type="button">Rolle</button>

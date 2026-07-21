@@ -1060,3 +1060,111 @@ body.overlay-open .view{
     width:100%;
   }
 }
+
+/* V4 Core: gezielte Portal-, Datenschutz- und Finanzkorrekturen */
+.topbar-home-button{
+  min-height:38px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  padding:8px 12px;
+  border:1px solid rgba(255,255,255,.2);
+  border-radius:12px;
+  background:rgba(255,255,255,.1);
+  color:#fff;
+  font-weight:850;
+  cursor:pointer;
+}
+
+.topbar-home-button:hover,
+.topbar-home-button:focus-visible{
+  background:rgba(255,255,255,.2);
+  outline:3px solid rgba(255,255,255,.13);
+}
+
+.topbar-home-button[hidden]{
+  display:none!important;
+}
+
+.user-profile-grid-single{
+  grid-template-columns:1fr;
+}
+
+.public-login-page{
+  min-height:100%;
+  display:grid;
+  place-items:start center;
+  padding:clamp(4px,2vw,20px) 0!important;
+}
+
+.public-login-card{
+  width:min(640px,100%);
+  padding:clamp(20px,4vw,30px)!important;
+}
+
+.public-login-card .auth-card-header{
+  margin-bottom:14px;
+}
+
+.public-login-card .auth-title-row{
+  align-items:flex-start;
+}
+
+.public-login-card .google-signin-slot{
+  margin-top:20px;
+}
+
+@media(min-width:861px){
+  .dashboard-widget-grid{
+    grid-template-columns:repeat(auto-fit,minmax(175px,1fr))!important;
+    gap:12px!important;
+  }
+
+  .dashboard-page .v4-metric-card{
+    min-height:88px!important;
+    padding:14px 15px!important;
+    gap:11px!important;
+    border-radius:16px!important;
+  }
+
+  .dashboard-page .v4-metric-icon{
+    width:42px!important;
+    height:42px!important;
+    border-radius:13px!important;
+    font-size:1.25rem!important;
+  }
+
+  .dashboard-page .v4-metric-card strong{
+    font-size:1.45rem!important;
+  }
+
+  .dashboard-page .v4-metric-card h3{
+    margin:4px 0 0!important;
+    font-size:.93rem!important;
+  }
+
+  .dashboard-page .v4-metric-card p{
+    display:none!important;
+  }
+}
+
+@media(max-width:620px){
+  .topbar-home-button{
+    width:40px;
+    min-width:40px;
+    padding:7px;
+  }
+
+  .topbar-home-button span:last-child{
+    display:none;
+  }
+
+  .public-login-page{
+    padding-top:0!important;
+  }
+
+  .public-login-card{
+    padding:20px 16px!important;
+  }
+}

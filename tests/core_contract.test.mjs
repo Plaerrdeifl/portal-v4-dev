@@ -42,7 +42,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260720201500_harden_task_workflow.sql",
     "20260720223000_restore_archived_tasks.sql",
     "20260720234500_add_contribution_management.sql",
-    "20260721013000_add_finance_task_profile_workflows.sql"
+    "20260721013000_add_finance_task_profile_workflows.sql",
+    "20260721095000_add_finance_account_opening_balance.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
@@ -262,12 +263,12 @@ test("public mobile navigation remains visible and usable", async () => {
 
   assert.match(
     html,
-    /v4-core\.css\?v=20260721-ui-correction/
+    /v4-core\.css\?v=20260721-targeted-fixes/
   );
 
   assert.match(
     worker,
-    /pd-portal-v4-core-20260721-9/
+    /pd-portal-v4-core-20260721-10/
   );
 });
 
@@ -320,8 +321,8 @@ test("task workflow is revision-safe and archived without hard delete", async ()
   assert.doesNotMatch(common, /"WAITING"/);
 
   assert.match(css, /gehärteter Aufgabenworkflow/);
-  assert.match(html, /20260721-ui-correction/);
-  assert.match(worker, /pd-portal-v4-core-20260721-9/);
+  assert.match(html, /20260721-targeted-fixes/);
+  assert.match(worker, /pd-portal-v4-core-20260721-10/);
 });
 
 test("task status uses a constrained dropdown", async () => {
@@ -616,4 +617,47 @@ test("mobile UI correction removes the bottom bar and separates profile editing"
     css.includes("linear-gradient(135deg,#102a46"),
     true
   );
+});
+
+test("targeted portal privacy dashboard login and finance fixes are enforced", async () => {
+  const migration = await read(
+    "supabase/migrations/20260721095000_add_finance_account_opening_balance.sql"
+  );
+  const topbar = await read("components/topbar.html");
+  const ui = await read("js/ui.js");
+  const teams = await read("js/modules/teams.js");
+  const fanclub = await read("js/modules/fanclub.js");
+  const login = await read("pages/login.html");
+  const css = await read("css/v4-core.css");
+
+  assert.equal(topbar.includes('id="portalHomeButton"'), true);
+  assert.equal(ui.includes('portalHomeButton.hidden = publicArea'), true);
+  assert.equal(ui.includes('profileField("Portal-ID"'), false);
+  assert.equal(ui.includes("member.memberCode"), false);
+  assert.equal(teams.includes("user.userCode"), false);
+  assert.equal(teams.includes("member.userCode"), false);
+
+  const accountStart = fanclub.indexOf("function accountForm(account = {})");
+  const accountEnd = fanclub.indexOf("function openFinanceAccount", accountStart);
+  assert.equal(accountStart >= 0, true);
+  assert.equal(accountEnd > accountStart, true);
+  const accountFormSource = fanclub.slice(accountStart, accountEnd);
+  assert.equal(accountFormSource.includes('name="code"'), false);
+  assert.equal(accountFormSource.includes('name="openingBalance"'), true);
+  assert.equal(accountFormSource.includes('name="openingBalanceDate"'), true);
+  assert.equal(accountFormSource.includes('placeholder="Bankkonto"'), false);
+  assert.equal(fanclub.includes("<small>${escapeHtml(account.code)}</small>"), false);
+  assert.equal(fanclub.includes('OPENING_BALANCE: "Startsaldo"'), true);
+
+  assert.equal(migration.includes("'KONTO_'"), true);
+  assert.equal(migration.includes("'OPENING_BALANCE'"), true);
+  assert.equal(migration.includes("'Startsaldo'"), true);
+  assert.equal(migration.includes("set name = v_name"), true);
+  assert.equal(migration.includes("set code = v_code"), false);
+
+  assert.equal(login.includes("public-login-page"), true);
+  assert.equal(login.includes("auth-brand-panel"), false);
+  assert.equal(login.includes('data-route="home"'), true);
+  assert.equal(css.includes("gezielte Portal-, Datenschutz- und Finanzkorrekturen"), true);
+  assert.equal(css.includes("repeat(auto-fit,minmax(175px,1fr))"), true);
 });
