@@ -57,7 +57,17 @@ test("profile registration remains retryable and keyboard accessible", async () 
   );
   assert.equal(css.includes("--profile-keyboard-inset"), true);
   assert.equal(
-    css.includes('html[data-route="profile"] body{height:auto!important'),
+    css.includes(
+      'html[data-route="profile"] .view{height:100%!important;min-height:0!important;overflow-x:hidden!important;overflow-y:auto!important'
+    ),
+    true
+  );
+  assert.equal(css.includes("-webkit-overflow-scrolling:touch"), true);
+  assert.equal(css.includes("touch-action:pan-y!important"), true);
+  assert.equal(
+    css.includes(
+      "padding-bottom:calc(var(--mobile-nav-height) + var(--safe-bottom) + var(--profile-keyboard-inset) + 32px)!important"
+    ),
     true
   );
 });
