@@ -17,6 +17,9 @@ const { values } = parseArgs({
 const url = String(values.url || process.env.SUPABASE_URL || "").trim().replace(/\/$/, "");
 const key = String(values.key || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY || "").trim();
 const environment = String(values.environment || "DEV").trim().toUpperCase();
+const googleClientId = String(
+  process.env.GOOGLE_CLIENT_ID || ""
+).trim();
 const output = resolve(values.output);
 
 if (!url || !key) {
@@ -39,7 +42,8 @@ if (key.length < 20 || /service[_-]?role/i.test(key)) {
 const content = `window.PD_RUNTIME_CONFIG = Object.freeze(${JSON.stringify({
   supabaseUrl: url,
   supabasePublishableKey: key,
-  environment
+  environment,
+  ...(googleClientId ? { googleClientId } : {})
 }, null, 2)});\n`;
 
 await mkdir(dirname(output), { recursive: true });

@@ -39,3 +39,8 @@ Die primären Bereiche werden direkt angezeigt. Der Eintrag „Mehr“ öffnet d
 - nicht ausgeglichener CSS-Syntax.
 
 Die frühere Struktur bleibt ausschließlich über die Git-Historie nachvollziehbar.
+## Google-Anmeldung
+
+Die Web-Anmeldung verwendet ausschließlich Google Identity Services mit dem offiziellen Google-Button und `ux_mode: "popup"`. Das zurückgegebene Google-ID-Token wird mit `supabase.auth.signInWithIdToken()` in eine Supabase-Sitzung umgewandelt.
+
+Eigene Browserfenster über `window.open()`, manuelle Größen- oder Positionsberechnungen sowie OAuth-Rückkehrseiten sind für den Google-Login nicht zulässig. Die öffentliche Google Web Client-ID darf in der Runtime-Konfiguration beziehungsweise als DEV-Fallback im Frontend enthalten sein; ein Google Client-Secret darf niemals ins Frontend gelangen.

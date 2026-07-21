@@ -21,6 +21,9 @@ if (JSON.stringify(cssFiles) !== JSON.stringify(expectedCssFiles)) {
 const html = read("index.html");
 const appCss = read("css/app.css");
 const ui = read("js/ui.js");
+const authSource = read("js/auth.js");
+const pagesSource = read("js/pages.js");
+const googleSignIn = read("js/google-signin.js");
 const login = read("pages/login.html");
 const packageJson = JSON.parse(read("package.json"));
 
@@ -115,6 +118,48 @@ if (
 
 if (!packageJson.scripts?.["check:frontend"]) {
   throw new Error("Die Frontend-Architekturprüfung fehlt.");
+}
+
+if (
+  authSource.includes("window.open(")
+  || authSource.includes("signInWithOAuth")
+  || authSource.includes("oauthPopup")
+) {
+  throw new Error("Der Login enthält noch ein manuell erzeugtes OAuth-Fenster.");
+}
+
+for (const required of [
+  "signInWithIdToken",
+  "signInWithGoogleIdToken"
+]) {
+  if (!authSource.includes(required)) {
+    throw new Error(`Supabase-ID-Token-Login fehlt: ${required}`);
+  }
+}
+
+for (const required of [
+  "https://accounts.google.com/gsi/client",
+  'ux_mode: "popup"',
+  "renderButton",
+  "use_fedcm_for_prompt: true"
+]) {
+  if (!googleSignIn.includes(required)) {
+    throw new Error(`Google Identity Services unvollständig: ${required}`);
+  }
+}
+
+if (
+  !pagesSource.includes("renderGoogleSignInButton")
+  || pagesSource.includes("supabaseGoogleLogin")
+) {
+  throw new Error("Die Loginseite verwendet nicht ausschließlich den offiziellen Google-Button.");
+}
+
+if (
+  html.includes("oauth-return-guard")
+  || fs.existsSync(path.join(root, "js", "oauth-return-guard.js"))
+) {
+  throw new Error("Die alte OAuth-Rückkehrlogik ist noch vorhanden.");
 }
 
 const forbiddenFilePattern = /(?:corr|patch|uiux-p)/i;

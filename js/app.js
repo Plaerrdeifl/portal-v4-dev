@@ -25,140 +25,6 @@ let renderSequence = 0;
 let authEventQueued = false;
 let apiActivity = api.activity();
 
-const OAUTH_CHANNEL_NAME = "pd-v4-oauth";
-const OAUTH_POPUP_NAME = "pdGoogleAuth";
-
-let oauthChannel = null;
-let oauthSyncPromise = null;
-const handledOAuthMessages = new Set();
-
-function hasOAuthCallback() {
-  const params = new URLSearchParams(location.search);
-
-  return (
-    params.has("code")
-    || params.has("error")
-    || params.has("error_description")
-  );
-}
-
-function cleanOAuthLocation(hash) {
-  const target = new URL(location.href);
-  target.search = "";
-  target.hash = hash;
-  history.replaceState(null, "", target.toString());
-}
-
-function oauthTarget(current, consumeStoredRoute = true) {
-  if (!current.authenticated) return "#/login";
-  if (current.status !== "ACTIVE") return "#/profile";
-
-  const stored = consumeStoredRoute
-    ? auth.consumePostLoginRoute()
-    : "";
-
-  return stored || "#/dashboard";
-}
-
-function notifyOAuthCompletion(detail) {
-  const payload = {
-    type: "pd-oauth-complete",
-    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    ...detail
-  };
-
-  try {
-    window.opener?.postMessage(payload, location.origin);
-  } catch (error) {
-    console.debug("OAuth-Popup konnte den Öffner nicht direkt informieren", error);
-  }
-
-  if ("BroadcastChannel" in window) {
-    const channel = new BroadcastChannel(OAUTH_CHANNEL_NAME);
-    channel.postMessage(payload);
-    channel.close();
-  }
-}
-
-async function prepareOAuthReturn() {
-  if (!hasOAuthCallback()) return false;
-
-  const popupReturn = window.name === OAUTH_POPUP_NAME;
-  const current = await auth.initialize();
-
-  if (popupReturn) {
-    notifyOAuthCompletion({
-      ok: current.authenticated,
-      message: current.error?.message || ""
-    });
-
-    window.close();
-    return true;
-  }
-
-  cleanOAuthLocation(oauthTarget(current));
-  document.documentElement.removeAttribute("data-oauth-return");
-  return false;
-}
-
-async function acceptOAuthCompletion(detail = {}) {
-  if (detail.type !== "pd-oauth-complete") return;
-
-  if (detail.id && handledOAuthMessages.has(detail.id)) return;
-  if (detail.id) handledOAuthMessages.add(detail.id);
-
-  document.body.classList.remove("oauth-popup-open");
-  window.dispatchEvent(
-    new CustomEvent("pd-oauth-popup-finished", { detail })
-  );
-
-  if (!detail.ok) {
-    showToast(
-      detail.message || "Google-Anmeldung wurde nicht abgeschlossen.",
-      "error",
-      6500
-    );
-    return;
-  }
-
-  if (oauthSyncPromise) return oauthSyncPromise;
-
-  oauthSyncPromise = auth.syncSession()
-    .then(current => {
-      if (!current.authenticated) {
-        throw new Error(
-          "Die Google-Anmeldung wurde abgeschlossen, aber die Sitzung konnte nicht übernommen werden."
-        );
-      }
-    })
-    .catch(error => {
-      showToast(
-        error?.message || "Google-Anmeldung konnte nicht übernommen werden.",
-        "error",
-        7000
-      );
-    })
-    .finally(() => {
-      oauthSyncPromise = null;
-    });
-
-  return oauthSyncPromise;
-}
-
-function bindOAuthPopupCompletion() {
-  window.addEventListener("message", event => {
-    if (event.origin !== location.origin) return;
-    acceptOAuthCompletion(event.data);
-  });
-
-  if ("BroadcastChannel" in window) {
-    oauthChannel = new BroadcastChannel(OAUTH_CHANNEL_NAME);
-    oauthChannel.addEventListener("message", event => {
-      acceptOAuthCompletion(event.data);
-    });
-  }
-}
-
 function connectionState() {
   const current = auth.current();
 
@@ -374,10 +240,6 @@ async function logout() {
 }
 
 async function bootstrap() {
-  const popupHandled = await prepareOAuthReturn();
-  if (popupHandled) return;
-
-  document.documentElement.removeAttribute("data-oauth-return");
   await mountComponents();
 
   bindGlobalUi({
@@ -385,7 +247,6 @@ async function bootstrap() {
     onLogout: logout
   });
 
-  bindOAuthPopupCompletion();
   initializeInstall();
 
   window.addEventListener("pd-update-available", () => {

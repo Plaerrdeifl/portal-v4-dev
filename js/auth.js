@@ -93,66 +93,6 @@ function registerAuthListener(client) {
   authSubscription = data.subscription;
 }
 
-const OAUTH_POPUP_NAME = "pdGoogleAuth";
-
-function supportsOAuthPopup() {
-  return window.matchMedia(
-    "(min-width: 720px) and (pointer: fine)"
-  ).matches;
-}
-
-function oauthPopupGeometry() {
-  const availableWidth = Math.max(360, window.screen.availWidth - 40);
-  const availableHeight = Math.max(520, window.screen.availHeight - 40);
-  const width = Math.min(440, availableWidth);
-  const height = Math.min(600, availableHeight);
-  const browserLeft = Number.isFinite(window.screenLeft)
-    ? window.screenLeft
-    : window.screenX;
-  const browserTop = Number.isFinite(window.screenTop)
-    ? window.screenTop
-    : window.screenY;
-  const browserWidth = window.outerWidth || window.innerWidth || width;
-  const browserHeight = window.outerHeight || window.innerHeight || height;
-  const left = Math.max(
-    0,
-    Math.round(browserLeft + (browserWidth - width) / 2)
-  );
-  const top = Math.max(
-    0,
-    Math.round(browserTop + (browserHeight - height) / 2)
-  );
-
-  return { width, height, left, top };
-}
-
-function oauthPopupFeatures(geometry) {
-  return [
-    "popup=yes",
-    `width=${geometry.width}`,
-    `height=${geometry.height}`,
-    `left=${geometry.left}`,
-    `top=${geometry.top}`,
-    "resizable=yes",
-    "scrollbars=yes"
-  ].join(",");
-}
-
-function positionOAuthPopup(popup, geometry) {
-  if (!popup || !geometry) return;
-
-  try {
-    popup.resizeTo(geometry.width, geometry.height);
-    popup.moveTo(geometry.left, geometry.top);
-    popup.focus();
-  } catch (error) {
-    console.debug(
-      "Das Google-Anmeldefenster konnte nicht nachpositioniert werden",
-      error
-    );
-  }
-}
-
 export const auth = Object.freeze({
   async initialize() {
     if (state.initialized) return this.current();
@@ -272,80 +212,48 @@ export const auth = Object.freeze({
     return refreshBootstrap();
   },
 
-  async signInWithGoogle() {
+  async signInWithGoogleIdToken(token, nonce = "") {
+    const credential = String(token || "").trim();
+    const rawNonce = String(nonce || "").trim();
+
+    if (!credential) {
+      throw new Error("Google hat kein gültiges ID-Token zurückgegeben.");
+    }
+
     const client = getSupabaseClient();
-    const redirect = new URL(location.href);
-    redirect.hash = "";
-    redirect.search = "";
-
-    const popupGeometry = supportsOAuthPopup()
-      ? oauthPopupGeometry()
-      : null;
-    const popup = popupGeometry
-      ? window.open(
-          "about:blank",
-          OAUTH_POPUP_NAME,
-          oauthPopupFeatures(popupGeometry)
-        )
-      : null;
-
-    positionOAuthPopup(popup, popupGeometry);
+    state.busy = true;
+    state.error = null;
+    emit();
 
     try {
-      const { data, error } = await client.auth.signInWithOAuth({
+      const credentials = {
         provider: "google",
-        options: {
-          redirectTo: redirect.toString(),
-          skipBrowserRedirect: true,
-          queryParams: {
-            prompt: "select_account"
-          }
-        }
-      });
+        token: credential
+      };
+
+      if (rawNonce) {
+        credentials.nonce = rawNonce;
+      }
+
+      const { data, error } = await client.auth.signInWithIdToken(credentials);
 
       if (error) throw error;
-      if (!data?.url) {
-        throw new Error("Google-Anmeldung konnte nicht geöffnet werden.");
+      if (!data?.session) {
+        throw new Error("Die Google-Anmeldung hat keine Portalsitzung erzeugt.");
       }
 
-      if (popup) {
-        document.body.classList.add("oauth-popup-open");
-        popup.location.replace(data.url);
-        positionOAuthPopup(popup, popupGeometry);
-        window.setTimeout(
-          () => positionOAuthPopup(popup, popupGeometry),
-          120
-        );
-        return { mode: "popup", popup };
-      }
-
-      location.assign(data.url);
-      return { mode: "redirect", popup: null };
-    } catch (error) {
-      popup?.close();
-      document.body.classList.remove("oauth-popup-open");
-      throw error;
-    }
-  },
-
-  async syncSession() {
-    const client = getSupabaseClient();
-    const { data, error } = await client.auth.getSession();
-
-    if (error) throw error;
-
-    state.session = data.session || null;
-    state.initialized = true;
-
-    if (state.session) {
+      state.session = data.session;
+      state.initialized = true;
       await refreshBootstrap();
-    } else {
-      state.bootstrap = null;
-      state.error = null;
+
+      return this.current();
+    } catch (error) {
+      state.error = error;
+      throw error;
+    } finally {
+      state.busy = false;
       emit();
     }
-
-    return this.current();
   },
 
   async submitAccessRequest(data) {

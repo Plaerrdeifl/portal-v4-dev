@@ -1,4 +1,5 @@
 import { auth } from "./auth.js";
+import { renderGoogleSignInButton } from "./google-signin.js";
 import { CONFIG } from "./config.js";
 import { navigate } from "./router.js";
 import { showToast } from "./ui.js";
@@ -43,8 +44,13 @@ async function hydrateLogin() {
   await auth.initialize();
 
   const slot = document.getElementById("googleSignInButton");
+  const status = document.getElementById("googleSignInStatus");
 
-  const render = () => {
+  const setStatus = value => {
+    if (status) status.textContent = value;
+  };
+
+  const render = async () => {
     const state = auth.current();
     if (!slot) return;
 
@@ -63,50 +69,52 @@ async function hydrateLogin() {
         "loginMessage",
         "Melde dich sicher mit deinem Google-Konto an."
       );
-      slot.innerHTML =
-        '<button id="supabaseGoogleLogin" class="button primary v4-google-button" type="button">'
-        + '<span aria-hidden="true">G</span> Mit Google anmelden</button>';
 
-      document.getElementById("supabaseGoogleLogin")
-        ?.addEventListener("click", async event => {
-          const button = event.currentTarget;
-          button.disabled = true;
-          button.textContent = "Weiter zu Google …";
+      if (!CONFIG.auth.googleClientId) {
+        slot.innerHTML =
+          '<div class="notice error">Die öffentliche Google Client-ID fehlt.</div>';
+        setStatus("Die Anmeldung ist noch nicht vollständig konfiguriert.");
+        return;
+      }
 
-          try {
-            auth.rememberPostLoginRoute("#/dashboard");
-            const result = await auth.signInWithGoogle();
+      try {
+        setStatus("");
 
-            if (result?.mode === "popup" && result.popup) {
-              const popup = result.popup;
-              const monitor = window.setInterval(() => {
-                if (!popup.closed) return;
+        await renderGoogleSignInButton(slot, {
+          clientId: CONFIG.auth.googleClientId,
+          onCredential: async (response, nonce) => {
+            slot.setAttribute("aria-busy", "true");
+            setStatus("Google-Anmeldung wird sicher geprüft …");
 
-                window.clearInterval(monitor);
-                document.body.classList.remove("oauth-popup-open");
-
-                if (
-                  document.body.contains(button)
-                  && !auth.isAuthenticated()
-                ) {
-                  button.disabled = false;
-                  button.innerHTML =
-                    '<span aria-hidden="true">G</span> Mit Google anmelden';
-                }
-              }, 400);
+            try {
+              auth.rememberPostLoginRoute("#/dashboard");
+              await auth.signInWithGoogleIdToken(
+                response?.credential,
+                nonce
+              );
+            } catch (error) {
+              showToast(
+                error?.message
+                  || "Google-Anmeldung konnte nicht abgeschlossen werden.",
+                "error",
+                7000
+              );
+              setStatus("Anmeldung fehlgeschlagen. Bitte erneut versuchen.");
+            } finally {
+              slot.setAttribute("aria-busy", "false");
             }
-          } catch (error) {
-            showToast(
-              error?.message
-                || "Google-Anmeldung konnte nicht gestartet werden.",
-              "error",
-              6500
-            );
-            button.disabled = false;
-            button.innerHTML =
-              '<span aria-hidden="true">G</span> Mit Google anmelden';
           }
         });
+      } catch (error) {
+        slot.innerHTML =
+          '<div class="notice error">Google-Anmeldung konnte nicht geladen werden.</div>';
+        setStatus(error?.message || "Google Identity Services ist nicht verfügbar.");
+        showToast(
+          error?.message || "Google-Anmeldung konnte nicht geladen werden.",
+          "error",
+          7000
+        );
+      }
 
       return;
     }
@@ -118,6 +126,7 @@ async function hydrateLogin() {
       );
       slot.innerHTML =
         '<div class="notice">Anmeldung wird geprüft …</div>';
+      setStatus("");
       return;
     }
 
@@ -130,6 +139,7 @@ async function hydrateLogin() {
         '<button id="loginDashboardButton" class="button primary" type="button">Zum Dashboard</button>';
       document.getElementById("loginDashboardButton")
         ?.addEventListener("click", () => navigate("dashboard"));
+      setStatus("");
       return;
     }
 
@@ -141,10 +151,12 @@ async function hydrateLogin() {
       '<button id="loginProfileButton" class="button primary" type="button">Registrierung fortsetzen</button>';
     document.getElementById("loginProfileButton")
       ?.addEventListener("click", () => navigate("profile"));
+    setStatus("");
   };
 
-  render();
+  await render();
 }
+
 
 export function preloadAuthenticatedModules(keys = ["dashboard", "fanclub", "tasks", "teams", "admin"]) {
   const modules = {

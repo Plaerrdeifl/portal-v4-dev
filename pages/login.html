@@ -1,17 +1,31 @@
 <section class="page public-login-inline" aria-labelledby="authTitle">
   <header class="public-login-intro">
     <h2 id="authTitle">Anmelden oder registrieren</h2>
-    <p id="loginMessage">Google-Anmeldung wird vorbereitet …</p>
+    <p id="loginMessage">Melde dich sicher mit deinem Google-Konto an.</p>
   </header>
 
   <article class="card public-login-main">
+    <div class="public-login-summary">
+      <span class="public-login-summary-icon" aria-hidden="true">✓</span>
+      <div>
+        <strong>Sicher anmelden</strong>
+        <p>Wähle dein Google-Konto aus. Danach wirst du direkt ins Portal geleitet.</p>
+      </div>
+    </div>
+
     <div id="loginNotice" class="notice" hidden aria-live="polite"></div>
-    <div id="googleSignInButton" class="google-signin-slot" aria-label="Mit Google anmelden"></div>
+    <div
+      id="googleSignInButton"
+      class="google-signin-slot"
+      aria-label="Mit Google anmelden"
+      aria-live="polite"
+    ></div>
+    <p id="googleSignInStatus" class="public-login-status" role="status"></p>
     <div id="registrationSlot" hidden></div>
 
     <div class="public-login-note">
-      <span aria-hidden="true">✓</span>
-      <p>Google bestätigt deine Identität. Rollen, Mitgliedschaft und Zugriffsrechte werden anschließend sicher im Portal geprüft.</p>
+      <span aria-hidden="true">i</span>
+      <p>Google bestätigt nur deine Identität. Rollen, Mitgliedschaft und Zugriffsrechte prüft anschließend das Portal.</p>
     </div>
   </article>
 </section>
