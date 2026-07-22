@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-test("Google Identity Services is initialized once with popup UX and a nonce", async () => {
+test("Google Identity Services is initialized once with popup UX, nonce and safe responsive width", async () => {
   let initializeOptions = null;
   let renderOptions = null;
   let callbackResult = null;
@@ -20,6 +20,7 @@ test("Google Identity Services is initialized once with popup UX and a nonce", a
         }
       }
     },
+    innerWidth: 393,
     setTimeout,
     clearTimeout
   };
@@ -44,6 +45,13 @@ test("Google Identity Services is initialized once with popup UX and a nonce", a
 
   const element = {
     rendered: false,
+    clientWidth: 300,
+    getBoundingClientRect() {
+      return { width: 300 };
+    },
+    hasChildNodes() {
+      return this.rendered;
+    },
     replaceChildren() {}
   };
 
@@ -68,7 +76,7 @@ test("Google Identity Services is initialized once with popup UX and a nonce", a
 
   assert.equal(renderOptions.theme, "filled_blue");
   assert.equal(renderOptions.shape, "pill");
-  assert.equal(renderOptions.width, 320);
+  assert.equal(renderOptions.width, 288);
   assert.equal(renderOptions.locale, "de");
 
   initializeOptions.callback({ credential: "jwt-token" });

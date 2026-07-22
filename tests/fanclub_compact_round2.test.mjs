@@ -67,14 +67,14 @@ test("cashbook is compact, typed, searchable and paginated without nested scroll
   assert.ok(css.includes('html[data-portal-area="portal"]:not([data-route="profile"]) .view>.page{padding-bottom:calc'));
 });
 
-test("cache busting identifies global UI foundation phase one", async () => {
+test("cache busting identifies phase-one acceptance fix", async () => {
   const [index, config, worker] = await Promise.all([
     read("index.html"),
     read("js/config.js"),
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260722-ui-foundation-p1-4/);
-  assert.match(config, /20260722-ui-foundation-p1-4/);
-  assert.match(worker, /pd-portal-v4-ui-foundation-p1-20260722-4/);
+  assert.match(index, /20260722-ui-foundation-p1-acceptance-1/);
+  assert.match(config, /20260722-ui-foundation-p1-acceptance-1/);
+  assert.match(worker, /pd-portal-v4-ui-foundation-p1-acceptance-20260722-1/);
 });

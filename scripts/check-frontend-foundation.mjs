@@ -72,10 +72,14 @@ for (const token of [
 for (const required of [
   ".mobile-bottom-nav",
   ".mobile-nav-button",
-  "var(--mobile-nav-height)"
+  "var(--mobile-nav-height)",
+  ".sidebar .nav-main{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}",
+  ".sidebar .nav-footer{flex:0 0 auto;overflow:visible",
+  ".google-signin-slot>div{",
+  "padding-inline:6px"
 ]) {
   if (!appCss.includes(required)) {
-    throw new Error(`Mobile Bottom-Navigation unvollständig: ${required}`);
+    throw new Error(`Globale Frontend-Grundlage unvollständig: ${required}`);
   }
 }
 
@@ -141,6 +145,8 @@ for (const required of [
   "https://accounts.google.com/gsi/client",
   'ux_mode: "popup"',
   "renderButton",
+  "BUTTON_HORIZONTAL_INSET",
+  "await afterLayout()",
   "use_fedcm_for_button: true",
   "button_auto_select: false"
 ]) {
@@ -240,5 +246,5 @@ if (depth !== 0 || quote) {
 
 console.log(
   `FRONTEND_FOUNDATION_OK · ${cssFiles.length} CSS-Dateien · `
-  + "Bottom-Navigation aktiv · Mehr schaltet Seitenleiste"
+  + "Google-Button sicher responsiv · Navigationsfuß dauerhaft sichtbar"
 );

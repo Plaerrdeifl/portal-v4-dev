@@ -28,7 +28,7 @@ test("authentication transitions have one central controller", async () => {
   assert.ok(!css.includes("data-startup-state"));
 });
 
-test("navigation uses one toggle state and a structural footer", async () => {
+test("navigation uses one toggle state and a permanently visible structural footer", async () => {
   const [ui, sidebar, index, css] = await Promise.all([
     read("js/ui.js"),
     read("components/sidebar.html"),
@@ -40,9 +40,13 @@ test("navigation uses one toggle state and a structural footer", async () => {
   assert.ok(ui.includes("export function toggleMobileMenu"));
   assert.ok(ui.includes('event.target.closest("#mobileMoreToggle")'));
   assert.ok(ui.includes("toggleMobileMenu();"));
+  assert.ok(ui.includes('title: "Zur Startseite"'));
   assert.ok(sidebar.includes('id="portalNavFooter"'));
   assert.ok(index.includes('id="portalNavFooter"'));
-  assert.ok(css.includes(".sidebar .nav-footer{"));
+  assert.ok(css.includes(".sidebar .nav-main{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}"));
+  assert.ok(css.includes(".sidebar .nav-footer{flex:0 0 auto;overflow:visible"));
+  assert.ok(css.includes(".sidebar{position:sticky"));
+  assert.ok(css.includes("flex-direction:column;overflow:hidden}"));
   assert.ok(!css.includes('button[data-route="home"]{margin-top:auto}'));
 });
 
@@ -53,14 +57,18 @@ test("forms, dialogs and Google button follow the global mobile contract", async
     read("css/app.css")
   ]);
 
+  assert.ok(google.includes("BUTTON_HORIZONTAL_INSET"));
   assert.ok(google.includes("availableButtonWidth"));
+  assert.ok(google.includes("await afterLayout()"));
   assert.ok(google.includes("ResizeObserver"));
   assert.ok(!google.includes("width: 320"));
   assert.ok(common.includes("dialogReturnFocus"));
   assert.ok(common.includes("blurDialogFocus"));
   assert.ok(common.includes("focus({ preventScroll: true })"));
   assert.ok(css.includes("input,select,textarea{font-size:16px!important}"));
-  assert.ok(css.includes("max-width:100%!important"));
+  assert.ok(css.includes("padding-inline:6px"));
+  assert.ok(css.includes(".google-signin-slot>div{"));
+  assert.ok(css.includes("overflow:hidden"));
   assert.ok(!css.includes(".fanclub-page{padding-bottom:calc"));
   assert.ok(css.includes(".v4-compact-page{min-height:0"));
 });

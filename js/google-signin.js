@@ -1,5 +1,9 @@
 const GOOGLE_SCRIPT_ID = "google-identity-services";
 const GOOGLE_SCRIPT_URL = "https://accounts.google.com/gsi/client?hl=de";
+const BUTTON_HORIZONTAL_INSET = 12;
+const BUTTON_MIN_WIDTH = 200;
+const BUTTON_MAX_WIDTH = 360;
+const BUTTON_FALLBACK_WIDTH = 320;
 
 let libraryPromise = null;
 let initializedClientId = "";
@@ -120,17 +124,63 @@ async function initializeGoogleIdentity(clientId, onCredential) {
   return api;
 }
 
+function numericWidth(value) {
+  const width = Number(value || 0);
+  return Number.isFinite(width) && width > 0 ? width : 0;
+}
+
+function elementWidth(element) {
+  const directRect = typeof element.getBoundingClientRect === "function"
+    ? numericWidth(element.getBoundingClientRect()?.width)
+    : 0;
+  const directClient = numericWidth(element.clientWidth);
+  const parent = element.parentElement || null;
+  const parentRect = typeof parent?.getBoundingClientRect === "function"
+    ? numericWidth(parent.getBoundingClientRect()?.width)
+    : 0;
+  const parentClient = numericWidth(parent?.clientWidth);
+  const viewport = numericWidth(window.visualViewport?.width || window.innerWidth);
+  const viewportFallback = viewport > 0 ? Math.max(0, viewport - 60) : 0;
+
+  return directRect || directClient || parentRect || parentClient || viewportFallback;
+}
+
 function availableButtonWidth(element) {
-  const measuredWidth = typeof element.getBoundingClientRect === "function"
-    ? Number(element.getBoundingClientRect()?.width || 0)
-    : Number(element.clientWidth || 0);
-  const width = Math.floor(measuredWidth);
-  return Math.max(200, Math.min(400, width || 320));
+  const measured = elementWidth(element);
+  const safeWidth = measured > 0
+    ? Math.floor(measured - BUTTON_HORIZONTAL_INSET)
+    : BUTTON_FALLBACK_WIDTH;
+
+  return Math.max(
+    BUTTON_MIN_WIDTH,
+    Math.min(BUTTON_MAX_WIDTH, safeWidth)
+  );
+}
+
+function afterLayout() {
+  return new Promise(resolve => {
+    const requestFrame = typeof window.requestAnimationFrame === "function"
+      ? callback => window.requestAnimationFrame(callback)
+      : typeof globalThis.requestAnimationFrame === "function"
+        ? callback => globalThis.requestAnimationFrame(callback)
+        : null;
+
+    if (!requestFrame) {
+      window.setTimeout(resolve, 0);
+      return;
+    }
+
+    requestFrame(() => requestFrame(resolve));
+  });
 }
 
 function drawButton(api, element) {
   const width = availableButtonWidth(element);
-  if (renderedWidths.get(element) === width && element.hasChildNodes()) return;
+  const alreadyRendered = typeof element.hasChildNodes === "function"
+    ? element.hasChildNodes()
+    : Boolean(element.firstChild);
+
+  if (renderedWidths.get(element) === width && alreadyRendered) return;
 
   renderedWidths.set(element, width);
   element.replaceChildren();
@@ -155,12 +205,13 @@ export async function renderGoogleSignInButton(
   }
 
   const api = await initializeGoogleIdentity(clientId, onCredential);
+  await afterLayout();
   drawButton(api, element);
 
   resizeObservers.get(element)?.disconnect();
   if (typeof ResizeObserver === "function") {
     const observer = new ResizeObserver(() => {
-      requestAnimationFrame(() => drawButton(api, element));
+      void afterLayout().then(() => drawButton(api, element));
     });
     observer.observe(element);
     resizeObservers.set(element, observer);

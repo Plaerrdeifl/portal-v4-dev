@@ -9,7 +9,7 @@ a{color:inherit}
 [hidden]{display:none!important}
 .noscript{margin:20px;padding:18px;border-radius:16px;background:#fff0f1;color:var(--danger);font-weight:700}
 .app-shell{min-height:100vh;display:grid;grid-template-columns:var(--sidebar-width) minmax(0,1fr)}
-.sidebar{position:sticky;top:0;height:100vh;padding:calc(22px + var(--safe-top)) 18px calc(18px + var(--safe-bottom));background:linear-gradient(180deg,var(--blue-900),#062549);color:#fff;display:flex;flex-direction:column;overflow:auto}
+.sidebar{position:sticky;top:0;height:100vh;padding:calc(22px + var(--safe-top)) 18px calc(18px + var(--safe-bottom));background:linear-gradient(180deg,var(--blue-900),#062549);color:#fff;display:flex;flex-direction:column;overflow:hidden}
 .brand{display:flex;align-items:center;gap:12px;padding:2px 8px 22px}
 .brand img{width:54px;height:54px;border-radius:16px;box-shadow:0 6px 18px rgba(0,0,0,.24)}
 .brand strong{display:block;font-size:1.05rem}
@@ -1127,14 +1127,22 @@ body.overlay-open .view{overflow:hidden!important;touch-action:none}
   width:100%;
   min-width:0;
   min-height:44px;
+  padding-inline:6px;
   display:flex;
   align-items:center;
   justify-content:center;
-  overflow:visible;
+  overflow:hidden;
 }
 
-.google-signin-slot>div,
+.google-signin-slot>div{
+  width:100%!important;
+  max-width:100%!important;
+  overflow:hidden;
+  margin-inline:auto!important;
+}
+
 .google-signin-slot iframe{
+  display:block;
   max-width:100%!important;
   margin-inline:auto!important;
 }
@@ -1342,8 +1350,8 @@ html,body,.app-shell,.app-main,.view{max-width:100%}
 .v4-table-wrap{width:100%;overflow-x:auto;overscroll-behavior-inline:contain}
 .v4-mobile-records{display:none}
 .sidebar .nav{display:flex;min-height:0;flex-direction:column}
-.sidebar .nav-main{flex:0 0 auto}
-.sidebar .nav-footer{flex:0 0 auto;margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,.11)}
+.sidebar .nav-main{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.sidebar .nav-footer{flex:0 0 auto;overflow:visible;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.11)}
 .sidebar .nav button[data-route="install"]{margin-top:0}
 .sidebar .nav button>span:last-child{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:normal!important;word-break:normal!important}
 .topbar-home-button{display:none!important}
@@ -1367,7 +1375,8 @@ html,body,.app-shell,.app-main,.view{max-width:100%}
   html,body,.app-shell,.app-main,.view{overflow-x:hidden!important}
   html[data-portal-area="portal"]:not([data-route="profile"]) .view>.page{padding-bottom:calc(var(--mobile-nav-height) + var(--safe-bottom) + 16px)!important}
   .sidebar{width:min(300px,calc(100vw - 52px))!important;max-width:calc(100vw - 52px)!important}
-  .sidebar .nav{overflow-y:auto;overscroll-behavior:contain}
+  .sidebar .nav-main{overflow-y:auto;overscroll-behavior:contain}
+  .sidebar .nav-footer{overflow:visible}
   .topbar-leading{flex:1 1 auto;overflow:hidden}
   .mobile-brand{min-width:0}
   .mobile-brand span strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:clip}
