@@ -4,7 +4,6 @@ import { auth } from "./auth.js";
 import {
   currentRoute,
   legacyRouteRedirect,
-  navigate,
   routes
 } from "./router.js";
 import { hydratePage } from "./pages.js";
@@ -60,9 +59,35 @@ function connectionState() {
   return { label: "Lädt …", type: "loading" };
 }
 
+function afterNextPaint() {
+  return new Promise(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  });
+}
+
+function replaceHash(target) {
+  const normalized = String(target || "#/home");
+  const hash = normalized.startsWith("#/")
+    ? normalized
+    : `#/${normalized.replace(/^#?\/?/, "")}`;
+  history.replaceState(null, "", hash);
+}
+
+function authenticatedTarget(current, consumeRemembered = false) {
+  if (consumeRemembered) {
+    const remembered = auth.consumePostLoginRoute();
+    if (remembered && current.status === "ACTIVE") return remembered;
+  }
+
+  return current.status === "ACTIVE" ? "#/dashboard" : "#/profile";
+}
+
 function setAuthTransition(active, status = "Portal wird vorbereitet …") {
   authTransitionActive = Boolean(active);
-  document.documentElement.dataset.authReady = active ? "false" : "true";
+  document.documentElement.dataset.authTransition = active ? "true" : "false";
+
+  const shell = document.getElementById("appShell");
+  if (shell) shell.inert = Boolean(active);
 
   const splash = document.getElementById("appSplash");
   if (!splash) return;
@@ -71,6 +96,32 @@ function setAuthTransition(active, status = "Portal wird vorbereitet …") {
   splash.setAttribute("aria-busy", active ? "true" : "false");
   const statusNode = document.getElementById("splashStatus");
   if (statusNode && status) statusNode.textContent = status;
+}
+
+async function runAuthTransition({ status, operation, target, successMessage = "" }) {
+  if (authTransitionActive) {
+    throw new Error("Ein Anmeldewechsel wird bereits verarbeitet.");
+  }
+
+  setAuthTransition(true, status);
+  ++renderSequence;
+
+  try {
+    const result = await operation();
+    const resolvedTarget = typeof target === "function"
+      ? target(result || auth.current())
+      : target;
+
+    replaceHash(resolvedTarget || "#/home");
+    await renderRoute();
+    await afterNextPaint();
+
+    if (successMessage) showToast(successMessage, "success");
+    return result;
+  } finally {
+    await afterNextPaint();
+    setAuthTransition(false);
+  }
 }
 
 function updateChrome() {
@@ -112,8 +163,8 @@ async function renderRoute() {
   const allowed = enforceRoute(requested);
 
   if (allowed !== requested) {
-    navigate(allowed, null, true);
-    return;
+    replaceHash(allowed);
+    return renderRoute();
   }
 
   const route = routes()[allowed];
@@ -127,9 +178,7 @@ async function renderRoute() {
   if (!view) return;
 
   try {
-    const html = await loadFragment(`./pages/${route.page}`, {
-      force: true
-    });
+    const html = await loadFragment(`./pages/${route.page}`);
 
     if (
       renderId !== renderSequence
@@ -143,7 +192,8 @@ async function renderRoute() {
     await hydratePage(allowed, {
       isCurrent: () =>
         renderId === renderSequence
-        && currentRoute() === allowed
+        && currentRoute() === allowed,
+      onGoogleCredential: signInWithGoogleCredential
     });
 
     if (renderId !== renderSequence) return;
@@ -173,53 +223,31 @@ function handleAuthChange() {
 
   authEventQueued = true;
 
-  window.setTimeout(async () => {
+  queueMicrotask(async () => {
     authEventQueued = false;
     updateChrome();
 
     const current = auth.current();
+    if (current.busy || current.status === "LOADING") return;
 
-    if (
-      current.authenticated
-      && !current.busy
-      && current.status !== "LOADING"
-    ) {
-      const postLogin = auth.consumePostLoginRoute();
+    const route = routes()[currentRoute()];
 
-      if (postLogin) {
-        const target =
-          current.status === "ACTIVE"
-            ? postLogin
-            : "#/profile";
-
-        if (location.hash !== target) {
-          location.hash = target;
-          return;
-        }
-      }
-
-      if (currentRoute() === "login") {
-        navigate(
-          current.status === "ACTIVE"
-            ? "dashboard"
-            : "profile",
-          null,
-          true
-        );
-        return;
-      }
-    }
-
-    if (
-      !current.authenticated
-      && !routes()[currentRoute()]?.public
-    ) {
-      navigate("login", null, true);
-      return;
+    if (current.authenticated && currentRoute() === "login") {
+      replaceHash(authenticatedTarget(current, true));
+    } else if (!current.authenticated && !route?.public) {
+      replaceHash("#/login");
     }
 
     await renderRoute();
-  }, 0);
+  });
+}
+
+async function signInWithGoogleCredential(response, nonce) {
+  return runAuthTransition({
+    status: "Google-Anmeldung wird sicher geprüft …",
+    operation: () => auth.signInWithGoogleIdToken(response?.credential, nonce),
+    target: current => authenticatedTarget(current, true)
+  });
 }
 
 async function refreshCurrentView() {
@@ -240,22 +268,19 @@ async function refreshCurrentView() {
 }
 
 async function logout() {
-  setAuthTransition(true, "Abmeldung wird abgeschlossen …");
-
   try {
-    history.replaceState(null, "", "#/home");
-    await auth.logout();
-    updateChrome();
-    await renderRoute();
-    showToast("Du wurdest abgemeldet.", "success");
+    await runAuthTransition({
+      status: "Abmeldung wird abgeschlossen …",
+      operation: () => auth.logout(),
+      target: "#/home",
+      successMessage: "Du wurdest abgemeldet."
+    });
   } catch (error) {
     showToast(
       error?.message || "Abmeldung fehlgeschlagen.",
       "error",
       6500
     );
-  } finally {
-    setAuthTransition(false);
   }
 }
 
@@ -291,7 +316,9 @@ async function bootstrap() {
     () => location.reload()
   );
 
-  window.addEventListener("hashchange", renderRoute);
+  window.addEventListener("hashchange", () => {
+    if (!authTransitionActive) renderRoute();
+  });
   window.addEventListener("pd-api-state", event => {
     apiActivity = event.detail || api.activity();
     const connection = connectionState();
@@ -306,19 +333,20 @@ async function bootstrap() {
 
   if (!hadInitialHash) {
     const current = auth.current();
-    const initialRoute = !current.authenticated
-      ? "home"
-      : current.status === "ACTIVE"
-        ? "dashboard"
-        : "profile";
-    history.replaceState(null, "", `#/${initialRoute}`);
+    replaceHash(
+      !current.authenticated
+        ? "#/home"
+        : authenticatedTarget(current)
+    );
   }
 
   await renderRoute();
+  await afterNextPaint();
   setAuthTransition(false);
 }
 
-bootstrap().catch(error => {
+bootstrap().catch(async error => {
+  await afterNextPaint();
   setAuthTransition(false);
   console.error(error);
   showToast(

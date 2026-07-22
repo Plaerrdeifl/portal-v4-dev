@@ -1,7 +1,6 @@
 import { auth } from "./auth.js";
 import { renderGoogleSignInButton } from "./google-signin.js";
 import { CONFIG } from "./config.js";
-import { navigate } from "./router.js";
 import { showToast } from "./ui.js";
 import { installState, requestInstall } from "./install.js";
 
@@ -40,7 +39,7 @@ function hydrateInstall() {
   }
 }
 
-async function hydrateLogin() {
+async function hydrateLogin(context = {}) {
   await auth.initialize();
 
   const slot = document.getElementById("googleSignInButton");
@@ -87,15 +86,10 @@ async function hydrateLogin() {
             setStatus("Google-Anmeldung wird sicher geprüft …");
 
             try {
-              const nextState = await auth.signInWithGoogleIdToken(
-                response?.credential,
-                nonce
-              );
-              navigate(
-                nextState.status === "ACTIVE" ? "dashboard" : "profile",
-                null,
-                true
-              );
+              if (typeof context.onGoogleCredential !== "function") {
+                throw new Error("Der zentrale Anmeldeübergang ist nicht verfügbar.");
+              }
+              await context.onGoogleCredential(response, nonce);
             } catch (error) {
               showToast(
                 error?.message
@@ -139,28 +133,21 @@ async function hydrateLogin() {
         "loginMessage",
         `Du bist als ${state.user?.name || "Portaluser"} angemeldet.`
       );
-      slot.innerHTML =
-        '<button id="loginDashboardButton" class="button primary" type="button">Zum Dashboard</button>';
-      document.getElementById("loginDashboardButton")
-        ?.addEventListener("click", () => navigate("dashboard"));
+      slot.innerHTML = '<div class="notice success">Portalzugang ist aktiv.</div>';
       setStatus("");
       return;
     }
 
     setText(
       "loginMessage",
-      "Dein Konto ist angemeldet. Schließe jetzt die Portalregistrierung ab."
+      "Dein Konto ist angemeldet. Die Portalregistrierung wird vorbereitet."
     );
-    slot.innerHTML =
-      '<button id="loginProfileButton" class="button primary" type="button">Registrierung fortsetzen</button>';
-    document.getElementById("loginProfileButton")
-      ?.addEventListener("click", () => navigate("profile"));
+    slot.innerHTML = '<div class="notice">Registrierung wird vorbereitet …</div>';
     setStatus("");
   };
 
   await render();
 }
-
 
 export function preloadAuthenticatedModules(keys = ["dashboard", "fanclub", "tasks", "teams", "admin"]) {
   const modules = {
@@ -179,7 +166,7 @@ export function preloadAuthenticatedModules(keys = ["dashboard", "fanclub", "tas
 export async function hydratePage(key, context = {}) {
   if (["home", "news", "dates", "about", "contact", "fanbuses"].includes(key)) return;
   if (key === "install") return hydrateInstall();
-  if (key === "login") return hydrateLogin();
+  if (key === "login") return hydrateLogin(context);
   if (key === "profile") return feature("./modules/profile.js", "hydrateProfile", context);
   if (key === "dashboard") return feature("./modules/dashboard.js", "hydrateDashboard", context);
   if (key === "fanclub") return feature("./modules/fanclub.js", "hydrateFanclub", context);

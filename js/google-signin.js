@@ -5,6 +5,8 @@ let libraryPromise = null;
 let initializedClientId = "";
 let credentialHandler = null;
 let noncePairPromise = null;
+const resizeObservers = new WeakMap();
+const renderedWidths = new WeakMap();
 
 function googleIdentityApi() {
   return window.google?.accounts?.id || null;
@@ -118,6 +120,32 @@ async function initializeGoogleIdentity(clientId, onCredential) {
   return api;
 }
 
+function availableButtonWidth(element) {
+  const measuredWidth = typeof element.getBoundingClientRect === "function"
+    ? Number(element.getBoundingClientRect()?.width || 0)
+    : Number(element.clientWidth || 0);
+  const width = Math.floor(measuredWidth);
+  return Math.max(200, Math.min(400, width || 320));
+}
+
+function drawButton(api, element) {
+  const width = availableButtonWidth(element);
+  if (renderedWidths.get(element) === width && element.hasChildNodes()) return;
+
+  renderedWidths.set(element, width);
+  element.replaceChildren();
+  api.renderButton(element, {
+    type: "standard",
+    theme: "filled_blue",
+    size: "large",
+    text: "signin_with",
+    shape: "pill",
+    logo_alignment: "left",
+    width,
+    locale: "de"
+  });
+}
+
 export async function renderGoogleSignInButton(
   element,
   { clientId, onCredential }
@@ -127,16 +155,14 @@ export async function renderGoogleSignInButton(
   }
 
   const api = await initializeGoogleIdentity(clientId, onCredential);
-  element.replaceChildren();
+  drawButton(api, element);
 
-  api.renderButton(element, {
-    type: "standard",
-    theme: "filled_blue",
-    size: "large",
-    text: "signin_with",
-    shape: "pill",
-    logo_alignment: "left",
-    width: 320,
-    locale: "de"
-  });
+  resizeObservers.get(element)?.disconnect();
+  if (typeof ResizeObserver === "function") {
+    const observer = new ResizeObserver(() => {
+      requestAnimationFrame(() => drawButton(api, element));
+    });
+    observer.observe(element);
+    resizeObservers.set(element, observer);
+  }
 }

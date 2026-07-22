@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de" data-startup-state="complete" data-instant-home="true" data-public-fast-start="true" data-route="home" data-auth-ready="false">
+<html lang="de" data-instant-home="true" data-public-fast-start="true" data-route="home">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -17,7 +17,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/icon-32.png">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./css/tokens.css?v=20260721-frontend-foundation-v6">
-  <link rel="stylesheet" href="./css/app.css?v=20260721-fanclub-compact-r2-1">
+  <link rel="stylesheet" href="./css/app.css?v=20260722-ui-foundation-p1-4">
     <title>Plärrdeifl Portal</title>
 </head>
 <body>
@@ -51,7 +51,8 @@
           <div class="brand-wordmark"><strong>Plärrdeifl</strong><span id="brandContext">ÖFFENTLICHER BEREICH</span></div>
         </div>
         <div class="sidebar-caption">Öffentlicher Bereich</div>
-        <nav id="mainNav" class="nav"></nav>
+        <nav id="mainNav" class="nav nav-main"></nav>
+        <nav id="portalNavFooter" class="nav nav-footer" aria-label="Portalnavigation" hidden></nav>
       </aside>
     </div>
     <div class="app-main">
@@ -129,6 +130,6 @@
 
   <script src="./js/runtime-config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7"></script>
-  <script type="module" src="./js/app.js?v=20260721-fanclub-compact-r2-1"></script>
+  <script type="module" src="./js/app.js?v=20260722-ui-foundation-p1-4"></script>
 </body>
 </html>

@@ -4,6 +4,8 @@ import { escapeAttr, escapeHtml, showToast } from "../ui.js";
 
 export { escapeAttr, escapeHtml, showToast };
 
+let dialogReturnFocus = null;
+
 export function call(action, payload = {}) {
   return api.call(action, payload);
 }
@@ -78,17 +80,36 @@ export function statusBadge(value) {
   return `<span class="badge ${type}">${escapeHtml(value || "–")}</span>`;
 }
 
+function blurDialogFocus(dialog) {
+  const active = document.activeElement;
+  if (active instanceof HTMLElement && dialog.contains(active)) active.blur();
+}
+
+function closeDialog(dialog) {
+  blurDialogFocus(dialog);
+  if (dialog.open) dialog.close();
+}
+
 function ensureDialog() {
   let dialog = document.getElementById("v4Dialog");
   if (dialog) return dialog;
   dialog = document.createElement("dialog");
   dialog.id = "v4Dialog";
   dialog.className = "v4-dialog";
+  dialog.setAttribute("aria-labelledby", "v4DialogTitle");
   dialog.innerHTML = '<div class="v4-dialog-shell"><header><div><span id="v4DialogKicker" class="subtle"></span><h2 id="v4DialogTitle"></h2></div><button type="button" class="icon-button" data-v4-dialog-close aria-label="Schließen">×</button></header><div id="v4DialogBody"></div></div>';
   document.body.appendChild(dialog);
   dialog.addEventListener("click", event => {
     if (event.target === dialog || event.target.closest("[data-v4-dialog-close]")) {
-      dialog.close();
+      closeDialog(dialog);
+    }
+  });
+  dialog.addEventListener("close", () => {
+    blurDialogFocus(dialog);
+    const returnTarget = dialogReturnFocus;
+    dialogReturnFocus = null;
+    if (returnTarget instanceof HTMLElement && returnTarget.isConnected) {
+      returnTarget.focus({ preventScroll: true });
     }
   });
   return dialog;
@@ -103,6 +124,9 @@ export function openDialog({
   danger = false
 }) {
   const dialog = ensureDialog();
+  dialogReturnFocus = document.activeElement instanceof HTMLElement
+    ? document.activeElement
+    : null;
   document.getElementById("v4DialogTitle").textContent = title || "Dialog";
   document.getElementById("v4DialogKicker").textContent = kicker || "";
   const bodyNode = document.getElementById("v4DialogBody");
@@ -117,7 +141,7 @@ export function openDialog({
       button.textContent = "Wird gespeichert …";
       try {
         await onSubmit(form ? formDataObject(form) : {});
-        dialog.close();
+        closeDialog(dialog);
       } catch (error) {
         showToast(error?.message || "Speichern fehlgeschlagen.", "error", 6500);
         button.disabled = false;
@@ -126,6 +150,9 @@ export function openDialog({
     });
   }
   if (!dialog.open) dialog.showModal();
+  requestAnimationFrame(() => {
+    dialog.querySelector("input,select,textarea,button")?.focus({ preventScroll: true });
+  });
   return dialog;
 }
 

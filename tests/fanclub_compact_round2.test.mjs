@@ -64,17 +64,17 @@ test("cashbook is compact, typed, searchable and paginated without nested scroll
   assert.match(fanclub, /Verwaltung <span aria-hidden="true">›<\/span>/);
 
   assert.match(css, /\.v4-compact-entry-list,\.v4-cashbook-ledger\{max-height:none!important;overflow:visible!important/);
-  assert.match(css, /\.fanclub-page\{padding-bottom:calc/);
+  assert.ok(css.includes('html[data-portal-area="portal"]:not([data-route="profile"]) .view>.page{padding-bottom:calc'));
 });
 
-test("cache busting identifies compact Fanclub round two", async () => {
+test("cache busting identifies global UI foundation phase one", async () => {
   const [index, config, worker] = await Promise.all([
     read("index.html"),
     read("js/config.js"),
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260721-fanclub-compact-r2-1/);
-  assert.match(config, /20260721-fanclub-compact-r2-1/);
-  assert.match(worker, /pd-portal-v4-fanclub-compact-r2-20260721-1/);
+  assert.match(index, /20260722-ui-foundation-p1-4/);
+  assert.match(config, /20260722-ui-foundation-p1-4/);
+  assert.match(worker, /pd-portal-v4-ui-foundation-p1-20260722-4/);
 });

@@ -38,7 +38,7 @@ test("frontend foundation is canonical and keeps the mobile bottom navigation", 
   assert.equal(ui.includes("MOBILE_PRIMARY"), true);
   assert.equal(ui.includes('more.id = "mobileMoreToggle"'), true);
   assert.equal(ui.includes('event.target.closest("#mobileMoreToggle")'), true);
-  assert.equal(ui.includes("openMobileMenu();"), true);
+  assert.equal(ui.includes("toggleMobileMenu();"), true);
   assert.equal(ui.includes("openMobileMore"), false);
   assert.equal(ui.includes("closeMobileMore"), false);
 

@@ -14,6 +14,7 @@ const MOBILE_PRIMARY = ["dashboard", "fanclub", "tasks", "teams"];
 
 let globalRefresh = null;
 let globalLogout = null;
+let profileDialogReturnFocus = null;
 
 const ICONS = Object.freeze({
   home: '<svg viewBox="0 0 24 24"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>',
@@ -207,15 +208,31 @@ export function renderNavigation() {
   const entries = visibleRouteEntries();
   const nav = document.getElementById("mainNav");
 
+  const authenticatedPortal =
+    auth.isAuthenticated() && !routes()[currentRoute()]?.public;
+
   if (nav) {
-    const sidebarEntries = [...entries].sort(([leftKey], [rightKey]) => {
-      if (leftKey === "install") return 1;
-      if (rightKey === "install") return -1;
-      return 0;
-    });
+    const sidebarEntries = entries
+      .filter(([key]) => !(authenticatedPortal && key === "home"))
+      .sort(([leftKey], [rightKey]) => {
+        if (leftKey === "install") return 1;
+        if (rightKey === "install") return -1;
+        return 0;
+      });
     const buttons = sidebarEntries.map(([key, route]) => createRouteButton(key, route));
     nav.replaceChildren(...buttons);
     window.dispatchEvent(new CustomEvent("pd-navigation-rendered"));
+  }
+
+  const footerNav = document.getElementById("portalNavFooter");
+  if (footerNav) {
+    const homeEntry = authenticatedPortal
+      ? entries.find(([key]) => key === "home")
+      : null;
+    footerNav.hidden = !homeEntry;
+    footerNav.replaceChildren(
+      ...(homeEntry ? [createRouteButton(homeEntry[0], homeEntry[1])] : [])
+    );
   }
 
   syncBrandContext();
@@ -271,12 +288,19 @@ export function updateActiveNavigation() {
   const more = document.getElementById("mobileMoreToggle");
 
   if (more) {
+    const menuOpen = document.getElementById("sidebar")?.classList.contains("open") === true;
     const isExtra =
       auth.isAuthenticated()
       && !MOBILE_PRIMARY.includes(active);
+    const highlighted = isExtra || menuOpen;
 
-    more.classList.toggle("active", isExtra);
+    more.classList.toggle("active", highlighted);
     more.classList.toggle("more-active", isExtra);
+    more.setAttribute("aria-expanded", menuOpen ? "true" : "false");
+    more.setAttribute(
+      "aria-label",
+      menuOpen ? "Vollständige Navigation schließen" : "Vollständige Navigation öffnen"
+    );
   }
 }
 
@@ -374,7 +398,20 @@ function ensureProfileDetailsDialog() {
   dialog.className = "user-profile-dialog";
   dialog.setAttribute("aria-label", "Profil und Daten");
   dialog.addEventListener("click", event => {
-    if (event.target === dialog) dialog.close();
+    if (event.target === dialog) {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && dialog.contains(active)) active.blur();
+      dialog.close();
+    }
+  });
+  dialog.addEventListener("close", () => {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && dialog.contains(active)) active.blur();
+    const returnTarget = profileDialogReturnFocus;
+    profileDialogReturnFocus = null;
+    if (returnTarget instanceof HTMLElement && returnTarget.isConnected) {
+      returnTarget.focus({ preventScroll: true });
+    }
   });
   document.body.append(dialog);
 }
@@ -513,6 +550,7 @@ function renderProfileDetails() {
 }
 
 function openProfileDetails() {
+  profileDialogReturnFocus = document.getElementById("userSummary");
   closeUserMenu();
   renderProfileDetails();
 
@@ -605,6 +643,8 @@ function closeUserMenu() {
   const backdrop = document.getElementById("userMenuBackdrop");
   const toggle = document.getElementById("userSummary");
 
+  const active = document.activeElement;
+  if (active instanceof HTMLElement && panel?.contains(active)) active.blur();
   if (panel) panel.hidden = true;
   if (backdrop) backdrop.hidden = true;
   toggle?.setAttribute("aria-expanded", "false");
@@ -711,7 +751,7 @@ export function bindGlobalUi({ onRefresh, onLogout } = {}) {
 
       navigate(routeTarget.dataset.route, params);
       closeMobileMenu();
-          closeUserMenu();
+      closeUserMenu();
       return;
     }
 
@@ -726,7 +766,7 @@ export function bindGlobalUi({ onRefresh, onLogout } = {}) {
     }
 
     if (event.target.closest("#mobileMoreToggle")) {
-      openMobileMenu();
+      toggleMobileMenu();
       return;
     }
 
@@ -753,12 +793,12 @@ export function bindGlobalUi({ onRefresh, onLogout } = {}) {
   });
 
   document.getElementById("mobileMenuToggle")
-    ?.addEventListener("click", openMobileMenu);
+    ?.addEventListener("click", toggleMobileMenu);
 
   document.addEventListener("keydown", event => {
     if (event.key === "Escape") {
       closeMobileMenu();
-          closeUserMenu();
+      closeUserMenu();
     }
   });
 }
@@ -799,25 +839,31 @@ export function setConnectionStatus(label, type = "success") {
   status.dataset.state = type;
 }
 
-export function openMobileMenu() {
-  closeUserMenu();
-  document.getElementById("sidebar")?.classList.add("open");
-  document.getElementById("mobileBackdrop")?.classList.add("show");
+export function setMobileMenu(open) {
+  const next = Boolean(open);
+  if (next) closeUserMenu();
+
+  document.getElementById("sidebar")?.classList.toggle("open", next);
+  document.getElementById("mobileBackdrop")?.classList.toggle("show", next);
   document.getElementById("mobileMenuToggle")
-    ?.setAttribute("aria-expanded", "true");
+    ?.setAttribute("aria-expanded", next ? "true" : "false");
   document.getElementById("mobileMoreToggle")
-    ?.setAttribute("aria-expanded", "true");
+    ?.setAttribute("aria-expanded", next ? "true" : "false");
+  updateActiveNavigation();
   updateOverlayLock();
 }
 
+export function toggleMobileMenu() {
+  const open = document.getElementById("sidebar")?.classList.contains("open") === true;
+  setMobileMenu(!open);
+}
+
+export function openMobileMenu() {
+  setMobileMenu(true);
+}
+
 export function closeMobileMenu() {
-  document.getElementById("sidebar")?.classList.remove("open");
-  document.getElementById("mobileBackdrop")?.classList.remove("show");
-  document.getElementById("mobileMenuToggle")
-    ?.setAttribute("aria-expanded", "false");
-  document.getElementById("mobileMoreToggle")
-    ?.setAttribute("aria-expanded", "false");
-  updateOverlayLock();
+  setMobileMenu(false);
 }
 
 export function escapeHtml(value) {

@@ -84,7 +84,7 @@ for (const required of [
   'more.id = "mobileMoreToggle"',
   "MOBILE_PRIMARY",
   'event.target.closest("#mobileMoreToggle")',
-  "openMobileMenu();"
+  "toggleMobileMenu();"
 ]) {
   const source = required === 'id="mobileNav"' ? html : ui;
 
@@ -240,5 +240,5 @@ if (depth !== 0 || quote) {
 
 console.log(
   `FRONTEND_FOUNDATION_OK · ${cssFiles.length} CSS-Dateien · `
-  + "Bottom-Navigation aktiv · Mehr öffnet Seitenleiste"
+  + "Bottom-Navigation aktiv · Mehr schaltet Seitenleiste"
 );

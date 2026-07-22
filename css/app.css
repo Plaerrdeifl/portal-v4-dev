@@ -8,10 +8,6 @@ button,a{-webkit-tap-highlight-color:transparent}
 a{color:inherit}
 [hidden]{display:none!important}
 .noscript{margin:20px;padding:18px;border-radius:16px;background:#fff0f1;color:var(--danger);font-weight:700}
-.app-splash{position:fixed;inset:0;z-index:1000;display:grid;place-content:center;justify-items:center;gap:12px;background:linear-gradient(160deg,#f8fbff,#e6eef9);padding:24px;text-align:center}
-.app-splash img{border-radius:25%;box-shadow:var(--shadow-md)}
-.app-splash strong{font-size:1.5rem}
-.app-splash span{color:var(--ink-500)}
 .app-shell{min-height:100vh;display:grid;grid-template-columns:var(--sidebar-width) minmax(0,1fr)}
 .sidebar{position:sticky;top:0;height:100vh;padding:calc(22px + var(--safe-top)) 18px calc(18px + var(--safe-bottom));background:linear-gradient(180deg,var(--blue-900),#062549);color:#fff;display:flex;flex-direction:column;overflow:auto}
 .brand{display:flex;align-items:center;gap:12px;padding:2px 8px 22px}
@@ -53,14 +49,12 @@ a{color:inherit}
 html,body{max-width:100%;overflow-x:clip}
 .app-shell,.app-main,.view,#view{min-width:0;max-width:100%}
 .app-splash{transition:opacity .18s ease,visibility .18s ease}
-.app-splash.is-complete{opacity:0;visibility:hidden;pointer-events:none}
+html[data-auth-transition="true"] body{overflow:hidden!important}
 .splash-status{position:absolute;left:max(20px,env(safe-area-inset-left));right:max(20px,env(safe-area-inset-right));bottom:calc(28px + env(safe-area-inset-bottom));display:grid;justify-items:center;gap:6px;max-width:760px;margin-inline:auto;color:#fff}
 .splash-status>span{color:#fff;font-weight:850;font-size:clamp(.98rem,2.8vw,1.1rem)}
 .splash-status small{color:#d9e9fb;line-height:1.45;max-width:680px}
 .splash-reload{margin-top:8px;border:1px solid rgba(255,255,255,.5);border-radius:14px;background:rgba(255,255,255,.12);color:#fff;padding:11px 16px;font-weight:850;cursor:pointer;min-height:46px}
 .splash-reload:hover,.splash-reload:focus-visible{background:#fff;color:var(--blue-900);outline:3px solid rgba(255,255,255,.28);outline-offset:3px}
-[data-startup-state="loading"] body{overflow:hidden}
-[data-startup-state="complete"] body{overflow:auto}
 .data-table-wrap,.module-tabs{max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain}
 .grid,.list-grid,.admin-actions,.surface-grid,.form-grid,.settings-grid,.meta-grid,.dashboard-widget-grid,.split-view,.module-toolbar,.button-row,.section-title,.entity-head,.topbar,.topbar-actions{min-width:0}
 .card,.entity-card,.dashboard-widget,.meta-item,.settings-row,.permission-row{min-width:0;overflow-wrap:anywhere}
@@ -691,12 +685,6 @@ body.corr4-scrollbar-visible .app-footer{padding-bottom:32px}
 .auth-card-wrap{padding-left:8px!important;padding-right:8px!important}
 .auth-card{padding:21px 16px!important}}
 :root{--corr5-auth-blue-1:#06335b;--corr5-auth-blue-2:#031f3a;--corr5-auth-blue-3:#020f1d}
-html[data-instant-home="true"]:not([data-startup-state="complete"]) body{overflow:auto!important}
-html[data-instant-home="true"]:not([data-startup-state="complete"]) .app-shell{grid-template-columns:minmax(0,1fr)!important}
-html[data-instant-home="true"]:not([data-startup-state="complete"]) #sidebarSlot,html[data-instant-home="true"]:not([data-startup-state="complete"]) #topbarSlot,html[data-instant-home="true"]:not([data-startup-state="complete"]) .app-footer{display:none!important}
-html[data-instant-home="true"]:not([data-startup-state="complete"]) .app-main{min-height:100dvh}
-html[data-instant-home="true"]:not([data-startup-state="complete"]) .view{width:100%!important;max-width:none!important;padding:0!important}
-html[data-instant-home="true"]:not([data-startup-state="complete"]) .public-home-page{min-height:100dvh}
 html[data-route="profile"],html[data-route="profile"] body,html[data-route="profile"] .app-main{background:linear-gradient(160deg,var(--corr5-auth-blue-1) 0%,var(--corr5-auth-blue-2) 58%,var(--corr5-auth-blue-3) 100%)!important}
 html[data-route="profile"] .view{background:transparent!important}
 .auth-page{position:relative;isolation:isolate;min-height:100dvh;padding-bottom:max(44px,calc(28px + env(safe-area-inset-bottom)))!important;background:radial-gradient(circle at 50% 7%,rgba(25,132,235,.35),transparent 31%),
@@ -832,12 +820,12 @@ html[data-route="home"] .app-footer{flex:none!important;padding-top:11px!importa
 .v4-note-preview{padding:12px;border-radius:13px;background:#fff8e7;border:1px solid #f3d99a}
 .v4-note-preview p{margin:5px 0 0;white-space:pre-wrap}
 .v4-status-select{width:auto;min-width:145px}
-.v4-dialog{border:0;padding:0;background:transparent;width:min(760px,calc(100% - 24px));max-height:calc(100dvh - 24px)}
+.v4-dialog{border:0;padding:0;background:transparent;width:min(680px,calc(100% - 32px));max-height:calc(100dvh - 32px)}
 .v4-dialog::backdrop{background:rgba(4,18,38,.64);backdrop-filter:blur(3px)}
-.v4-dialog-shell{background:#fff;border-radius:22px;box-shadow:var(--shadow-md);overflow:hidden}
-.v4-dialog-shell>header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:20px 22px;border-bottom:1px solid var(--line)}
-.v4-dialog-shell>header h2{margin:3px 0 0}
-.v4-dialog-shell #v4DialogBody{padding:22px;max-height:calc(100dvh - 120px);overflow:auto}
+.v4-dialog-shell{max-height:calc(100dvh - 32px);background:#fff;border-radius:18px;box-shadow:var(--shadow-md);overflow:hidden}
+.v4-dialog-shell>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:15px 17px;border-bottom:1px solid var(--line)}
+.v4-dialog-shell>header h2{margin:2px 0 0;font-size:1.2rem}
+.v4-dialog-shell #v4DialogBody{padding:16px 17px;max-height:calc(100dvh - 96px);overflow:auto;overscroll-behavior:contain}
 .checkbox-row{display:flex!important;align-items:center;gap:10px}
 .checkbox-row input{width:19px;height:19px;min-height:auto}
 .v4-capability-groups{display:grid;gap:14px}
@@ -856,7 +844,8 @@ html[data-route="home"] .app-footer{flex:none!important;padding-top:11px!importa
 .empty-card p{margin:0;color:var(--ink-500)}
 @media(max-width:900px){.v4-card-grid,.v4-office-grid{grid-template-columns:1fr}
 .v4-meta-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:620px){.v4-toolbar{align-items:stretch}
+@media(max-width:620px){input,select,textarea{font-size:16px!important}
+.v4-toolbar{align-items:stretch}
 .v4-toolbar>.button{width:100%}
 .v4-card-actions{align-items:stretch}
 .v4-card-actions>.button,.v4-card-actions>.v4-status-select{flex:1 1 140px}
@@ -923,8 +912,8 @@ body,.app-shell,.app-main,.view,.page,.v4-module-surface{background-image:none!i
 .topbar-actions{display:flex;align-items:center;gap:9px;flex:none}
 .view{width:min(1180px,100%);min-height:0;flex:1 1 auto;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding:24px 30px calc(34px + env(safe-area-inset-bottom));background:transparent!important;scrollbar-gutter:stable}
 .app-footer{display:none!important}
-.v4-compact-page{min-height:100%;padding:0!important}
-.v4-module-surface{min-height:100%;padding:0;background:transparent!important}
+.v4-compact-page{min-height:0;padding:0!important}
+.v4-module-surface{min-height:0;padding:0;background:transparent!important}
 .page-header,.sidebar-footer{display:none!important}
 .card,.v4-table-wrap,.v4-dialog-shell,.p3-preview-card,.p3-fanbus-primary-card{background:rgba(255,255,255,.94)!important;border-color:rgba(126,145,171,.22)!important}
 .connection-indicator{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:7px 10px;border:1px solid rgba(84,113,145,.18);border-radius:999px;background:rgba(255,255,255,.78);color:#38506c;font-size:.78rem;font-weight:850;white-space:nowrap}
@@ -1024,9 +1013,9 @@ body.overlay-open .view{overflow:hidden!important;touch-action:none}
 .public-home-logo{width:72px;height:72px}}
 @media(max-width:520px){.user-menu-panel{top:calc(8px + env(safe-area-inset-top))!important;right:8px!important;bottom:calc(8px + env(safe-area-inset-bottom))!important;width:calc(100vw - 16px)!important;border-radius:18px!important}
 .user-menu-footer{grid-template-columns:1fr 1fr}
-.user-profile-dialog{width:100%;max-height:100dvh}
-.user-profile-dialog-shell{max-height:100dvh;border-radius:18px 18px 0 0}
-.user-profile-dialog-body{max-height:calc(100dvh - 105px);padding:12px}
+.user-profile-dialog{width:calc(100% - 16px);max-height:calc(100dvh - 16px)}
+.user-profile-dialog-shell{max-height:calc(100dvh - 16px);border-radius:18px}
+.user-profile-dialog-body{max-height:calc(100dvh - 102px);padding:12px}
 .public-home-actions .button{width:100%}}
 .topbar-home-button{min-height:38px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 12px;border:1px solid rgba(255,255,255,.2);border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font-weight:850;cursor:pointer}
 .topbar-home-button:hover,.topbar-home-button:focus-visible{background:rgba(255,255,255,.2);outline:3px solid rgba(255,255,255,.13)}
@@ -1136,14 +1125,17 @@ body.overlay-open .view{overflow:hidden!important;touch-action:none}
 
 .google-signin-slot{
   width:100%;
+  min-width:0;
   min-height:44px;
   display:flex;
   align-items:center;
   justify-content:center;
+  overflow:visible;
 }
 
 .google-signin-slot>div,
 .google-signin-slot iframe{
+  max-width:100%!important;
   margin-inline:auto!important;
 }
 
@@ -1230,11 +1222,11 @@ body.overlay-open .view{overflow:hidden!important;touch-action:none}
 
 @media(max-width:860px){
   .app-main{
-    padding-bottom:calc(var(--mobile-nav-height) + var(--safe-bottom));
+    padding-bottom:0;
   }
 
   .view{
-    padding-bottom:calc(24px + var(--mobile-nav-height) + var(--safe-bottom));
+    padding-bottom:0;
   }
 
   .mobile-bottom-nav{
@@ -1349,8 +1341,10 @@ html,body,.app-shell,.app-main,.view{max-width:100%}
 .v4-toolbar>*,.v4-inline-actions>*{min-width:0}
 .v4-table-wrap{width:100%;overflow-x:auto;overscroll-behavior-inline:contain}
 .v4-mobile-records{display:none}
-.sidebar .nav{display:flex;min-height:0;flex:1;flex-direction:column}
-.sidebar .nav button[data-route="install"]{margin-top:auto}
+.sidebar .nav{display:flex;min-height:0;flex-direction:column}
+.sidebar .nav-main{flex:0 0 auto}
+.sidebar .nav-footer{flex:0 0 auto;margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,.11)}
+.sidebar .nav button[data-route="install"]{margin-top:0}
 .sidebar .nav button>span:last-child{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:normal!important;word-break:normal!important}
 .topbar-home-button{display:none!important}
 .v4-section-heading h3{margin:0}
@@ -1371,7 +1365,7 @@ html,body,.app-shell,.app-main,.view{max-width:100%}
 
 @media(max-width:860px){
   html,body,.app-shell,.app-main,.view{overflow-x:hidden!important}
-  html[data-portal-area="portal"]:not([data-route="profile"]) .view{padding-bottom:calc(var(--mobile-nav-height) + var(--safe-bottom) + 32px)!important}
+  html[data-portal-area="portal"]:not([data-route="profile"]) .view>.page{padding-bottom:calc(var(--mobile-nav-height) + var(--safe-bottom) + 16px)!important}
   .sidebar{width:min(300px,calc(100vw - 52px))!important;max-width:calc(100vw - 52px)!important}
   .sidebar .nav{overflow-y:auto;overscroll-behavior:contain}
   .topbar-leading{flex:1 1 auto;overflow:hidden}
@@ -1424,8 +1418,6 @@ html,body,.app-shell,.app-main,.view{max-width:100%}
 }
 
 /* Fanclub-Abschlussrunde: Datenschutz, kompakte Beiträge und Kasse */
-html[data-auth-ready="false"] #view{visibility:hidden}
-html[data-portal-area="portal"] .sidebar .nav button[data-route="home"]{margin-top:auto}
 .v4-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .v4-detail-grid>div{min-width:0;padding:11px 12px;border-radius:13px;background:var(--surface-soft)}
 .v4-detail-grid>div.full{grid-column:1/-1}
@@ -1577,7 +1569,6 @@ button.v4-member-compact-row:hover{border-color:var(--blue-400);background:var(-
 .v4-load-more-row{display:flex;justify-content:center;margin-top:10px}
 .v4-dialog-ledger{margin-top:14px}
 .v4-cashbook-compact-section{margin-top:12px!important}
-.fanclub-page{padding-bottom:calc(var(--mobile-nav-height,84px) + var(--safe-bottom,0px) + 48px)!important}
 
 @media(max-width:860px){
   .v4-heading-row{margin-bottom:9px}

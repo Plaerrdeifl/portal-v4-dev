@@ -20,7 +20,8 @@ test("mobile portal round one follows the approved layout rules", async () => {
   assert.equal(css.includes("grid-template-columns:repeat(2,minmax(0,1fr))"), true);
   assert.equal(css.includes(".v4-table tbody tr{display:grid!important"), true);
   assert.equal(css.includes("bottom:calc(var(--mobile-nav-height) + var(--safe-bottom) + 10px)!important"), true);
-  assert.equal(css.includes('.sidebar .nav button[data-route="install"]{margin-top:auto}'), true);
+  assert.equal(css.includes(".sidebar .nav-footer{"), true);
+  assert.equal(css.includes('.sidebar .nav button[data-route="install"]{margin-top:0}'), true);
   assert.equal(css.includes(".topbar-home-button{display:none!important}"), true);
   assert.equal(css.includes('data-route="login"'), false);
   assert.equal(
@@ -44,6 +45,6 @@ test("mobile portal round one follows the approved layout rules", async () => {
   assert.equal(app.includes('label: "Online"'), false);
   assert.equal(app.includes('label: "Live"'), true);
   assert.equal(app.includes('label: "Lädt …"'), true);
-  assert.equal(index.includes("20260721-fanclub-compact-r2-1"), true);
-  assert.equal(worker.includes("pd-portal-v4-fanclub-compact-r2-20260721-1"), true);
+  assert.equal(index.includes("20260722-ui-foundation-p1-4"), true);
+  assert.equal(worker.includes("pd-portal-v4-ui-foundation-p1-20260722-4"), true);
 });

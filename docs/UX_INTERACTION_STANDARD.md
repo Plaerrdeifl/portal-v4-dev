@@ -48,6 +48,14 @@ Status werden mit Farbe, Punkt und lesbarem Text dargestellt. Farbe allein reich
 - Gelb: in Bearbeitung oder in Prüfung.
 - Grün: aktiv, abgeschlossen oder bezahlt.
 
-## 10. Abweichungen
+## 10. Globale UI-Bausteine und Übergänge
+
+Seiten, Bereichsüberschriften, Nebenaktionen, kompakte Listen, Karten, Dialoge, Formulare, Navigation und mobile Sicherheitsabstände werden über gemeinsame Portalbausteine gesteuert. Module dürfen diese Grundlagen fachlich ergänzen, aber keine parallelen Größen-, Scroll-, Dialog- oder Navigationssysteme einführen.
+
+Anmeldung und Abmeldung verwenden einen einzigen zentralen Übergangscontroller und den vorhandenen Portal-Splash. Zwischenzustände dürfen weder die Login-Seite noch geschützte Portalansichten erneut sichtbar machen.
+
+Mobile Eingabefelder verwenden mindestens 16 Pixel Schriftgröße. Dialoge entfernen den Eingabefokus beim Schließen und geben den Fokus anschließend an den Auslöser zurück.
+
+## 11. Abweichungen
 
 Abweichungen von diesem Standard benötigen einen konkreten fachlichen Grund und müssen ausdrücklich dokumentiert werden.
