@@ -74,7 +74,7 @@ test("cache busting identifies phase-one runtime acceptance fix", async () => {
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260722-fanclub-phase2-sort-delete-1/);
-  assert.match(config, /20260722-fanclub-phase2-sort-delete-1/);
-  assert.match(worker, /pd-portal-v4-fanclub-phase2-sort-delete-20260722-1/);
+  assert.match(index, /20260722-fanclub-phase2-final-1/);
+  assert.match(config, /20260722-fanclub-phase2-final-1/);
+  assert.match(worker, /pd-portal-v4-fanclub-phase2-final-20260722-1/);
 });

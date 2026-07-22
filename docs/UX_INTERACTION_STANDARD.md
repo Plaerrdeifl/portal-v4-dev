@@ -69,3 +69,12 @@ Falsch angelegte Beitragsklassen dürfen endgültig gelöscht werden, solange si
 ## 13. Abweichungen
 
 Abweichungen von diesem Standard benötigen einen konkreten fachlichen Grund und müssen ausdrücklich dokumentiert werden.
+## 12. Fanclub-Abschlussregeln für Beiträge und Dialoge
+
+Sortierpositionen sind technische Verwaltungswerte. Sie werden in normalen Listen und Karten nicht angezeigt und erscheinen nur beim Bearbeiten bestehender Beitragsklassen oder Finanzkonten. Neue Einträge erhalten serverseitig automatisch die nächste Position.
+
+Eine ungebuchte Beitragszuordnung darf wieder auf `Keine Beitragsklasse` gesetzt und dadurch vollständig entfernt werden. Sobald für die Zuordnung eine Zahlungsmeldung existiert, bleibt sie aus Gründen der Nachvollziehbarkeit erhalten.
+
+Ein Beitragsjahr darf nur endgültig gelöscht werden, wenn es keine Beitragszuordnungen mehr enthält. Verwendete Jahre werden deaktiviert. Alle endgültigen Löschungen und entfernten Zuordnungen werden serverseitig geprüft und auditiert.
+
+Fanclub-Dialoge verwenden dieselbe Button-Hierarchie, dunkle Umrandungen, ausreichende Mindesthöhen und mobile einspaltige Aktionsflächen. Buttontexte dürfen nicht abgeschnitten werden.

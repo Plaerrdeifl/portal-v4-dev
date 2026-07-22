@@ -1596,3 +1596,22 @@ button.v4-member-compact-row:hover{border-color:var(--blue-400);background:var(-
   .v4-compact-entry-main strong{font-size:.8rem!important}
   .v4-compact-entry-main small,.v4-compact-entry-amount strong{font-size:.71rem!important}
 }
+/* Phase 2 Fanclub-Abschluss: einheitliche Dialoge, klare Button-Hierarchie und mobile Aktionsflächen */
+.fanclub-page .button,.v4-dialog .button{border:1px solid #1f2d3d}
+.fanclub-page .button.primary,.v4-dialog .button.primary{border-color:#062b61}
+.fanclub-page .button.secondary,.v4-dialog .button.secondary{border-color:#1f2d3d}
+.fanclub-page .button.ghost,.v4-dialog .button.ghost{border-color:#526174}
+.fanclub-page .button.danger,.v4-dialog .button.danger{border-color:#65131d;background:#a91f2d;color:#fff}
+.fanclub-page .button.v4-heading-action{border-color:#1f2d3d!important}
+.v4-dialog .dialog-actions{display:flex;align-items:stretch;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.v4-dialog .dialog-actions .button{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.25}
+.v4-dialog .button>span{white-space:normal;overflow:visible;text-overflow:clip}
+.v4-dialog .v4-fanclub-form{gap:14px}
+.v4-dialog .v4-fanclub-form label{min-width:0}
+.v4-dialog .v4-fanclub-form input,.v4-dialog .v4-fanclub-form select,.v4-dialog .v4-fanclub-form textarea{width:100%}
+.v4-management-grid .button{width:100%;min-width:0;min-height:48px;padding:11px 14px;white-space:normal;overflow-wrap:anywhere;line-height:1.25}
+.v4-contribution-management-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.v4-contribution-management-grid .button.danger{grid-column:1/-1}
+.v4-management-note{margin:12px 0 0;color:var(--ink-500);font-size:.8rem;line-height:1.45}
+.v4-assignment-note{display:block;margin-top:6px;color:var(--ink-500);font-size:.76rem;line-height:1.4}
+@media(max-width:860px){.v4-management-grid,.v4-contribution-management-grid{grid-template-columns:1fr!important}.v4-contribution-management-grid .button.danger{grid-column:auto}.v4-dialog .dialog-actions{display:grid;grid-template-columns:1fr}.v4-dialog .dialog-actions .button{width:100%}}

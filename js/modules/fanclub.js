@@ -265,7 +265,7 @@ function memberStatusBadge(status) {
 }
 
 function memberForm(member = {}) {
-  return `<form class="form-grid">
+  return `<form class="form-grid v4-fanclub-form">
     <input type="hidden" name="id" value="${escapeAttr(member.id || "")}">
     <input type="hidden" name="revision" value="${escapeAttr(member.revision || "")}">
     <label>Vorname<input name="firstName" required maxlength="160" value="${escapeAttr(member.firstName || "")}"></label>
@@ -495,7 +495,7 @@ function renderOffices(panel) {
 }
 
 function seasonForm(season = {}) {
-  return `<form class="form-grid">
+  return `<form class="form-grid v4-fanclub-form">
     <input type="hidden" name="id" value="${escapeAttr(season.id || "")}">
     <input type="hidden" name="revision" value="${escapeAttr(season.revision || "")}">
     <label class="full">Bezeichnung
@@ -521,6 +521,7 @@ function openSeason(season = null) {
     title: season ? "Beitragsjahr bearbeiten" : "Beitragsjahr anlegen",
     kicker: "Beiträge",
     body: seasonForm(season || {}),
+    submitLabel: season ? "Änderung speichern" : "Beitragsjahr anlegen",
     onSubmit: async values => {
       snapshot = await runWrite(
         () => call("save_contribution_season", values),
@@ -534,8 +535,27 @@ function openSeason(season = null) {
   });
 }
 
+async function deleteContributionSeason(season) {
+  const confirmed = await confirmAction(
+    `Unbenutztes Beitragsjahr „${season.name}“ endgültig löschen?`
+  );
+  if (!confirmed) return false;
+
+  snapshot = await runWrite(
+    () => call("delete_contribution_season", {
+      id: season.id,
+      revision: season.revision
+    }),
+    "Beitragsjahr wurde gelöscht."
+  );
+  activeContributionSeasonId = "";
+  ensureContributionSeason();
+  renderAll();
+  return true;
+}
+
 function classForm(contributionClass = {}) {
-  return `<form class="form-grid">
+  return `<form class="form-grid v4-fanclub-form">
     <input type="hidden" name="id" value="${escapeAttr(contributionClass.id || "")}">
     <input type="hidden" name="revision" value="${escapeAttr(contributionClass.revision || "")}">
     <label class="full">Bezeichnung
@@ -544,9 +564,9 @@ function classForm(contributionClass = {}) {
     <label>Betrag
       <input name="amount" required type="number" min="0" max="999999.99" step="0.01" value="${escapeAttr(contributionClass.amount ?? "")}">
     </label>
-    <label>Position
-      <input name="position" required type="number" min="1" max="9999" step="1" inputmode="numeric" value="${escapeAttr(contributionClass.position ?? nextPosition(contributionClasses()))}">
-    </label>
+    ${contributionClass.id ? `<label>Position
+      <input name="position" required type="number" min="1" max="9999" step="1" inputmode="numeric" value="${escapeAttr(contributionClass.position)}">
+    </label>` : ""}
     <label>Status
       <select name="active">${optionList([
         { value: "true", label: "Aktiv" },
@@ -583,6 +603,7 @@ function openContributionClass(contributionClass = null) {
       : "Beitragsklasse anlegen",
     kicker: "Beiträge",
     body: classForm(contributionClass || {}),
+    submitLabel: contributionClass ? "Änderung speichern" : "Beitragsklasse anlegen",
     onSubmit: async values => {
       snapshot = await runWrite(
         () => call("save_contribution_class", values),
@@ -625,7 +646,7 @@ function assignmentForm(member, contribution = {}) {
     item => item.active || item.id === contribution.contributionClassId
   );
 
-  return `<form class="form-grid">
+  return `<form class="form-grid v4-fanclub-form">
     <input type="hidden" name="id" value="${escapeAttr(contribution.id || "")}">
     <input type="hidden" name="revision" value="${escapeAttr(contribution.revision || "")}">
     <input type="hidden" name="seasonId" value="${escapeAttr(activeContributionSeasonId)}">
@@ -634,16 +655,19 @@ function assignmentForm(member, contribution = {}) {
       <input value="${escapeAttr(`${memberName(member)}`)}" disabled>
     </label>
     <label class="full">Beitragsklasse
-      <select name="contributionClassId" required>
+      <select name="contributionClassId" ${contribution.id ? "" : "required"}>
         ${optionList(
           classes.map(item => ({
             value: item.id,
             label: `${item.name} · ${money(item.amount)}`
           })),
           contribution.contributionClassId || "",
-          "Beitragsklasse auswählen"
+          contribution.id ? "Keine Beitragsklasse" : "Beitragsklasse auswählen"
         )}
       </select>
+      ${contribution.id
+        ? '<small class="v4-assignment-note">„Keine Beitragsklasse“ entfernt diese Zuordnung, solange noch keine Zahlungsmeldung existiert.</small>'
+        : ""}
     </label>
     <label class="full">Notiz
       <textarea name="notes" rows="3" maxlength="1000">${escapeHtml(contribution.notes || "")}</textarea>
@@ -660,13 +684,24 @@ function openAssignment(member) {
       : "Mitgliedsbeitrag zuordnen",
     kicker: selectedSeason()?.name || "Beiträge",
     body: assignmentForm(member, contribution || {}),
+    submitLabel: contribution ? "Änderung speichern" : "Beitrag zuordnen",
     onSubmit: async values => {
-      snapshot = await runWrite(
-        () => call("save_member_contribution", values),
-        contribution
-          ? "Beitragszuordnung wurde aktualisiert."
-          : "Beitragszuordnung wurde angelegt."
-      );
+      if (contribution && !values.contributionClassId) {
+        snapshot = await runWrite(
+          () => call("remove_member_contribution", {
+            id: contribution.id,
+            revision: contribution.revision
+          }),
+          "Beitragszuordnung wurde entfernt."
+        );
+      } else {
+        snapshot = await runWrite(
+          () => call("save_member_contribution", values),
+          contribution
+            ? "Beitragszuordnung wurde aktualisiert."
+            : "Beitragszuordnung wurde angelegt."
+        );
+      }
       renderAll();
     }
   });
@@ -680,7 +715,7 @@ function paymentForm(contribution) {
     || accounts[0]
     || {};
 
-  return `<form class="form-grid">
+  return `<form class="form-grid v4-fanclub-form">
     <input type="hidden" name="memberContributionId" value="${escapeAttr(contribution.id)}">
     <label class="full">Mitglied
       <input value="${escapeAttr(`${contribution.memberName}`)}" disabled>
@@ -753,7 +788,7 @@ async function confirmPayment(report) {
 }
 
 function rejectPaymentForm(report) {
-  return `<form>
+  return `<form class="v4-fanclub-form">
     <input type="hidden" name="id" value="${escapeAttr(report.id)}">
     <input type="hidden" name="revision" value="${escapeAttr(report.revision)}">
     <label>Ablehnungsgrund
@@ -807,7 +842,7 @@ function renderContributionClasses() {
     </div>
     <p class="v4-section-note">Beträge werden bei der Zuordnung als Sollbetrag festgeschrieben.</p>
     ${classes.length ? `<div class="v4-settings-list" aria-label="Beitragsklassen">${classes.map(item => `<button class="v4-settings-row" type="button" data-edit-contribution-class="${escapeAttr(item.id)}">
-      <span class="v4-settings-row-copy"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(money(item.amount))} · Position ${escapeHtml(item.position)}</small></span>
+      <span class="v4-settings-row-copy"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(money(item.amount))}</small></span>
       <span class="v4-settings-row-end"><span class="v4-inline-state ${item.active ? "is-active" : "is-inactive"}"><i aria-hidden="true"></i>${item.active ? "Aktiv" : "Inaktiv"}</span><span class="v4-row-chevron" aria-hidden="true">›</span></span>
     </button>`).join("")}</div>` : empty("Noch keine Beitragsklassen angelegt.")}
   </section>`;
@@ -937,10 +972,14 @@ function openContributionManagement(season) {
   const dialog = openDialog({
     title: "Beitragsjahr verwalten",
     kicker: "Beiträge",
-    body: `<div class="v4-management-grid">
-      <button class="button secondary" type="button" data-contribution-management="create">Beitragsjahr anlegen</button>
-      <button class="button secondary" type="button" data-contribution-management="edit" ${season ? "" : "disabled"}>Aktuelles Jahr bearbeiten</button>
-    </div>`
+    body: `<div class="v4-management-grid v4-contribution-management-grid">
+      <button class="button secondary" type="button" data-contribution-management="create">Neues Beitragsjahr</button>
+      <button class="button secondary" type="button" data-contribution-management="edit" ${season ? "" : "disabled"}>Beitragsjahr bearbeiten</button>
+      <button class="button danger" type="button" data-contribution-management="delete" ${season?.canDelete ? "" : "disabled"}>Beitragsjahr löschen</button>
+    </div>
+    ${season && !season.canDelete
+      ? '<p class="v4-management-note">Löschen ist erst möglich, nachdem alle ungebuchten Beitragszuordnungen dieses Jahres auf „Keine Beitragsklasse“ gesetzt wurden.</p>'
+      : ""}`
   });
 
   dialog.querySelector('[data-contribution-management="create"]')
@@ -948,6 +987,22 @@ function openContributionManagement(season) {
   dialog.querySelector('[data-contribution-management="edit"]')
     ?.addEventListener("click", () => {
       if (season) openSeason(season);
+    });
+  dialog.querySelector('[data-contribution-management="delete"]')
+    ?.addEventListener("click", async event => {
+      if (!season) return;
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        if (await deleteContributionSeason(season)) dialog.close();
+      } catch (error) {
+        button.disabled = false;
+        showToast(
+          error?.message || "Beitragsjahr konnte nicht gelöscht werden.",
+          "error",
+          6500
+        );
+      }
     });
 }
 
@@ -1080,7 +1135,7 @@ function accountForm(account = {}) {
   const isDefaultCash = account.code === "KASSE";
   const isNewAccount = !account.id;
 
-  return `<form class="form-grid">
+  return `<form class="form-grid v4-fanclub-form">
     <input type="hidden" name="id" value="${escapeAttr(account.id || "")}">
     <input type="hidden" name="revision" value="${escapeAttr(account.revision || "")}">
     <label>Bezeichnung
@@ -1092,9 +1147,9 @@ function accountForm(account = {}) {
       </select>
       ${isDefaultCash ? '<input type="hidden" name="accountType" value="CASH">' : ""}
     </label>
-    <label>Position
-      <input name="position" required type="number" min="1" max="9999" step="1" inputmode="numeric" value="${escapeAttr(account.position ?? nextPosition(financeAccounts()))}">
-    </label>
+    ${account.id ? `<label>Position
+      <input name="position" required type="number" min="1" max="9999" step="1" inputmode="numeric" value="${escapeAttr(account.position)}">
+    </label>` : ""}
     <label>Status
       ${isDefaultCash
         ? '<input value="Aktiv" disabled><input type="hidden" name="active" value="true">'
@@ -1158,7 +1213,7 @@ function financeEntryForm(entryType) {
     || accounts[0]
     || {};
 
-  return `<form class="form-grid">
+  return `<form class="form-grid v4-fanclub-form">
     <input type="hidden" name="entryType" value="${escapeAttr(entryType)}">
     <label>Konto
       <select name="accountId" required>
@@ -1209,7 +1264,7 @@ function openFinanceEntry(entryType) {
 function transferForm() {
   const accounts = financeAccounts().filter(account => account.active);
 
-  return `<form class="form-grid">
+  return `<form class="form-grid v4-fanclub-form">
     <label>Von Konto
       <select name="fromAccountId" required>
         ${optionList(
@@ -1262,7 +1317,7 @@ function openFinanceTransfer() {
 }
 
 function reversalForm(entry) {
-  return `<form class="form-grid">
+  return `<form class="form-grid v4-fanclub-form">
     <input type="hidden" name="id" value="${escapeAttr(entry.id)}">
     <label class="full">Originalbuchung
       <input value="${escapeAttr(`#${entry.entryNo} · ${entry.accountName} · ${signedMoney(entry)} · ${entry.description}`)}" disabled>
@@ -1305,7 +1360,7 @@ function renderFinanceAccounts() {
   return `<div class="v4-account-grid v4-account-grid-compact">
     ${accounts.map(account => `<button class="card v4-account-card v4-account-card-button ${account.active ? "" : "is-inactive"}" type="button" data-open-finance-account="${escapeAttr(account.id)}">
       <span class="v4-account-card-head"><span class="v4-account-name">${escapeHtml(account.name)}</span><span class="v4-row-chevron" aria-hidden="true">›</span></span>
-      <small class="v4-account-meta">${escapeHtml(accountTypeLabel(account.accountType))}${account.active ? "" : " · inaktiv"} · Position ${escapeHtml(account.position)}</small>
+      <small class="v4-account-meta">${escapeHtml(accountTypeLabel(account.accountType))}${account.active ? "" : " · inaktiv"}</small>
       <strong class="v4-account-balance">${escapeHtml(money(account.balance))}</strong>
     </button>`).join("")}
   </div>`;

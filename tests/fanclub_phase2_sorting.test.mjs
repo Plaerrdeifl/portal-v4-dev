@@ -43,8 +43,10 @@ test("fanclub frontend uses server positions and keeps the approved compact inte
   assert.match(fanclub, /function nextPosition/);
   assert.equal((fanclub.match(/name="position"/g) || []).length, 2);
   assert.match(fanclub, /min="1" max="9999" step="1"/);
-  assert.match(fanclub, /Position \$\{escapeHtml\(item\.position\)\}/);
-  assert.match(fanclub, /Position \$\{escapeHtml\(account\.position\)\}/);
+  assert.doesNotMatch(fanclub, /Position \$\{escapeHtml\(item\.position\)\}/);
+  assert.doesNotMatch(fanclub, /Position \$\{escapeHtml\(account\.position\)\}/);
+  assert.match(fanclub, /contributionClass\.id \? `<label>Position/);
+  assert.match(fanclub, /account\.id \? `<label>Position/);
 
   assert.match(fanclub, /memberSearchInput/);
   assert.match(fanclub, /showInactiveMembers/);
@@ -60,14 +62,14 @@ test("fanclub frontend uses server positions and keeps the approved compact inte
   assert.match(standard, /nur deaktiviert werden/);
 });
 
-test("cache busting identifies fanclub phase two sorting", async () => {
+test("cache busting identifies fanclub phase two finalization", async () => {
   const [index, config, worker] = await Promise.all([
     read("index.html"),
     read("js/config.js"),
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260722-fanclub-phase2-sort-delete-1/);
-  assert.match(config, /20260722-fanclub-phase2-sort-delete-1/);
-  assert.match(worker, /pd-portal-v4-fanclub-phase2-sort-delete-20260722-1/);
+  assert.match(index, /20260722-fanclub-phase2-final-1/);
+  assert.match(config, /20260722-fanclub-phase2-final-1/);
+  assert.match(worker, /pd-portal-v4-fanclub-phase2-final-20260722-1/);
 });
