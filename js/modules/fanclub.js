@@ -265,24 +265,21 @@ function memberStatusBadge(status) {
 }
 
 function memberForm(member = {}) {
-  return `<form class="form-grid v4-fanclub-form">
+  return `<form class="form-grid v4-fanclub-form v4-smart-form">
     <input type="hidden" name="id" value="${escapeAttr(member.id || "")}">
     <input type="hidden" name="revision" value="${escapeAttr(member.revision || "")}">
-    <label>Vorname<input name="firstName" required maxlength="160" value="${escapeAttr(member.firstName || "")}"></label>
-    <label>Nachname<input name="lastName" required maxlength="160" value="${escapeAttr(member.lastName || "")}"></label>
-    <label>E-Mail<input name="email" type="email" maxlength="320" value="${escapeAttr(member.email || "")}"></label>
-    <label>Telefon<input name="phone" maxlength="80" value="${escapeAttr(member.phone || "")}"></label>
-    <label>Straße<input name="street" maxlength="160" value="${escapeAttr(member.street || "")}"></label>
-    <label>Hausnummer<input name="houseNumber" maxlength="40" value="${escapeAttr(member.houseNumber || "")}"></label>
-    <label>PLZ<input name="postalCode" maxlength="20" value="${escapeAttr(member.postalCode || "")}"></label>
-    <label>Ort<input name="city" maxlength="160" value="${escapeAttr(member.city || "")}"></label>
-    <label>Eintritt<input name="joinedOn" type="date" value="${escapeAttr(member.joinedOn || "")}"></label>
-    <label>Austritt<input name="leftOn" type="date" value="${escapeAttr(member.leftOn || "")}"></label>
-    <label>Status<select name="status">${optionList([
-      { value: "ACTIVE", label: "Aktiv" },
-      { value: "INACTIVE", label: "Inaktiv" }
-    ], member.status || "ACTIVE")}</select></label>
-    <label class="full">Notizen<textarea name="notes" rows="4" maxlength="4000">${escapeHtml(member.notes || "")}</textarea></label>
+    <label class="v4-field-half">Vorname<input name="firstName" required maxlength="160" value="${escapeAttr(member.firstName || "")}"></label>
+    <label class="v4-field-half">Nachname<input name="lastName" required maxlength="160" value="${escapeAttr(member.lastName || "")}"></label>
+    <label class="v4-field-seven">E-Mail<input name="email" type="email" maxlength="320" value="${escapeAttr(member.email || "")}"></label>
+    <label class="v4-field-five">Telefon<input name="phone" maxlength="80" value="${escapeAttr(member.phone || "")}"></label>
+    <label class="v4-field-nine">Straße<input name="street" maxlength="160" value="${escapeAttr(member.street || "")}"></label>
+    <label class="v4-field-three">Hausnummer<input name="houseNumber" maxlength="40" value="${escapeAttr(member.houseNumber || "")}"></label>
+    <label class="v4-field-three">PLZ<input name="postalCode" maxlength="20" inputmode="numeric" value="${escapeAttr(member.postalCode || "")}"></label>
+    <label class="v4-field-nine">Ort<input name="city" maxlength="160" value="${escapeAttr(member.city || "")}"></label>
+    <label class="v4-field-half">Eintritt<input name="joinedOn" type="date" value="${escapeAttr(member.joinedOn || "")}"></label>
+    <label class="v4-field-half">Austritt<input name="leftOn" type="date" value="${escapeAttr(member.leftOn || "")}"></label>
+    <label class="v4-field-four">Status<select name="status">${optionList([{value:"ACTIVE",label:"Aktiv"},{value:"INACTIVE",label:"Inaktiv"}],member.status||"ACTIVE")}</select></label>
+    <label class="v4-field-full">Notizen<textarea name="notes" rows="3" maxlength="4000">${escapeHtml(member.notes || "")}</textarea></label>
   </form>`;
 }
 
@@ -555,27 +552,15 @@ async function deleteContributionSeason(season) {
 }
 
 function classForm(contributionClass = {}) {
-  return `<form class="form-grid v4-fanclub-form">
+  const proposedPosition = contributionClass.position || nextPosition(contributionClasses());
+  return `<form class="form-grid v4-fanclub-form v4-smart-form">
     <input type="hidden" name="id" value="${escapeAttr(contributionClass.id || "")}">
     <input type="hidden" name="revision" value="${escapeAttr(contributionClass.revision || "")}">
-    <label class="full">Bezeichnung
-      <input name="name" required maxlength="120" value="${escapeAttr(contributionClass.name || "")}" placeholder="Standardbeitrag">
-    </label>
-    <label>Betrag
-      <input name="amount" required type="number" min="0" max="999999.99" step="0.01" value="${escapeAttr(contributionClass.amount ?? "")}">
-    </label>
-    ${contributionClass.id ? `<label>Position
-      <input name="position" required type="number" min="1" max="9999" step="1" inputmode="numeric" value="${escapeAttr(contributionClass.position)}">
-    </label>` : ""}
-    <label>Status
-      <select name="active">${optionList([
-        { value: "true", label: "Aktiv" },
-        { value: "false", label: "Inaktiv" }
-      ], String(contributionClass.active ?? true))}</select>
-    </label>
-    ${contributionClass.id && contributionClass.canDelete
-      ? '<div class="full dialog-actions"><button class="button danger" type="button" data-delete-contribution-class>Beitragsklasse löschen</button></div>'
-      : ""}
+    <label class="v4-field-full">Bezeichnung<input name="name" required maxlength="120" value="${escapeAttr(contributionClass.name || "")}" placeholder="Standardbeitrag"></label>
+    <label class="v4-field-four">Betrag<input name="amount" required type="number" min="0" max="999999.99" step="0.01" inputmode="decimal" value="${escapeAttr(contributionClass.amount ?? "")}"></label>
+    <label class="v4-field-four">Sortierung<input name="position" required type="number" min="1" max="9999" step="1" inputmode="numeric" value="${escapeAttr(proposedPosition)}"></label>
+    <label class="v4-field-four">Status<select name="active">${optionList([{value:"true",label:"Aktiv"},{value:"false",label:"Inaktiv"}],String(contributionClass.active ?? true))}</select></label>
+    ${contributionClass.id && contributionClass.canDelete ? '<div class="v4-field-full dialog-actions"><button class="button danger" type="button" data-delete-contribution-class>Beitragsklasse löschen</button></div>' : ""}
   </form>`;
 }
 
@@ -1134,43 +1119,14 @@ function ensureFinanceAccountFilter() {
 function accountForm(account = {}) {
   const isDefaultCash = account.code === "KASSE";
   const isNewAccount = !account.id;
-
-  return `<form class="form-grid v4-fanclub-form">
+  return `<form class="form-grid v4-fanclub-form v4-smart-form">
     <input type="hidden" name="id" value="${escapeAttr(account.id || "")}">
     <input type="hidden" name="revision" value="${escapeAttr(account.revision || "")}">
-    <label>Bezeichnung
-      <input name="name" required maxlength="120" value="${escapeAttr(account.name || "")}">
-    </label>
-    <label>Kontotyp
-      <select name="accountType" ${isDefaultCash ? "disabled" : ""}>
-        ${optionList(ACCOUNT_TYPES, account.accountType || "BANK")}
-      </select>
-      ${isDefaultCash ? '<input type="hidden" name="accountType" value="CASH">' : ""}
-    </label>
-    ${account.id ? `<label>Position
-      <input name="position" required type="number" min="1" max="9999" step="1" inputmode="numeric" value="${escapeAttr(account.position)}">
-    </label>` : ""}
-    <label>Status
-      ${isDefaultCash
-        ? '<input value="Aktiv" disabled><input type="hidden" name="active" value="true">'
-        : `<select name="active">${optionList([
-            { value: "true", label: "Aktiv" },
-            { value: "false", label: "Inaktiv" }
-          ], String(account.active ?? true))}</select>`}
-    </label>
-    ${isNewAccount ? `<label>Startsaldo
-      <input
-        name="openingBalance"
-        type="number"
-        min="-999999.99"
-        max="999999.99"
-        step="0.01"
-        inputmode="decimal"
-      >
-    </label>
-    <label>Stand zum
-      <input name="openingBalanceDate" type="date" value="${localDate()}">
-    </label>` : ""}
+    <label class="v4-field-seven">Bezeichnung<input name="name" required maxlength="120" value="${escapeAttr(account.name || "")}"></label>
+    <label class="v4-field-five">Kontotyp<select name="accountType" ${isDefaultCash ? "disabled" : ""}>${optionList(ACCOUNT_TYPES,account.accountType||"BANK")}</select>${isDefaultCash ? '<input type="hidden" name="accountType" value="CASH">' : ""}</label>
+    ${account.id ? `<label class="v4-field-three">Sortierung<input name="position" required type="number" min="1" max="9999" step="1" inputmode="numeric" value="${escapeAttr(account.position)}"></label>` : ""}
+    <label class="v4-field-four">Status${isDefaultCash ? '<input value="Aktiv" disabled><input type="hidden" name="active" value="true">' : `<select name="active">${optionList([{value:"true",label:"Aktiv"},{value:"false",label:"Inaktiv"}],String(account.active ?? true))}</select>`}</label>
+    ${isNewAccount ? `<label class="v4-field-four">Startsaldo<input name="openingBalance" type="number" min="-999999.99" max="999999.99" step="0.01" inputmode="decimal"></label><label class="v4-field-four">Stand zum<input name="openingBalanceDate" type="date" value="${localDate()}"></label>` : ""}
   </form>`;
 }
 
@@ -1192,7 +1148,7 @@ function openFinanceAccount(account = null) {
 
 async function deleteFinanceAccount(account) {
   const confirmed = await confirmAction(
-    `Unbenutztes Konto „${account.name}“ endgültig löschen?`
+    `Inaktives Nullsaldo-Konto „${account.name}“ aus der Kontoverwaltung entfernen? Buchungen und Audit-Historie bleiben erhalten.`
   );
   if (!confirmed) return;
 
@@ -1208,39 +1164,14 @@ async function deleteFinanceAccount(account) {
 }
 
 function financeEntryForm(entryType) {
-  const accounts = financeAccounts().filter(account => account.active);
-  const preferred = accounts.find(account => account.code === "KASSE")
-    || accounts[0]
-    || {};
-
-  return `<form class="form-grid v4-fanclub-form">
+  const accounts=financeAccounts().filter(account=>account.active); const preferred=accounts.find(account=>account.code==="KASSE")||accounts[0]||{};
+  return `<form class="form-grid v4-fanclub-form v4-smart-form">
     <input type="hidden" name="entryType" value="${escapeAttr(entryType)}">
-    <label>Konto
-      <select name="accountId" required>
-        ${optionList(
-          accounts.map(account => ({
-            value: account.id,
-            label: `${account.name} · ${accountTypeLabel(account.accountType)}`
-          })),
-          preferred.id || "",
-          "Konto auswählen"
-        )}
-      </select>
-    </label>
-    <label>Betrag
-      <input name="amount" required type="number" min="0.01" max="999999.99" step="0.01">
-    </label>
-    <label>Buchungsdatum
-      <input name="bookedOn" required type="date" value="${localDate()}">
-    </label>
-    <label>Zahlungsart
-      <select name="paymentMethod">
-        ${optionList(PAYMENT_METHODS, preferred.accountType === "CASH" ? "CASH" : "BANK")}
-      </select>
-    </label>
-    <label class="full">Beschreibung
-      <input name="description" required maxlength="500" placeholder="${entryType === "INCOME" ? "Grund der Einnahme" : "Grund der Ausgabe"}">
-    </label>
+    <label class="v4-field-seven">Konto<select name="accountId" required>${optionList(accounts.map(account=>({value:account.id,label:account.name})),preferred.id||"","Konto auswählen")}</select></label>
+    <label class="v4-field-five">Betrag<input name="amount" required type="number" min="0.01" max="999999.99" step="0.01" inputmode="decimal"></label>
+    <label class="v4-field-five">Buchungsdatum<input name="bookedOn" required type="date" value="${localDate()}"></label>
+    <label class="v4-field-seven">Zahlungsart<select name="paymentMethod">${optionList(PAYMENT_METHODS,preferred.accountType==="CASH"?"CASH":"BANK")}</select></label>
+    <label class="v4-field-full">Beschreibung<input name="description" required maxlength="500" placeholder="${entryType==="INCOME"?"Grund der Einnahme":"Grund der Ausgabe"}"></label>
   </form>`;
 }
 
@@ -1351,19 +1282,8 @@ function openFinanceReversal(entry) {
 }
 
 function renderFinanceAccounts() {
-  const accounts = financeAccounts();
-
-  if (!accounts.length) {
-    return empty("Noch keine Finanzkonten angelegt.");
-  }
-
-  return `<div class="v4-account-grid v4-account-grid-compact">
-    ${accounts.map(account => `<button class="card v4-account-card v4-account-card-button ${account.active ? "" : "is-inactive"}" type="button" data-open-finance-account="${escapeAttr(account.id)}">
-      <span class="v4-account-card-head"><span class="v4-account-name">${escapeHtml(account.name)}</span><span class="v4-row-chevron" aria-hidden="true">›</span></span>
-      <small class="v4-account-meta">${escapeHtml(accountTypeLabel(account.accountType))}${account.active ? "" : " · inaktiv"}</small>
-      <strong class="v4-account-balance">${escapeHtml(money(account.balance))}</strong>
-    </button>`).join("")}
-  </div>`;
+  const accounts=financeAccounts(); if(!accounts.length) return empty("Noch keine Finanzkonten angelegt.");
+  return `<div class="v4-account-grid v4-account-grid-compact">${accounts.map(account=>`<button class="card v4-account-card v4-account-card-button v4-account-summary-button ${account.active?"":"is-inactive"}" type="button" data-open-finance-account="${escapeAttr(account.id)}"><span class="v4-account-name">${escapeHtml(account.name)}</span><strong class="v4-account-balance">${escapeHtml(money(account.balance))}</strong><span class="v4-row-chevron" aria-hidden="true">›</span></button>`).join("")}</div>`;
 }
 
 function compactFinanceEntries(entries, { showAccount = true, showBalance = false } = {}) {
@@ -1385,23 +1305,7 @@ function compactFinanceEntries(entries, { showAccount = true, showBalance = fals
 }
 
 function financeEntryDetailMarkup(entry) {
-  return `<div class="v4-detail-grid">
-    <div><span>Buchungsnummer</span><strong>#${escapeHtml(entry.entryNo)}</strong></div>
-    <div><span>Datum</span><strong>${escapeHtml(fmtDate(entry.bookedOn))}</strong></div>
-    <div class="full"><span>Beschreibung</span><strong>${escapeHtml(entry.description)}</strong></div>
-    <div><span>Konto</span><strong>${escapeHtml(entry.accountName)}</strong></div>
-    <div><span>Betrag</span><strong class="${entry.entryType === "INCOME" ? "is-positive" : "is-negative"}">${escapeHtml(signedMoney(entry))}</strong></div>
-    <div><span>Buchungsart</span><strong>${escapeHtml(entryTypeLabel(entry.entryType))}</strong></div>
-    <div><span>Herkunft</span><strong>${escapeHtml(sourceTypeLabel(entry.sourceType))}</strong></div>
-    <div><span>Zahlungsart</span><strong>${escapeHtml(entry.paymentMethodLabel || "–")}</strong></div>
-    <div><span>Gegenkonto</span><strong>${escapeHtml(entry.counterAccountName || "–")}</strong></div>
-    ${entry.runningBalance !== undefined ? `<div><span>Saldo danach</span><strong>${escapeHtml(money(entry.runningBalance))}</strong></div>` : ""}
-    <div><span>Erfasst von</span><strong>${escapeHtml(entry.createdByName || "–")}</strong></div>
-    <div><span>Erfasst am</span><strong>${escapeHtml(fmtDateTime(entry.createdAt))}</strong></div>
-    ${entry.isReversed ? `<div class="full"><span>Storniert</span><strong>${escapeHtml(entry.reversalReason || "Ja")}</strong></div>` : ""}
-    ${entry.reversesEntryId ? '<div class="full"><span>Hinweis</span><strong>Diese Buchung ist eine Stornobuchung.</strong></div>' : ""}
-  </div>
-  ${entry.canReverse ? `<div class="dialog-actions v4-detail-actions"><button class="button danger" type="button" data-dialog-reverse-entry="${escapeAttr(entry.id)}">Stornieren</button></div>` : ""}`;
+  return `<div class="v4-detail-grid v4-finance-detail-grid"><div class="v4-detail-wide"><span>Beschreibung</span><strong>${escapeHtml(entry.description)}</strong></div><div><span>Konto</span><strong>${escapeHtml(entry.accountName)}</strong></div><div><span>Betrag</span><strong class="${entry.entryType==="INCOME"?"is-positive":"is-negative"}">${escapeHtml(signedMoney(entry))}</strong></div><div><span>Buchungsart</span><strong>${escapeHtml(entryTypeLabel(entry.entryType))}</strong></div><div><span>Herkunft</span><strong>${escapeHtml(sourceTypeLabel(entry.sourceType))}</strong></div><div><span>Zahlungsart</span><strong>${escapeHtml(entry.paymentMethodLabel||"–")}</strong></div><div><span>Gegenkonto</span><strong>${escapeHtml(entry.counterAccountName||"–")}</strong></div><div><span>Buchungsnummer</span><strong>#${escapeHtml(entry.entryNo)}</strong></div><div><span>Datum</span><strong>${escapeHtml(fmtDate(entry.bookedOn))}</strong></div>${entry.runningBalance!==undefined?`<div><span>Saldo danach</span><strong>${escapeHtml(money(entry.runningBalance))}</strong></div>`:""}<div><span>Erfasst von</span><strong>${escapeHtml(entry.createdByName||"–")}</strong></div><div><span>Erfasst am</span><strong>${escapeHtml(fmtDateTime(entry.createdAt))}</strong></div>${entry.isReversed?`<div class="v4-detail-wide"><span>Storniert</span><strong>${escapeHtml(entry.reversalReason||"Ja")}</strong></div>`:""}${entry.reversesEntryId?'<div class="v4-detail-wide"><span>Hinweis</span><strong>Diese Buchung ist eine Stornobuchung.</strong></div>':""}</div>${entry.canReverse?`<div class="dialog-actions v4-detail-actions"><button class="button danger" type="button" data-dialog-reverse-entry="${escapeAttr(entry.id)}">Stornieren</button></div>`:""}`;
 }
 
 function openFinanceEntryDetails(entry) {
@@ -1425,23 +1329,7 @@ function bindCompactFinanceEntries(scope, entries) {
 }
 
 function financeAccountDetailMarkup(account, entries) {
-  return `<div class="v4-account-detail-head">
-    <div><span>${escapeHtml(accountTypeLabel(account.accountType))}</span><strong>${escapeHtml(account.name)}</strong></div>
-    <strong class="v4-account-detail-balance">${escapeHtml(money(account.balance))}</strong>
-  </div>
-  <div class="v4-detail-grid v4-account-detail-grid">
-    <div><span>Kontotyp</span><strong>${escapeHtml(accountTypeLabel(account.accountType))}</strong></div>
-    <div><span>Status</span><strong>${account.active ? "Aktiv" : "Inaktiv"}</strong></div>
-    <div><span>Buchungen</span><strong>${entries.length}</strong></div>
-  </div>
-  ${snapshot.canManageFinance ? `<div class="dialog-actions v4-detail-actions">
-    <button class="button secondary" type="button" data-dialog-edit-account="${escapeAttr(account.id)}">Bearbeiten</button>
-    ${account.canDelete ? `<button class="button danger" type="button" data-dialog-delete-account="${escapeAttr(account.id)}">Löschen</button>` : ""}
-  </div>` : ""}
-  <section class="v4-dialog-ledger">
-    <div class="v4-dialog-section-title"><h3>Kontoauszug</h3><span>${entries.length} Buchungen</span></div>
-    ${compactFinanceEntries(entries, { showAccount: false, showBalance: true })}
-  </section>`;
+  return `<div class="v4-account-detail-summary"><div><strong>${escapeHtml(account.name)}</strong><small>${escapeHtml(accountTypeLabel(account.accountType))} · ${account.active?"Aktiv":"Inaktiv"} · ${entries.length} Buchungen</small></div><strong class="v4-account-detail-balance">${escapeHtml(money(account.balance))}</strong></div>${snapshot.canManageFinance?`<div class="dialog-actions v4-detail-actions"><button class="button secondary" type="button" data-dialog-edit-account="${escapeAttr(account.id)}">Bearbeiten</button>${account.canDelete?`<button class="button danger" type="button" data-dialog-delete-account="${escapeAttr(account.id)}">Löschen</button>`:""}</div>`:""}<section class="v4-dialog-ledger"><div class="v4-dialog-section-title"><h3>Kontoauszug</h3><span>${entries.length} Buchungen</span></div>${compactFinanceEntries(entries,{showAccount:false,showBalance:true})}</section>`;
 }
 
 function openFinanceAccountDetails(account) {

@@ -32,8 +32,16 @@ test("fanclub UI hides positions outside edit mode and supports safe cleanup", a
 
   assert.doesNotMatch(fanclub, /Position \$\{escapeHtml\(item\.position\)\}/);
   assert.doesNotMatch(fanclub, /Position \$\{escapeHtml\(account\.position\)\}/);
-  assert.match(fanclub, /contributionClass\.id \? `<label>Position/);
-  assert.match(fanclub, /account\.id \? `<label>Position/);
+  assert.match(
+    fanclub,
+    /const proposedPosition = contributionClass\.position\s+\|\| nextPosition\(contributionClasses\(\)\)/
+  );
+  assert.match(fanclub, /<label class="v4-field-four">Sortierung/);
+  assert.doesNotMatch(fanclub, /contributionClass\.id \? `<label/);
+  assert.match(
+    fanclub,
+    /account\.id \? `<label class="v4-field-three">Sortierung/
+  );
   assert.match(fanclub, /Keine Beitragsklasse/);
   assert.match(fanclub, /call\("remove_member_contribution"/);
   assert.match(fanclub, /call\("delete_contribution_season"/);
@@ -55,7 +63,7 @@ test("cache busting identifies fanclub phase two finalization", async () => {
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260722-portal-phase2-acceptance-1/);
-  assert.match(config, /20260722-portal-phase2-acceptance-1/);
-  assert.match(worker, /pd-portal-v4-phase2-acceptance-20260722-1/);
+  assert.match(index, /20260722-compact-workflows-r1/);
+  assert.match(config, /20260722-compact-workflows-r1/);
+  assert.match(worker, /pd-portal-v4-compact-workflows-r1-20260722/);
 });

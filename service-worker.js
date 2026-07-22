@@ -1,4 +1,4 @@
-const CACHE_VERSION = "pd-portal-v4-phase2-acceptance-20260722-1";
+const CACHE_VERSION = "pd-portal-v4-compact-workflows-r1-20260722";
 const APP_CACHE = `${CACHE_VERSION}-shell`;
 const SHELL = [
   "./",

@@ -392,48 +392,21 @@ function statusSelect(task) {
   </label>`;
 }
 
-function taskCard(task) {
-  const archivedInfo = task.status === "ARCHIVED"
-    ? `<div class="notice">
-        <strong>Archiviert</strong><br>
-        ${escapeHtml(fmtDateTime(task.archivedAt))}
-        ${task.archivedByName ? ` · ${escapeHtml(task.archivedByName)}` : ""}
-      </div>`
-    : "";
-
-  return `<article
-    class="card v4-task-card"
-    data-priority="${escapeAttr(task.priority)}"
-    data-status="${escapeAttr(task.status)}"
-  >
-    <header class="v4-card-header">
-      <div>
-        <span class="subtle">${escapeHtml(task.context === "BOARD" ? "Vorstand" : task.teamName || "Team")}</span>
-        <h3>${escapeHtml(task.title)}</h3>
-      </div>
-      <div class="badge-stack">
-        ${statusBadge(label(PRIORITIES, task.priority))}
-        ${statusBadge(label(STATUSES, task.status))}
-      </div>
-    </header>
-    ${task.description ? `<p>${escapeHtml(task.description)}</p>` : ""}
-    <dl class="v4-meta-grid">
-      <div><dt>Zugewiesen</dt><dd>${escapeHtml(task.assignedName || "Noch offen")}</dd></div>
-      <div><dt>Erstellt von</dt><dd>${escapeHtml(task.createdByName || "–")}</dd></div>
-      <div><dt>Aktualisiert</dt><dd>${escapeHtml(fmtDateTime(task.updatedAt))}</dd></div>
-    </dl>
-    ${task.assignmentReason ? `<div class="notice"><strong>Zuweisungsbegründung</strong><br>${escapeHtml(task.assignmentReason)}</div>` : ""}
-    ${task.ownNote ? `<div class="v4-note-preview"><strong>Meine Notiz</strong><p>${escapeHtml(task.ownNote)}</p></div>` : ""}
-    ${archivedInfo}
-    <footer class="v4-card-actions">
-      ${statusSelect(task)}
-      ${task.canRestore ? `<button class="button small primary" type="button" data-restore-task="${escapeAttr(task.id)}">Wiederherstellen</button>` : ""}
-      ${task.canDeletePermanently ? `<button class="button small danger" type="button" data-delete-archived-task="${escapeAttr(task.id)}">Endgültig löschen</button>` : ""}
-      ${task.status !== "ARCHIVED" ? `<button class="button small secondary" type="button" data-task-note="${escapeAttr(task.id)}">Notiz</button>` : ""}
-      ${task.canManage ? `<button class="button small secondary" type="button" data-edit-task="${escapeAttr(task.id)}">Bearbeiten</button>` : ""}
-      ${task.canArchive ? `<button class="button small danger" type="button" data-archive-task="${escapeAttr(task.id)}">Archivieren</button>` : ""}
-    </footer>
-  </article>`;
+function taskListRow(task) {
+  return `<button class="v4-task-list-row" type="button" data-open-task="${escapeAttr(task.id)}" data-priority="${escapeAttr(task.priority)}" data-status="${escapeAttr(task.status)}"><span class="v4-task-list-copy"><small>${escapeHtml(task.context==="BOARD"?"Vorstand":task.teamName||"Team")}</small><strong>${escapeHtml(task.title)}</strong><span>${escapeHtml(task.assignedName||"Noch offen")} · ${escapeHtml(label(STATUSES,task.status))}</span></span><span class="v4-task-list-end">${statusBadge(label(PRIORITIES,task.priority))}<span class="v4-row-chevron" aria-hidden="true">›</span></span></button>`;
+}
+function taskDetailMarkup(task) {
+  const archivedInfo=task.status==="ARCHIVED"?`<div class="notice"><strong>Archiviert</strong><br>${escapeHtml(fmtDateTime(task.archivedAt))}${task.archivedByName?` · ${escapeHtml(task.archivedByName)}`:""}</div>`:"";
+  return `<div class="v4-detail-grid v4-task-detail-grid"><div><span>Bereich</span><strong>${escapeHtml(task.context==="BOARD"?"Vorstand":task.teamName||"Team")}</strong></div><div><span>Priorität</span><strong>${escapeHtml(label(PRIORITIES,task.priority))}</strong></div><div><span>Status</span><strong>${escapeHtml(label(STATUSES,task.status))}</strong></div><div><span>Zugewiesen</span><strong>${escapeHtml(task.assignedName||"Noch offen")}</strong></div><div class="v4-detail-wide"><span>Beschreibung</span><strong class="v4-preserve-lines">${escapeHtml(task.description||"–")}</strong></div><div><span>Erstellt von</span><strong>${escapeHtml(task.createdByName||"–")}</strong></div><div><span>Aktualisiert</span><strong>${escapeHtml(fmtDateTime(task.updatedAt))}</strong></div>${task.assignmentReason?`<div class="v4-detail-wide"><span>Zuweisungsbegründung</span><strong class="v4-preserve-lines">${escapeHtml(task.assignmentReason)}</strong></div>`:""}${task.ownNote?`<div class="v4-detail-wide"><span>Meine Notiz</span><strong class="v4-preserve-lines">${escapeHtml(task.ownNote)}</strong></div>`:""}</div>${archivedInfo}<div class="dialog-actions v4-detail-actions v4-task-detail-actions">${statusSelect(task)}${task.canRestore?`<button class="button primary" type="button" data-restore-task="${escapeAttr(task.id)}">Wiederherstellen</button>`:""}${task.canDeletePermanently?`<button class="button danger" type="button" data-delete-archived-task="${escapeAttr(task.id)}">Endgültig löschen</button>`:""}${task.status!=="ARCHIVED"?`<button class="button secondary" type="button" data-task-note="${escapeAttr(task.id)}">Notiz</button>`:""}${task.canManage?`<button class="button secondary" type="button" data-edit-task="${escapeAttr(task.id)}">Bearbeiten</button>`:""}${task.canArchive?`<button class="button danger" type="button" data-archive-task="${escapeAttr(task.id)}">Archivieren</button>`:""}</div>`;
+}
+function openTaskDetails(task) {
+  const dialog=openDialog({title:task.title,kicker:"Aufgabe",body:taskDetailMarkup(task)});
+  dialog.querySelector("[data-edit-task]")?.addEventListener("click",()=>openTask(task));
+  dialog.querySelector("[data-task-note]")?.addEventListener("click",()=>openNote(task));
+  dialog.querySelector("[data-task-status]")?.addEventListener("change",async event=>{const select=event.currentTarget,previous=task.status;if(select.value===previous)return;select.disabled=true;try{await setStatus(task,select.value);dialog.close();}catch(error){select.value=previous;select.disabled=false;throw error;}});
+  dialog.querySelector("[data-archive-task]")?.addEventListener("click",async event=>{event.currentTarget.disabled=true;await archiveTask(task);dialog.close();});
+  dialog.querySelector("[data-restore-task]")?.addEventListener("click",async event=>{event.currentTarget.disabled=true;await restoreTask(task);dialog.close();});
+  dialog.querySelector("[data-delete-archived-task]")?.addEventListener("click",()=>openPermanentDelete(task));
 }
 
 function filterCount(key) {
@@ -469,7 +442,7 @@ function renderTabs() {
         data-task-filter="${key}"
       >${text}<span>${filterCount(key)}</span></button>`).join("")}
     </div>
-    ${canCreateTask() ? '<button id="addTaskButton" class="button primary" type="button">Aufgabe erstellen</button>' : ""}
+    ${canCreateTask() ? '<button id="addTaskButton" class="button secondary v4-heading-action" type="button">+ Aufgabe</button>' : ""}
   </div>
   ${activeFilter === "archive" && activeArchiveTeamId ? `<div class="notice v4-task-archive-filter">
     <strong>Archiv gefiltert: ${escapeHtml(archiveTeamName)}</strong>
@@ -504,94 +477,9 @@ function taskFromButton(button, datasetKey) {
 }
 
 function render() {
-  const panel = document.getElementById("tasksPanel");
-  if (!panel) return;
-
-  const tasks = visibleTasks();
-  panel.innerHTML = tasks.length
-    ? `<div class="v4-card-grid">${tasks.map(taskCard).join("")}</div>`
-    : empty("In dieser Ansicht sind keine Aufgaben vorhanden.");
-
-  panel.querySelectorAll("[data-edit-task]").forEach(button => {
-    button.addEventListener("click", () => {
-      const task = taskFromButton(button, "editTask");
-      if (task) openTask(task);
-    });
-  });
-
-  panel.querySelectorAll("[data-task-note]").forEach(button => {
-    button.addEventListener("click", () => {
-      const task = taskFromButton(button, "taskNote");
-      if (task) openNote(task);
-    });
-  });
-
-  panel.querySelectorAll("[data-task-status]").forEach(select => {
-    select.addEventListener("change", async () => {
-      const task = taskFromButton(select, "taskStatus");
-      if (!task) return;
-
-      const previousStatus = task.status;
-      const nextStatus = select.value;
-
-      if (nextStatus === previousStatus) return;
-
-      select.disabled = true;
-      try {
-        await setStatus(task, nextStatus);
-      } catch (error) {
-        select.value = previousStatus;
-        select.disabled = false;
-        panel.insertAdjacentHTML(
-          "afterbegin",
-          errorPanel(error, "Status konnte nicht geändert werden")
-        );
-      }
-    });
-  });
-
-  panel.querySelectorAll("[data-archive-task]").forEach(button => {
-    button.addEventListener("click", async () => {
-      const task = taskFromButton(button, "archiveTask");
-      if (!task) return;
-
-      button.disabled = true;
-      try {
-        await archiveTask(task);
-      } catch (error) {
-        button.disabled = false;
-        panel.insertAdjacentHTML(
-          "afterbegin",
-          errorPanel(error, "Aufgabe konnte nicht archiviert werden")
-        );
-      }
-    });
-  });
-
-  panel.querySelectorAll("[data-restore-task]").forEach(button => {
-    button.addEventListener("click", async () => {
-      const task = taskFromButton(button, "restoreTask");
-      if (!task) return;
-
-      button.disabled = true;
-      try {
-        await restoreTask(task);
-      } catch (error) {
-        button.disabled = false;
-        panel.insertAdjacentHTML(
-          "afterbegin",
-          errorPanel(error, "Aufgabe konnte nicht wiederhergestellt werden")
-        );
-      }
-    });
-  });
-
-  panel.querySelectorAll("[data-delete-archived-task]").forEach(button => {
-    button.addEventListener("click", () => {
-      const task = taskFromButton(button, "deleteArchivedTask");
-      if (task) openPermanentDelete(task);
-    });
-  });
+  const panel=document.getElementById("tasksPanel"); if(!panel)return; const tasks=visibleTasks();
+  panel.innerHTML=tasks.length?`<div class="v4-task-list">${tasks.map(taskListRow).join("")}</div>`:empty("In dieser Ansicht sind keine Aufgaben vorhanden.");
+  panel.querySelectorAll("[data-open-task]").forEach(button=>button.addEventListener("click",()=>{const task=taskFromButton(button,"openTask");if(task)openTaskDetails(task);}));
 }
 
 function renderAll() {

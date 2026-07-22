@@ -79,6 +79,6 @@ test("fanclub mobile review is compact and drill-down based", async () => {
   assert.match(pages, /context\.onGoogleCredential/);
   assert.doesNotMatch(index, /data-auth-ready/);
   assert.doesNotMatch(index, /data-startup-state/);
-  assert.match(index, /20260722-portal-phase2-acceptance-1/);
-  assert.match(worker, /pd-portal-v4-phase2-acceptance-20260722-1/);
+  assert.match(index, /20260722-compact-workflows-r1/);
+  assert.match(worker, /pd-portal-v4-compact-workflows-r1-20260722/);
 });

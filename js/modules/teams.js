@@ -1,6 +1,7 @@
 import {
   call,
   confirmAction,
+  currentUser,
   empty,
   errorPanel,
   escapeAttr,
@@ -157,144 +158,12 @@ function taskDependencyNotice(team) {
   </div>`;
 }
 
-function teamCard(team) {
-  const activeMembers = (team.members || []).filter(member => member.active);
-  const taskCount = Number(team.taskCount || 0);
+function ownTeamRole(team){const userId=currentUser().id;const membership=(team.members||[]).find(member=>member.userId===userId);return membership?roleLabel(membership.role):"";}
+function teamListRow(team){const role=ownTeamRole(team);return `<button class="v4-team-list-row" type="button" data-open-team="${escapeAttr(team.id)}"><span><strong>${escapeHtml(team.name)}</strong><small>${escapeHtml(role||`${(team.members||[]).filter(member=>member.active).length} Mitglieder`)}</small></span><span class="v4-row-chevron" aria-hidden="true">›</span></button>`;}
+function teamDetailMarkup(team){const activeMembers=(team.members||[]).filter(member=>member.active);const taskCount=Number(team.taskCount||0);return `<div class="v4-detail-grid v4-team-detail-grid"><div class="v4-detail-wide"><span>Beschreibung</span><strong class="v4-preserve-lines">${escapeHtml(team.description||"Keine Beschreibung")}</strong></div><div><span>Eigene Rolle</span><strong>${escapeHtml(ownTeamRole(team)||"–")}</strong></div><div><span>Status</span><strong>${team.active?"Aktiv":"Inaktiv"}</strong></div><div><span>Mitglieder</span><strong>${activeMembers.length}</strong></div><div><span>Aufgaben</span><strong>${taskCount}</strong></div></div><section class="v4-team-detail-members"><div class="v4-dialog-section-title"><h3>Mitglieder</h3></div>${activeMembers.length?`<div class="v4-team-member-list">${activeMembers.map(member=>`<div class="v4-team-member-row"><span><strong>${escapeHtml(member.name)}</strong><small>${escapeHtml(roleLabel(member.role))}</small></span>${team.canManage?`<span class="v4-row-actions"><button class="button small secondary" data-edit-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}" type="button">Rolle</button><button class="button small ghost" data-remove-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}" type="button">Entfernen</button></span>`:""}</div>`).join("")}</div>`:'<p class="subtle">Noch keine aktiven Teammitglieder.</p>'}</section>${taskDependencyNotice(team)}${team.canManage?`<div class="dialog-actions v4-detail-actions"><button class="button primary" data-add-team-member="${escapeAttr(team.id)}" type="button">Mitglied hinzufügen</button>${snapshot.canCreateTeam?`<button class="button secondary" data-edit-team="${escapeAttr(team.id)}" type="button">Team bearbeiten</button><button class="button danger" data-delete-team="${escapeAttr(team.id)}" type="button" ${taskCount>0?'title="Vor der Löschung müssen alle Teamaufgaben endgültig entfernt werden."':""}>Team löschen</button>`:""}</div>`:""}`;}
+function openTeamDetails(team){const dialog=openDialog({title:team.name,kicker:"Mein Team",body:teamDetailMarkup(team)});dialog.querySelector("[data-edit-team]")?.addEventListener("click",()=>openTeam(team));dialog.querySelector("[data-delete-team]")?.addEventListener("click",async event=>{event.currentTarget.disabled=true;await deleteTeam(team);dialog.close();});dialog.querySelector("[data-open-team-archive]")?.addEventListener("click",()=>openTeamArchive(team));dialog.querySelector("[data-add-team-member]")?.addEventListener("click",()=>openMembership(team));dialog.querySelectorAll("[data-edit-team-member]").forEach(button=>button.addEventListener("click",()=>{const[,userId]=button.dataset.editTeamMember.split(":");const membership=team.members.find(item=>item.userId===userId);if(membership)openMembership(team,membership);}));dialog.querySelectorAll("[data-remove-team-member]").forEach(button=>button.addEventListener("click",async event=>{const[,userId]=button.dataset.removeTeamMember.split(":");const membership=team.members.find(item=>item.userId===userId);if(!membership)return;event.currentTarget.disabled=true;await removeMembership(team,membership);dialog.close();}));}
 
-  return `<article class="card v4-team-card">
-    <header class="v4-card-header">
-      <div>
-        <h3>${escapeHtml(team.name)}</h3>
-        <p>${escapeHtml(team.description || "Keine Beschreibung")}</p>
-      </div>
-      ${statusBadge(team.active ? "ACTIVE" : "INACTIVE")}
-    </header>
-
-    <div class="v4-team-members">
-      ${activeMembers.length ? activeMembers.map(member => `<div class="v4-list-row">
-        <div>
-          <strong>${escapeHtml(member.name)}</strong>
-          <small>${escapeHtml(roleLabel(member.role))}</small>
-        </div>
-        ${team.canManage ? `<div class="row-actions">
-          <button class="button small secondary" data-edit-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}" type="button">Rolle</button>
-          <button class="button small ghost" data-remove-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}" type="button">Entfernen</button>
-        </div>` : ""}
-      </div>`).join("") : '<p class="subtle">Noch keine aktiven Teammitglieder.</p>'}
-    </div>
-
-    ${taskDependencyNotice(team)}
-
-    ${team.canManage ? `<footer class="v4-card-actions">
-      <button class="button small primary" data-add-team-member="${escapeAttr(team.id)}" type="button">Mitglied hinzufügen</button>
-      ${snapshot.canCreateTeam ? `
-        <button class="button small secondary" data-edit-team="${escapeAttr(team.id)}" type="button">Team bearbeiten</button>
-        <button
-          class="button small danger"
-          data-delete-team="${escapeAttr(team.id)}"
-          type="button"
-          ${taskCount > 0 ? 'title="Vor der Löschung müssen alle Teamaufgaben endgültig entfernt werden."' : ""}
-        >Team löschen</button>
-      ` : ""}
-    </footer>` : ""}
-  </article>`;
-}
-
-function render() {
-  const panel = document.getElementById("teamsPanel");
-  if (!panel || !snapshot) return;
-
-  const teams = snapshot.teams || [];
-  const tabs = document.getElementById("teamsTabs");
-
-  if (tabs) {
-    tabs.innerHTML = `<div class="v4-toolbar">
-      <div>
-        <strong>${teams.length} sichtbare Teams</strong>
-        <p>Teamleiter und Co-Teamleiter verwalten ihre eigenen Teams.</p>
-      </div>
-      ${snapshot.canCreateTeam ? '<button id="addTeamButton" class="button primary" type="button">Team anlegen</button>' : ""}
-    </div>`;
-  }
-
-  panel.innerHTML = teams.length
-    ? `<div class="v4-card-grid">${teams.map(teamCard).join("")}</div>`
-    : empty("Dir ist noch kein Team zugeordnet.");
-
-  document.getElementById("addTeamButton")
-    ?.addEventListener("click", () => openTeam());
-
-  panel.querySelectorAll("[data-edit-team]").forEach(button => {
-    button.addEventListener("click", () => {
-      openTeam(teams.find(team => team.id === button.dataset.editTeam));
-    });
-  });
-
-  panel.querySelectorAll("[data-delete-team]").forEach(button => {
-    button.addEventListener("click", async () => {
-      const team = teams.find(item => item.id === button.dataset.deleteTeam);
-      try {
-        await deleteTeam(team);
-      } catch (error) {
-        panel.insertAdjacentHTML(
-          "afterbegin",
-          errorPanel(error, "Team konnte nicht gelöscht werden")
-        );
-      }
-    });
-  });
-
-  panel.querySelectorAll("[data-open-team-archive]").forEach(button => {
-    button.addEventListener("click", () => {
-      const team = teams.find(item => item.id === button.dataset.openTeamArchive);
-      if (team) openTeamArchive(team);
-    });
-  });
-
-  panel.querySelectorAll("[data-add-team-member]").forEach(button => {
-    button.addEventListener("click", () => {
-      openMembership(
-        teams.find(team => team.id === button.dataset.addTeamMember)
-      );
-    });
-  });
-
-  panel.querySelectorAll("[data-edit-team-member]").forEach(button => {
-    button.addEventListener("click", () => {
-      const [teamId, userId] = button.dataset.editTeamMember.split(":");
-      const team = teams.find(item => item.id === teamId);
-      openMembership(
-        team,
-        team.members.find(item => item.userId === userId)
-      );
-    });
-  });
-
-  panel.querySelectorAll("[data-remove-team-member]").forEach(button => {
-    button.addEventListener("click", async () => {
-      const [teamId, userId] = button.dataset.removeTeamMember.split(":");
-      const team = teams.find(item => item.id === teamId);
-
-      try {
-        await removeMembership(
-          team,
-          team.members.find(item => item.userId === userId)
-        );
-      } catch (error) {
-        panel.insertAdjacentHTML(
-          "afterbegin",
-          errorPanel(error, "Teammitglied konnte nicht entfernt werden")
-        );
-      }
-    });
-  });
-
-  const status = document.getElementById("teamsStatus");
-  if (status) {
-    status.textContent = "Aktuell";
-    status.className = "status-pill success";
-  }
-}
+function render(){const panel=document.getElementById("teamsPanel");if(!panel||!snapshot)return;const teams=snapshot.teams||[];const tabs=document.getElementById("teamsTabs");if(tabs){tabs.innerHTML=`<div class="v4-tabs" role="tablist"><button class="v4-tab active" type="button" role="tab" aria-selected="true">Meine Teams</button></div>${snapshot.canCreateTeam?`<div class="v4-heading-row v4-teams-heading"><h3>Meine Teams</h3><button id="addTeamButton" class="button secondary v4-heading-action" type="button">+ Team</button></div>`:""}`;}panel.innerHTML=teams.length?`<div class="v4-team-list">${teams.map(teamListRow).join("")}</div>`:empty("Dir ist noch kein Team zugeordnet.");document.getElementById("addTeamButton")?.addEventListener("click",()=>openTeam());panel.querySelectorAll("[data-open-team]").forEach(button=>button.addEventListener("click",()=>{const team=teams.find(item=>item.id===button.dataset.openTeam);if(team)openTeamDetails(team);}));const status=document.getElementById("teamsStatus");if(status){status.textContent="Aktuell";status.className="status-pill success";}}
 
 export async function hydrateTeams(context = {}) {
   const panel = document.getElementById("teamsPanel");

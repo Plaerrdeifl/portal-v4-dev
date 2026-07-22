@@ -108,3 +108,11 @@ Eine Beitragszuordnung bleibt bei `PENDING` und bei einer noch wirksamen
 `CONFIRMED`-Zahlung gesperrt. `REJECTED` und `REVERSED` blockieren die
 Entfernung nicht. Die Zahlungsmeldung, Prüfdaten, ursprüngliche Buchung,
 Gegenbuchung und Audit-Historie bleiben erhalten.
+
+## 15. Kompakte Listen, proportionale Formulare und Finanzkonto-Ruhestand
+
+Aufgaben und Teams werden in Übersichten als kompakte, vollständig anklickbare Zeilen dargestellt. Beschreibungen, Verwaltungsdaten und Aktionen erscheinen erst in der jeweiligen Detailansicht.
+
+Formulare verwenden ein gemeinsames Zwölf-Spalten-Raster. Feldbreiten richten sich nach dem erwarteten Inhalt. Bei sehr schmalen Geräten fällt das Raster kontrolliert auf eine Spalte zurück.
+
+Inaktive Finanzkonten mit einem Kontostand von exakt 0,00 Euro dürfen nur durch Portaladmins aus der aktiven Kontoverwaltung entfernt werden. Buchungen, Gegenkonten, Zahlungsmeldungen und Audit-Nachweise bleiben erhalten. Offene Zahlungsmeldungen verhindern die Entfernung.

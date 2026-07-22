@@ -47,7 +47,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260721193000_finalize_fanclub_review.sql",
     "20260722113000_add_fanclub_sort_positions.sql",
     "20260722143000_finalize_fanclub_phase2.sql",
-    "20260722190000_finalize_portal_phase2_acceptance.sql"
+    "20260722190000_finalize_portal_phase2_acceptance.sql",
+    "20260722213000_compact_workflows_and_account_retirement.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);

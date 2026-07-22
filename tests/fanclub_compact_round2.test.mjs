@@ -56,7 +56,8 @@ test("cashbook is compact, typed, searchable and paginated without nested scroll
 
   assert.match(fanclub, /\{ value: "CASH", label: "Bar" \}/);
   assert.match(fanclub, /\{ value: "BANK", label: "Bankkonto" \}/);
-  assert.match(fanclub, /<span>Kontotyp<\/span>/);
+  assert.match(fanclub, /v4-account-detail-summary/);
+  assert.match(fanclub, /entries\.length\} Buchungen/);
   assert.match(fanclub, /showMoreFinanceEntries/);
   assert.match(fanclub, /CASHBOOK_PAGE_SIZE/);
   assert.match(fanclub, /applyCashbookEntryVisibility/);
@@ -74,7 +75,7 @@ test("cache busting identifies phase-one runtime acceptance fix", async () => {
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260722-portal-phase2-acceptance-1/);
-  assert.match(config, /20260722-portal-phase2-acceptance-1/);
-  assert.match(worker, /pd-portal-v4-phase2-acceptance-20260722-1/);
+  assert.match(index, /20260722-compact-workflows-r1/);
+  assert.match(config, /20260722-compact-workflows-r1/);
+  assert.match(worker, /pd-portal-v4-compact-workflows-r1-20260722/);
 });
