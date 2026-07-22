@@ -37,18 +37,29 @@ function unwrap(payload) {
 export const api = Object.freeze({
   async call(action, payload = {}) {
     const client = getSupabaseClient();
+    let transportFailure = false;
 
     pendingRequests += 1;
     lastError = null;
     emitActivity();
 
     try {
-      const { data, error } = await client.rpc("pd_api", {
-        p_action: String(action || ""),
-        p_payload: payload || {}
-      });
+      let response;
+
+      try {
+        response = await client.rpc("pd_api", {
+          p_action: String(action || ""),
+          p_payload: payload || {}
+        });
+      } catch (error) {
+        transportFailure = true;
+        throw error;
+      }
+
+      const { data, error } = response;
 
       if (error) {
+        transportFailure = true;
         throw new ApiError(
           error.message || "Supabase-Anfrage fehlgeschlagen.",
           error.code || "SUPABASE_RPC_ERROR",
@@ -58,7 +69,7 @@ export const api = Object.freeze({
 
       return unwrap(data);
     } catch (error) {
-      lastError = error;
+      lastError = transportFailure ? error : null;
       throw error;
     } finally {
       pendingRequests = Math.max(0, pendingRequests - 1);

@@ -8,6 +8,7 @@ import {
   openDialog,
   optionList,
   runWrite,
+  showToast,
   statusBadge
 } from "./common.js";
 import { navigate } from "../router.js";
@@ -103,9 +104,10 @@ async function deleteTeam(team) {
         : ""
     ].filter(Boolean).join(" und ");
 
-    window.alert(
-      `Team „${team.name}“ kann noch nicht gelöscht werden. `
-      + `${details} Aufgabe(n) sind zugeordnet.`
+    showToast(
+      `Team „${team.name}“ kann noch nicht gelöscht werden. ${details} Aufgabe(n) sind zugeordnet.`,
+      "error",
+      5200
     );
     return;
   }

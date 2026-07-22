@@ -430,7 +430,7 @@ function renderOffices(panel) {
       <h3>Unser Vorstand</h3>
       ${canManageBoard && !editing ? '<button id="manageBoardButton" class="button secondary v4-heading-action" type="button">Verwalten <span aria-hidden="true">›</span></button>' : ""}
     </div>
-    <form id="officeForm" class="v4-office-grid v4-board-grid">
+    <form id="officeForm" class="v4-office-grid v4-board-grid${editing ? " is-editing" : ""}">
       ${offices.map((office, index) => {
         const assignedName = office.memberName || "Unbesetzt";
         return `<article class="card v4-office-card" data-office-code="${escapeAttr(office.code)}">
@@ -666,7 +666,7 @@ function assignmentForm(member, contribution = {}) {
         )}
       </select>
       ${contribution.id
-        ? '<small class="v4-assignment-note">„Keine Beitragsklasse“ entfernt diese Zuordnung, solange noch keine Zahlungsmeldung existiert.</small>'
+        ? '<small class="v4-assignment-note">„Keine Beitragsklasse“ entfernt diese Zuordnung, sobald keine offene oder wirksame Zahlung mehr besteht.</small>'
         : ""}
     </label>
     <label class="full">Notiz
@@ -978,7 +978,7 @@ function openContributionManagement(season) {
       <button class="button danger" type="button" data-contribution-management="delete" ${season?.canDelete ? "" : "disabled"}>Beitragsjahr löschen</button>
     </div>
     ${season && !season.canDelete
-      ? '<p class="v4-management-note">Löschen ist erst möglich, nachdem alle ungebuchten Beitragszuordnungen dieses Jahres auf „Keine Beitragsklasse“ gesetzt wurden.</p>'
+      ? '<p class="v4-management-note">Löschen ist erst möglich, nachdem alle Beitragszuordnungen entfernt wurden. Offene Meldungen müssen abgelehnt, bestätigte Zahlungen zuerst storniert werden.</p>'
       : ""}`
   });
 
@@ -1370,7 +1370,7 @@ function compactFinanceEntries(entries, { showAccount = true, showBalance = fals
   if (!entries.length) return empty("Noch keine Buchungen vorhanden.");
 
   return `<div class="v4-compact-entry-list">
-    ${entries.map(entry => `<button class="v4-compact-entry ${entry.isReversed ? "is-reversed" : ""}" type="button" data-open-finance-entry="${escapeAttr(entry.id)}">
+    ${entries.map(entry => `<button class="v4-compact-entry ${entry.entryType === "INCOME" ? "is-income" : "is-expense"} ${entry.isReversed ? "is-reversed" : ""}" type="button" data-open-finance-entry="${escapeAttr(entry.id)}">
       <span class="v4-compact-entry-main">
         <strong>${escapeHtml(entry.description)}</strong>
         <small>${escapeHtml(fmtDate(entry.bookedOn))}${showAccount ? ` · ${escapeHtml(entry.accountName)}` : ""}</small>
@@ -1516,7 +1516,7 @@ function renderCashbookEntries(entries) {
         entry.amount,
         signedMoney(entry)
       ].join(" ").toLocaleLowerCase("de-DE");
-      return `<button class="v4-compact-entry ${entry.isReversed ? "is-reversed" : ""}" type="button" data-open-finance-entry="${escapeAttr(entry.id)}" data-finance-search="${escapeAttr(search)}" data-finance-index="${index}" ${index >= visibleCashbookEntries ? "hidden" : ""}>
+      return `<button class="v4-compact-entry ${entry.entryType === "INCOME" ? "is-income" : "is-expense"} ${entry.isReversed ? "is-reversed" : ""}" type="button" data-open-finance-entry="${escapeAttr(entry.id)}" data-finance-search="${escapeAttr(search)}" data-finance-index="${index}" ${index >= visibleCashbookEntries ? "hidden" : ""}>
         <span class="v4-compact-entry-main">
           <strong>${escapeHtml(entry.description)}</strong>
           <small>${escapeHtml(fmtDate(entry.bookedOn))} · ${escapeHtml(entry.accountName)}</small>

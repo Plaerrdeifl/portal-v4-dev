@@ -58,6 +58,6 @@ test("mobile portal round one follows the approved layout rules", async () => {
   assert.equal(app.includes('label: "Online"'), false);
   assert.equal(app.includes('label: "Live"'), true);
   assert.equal(app.includes('label: "Lädt …"'), true);
-  assert.equal(index.includes("20260722-fanclub-phase2-final-1"), true);
-  assert.equal(worker.includes("pd-portal-v4-fanclub-phase2-final-20260722-1"), true);
+  assert.equal(index.includes("20260722-portal-phase2-acceptance-1"), true);
+  assert.equal(worker.includes("pd-portal-v4-phase2-acceptance-20260722-1"), true);
 });

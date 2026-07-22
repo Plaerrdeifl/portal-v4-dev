@@ -55,7 +55,7 @@ test("cache busting identifies fanclub phase two finalization", async () => {
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260722-fanclub-phase2-final-1/);
-  assert.match(config, /20260722-fanclub-phase2-final-1/);
-  assert.match(worker, /pd-portal-v4-fanclub-phase2-final-20260722-1/);
+  assert.match(index, /20260722-portal-phase2-acceptance-1/);
+  assert.match(config, /20260722-portal-phase2-acceptance-1/);
+  assert.match(worker, /pd-portal-v4-phase2-acceptance-20260722-1/);
 });

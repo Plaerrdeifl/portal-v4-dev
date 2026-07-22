@@ -592,13 +592,17 @@ function renderUserMenu() {
       <strong>Datenänderung in Prüfung</strong>
       <p>Eine Änderungsanfrage ist bereits offen.</p>
     </div>` : ""}
-    <button class="button primary user-profile-open-button" type="button" data-open-profile-details>
-      Profil und Daten öffnen
-    </button>
+    <div class="user-menu-actions">
+      <button class="button primary" type="button" data-open-profile-details>
+        Profil und Daten
+      </button>
+      <button class="button secondary" type="button" data-user-refresh>
+        Aktualisieren
+      </button>
+    </div>
   </div>
 
   <footer class="user-menu-footer">
-    <button class="button secondary" type="button" data-user-refresh>Aktualisieren</button>
     <button class="button danger" type="button" data-user-logout>Abmelden</button>
   </footer>`;
 }
@@ -820,9 +824,22 @@ export function showToast(message, type = "info", duration = 3200) {
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
   toast.textContent = message;
+  toast.setAttribute("role", type === "error" ? "alert" : "status");
+  toast.tabIndex = 0;
+  toast.title = "Zum Schließen antippen";
   region.appendChild(toast);
 
-  setTimeout(() => toast.remove(), duration);
+  const requested = Number(duration) || 3200;
+  const maximum = type === "error" ? 5200 : 4200;
+  const timeout = Math.min(Math.max(requested, 1800), maximum);
+  const remove = () => toast.remove();
+
+  toast.addEventListener("click", remove, { once: true });
+  toast.addEventListener("keydown", event => {
+    if (event.key === "Enter" || event.key === " ") remove();
+  });
+
+  setTimeout(remove, timeout);
 }
 
 export function setConnectionStatus(label, type = "success") {

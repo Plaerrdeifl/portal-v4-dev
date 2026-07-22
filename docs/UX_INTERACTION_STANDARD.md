@@ -78,3 +78,33 @@ Eine ungebuchte Beitragszuordnung darf wieder auf `Keine Beitragsklasse` gesetzt
 Ein Beitragsjahr darf nur endgültig gelöscht werden, wenn es keine Beitragszuordnungen mehr enthält. Verwendete Jahre werden deaktiviert. Alle endgültigen Löschungen und entfernten Zuordnungen werden serverseitig geprüft und auditiert.
 
 Fanclub-Dialoge verwenden dieselbe Button-Hierarchie, dunkle Umrandungen, ausreichende Mindesthöhen und mobile einspaltige Aktionsflächen. Buttontexte dürfen nicht abgeschnitten werden.
+
+## 14. Portalweiter Phase-2-Abnahmestandard
+
+Der kompakte Interaktionsstandard gilt für Dashboard, Fanclub, Aufgaben, Teams,
+Administration, Benutzermenü, Profil- und Datendialoge sowie für alle
+fachlichen Dialoge. Formulare verwenden kurze Abstände, 42 bis 44 Pixel hohe
+Bedienelemente, mindestens 16 Pixel Schriftgröße in mobilen Eingabefeldern,
+zweispaltige sinnvolle Feldpaare und kompakte, erreichbare Aktionsleisten.
+
+Portalaktionen verwenden einheitlich Blau für primäre Bestätigungen,
+Hellgrau oder Weiß für neutrale Nebenaktionen und Rot für destruktive
+Aktionen. Bedienbare Schaltflächen besitzen eine klar erkennbare dunkle
+Umrandung. Fachliche Validierungsfehler werden am betroffenen Feld und als
+kompakte Meldung ausgegeben; sie verändern nicht den globalen
+Verbindungsstatus.
+
+Die mobile Inhaltsfläche reserviert den vollständigen Platz für die feste
+Bottom-Navigation und die Safe Area. Toasts liegen oberhalb der Navigation.
+Leere, ladende und fehlerhafte Zustände dürfen keine künstlichen Großflächen
+erzeugen.
+
+Bei Kontoauszügen und Buchungslisten wird die gesamte Einnahmezeile hellgrün
+und die gesamte Ausgabezeile hellrot hinterlegt. Betrag, Vorzeichen,
+Buchungsart und Stornohinweise bleiben zusätzlich als textliche Kennzeichnung
+erhalten.
+
+Eine Beitragszuordnung bleibt bei `PENDING` und bei einer noch wirksamen
+`CONFIRMED`-Zahlung gesperrt. `REJECTED` und `REVERSED` blockieren die
+Entfernung nicht. Die Zahlungsmeldung, Prüfdaten, ursprüngliche Buchung,
+Gegenbuchung und Audit-Historie bleiben erhalten.

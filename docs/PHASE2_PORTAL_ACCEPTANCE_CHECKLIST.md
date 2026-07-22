@@ -1,0 +1,90 @@
+# Plärrdeifl Portal V4 – Phase-2-Abnahmecheckliste
+
+Diese Checkliste wird nach erfolgreicher technischer Installation auf dem
+echten DEV-Portal durchgeführt. PROD bleibt bis zur ausdrücklichen Freigabe
+unberührt.
+
+## Geräte und Betriebsarten
+
+- iPhone Safari im Hochformat
+- iPhone als installierte PWA
+- schmales Android-Gerät
+- Tablet
+- Desktop-Browser
+- Online, kurzzeitig offline und nach erneuter Verbindung
+- Aktualisierung bei bereits installiertem Service Worker
+
+## Portalhülle
+
+- Kopfzeile bleibt stabil und verdeckt keinen Inhalt.
+- Bottom-Navigation verdeckt den letzten Eintrag nicht.
+- Alle Seiten lassen sich bis zum echten Ende scrollen.
+- Safe Areas funktionieren in Safari und PWA.
+- Ein fachlicher Formularfehler ändert „Live“ nicht auf „Fehler“.
+- Echte Offline- oder Supabase-Fehler werden weiterhin als Fehler angezeigt.
+- Toasts sind lesbar, kompakt, antippbar und liegen oberhalb der Navigation.
+
+## Dialoge und Formulare
+
+- Mitglied anlegen und bearbeiten
+- Vorstand verwalten
+- Beitragsjahr und Beitragsklasse
+- Beitragszuordnung und Zahlungsmeldung
+- Konto, Einnahme, Ausgabe, Umbuchung und Storno
+- Aufgabe, Aufgabennotiz und endgültige Löschung
+- Team, Teamrolle und Teammitgliedschaft
+- Benutzermenü sowie Profil und Daten
+- Administration und Rollenverwaltung
+
+Prüfpunkte:
+
+- Keine horizontale Überbreite.
+- Eingabefelder bleiben bei eingeblendeter Tastatur erreichbar.
+- Sinnvolle Feldpaare stehen nebeneinander.
+- Abbrechen und Speichern sind kompakt erreichbar.
+- Lange Namen, E-Mail-Adressen, Texte und Beträge brechen sauber um.
+- Feldfehler erscheinen am betroffenen Eingabefeld.
+- Destruktive Bestätigungen verwenden den einheitlichen Portaldialog.
+
+## Fanclub
+
+- Kein Leerraum zwischen Mitgliedersuche, Inaktiv-Filter und Mitgliederliste.
+- Der 1. Vorstand ist in der normalen Ansicht mittig.
+- Die Vorstandsverwaltung ist mobil einspaltig und vollständig bedienbar.
+- Beiträge und Kasse sind kompakt.
+- Positionen erscheinen nur beim Bearbeiten.
+- Unbenutzte Beitragsklassen und Beitragsjahre lassen sich sicher löschen.
+
+## Beitragszahlungen
+
+- PENDING verhindert das Entfernen der Zuordnung.
+- CONFIRMED verhindert das Entfernen, solange die Buchung wirksam ist.
+- REJECTED erlaubt das Entfernen.
+- CONFIRMED, danach storniert zu REVERSED, erlaubt das Entfernen.
+- Abgelehnte und stornierte Meldungen bleiben in der Historie sichtbar.
+- Buchung und Gegenbuchung bleiben im Kassenbuch.
+- Nach Auflösung kann erneut eine Beitragsklasse zugeordnet werden.
+- Teilzahlungen und mehrere Meldungen werden korrekt summiert.
+
+## Kasse
+
+- Jede Einnahmezeile ist hellgrün.
+- Jede Ausgabezeile ist hellrot.
+- Farben gelten im Gesamtkassenbuch und in jedem Kontoauszug.
+- Stornozeilen folgen ihrer tatsächlichen Buchungsrichtung.
+- Stornohinweis und Vorzeichen bleiben zusätzlich sichtbar.
+- Suche, weitere Buchungen und Kontodetails funktionieren.
+
+## Aufgaben, Teams und Dashboard
+
+- Karten, Rahmen, Radien, Abstände und Buttons entsprechen dem Fanclub-Design.
+- Aufgabenfilter und Teamwerkzeuge sind kompakt und umbrechen sauber.
+- Aufgabenstatus, Bearbeiten, Notiz und Archivierung sind erreichbar.
+- Teammitglieder, Rollen und Löschabhängigkeiten sind lesbar.
+- Dashboard-Karten sind kompakt und auf Mobilgeräten zweispaltig.
+- Leere und große Datenmengen bleiben stabil.
+
+## Abschluss
+
+Phase 2 wird erst geschlossen, wenn alle Punkte auf DEV geprüft, dokumentiert
+und ausdrücklich abgenommen sind.
