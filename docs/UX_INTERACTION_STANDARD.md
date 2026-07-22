@@ -137,3 +137,24 @@ Die installierte PWA verwendet die reale dynamische Viewporthöhe. Die
 Portalhülle selbst bleibt fest auf `100dvh`, während ausschließlich die
 Inhaltsansicht vertikal scrollt. Die untere Navigation endet am tatsächlichen
 Bildschirmrand und berücksichtigt die iOS-Safe-Area genau einmal.
+
+## 17. Finale visuelle Konsistenz
+
+Die mobile Bottom-Navigation besitzt eine exakt begrenzte Inhaltshöhe zuzüglich
+der tatsächlichen Safe Area. Eine flexible oder gestreckte Restfläche unter den
+Navigationsschaltflächen ist unzulässig.
+
+Dialoge, Profilfenster und Benutzermenü sind inhaltsbasiert. Kurze Inhalte
+ziehen die Hülle zusammen; lange Inhalte nutzen höchstens den verfügbaren
+Viewport und scrollen ausschließlich im Inhaltsbereich. Unter dem letzten
+Element bleibt ein normaler Innenabstand, jedoch keine künstliche Resthöhe.
+
+Smart Forms behalten in allen mobilen Media Queries ihr Zwölf-Spalten-Raster.
+Allgemeine Zwei-Spalten-Regeln dürfen Smart Forms nicht überschreiben.
+Feldpaare erhalten einen echten Rasterabstand und wechseln erst auf sehr
+schmalen Geräten kontrolliert auf eine Spalte.
+
+Vertikale Abstände in Modulansichten entstehen ausschließlich über den
+gemeinsamen Panel-Gap. Zusätzliche Außenabstände direkter Panel-Kinder werden
+entfernt, damit Überschrift, Filter, Listen und Folgeabschnitte einen
+einheitlichen Rhythmus besitzen.

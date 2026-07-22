@@ -352,35 +352,35 @@ function memberRequestForm(member, pending) {
 
   const requestData = pending?.requestedData || member;
 
-  return `<form id="memberChangeRequestForm" class="form-grid user-profile-form">
-    <label>Vorname
+  return `<form id="memberChangeRequestForm" class="form-grid user-profile-form v4-smart-form">
+    <label class="v4-field-half">Vorname
       <input name="firstName" required maxlength="160" value="${escapeAttr(requestData.firstName || "")}">
     </label>
-    <label>Nachname
+    <label class="v4-field-half">Nachname
       <input name="lastName" required maxlength="160" value="${escapeAttr(requestData.lastName || "")}">
     </label>
-    <label>E-Mail
+    <label class="v4-field-half">E-Mail
       <input name="email" type="email" maxlength="320" value="${escapeAttr(requestData.email || "")}">
     </label>
-    <label>Telefon
+    <label class="v4-field-half">Telefon
       <input name="phone" maxlength="80" value="${escapeAttr(requestData.phone || "")}">
     </label>
-    <label>Straße
+    <label class="v4-field-nine">Straße
       <input name="street" maxlength="160" value="${escapeAttr(requestData.street || "")}">
     </label>
-    <label>Hausnummer
+    <label class="v4-field-three">Hausnummer
       <input name="houseNumber" maxlength="40" value="${escapeAttr(requestData.houseNumber || "")}">
     </label>
-    <label>PLZ
+    <label class="v4-field-three">PLZ
       <input name="postalCode" maxlength="20" value="${escapeAttr(requestData.postalCode || "")}">
     </label>
-    <label>Ort
+    <label class="v4-field-nine">Ort
       <input name="city" maxlength="160" value="${escapeAttr(requestData.city || "")}">
     </label>
-    <label class="full">Grund der Änderung
+    <label class="v4-field-full">Grund der Änderung
       <textarea name="reason" required minlength="3" maxlength="1000" rows="3">${escapeHtml(pending?.reason || "")}</textarea>
     </label>
-    <div class="full dialog-actions">
+    <div class="v4-field-full dialog-actions">
       <button class="button primary" type="submit">
         ${pending ? "Offene Anfrage aktualisieren" : "Änderung beim Admin anfragen"}
       </button>
@@ -442,14 +442,14 @@ function renderProfileDetails() {
         <div class="user-profile-grid user-profile-grid-single">
           ${profileField("Login-E-Mail", portal.email || current.session?.user?.email)}
         </div>
-        ${current.user ? `<form id="directProfileForm" class="form-grid user-profile-form">
-          <label>Vorname
+        ${current.user ? `<form id="directProfileForm" class="form-grid user-profile-form v4-smart-form">
+          <label class="v4-field-half">Vorname
             <input name="firstName" required maxlength="160" value="${escapeAttr(portal.firstName || "")}">
           </label>
-          <label>Nachname
+          <label class="v4-field-half">Nachname
             <input name="lastName" required maxlength="160" value="${escapeAttr(portal.lastName || "")}">
           </label>
-          <div class="full dialog-actions">
+          <div class="v4-field-full dialog-actions">
             <button class="button primary" type="submit">Portalprofil speichern</button>
           </div>
         </form>` : `<div class="notice">

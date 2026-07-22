@@ -1,4 +1,4 @@
-const CACHE_VERSION = "pd-portal-v4-final-mobile-shell-r1-20260722";
+const CACHE_VERSION = "pd-portal-v4-final-visual-consistency-r1-20260722";
 const APP_CACHE = `${CACHE_VERSION}-shell`;
 const SHELL = [
   "./",

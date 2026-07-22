@@ -996,7 +996,7 @@ body.overlay-open .view{overflow:hidden!important;touch-action:none}
 .public-home-card h2{margin:10px 0 12px;color:#17324e;font-size:clamp(2rem,6vw,3.35rem);line-height:1.04;letter-spacing:-.035em}
 .public-home-card p{max-width:540px;margin:0 auto;color:#526a82;font-size:clamp(1rem,2.6vw,1.18rem);line-height:1.6}
 .public-home-actions{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin-top:25px}
-.user-menu-panel{display:grid;grid-template-rows:auto minmax(0,1fr) auto}
+.user-menu-panel{display:flex;flex-direction:column;min-height:0}
 .user-menu-content{min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:16px}
 .user-profile-open-button{width:100%;margin-top:14px}
 .user-menu-footer{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:13px 16px calc(13px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:#fff}
@@ -1243,16 +1243,18 @@ body.overlay-open .view{overflow:hidden!important;touch-action:none}
     left:0;
     right:0;
     bottom:0;
-    min-height:calc(var(--mobile-nav-height) + var(--safe-bottom));
+    height:calc(var(--mobile-nav-height) + var(--safe-bottom));
+    min-height:0;
+    max-height:calc(var(--mobile-nav-height) + var(--safe-bottom));
     padding:
-      8px
+      6px
       max(8px,var(--safe-right))
-      calc(8px + var(--safe-bottom))
+      max(6px,var(--safe-bottom))
       max(8px,var(--safe-left));
     display:grid;
     grid-auto-flow:column;
     grid-auto-columns:minmax(0,1fr);
-    align-items:start;
+    align-items:center;
     gap:2px;
     background:rgba(3,25,46,.98);
     border-top:1px solid rgba(255,255,255,.08);
@@ -1269,6 +1271,7 @@ body.overlay-open .view{overflow:hidden!important;touch-action:none}
     position:relative;
     min-width:0;
     min-height:66px;
+    height:66px;
     border:0;
     border-radius:15px;
     background:transparent;
@@ -1676,8 +1679,12 @@ html[data-portal-area="portal"] .v4-module-surface{
 
 html[data-portal-area="portal"] .module-panel{
   display:grid;
-  gap:12px;
+  gap:10px;
   min-width:0;
+}
+
+html[data-portal-area="portal"] .module-panel>*{
+  margin-block:0!important;
 }
 
 html[data-portal-area="portal"] .button,
@@ -1819,9 +1826,11 @@ html[data-portal-area="portal"] .v4-toolbar p{
 }
 
 .v4-dialog-shell{
-  display:grid!important;
-  grid-template-rows:auto minmax(0,1fr)!important;
+  display:flex!important;
+  flex-direction:column!important;
   width:100%!important;
+  height:auto!important;
+  min-height:0!important;
   max-height:calc(100dvh - 24px)!important;
   overflow:hidden!important;
   border:1px solid rgba(198,208,220,.95)!important;
@@ -1861,14 +1870,16 @@ html[data-portal-area="portal"] .v4-toolbar p{
 }
 
 #v4DialogBody{
+  flex:0 1 auto!important;
+  height:auto!important;
   min-height:0!important;
   max-height:none!important;
   overflow:auto!important;
   overscroll-behavior:contain;
   -webkit-overflow-scrolling:touch;
-  padding:13px 16px 0!important;
+  padding:13px 16px!important;
   background:#f7f9fc!important;
-  scroll-padding-bottom:90px;
+  scroll-padding-bottom:84px;
 }
 
 .v4-dialog form,
@@ -1877,7 +1888,7 @@ html[data-portal-area="portal"] .v4-toolbar p{
 }
 
 .v4-dialog .form-grid:not(.v4-smart-form),
-.user-profile-dialog .form-grid{
+.user-profile-dialog .form-grid:not(.v4-smart-form){
   display:grid!important;
   grid-template-columns:repeat(2,minmax(0,1fr))!important;
   gap:9px 11px!important;
@@ -1974,8 +1985,8 @@ html[data-portal-area="portal"] .v4-toolbar p{
   position:sticky!important;
   z-index:5!important;
   bottom:0!important;
-  margin:13px -16px 0!important;
-  padding:10px 16px calc(10px + env(safe-area-inset-bottom))!important;
+  margin:13px -16px -13px!important;
+  padding:10px 16px max(10px,env(safe-area-inset-bottom))!important;
   background:rgba(255,255,255,.97)!important;
   box-shadow:0 -8px 20px rgba(12,35,58,.07)!important;
 }
@@ -2006,8 +2017,15 @@ html[data-portal-area="portal"] .v4-toolbar p{
 
 /* Benutzermenü */
 .user-menu-panel{
+  display:flex!important;
+  flex-direction:column!important;
+  top:calc(10px + var(--safe-top))!important;
+  right:max(10px,var(--safe-right))!important;
+  bottom:auto!important;
   width:min(410px,calc(100vw - 24px))!important;
-  max-height:calc(100dvh - 32px)!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:calc(100dvh - var(--safe-top) - 20px)!important;
   overflow:hidden!important;
   border:1px solid #c9d4e0!important;
   border-radius:22px!important;
@@ -2037,8 +2055,10 @@ html[data-portal-area="portal"] .v4-toolbar p{
 }
 
 .user-menu-content{
+  flex:0 1 auto!important;
   display:grid!important;
   gap:10px!important;
+  min-height:0!important;
   padding:12px 16px!important;
   overflow:auto!important;
 }
@@ -2076,10 +2096,11 @@ html[data-portal-area="portal"] .v4-toolbar p{
 }
 
 .user-menu-footer{
+  flex:none!important;
   display:grid!important;
   grid-template-columns:1fr!important;
   gap:8px!important;
-  padding:10px 16px calc(10px + env(safe-area-inset-bottom))!important;
+  padding:10px 16px!important;
   background:#fff!important;
   border-top:1px solid #dbe3ec!important;
 }
@@ -2096,8 +2117,10 @@ html[data-portal-area="portal"] .v4-toolbar p{
 }
 
 .user-profile-dialog-shell{
-  display:grid!important;
-  grid-template-rows:auto minmax(0,1fr)!important;
+  display:flex!important;
+  flex-direction:column!important;
+  height:auto!important;
+  min-height:0!important;
   max-height:calc(100dvh - 24px)!important;
   overflow:hidden!important;
   border:1px solid #c9d4e0!important;
@@ -2124,11 +2147,13 @@ html[data-portal-area="portal"] .v4-toolbar p{
 }
 
 .user-profile-dialog-body{
+  flex:0 1 auto!important;
+  height:auto!important;
   min-height:0!important;
   overflow:auto!important;
   display:grid!important;
   gap:10px!important;
-  padding:12px 16px calc(14px + env(safe-area-inset-bottom))!important;
+  padding:12px 16px 14px!important;
 }
 
 .user-menu-section{
@@ -2646,16 +2671,16 @@ html[data-portal-area="portal"] .v4-toolbar p{
   }
 
   #v4DialogBody{
-    padding:11px 13px 0!important;
+    padding:11px 13px!important;
   }
 
   #v4DialogBody>.dialog-actions{
-    margin:11px -13px 0!important;
-    padding:9px 13px calc(9px + env(safe-area-inset-bottom))!important;
+    margin:11px -13px -11px!important;
+    padding:9px 13px max(9px,env(safe-area-inset-bottom))!important;
   }
 
-  .v4-dialog .form-grid,
-  .user-profile-dialog .form-grid{
+  .v4-dialog .form-grid:not(.v4-smart-form),
+  .user-profile-dialog .form-grid:not(.v4-smart-form){
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
     gap:8px 9px!important;
   }
@@ -2665,6 +2690,8 @@ html[data-portal-area="portal"] .v4-toolbar p{
     right:max(8px,var(--safe-right))!important;
     bottom:calc(var(--mobile-nav-height) + var(--safe-bottom) + 8px)!important;
     width:calc(100vw - 16px)!important;
+    height:auto!important;
+    min-height:0!important;
     max-height:calc(100dvh - var(--mobile-nav-height) - var(--safe-top) - var(--safe-bottom) - 22px)!important;
   }
 
@@ -2740,8 +2767,8 @@ html[data-portal-area="portal"] .v4-toolbar p{
 }
 
 @media(max-width:350px){
-  .v4-dialog .form-grid,
-  .user-profile-dialog .form-grid,
+  .v4-dialog .form-grid:not(.v4-smart-form),
+  .user-profile-dialog .form-grid:not(.v4-smart-form),
   .v4-dialog .dialog-actions,
   .user-profile-dialog .dialog-actions,
   .user-menu-actions,
@@ -2749,8 +2776,8 @@ html[data-portal-area="portal"] .v4-toolbar p{
     grid-template-columns:1fr!important;
   }
 
-  .v4-dialog .form-grid>.full,
-  .user-profile-dialog .form-grid>.full{
+  .v4-dialog .form-grid:not(.v4-smart-form)>.full,
+  .user-profile-dialog .form-grid:not(.v4-smart-form)>.full{
     grid-column:auto!important;
   }
 
@@ -2805,7 +2832,9 @@ html[data-portal-area="portal"] .v4-toolbar p{
 
   html[data-portal-area="portal"] .mobile-bottom-nav{
     bottom:0!important;
-    min-height:calc(var(--mobile-nav-height) + var(--safe-bottom))!important;
+    height:calc(var(--mobile-nav-height) + var(--safe-bottom))!important;
+    min-height:0!important;
+    max-height:calc(var(--mobile-nav-height) + var(--safe-bottom))!important;
   }
 
   .toast-region{

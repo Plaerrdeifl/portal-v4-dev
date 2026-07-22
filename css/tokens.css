@@ -28,7 +28,7 @@
   --radius-lg:30px;
   --sidebar-width:292px;
   --topbar-height:82px;
-  --mobile-nav-height:84px;
+  --mobile-nav-height:78px;
   --safe-top:env(safe-area-inset-top,0px);
   --safe-right:env(safe-area-inset-right,0px);
   --safe-bottom:env(safe-area-inset-bottom,0px);

@@ -75,7 +75,7 @@ test("cache busting identifies phase-one runtime acceptance fix", async () => {
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260722-final-mobile-shell-r1/);
-  assert.match(config, /20260722-final-mobile-shell-r1/);
-  assert.match(worker, /pd-portal-v4-final-mobile-shell-r1-20260722/);
+  assert.match(index, /20260722-final-visual-consistency-r1/);
+  assert.match(config, /20260722-final-visual-consistency-r1/);
+  assert.match(worker, /pd-portal-v4-final-visual-consistency-r1-20260722/);
 });

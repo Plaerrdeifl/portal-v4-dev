@@ -88,3 +88,43 @@ Prüfpunkte:
 
 Phase 2 wird erst geschlossen, wenn alle Punkte auf DEV geprüft, dokumentiert
 und ausdrücklich abgenommen sind.
+
+## Finale visuelle Prüfrunde
+
+### PWA und Navigation
+
+- Dashboard öffnen: Unter den fünf Navigationsschaltflächen bleibt nur die
+  tatsächliche iPhone-Safe-Area.
+- Fanclub, Aufgaben, Teams und Mehr öffnen: Höhe und Position der
+  Bottom-Navigation bleiben identisch.
+- Letzten Datensatz jeder Ansicht erreichen, ohne dass er verdeckt wird.
+- Desktop-Navigation mit der Maus überfahren: kein horizontaler Scrollbalken.
+
+### Dialoge
+
+- Fanclub → Mitglieder → „+ Mitglied“:
+  Vorname/Nachname und E-Mail/Telefon stehen gleich breit nebeneinander;
+  Straße/Hausnummer und PLZ/Ort sind 9:3 verteilt; Datumsfelder besitzen Abstand;
+  Status zeigt „Aktiv“ vollständig.
+- Fanclub → Beiträge → Verwalten → Beitragsjahr anlegen und bearbeiten:
+  Beginn und Ende sind gleich breit und klar getrennt.
+- Fanclub → Kasse → Verwaltung:
+  Unter „Konto anlegen“ bleibt ein normaler Innenabstand.
+- Kurze Dialoge enden direkt nach Aktionsleiste und Safe Area.
+- Lange Dialoge scrollen nur im Inhaltsbereich.
+
+### Modulabstände
+
+- Mitglieder: Überschrift, Suche, Inaktiv-Filter und erste Mitgliederzeile.
+- Kasse: Überschrift, Kontokarten und Buchungsbereich.
+- Beiträge, Aufgaben und Teams: gleiche kompakte vertikale Abfolge.
+- Kein Abstand entsteht doppelt aus `gap` und zusätzlichen Außenabständen.
+
+### Benutzermenü und Profil
+
+- Profilbild → Benutzermenü:
+  Menü endet mit normalem Abstand direkt nach „Abmelden“.
+- „Profil und Daten“:
+  Profil- und Mitgliedsdaten verwenden dieselben Feldproportionen wie der
+  Mitgliederdialog.
+- Bei langen Daten scrollt nur der Inhaltsbereich.
