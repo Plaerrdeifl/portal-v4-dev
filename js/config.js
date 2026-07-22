@@ -25,7 +25,7 @@ export const CONFIG = Object.freeze({
     postLoginRouteKey: "pd_v4_post_login_route"
   },
   pwa: {
-    serviceWorker: "./service-worker.js?v=20260722-ui-foundation-p1-runtime-2",
+    serviceWorker: "./service-worker.js?v=20260722-fanclub-phase2-sort-delete-1",
     installDismissKey: "pd_v4_install_dismissed",
     updateReloadKey: "pd_v4_update_reload",
     updateDismissKey: "pd_v4_update_dismissed"

@@ -56,6 +56,16 @@ Anmeldung und Abmeldung verwenden einen einzigen zentralen Übergangscontroller 
 
 Mobile Eingabefelder verwenden mindestens 16 Pixel Schriftgröße. Dialoge entfernen den Eingabefokus beim Schließen und geben den Fokus anschließend an den Auslöser zurück.
 
-## 11. Abweichungen
+## 11. Verwaltbare Reihenfolge
+
+Fachlich verwaltbare Listen wie Beitragsklassen und Finanzkonten besitzen eine explizite Position. Die Position wird serverseitig gespeichert und ist Bestandteil der geschützten Fachantwort. Kleinere Werte erscheinen zuerst; bei gleicher Position entscheidet die Bezeichnung stabil über die Reihenfolge.
+
+Neue Einträge erhalten standardmäßig Abstände in Zehnerschritten. Dadurch können Administratoren später Einträge dazwischen einsortieren, ohne die gesamte Liste neu nummerieren zu müssen. Inaktive Einträge behalten ihre Position.
+
+## 12. Löschen unbenutzter Stammdaten
+
+Falsch angelegte Beitragsklassen dürfen endgültig gelöscht werden, solange sie noch keiner Beitragszuordnung verwendet wurden. Die Löschbarkeit wird serverseitig ermittelt und beim Löschvorgang erneut geprüft. Bereits verwendete Beitragsklassen bleiben aus Gründen der Nachvollziehbarkeit erhalten und können nur deaktiviert werden. Jede endgültige Löschung wird auditiert.
+
+## 13. Abweichungen
 
 Abweichungen von diesem Standard benötigen einen konkreten fachlichen Grund und müssen ausdrücklich dokumentiert werden.

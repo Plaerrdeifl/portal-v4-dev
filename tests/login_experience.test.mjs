@@ -104,9 +104,9 @@ test("official Google Identity Services replaces the manual OAuth window", async
   assert.equal(index.includes("https://accounts.google.com"), true);
   assert.equal(worker.includes("./js/google-signin.js"), true);
   assert.equal(worker.includes("./js/oauth-return-guard.js"), false);
-  assert.equal(index.includes("20260722-ui-foundation-p1-runtime-2"), true);
+  assert.equal(index.includes("20260722-fanclub-phase2-sort-delete-1"), true);
   assert.equal(
-    worker.includes("pd-portal-v4-ui-foundation-p1-runtime-20260722-2"),
+    worker.includes("pd-portal-v4-fanclub-phase2-sort-delete-20260722-1"),
     true
   );
 });

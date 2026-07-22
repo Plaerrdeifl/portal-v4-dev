@@ -113,12 +113,33 @@ function contributionSeasons() {
   return snapshot?.contributionSeasons || [];
 }
 
+function numericPosition(value, fallback = 9999) {
+  const position = Number(value);
+  return Number.isInteger(position) && position > 0 ? position : fallback;
+}
+
+function orderedByPosition(items) {
+  return [...items].sort((left, right) => {
+    const positionCompare = numericPosition(left.position) - numericPosition(right.position);
+    if (positionCompare) return positionCompare;
+    return String(left.name || "").localeCompare(String(right.name || ""), "de-DE");
+  });
+}
+
+function nextPosition(items) {
+  const highest = items.reduce(
+    (maximum, item) => Math.max(maximum, numericPosition(item.position, 0)),
+    0
+  );
+  return Math.min(9999, Math.max(10, highest + 10));
+}
+
 function contributionClasses() {
-  return snapshot?.contributionClasses || [];
+  return orderedByPosition(snapshot?.contributionClasses || []);
 }
 
 function financeAccounts() {
-  return snapshot?.financeAccounts || [];
+  return orderedByPosition(snapshot?.financeAccounts || []);
 }
 
 function financeEntries() {
@@ -523,17 +544,40 @@ function classForm(contributionClass = {}) {
     <label>Betrag
       <input name="amount" required type="number" min="0" max="999999.99" step="0.01" value="${escapeAttr(contributionClass.amount ?? "")}">
     </label>
+    <label>Position
+      <input name="position" required type="number" min="1" max="9999" step="1" inputmode="numeric" value="${escapeAttr(contributionClass.position ?? nextPosition(contributionClasses()))}">
+    </label>
     <label>Status
       <select name="active">${optionList([
         { value: "true", label: "Aktiv" },
         { value: "false", label: "Inaktiv" }
       ], String(contributionClass.active ?? true))}</select>
     </label>
+    ${contributionClass.id && contributionClass.canDelete
+      ? '<div class="full dialog-actions"><button class="button danger" type="button" data-delete-contribution-class>Beitragsklasse löschen</button></div>'
+      : ""}
   </form>`;
 }
 
+async function deleteContributionClass(contributionClass) {
+  const confirmed = await confirmAction(
+    `Unbenutzte Beitragsklasse „${contributionClass.name}“ endgültig löschen?`
+  );
+  if (!confirmed) return false;
+
+  snapshot = await runWrite(
+    () => call("delete_contribution_class", {
+      id: contributionClass.id,
+      revision: contributionClass.revision
+    }),
+    "Beitragsklasse wurde gelöscht."
+  );
+  renderAll();
+  return true;
+}
+
 function openContributionClass(contributionClass = null) {
-  openDialog({
+  const dialog = openDialog({
     title: contributionClass
       ? "Beitragsklasse bearbeiten"
       : "Beitragsklasse anlegen",
@@ -549,6 +593,22 @@ function openContributionClass(contributionClass = null) {
       renderAll();
     }
   });
+
+  dialog.querySelector("[data-delete-contribution-class]")
+    ?.addEventListener("click", async event => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        if (await deleteContributionClass(contributionClass)) dialog.close();
+      } catch (error) {
+        button.disabled = false;
+        showToast(
+          error?.message || "Beitragsklasse konnte nicht gelöscht werden.",
+          "error",
+          6500
+        );
+      }
+    });
 }
 
 function contributionFor(memberId) {
@@ -747,7 +807,7 @@ function renderContributionClasses() {
     </div>
     <p class="v4-section-note">Beträge werden bei der Zuordnung als Sollbetrag festgeschrieben.</p>
     ${classes.length ? `<div class="v4-settings-list" aria-label="Beitragsklassen">${classes.map(item => `<button class="v4-settings-row" type="button" data-edit-contribution-class="${escapeAttr(item.id)}">
-      <span class="v4-settings-row-copy"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(money(item.amount))}</small></span>
+      <span class="v4-settings-row-copy"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(money(item.amount))} · Position ${escapeHtml(item.position)}</small></span>
       <span class="v4-settings-row-end"><span class="v4-inline-state ${item.active ? "is-active" : "is-inactive"}"><i aria-hidden="true"></i>${item.active ? "Aktiv" : "Inaktiv"}</span><span class="v4-row-chevron" aria-hidden="true">›</span></span>
     </button>`).join("")}</div>` : empty("Noch keine Beitragsklassen angelegt.")}
   </section>`;
@@ -1032,6 +1092,9 @@ function accountForm(account = {}) {
       </select>
       ${isDefaultCash ? '<input type="hidden" name="accountType" value="CASH">' : ""}
     </label>
+    <label>Position
+      <input name="position" required type="number" min="1" max="9999" step="1" inputmode="numeric" value="${escapeAttr(account.position ?? nextPosition(financeAccounts()))}">
+    </label>
     <label>Status
       ${isDefaultCash
         ? '<input value="Aktiv" disabled><input type="hidden" name="active" value="true">'
@@ -1242,7 +1305,7 @@ function renderFinanceAccounts() {
   return `<div class="v4-account-grid v4-account-grid-compact">
     ${accounts.map(account => `<button class="card v4-account-card v4-account-card-button ${account.active ? "" : "is-inactive"}" type="button" data-open-finance-account="${escapeAttr(account.id)}">
       <span class="v4-account-card-head"><span class="v4-account-name">${escapeHtml(account.name)}</span><span class="v4-row-chevron" aria-hidden="true">›</span></span>
-      <small class="v4-account-meta">${escapeHtml(accountTypeLabel(account.accountType))}${account.active ? "" : " · inaktiv"}</small>
+      <small class="v4-account-meta">${escapeHtml(accountTypeLabel(account.accountType))}${account.active ? "" : " · inaktiv"} · Position ${escapeHtml(account.position)}</small>
       <strong class="v4-account-balance">${escapeHtml(money(account.balance))}</strong>
     </button>`).join("")}
   </div>`;
