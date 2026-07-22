@@ -1247,9 +1247,9 @@ body.overlay-open .view{overflow:hidden!important;touch-action:none}
     min-height:0;
     max-height:calc(var(--mobile-nav-height) + var(--safe-bottom));
     padding:
-      6px
+      3px
       max(8px,var(--safe-right))
-      max(6px,var(--safe-bottom))
+      max(3px,var(--safe-bottom))
       max(8px,var(--safe-left));
     display:grid;
     grid-auto-flow:column;
@@ -1270,10 +1270,10 @@ body.overlay-open .view{overflow:hidden!important;touch-action:none}
   .mobile-nav-button{
     position:relative;
     min-width:0;
-    min-height:66px;
-    height:66px;
+    min-height:56px;
+    height:56px;
     border:0;
-    border-radius:15px;
+    border-radius:14px;
     background:transparent;
     color:#a7b7c7;
     display:flex;
@@ -1905,7 +1905,9 @@ html[data-portal-area="portal"] .v4-toolbar p{
   display:grid!important;
   align-content:start;
   gap:5px!important;
+  width:100%!important;
   min-width:0!important;
+  max-width:100%!important;
   color:#40526a!important;
   font-size:.74rem!important;
   font-weight:850!important;
@@ -1918,8 +1920,13 @@ html[data-portal-area="portal"] .v4-toolbar p{
 .user-profile-dialog input,
 .user-profile-dialog select,
 .user-profile-dialog textarea{
+  display:block!important;
   width:100%!important;
+  inline-size:100%!important;
   min-width:0!important;
+  min-inline-size:0!important;
+  max-width:100%!important;
+  max-inline-size:100%!important;
   min-height:42px!important;
   border:1px solid #c9d4e0!important;
   border-radius:12px!important;
@@ -1929,6 +1936,14 @@ html[data-portal-area="portal"] .v4-toolbar p{
   font-size:16px!important;
   line-height:1.25!important;
   box-shadow:none!important;
+}
+
+.v4-dialog input[type="date"],
+.user-profile-dialog input[type="date"],
+.v4-dialog select,
+.user-profile-dialog select{
+  overflow:hidden!important;
+  text-overflow:ellipsis;
 }
 
 .v4-dialog textarea,
@@ -1986,7 +2001,7 @@ html[data-portal-area="portal"] .v4-toolbar p{
   z-index:5!important;
   bottom:0!important;
   margin:13px -16px -13px!important;
-  padding:10px 16px max(10px,env(safe-area-inset-bottom))!important;
+  padding:10px 16px!important;
   background:rgba(255,255,255,.97)!important;
   box-shadow:0 -8px 20px rgba(12,35,58,.07)!important;
 }
@@ -2031,6 +2046,11 @@ html[data-portal-area="portal"] .v4-toolbar p{
   border-radius:22px!important;
   background:#f7f9fc!important;
   box-shadow:0 24px 70px rgba(2,22,42,.3)!important;
+}
+
+.user-menu-panel[hidden],
+.user-menu-backdrop[hidden]{
+  display:none!important;
 }
 
 .user-menu-header{
@@ -2676,7 +2696,7 @@ html[data-portal-area="portal"] .v4-toolbar p{
 
   #v4DialogBody>.dialog-actions{
     margin:11px -13px -11px!important;
-    padding:9px 13px max(9px,env(safe-area-inset-bottom))!important;
+    padding:9px 13px!important;
   }
 
   .v4-dialog .form-grid:not(.v4-smart-form),
@@ -2849,5 +2869,5 @@ html[data-portal-area="portal"] .v4-toolbar p{
 .v4-finance-detail-grid,.v4-task-detail-grid,.v4-team-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}.v4-finance-detail-grid>div,.v4-task-detail-grid>div,.v4-team-detail-grid>div{min-height:0!important;padding:9px 10px!important}.v4-detail-grid>.v4-detail-wide{grid-column:1/-1!important}
 .v4-task-list,.v4-team-list{display:grid;gap:7px}.v4-task-list-row,.v4-team-list-row{width:100%;min-width:0;min-height:58px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px 12px;border:1px solid #d2dce7;border-radius:14px;background:#fff;color:#14283f;text-align:left;box-shadow:0 4px 12px rgba(20,40,63,.06)}.v4-task-list-row:hover,.v4-team-list-row:hover{border-color:#8eb9df;background:#f7fbff}.v4-task-list-copy,.v4-team-list-row>span:first-child{display:grid;gap:2px;min-width:0}.v4-task-list-copy small,.v4-team-list-row small{color:#748297;font-size:.7rem}.v4-task-list-copy strong,.v4-team-list-row strong{font-size:.9rem;line-height:1.25;overflow-wrap:anywhere}.v4-task-list-copy>span{color:#65758b;font-size:.74rem;line-height:1.3}.v4-task-list-end{display:flex;align-items:center;gap:8px}.v4-task-list-end .badge{font-size:.67rem!important}.v4-task-detail-actions{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))!important}.v4-task-detail-actions .v4-task-status-control,.v4-task-detail-actions .v4-status-select{width:100%}
 .v4-team-detail-members{margin-top:10px}.v4-team-member-list{display:grid;gap:6px}.v4-team-member-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;padding:8px 9px;border:1px solid #d8e1ea;border-radius:11px;background:#fff}.v4-team-member-row>span:first-child{display:grid;gap:2px;min-width:0}.v4-team-member-row strong{overflow-wrap:anywhere}.v4-team-member-row small{color:#738196;font-size:.7rem}.v4-row-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:5px}.v4-teams-heading{margin-top:8px}
-@media(max-width:430px){.v4-smart-form{gap:8px!important}.v4-smart-form>.v4-field-seven,.v4-smart-form>.v4-field-five{grid-column:span 6!important}.v4-account-detail-summary{padding:10px 11px}.v4-account-detail-summary .v4-account-detail-balance{font-size:1.15rem!important}.v4-task-list-row,.v4-team-list-row{min-height:54px;padding:9px 10px}.v4-task-list-end .badge{max-width:82px}}
+@media(max-width:430px){.v4-smart-form{gap:8px 10px!important}.v4-smart-form>.v4-field-seven,.v4-smart-form>.v4-field-five,.v4-smart-form>.v4-field-four{grid-column:span 6!important}.v4-smart-form>.v4-field-account-select{grid-column:1/-1!important}.v4-account-detail-summary{padding:10px 11px}.v4-account-detail-summary .v4-account-detail-balance{font-size:1.15rem!important}.v4-task-list-row,.v4-team-list-row{min-height:54px;padding:9px 10px}.v4-task-list-end .badge{max-width:82px}}
 @media(max-width:350px){.v4-smart-form>*{grid-column:1/-1!important}.v4-finance-detail-grid,.v4-task-detail-grid,.v4-team-detail-grid{grid-template-columns:1fr!important}.v4-detail-grid>.v4-detail-wide{grid-column:auto!important}.v4-account-detail-summary{grid-template-columns:1fr}.v4-account-detail-summary .v4-account-detail-balance{justify-self:start}.v4-team-member-row{grid-template-columns:1fr}.v4-row-actions{justify-content:flex-start}}

@@ -128,3 +128,19 @@ und ausdrücklich abgenommen sind.
   Profil- und Mitgliedsdaten verwenden dieselben Feldproportionen wie der
   Mitgliederdialog.
 - Bei langen Daten scrollt nur der Inhaltsbereich.
+
+## Globaler UI-Abschluss R1
+
+- Profilbild öffnen, anschließend mit X schließen.
+- Profilbild öffnen, anschließend auf den abgedunkelten Hintergrund tippen.
+- Benutzermenü erneut öffnen und mit Escape schließen.
+- Nach jedem Schließen ist die Seite wieder scrollbar und der Profilknopf
+  erhält den Fokus zurück.
+- Dashboard und alle Hauptbereiche prüfen: Bottom-Navigation bleibt kompakt.
+- Mitglied anlegen: Eintritt und Austritt besitzen sichtbaren Abstand.
+- Beitragsjahr anlegen und bearbeiten: Beginn und Ende besitzen sichtbaren Abstand.
+- Einnahme und Ausgabe: Buchungsdatum und Zahlungsart bleiben getrennt.
+- Konto anlegen: Status, Startsaldo und Stand zum werden mobil kontrolliert
+  auf zwei Zeilen verteilt; das Datum bleibt vollständig sichtbar.
+- Umbuchung: Quell- und Zielkonto stehen mobil untereinander.
+- Unter Dialogaktionen bleibt nur der normale Innenabstand.

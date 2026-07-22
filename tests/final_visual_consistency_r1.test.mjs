@@ -15,7 +15,7 @@ test("mobile navigation has one exact content height plus safe area", async () =
     read("css/app.css")
   ]);
 
-  assert.match(tokens, /--mobile-nav-height:78px/);
+  assert.match(tokens, /--mobile-nav-height:64px/);
   assert.match(
     css,
     /\.mobile-bottom-nav\{[\s\S]*height:calc\(var\(--mobile-nav-height\) \+ var\(--safe-bottom\)\);[\s\S]*max-height:calc/
@@ -121,7 +121,7 @@ test("cache busting identifies final visual consistency R1", async () => {
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260722-final-visual-consistency-r1/);
-  assert.match(config, /20260722-final-visual-consistency-r1/);
-  assert.match(worker, /pd-portal-v4-final-visual-consistency-r1-20260722/);
+  assert.match(index, /20260722-global-ui-completion-r1/);
+  assert.match(config, /20260722-global-ui-completion-r1/);
+  assert.match(worker, /pd-portal-v4-global-ui-completion-r1-20260722/);
 });

@@ -15,6 +15,7 @@ const MOBILE_PRIMARY = ["dashboard", "fanclub", "tasks", "teams"];
 let globalRefresh = null;
 let globalLogout = null;
 let profileDialogReturnFocus = null;
+let userMenuReturnFocus = null;
 
 const ICONS = Object.freeze({
   home: '<svg viewBox="0 0 24 24"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>',
@@ -323,6 +324,11 @@ function ensureUserMenu() {
   backdrop.className = "user-menu-backdrop";
   backdrop.dataset.closeUserMenu = "";
   backdrop.hidden = true;
+  backdrop.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeUserMenu();
+  });
 
   const panel = document.createElement("section");
   panel.id = "userMenuPanel";
@@ -605,6 +611,13 @@ function renderUserMenu() {
   <footer class="user-menu-footer">
     <button class="button danger" type="button" data-user-logout>Abmelden</button>
   </footer>`;
+
+  panel.querySelector("[data-close-user-menu]")
+    ?.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeUserMenu();
+    });
 }
 
 function updateOverlayLock() {
@@ -630,6 +643,12 @@ function openUserMenu() {
 
   if (!panel || !backdrop) return;
 
+  userMenuReturnFocus = toggle instanceof HTMLElement
+    ? toggle
+    : document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+
   panel.hidden = false;
   backdrop.hidden = false;
   toggle?.setAttribute("aria-expanded", "true");
@@ -644,6 +663,7 @@ function closeUserMenu() {
   const panel = document.getElementById("userMenuPanel");
   const backdrop = document.getElementById("userMenuBackdrop");
   const toggle = document.getElementById("userSummary");
+  const wasOpen = panel?.hidden === false || backdrop?.hidden === false;
 
   const active = document.activeElement;
   if (active instanceof HTMLElement && panel?.contains(active)) active.blur();
@@ -651,6 +671,17 @@ function closeUserMenu() {
   if (backdrop) backdrop.hidden = true;
   toggle?.setAttribute("aria-expanded", "false");
   updateOverlayLock();
+
+  const returnTarget = userMenuReturnFocus;
+  userMenuReturnFocus = null;
+
+  if (
+    wasOpen
+    && returnTarget instanceof HTMLElement
+    && returnTarget.isConnected
+  ) {
+    returnTarget.focus({ preventScroll: true });
+  }
 }
 
 export function updateUserChrome() {

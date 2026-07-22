@@ -79,9 +79,9 @@ test("cache busting identifies portal phase two acceptance", async () => {
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260722-final-visual-consistency-r1/);
-  assert.match(config, /20260722-final-visual-consistency-r1/);
-  assert.match(worker, /pd-portal-v4-final-visual-consistency-r1-20260722/);
+  assert.match(index, /20260722-global-ui-completion-r1/);
+  assert.match(config, /20260722-global-ui-completion-r1/);
+  assert.match(worker, /pd-portal-v4-global-ui-completion-r1-20260722/);
 });
 
 test("manual acceptance checklist covers mobile, PWA and financial workflows", async () => {

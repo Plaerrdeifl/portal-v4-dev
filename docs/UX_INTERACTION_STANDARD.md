@@ -158,3 +158,21 @@ Vertikale Abstände in Modulansichten entstehen ausschließlich über den
 gemeinsamen Panel-Gap. Zusätzliche Außenabstände direkter Panel-Kinder werden
 entfernt, damit Überschrift, Filter, Listen und Folgeabschnitte einen
 einheitlichen Rhythmus besitzen.
+
+## 18. Globaler UI-Abschluss
+
+Der Sichtbarkeitszustand von Overlays wird ausschließlich über den nativen
+`hidden`-Vertrag gesteuert. Komponentenregeln dürfen `[hidden]` niemals durch
+ein späteres `display` mit `!important` überstimmen. Benutzermenü und Backdrop
+müssen über Schließen-Schaltfläche, Backdrop, Escape und Navigation zuverlässig
+geschlossen werden; anschließend wird der Fokus zum auslösenden Profilknopf
+zurückgegeben.
+
+Safe Areas werden nur an fest am Bildschirmrand sitzenden Komponenten
+berücksichtigt. Frei im Viewport platzierte Dialoge erhalten unter ihren
+Aktionsschaltflächen ausschließlich den normalen Innenabstand.
+
+Native Datums- und Auswahlfelder dürfen ihre Rasterzelle nicht durch eine
+intrinsische Mindestbreite vergrößern. Smart Forms begrenzen alle Felder auf
+ihre Grid-Spalte. Auf Mobilgeräten werden Vier-Spalten-Felder zu stabilen
+Halbbreiten; lange Kontoauswahlen stehen untereinander.

@@ -1195,8 +1195,8 @@ function openFinanceEntry(entryType) {
 function transferForm() {
   const accounts = financeAccounts().filter(account => account.active);
 
-  return `<form class="form-grid v4-fanclub-form">
-    <label>Von Konto
+  return `<form class="form-grid v4-fanclub-form v4-smart-form">
+    <label class="v4-field-half v4-field-account-select">Von Konto
       <select name="fromAccountId" required>
         ${optionList(
           accounts.map(account => ({
@@ -1208,7 +1208,7 @@ function transferForm() {
         )}
       </select>
     </label>
-    <label>Nach Konto
+    <label class="v4-field-half v4-field-account-select">Nach Konto
       <select name="toAccountId" required>
         ${optionList(
           accounts.map(account => ({
@@ -1220,13 +1220,13 @@ function transferForm() {
         )}
       </select>
     </label>
-    <label>Betrag
+    <label class="v4-field-half">Betrag
       <input name="amount" required type="number" min="0.01" max="999999.99" step="0.01">
     </label>
-    <label>Buchungsdatum
+    <label class="v4-field-half">Buchungsdatum
       <input name="bookedOn" required type="date" value="${localDate()}">
     </label>
-    <label class="full">Beschreibung
+    <label class="v4-field-full">Beschreibung
       <input name="description" required maxlength="500" placeholder="Grund der Umbuchung">
     </label>
   </form>`;
