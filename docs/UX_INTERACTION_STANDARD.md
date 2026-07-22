@@ -116,3 +116,24 @@ Aufgaben und Teams werden in Übersichten als kompakte, vollständig anklickbare
 Formulare verwenden ein gemeinsames Zwölf-Spalten-Raster. Feldbreiten richten sich nach dem erwarteten Inhalt. Bei sehr schmalen Geräten fällt das Raster kontrolliert auf eine Spalte zurück.
 
 Inaktive Finanzkonten mit einem Kontostand von exakt 0,00 Euro dürfen nur durch Portaladmins aus der aktiven Kontoverwaltung entfernt werden. Buchungen, Gegenkonten, Zahlungsmeldungen und Audit-Nachweise bleiben erhalten. Offene Zahlungsmeldungen verhindern die Entfernung.
+
+## 16. Abschließende mobile Portalhülle
+
+Die Desktop-Sidebar darf horizontal niemals scrollen. Navigationsschaltflächen
+bleiben innerhalb der verfügbaren Breite; notwendiges vertikales Scrollen der
+Navigation bleibt erhalten.
+
+Dialogformulare verwenden das gemeinsame Zwölf-Spalten-Raster ohne
+konkurrierende Zwei-Spalten-Regel. Feldproportionen bleiben auf mobilen Geräten
+erhalten und fallen bei sehr schmalen Viewports kontrolliert auf eine Spalte
+zurück.
+
+Finanzkonten zeigen in Übersichten Name und Betrag in getrennten Rasterzeilen
+mit festem Öffnungs-Chevron. Beitragszusammenfassungen verwenden dieselben
+dezenten Grün- und Rotflächen wie Kontoauszüge; offene Prüfungen werden gelb
+hervorgehoben.
+
+Die installierte PWA verwendet die reale dynamische Viewporthöhe. Die
+Portalhülle selbst bleibt fest auf `100dvh`, während ausschließlich die
+Inhaltsansicht vertikal scrollt. Die untere Navigation endet am tatsächlichen
+Bildschirmrand und berücksichtigt die iOS-Safe-Area genau einmal.

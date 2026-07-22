@@ -270,8 +270,8 @@ function memberForm(member = {}) {
     <input type="hidden" name="revision" value="${escapeAttr(member.revision || "")}">
     <label class="v4-field-half">Vorname<input name="firstName" required maxlength="160" value="${escapeAttr(member.firstName || "")}"></label>
     <label class="v4-field-half">Nachname<input name="lastName" required maxlength="160" value="${escapeAttr(member.lastName || "")}"></label>
-    <label class="v4-field-seven">E-Mail<input name="email" type="email" maxlength="320" value="${escapeAttr(member.email || "")}"></label>
-    <label class="v4-field-five">Telefon<input name="phone" maxlength="80" value="${escapeAttr(member.phone || "")}"></label>
+    <label class="v4-field-half">E-Mail<input name="email" type="email" maxlength="320" value="${escapeAttr(member.email || "")}"></label>
+    <label class="v4-field-half">Telefon<input name="phone" maxlength="80" value="${escapeAttr(member.phone || "")}"></label>
     <label class="v4-field-nine">Straße<input name="street" maxlength="160" value="${escapeAttr(member.street || "")}"></label>
     <label class="v4-field-three">Hausnummer<input name="houseNumber" maxlength="40" value="${escapeAttr(member.houseNumber || "")}"></label>
     <label class="v4-field-three">PLZ<input name="postalCode" maxlength="20" inputmode="numeric" value="${escapeAttr(member.postalCode || "")}"></label>
@@ -492,19 +492,19 @@ function renderOffices(panel) {
 }
 
 function seasonForm(season = {}) {
-  return `<form class="form-grid v4-fanclub-form">
+  return `<form class="form-grid v4-fanclub-form v4-smart-form">
     <input type="hidden" name="id" value="${escapeAttr(season.id || "")}">
     <input type="hidden" name="revision" value="${escapeAttr(season.revision || "")}">
-    <label class="full">Bezeichnung
+    <label class="v4-field-full">Bezeichnung
       <input name="name" required maxlength="120" value="${escapeAttr(season.name || "")}" placeholder="Saison 2026/2027">
     </label>
-    <label>Beginn
+    <label class="v4-field-half">Beginn
       <input name="startsOn" required type="date" value="${escapeAttr(season.startsOn || "")}">
     </label>
-    <label>Ende
+    <label class="v4-field-half">Ende
       <input name="endsOn" required type="date" value="${escapeAttr(season.endsOn || "")}">
     </label>
-    <label>Status
+    <label class="v4-field-four">Status
       <select name="active">${optionList([
         { value: "true", label: "Aktiv" },
         { value: "false", label: "Inaktiv" }
@@ -1024,10 +1024,10 @@ function renderContributions(panel) {
 
     ${!season ? empty("Noch kein Beitragsjahr angelegt.") : `
       <div class="v4-finance-summary">
-        <article class="card"><span>Soll</span><strong>${escapeHtml(money(summary.due))}</strong></article>
-        <article class="card"><span>Bestätigt</span><strong>${escapeHtml(money(summary.paid))}</strong></article>
-        <article class="card"><span>Offen</span><strong>${escapeHtml(money(summary.open))}</strong></article>
-        <article class="card"><span>In Prüfung</span><strong>${escapeHtml(money(summary.pending))}</strong></article>
+        <article class="card v4-contribution-summary-card is-neutral"><span>Soll</span><strong>${escapeHtml(money(summary.due))}</strong></article>
+        <article class="card v4-contribution-summary-card is-confirmed"><span>Bestätigt</span><strong>${escapeHtml(money(summary.paid))}</strong></article>
+        <article class="card v4-contribution-summary-card is-open"><span>Offen</span><strong>${escapeHtml(money(summary.open))}</strong></article>
+        <article class="card v4-contribution-summary-card is-pending"><span>In Prüfung</span><strong>${escapeHtml(money(summary.pending))}</strong></article>
       </div>
 
       <section class="card v4-contribution-members-section">

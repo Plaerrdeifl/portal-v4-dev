@@ -74,7 +74,7 @@ for (const required of [
   ".mobile-bottom-nav",
   ".mobile-nav-button",
   "var(--mobile-nav-height)",
-  ".sidebar .nav-main{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}",
+  ".sidebar .nav-main{flex:1 1 auto;min-width:0;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}",
   ".sidebar .nav-footer{flex:0 0 auto;overflow:visible;position:relative;z-index:2;",
   'html[data-portal-area="portal"] .sidebar{overflow:hidden!important;padding-bottom:calc(18px + var(--mobile-nav-height) + var(--safe-bottom))!important}',
   ".google-signin-slot>div{",
