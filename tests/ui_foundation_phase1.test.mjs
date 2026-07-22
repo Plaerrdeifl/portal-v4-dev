@@ -28,7 +28,7 @@ test("authentication transitions have one central controller", async () => {
   assert.ok(!css.includes("data-startup-state"));
 });
 
-test("navigation uses one toggle state and a static portal-only home footer", async () => {
+test("navigation uses one toggle state and a viewport-safe portal home footer", async () => {
   const [ui, sidebar, index, css] = await Promise.all([
     read("js/ui.js"),
     read("components/sidebar.html"),
@@ -45,13 +45,13 @@ test("navigation uses one toggle state and a static portal-only home footer", as
     assert.ok(markup.includes('class="portal-home-entry"'));
     assert.ok(markup.includes('data-route="home"'));
     assert.ok(markup.includes('<span>Zur Startseite</span>'));
-    assert.ok(!markup.includes('id="portalNavFooter" class="nav nav-footer" aria-label="Portalnavigation" hidden'));
+    assert.ok(markup.includes('id="portalNavFooter" class="nav nav-footer" aria-label="Portalnavigation" aria-hidden="true" hidden'));
   }
   assert.ok(!ui.includes("footerNav.replaceChildren"));
-  assert.ok(!ui.includes("footerNav.hidden"));
+  assert.ok(ui.includes("footerNav.hidden = !authenticatedPortal;"));
   assert.ok(css.includes(".sidebar .nav-main{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}"));
-  assert.ok(css.includes(".sidebar .nav-footer{display:none;flex:0 0 auto;overflow:visible"));
-  assert.ok(css.includes('html[data-portal-area="portal"] .sidebar .nav-footer{display:flex}'));
+  assert.ok(css.includes(".sidebar .nav-footer{flex:0 0 auto;overflow:visible;position:relative;z-index:2;"));
+  assert.ok(css.includes('html[data-portal-area="portal"] .sidebar{overflow:hidden!important;padding-bottom:calc(18px + var(--mobile-nav-height) + var(--safe-bottom))!important}'));
   assert.ok(css.includes(".sidebar{position:sticky"));
   assert.ok(css.includes("flex-direction:column;overflow:hidden}"));
   assert.ok(!css.includes('button[data-route="home"]{margin-top:auto}'));
@@ -64,7 +64,7 @@ test("forms, dialogs and Google button follow the global mobile contract", async
     read("css/app.css")
   ]);
 
-  assert.ok(google.includes("BUTTON_HORIZONTAL_INSET"));
+  assert.ok(google.includes("BUTTON_HORIZONTAL_INSET = 24"));
   assert.ok(google.includes("availableButtonWidth"));
   assert.ok(google.includes("await afterLayout()"));
   assert.ok(google.includes("ResizeObserver"));
@@ -75,9 +75,10 @@ test("forms, dialogs and Google button follow the global mobile contract", async
   assert.ok(common.includes("blurDialogFocus"));
   assert.ok(common.includes("focus({ preventScroll: true })"));
   assert.ok(css.includes("input,select,textarea{font-size:16px!important}"));
-  assert.ok(css.includes("padding-inline:6px"));
+  assert.ok(css.includes("padding-inline:10px"));
   assert.ok(css.includes(".google-signin-slot>div{"));
-  assert.ok(css.includes("overflow:hidden"));
+  assert.ok(css.includes("max-width:none!important"));
+  assert.ok(css.includes("overflow:visible"));
   assert.ok(!css.includes(".fanclub-page{padding-bottom:calc"));
   assert.ok(css.includes(".v4-compact-page{min-height:0"));
 });

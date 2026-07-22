@@ -1,6 +1,6 @@
 const GOOGLE_SCRIPT_ID = "google-identity-services";
 const GOOGLE_SCRIPT_URL = "https://accounts.google.com/gsi/client?hl=de";
-const BUTTON_HORIZONTAL_INSET = 12;
+const BUTTON_HORIZONTAL_INSET = 24;
 const BUTTON_MIN_WIDTH = 200;
 const BUTTON_MAX_WIDTH = 360;
 const BUTTON_FALLBACK_WIDTH = 320;
@@ -187,8 +187,8 @@ function drawButton(api, element) {
   api.renderButton(element, {
     type: "standard",
     theme: "filled_blue",
-    // Google personalisiert große Buttons nach erkannter Kontositzung und darf
-    // sie dabei verbreitern. Medium bleibt ein offizieller, stabiler Textbutton.
+    // Medium verhindert die personalisierte Kontodarstellung. Der zusätzliche
+    // Breitenabstand hält das von Google gerenderte iframe vollständig im Slot.
     size: "medium",
     text: "signin_with",
     shape: "pill",

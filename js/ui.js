@@ -226,6 +226,7 @@ export function renderNavigation() {
 
   const footerNav = document.getElementById("portalNavFooter");
   if (footerNav) {
+    footerNav.hidden = !authenticatedPortal;
     footerNav.setAttribute(
       "aria-hidden",
       authenticatedPortal ? "false" : "true"

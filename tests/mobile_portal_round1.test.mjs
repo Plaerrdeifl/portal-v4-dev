@@ -22,8 +22,8 @@ test("mobile portal round one follows the approved layout rules", async () => {
   assert.equal(css.includes(".v4-table tbody tr{display:grid!important"), true);
   assert.equal(css.includes("bottom:calc(var(--mobile-nav-height) + var(--safe-bottom) + 10px)!important"), true);
   assert.equal(css.includes(".sidebar .nav-main{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}"), true);
-  assert.equal(css.includes(".sidebar .nav-footer{display:none;flex:0 0 auto;overflow:visible"), true);
-  assert.equal(css.includes('html[data-portal-area="portal"] .sidebar .nav-footer{display:flex}'), true);
+  assert.equal(css.includes(".sidebar .nav-footer{flex:0 0 auto;overflow:visible;position:relative;z-index:2;"), true);
+  assert.equal(css.includes('html[data-portal-area="portal"] .sidebar{overflow:hidden!important;padding-bottom:calc(18px + var(--mobile-nav-height) + var(--safe-bottom))!important}'), true);
   assert.equal(css.includes('.sidebar .nav button[data-route="install"]{margin-top:0}'), true);
   assert.equal(css.includes(".topbar-home-button{display:none!important}"), true);
   assert.equal(css.includes('data-route="login"'), false);
@@ -48,16 +48,16 @@ test("mobile portal round one follows the approved layout rules", async () => {
     assert.equal(markup.includes('class="portal-home-entry"'), true);
     assert.equal(markup.includes('data-route="home"'), true);
     assert.equal(markup.includes('<span>Zur Startseite</span>'), true);
-    assert.equal(markup.includes('id="portalNavFooter" class="nav nav-footer" aria-label="Portalnavigation" hidden'), false);
+    assert.equal(markup.includes('id="portalNavFooter" class="nav nav-footer" aria-label="Portalnavigation" aria-hidden="true" hidden'), true);
   }
   assert.equal(ui.includes("footerNav.replaceChildren"), false);
-  assert.equal(ui.includes("footerNav.hidden"), false);
+  assert.equal(ui.includes("footerNav.hidden = !authenticatedPortal;"), true);
 
   assert.equal(ui.includes("prepareResponsiveTables"), true);
   assert.equal(ui.includes('leftKey === "install"'), true);
   assert.equal(app.includes('label: "Online"'), false);
   assert.equal(app.includes('label: "Live"'), true);
   assert.equal(app.includes('label: "Lädt …"'), true);
-  assert.equal(index.includes("20260722-ui-foundation-p1-runtime-1"), true);
-  assert.equal(worker.includes("pd-portal-v4-ui-foundation-p1-runtime-20260722-1"), true);
+  assert.equal(index.includes("20260722-ui-foundation-p1-runtime-2"), true);
+  assert.equal(worker.includes("pd-portal-v4-ui-foundation-p1-runtime-20260722-2"), true);
 });

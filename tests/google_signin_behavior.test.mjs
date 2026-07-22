@@ -77,7 +77,7 @@ test("Google Identity Services uses a stable official medium button with popup U
   assert.equal(renderOptions.theme, "filled_blue");
   assert.equal(renderOptions.shape, "pill");
   assert.equal(renderOptions.size, "medium");
-  assert.equal(renderOptions.width, 288);
+  assert.equal(renderOptions.width, 276);
   assert.equal(renderOptions.locale, "de");
 
   initializeOptions.callback({ credential: "jwt-token" });

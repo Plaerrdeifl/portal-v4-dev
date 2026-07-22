@@ -75,10 +75,11 @@ for (const required of [
   ".mobile-nav-button",
   "var(--mobile-nav-height)",
   ".sidebar .nav-main{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}",
-  ".sidebar .nav-footer{display:none;flex:0 0 auto;overflow:visible",
-  'html[data-portal-area="portal"] .sidebar .nav-footer{display:flex}',
+  ".sidebar .nav-footer{flex:0 0 auto;overflow:visible;position:relative;z-index:2;",
+  'html[data-portal-area="portal"] .sidebar{overflow:hidden!important;padding-bottom:calc(18px + var(--mobile-nav-height) + var(--safe-bottom))!important}',
   ".google-signin-slot>div{",
-  "padding-inline:6px"
+  "padding-inline:10px",
+  "max-width:none!important"
 ]) {
   if (!appCss.includes(required)) {
     throw new Error(`Globale Frontend-Grundlage unvollständig: ${required}`);
@@ -118,13 +119,16 @@ for (const [label, markup] of [["index.html", html], ["components/sidebar.html",
     }
   }
 
-  if (markup.includes('id="portalNavFooter" class="nav nav-footer" aria-label="Portalnavigation" hidden')) {
-    throw new Error(`Der Startseiten-Footer ist in ${label} noch dauerhaft per hidden gesperrt.`);
+  if (!markup.includes('id="portalNavFooter" class="nav nav-footer" aria-label="Portalnavigation" aria-hidden="true" hidden')) {
+    throw new Error(`Der Startseiten-Footer besitzt in ${label} keinen sicheren öffentlichen Initialzustand.`);
   }
 }
 
-if (ui.includes("footerNav.replaceChildren") || ui.includes("footerNav.hidden")) {
-  throw new Error("Der statische Startseiten-Footer wird noch dynamisch geleert oder versteckt.");
+if (ui.includes("footerNav.replaceChildren")) {
+  throw new Error("Der statische Startseiten-Footer wird noch dynamisch geleert.");
+}
+if (!ui.includes("footerNav.hidden = !authenticatedPortal;")) {
+  throw new Error("Der Startseiten-Footer wird nicht explizit an den authentifizierten Portalzustand gebunden.");
 }
 
 if (html.includes('id="authTransitionOverlay"')) {
@@ -168,7 +172,7 @@ for (const required of [
   "https://accounts.google.com/gsi/client",
   'ux_mode: "popup"',
   "renderButton",
-  "BUTTON_HORIZONTAL_INSET",
+  "BUTTON_HORIZONTAL_INSET = 24",
   "await afterLayout()",
   "use_fedcm_for_button: true",
   "button_auto_select: false",
@@ -270,5 +274,5 @@ if (depth !== 0 || quote) {
 
 console.log(
   `FRONTEND_FOUNDATION_OK · ${cssFiles.length} CSS-Dateien · `
-  + "Google-Button stabil ohne Personalisierungswachstum · Startseiten-Footer statisch sichtbar"
+  + "Google-Button ohne iframe-Clipping · Startseiten-Footer oberhalb der Bottom-Navigation"
 );

@@ -1127,23 +1127,23 @@ body.overlay-open .view{overflow:hidden!important;touch-action:none}
   width:100%;
   min-width:0;
   min-height:44px;
-  padding-inline:6px;
+  padding-inline:10px;
   display:flex;
   align-items:center;
   justify-content:center;
-  overflow:hidden;
+  overflow:visible;
 }
 
 .google-signin-slot>div{
-  width:100%!important;
-  max-width:100%!important;
-  overflow:hidden;
+  flex:0 0 auto;
+  max-width:none!important;
+  overflow:visible;
   margin-inline:auto!important;
 }
 
 .google-signin-slot iframe{
   display:block;
-  max-width:100%!important;
+  max-width:none!important;
   margin-inline:auto!important;
 }
 
@@ -1351,8 +1351,7 @@ html,body,.app-shell,.app-main,.view{max-width:100%}
 .v4-mobile-records{display:none}
 .sidebar .nav{display:flex;min-height:0;flex-direction:column}
 .sidebar .nav-main{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
-.sidebar .nav-footer{display:none;flex:0 0 auto;overflow:visible;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.11)}
-html[data-portal-area="portal"] .sidebar .nav-footer{display:flex}
+.sidebar .nav-footer{flex:0 0 auto;overflow:visible;position:relative;z-index:2;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.11)}
 .sidebar .nav button[data-route="install"]{margin-top:0}
 .sidebar .nav button>span:last-child{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:normal!important;word-break:normal!important}
 .topbar-home-button{display:none!important}
@@ -1376,6 +1375,7 @@ html[data-portal-area="portal"] .sidebar .nav-footer{display:flex}
   html,body,.app-shell,.app-main,.view{overflow-x:hidden!important}
   html[data-portal-area="portal"]:not([data-route="profile"]) .view>.page{padding-bottom:calc(var(--mobile-nav-height) + var(--safe-bottom) + 16px)!important}
   .sidebar{width:min(300px,calc(100vw - 52px))!important;max-width:calc(100vw - 52px)!important}
+  html[data-portal-area="portal"] .sidebar{overflow:hidden!important;padding-bottom:calc(18px + var(--mobile-nav-height) + var(--safe-bottom))!important}
   .sidebar .nav-main{overflow-y:auto;overscroll-behavior:contain}
   .sidebar .nav-footer{overflow:visible}
   .topbar-leading{flex:1 1 auto;overflow:hidden}
