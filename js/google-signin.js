@@ -187,7 +187,9 @@ function drawButton(api, element) {
   api.renderButton(element, {
     type: "standard",
     theme: "filled_blue",
-    size: "large",
+    // Google personalisiert große Buttons nach erkannter Kontositzung und darf
+    // sie dabei verbreitern. Medium bleibt ein offizieller, stabiler Textbutton.
+    size: "medium",
     text: "signin_with",
     shape: "pill",
     logo_alignment: "left",

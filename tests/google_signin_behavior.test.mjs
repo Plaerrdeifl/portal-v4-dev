@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-test("Google Identity Services is initialized once with popup UX, nonce and safe responsive width", async () => {
+test("Google Identity Services uses a stable official medium button with popup UX and nonce", async () => {
   let initializeOptions = null;
   let renderOptions = null;
   let callbackResult = null;
@@ -76,6 +76,7 @@ test("Google Identity Services is initialized once with popup UX, nonce and safe
 
   assert.equal(renderOptions.theme, "filled_blue");
   assert.equal(renderOptions.shape, "pill");
+  assert.equal(renderOptions.size, "medium");
   assert.equal(renderOptions.width, 288);
   assert.equal(renderOptions.locale, "de");
 

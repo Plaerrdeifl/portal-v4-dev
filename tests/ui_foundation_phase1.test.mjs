@@ -28,7 +28,7 @@ test("authentication transitions have one central controller", async () => {
   assert.ok(!css.includes("data-startup-state"));
 });
 
-test("navigation uses one toggle state and a permanently visible structural footer", async () => {
+test("navigation uses one toggle state and a static portal-only home footer", async () => {
   const [ui, sidebar, index, css] = await Promise.all([
     read("js/ui.js"),
     read("components/sidebar.html"),
@@ -40,11 +40,18 @@ test("navigation uses one toggle state and a permanently visible structural foot
   assert.ok(ui.includes("export function toggleMobileMenu"));
   assert.ok(ui.includes('event.target.closest("#mobileMoreToggle")'));
   assert.ok(ui.includes("toggleMobileMenu();"));
-  assert.ok(ui.includes('title: "Zur Startseite"'));
-  assert.ok(sidebar.includes('id="portalNavFooter"'));
-  assert.ok(index.includes('id="portalNavFooter"'));
+  for (const markup of [sidebar, index]) {
+    assert.ok(markup.includes('id="portalNavFooter"'));
+    assert.ok(markup.includes('class="portal-home-entry"'));
+    assert.ok(markup.includes('data-route="home"'));
+    assert.ok(markup.includes('<span>Zur Startseite</span>'));
+    assert.ok(!markup.includes('id="portalNavFooter" class="nav nav-footer" aria-label="Portalnavigation" hidden'));
+  }
+  assert.ok(!ui.includes("footerNav.replaceChildren"));
+  assert.ok(!ui.includes("footerNav.hidden"));
   assert.ok(css.includes(".sidebar .nav-main{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}"));
-  assert.ok(css.includes(".sidebar .nav-footer{flex:0 0 auto;overflow:visible"));
+  assert.ok(css.includes(".sidebar .nav-footer{display:none;flex:0 0 auto;overflow:visible"));
+  assert.ok(css.includes('html[data-portal-area="portal"] .sidebar .nav-footer{display:flex}'));
   assert.ok(css.includes(".sidebar{position:sticky"));
   assert.ok(css.includes("flex-direction:column;overflow:hidden}"));
   assert.ok(!css.includes('button[data-route="home"]{margin-top:auto}'));
@@ -61,6 +68,8 @@ test("forms, dialogs and Google button follow the global mobile contract", async
   assert.ok(google.includes("availableButtonWidth"));
   assert.ok(google.includes("await afterLayout()"));
   assert.ok(google.includes("ResizeObserver"));
+  assert.ok(google.includes('size: "medium"'));
+  assert.ok(!google.includes('size: "large"'));
   assert.ok(!google.includes("width: 320"));
   assert.ok(common.includes("dialogReturnFocus"));
   assert.ok(common.includes("blurDialogFocus"));

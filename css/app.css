@@ -1351,7 +1351,8 @@ html,body,.app-shell,.app-main,.view{max-width:100%}
 .v4-mobile-records{display:none}
 .sidebar .nav{display:flex;min-height:0;flex-direction:column}
 .sidebar .nav-main{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
-.sidebar .nav-footer{flex:0 0 auto;overflow:visible;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.11)}
+.sidebar .nav-footer{display:none;flex:0 0 auto;overflow:visible;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.11)}
+html[data-portal-area="portal"] .sidebar .nav-footer{display:flex}
 .sidebar .nav button[data-route="install"]{margin-top:0}
 .sidebar .nav button>span:last-child{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:normal!important;word-break:normal!important}
 .topbar-home-button{display:none!important}

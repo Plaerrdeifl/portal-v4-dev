@@ -79,6 +79,7 @@ test("official Google Identity Services replaces the manual OAuth window", async
   assert.equal(googleSignIn.includes('ux_mode: "popup"'), true);
   assert.equal(googleSignIn.includes('theme: "filled_blue"'), true);
   assert.equal(googleSignIn.includes('shape: "pill"'), true);
+  assert.equal(googleSignIn.includes('size: "medium"'), true);
   assert.equal(googleSignIn.includes("width: 320"), false);
   assert.equal(googleSignIn.includes("BUTTON_HORIZONTAL_INSET"), true);
   assert.equal(googleSignIn.includes("await afterLayout()"), true);
@@ -103,9 +104,9 @@ test("official Google Identity Services replaces the manual OAuth window", async
   assert.equal(index.includes("https://accounts.google.com"), true);
   assert.equal(worker.includes("./js/google-signin.js"), true);
   assert.equal(worker.includes("./js/oauth-return-guard.js"), false);
-  assert.equal(index.includes("20260722-ui-foundation-p1-acceptance-1"), true);
+  assert.equal(index.includes("20260722-ui-foundation-p1-runtime-1"), true);
   assert.equal(
-    worker.includes("pd-portal-v4-ui-foundation-p1-acceptance-20260722-1"),
+    worker.includes("pd-portal-v4-ui-foundation-p1-runtime-20260722-1"),
     true
   );
 });

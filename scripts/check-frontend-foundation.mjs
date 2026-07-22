@@ -21,6 +21,7 @@ if (JSON.stringify(cssFiles) !== JSON.stringify(expectedCssFiles)) {
 const html = read("index.html");
 const appCss = read("css/app.css");
 const ui = read("js/ui.js");
+const sidebar = read("components/sidebar.html");
 const authSource = read("js/auth.js");
 const pagesSource = read("js/pages.js");
 const googleSignIn = read("js/google-signin.js");
@@ -74,7 +75,8 @@ for (const required of [
   ".mobile-nav-button",
   "var(--mobile-nav-height)",
   ".sidebar .nav-main{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}",
-  ".sidebar .nav-footer{flex:0 0 auto;overflow:visible",
+  ".sidebar .nav-footer{display:none;flex:0 0 auto;overflow:visible",
+  'html[data-portal-area="portal"] .sidebar .nav-footer{display:flex}',
   ".google-signin-slot>div{",
   "padding-inline:6px"
 ]) {
@@ -102,6 +104,27 @@ if (
   || html.includes('id="mobileMoreBackdrop"')
 ) {
   throw new Error("Das veraltete separate Mehr-Panel ist noch vorhanden.");
+}
+
+for (const [label, markup] of [["index.html", html], ["components/sidebar.html", sidebar]]) {
+  for (const required of [
+    'id="portalNavFooter"',
+    'class="portal-home-entry"',
+    'data-route="home"',
+    '<span>Zur Startseite</span>'
+  ]) {
+    if (!markup.includes(required)) {
+      throw new Error(`Statischer Startseiten-Footer fehlt in ${label}: ${required}`);
+    }
+  }
+
+  if (markup.includes('id="portalNavFooter" class="nav nav-footer" aria-label="Portalnavigation" hidden')) {
+    throw new Error(`Der Startseiten-Footer ist in ${label} noch dauerhaft per hidden gesperrt.`);
+  }
+}
+
+if (ui.includes("footerNav.replaceChildren") || ui.includes("footerNav.hidden")) {
+  throw new Error("Der statische Startseiten-Footer wird noch dynamisch geleert oder versteckt.");
 }
 
 if (html.includes('id="authTransitionOverlay"')) {
@@ -148,7 +171,8 @@ for (const required of [
   "BUTTON_HORIZONTAL_INSET",
   "await afterLayout()",
   "use_fedcm_for_button: true",
-  "button_auto_select: false"
+  "button_auto_select: false",
+  'size: "medium"'
 ]) {
   if (!googleSignIn.includes(required)) {
     throw new Error(`Google Identity Services unvollständig: ${required}`);
@@ -246,5 +270,5 @@ if (depth !== 0 || quote) {
 
 console.log(
   `FRONTEND_FOUNDATION_OK · ${cssFiles.length} CSS-Dateien · `
-  + "Google-Button sicher responsiv · Navigationsfuß dauerhaft sichtbar"
+  + "Google-Button stabil ohne Personalisierungswachstum · Startseiten-Footer statisch sichtbar"
 );

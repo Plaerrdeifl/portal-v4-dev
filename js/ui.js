@@ -226,12 +226,9 @@ export function renderNavigation() {
 
   const footerNav = document.getElementById("portalNavFooter");
   if (footerNav) {
-    const homeEntry = authenticatedPortal
-      ? entries.find(([key]) => key === "home")
-      : null;
-    footerNav.hidden = !homeEntry;
-    footerNav.replaceChildren(
-      ...(homeEntry ? [createRouteButton(homeEntry[0], homeEntry[1])] : [])
+    footerNav.setAttribute(
+      "aria-hidden",
+      authenticatedPortal ? "false" : "true"
     );
   }
 
