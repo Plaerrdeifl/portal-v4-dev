@@ -7,7 +7,7 @@ const root = path.resolve(import.meta.dirname, "..");
 const read = relativePath =>
   fs.readFile(path.join(root, relativePath), "utf8");
 
-test("mobile safe area is bounded independently from the raw iOS inset", async () => {
+test("standalone navigation uses one deterministic iPhone bottom inset", async () => {
   const [tokens, css] = await Promise.all([
     read("css/tokens.css"),
     read("css/app.css")
@@ -15,7 +15,7 @@ test("mobile safe area is bounded independently from the raw iOS inset", async (
 
   assert.match(
     tokens,
-    /--mobile-safe-bottom:clamp\(0px,var\(--safe-bottom\),34px\)/
+    /--mobile-safe-bottom:34px/
   );
   assert.match(
     css,
@@ -96,7 +96,7 @@ test("cache busting identifies the iOS date and navigation final release", async
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260722-ios-date-nav-final-r1/);
-  assert.match(config, /20260722-ios-date-nav-final-r1/);
-  assert.match(worker, /pd-portal-v4-ios-date-nav-final-r1-20260722/);
+  assert.match(index, /20260723-pwa-bottom-nav-final-r1/);
+  assert.match(config, /20260723-pwa-bottom-nav-final-r1/);
+  assert.match(worker, /pd-portal-v4-pwa-bottom-nav-final-r1-20260723/);
 });

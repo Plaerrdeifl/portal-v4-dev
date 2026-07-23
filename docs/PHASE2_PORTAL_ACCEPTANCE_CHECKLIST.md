@@ -158,3 +158,15 @@ und ausdrücklich abgenommen sind.
   und einen sichtbaren Zwischenraum.
 - Konto anlegen und Umbuchung: Datumsfelder bleiben vollständig innerhalb ihrer
   jeweiligen Rasterspalte.
+
+## PWA-Bottom-Navigation – endgültige Sichtprüfung
+
+- Installierte PWA vollständig schließen und erneut öffnen.
+- Dashboard öffnen: Die fünf Navigationsbuttons sitzen direkt oberhalb der
+  normalen iPhone-Unterkante.
+- Unter den Buttons bleibt nur ein schmaler Schutzraum für den Home Indicator,
+  keine große dunkelblaue Leerfläche.
+- Fanclub, Aufgaben, Teams und Mehr öffnen: Position und Gesamthöhe bleiben
+  identisch.
+- Seitennavigation öffnen: Die Bottom-Navigation bleibt am tatsächlichen
+  Bildschirmende und wird nicht nach oben verschoben.

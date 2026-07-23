@@ -188,3 +188,16 @@ Die Bottom-Navigation verwendet eine eigene, begrenzte mobile Safe Area. Der
 ungeprüfte Systemwert darf die Navigation nicht künstlich vergrößern. Der
 Buttonbereich bleibt 64 Pixel hoch; darunter wird höchstens die tatsächlich
 benötigte iPhone-Unterkante von 34 Pixeln reserviert.
+
+## 20. Deterministische PWA-Unterkante
+
+Die installierte iOS-PWA verwendet für die Bottom-Navigation einen festen
+unteren Schutzraum von 34 Pixeln. Der Systemwert
+`env(safe-area-inset-bottom)` darf für diese Komponente nicht direkt oder
+verschachtelt ausgewertet werden, weil iOS in einzelnen
+Standalone-Viewport-Konstellationen einen deutlich zu großen Wert liefern
+kann.
+
+Der Navigationsbereich besteht damit verbindlich aus 64 Pixeln Buttonbereich
+und 34 Pixeln geschützter Unterkante. Alle von der Navigation abhängigen
+Abstände verwenden denselben globalen Token.
