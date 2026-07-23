@@ -51,5 +51,5 @@ test("task history is chronological, audited and editable for 30 minutes", async
   assert.doesNotMatch(tasks, />Notiz<\/button>/);
 
   assert.match(css, /V4 TASK HISTORY R1/);
-  assert.match(worker, /pd-portal-v4-web-push-badge-quiettime-fix1-20260723/);
+  assert.match(worker, /pd-portal-v4-push-newtasks-quiettime-r1-20260723/);
 });

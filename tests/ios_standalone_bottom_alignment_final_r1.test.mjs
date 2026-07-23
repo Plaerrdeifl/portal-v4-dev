@@ -74,6 +74,6 @@ test("cache busting identifies final opaque iOS bottom alignment", async () => {
   assert.match(config, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
   assert.match(
     worker,
-    /pd-portal-v4-web-push-badge-quiettime-fix1-20260723/
+    /pd-portal-v4-push-newtasks-quiettime-r1-20260723/
   );
 });

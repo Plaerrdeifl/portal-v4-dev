@@ -30,5 +30,5 @@ test("web push badge and quiet time FIX3 contracts", async () => {
 
   assert.match(css, /V4 WEB PUSH BADGE QUIETTIME FIX1/);
   assert.match(css, /pointer-events:none!important/);
-  assert.match(worker, /pd-portal-v4-web-push-badge-quiettime-fix1-20260723/);
+  assert.match(worker, /pd-portal-v4-push-newtasks-quiettime-r1-20260723/);
 });

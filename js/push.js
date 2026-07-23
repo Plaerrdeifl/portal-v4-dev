@@ -232,6 +232,18 @@ function render() {
 
       <label class="v4-switch-row">
         <span>
+          <strong>Neue Aufgaben</strong>
+          <small>Neu erstellte Aufgaben, die für dich sichtbar sind</small>
+        </span>
+        <input
+          type="checkbox"
+          name="newTasks"
+          ${preferences.newTasks !== false ? "checked" : ""}
+        >
+      </label>
+
+      <label class="v4-switch-row">
+        <span>
           <strong>Neue Aufgaben-Updates</strong>
           <small>Neue Verlaufs- und Fortschrittseinträge</small>
         </span>
@@ -490,6 +502,7 @@ async function savePreferences(event) {
     snapshot = await api.call("save_notification_preferences", {
       revision: values.revision,
       pushEnabled: Number(snapshot?.activeDeviceCount || 0) > 0,
+      newTasks: form.elements.newTasks.checked,
       taskUpdates: form.elements.taskUpdates.checked,
       taskStatus: form.elements.taskStatus.checked,
       taskTransfers: form.elements.taskTransfers.checked,

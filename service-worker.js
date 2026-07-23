@@ -1,4 +1,4 @@
-const CACHE_VERSION = "pd-portal-v4-web-push-badge-quiettime-fix1-20260723";
+const CACHE_VERSION = "pd-portal-v4-push-newtasks-quiettime-r1-20260723";
 const APP_CACHE = `${CACHE_VERSION}-shell`;
 const SHELL = [
   "./",
