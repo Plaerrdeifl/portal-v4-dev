@@ -1,4 +1,4 @@
-const CACHE_VERSION = "pd-portal-v4-ios-standalone-bottom-alignment-final-r1-20260723";
+const CACHE_VERSION = "pd-portal-v4-ios-standalone-bottom-backdrop-final-r1-20260723";
 const APP_CACHE = `${CACHE_VERSION}-shell`;
 const SHELL = [
   "./",

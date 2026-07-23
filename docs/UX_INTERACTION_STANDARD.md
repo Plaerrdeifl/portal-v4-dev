@@ -229,3 +229,19 @@ im Browser noch als globale Navigationseinstellung verwendet werden. Toasts,
 Installationshinweis und das mobile Benutzermenü verwenden innerhalb derselben
 Standalone-Regel denselben Abzug, damit ihre Abstände relativ zur
 Bottom-Navigation erhalten bleiben.
+
+## 23. Standalone-Unterkante ohne Inhaltsverschiebung
+
+Die Bottom-Navigation bleibt auch in der installierten iOS-PWA mit `bottom: 0`
+am sichtbaren Standalone-Viewport verankert. Dadurch bleiben sämtliche
+Navigationsbuttons vollständig sichtbar und bedienbar.
+
+Nur der dunkelblaue Hintergrund wird über ein nicht interaktives
+`::after`-Element um `var(--safe-top)` unterhalb der Navigation verlängert.
+Die Verlängerung enthält keine Buttons und verändert weder Höhe noch Position
+der Navigation. Sie dient ausschließlich dazu, den außerhalb des
+Standalone-Viewports sichtbaren physischen unteren Bildschirmbereich
+abzudecken.
+
+Benutzermenü, Toasts und Installationshinweis werden nicht nach unten
+verschoben und bleiben relativ zur sichtbaren Navigation positioniert.

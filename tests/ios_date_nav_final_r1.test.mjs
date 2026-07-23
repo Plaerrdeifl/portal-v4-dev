@@ -47,7 +47,7 @@ test("navigation-dependent spacing preserves browser and standalone contracts", 
 
   assert.match(
     css,
-    /\.toast-region\{\s*bottom:calc\(\s*var\(--mobile-nav-height\)\s*\+ var\(--mobile-safe-bottom\)\s*\+ 14px\s*- var\(--safe-top\)\s*\)!important;/
+    /\.toast-region\{\s*bottom:calc\(\s*var\(--mobile-nav-height\)\s*\+ var\(--mobile-safe-bottom\)\s*\+ 14px\s*\)!important;/
   );
 });
 
@@ -100,7 +100,7 @@ test("cache busting identifies the iOS date and navigation final release", async
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260723-ios-standalone-bottom-alignment-final-r1/);
-  assert.match(config, /20260723-ios-standalone-bottom-alignment-final-r1/);
-  assert.match(worker, /pd-portal-v4-ios-standalone-bottom-alignment-final-r1-20260723/);
+  assert.match(index, /20260723-ios-standalone-bottom-backdrop-final-r1/);
+  assert.match(config, /20260723-ios-standalone-bottom-backdrop-final-r1/);
+  assert.match(worker, /pd-portal-v4-ios-standalone-bottom-backdrop-final-r1-20260723/);
 });

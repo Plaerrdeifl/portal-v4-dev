@@ -191,3 +191,16 @@ und ausdrücklich abgenommen sind.
   sichtbar zu werden.
 - Toast, Installationshinweis und Benutzermenü stehen weiterhin unmittelbar
   oberhalb der Navigation.
+
+## Standalone-Unterkante ohne abgeschnittene Buttons
+
+- Browserdarstellung bleibt unverändert.
+- In der installierten PWA sind alle fünf Navigationsbuttons vollständig
+  sichtbar.
+- Die Navigation endet am sichtbaren Standalone-Viewport mit `bottom: 0`.
+- Der dunkelblaue Hintergrund reicht ohne zusätzliche Bedienelemente bis zum
+  physischen unteren Bildschirmrand.
+- Unterhalb der Navigation sind keine Buttonbögen oder abgeschnittenen Inhalte
+  sichtbar.
+- Seitennavigation, Toasts, Update-Hinweis und Benutzermenü bleiben korrekt zur
+  sichtbaren Navigation ausgerichtet.
