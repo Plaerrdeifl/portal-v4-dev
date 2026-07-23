@@ -42,5 +42,5 @@ test("Web Push dialog follows portal style and scrolls on iPhone", async () => {
     /\[data-disable-push\][\s\S]+background:#fff4f5!important/
   );
 
-  assert.match(worker, /pd-portal-v4-web-push-dialog-ui-fix1-20260723/);
+  assert.match(worker, /pd-portal-v4-web-push-badge-quiettime-fix1-20260723/);
 });

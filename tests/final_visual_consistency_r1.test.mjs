@@ -123,5 +123,5 @@ test("cache busting identifies final visual consistency R1", async () => {
 
   assert.match(index, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
   assert.match(config, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
-  assert.match(worker, /pd-portal-v4-web-push-dialog-ui-fix1-20260723/);
+  assert.match(worker, /pd-portal-v4-web-push-badge-quiettime-fix1-20260723/);
 });

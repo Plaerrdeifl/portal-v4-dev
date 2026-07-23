@@ -150,6 +150,7 @@ function render() {
     permission === "granted"
     && devices > 0
     && preferences.pushEnabled !== false;
+  const quietHoursEnabled = Boolean(preferences.quietHoursEnabled);
 
   host.innerHTML = `
     <div class="v4-push-summary">
@@ -301,7 +302,7 @@ function render() {
         >
       </label>
 
-      <div class="v4-push-quiet-grid">
+      <div class="v4-push-quiet-grid ${quietHoursEnabled ? "is-enabled" : "is-disabled"}">
         <label>Von
           <input
             type="time"
@@ -344,6 +345,28 @@ function render() {
     ?.addEventListener("click", sendTest);
   host.querySelector("#pushPreferencesForm")
     ?.addEventListener("submit", savePreferences);
+
+  const quietToggle = host.querySelector('input[name="quietHoursEnabled"]');
+  const quietStart = host.querySelector('input[name="quietStart"]');
+  const quietEnd = host.querySelector('input[name="quietEnd"]');
+  const quietGrid = host.querySelector('.v4-push-quiet-grid');
+  const syncQuietHoursInputs = () => {
+    const active = Boolean(quietToggle?.checked);
+    if (quietStart) {
+      quietStart.readOnly = !active;
+      quietStart.setAttribute('aria-disabled', String(!active));
+      quietStart.tabIndex = active ? 0 : -1;
+    }
+    if (quietEnd) {
+      quietEnd.readOnly = !active;
+      quietEnd.setAttribute('aria-disabled', String(!active));
+      quietEnd.tabIndex = active ? 0 : -1;
+    }
+    quietGrid?.classList.toggle('is-enabled', active);
+    quietGrid?.classList.toggle('is-disabled', !active);
+  };
+  quietToggle?.addEventListener("change", syncQuietHoursInputs);
+  syncQuietHoursInputs();
 }
 
 async function reload() {
@@ -526,6 +549,12 @@ window.plaerrdeiflPush = Object.freeze({
   openSettings,
   syncBadge: updateBadge
 });
+
+const __V4_PUSH_BADGE_QUIETTIME_FIX3_APPLIED__ = true;
+
+window.setTimeout(() => {
+  if (auth.current().authenticated) updateBadge();
+}, 1500);
 
 window.addEventListener("online", () => {
   if (auth.current().authenticated) updateBadge();

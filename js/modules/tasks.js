@@ -578,6 +578,7 @@ async function openNote(task) {
     task.unreadUpdateCount = 0;
     renderAll();
     render(history);
+    await window.plaerrdeiflPush?.syncBadge?.();
   } catch (error) {
     host.innerHTML = errorPanel(
       error,
