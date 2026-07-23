@@ -7,16 +7,12 @@ const root = path.resolve(import.meta.dirname, "..");
 const read = relativePath =>
   fs.readFile(path.join(root, relativePath), "utf8");
 
-test("iOS standalone avoids the black-translucent WebKit bottom offset", async () => {
+test("iOS standalone keeps viewport-fit with the restored translucent status bar", async () => {
   const index = await read("index.html");
 
   assert.match(
     index,
-    /<meta name="apple-mobile-web-app-status-bar-style" content="black">/
-  );
-  assert.doesNotMatch(
-    index,
-    /apple-mobile-web-app-status-bar-style" content="black-translucent"/
+    /<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">/
   );
   assert.match(
     index,
@@ -31,7 +27,7 @@ test("bottom navigation keeps one canonical geometry without counter-offset", as
   ]);
 
   assert.match(tokens, /--mobile-nav-height:64px/);
-  assert.match(tokens, /--mobile-safe-bottom:34px/);
+  assert.match(tokens, /--mobile-safe-bottom:0px/);
 
   assert.match(
     css,
@@ -59,10 +55,10 @@ test("cache busting identifies the final iOS standalone viewport release", async
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260723-ios-standalone-viewport-final-r1/);
-  assert.match(config, /20260723-ios-standalone-viewport-final-r1/);
+  assert.match(index, /20260723-bottom-nav-geometry-final-r2/);
+  assert.match(config, /20260723-bottom-nav-geometry-final-r2/);
   assert.match(
     worker,
-    /pd-portal-v4-ios-standalone-viewport-final-r1-20260723/
+    /pd-portal-v4-bottom-nav-geometry-final-r2-20260723/
   );
 });

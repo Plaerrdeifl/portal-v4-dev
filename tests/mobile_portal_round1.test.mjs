@@ -58,6 +58,6 @@ test("mobile portal round one follows the approved layout rules", async () => {
   assert.equal(app.includes('label: "Online"'), false);
   assert.equal(app.includes('label: "Live"'), true);
   assert.equal(app.includes('label: "Lädt …"'), true);
-  assert.equal(index.includes("20260723-ios-standalone-viewport-final-r1"), true);
-  assert.equal(worker.includes("pd-portal-v4-ios-standalone-viewport-final-r1-20260723"), true);
+  assert.equal(index.includes("20260723-bottom-nav-geometry-final-r2"), true);
+  assert.equal(worker.includes("pd-portal-v4-bottom-nav-geometry-final-r2-20260723"), true);
 });

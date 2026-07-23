@@ -189,27 +189,28 @@ ungeprüfte Systemwert darf die Navigation nicht künstlich vergrößern. Der
 Buttonbereich bleibt 64 Pixel hoch; darunter wird höchstens die tatsächlich
 benötigte iPhone-Unterkante von 34 Pixeln reserviert.
 
-## 20. Deterministische PWA-Unterkante
+## 20. Bottom-Navigation nach Darstellungsmodus
 
-Die installierte iOS-PWA verwendet für die Bottom-Navigation einen festen
-unteren Schutzraum von 34 Pixeln. Der Systemwert
-`env(safe-area-inset-bottom)` darf für diese Komponente nicht direkt oder
-verschachtelt ausgewertet werden, weil iOS in einzelnen
-Standalone-Viewport-Konstellationen einen deutlich zu großen Wert liefern
-kann.
+Die mobile Bottom-Navigation besitzt einen 64 Pixel hohen Buttonbereich.
 
-Der Navigationsbereich besteht damit verbindlich aus 64 Pixeln Buttonbereich
-und 34 Pixeln geschützter Unterkante. Alle von der Navigation abhängigen
-Abstände verwenden denselben globalen Token.
+Im normalen Browser wird kein zusätzlicher unterer Navigationsraum reserviert.
+Der globale Token `--mobile-safe-bottom` beträgt dort 0 Pixel.
+
+Nur in der installierten Standalone-PWA wird derselbe Token innerhalb der
+bestehenden `display-mode: standalone`-Regel auf 10 Pixel gesetzt. Dadurch
+bleibt ein kleiner Abstand zur iPhone-Gestenzone erhalten, ohne die
+Navigationsbuttons sichtbar nach oben zu verschieben.
+
+Alle von der Bottom-Navigation abhängigen Inhalts-, Menü-, Toast- und
+Scrollabstände verwenden weiterhin denselben Token.
 
 ## 21. iOS-Standalone-Viewport
 
-Die installierte iOS-PWA verwendet den Statusbarmodus `black`. Der Modus
-`black-translucent` ist für das Portal nicht zulässig, weil WebKit in
-Verbindung mit `viewport-fit=cover` und `display: standalone` fest am unteren
-Bildschirmrand positionierte Elemente um die obere Safe Area nach oben
-versetzen kann.
+Die PWA behält `viewport-fit=cover` und den Statusbarmodus
+`black-translucent`. Die Footerposition wird nicht über den Statusbarmodus
+korrigiert, sondern ausschließlich über die gemeinsame
+Bottom-Navigationsgeometrie.
 
-Die Bottom-Navigation bleibt bei `bottom: 0` und erhält keinen negativen
-Gegenversatz. Ihr Layout besteht weiterhin aus dem 64 Pixel hohen
-Buttonbereich und der kontrollierten 34 Pixel hohen iPhone-Unterkante.
+Negative Gegenversätze, Transformationen oder gerätespezifische
+Korrekturlayer sind unzulässig.
+

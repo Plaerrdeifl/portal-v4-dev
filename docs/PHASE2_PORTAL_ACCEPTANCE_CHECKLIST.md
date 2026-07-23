@@ -159,25 +159,22 @@ und ausdrücklich abgenommen sind.
 - Konto anlegen und Umbuchung: Datumsfelder bleiben vollständig innerhalb ihrer
   jeweiligen Rasterspalte.
 
-## PWA-Bottom-Navigation – endgültige Sichtprüfung
+## Bottom-Navigation – finale Geometrieprüfung
 
-- Installierte PWA vollständig schließen und erneut öffnen.
-- Dashboard öffnen: Die fünf Navigationsbuttons sitzen direkt oberhalb der
-  normalen iPhone-Unterkante.
-- Unter den Buttons bleibt nur ein schmaler Schutzraum für den Home Indicator,
-  keine große dunkelblaue Leerfläche.
-- Fanclub, Aufgaben, Teams und Mehr öffnen: Position und Gesamthöhe bleiben
-  identisch.
-- Seitennavigation öffnen: Die Bottom-Navigation bleibt am tatsächlichen
-  Bildschirmende und wird nicht nach oben verschoben.
+- Im mobilen Browser endet die Navigation direkt nach dem 64 Pixel hohen
+  Buttonbereich.
+- In der installierten PWA bleiben unter dem Buttonbereich nur 10 Pixel.
+- Die Buttons sitzen dadurch deutlich näher am tatsächlichen Bildschirmende.
+- Dashboard, Fanclub, Aufgaben, Teams und Mehr besitzen dieselbe Position.
+- Die geöffnete Seitennavigation darf hinter dem festen Footer weiterlaufen,
+  darf dessen Höhe aber nicht verändern.
 
-## iOS-Standalone-Viewport – endgültige Prüfung
+## iOS-Standalone-Viewport – Abschlussprüfung
 
-- GitHub-Pages-Bereitstellung für den neuen Commit vollständig abschließen.
-- Installierte PWA aus dem App-Umschalter entfernen und erneut öffnen.
-- Dashboard prüfen: Unter der Bottom-Navigation ist kein zusätzlicher
-  dunkelblauer Bereich sichtbar.
-- Seitennavigation öffnen: Sie darf hinter der Button-Navigation liegen, aber
-  unter deren tatsächlichem Ende darf kein weiterer Portalhintergrund stehen.
-- Dashboard, Fanclub, Aufgaben, Teams und Mehr besitzen dieselbe Footerposition.
-- Die Statusleiste bleibt dunkel und die Symbole bleiben gut lesbar.
+- GitHub-Pages-Bereitstellung für den neuen Commit muss grün sein.
+- PWA vollständig aus dem App-Umschalter entfernen und erneut öffnen.
+- Browser und PWA getrennt prüfen.
+- Browser: kein künstlicher Unterraum.
+- PWA: lediglich 10 Pixel Abstand unter den Navigationsbuttons.
+- Kein CSS-Gegenversatz und keine Veränderung der 64-Pixel-Buttonhöhe.
+

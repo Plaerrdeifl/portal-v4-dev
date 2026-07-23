@@ -15,7 +15,7 @@ test("standalone navigation uses one deterministic iPhone bottom inset", async (
 
   assert.match(
     tokens,
-    /--mobile-safe-bottom:34px/
+    /--mobile-safe-bottom:0px/
   );
   assert.match(
     css,
@@ -96,7 +96,7 @@ test("cache busting identifies the iOS date and navigation final release", async
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260723-ios-standalone-viewport-final-r1/);
-  assert.match(config, /20260723-ios-standalone-viewport-final-r1/);
-  assert.match(worker, /pd-portal-v4-ios-standalone-viewport-final-r1-20260723/);
+  assert.match(index, /20260723-bottom-nav-geometry-final-r2/);
+  assert.match(config, /20260723-bottom-nav-geometry-final-r2/);
+  assert.match(worker, /pd-portal-v4-bottom-nav-geometry-final-r2-20260723/);
 });
