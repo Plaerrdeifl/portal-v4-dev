@@ -29,6 +29,7 @@ const PRIORITIES = [
 const STATUSES = [
   { value: "OPEN", label: "Offen" },
   { value: "IN_PROGRESS", label: "In Bearbeitung" },
+  { value: "WAITING", label: "Wartet" },
   { value: "DONE", label: "Erledigt" },
   { value: "ARCHIVED", label: "Archiviert" }
 ];
@@ -82,6 +83,23 @@ function taskForm(task = {}) {
     );
   const defaultTeamId = task.teamId || "";
   const candidates = assignmentCandidates(defaultContext, defaultTeamId);
+  const assignmentField = task.id
+    ? `<input type="hidden" name="assignedUserId" value="${escapeAttr(task.assignedUserId || "")}">
+      <input type="hidden" name="assignmentReason" value="${escapeAttr(task.assignmentReason || "")}">
+      <div class="v4-task-assignment-readonly">
+        <span>Zuständigkeit</span>
+        <strong>${escapeHtml(task.assignedName || "Noch offen")}</strong>
+        <small>Änderungen erfolgen nachvollziehbar über „Aufgabe übertragen“.</small>
+      </div>`
+    : `<label>Zuweisung
+      <select name="assignedUserId" id="taskAssignedUserSelect">
+        ${optionList(
+          candidates.map(user => ({ value: user.id, label: userLabel(user) })),
+          task.assignedUserId || "",
+          "Noch nicht zugewiesen"
+        )}
+      </select>
+    </label>`;
 
   return `<form class="form-grid" id="taskEditForm">
     <input type="hidden" name="id" value="${escapeAttr(task.id || "")}">
@@ -109,19 +127,11 @@ function taskForm(task = {}) {
         ${optionList(PRIORITIES, task.priority || "NORMAL")}
       </select>
     </label>
-    <label>Zuweisung
-      <select name="assignedUserId" id="taskAssignedUserSelect">
-        ${optionList(
-          candidates.map(user => ({ value: user.id, label: userLabel(user) })),
-          task.assignedUserId || "",
-          "Noch nicht zugewiesen"
-        )}
-      </select>
-    </label>
+    ${assignmentField}
     <label class="full">Beschreibung
       <textarea name="description" rows="5" maxlength="4000">${escapeHtml(task.description || "")}</textarea>
     </label>
-    <label class="full v4-assignment-reason" id="taskAssignmentReasonLabel" hidden>
+    ${task.id ? "" : `<label class="full v4-assignment-reason" id="taskAssignmentReasonLabel" hidden>
       Begründung der externen Zuweisung
       <textarea
         name="assignmentReason"
@@ -130,7 +140,7 @@ function taskForm(task = {}) {
         maxlength="1000"
       >${escapeHtml(task.assignmentReason || "")}</textarea>
       <small>Erforderlich, wenn eine Vorstandsaufgabe an einen Nicht-Amtsinhaber vergeben wird.</small>
-    </label>
+    </label>`}
   </form>`;
 }
 
@@ -233,7 +243,16 @@ async function openNote(task) {
       TASK_REOPENED: "Aufgabe wieder geöffnet",
       TASK_ARCHIVED: "Aufgabe archiviert",
       TASK_RESTORED: "Aufgabe wiederhergestellt",
-      TASK_DELETED: "Aufgabe gelöscht"
+      TASK_DELETED: "Aufgabe gelöscht",
+      WAITING_STARTED: "Wartephase begonnen",
+      WAITING_UPDATED: "Warteangaben geändert",
+      WAITING_ENDED: "Wartephase beendet",
+      TRANSFER_REQUESTED: "Übertragung angefragt",
+      TRANSFER_ACCEPTED: "Aufgabe übernommen",
+      TRANSFER_REJECTED: "Übertragung abgelehnt",
+      TRANSFER_CANCELLED: "Übertragung zurückgezogen",
+      TRANSFER_IMMEDIATE: "Aufgabe sofort übertragen",
+      TRANSFER_EXPIRED: "Übertragung abgelaufen"
     };
 
     return labels[entry.entryType] || "Verlauf";
@@ -556,6 +575,8 @@ async function openNote(task) {
       operation: "LIST",
       taskId: task.id
     });
+    task.unreadUpdateCount = 0;
+    renderAll();
     render(history);
   } catch (error) {
     host.innerHTML = errorPanel(
@@ -564,6 +585,163 @@ async function openNote(task) {
     );
   }
 }
+function toIsoOrNull(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return "";
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Datum oder Uhrzeit ist ungültig.");
+  }
+  return date.toISOString();
+}
+
+function transferCandidates(task) {
+  const users = snapshot?.transferUsers || [];
+  const currentId = task.assignedUserId || "";
+
+  return users.filter(user => {
+    if (user.id === currentId) return false;
+    if (task.context === "TEAM") {
+      return (user.teamIds || []).includes(task.teamId);
+    }
+    if (snapshot?.canCreateBoard || snapshot?.canManageAll) return true;
+    return Boolean(user.isOfficeHolder);
+  });
+}
+
+function openWaitingStatus(task, edit = false) {
+  const deadlineValue = task.waitingDeadline
+    ? new Date(task.waitingDeadline).toISOString().slice(0, 16)
+    : "";
+
+  openDialog({
+    title: edit ? "Warteangaben bearbeiten" : "Auf Wartet setzen",
+    kicker: task.title,
+    submitLabel: edit ? "Warteangaben speichern" : "Status auf Wartet setzen",
+    body: `<form class="form-grid v4-smart-form">
+      <label class="full">Worauf wird gewartet?
+        <textarea name="waitingReason" rows="3" maxlength="1000" required>${escapeHtml(task.waitingReason || "")}</textarea>
+      </label>
+      <label class="full">Wartefrist (optional)
+        <input type="datetime-local" name="waitingDeadline" value="${escapeAttr(deadlineValue)}">
+      </label>
+    </form>`,
+    onSubmit: async values => {
+      snapshot = await runWrite(
+        () => call("set_task_status", {
+          id: task.id,
+          revision: task.revision,
+          status: "WAITING",
+          waitingReason: values.waitingReason,
+          waitingDeadline: toIsoOrNull(values.waitingDeadline)
+        }),
+        edit ? "Warteangaben wurden aktualisiert." : "Aufgabe wartet jetzt auf Rückmeldung."
+      );
+      renderAll();
+    }
+  });
+}
+
+function openTransfer(task, immediate = false) {
+  const candidates = transferCandidates(task);
+
+  if (!candidates.length) {
+    showToast("Für diese Aufgabe ist keine zulässige Zielperson verfügbar.", "error");
+    return;
+  }
+
+  openDialog({
+    title: immediate ? "Aufgabe sofort übertragen" : "Aufgabe übertragen",
+    kicker: task.title,
+    submitLabel: immediate ? "Sofort übertragen" : "Übertragung anfragen",
+    danger: immediate,
+    body: `<form class="form-grid v4-smart-form">
+      <label class="full">Neue verantwortliche Person
+        <select name="targetUserId" required>
+          ${optionList(
+            candidates.map(user => ({ value: user.id, label: user.name })),
+            "",
+            "Person auswählen"
+          )}
+        </select>
+      </label>
+      <label class="full">Grund der Übertragung
+        <textarea name="reason" rows="3" maxlength="1000" required></textarea>
+      </label>
+      <label class="full">Übergabeinformation (optional)
+        <textarea name="handoverNote" rows="3" maxlength="4000"></textarea>
+      </label>
+      ${immediate ? "" : `<label class="full">Annahmefrist (optional)
+        <input type="datetime-local" name="expiresAt">
+      </label>`}
+    </form>`,
+    onSubmit: async values => {
+      snapshot = await runWrite(
+        () => call("task_transfer", {
+          operation: immediate ? "IMMEDIATE" : "REQUEST",
+          taskId: task.id,
+          taskRevision: task.revision,
+          targetUserId: values.targetUserId,
+          reason: values.reason,
+          handoverNote: values.handoverNote,
+          expiresAt: immediate ? "" : toIsoOrNull(values.expiresAt)
+        }),
+        immediate
+          ? "Aufgabe wurde nachvollziehbar übertragen."
+          : "Übertragung wurde angefragt."
+      );
+      renderAll();
+    }
+  });
+}
+
+async function acceptTransfer(task) {
+  const transfer = task.pendingTransfer;
+  if (!transfer) return;
+
+  snapshot = await runWrite(
+    () => call("task_transfer", {
+      operation: "ACCEPT",
+      transferId: transfer.id,
+      transferRevision: transfer.revision
+    }),
+    "Aufgabe wurde übernommen."
+  );
+  renderAll();
+}
+
+function openTransferResponse(task, operation) {
+  const transfer = task.pendingTransfer;
+  if (!transfer) return;
+  const rejecting = operation === "REJECT";
+
+  openDialog({
+    title: rejecting ? "Übertragung ablehnen" : "Übertragung zurückziehen",
+    kicker: task.title,
+    danger: true,
+    submitLabel: rejecting ? "Ablehnen" : "Zurückziehen",
+    body: `<form>
+      <label>Begründung
+        <textarea name="responseReason" rows="3" maxlength="1000" required></textarea>
+      </label>
+    </form>`,
+    onSubmit: async values => {
+      snapshot = await runWrite(
+        () => call("task_transfer", {
+          operation,
+          transferId: transfer.id,
+          transferRevision: transfer.revision,
+          responseReason: values.responseReason
+        }),
+        rejecting
+          ? "Übertragung wurde abgelehnt."
+          : "Übertragung wurde zurückgezogen."
+      );
+      renderAll();
+    }
+  });
+}
+
 async function setStatus(task, status) {
   snapshot = await runWrite(
     () => call("set_task_status", {
@@ -687,7 +865,8 @@ function statusOptions(task) {
     return task.canChangeStatus
       ? [
           { value: "OPEN", label: "Offen" },
-          { value: "IN_PROGRESS", label: "In Bearbeitung" }
+          { value: "IN_PROGRESS", label: "In Bearbeitung" },
+          { value: "WAITING", label: "Wartet" }
         ]
       : [{ value: "OPEN", label: "Offen" }];
   }
@@ -696,9 +875,21 @@ function statusOptions(task) {
     return task.canChangeStatus
       ? [
           { value: "IN_PROGRESS", label: "In Bearbeitung" },
+          { value: "WAITING", label: "Wartet" },
           { value: "DONE", label: "Erledigt" }
         ]
       : [{ value: "IN_PROGRESS", label: "In Bearbeitung" }];
+  }
+
+  if (task.status === "WAITING") {
+    return task.canChangeStatus
+      ? [
+          { value: "WAITING", label: "Wartet" },
+          { value: "IN_PROGRESS", label: "In Bearbeitung" },
+          { value: "OPEN", label: "Offen" },
+          { value: "DONE", label: "Erledigt" }
+        ]
+      : [{ value: "WAITING", label: "Wartet" }];
   }
 
   if (task.status === "DONE") {
@@ -733,20 +924,160 @@ function statusSelect(task) {
 }
 
 function taskListRow(task) {
-  return `<button class="v4-task-list-row" type="button" data-open-task="${escapeAttr(task.id)}" data-priority="${escapeAttr(task.priority)}" data-status="${escapeAttr(task.status)}"><span class="v4-task-list-copy"><small>${escapeHtml(task.context==="BOARD"?"Vorstand":task.teamName||"Team")}</small><strong>${escapeHtml(task.title)}</strong><span>${escapeHtml(task.assignedName||"Noch offen")} · ${escapeHtml(label(STATUSES,task.status))}</span></span><span class="v4-task-list-end">${statusBadge(label(PRIORITIES,task.priority))}<span class="v4-row-chevron" aria-hidden="true">›</span></span></button>`;
+  const meta = [];
+  const unread = Number(task.unreadUpdateCount || 0);
+
+  if (task.status === "WAITING") {
+    meta.push(`Wartet seit ${fmtDateTime(task.waitingStartedAt)}`);
+    if (task.waitingDeadline) {
+      const overdue = new Date(task.waitingDeadline).getTime() < Date.now();
+      meta.push(`${overdue ? "Wartefrist überschritten" : "Frist"}: ${fmtDateTime(task.waitingDeadline)}`);
+    }
+  } else if (task.latestUpdateAt) {
+    meta.push(`Stand: ${fmtDateTime(task.latestUpdateAt)}`);
+  }
+
+  if (task.pendingTransfer) {
+    meta.push(`Übertragung an ${task.pendingTransfer.toName} ausstehend`);
+  }
+
+  return `<button
+    class="v4-task-list-row ${unread ? "has-unread" : ""} ${task.status === "WAITING" ? "is-waiting" : ""}"
+    type="button"
+    data-open-task="${escapeAttr(task.id)}"
+    data-priority="${escapeAttr(task.priority)}"
+    data-status="${escapeAttr(task.status)}"
+  >
+    <span class="v4-task-list-copy">
+      <small>${escapeHtml(task.context === "BOARD" ? "Vorstand" : task.teamName || "Team")}</small>
+      <strong>${escapeHtml(task.title)}</strong>
+      <span>${escapeHtml(task.assignedName || "Noch offen")} · ${escapeHtml(label(STATUSES, task.status))}</span>
+      ${meta.length ? `<span class="v4-task-list-meta">${escapeHtml(meta.join(" · "))}</span>` : ""}
+    </span>
+    <span class="v4-task-list-end">
+      ${unread ? `<span class="v4-task-unread-badge">${unread} neu</span>` : ""}
+      ${statusBadge(label(PRIORITIES, task.priority))}
+      <span class="v4-row-chevron" aria-hidden="true">›</span>
+    </span>
+  </button>`;
 }
+
 function taskDetailMarkup(task) {
-  const archivedInfo=task.status==="ARCHIVED"?`<div class="notice"><strong>Archiviert</strong><br>${escapeHtml(fmtDateTime(task.archivedAt))}${task.archivedByName?` · ${escapeHtml(task.archivedByName)}`:""}</div>`:"";
-  return `<div class="v4-detail-grid v4-task-detail-grid"><div><span>Bereich</span><strong>${escapeHtml(task.context==="BOARD"?"Vorstand":task.teamName||"Team")}</strong></div><div><span>Priorität</span><strong>${escapeHtml(label(PRIORITIES,task.priority))}</strong></div><div><span>Status</span><strong>${escapeHtml(label(STATUSES,task.status))}</strong></div><div><span>Zugewiesen</span><strong>${escapeHtml(task.assignedName||"Noch offen")}</strong></div><div class="v4-detail-wide"><span>Beschreibung</span><strong class="v4-preserve-lines">${escapeHtml(task.description||"–")}</strong></div><div><span>Erstellt von</span><strong>${escapeHtml(task.createdByName||"–")}</strong></div><div><span>Aktualisiert</span><strong>${escapeHtml(fmtDateTime(task.updatedAt))}</strong></div>${task.assignmentReason?`<div class="v4-detail-wide"><span>Zuweisungsbegründung</span><strong class="v4-preserve-lines">${escapeHtml(task.assignmentReason)}</strong></div>`:""}${task.ownNote?`<div class="v4-detail-wide"><span>Meine Notiz</span><strong class="v4-preserve-lines">${escapeHtml(task.ownNote)}</strong></div>`:""}</div>${archivedInfo}<div class="dialog-actions v4-detail-actions v4-task-detail-actions">${statusSelect(task)}${task.canRestore?`<button class="button primary" type="button" data-restore-task="${escapeAttr(task.id)}">Wiederherstellen</button>`:""}${task.canDeletePermanently?`<button class="button danger" type="button" data-delete-archived-task="${escapeAttr(task.id)}">Endgültig löschen</button>`:""}${task.status!=="ARCHIVED"?`<button class="button secondary" type="button" data-task-note="${escapeAttr(task.id)}">Verlauf</button>`:""}${task.canManage?`<button class="button secondary" type="button" data-edit-task="${escapeAttr(task.id)}">Bearbeiten</button>`:""}${task.canArchive?`<button class="button danger" type="button" data-archive-task="${escapeAttr(task.id)}">Archivieren</button>`:""}</div>`;
+  const archivedInfo = task.status === "ARCHIVED"
+    ? `<div class="notice"><strong>Archiviert</strong><br>${escapeHtml(fmtDateTime(task.archivedAt))}${task.archivedByName ? ` · ${escapeHtml(task.archivedByName)}` : ""}</div>`
+    : "";
+  const waitingInfo = task.status === "WAITING"
+    ? `<div class="notice warning v4-task-waiting-notice">
+      <strong>Wartet auf: ${escapeHtml(task.waitingReason)}</strong>
+      <p>Seit ${escapeHtml(fmtDateTime(task.waitingStartedAt))}${task.waitingStartedByName ? ` · ${escapeHtml(task.waitingStartedByName)}` : ""}</p>
+      ${task.waitingDeadline ? `<p>${new Date(task.waitingDeadline).getTime() < Date.now() ? "Wartefrist überschritten" : "Frist"}: ${escapeHtml(fmtDateTime(task.waitingDeadline))}</p>` : ""}
+    </div>`
+    : "";
+  const transfer = task.pendingTransfer;
+  const transferInfo = transfer
+    ? `<div class="notice v4-task-transfer-notice">
+      <strong>Übertragung ausstehend</strong>
+      <p>${escapeHtml(transfer.fromName || "Noch offen")} → ${escapeHtml(transfer.toName)}</p>
+      <p>Angefragt von ${escapeHtml(transfer.requestedByName)} · ${escapeHtml(fmtDateTime(transfer.requestedAt))}</p>
+      <p>Grund: ${escapeHtml(transfer.reason)}</p>
+      ${transfer.handoverNote ? `<p>Übergabe: ${escapeHtml(transfer.handoverNote)}</p>` : ""}
+      ${transfer.expiresAt ? `<p>Annahmefrist: ${escapeHtml(fmtDateTime(transfer.expiresAt))}</p>` : ""}
+    </div>`
+    : "";
+
+  return `<div class="v4-detail-grid v4-task-detail-grid">
+    <div><span>Bereich</span><strong>${escapeHtml(task.context === "BOARD" ? "Vorstand" : task.teamName || "Team")}</strong></div>
+    <div><span>Priorität</span><strong>${escapeHtml(label(PRIORITIES, task.priority))}</strong></div>
+    <div><span>Status</span><strong>${escapeHtml(label(STATUSES, task.status))}</strong></div>
+    <div><span>Zugewiesen</span><strong>${escapeHtml(task.assignedName || "Noch offen")}</strong></div>
+    <div><span>Status geändert</span><strong>${escapeHtml(fmtDateTime(task.statusChangedAt))}</strong></div>
+    <div><span>Geändert von</span><strong>${escapeHtml(task.statusChangedByName || "–")}</strong></div>
+    <div class="v4-detail-wide"><span>Beschreibung</span><strong class="v4-preserve-lines">${escapeHtml(task.description || "–")}</strong></div>
+    <div><span>Erstellt von</span><strong>${escapeHtml(task.createdByName || "–")}</strong></div>
+    <div><span>Letzter Stand</span><strong>${escapeHtml(fmtDateTime(task.latestUpdateAt || task.updatedAt))}</strong></div>
+    ${task.assignmentReason ? `<div class="v4-detail-wide"><span>Zuweisungsbegründung</span><strong class="v4-preserve-lines">${escapeHtml(task.assignmentReason)}</strong></div>` : ""}
+  </div>
+  ${waitingInfo}
+  ${transferInfo}
+  ${archivedInfo}
+  <div class="dialog-actions v4-detail-actions v4-task-detail-actions">
+    ${statusSelect(task)}
+    ${task.status === "WAITING" && task.canChangeStatus ? `<button class="button secondary" type="button" data-edit-waiting="${escapeAttr(task.id)}">Warten bearbeiten</button>` : ""}
+    ${transfer && task.canRespondTransfer ? `<button class="button primary" type="button" data-accept-transfer="${escapeAttr(task.id)}">Übernehmen</button><button class="button danger" type="button" data-reject-transfer="${escapeAttr(task.id)}">Ablehnen</button>` : ""}
+    ${transfer && task.canCancelTransfer ? `<button class="button secondary" type="button" data-cancel-transfer="${escapeAttr(task.id)}">Übertragung zurückziehen</button>` : ""}
+    ${!transfer && task.canTransfer ? `<button class="button secondary" type="button" data-request-transfer="${escapeAttr(task.id)}">Aufgabe übertragen</button>` : ""}
+    ${!transfer && task.canImmediateTransfer ? `<button class="button secondary" type="button" data-immediate-transfer="${escapeAttr(task.id)}">Sofort übertragen</button>` : ""}
+    ${task.canRestore ? `<button class="button primary" type="button" data-restore-task="${escapeAttr(task.id)}">Wiederherstellen</button>` : ""}
+    ${task.canDeletePermanently ? `<button class="button danger" type="button" data-delete-archived-task="${escapeAttr(task.id)}">Endgültig löschen</button>` : ""}
+    ${task.status !== "ARCHIVED" ? `<button class="button secondary" type="button" data-task-note="${escapeAttr(task.id)}">Verlauf</button>` : ""}
+    ${task.canManage ? `<button class="button secondary" type="button" data-edit-task="${escapeAttr(task.id)}">Bearbeiten</button>` : ""}
+    ${task.canArchive ? `<button class="button danger" type="button" data-archive-task="${escapeAttr(task.id)}">Archivieren</button>` : ""}
+  </div>`;
 }
+
 function openTaskDetails(task) {
-  const dialog=openDialog({title:task.title,kicker:"Aufgabe",body:taskDetailMarkup(task)});
-  dialog.querySelector("[data-edit-task]")?.addEventListener("click",()=>openTask(task));
-  dialog.querySelector("[data-task-note]")?.addEventListener("click",()=>openNote(task));
-  dialog.querySelector("[data-task-status]")?.addEventListener("change",async event=>{const select=event.currentTarget,previous=task.status;if(select.value===previous)return;select.disabled=true;try{await setStatus(task,select.value);dialog.close();}catch(error){select.value=previous;select.disabled=false;throw error;}});
-  dialog.querySelector("[data-archive-task]")?.addEventListener("click",async event=>{event.currentTarget.disabled=true;await archiveTask(task);dialog.close();});
-  dialog.querySelector("[data-restore-task]")?.addEventListener("click",async event=>{event.currentTarget.disabled=true;await restoreTask(task);dialog.close();});
-  dialog.querySelector("[data-delete-archived-task]")?.addEventListener("click",()=>openPermanentDelete(task));
+  const dialog = openDialog({
+    title: task.title,
+    kicker: "Aufgabe",
+    body: taskDetailMarkup(task)
+  });
+
+  dialog.querySelector("[data-edit-task]")
+    ?.addEventListener("click", () => openTask(task));
+  dialog.querySelector("[data-task-note]")
+    ?.addEventListener("click", () => openNote(task));
+  dialog.querySelector("[data-edit-waiting]")
+    ?.addEventListener("click", () => openWaitingStatus(task, true));
+  dialog.querySelector("[data-request-transfer]")
+    ?.addEventListener("click", () => openTransfer(task, false));
+  dialog.querySelector("[data-immediate-transfer]")
+    ?.addEventListener("click", () => openTransfer(task, true));
+  dialog.querySelector("[data-accept-transfer]")
+    ?.addEventListener("click", async () => {
+      await acceptTransfer(task);
+      dialog.close();
+    });
+  dialog.querySelector("[data-reject-transfer]")
+    ?.addEventListener("click", () => openTransferResponse(task, "REJECT"));
+  dialog.querySelector("[data-cancel-transfer]")
+    ?.addEventListener("click", () => openTransferResponse(task, "CANCEL"));
+
+  dialog.querySelector("[data-task-status]")
+    ?.addEventListener("change", async event => {
+      const select = event.currentTarget;
+      const previous = task.status;
+      if (select.value === previous) return;
+
+      if (select.value === "WAITING") {
+        openWaitingStatus(task, false);
+        return;
+      }
+
+      select.disabled = true;
+      try {
+        await setStatus(task, select.value);
+        dialog.close();
+      } catch (error) {
+        select.value = previous;
+        select.disabled = false;
+        throw error;
+      }
+    });
+
+  dialog.querySelector("[data-archive-task]")
+    ?.addEventListener("click", async event => {
+      event.currentTarget.disabled = true;
+      await archiveTask(task);
+      dialog.close();
+    });
+  dialog.querySelector("[data-restore-task]")
+    ?.addEventListener("click", async event => {
+      event.currentTarget.disabled = true;
+      await restoreTask(task);
+      dialog.close();
+    });
+  dialog.querySelector("[data-delete-archived-task]")
+    ?.addEventListener("click", () => openPermanentDelete(task));
 }
 
 function filterCount(key) {
@@ -850,6 +1181,11 @@ export async function hydrateTasks(context = {}) {
     snapshot = await call("tasks_snapshot");
     if (context.isCurrent && !context.isCurrent()) return;
     renderAll();
+    const requestedTaskId = params.get("taskId");
+    if (requestedTaskId) {
+      const requestedTask = (snapshot?.tasks || []).find(task => task.id === requestedTaskId);
+      if (requestedTask) openTaskDetails(requestedTask);
+    }
   } catch (error) {
     panel.innerHTML = errorPanel(error);
     const status = document.getElementById("tasksStatus");

@@ -3098,3 +3098,66 @@ html[data-portal-area="portal"] .v4-toolbar p{
     width:100%;
   }
 }
+
+/* V4 TASK WORKFLOW R2 CORE */
+.v4-task-assignment-readonly{
+  display:grid;
+  gap:4px;
+  align-content:center;
+  min-height:68px;
+  padding:11px 13px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--surface-soft);
+}
+.v4-task-assignment-readonly span,
+.v4-task-assignment-readonly small{
+  color:var(--ink-500);
+  font-size:.76rem;
+}
+.v4-task-list-row.has-unread{
+  border-color:rgba(22,137,255,.45)!important;
+  box-shadow:0 6px 18px rgba(22,137,255,.09)!important;
+}
+.v4-task-list-row.is-waiting{
+  border-left:4px solid #d39500!important;
+}
+.v4-task-list-meta{
+  color:var(--ink-500)!important;
+  font-size:.74rem!important;
+  line-height:1.35!important;
+}
+.v4-task-unread-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:25px;
+  padding:4px 8px;
+  border-radius:999px;
+  background:#126fd0;
+  color:#fff;
+  font-size:.72rem;
+  font-weight:900;
+  white-space:nowrap;
+}
+.v4-task-waiting-notice,
+.v4-task-transfer-notice{
+  margin-top:12px;
+}
+.v4-task-waiting-notice p,
+.v4-task-transfer-notice p{
+  margin:5px 0 0;
+}
+@media(max-width:640px){
+  .v4-task-list-end{
+    align-items:flex-end!important;
+    flex-direction:column!important;
+  }
+  .v4-task-detail-actions{
+    grid-template-columns:1fr!important;
+  }
+  .v4-task-detail-actions .button,
+  .v4-task-detail-actions .v4-task-status-control{
+    width:100%!important;
+  }
+}

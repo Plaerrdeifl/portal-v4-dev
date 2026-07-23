@@ -50,7 +50,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260722190000_finalize_portal_phase2_acceptance.sql",
     "20260722213000_compact_workflows_and_account_retirement.sql",
     "20260722220000_fix_account_retirement_snapshot_actor.sql",
-    "20260723162000_add_task_history.sql"
+    "20260723162000_add_task_history.sql",
+    "20260723190000_add_task_workflow_r2_core.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
@@ -322,7 +323,7 @@ test("task workflow remains revision-safe and archived without hard delete", asy
     assert.match(tasks, /operation: "HIDE"/);
     assert.match(tasks, /30 Minuten lang korrigiert/);
     assert.doesNotMatch(tasks, /ownNoteRevision/);
-  assert.doesNotMatch(tasks, /WAITING|Warten/);
+  assert.match(tasks, /value: "WAITING"[\s\S]{0,80}label: "Wartet"/);
   assert.doesNotMatch(common, /"WAITING"/);
 });
 
