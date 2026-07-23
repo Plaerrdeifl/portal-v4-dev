@@ -20,10 +20,7 @@ test("browser and standalone keep visible footer controls at bottom zero", async
     /@media\(display-mode:standalone\) and \(max-width:860px\)\{[\s\S]*?html\[data-portal-area="portal"\] \.mobile-bottom-nav\{\s*bottom:0!important;/
   );
 
-  assert.match(
-    css,
-    /html\[data-portal-area="portal"\] \.mobile-bottom-nav::after\{[\s\S]*height:var\(--safe-top\);/
-  );
+  assert.doesNotMatch(css, /\.mobile-bottom-nav::after/);
 });
 
 test("standalone fixed surfaces stay above the visible footer", async () => {
@@ -50,7 +47,7 @@ test("standalone fixed surfaces stay above the visible footer", async () => {
   );
 });
 
-test("standalone footer height and button geometry remain unchanged", async () => {
+test("standalone footer uses measured safe-bottom geometry", async () => {
   const [tokens, css] = await Promise.all([
     read("css/tokens.css"),
     read("css/app.css")
@@ -58,7 +55,7 @@ test("standalone footer height and button geometry remain unchanged", async () =
 
   assert.match(tokens, /--mobile-nav-height:64px/);
   assert.match(tokens, /--mobile-safe-bottom:0px/);
-  assert.match(css, /--mobile-safe-bottom:10px/);
+  assert.match(css, /--mobile-safe-bottom:var\(--safe-bottom\)/);
   assert.match(css, /min-height:56px;\s*height:56px;/);
   assert.match(
     css,
@@ -66,23 +63,17 @@ test("standalone footer height and button geometry remain unchanged", async () =
   );
 });
 
-test("cache busting identifies final iOS standalone bottom alignment", async () => {
+test("cache busting identifies final opaque iOS bottom alignment", async () => {
   const [index, config, worker] = await Promise.all([
     read("index.html"),
     read("js/config.js"),
     read("service-worker.js")
   ]);
 
-  assert.match(
-    index,
-    /20260723-ios-standalone-geometry-diagnostic-r1/
-  );
-  assert.match(
-    config,
-    /20260723-ios-standalone-geometry-diagnostic-r1/
-  );
+  assert.match(index, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
+  assert.match(config, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
   assert.match(
     worker,
-    /pd-portal-v4-ios-standalone-geometry-diagnostic-r1-20260723/
+    /pd-portal-v4-ios-opaque-statusbar-bottomnav-final-r1-20260723/
   );
 });

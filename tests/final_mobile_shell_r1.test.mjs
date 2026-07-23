@@ -105,18 +105,19 @@ test("standalone PWA uses the full dynamic viewport", async () => {
   );
   assert.match(
     css,
-    /html\[data-portal-area="portal"\] \.mobile-bottom-nav::after\{[\s\S]*height:var\(--safe-top\);/
+    /--mobile-safe-bottom:var\(--safe-bottom\)/
   );
+  assert.doesNotMatch(css, /\.mobile-bottom-nav::after/);
 });
 
-test("cache busting identifies final mobile shell R1", async () => {
+test("cache busting identifies final opaque mobile shell", async () => {
   const [index, config, worker] = await Promise.all([
     read("index.html"),
     read("js/config.js"),
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260723-ios-standalone-geometry-diagnostic-r1/);
-  assert.match(config, /20260723-ios-standalone-geometry-diagnostic-r1/);
-  assert.match(worker, /pd-portal-v4-ios-standalone-geometry-diagnostic-r1-20260723/);
+  assert.match(index, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
+  assert.match(config, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
+  assert.match(worker, /pd-portal-v4-ios-opaque-statusbar-bottomnav-final-r1-20260723/);
 });

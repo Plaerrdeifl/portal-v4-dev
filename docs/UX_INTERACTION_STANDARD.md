@@ -260,3 +260,22 @@ abdecken.
 
 Der Streifen bleibt nicht interaktiv. Er darf keine Navigationsbuttons oder
 sonstige Bedienelemente enthalten.
+
+## 25. Gemessener iOS-26-Standalone-Viewport
+
+Die Laufzeitmessung auf dem betroffenen iPhone ergab `screen.height = 852`,
+`innerHeight = 793`, `safe-area-inset-top = 59` und
+`safe-area-inset-bottom = 34`. Unter `black-translucent` endete die gesamte
+Web-Ebene damit exakt 59 CSS-Pixel vor dem physischen unteren Bildschirmrand.
+
+Der Bereich außerhalb von `innerHeight` ist systemseitig und kann nicht durch
+`position: fixed`, negative `bottom`-Werte oder Pseudo-Elemente erreicht
+werden. Solche Ausgleichsversuche sind deshalb unzulässig.
+
+Die installierte iOS-PWA verwendet künftig die undurchsichtige Statusleisten-
+Variante `black`. Dadurch liegt die Web-Oberfläche unterhalb der Statusleiste,
+statt eine um `safe-area-inset-top` verkürzte Vollbildfläche zu erhalten.
+
+Die Bottom-Navigation bleibt bei `bottom: 0`. Ihr Standalone-Unterraum
+verwendet `var(--safe-bottom)` und damit die vom Gerät gemessene untere Safe
+Area. Browsergeometrie und Desktopdarstellung bleiben unverändert.

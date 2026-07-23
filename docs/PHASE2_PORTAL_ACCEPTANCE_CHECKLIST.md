@@ -216,3 +216,15 @@ und ausdrücklich abgenommen sind.
   `bottom: 0`.
 - Toasts, Installationshinweis und Benutzermenü bleiben oberhalb der sichtbaren
   Navigation.
+
+## iOS-26-Standalone-Viewport – finale Abnahme
+
+- Die vorherige Geometriediagnose ist vollständig entfernt.
+- Die PWA muss nach dem Deployment vom Home-Bildschirm gelöscht und neu
+  installiert werden, damit iOS die Statusleisten-Konfiguration sicher neu
+  übernimmt.
+- Die Statusleiste ist oben undurchsichtig dunkel mit weißen Symbolen.
+- Die Bottom-Navigation endet am physischen unteren Bildschirmbereich.
+- Unter den Buttons bleibt ausschließlich die echte untere iPhone-Safe-Area.
+- Es gibt keinen zusätzlichen 59-Pixel-Bereich aus `safe-area-inset-top`.
+- Safari-Browser und Desktop bleiben unverändert.

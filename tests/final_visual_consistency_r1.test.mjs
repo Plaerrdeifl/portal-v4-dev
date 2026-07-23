@@ -121,7 +121,7 @@ test("cache busting identifies final visual consistency R1", async () => {
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260723-ios-standalone-geometry-diagnostic-r1/);
-  assert.match(config, /20260723-ios-standalone-geometry-diagnostic-r1/);
-  assert.match(worker, /pd-portal-v4-ios-standalone-geometry-diagnostic-r1-20260723/);
+  assert.match(index, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
+  assert.match(config, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
+  assert.match(worker, /pd-portal-v4-ios-opaque-statusbar-bottomnav-final-r1-20260723/);
 });

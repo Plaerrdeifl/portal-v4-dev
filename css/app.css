@@ -2857,7 +2857,7 @@ html[data-portal-area="portal"] .v4-toolbar p{
 
 @media(display-mode:standalone) and (max-width:860px){
   :root{
-    --mobile-safe-bottom:10px;
+    --mobile-safe-bottom:var(--safe-bottom);
   }
 
   html[data-portal-area="portal"]:not([data-route="profile"]){
@@ -2909,18 +2909,6 @@ html[data-portal-area="portal"] .v4-toolbar p{
     min-height:0!important;
     max-height:calc(var(--mobile-nav-height) + var(--mobile-safe-bottom))!important;
     overflow:visible!important;
-  }
-
-  html[data-portal-area="portal"] .mobile-bottom-nav::after{
-    content:"";
-    position:fixed;
-    z-index:0;
-    top:100%;
-    left:0;
-    right:0;
-    height:var(--safe-top);
-    background:#03192e;
-    pointer-events:none;
   }
 
   html[data-portal-area="portal"] .user-menu-panel{
