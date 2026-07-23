@@ -68,10 +68,10 @@ test("cache identifies the fixed standalone backdrop release", async () => {
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260723-ios-standalone-fixed-backdrop-final-r1/);
-  assert.match(config, /20260723-ios-standalone-fixed-backdrop-final-r1/);
+  assert.match(index, /20260723-ios-standalone-geometry-diagnostic-r1/);
+  assert.match(config, /20260723-ios-standalone-geometry-diagnostic-r1/);
   assert.match(
     worker,
-    /pd-portal-v4-ios-standalone-fixed-backdrop-final-r1-20260723/
+    /pd-portal-v4-ios-standalone-geometry-diagnostic-r1-20260723/
   );
 });

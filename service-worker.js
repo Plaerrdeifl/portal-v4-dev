@@ -1,4 +1,4 @@
-const CACHE_VERSION = "pd-portal-v4-ios-standalone-fixed-backdrop-final-r1-20260723";
+const CACHE_VERSION = "pd-portal-v4-ios-standalone-geometry-diagnostic-r1-20260723";
 const APP_CACHE = `${CACHE_VERSION}-shell`;
 const SHELL = [
   "./",
