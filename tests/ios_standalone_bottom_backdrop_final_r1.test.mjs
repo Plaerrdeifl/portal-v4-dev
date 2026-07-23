@@ -70,5 +70,5 @@ test("cache busting identifies opaque standalone bottom navigation", async () =>
 
   assert.match(index, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
   assert.match(config, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
-  assert.match(worker, /pd-portal-v4-task-workflow-r2-core-20260723/);
+  assert.match(worker, /pd-portal-v4-web-push-r1-20260723/);
 });

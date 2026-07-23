@@ -602,6 +602,9 @@ function renderUserMenu() {
       <button class="button primary" type="button" data-open-profile-details>
         Profil und Daten
       </button>
+      <button class="button secondary" type="button" data-open-push-settings>
+        Benachrichtigungen
+      </button>
       <button class="button secondary" type="button" data-user-refresh>
         Aktualisieren
       </button>
@@ -810,6 +813,12 @@ export function bindGlobalUi({ onRefresh, onLogout } = {}) {
 
     if (event.target.closest("[data-open-profile-details]")) {
       openProfileDetails();
+      return;
+    }
+
+    if (event.target.closest("[data-open-push-settings]")) {
+      closeUserMenu();
+      window.plaerrdeiflPush?.openSettings?.();
       return;
     }
 

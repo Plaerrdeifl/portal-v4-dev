@@ -106,7 +106,7 @@ test("official Google Identity Services replaces the manual OAuth window", async
   assert.equal(worker.includes("./js/oauth-return-guard.js"), false);
   assert.equal(index.includes("20260723-ios-opaque-statusbar-bottomnav-final-r1"), true);
   assert.equal(
-    worker.includes("pd-portal-v4-task-workflow-r2-core-20260723"),
+    worker.includes("pd-portal-v4-web-push-r1-20260723"),
     true
   );
 });

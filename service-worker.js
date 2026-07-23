@@ -1,4 +1,4 @@
-const CACHE_VERSION = "pd-portal-v4-task-workflow-r2-core-20260723";
+const CACHE_VERSION = "pd-portal-v4-web-push-r1-20260723";
 const APP_CACHE = `${CACHE_VERSION}-shell`;
 const SHELL = [
   "./",
@@ -16,6 +16,7 @@ const SHELL = [
   "./js/install.js",
   "./js/router.js",
   "./js/ui.js",
+  "./js/push.js",
   "./js/pages.js",
   "./js/app.js",
   "./js/modules/common.js",
@@ -90,4 +91,93 @@ self.addEventListener("fetch", event => {
     return;
   }
   event.respondWith(caches.match(request, { ignoreSearch: true }).then(cached => cached || fetch(request)));
+});
+
+self.addEventListener("push", event => {
+  const fallback = {
+    title: "Plärrdeifl Portal",
+    body: "Es gibt eine neue Portal-Meldung.",
+    route: "#/dashboard",
+    badgeCount: 1
+  };
+
+  let payload = fallback;
+
+  try {
+    payload = {
+      ...fallback,
+      ...(event.data?.json() || {})
+    };
+  } catch {
+    payload = fallback;
+  }
+
+  const icon = new URL(
+    "./assets/icons/icon-192.png",
+    self.registration.scope
+  ).href;
+  const badge = new URL(
+    "./assets/icons/icon-192.png",
+    self.registration.scope
+  ).href;
+
+  event.waitUntil((async () => {
+    if (
+      self.registration.setAppBadge
+      && Number.isFinite(Number(payload.badgeCount))
+    ) {
+      const count = Math.max(0, Number(payload.badgeCount));
+
+      if (count > 0) await self.registration.setAppBadge(count);
+      else if (self.registration.clearAppBadge) {
+        await self.registration.clearAppBadge();
+      }
+    }
+
+    await self.registration.showNotification(
+      payload.title || fallback.title,
+      {
+        body: payload.body || fallback.body,
+        icon,
+        badge,
+        tag: payload.notificationId
+          ? `pd-${payload.notificationId}`
+          : "pd-portal",
+        renotify: true,
+        data: {
+          route: payload.route || fallback.route,
+          notificationId: payload.notificationId || ""
+        }
+      }
+    );
+  })());
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+
+  const route = event.notification.data?.route || "#/dashboard";
+  const targetUrl = new URL(route, self.registration.scope).href;
+
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({
+      type: "window",
+      includeUncontrolled: true
+    });
+
+    for (const client of windows) {
+      if ("navigate" in client) {
+        await client.navigate(targetUrl);
+      }
+
+      client.postMessage({
+        type: "OPEN_PUSH_ROUTE",
+        route
+      });
+
+      return client.focus();
+    }
+
+    return self.clients.openWindow(targetUrl);
+  })());
 });

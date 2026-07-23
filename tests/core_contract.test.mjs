@@ -51,7 +51,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260722213000_compact_workflows_and_account_retirement.sql",
     "20260722220000_fix_account_retirement_snapshot_actor.sql",
     "20260723162000_add_task_history.sql",
-    "20260723190000_add_task_workflow_r2_core.sql"
+    "20260723190000_add_task_workflow_r2_core.sql",
+    "20260723213000_add_web_push_r1.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);

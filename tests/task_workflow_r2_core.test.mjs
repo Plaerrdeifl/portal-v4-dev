@@ -65,5 +65,5 @@ test("task workflow R2 supports waiting transfer reads and notification outbox",
   assert.doesNotMatch(tasks, /<span>Meine Notiz<\/span>/);
 
   assert.match(css, /V4 TASK WORKFLOW R2 CORE/);
-  assert.match(worker, /pd-portal-v4-task-workflow-r2-core-20260723/);
+  assert.match(worker, /pd-portal-v4-web-push-r1-20260723/);
 });
