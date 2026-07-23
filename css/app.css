@@ -2913,7 +2913,7 @@ html[data-portal-area="portal"] .v4-toolbar p{
 
   html[data-portal-area="portal"] .mobile-bottom-nav::after{
     content:"";
-    position:absolute;
+    position:fixed;
     z-index:0;
     top:100%;
     left:0;

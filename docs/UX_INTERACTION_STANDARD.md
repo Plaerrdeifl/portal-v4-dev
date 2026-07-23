@@ -245,3 +245,18 @@ abzudecken.
 
 Benutzermenü, Toasts und Installationshinweis werden nicht nach unten
 verschoben und bleiben relativ zur sichtbaren Navigation positioniert.
+
+## 24. Fester Standalone-Hintergrundstreifen
+
+Die sichtbare Bottom-Navigation bleibt in Browser und Standalone-PWA bei
+`bottom: 0`. Ihre Buttons, Höhe und Innenabstände werden nicht verschoben.
+
+Der ausschließlich in der vorhandenen Standalone-Regel erzeugte
+`::after`-Hintergrundstreifen verwendet `position: fixed`, `top: 100%` und
+`height: var(--safe-top)`. Dadurch ist er nicht mehr an die auf `100dvh` und
+`overflow: hidden` begrenzten App-Container gebunden und kann den von iOS
+außerhalb des sichtbaren Standalone-Viewports dargestellten unteren Bereich
+abdecken.
+
+Der Streifen bleibt nicht interaktiv. Er darf keine Navigationsbuttons oder
+sonstige Bedienelemente enthalten.

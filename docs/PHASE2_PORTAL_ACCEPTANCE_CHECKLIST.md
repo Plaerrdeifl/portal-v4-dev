@@ -204,3 +204,15 @@ und ausdrücklich abgenommen sind.
   sichtbar.
 - Seitennavigation, Toasts, Update-Hinweis und Benutzermenü bleiben korrekt zur
   sichtbaren Navigation ausgerichtet.
+
+## Fester Standalone-Hintergrundstreifen – Abnahme
+
+- Safari-Browser bleibt gegenüber dem vorherigen Stand unverändert.
+- Die installierte PWA zeigt alle fünf Navigationsbuttons vollständig.
+- Unterhalb der Navigation befindet sich kein andersfarbiger oder leerer
+  Portalbereich.
+- Der dunkelblaue Hintergrund reicht bis zum physischen Bildschirmende.
+- Das Pseudo-Element ist `position: fixed`; die Navigation selbst bleibt
+  `bottom: 0`.
+- Toasts, Installationshinweis und Benutzermenü bleiben oberhalb der sichtbaren
+  Navigation.
