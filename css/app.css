@@ -2945,3 +2945,156 @@ html[data-portal-area="portal"] .v4-toolbar p{
 .v4-team-detail-members{margin-top:10px}.v4-team-member-list{display:grid;gap:6px}.v4-team-member-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;padding:8px 9px;border:1px solid #d8e1ea;border-radius:11px;background:#fff}.v4-team-member-row>span:first-child{display:grid;gap:2px;min-width:0}.v4-team-member-row strong{overflow-wrap:anywhere}.v4-team-member-row small{color:#738196;font-size:.7rem}.v4-row-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:5px}.v4-teams-heading{margin-top:8px}
 @media(max-width:430px){.v4-smart-form{gap:8px 12px!important}.v4-smart-form>.v4-field-seven,.v4-smart-form>.v4-field-five,.v4-smart-form>.v4-field-four{grid-column:span 6!important}.v4-smart-form>.v4-field-account-select{grid-column:1/-1!important}.v4-account-detail-summary{padding:10px 11px}.v4-account-detail-summary .v4-account-detail-balance{font-size:1.15rem!important}.v4-task-list-row,.v4-team-list-row{min-height:54px;padding:9px 10px}.v4-task-list-end .badge{max-width:82px}}
 @media(max-width:350px){.v4-smart-form>*{grid-column:1/-1!important}.v4-finance-detail-grid,.v4-task-detail-grid,.v4-team-detail-grid{grid-template-columns:1fr!important}.v4-detail-grid>.v4-detail-wide{grid-column:auto!important}.v4-account-detail-summary{grid-template-columns:1fr}.v4-account-detail-summary .v4-account-detail-balance{justify-self:start}.v4-team-member-row{grid-template-columns:1fr}.v4-row-actions{justify-content:flex-start}}
+
+/* V4 TASK HISTORY R1 – 30-MINUTEN-UPDATEVERLAUF */
+.v4-task-history{
+  display:grid;
+  gap:16px;
+}
+
+.v4-task-history-loading{
+  min-height:120px;
+  display:grid;
+  place-items:center;
+  color:var(--ink-500);
+  font-weight:750;
+}
+
+.v4-task-update-form,
+.v4-task-history-inline-form{
+  display:grid;
+  gap:12px;
+  padding:15px;
+  border:1px solid rgba(210,220,232,.9);
+  border-radius:18px;
+  background:rgba(246,249,252,.94);
+}
+
+.v4-task-update-form label,
+.v4-task-history-inline-form label{
+  display:grid;
+  gap:7px;
+  font-weight:800;
+}
+
+.v4-task-update-form textarea,
+.v4-task-history-inline-form textarea{
+  width:100%;
+  resize:vertical;
+}
+
+.v4-task-history-form-footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.v4-task-history-form-footer small{
+  color:var(--ink-500);
+  line-height:1.35;
+}
+
+.v4-task-history-list{
+  display:grid;
+  gap:11px;
+}
+
+.v4-task-history-entry{
+  display:grid;
+  gap:9px;
+  padding:14px 15px;
+  border:1px solid rgba(210,220,232,.9);
+  border-radius:17px;
+  background:#fff;
+  box-shadow:0 4px 14px rgba(7,35,65,.055);
+}
+
+.v4-task-history-entry.is-system{
+  background:rgba(244,247,250,.88);
+  box-shadow:none;
+}
+
+.v4-task-history-entry.is-hidden{
+  border-style:dashed;
+  opacity:.78;
+}
+
+.v4-task-history-entry > header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.v4-task-history-entry > header > div{
+  min-width:0;
+  display:grid;
+  gap:2px;
+}
+
+.v4-task-history-entry > header strong{
+  color:var(--ink-900);
+  font-size:.91rem;
+}
+
+.v4-task-history-entry > header span:not(.badge){
+  color:var(--ink-500);
+  font-size:.76rem;
+  line-height:1.35;
+}
+
+.v4-task-history-entry > p{
+  margin:0;
+  color:var(--ink-900);
+  line-height:1.55;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+}
+
+.v4-task-history-entry > footer{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  padding-top:3px;
+}
+
+.v4-task-history-edited,
+.v4-task-history-hidden-reason{
+  color:var(--ink-500);
+  line-height:1.4;
+}
+
+.v4-task-history-hidden-reason{
+  font-style:italic;
+}
+
+@media(max-width:640px){
+  .v4-task-history-form-footer{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .v4-task-history-form-footer .button{
+    width:100%;
+  }
+
+  .v4-task-history-entry{
+    padding:13px;
+    border-radius:15px;
+  }
+
+  .v4-task-history-entry > header{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .v4-task-history-entry > footer{
+    display:grid;
+    grid-template-columns:1fr;
+  }
+
+  .v4-task-history-entry > footer .button{
+    width:100%;
+  }
+}

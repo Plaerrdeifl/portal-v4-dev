@@ -198,32 +198,371 @@ function openTask(task = null) {
   syncTaskForm(task || {});
 }
 
-function openNote(task) {
-  if (task.status === "ARCHIVED") return;
+async function openNote(task) {
+  const dialogId = "taskHistoryDialog";
+  const bodyId = "taskHistoryBody";
+  const addFormId = "taskHistoryAddForm";
 
   openDialog({
-    title: "Meine Aufgabennotiz",
-    kicker: task.title,
-    body: `<form>
-      <input type="hidden" name="revision" value="${escapeAttr(task.ownNoteRevision || 0)}">
-      <label>Persönliche Notiz
-        <textarea name="content" maxlength="4000" rows="8">${escapeHtml(task.ownNote || "")}</textarea>
-      </label>
-    </form>`,
-    onSubmit: async values => {
-      snapshot = await runWrite(
-        () => call("save_task_note", {
-          taskId: task.id,
-          revision: values.revision,
-          content: values.content || ""
-        }),
-        "Notiz wurde gespeichert."
-      );
-      renderAll();
-    }
+    title: "Aufgabenverlauf",
+    kicker: escapeHtml(task.title || "Aufgabe"),
+    wide: true,
+    body: `
+      <div id="${bodyId}" class="v4-task-history">
+        <div class="v4-task-history-loading">
+          Verlauf wird geladen …
+        </div>
+      </div>
+    `
   });
-}
 
+  const host = document.getElementById(bodyId);
+  if (!host) return;
+
+  function typeLabel(entry) {
+    const labels = {
+      UPDATE: "Update",
+      LEGACY_NOTE: "Übernommene bisherige Aufgabennotiz",
+      TASK_CREATED: "Aufgabe erstellt",
+      TASK_CHANGED: "Aufgabe geändert",
+      STATUS_CHANGED: "Status geändert",
+      ASSIGNEE_CHANGED: "Zuständigkeit geändert",
+      PRIORITY_CHANGED: "Priorität geändert",
+      TASK_COMPLETED: "Aufgabe erledigt",
+      TASK_REOPENED: "Aufgabe wieder geöffnet",
+      TASK_ARCHIVED: "Aufgabe archiviert",
+      TASK_RESTORED: "Aufgabe wiederhergestellt",
+      TASK_DELETED: "Aufgabe gelöscht"
+    };
+
+    return labels[entry.entryType] || "Verlauf";
+  }
+
+  function remainingMinutes(entry) {
+    if (!entry.editableUntil) return 0;
+
+    const remaining = (
+      new Date(entry.editableUntil).getTime() - Date.now()
+    );
+
+    return Math.max(0, Math.ceil(remaining / 60000));
+  }
+
+  function render(history) {
+    const entries = history?.entries || [];
+
+    host.innerHTML = `
+      ${history?.canAddUpdate ? `
+        <form id="${addFormId}" class="v4-task-update-form">
+          <label>
+            Neues Update
+            <textarea
+              name="content"
+              rows="3"
+              maxlength="4000"
+              placeholder="Fortschritt, Hinweis oder Ergänzung eintragen …"
+              required
+            ></textarea>
+          </label>
+          <div class="v4-task-history-form-footer">
+            <small>
+              Eigene Updates können 30 Minuten lang korrigiert werden.
+            </small>
+            <button class="button primary" type="submit">
+              Update speichern
+            </button>
+          </div>
+        </form>
+      ` : ""}
+
+      <div class="v4-task-history-list">
+        ${entries.length ? entries.map(entry => `
+          <article
+            class="v4-task-history-entry
+              ${entry.system ? "is-system" : "is-update"}
+              ${entry.hidden ? "is-hidden" : ""}"
+            data-task-history-entry="${escapeAttr(entry.id)}"
+          >
+            <header>
+              <div>
+                <strong>${escapeHtml(typeLabel(entry))}</strong>
+                <span>
+                  ${escapeHtml(entry.authorName || "System")}
+                  · ${escapeHtml(fmtDateTime(entry.createdAt))}
+                </span>
+              </div>
+              ${entry.visibility === "PRIVATE" ? `
+                <span class="badge neutral">Persönlicher Alt-Eintrag</span>
+              ` : ""}
+            </header>
+
+            <p>${escapeHtml(entry.content || "")}</p>
+
+            ${entry.editedAt ? `
+              <small class="v4-task-history-edited">
+                Bearbeitet ${escapeHtml(fmtDateTime(entry.editedAt))}
+              </small>
+            ` : ""}
+
+            ${entry.hidden && entry.hiddenReason ? `
+              <small class="v4-task-history-hidden-reason">
+                Begründung: ${escapeHtml(entry.hiddenReason)}
+              </small>
+            ` : ""}
+
+            ${entry.canEdit || entry.canHide ? `
+              <footer>
+                ${entry.canEdit ? `
+                  <button
+                    class="button small secondary"
+                    type="button"
+                    data-edit-task-update="${escapeAttr(entry.id)}"
+                  >
+                    Korrigieren (${remainingMinutes(entry)} Min.)
+                  </button>
+                ` : ""}
+                ${entry.canHide ? `
+                  <button
+                    class="button small danger"
+                    type="button"
+                    data-hide-task-update="${escapeAttr(entry.id)}"
+                  >
+                    Ausblenden
+                  </button>
+                ` : ""}
+              </footer>
+            ` : ""}
+          </article>
+        `).join("") : `
+          <div class="empty-state">
+            <strong>Noch kein Verlauf</strong>
+            <p>Das erste Update kann jetzt hinzugefügt werden.</p>
+          </div>
+        `}
+      </div>
+    `;
+
+    document.getElementById(addFormId)
+      ?.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const form = event.currentTarget;
+        const button = form.querySelector('button[type="submit"]');
+        const content = form.elements.content.value.trim();
+
+        if (!content) return;
+
+        if (button) button.disabled = true;
+
+        try {
+          const updated = await call("save_task_note", {
+            operation: "ADD",
+            taskId: task.id,
+            content
+          });
+          showToast("Update wurde gespeichert.", "success");
+          render(updated);
+        } catch (error) {
+          if (button) button.disabled = false;
+          host.insertAdjacentHTML(
+            "afterbegin",
+            errorPanel(error, "Update konnte nicht gespeichert werden")
+          );
+        }
+      });
+
+    host.querySelectorAll("[data-edit-task-update]")
+      .forEach(button => {
+        button.addEventListener("click", () => {
+          const entry = entries.find(
+            item => item.id === button.dataset.editTaskUpdate
+          );
+          if (!entry) return;
+
+          const entryElement = button.closest(
+            "[data-task-history-entry]"
+          );
+          if (!entryElement) return;
+
+          entryElement.insertAdjacentHTML(
+            "beforeend",
+            `
+              <form class="v4-task-history-inline-form">
+                <label>
+                  Update korrigieren
+                  <textarea
+                    name="content"
+                    rows="3"
+                    maxlength="4000"
+                    required
+                  >${escapeHtml(entry.content || "")}</textarea>
+                </label>
+                <div class="dialog-actions">
+                  <button
+                    class="button ghost"
+                    type="button"
+                    data-cancel-task-history-edit
+                  >
+                    Abbrechen
+                  </button>
+                  <button class="button primary" type="submit">
+                    Korrektur speichern
+                  </button>
+                </div>
+              </form>
+            `
+          );
+
+          button.disabled = true;
+
+          const form = entryElement.querySelector(
+            ".v4-task-history-inline-form"
+          );
+
+          form?.querySelector("[data-cancel-task-history-edit]")
+            ?.addEventListener("click", () => {
+              form.remove();
+              button.disabled = false;
+            });
+
+          form?.addEventListener("submit", async event => {
+            event.preventDefault();
+
+            const content = form.elements.content.value.trim();
+            const submit = form.querySelector(
+              'button[type="submit"]'
+            );
+
+            if (!content) return;
+            if (submit) submit.disabled = true;
+
+            try {
+              const updated = await call("save_task_note", {
+                operation: "EDIT",
+                taskId: task.id,
+                entryId: entry.id,
+                revision: entry.revision,
+                content
+              });
+              showToast("Update wurde korrigiert.", "success");
+              render(updated);
+            } catch (error) {
+              if (submit) submit.disabled = false;
+              form.insertAdjacentHTML(
+                "beforebegin",
+                errorPanel(
+                  error,
+                  "Update konnte nicht korrigiert werden"
+                )
+              );
+            }
+          });
+        });
+      });
+
+    host.querySelectorAll("[data-hide-task-update]")
+      .forEach(button => {
+        button.addEventListener("click", () => {
+          const entry = entries.find(
+            item => item.id === button.dataset.hideTaskUpdate
+          );
+          if (!entry) return;
+
+          const entryElement = button.closest(
+            "[data-task-history-entry]"
+          );
+          if (!entryElement) return;
+
+          entryElement.insertAdjacentHTML(
+            "beforeend",
+            `
+              <form class="v4-task-history-inline-form">
+                <label>
+                  Begründung für das Ausblenden
+                  <textarea
+                    name="reason"
+                    rows="2"
+                    maxlength="1000"
+                    required
+                  ></textarea>
+                </label>
+                <div class="dialog-actions">
+                  <button
+                    class="button ghost"
+                    type="button"
+                    data-cancel-task-history-hide
+                  >
+                    Abbrechen
+                  </button>
+                  <button class="button danger" type="submit">
+                    Eintrag ausblenden
+                  </button>
+                </div>
+              </form>
+            `
+          );
+
+          button.disabled = true;
+
+          const form = entryElement.querySelector(
+            ".v4-task-history-inline-form"
+          );
+
+          form?.querySelector("[data-cancel-task-history-hide]")
+            ?.addEventListener("click", () => {
+              form.remove();
+              button.disabled = false;
+            });
+
+          form?.addEventListener("submit", async event => {
+            event.preventDefault();
+
+            const reason = form.elements.reason.value.trim();
+            const submit = form.querySelector(
+              'button[type="submit"]'
+            );
+
+            if (!reason) return;
+            if (submit) submit.disabled = true;
+
+            try {
+              const updated = await call("save_task_note", {
+                operation: "HIDE",
+                taskId: task.id,
+                entryId: entry.id,
+                revision: entry.revision,
+                reason
+              });
+              showToast("Eintrag wurde ausgeblendet.", "success");
+              render(updated);
+            } catch (error) {
+              if (submit) submit.disabled = false;
+              form.insertAdjacentHTML(
+                "beforebegin",
+                errorPanel(
+                  error,
+                  "Eintrag konnte nicht ausgeblendet werden"
+                )
+              );
+            }
+          });
+        });
+      });
+  }
+
+  try {
+    const history = await call("save_task_note", {
+      operation: "LIST",
+      taskId: task.id
+    });
+    render(history);
+  } catch (error) {
+    host.innerHTML = errorPanel(
+      error,
+      "Aufgabenverlauf konnte nicht geladen werden"
+    );
+  }
+}
 async function setStatus(task, status) {
   snapshot = await runWrite(
     () => call("set_task_status", {
@@ -397,7 +736,7 @@ function taskListRow(task) {
 }
 function taskDetailMarkup(task) {
   const archivedInfo=task.status==="ARCHIVED"?`<div class="notice"><strong>Archiviert</strong><br>${escapeHtml(fmtDateTime(task.archivedAt))}${task.archivedByName?` · ${escapeHtml(task.archivedByName)}`:""}</div>`:"";
-  return `<div class="v4-detail-grid v4-task-detail-grid"><div><span>Bereich</span><strong>${escapeHtml(task.context==="BOARD"?"Vorstand":task.teamName||"Team")}</strong></div><div><span>Priorität</span><strong>${escapeHtml(label(PRIORITIES,task.priority))}</strong></div><div><span>Status</span><strong>${escapeHtml(label(STATUSES,task.status))}</strong></div><div><span>Zugewiesen</span><strong>${escapeHtml(task.assignedName||"Noch offen")}</strong></div><div class="v4-detail-wide"><span>Beschreibung</span><strong class="v4-preserve-lines">${escapeHtml(task.description||"–")}</strong></div><div><span>Erstellt von</span><strong>${escapeHtml(task.createdByName||"–")}</strong></div><div><span>Aktualisiert</span><strong>${escapeHtml(fmtDateTime(task.updatedAt))}</strong></div>${task.assignmentReason?`<div class="v4-detail-wide"><span>Zuweisungsbegründung</span><strong class="v4-preserve-lines">${escapeHtml(task.assignmentReason)}</strong></div>`:""}${task.ownNote?`<div class="v4-detail-wide"><span>Meine Notiz</span><strong class="v4-preserve-lines">${escapeHtml(task.ownNote)}</strong></div>`:""}</div>${archivedInfo}<div class="dialog-actions v4-detail-actions v4-task-detail-actions">${statusSelect(task)}${task.canRestore?`<button class="button primary" type="button" data-restore-task="${escapeAttr(task.id)}">Wiederherstellen</button>`:""}${task.canDeletePermanently?`<button class="button danger" type="button" data-delete-archived-task="${escapeAttr(task.id)}">Endgültig löschen</button>`:""}${task.status!=="ARCHIVED"?`<button class="button secondary" type="button" data-task-note="${escapeAttr(task.id)}">Notiz</button>`:""}${task.canManage?`<button class="button secondary" type="button" data-edit-task="${escapeAttr(task.id)}">Bearbeiten</button>`:""}${task.canArchive?`<button class="button danger" type="button" data-archive-task="${escapeAttr(task.id)}">Archivieren</button>`:""}</div>`;
+  return `<div class="v4-detail-grid v4-task-detail-grid"><div><span>Bereich</span><strong>${escapeHtml(task.context==="BOARD"?"Vorstand":task.teamName||"Team")}</strong></div><div><span>Priorität</span><strong>${escapeHtml(label(PRIORITIES,task.priority))}</strong></div><div><span>Status</span><strong>${escapeHtml(label(STATUSES,task.status))}</strong></div><div><span>Zugewiesen</span><strong>${escapeHtml(task.assignedName||"Noch offen")}</strong></div><div class="v4-detail-wide"><span>Beschreibung</span><strong class="v4-preserve-lines">${escapeHtml(task.description||"–")}</strong></div><div><span>Erstellt von</span><strong>${escapeHtml(task.createdByName||"–")}</strong></div><div><span>Aktualisiert</span><strong>${escapeHtml(fmtDateTime(task.updatedAt))}</strong></div>${task.assignmentReason?`<div class="v4-detail-wide"><span>Zuweisungsbegründung</span><strong class="v4-preserve-lines">${escapeHtml(task.assignmentReason)}</strong></div>`:""}${task.ownNote?`<div class="v4-detail-wide"><span>Meine Notiz</span><strong class="v4-preserve-lines">${escapeHtml(task.ownNote)}</strong></div>`:""}</div>${archivedInfo}<div class="dialog-actions v4-detail-actions v4-task-detail-actions">${statusSelect(task)}${task.canRestore?`<button class="button primary" type="button" data-restore-task="${escapeAttr(task.id)}">Wiederherstellen</button>`:""}${task.canDeletePermanently?`<button class="button danger" type="button" data-delete-archived-task="${escapeAttr(task.id)}">Endgültig löschen</button>`:""}${task.status!=="ARCHIVED"?`<button class="button secondary" type="button" data-task-note="${escapeAttr(task.id)}">Verlauf</button>`:""}${task.canManage?`<button class="button secondary" type="button" data-edit-task="${escapeAttr(task.id)}">Bearbeiten</button>`:""}${task.canArchive?`<button class="button danger" type="button" data-archive-task="${escapeAttr(task.id)}">Archivieren</button>`:""}</div>`;
 }
 function openTaskDetails(task) {
   const dialog=openDialog({title:task.title,kicker:"Aufgabe",body:taskDetailMarkup(task)});

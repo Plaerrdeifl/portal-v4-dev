@@ -81,7 +81,7 @@ test("cache busting identifies portal phase two acceptance", async () => {
 
   assert.match(index, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
   assert.match(config, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
-  assert.match(worker, /pd-portal-v4-ios-opaque-statusbar-bottomnav-final-r1-20260723/);
+  assert.match(worker, /pd-portal-v4-task-history-r1-30min-20260723/);
 });
 
 test("manual acceptance checklist covers mobile, PWA and financial workflows", async () => {

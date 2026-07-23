@@ -64,6 +64,6 @@ test("cache busting identifies the opaque iOS standalone viewport release", asyn
   assert.match(config, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
   assert.match(
     worker,
-    /pd-portal-v4-ios-opaque-statusbar-bottomnav-final-r1-20260723/
+    /pd-portal-v4-task-history-r1-30min-20260723/
   );
 });
