@@ -31,20 +31,24 @@ test("standalone navigation uses one deterministic iPhone bottom inset", async (
   );
 });
 
-test("all navigation-dependent mobile spacing uses the bounded inset", async () => {
+test("navigation-dependent spacing preserves browser and standalone contracts", async () => {
   const css = await read("css/app.css");
 
   for (const required of [
     "calc(var(--mobile-nav-height) + var(--mobile-safe-bottom) + 16px)",
     "calc(var(--mobile-nav-height) + var(--mobile-safe-bottom) + 8px)",
     "calc(var(--mobile-nav-height) + var(--mobile-safe-bottom) + 10px)",
-    "calc(var(--mobile-nav-height) + var(--mobile-safe-bottom) + 12px)",
-    "calc(var(--mobile-nav-height) + var(--mobile-safe-bottom) + 14px)"
+    "calc(var(--mobile-nav-height) + var(--mobile-safe-bottom) + 12px)"
   ]) {
     assert.match(css, new RegExp(
       required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     ));
   }
+
+  assert.match(
+    css,
+    /\.toast-region\{\s*bottom:calc\(\s*var\(--mobile-nav-height\)\s*\+ var\(--mobile-safe-bottom\)\s*\+ 14px\s*- var\(--safe-top\)\s*\)!important;/
+  );
 });
 
 test("iOS date controls have one fixed shared geometry", async () => {
@@ -96,7 +100,7 @@ test("cache busting identifies the iOS date and navigation final release", async
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260723-bottom-nav-geometry-final-r2/);
-  assert.match(config, /20260723-bottom-nav-geometry-final-r2/);
-  assert.match(worker, /pd-portal-v4-bottom-nav-geometry-final-r2-20260723/);
+  assert.match(index, /20260723-ios-standalone-bottom-alignment-final-r1/);
+  assert.match(config, /20260723-ios-standalone-bottom-alignment-final-r1/);
+  assert.match(worker, /pd-portal-v4-ios-standalone-bottom-alignment-final-r1-20260723/);
 });

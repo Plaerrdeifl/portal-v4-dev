@@ -1,0 +1,83 @@
+import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import path from "node:path";
+import test from "node:test";
+
+const root = path.resolve(import.meta.dirname, "..");
+const read = relativePath =>
+  fs.readFile(path.join(root, relativePath), "utf8");
+
+test("browser and standalone use separate physical bottom contracts", async () => {
+  const css = await read("css/app.css");
+
+  assert.match(
+    css,
+    /@media\(max-width:860px\)\{[\s\S]*?\.mobile-bottom-nav\{[\s\S]*?bottom:0;/
+  );
+
+  assert.match(
+    css,
+    /@media\(display-mode:standalone\) and \(max-width:860px\)\{[\s\S]*?html\[data-portal-area="portal"\] \.mobile-bottom-nav\{\s*bottom:calc\(0px - var\(--safe-top\)\)!important;/
+  );
+});
+
+test("standalone fixed surfaces share the same top-safe-area subtraction", async () => {
+  const css = await read("css/app.css");
+
+  assert.match(
+    css,
+    /html\[data-portal-area="portal"\] \.mobile-bottom-nav\{\s*bottom:calc\(0px - var\(--safe-top\)\)!important;/
+  );
+
+  assert.match(
+    css,
+    /html\[data-portal-area="portal"\] \.user-menu-panel\{\s*bottom:calc\(\s*var\(--mobile-nav-height\)\s*\+ var\(--mobile-safe-bottom\)\s*\+ 8px\s*- var\(--safe-top\)\s*\)!important;/
+  );
+
+  assert.match(
+    css,
+    /\.toast-region\{\s*bottom:calc\(\s*var\(--mobile-nav-height\)\s*\+ var\(--mobile-safe-bottom\)\s*\+ 14px\s*- var\(--safe-top\)\s*\)!important;/
+  );
+
+  assert.match(
+    css,
+    /\.install-banner\{\s*bottom:calc\(\s*var\(--mobile-nav-height\)\s*\+ var\(--mobile-safe-bottom\)\s*\+ 10px\s*- var\(--safe-top\)\s*\)!important;/
+  );
+});
+
+test("standalone footer height and button geometry remain unchanged", async () => {
+  const [tokens, css] = await Promise.all([
+    read("css/tokens.css"),
+    read("css/app.css")
+  ]);
+
+  assert.match(tokens, /--mobile-nav-height:64px/);
+  assert.match(tokens, /--mobile-safe-bottom:0px/);
+  assert.match(css, /--mobile-safe-bottom:10px/);
+  assert.match(css, /min-height:56px;\s*height:56px;/);
+  assert.match(
+    css,
+    /height:calc\(var\(--mobile-nav-height\) \+ var\(--mobile-safe-bottom\)\)/
+  );
+});
+
+test("cache busting identifies final iOS standalone bottom alignment", async () => {
+  const [index, config, worker] = await Promise.all([
+    read("index.html"),
+    read("js/config.js"),
+    read("service-worker.js")
+  ]);
+
+  assert.match(
+    index,
+    /20260723-ios-standalone-bottom-alignment-final-r1/
+  );
+  assert.match(
+    config,
+    /20260723-ios-standalone-bottom-alignment-final-r1/
+  );
+  assert.match(
+    worker,
+    /pd-portal-v4-ios-standalone-bottom-alignment-final-r1-20260723/
+  );
+});

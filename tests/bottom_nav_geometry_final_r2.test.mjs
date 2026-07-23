@@ -34,11 +34,14 @@ test("standalone PWA adds only ten pixels below the buttons", async () => {
   );
 });
 
-test("no competing footer geometry or visual counter-offset remains", async () => {
+test("standalone top-safe-area compensation is isolated from browser geometry", async () => {
   const css = await read("css/app.css");
 
   assert.doesNotMatch(css, /--mobile-safe-bottom:34px/);
-  assert.doesNotMatch(css, /bottom:calc\(-/);
+  assert.match(
+    css,
+    /html\[data-portal-area="portal"\] \.mobile-bottom-nav\{[\s\S]*bottom:calc\(0px - var\(--safe-top\)\)!important/
+  );
   assert.doesNotMatch(css, /translateY\(var\(--safe-top\)\)/);
 
   const standaloneAssignments =
@@ -66,10 +69,10 @@ test("cache busting identifies final bottom-navigation geometry R2", async () =>
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260723-bottom-nav-geometry-final-r2/);
-  assert.match(config, /20260723-bottom-nav-geometry-final-r2/);
+  assert.match(index, /20260723-ios-standalone-bottom-alignment-final-r1/);
+  assert.match(config, /20260723-ios-standalone-bottom-alignment-final-r1/);
   assert.match(
     worker,
-    /pd-portal-v4-bottom-nav-geometry-final-r2-20260723/
+    /pd-portal-v4-ios-standalone-bottom-alignment-final-r1-20260723/
   );
 });

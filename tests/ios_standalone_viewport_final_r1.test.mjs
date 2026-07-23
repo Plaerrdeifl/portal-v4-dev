@@ -20,7 +20,7 @@ test("iOS standalone keeps viewport-fit with the restored translucent status bar
   );
 });
 
-test("bottom navigation keeps one canonical geometry without counter-offset", async () => {
+test("bottom navigation keeps browser geometry and compensates only the standalone viewport", async () => {
   const [tokens, css] = await Promise.all([
     read("css/tokens.css"),
     read("css/app.css")
@@ -35,13 +35,9 @@ test("bottom navigation keeps one canonical geometry without counter-offset", as
   );
   assert.match(
     css,
-    /html\[data-portal-area="portal"\] \.mobile-bottom-nav\{[\s\S]*bottom:0!important/
+    /html\[data-portal-area="portal"\] \.mobile-bottom-nav\{[\s\S]*bottom:calc\(0px - var\(--safe-top\)\)!important/
   );
 
-  assert.doesNotMatch(
-    css,
-    /\.mobile-bottom-nav\{[\s\S]*bottom:calc\(-/
-  );
   assert.doesNotMatch(
     css,
     /translateY\(var\(--safe-top\)\)/
@@ -55,10 +51,10 @@ test("cache busting identifies the final iOS standalone viewport release", async
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260723-bottom-nav-geometry-final-r2/);
-  assert.match(config, /20260723-bottom-nav-geometry-final-r2/);
+  assert.match(index, /20260723-ios-standalone-bottom-alignment-final-r1/);
+  assert.match(config, /20260723-ios-standalone-bottom-alignment-final-r1/);
   assert.match(
     worker,
-    /pd-portal-v4-bottom-nav-geometry-final-r2-20260723/
+    /pd-portal-v4-ios-standalone-bottom-alignment-final-r1-20260723/
   );
 });

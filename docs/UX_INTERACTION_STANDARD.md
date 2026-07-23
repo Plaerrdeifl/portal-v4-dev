@@ -214,3 +214,18 @@ Bottom-Navigationsgeometrie.
 Negative Gegenversätze, Transformationen oder gerätespezifische
 Korrekturlayer sind unzulässig.
 
+## 22. Physischer iOS-Standalone-Bildschirmrand
+
+Im normalen mobilen Browser bleibt die Bottom-Navigation mit `bottom: 0`
+innerhalb des Browser-Viewports positioniert.
+
+In der installierten iOS-PWA endet das Standalone-Viewport-Koordinatensystem
+auf Geräten mit Dynamic Island um die obere Safe Area vor dem physischen
+Bildschirmende. Die bestehende Standalone-Regel gleicht ausschließlich diesen
+Versatz mit `bottom: calc(0px - var(--safe-top))` aus.
+
+Der Ausgleich ist nur unter `display-mode: standalone` zulässig. Er darf weder
+im Browser noch als globale Navigationseinstellung verwendet werden. Toasts,
+Installationshinweis und das mobile Benutzermenü verwenden innerhalb derselben
+Standalone-Regel denselben Abzug, damit ihre Abstände relativ zur
+Bottom-Navigation erhalten bleiben.

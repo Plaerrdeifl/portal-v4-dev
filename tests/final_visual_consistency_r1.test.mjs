@@ -121,7 +121,7 @@ test("cache busting identifies final visual consistency R1", async () => {
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260723-bottom-nav-geometry-final-r2/);
-  assert.match(config, /20260723-bottom-nav-geometry-final-r2/);
-  assert.match(worker, /pd-portal-v4-bottom-nav-geometry-final-r2-20260723/);
+  assert.match(index, /20260723-ios-standalone-bottom-alignment-final-r1/);
+  assert.match(config, /20260723-ios-standalone-bottom-alignment-final-r1/);
+  assert.match(worker, /pd-portal-v4-ios-standalone-bottom-alignment-final-r1-20260723/);
 });

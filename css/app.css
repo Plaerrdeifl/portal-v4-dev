@@ -2904,14 +2904,37 @@ html[data-portal-area="portal"] .v4-toolbar p{
   }
 
   html[data-portal-area="portal"] .mobile-bottom-nav{
-    bottom:0!important;
+    bottom:calc(0px - var(--safe-top))!important;
     height:calc(var(--mobile-nav-height) + var(--mobile-safe-bottom))!important;
     min-height:0!important;
     max-height:calc(var(--mobile-nav-height) + var(--mobile-safe-bottom))!important;
   }
 
+  html[data-portal-area="portal"] .user-menu-panel{
+    bottom:calc(
+      var(--mobile-nav-height)
+      + var(--mobile-safe-bottom)
+      + 8px
+      - var(--safe-top)
+    )!important;
+  }
+
   .toast-region{
-    bottom:calc(var(--mobile-nav-height) + var(--mobile-safe-bottom) + 14px)!important;
+    bottom:calc(
+      var(--mobile-nav-height)
+      + var(--mobile-safe-bottom)
+      + 14px
+      - var(--safe-top)
+    )!important;
+  }
+
+  .install-banner{
+    bottom:calc(
+      var(--mobile-nav-height)
+      + var(--mobile-safe-bottom)
+      + 10px
+      - var(--safe-top)
+    )!important;
   }
 }
 

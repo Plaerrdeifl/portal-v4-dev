@@ -178,3 +178,16 @@ und ausdrücklich abgenommen sind.
 - PWA: lediglich 10 Pixel Abstand unter den Navigationsbuttons.
 - Kein CSS-Gegenversatz und keine Veränderung der 64-Pixel-Buttonhöhe.
 
+## iOS-Standalone-Bildschirmrand – finale Sichtprüfung
+
+- Mobiles Safari prüfen: Die Navigation bleibt unverändert direkt oberhalb der
+  Safari-Bedienelemente.
+- Installierte PWA vollständig schließen und erneut öffnen.
+- PWA prüfen: Die Navigationsfläche reicht bis zum physischen unteren
+  Bildschirmrand.
+- Unter der Navigation ist keine zusätzliche dunkelblaue Fläche mehr sichtbar.
+- Unter den 56 Pixel hohen Buttons bleiben nur die vorgesehenen 10 Pixel.
+- Seitennavigation öffnen: Sie läuft hinter dem Footer weiter, ohne darunter
+  sichtbar zu werden.
+- Toast, Installationshinweis und Benutzermenü stehen weiterhin unmittelbar
+  oberhalb der Navigation.
