@@ -170,3 +170,14 @@ und ausdrücklich abgenommen sind.
   identisch.
 - Seitennavigation öffnen: Die Bottom-Navigation bleibt am tatsächlichen
   Bildschirmende und wird nicht nach oben verschoben.
+
+## iOS-Standalone-Viewport – endgültige Prüfung
+
+- GitHub-Pages-Bereitstellung für den neuen Commit vollständig abschließen.
+- Installierte PWA aus dem App-Umschalter entfernen und erneut öffnen.
+- Dashboard prüfen: Unter der Bottom-Navigation ist kein zusätzlicher
+  dunkelblauer Bereich sichtbar.
+- Seitennavigation öffnen: Sie darf hinter der Button-Navigation liegen, aber
+  unter deren tatsächlichem Ende darf kein weiterer Portalhintergrund stehen.
+- Dashboard, Fanclub, Aufgaben, Teams und Mehr besitzen dieselbe Footerposition.
+- Die Statusleiste bleibt dunkel und die Symbole bleiben gut lesbar.

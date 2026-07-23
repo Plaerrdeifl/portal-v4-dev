@@ -201,3 +201,15 @@ kann.
 Der Navigationsbereich besteht damit verbindlich aus 64 Pixeln Buttonbereich
 und 34 Pixeln geschützter Unterkante. Alle von der Navigation abhängigen
 Abstände verwenden denselben globalen Token.
+
+## 21. iOS-Standalone-Viewport
+
+Die installierte iOS-PWA verwendet den Statusbarmodus `black`. Der Modus
+`black-translucent` ist für das Portal nicht zulässig, weil WebKit in
+Verbindung mit `viewport-fit=cover` und `display: standalone` fest am unteren
+Bildschirmrand positionierte Elemente um die obere Safe Area nach oben
+versetzen kann.
+
+Die Bottom-Navigation bleibt bei `bottom: 0` und erhält keinen negativen
+Gegenversatz. Ihr Layout besteht weiterhin aus dem 64 Pixel hohen
+Buttonbereich und der kontrollierten 34 Pixel hohen iPhone-Unterkante.
