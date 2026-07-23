@@ -45,15 +45,19 @@ test("mobile navigation is compact and still includes the real safe area", async
   assert.match(css, /min-height:56px;\s*height:56px;/);
   assert.match(
     css,
-    /height:calc\(var\(--mobile-nav-height\) \+ var\(--safe-bottom\)\)/
+    /height:calc\(var\(--mobile-nav-height\) \+ var\(--mobile-safe-bottom\)\)/
   );
 });
 
-test("native date and select controls remain inside their grid cells", async () => {
+test("native iOS date controls match the shared field geometry", async () => {
   const css = await read("css/app.css");
-  assert.match(css, /inline-size:100%!important/);
-  assert.match(css, /min-inline-size:0!important/);
-  assert.match(css, /max-inline-size:100%!important/);
+  assert.match(css, /input\[type="date"\][\s\S]*-webkit-appearance:none!important/);
+  assert.match(css, /block-size:42px!important/);
+  assert.match(css, /min-block-size:42px!important/);
+  assert.match(css, /max-block-size:42px!important/);
+  assert.match(css, /::-webkit-date-and-time-value/);
+  assert.match(css, /::-webkit-datetime-edit/);
+  assert.match(css, /\.v4-smart-form>label:has\(>input\[type="date"\]\)\{overflow:hidden\}/);
   assert.match(
     css,
     /\.v4-smart-form>\.v4-field-four\{grid-column:span 6!important\}/
@@ -79,7 +83,7 @@ test("cache busting identifies global UI completion R1", async () => {
     read("js/config.js"),
     read("service-worker.js")
   ]);
-  assert.match(index, /20260722-global-ui-completion-r1/);
-  assert.match(config, /20260722-global-ui-completion-r1/);
-  assert.match(worker, /pd-portal-v4-global-ui-completion-r1-20260722/);
+  assert.match(index, /20260722-ios-date-nav-final-r1/);
+  assert.match(config, /20260722-ios-date-nav-final-r1/);
+  assert.match(worker, /pd-portal-v4-ios-date-nav-final-r1-20260722/);
 });

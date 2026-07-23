@@ -176,3 +176,15 @@ Native Datums- und Auswahlfelder dürfen ihre Rasterzelle nicht durch eine
 intrinsische Mindestbreite vergrößern. Smart Forms begrenzen alle Felder auf
 ihre Grid-Spalte. Auf Mobilgeräten werden Vier-Spalten-Felder zu stabilen
 Halbbreiten; lange Kontoauswahlen stehen untereinander.
+
+## 19. iOS-Datumsfelder und mobile Safe Area
+
+Native iOS-Datumsfelder verwenden dieselbe feste Feldhöhe wie Text- und
+Auswahlfelder. WebKit-interne Datumsbestandteile dürfen weder die Rasterzelle
+verbreitern noch die Feldhöhe verändern. Das Smart-Form-Raster begrenzt die
+intrinsische Inline-Größe und stellt einen sichtbaren Spaltenabstand sicher.
+
+Die Bottom-Navigation verwendet eine eigene, begrenzte mobile Safe Area. Der
+ungeprüfte Systemwert darf die Navigation nicht künstlich vergrößern. Der
+Buttonbereich bleibt 64 Pixel hoch; darunter wird höchstens die tatsächlich
+benötigte iPhone-Unterkante von 34 Pixeln reserviert.

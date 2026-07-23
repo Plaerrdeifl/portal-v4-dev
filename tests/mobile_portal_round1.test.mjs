@@ -20,10 +20,10 @@ test("mobile portal round one follows the approved layout rules", async () => {
   assert.equal(css.includes("Mobile Portal Layout und Fanclub"), true);
   assert.equal(css.includes("grid-template-columns:repeat(2,minmax(0,1fr))"), true);
   assert.equal(css.includes(".v4-table tbody tr{display:grid!important"), true);
-  assert.equal(css.includes("bottom:calc(var(--mobile-nav-height) + var(--safe-bottom) + 10px)!important"), true);
+  assert.equal(css.includes("bottom:calc(var(--mobile-nav-height) + var(--mobile-safe-bottom) + 10px)!important"), true);
   assert.equal(css.includes(".sidebar .nav-main{flex:1 1 auto;min-width:0;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}"), true);
   assert.equal(css.includes(".sidebar .nav-footer{flex:0 0 auto;overflow:visible;position:relative;z-index:2;"), true);
-  assert.equal(css.includes('html[data-portal-area="portal"] .sidebar{overflow:hidden!important;padding-bottom:calc(18px + var(--mobile-nav-height) + var(--safe-bottom))!important}'), true);
+  assert.equal(css.includes('html[data-portal-area="portal"] .sidebar{overflow:hidden!important;padding-bottom:calc(18px + var(--mobile-nav-height) + var(--mobile-safe-bottom))!important}'), true);
   assert.equal(css.includes('.sidebar .nav button[data-route="install"]{margin-top:0}'), true);
   assert.equal(css.includes(".topbar-home-button{display:none!important}"), true);
   assert.equal(css.includes('data-route="login"'), false);
@@ -58,6 +58,6 @@ test("mobile portal round one follows the approved layout rules", async () => {
   assert.equal(app.includes('label: "Online"'), false);
   assert.equal(app.includes('label: "Live"'), true);
   assert.equal(app.includes('label: "Lädt …"'), true);
-  assert.equal(index.includes("20260722-global-ui-completion-r1"), true);
-  assert.equal(worker.includes("pd-portal-v4-global-ui-completion-r1-20260722"), true);
+  assert.equal(index.includes("20260722-ios-date-nav-final-r1"), true);
+  assert.equal(worker.includes("pd-portal-v4-ios-date-nav-final-r1-20260722"), true);
 });

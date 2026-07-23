@@ -66,7 +66,7 @@ test("profile registration remains retryable and keyboard accessible", async () 
   assert.equal(css.includes("touch-action:pan-y!important"), true);
   assert.equal(
     css.includes(
-      "padding-bottom:calc(var(--mobile-nav-height) + var(--safe-bottom) + var(--profile-keyboard-inset) + 32px)!important"
+      "padding-bottom:calc(var(--mobile-nav-height) + var(--mobile-safe-bottom) + var(--profile-keyboard-inset) + 32px)!important"
     ),
     true
   );

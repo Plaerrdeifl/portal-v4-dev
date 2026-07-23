@@ -144,3 +144,17 @@ und ausdrücklich abgenommen sind.
   auf zwei Zeilen verteilt; das Datum bleibt vollständig sichtbar.
 - Umbuchung: Quell- und Zielkonto stehen mobil untereinander.
 - Unter Dialogaktionen bleibt nur der normale Innenabstand.
+
+## iOS-Datum und PWA-Navigation – finale Sichtprüfung
+
+- Dashboard in der installierten PWA öffnen: Unter den Navigationsbuttons bleibt
+  höchstens die normale iPhone-Unterkante.
+- Fanclub, Aufgaben, Teams und Mehr öffnen: Navigationshöhe bleibt identisch.
+- Mitglied anlegen: Eintritt und Austritt sind gleich hoch wie Textfelder und
+  besitzen einen sichtbaren Abstand.
+- Beitragsjahr anlegen und bearbeiten: Beginn und Ende sind gleich hoch und
+  berühren sich nicht.
+- Einnahme und Ausgabe: Buchungsdatum und Zahlungsart besitzen identische Höhe
+  und einen sichtbaren Zwischenraum.
+- Konto anlegen und Umbuchung: Datumsfelder bleiben vollständig innerhalb ihrer
+  jeweiligen Rasterspalte.

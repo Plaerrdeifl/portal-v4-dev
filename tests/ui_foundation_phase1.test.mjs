@@ -51,7 +51,7 @@ test("navigation uses one toggle state and a viewport-safe portal home footer", 
   assert.ok(ui.includes("footerNav.hidden = !authenticatedPortal;"));
   assert.ok(css.includes(".sidebar .nav-main{flex:1 1 auto;min-width:0;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}"));
   assert.ok(css.includes(".sidebar .nav-footer{flex:0 0 auto;overflow:visible;position:relative;z-index:2;"));
-  assert.ok(css.includes('html[data-portal-area="portal"] .sidebar{overflow:hidden!important;padding-bottom:calc(18px + var(--mobile-nav-height) + var(--safe-bottom))!important}'));
+  assert.ok(css.includes('html[data-portal-area="portal"] .sidebar{overflow:hidden!important;padding-bottom:calc(18px + var(--mobile-nav-height) + var(--mobile-safe-bottom))!important}'));
   assert.ok(css.includes(".sidebar{position:sticky"));
   assert.ok(css.includes("flex-direction:column;overflow:hidden}"));
   assert.ok(!css.includes('button[data-route="home"]{margin-top:auto}'));

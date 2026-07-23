@@ -18,11 +18,11 @@ test("mobile navigation has one exact content height plus safe area", async () =
   assert.match(tokens, /--mobile-nav-height:64px/);
   assert.match(
     css,
-    /\.mobile-bottom-nav\{[\s\S]*height:calc\(var\(--mobile-nav-height\) \+ var\(--safe-bottom\)\);[\s\S]*max-height:calc/
+    /\.mobile-bottom-nav\{[\s\S]*height:calc\(var\(--mobile-nav-height\) \+ var\(--mobile-safe-bottom\)\);[\s\S]*max-height:calc/
   );
   assert.match(
     css,
-    /html\[data-portal-area="portal"\] \.mobile-bottom-nav\{[\s\S]*height:calc\(var\(--mobile-nav-height\) \+ var\(--safe-bottom\)\)!important/
+    /html\[data-portal-area="portal"\] \.mobile-bottom-nav\{[\s\S]*height:calc\(var\(--mobile-nav-height\) \+ var\(--mobile-safe-bottom\)\)!important/
   );
 });
 
@@ -121,7 +121,7 @@ test("cache busting identifies final visual consistency R1", async () => {
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260722-global-ui-completion-r1/);
-  assert.match(config, /20260722-global-ui-completion-r1/);
-  assert.match(worker, /pd-portal-v4-global-ui-completion-r1-20260722/);
+  assert.match(index, /20260722-ios-date-nav-final-r1/);
+  assert.match(config, /20260722-ios-date-nav-final-r1/);
+  assert.match(worker, /pd-portal-v4-ios-date-nav-final-r1-20260722/);
 });

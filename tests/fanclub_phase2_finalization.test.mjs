@@ -63,7 +63,7 @@ test("cache busting identifies fanclub phase two finalization", async () => {
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260722-global-ui-completion-r1/);
-  assert.match(config, /20260722-global-ui-completion-r1/);
-  assert.match(worker, /pd-portal-v4-global-ui-completion-r1-20260722/);
+  assert.match(index, /20260722-ios-date-nav-final-r1/);
+  assert.match(config, /20260722-ios-date-nav-final-r1/);
+  assert.match(worker, /pd-portal-v4-ios-date-nav-final-r1-20260722/);
 });
