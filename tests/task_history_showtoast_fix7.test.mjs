@@ -3,7 +3,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 
-const NEW_CACHE = "pd-portal-v4-web-push-r1-20260723";
+const NEW_CACHE = "pd-portal-v4-web-push-dialog-ui-fix1-20260723";
 const OLD_CACHE = [
   "pd-portal-v4-task-history-r1",
   "30min-20260723"

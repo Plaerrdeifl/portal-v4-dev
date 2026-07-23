@@ -66,7 +66,7 @@ test("Web Push R1 is private permissioned and cross-platform", async () => {
   assert.match(worker, /self\.addEventListener\("notificationclick"/);
   assert.match(worker, /showNotification/);
   assert.match(worker, /openWindow/);
-  assert.match(worker, /pd-portal-v4-web-push-r1-20260723/);
+  assert.match(worker, /pd-portal-v4-web-push-dialog-ui-fix1-20260723/);
   assert.match(worker, /\.\/js\/push\.js/);
 
   assert.match(ui, /data-open-push-settings/);

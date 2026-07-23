@@ -80,5 +80,5 @@ test("fanclub mobile review is compact and drill-down based", async () => {
   assert.doesNotMatch(index, /data-auth-ready/);
   assert.doesNotMatch(index, /data-startup-state/);
   assert.match(index, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
-  assert.match(worker, /pd-portal-v4-web-push-r1-20260723/);
+  assert.match(worker, /pd-portal-v4-web-push-dialog-ui-fix1-20260723/);
 });

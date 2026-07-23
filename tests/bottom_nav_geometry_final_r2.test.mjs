@@ -83,6 +83,6 @@ test("cache busting identifies opaque iOS status-bar geometry", async () => {
   assert.match(config, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
   assert.match(
     worker,
-    /pd-portal-v4-web-push-r1-20260723/
+    /pd-portal-v4-web-push-dialog-ui-fix1-20260723/
   );
 });

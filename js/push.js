@@ -104,8 +104,7 @@ function ensureDialog() {
   dialog.innerHTML = `
     <div class="v4-dialog-shell">
       <header>
-        <div>
-          <span class="subtle">Benutzermenü</span>
+        <div class="v4-push-dialog-heading">
           <h2>Benachrichtigungen</h2>
         </div>
         <button
@@ -115,7 +114,7 @@ function ensureDialog() {
           aria-label="Benachrichtigungseinstellungen schließen"
         >×</button>
       </header>
-      <div id="pushSettingsBody"></div>
+      <div id="pushSettingsBody" class="v4-push-scroll-region"></div>
     </div>
   `;
 
