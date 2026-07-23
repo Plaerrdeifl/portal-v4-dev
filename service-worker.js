@@ -1,4 +1,4 @@
-const CACHE_VERSION = "pd-portal-v4-task-history-r1-30min-20260723";
+const CACHE_VERSION = "pd-portal-v4-task-history-r1-fix7-showtoast-cache-20260723";
 const APP_CACHE = `${CACHE_VERSION}-shell`;
 const SHELL = [
   "./",
