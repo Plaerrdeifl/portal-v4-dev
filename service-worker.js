@@ -1,5 +1,6 @@
-const CACHE_VERSION = "pd-portal-v4-admin-task-access-r1-20260724";
-const PREVIOUS_CACHE_VERSION = "pd-portal-v4-offices-save-corr1-20260724";
+const CACHE_VERSION = "pd-portal-v4-task-push-deeplink-windowclient-r1-20260724";
+const PREVIOUS_CACHE_VERSION = "pd-portal-v4-admin-task-access-r1-20260724";
+const OFFICES_CACHE_VERSION = "pd-portal-v4-offices-save-corr1-20260724";
 const TASK_ACCESS_CACHE_VERSION = "pd-portal-v4-task-access-push-r3-20260724";
 const LEGACY_CACHE_VERSION = "pd-portal-v4-push-newtasks-quiettime-r1-20260723";
 const APP_CACHE = `${CACHE_VERSION}-shell`;
@@ -189,6 +190,30 @@ self.addEventListener("push", event => {
   })());
 });
 
+async function openPushRouteInExistingClient(
+  client,
+  targetUrl,
+  message
+) {
+  if (typeof client.navigate === "function") {
+    try {
+      const navigated = await client.navigate(targetUrl);
+
+      if (navigated) {
+        return navigated.focus();
+      }
+    } catch (error) {
+      console.debug(
+        "Push-Ziel konnte nicht per WindowClient.navigate geöffnet werden",
+        error
+      );
+    }
+  }
+
+  client.postMessage(message);
+  return client.focus();
+}
+
 self.addEventListener("notificationclick", event => {
   event.notification.close();
 
@@ -215,12 +240,15 @@ self.addEventListener("notificationclick", event => {
       || windows[0];
 
     if (target) {
-      target.postMessage({
-        type: "OPEN_PUSH_ROUTE",
-        route,
-        notificationId
-      });
-      return target.focus();
+      return openPushRouteInExistingClient(
+        target,
+        targetUrl,
+        {
+          type: "OPEN_PUSH_ROUTE",
+          route,
+          notificationId
+        }
+      );
     }
 
     return self.clients.openWindow(targetUrl);

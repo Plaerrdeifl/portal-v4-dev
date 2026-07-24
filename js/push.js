@@ -580,14 +580,12 @@ document.addEventListener("visibilitychange", () => {
 });
 
 navigator.serviceWorker?.addEventListener("message", event => {
-  if (event.data?.type === "OPEN_PUSH_ROUTE" && event.data.route) {
-    window.location.hash = String(event.data.route).replace(/^#/, "");
-  }
-
   if (event.data?.type === "PUSH_BADGE") {
     updateBadge(Number(event.data.count || 0));
   }
 });
+
+const __V4_TASK_PUSH_DEEPLINK_WINDOWCLIENT_R1__ = true;
 
 window.setInterval(() => {
   if (

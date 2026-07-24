@@ -53,7 +53,7 @@ test("push R3 refreshes deep links and clears read badges", async () => {
   assert.match(worker, /routeWithNotification/);
   assert.match(worker, /notificationId/);
   assert.match(worker, /Math\.max\(0, previousBadgeCount - 1\)/);
-  assert.doesNotMatch(worker, /client\.navigate/);
+  assert.match(worker, /client\.navigate\(targetUrl\)/);
   assert.match(worker, /\.\/js\/task-push-r3\.js/);
 
   assert.match(index, /js\/task-push-r3\.js/);
