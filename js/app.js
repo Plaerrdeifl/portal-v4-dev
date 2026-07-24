@@ -1,4 +1,4 @@
-import { CONFIG } from "./config.js";
+import { CONFIG } from "./config.js?v=20260724-dashboard-delivery-corr2";
 import { api } from "./api.js";
 import { auth } from "./auth.js";
 import {
@@ -6,8 +6,8 @@ import {
   legacyRouteRedirect,
   routes
 } from "./router.js";
-import { hydratePage } from "./pages.js";
-import { activateUpdate, initializeInstall } from "./install.js";
+import { hydratePage } from "./pages.js?v=20260724-dashboard-delivery-corr2";
+import { activateUpdate, initializeInstall } from "./install.js?v=20260724-dashboard-delivery-corr2";
 import {
   bindGlobalUi,
   loadFragment,

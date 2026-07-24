@@ -1,4 +1,4 @@
-import { CONFIG } from "./config.js";
+import { CONFIG } from "./config.js?v=20260724-dashboard-delivery-corr2";
 
 let initialized = false;
 let deferredPrompt = null;
@@ -12,33 +12,65 @@ export function isIos() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent);
 }
 
+function announceWaitingUpdate() {
+  if (!registration?.waiting || !navigator.serviceWorker.controller) {
+    return false;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("pd-update-available", { detail: registration })
+  );
+
+  return true;
+}
+
 async function registerServiceWorker() {
   if (!("serviceWorker" in navigator) || !window.isSecureContext) return null;
-  registration = await navigator.serviceWorker.register(CONFIG.pwa.serviceWorker, { scope: "./" });
+
+  registration = await navigator.serviceWorker.register(
+    CONFIG.pwa.serviceWorker,
+    { scope: "./" }
+  );
+
+  announceWaitingUpdate();
+
   registration.addEventListener("updatefound", () => {
     const worker = registration.installing;
+
     worker?.addEventListener("statechange", () => {
-      if (worker.state === "installed" && navigator.serviceWorker.controller) {
-        window.dispatchEvent(new CustomEvent("pd-update-available", { detail: registration }));
+      if (
+        worker.state === "installed"
+        && navigator.serviceWorker.controller
+      ) {
+        announceWaitingUpdate();
       }
     });
   });
+
+  await registration.update();
+  announceWaitingUpdate();
+
   return registration;
 }
 
 export function initializeInstall() {
   if (initialized) return;
   initialized = true;
+
   window.addEventListener("beforeinstallprompt", event => {
     event.preventDefault();
     deferredPrompt = event;
     window.dispatchEvent(new CustomEvent("pd-install-state-change"));
   });
+
   window.addEventListener("appinstalled", () => {
     deferredPrompt = null;
     window.dispatchEvent(new CustomEvent("pd-install-state-change"));
   });
-  registerServiceWorker().catch(error => console.warn("Service Worker konnte nicht registriert werden", error));
+
+  registerServiceWorker().catch(error =>
+    console.warn("Service Worker konnte nicht registriert werden", error)
+  );
 }
 
 export function installState() {
@@ -50,16 +82,40 @@ export function installState() {
 }
 
 export async function requestInstall() {
-  if (isStandalone()) return { installed: true, outcome: "already-installed" };
-  if (!deferredPrompt) return { installed: false, outcome: "instructions" };
+  if (isStandalone()) {
+    return { installed: true, outcome: "already-installed" };
+  }
+
+  if (!deferredPrompt) {
+    return { installed: false, outcome: "instructions" };
+  }
+
   const prompt = deferredPrompt;
   deferredPrompt = null;
+
   await prompt.prompt();
+
   const choice = await prompt.userChoice;
+
   window.dispatchEvent(new CustomEvent("pd-install-state-change"));
-  return { installed: choice?.outcome === "accepted", outcome: choice?.outcome || "dismissed" };
+
+  return {
+    installed: choice?.outcome === "accepted",
+    outcome: choice?.outcome || "dismissed"
+  };
 }
 
-export function activateUpdate() {
-  registration?.waiting?.postMessage({ type: "SKIP_WAITING" });
+export async function activateUpdate() {
+  if (!registration) return false;
+
+  if (!registration.waiting) {
+    await registration.update();
+  }
+
+  if (!registration.waiting) return false;
+
+  registration.waiting.postMessage({ type: "SKIP_WAITING" });
+  return true;
 }
+
+const __V4_DASHBOARD_DELIVERY_CORR2__ = true;

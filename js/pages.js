@@ -1,6 +1,6 @@
 import { auth } from "./auth.js";
 import { renderGoogleSignInButton } from "./google-signin.js";
-import { CONFIG } from "./config.js";
+import { CONFIG } from "./config.js?v=20260724-dashboard-delivery-corr2";
 import { showToast } from "./ui.js";
 import { installState, requestInstall } from "./install.js";
 
@@ -152,7 +152,7 @@ async function hydrateLogin(context = {}) {
 export function preloadAuthenticatedModules(keys = ["dashboard", "fanclub", "tasks", "teams", "admin"]) {
   const modules = {
     profile: "./modules/profile.js",
-    dashboard: "./modules/dashboard.js",
+    dashboard: "./modules/dashboard.js?v=20260724-dashboard-delivery-corr2",
     fanclub: "./modules/fanclub.js",
     tasks: "./modules/tasks.js",
     teams: "./modules/teams.js",
@@ -168,7 +168,7 @@ export async function hydratePage(key, context = {}) {
   if (key === "install") return hydrateInstall();
   if (key === "login") return hydrateLogin(context);
   if (key === "profile") return feature("./modules/profile.js", "hydrateProfile", context);
-  if (key === "dashboard") return feature("./modules/dashboard.js", "hydrateDashboard", context);
+  if (key === "dashboard") return feature("./modules/dashboard.js?v=20260724-dashboard-delivery-corr2", "hydrateDashboard", context);
   if (key === "fanclub") return feature("./modules/fanclub.js", "hydrateFanclub", context);
   if (key === "tasks") return feature("./modules/tasks.js", "hydrateTasks", context);
   if (key === "teams") return feature("./modules/teams.js", "hydrateTeams", context);
