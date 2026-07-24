@@ -1,4 +1,5 @@
-const CACHE_VERSION = "pd-portal-v4-task-access-push-r3-20260724";
+const CACHE_VERSION = "pd-portal-v4-offices-save-corr1-20260724";
+const PREVIOUS_CACHE_VERSION = "pd-portal-v4-task-access-push-r3-20260724";
 const LEGACY_CACHE_VERSION = "pd-portal-v4-push-newtasks-quiettime-r1-20260723";
 const APP_CACHE = `${CACHE_VERSION}-shell`;
 const SHELL = [

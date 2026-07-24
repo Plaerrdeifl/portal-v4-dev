@@ -471,25 +471,88 @@ function renderOffices(panel) {
   if (!editing) return;
   document.getElementById("officeForm")?.addEventListener("submit", async event => {
     event.preventDefault();
-    if (!await confirmAction("Vorstandsbesetzung mit diesen Angaben speichern?")) return;
+
     const form = event.currentTarget;
-    const slots = offices.map(office => ({
-      code: office.code,
-      memberId: form.elements.namedItem(office.code)?.value || ""
-    }));
-    try {
-      snapshot = await runWrite(
-        () => call("save_offices", { slots }),
-        "Vorstandsbesetzung wurde gespeichert."
+
+    if (!(form instanceof HTMLFormElement)) {
+      showToast(
+        "Das Vorstandsformular konnte nicht gelesen werden.",
+        "error",
+        6500
       );
+      return;
+    }
+
+    const submitButton = form.querySelector('button[type="submit"]');
+    const originalLabel = submitButton?.textContent || "Vorstand speichern";
+
+    try {
+      const confirmed = await confirmAction(
+        "Vorstandsbesetzung mit diesen Angaben speichern?"
+      );
+
+      if (!confirmed) return;
+
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "Wird gespeichert …";
+      }
+
+      const slots = offices.map(office => ({
+        code: office.code,
+        memberId: form.elements.namedItem(office.code)?.value || ""
+      }));
+
+      await call("save_offices", { slots });
+
+      const refreshed = await call("fanclub_snapshot");
+      const savedOffices = refreshed?.offices || [];
+
+      const completelySaved = (
+        savedOffices.length === offices.length
+        && slots.every(slot => {
+          const savedOffice = savedOffices.find(
+            office => office.code === slot.code
+          );
+
+          return (
+            Boolean(savedOffice)
+            && String(savedOffice.memberId || "")
+              === String(slot.memberId || "")
+          );
+        })
+      );
+
+      if (!completelySaved) {
+        throw new Error(
+          "Die Vorstandsbesetzung wurde vom Server nicht vollständig bestätigt."
+        );
+      }
+
+      snapshot = refreshed;
       boardEditMode = false;
       renderAll();
+      showToast(
+        "Vorstandsbesetzung wurde gespeichert.",
+        "success",
+        3800
+      );
     } catch (error) {
-      const panelNode = document.getElementById("fanclubPanel");
-      panelNode.insertAdjacentHTML("afterbegin", errorPanel(error, "Vorstand konnte nicht gespeichert werden"));
+      showToast(
+        error?.message || "Vorstand konnte nicht gespeichert werden.",
+        "error",
+        6500
+      );
+
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = originalLabel;
+      }
     }
   });
 }
+
+const __V4_OFFICES_SAVE_CORR1_APPLIED__ = true;
 
 function seasonForm(season = {}) {
   return `<form class="form-grid v4-fanclub-form v4-smart-form">
