@@ -4283,3 +4283,257 @@ html[data-portal-area="portal"] .v4-toolbar p{
     flex-direction:column;
   }
 }
+
+/* V4 DASHBOARD LAYOUT CORR3 */
+.dashboard-widget-grid{
+  align-items:start;
+  gap:18px;
+}
+.dashboard-widget{
+  min-width:0;
+  min-height:0;
+  display:block;
+  gap:0;
+  overflow-wrap:normal;
+}
+.dashboard-widget,
+.dashboard-widget *{
+  word-break:normal;
+  overflow-wrap:normal;
+  hyphens:none;
+}
+.dashboard-widget.widget-s{
+  grid-column:span 4;
+}
+.dashboard-widget.widget-m{
+  grid-column:span 6;
+}
+.dashboard-widget.widget-l{
+  grid-column:span 12;
+}
+.dashboard-widget.v4-dashboard-birthdays,
+.dashboard-widget.v4-dashboard-finance{
+  grid-column:span 8;
+}
+.dashboard-widget.v4-dashboard-metric-card{
+  grid-column:span 4;
+}
+.v4-dashboard-card-layout{
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:18px;
+  align-items:start;
+}
+.v4-dashboard-card-meta{
+  min-width:0;
+  display:flex;
+  align-items:flex-start;
+  gap:14px;
+}
+.v4-dashboard-card-copy{
+  min-width:0;
+  flex:1;
+  display:grid;
+  gap:4px;
+  padding-top:2px;
+}
+.v4-dashboard-card-copy h3{
+  margin:0;
+  color:var(--ink-900);
+  font-size:clamp(1.12rem,1.04rem + .28vw,1.35rem);
+  line-height:1.2;
+  word-break:normal;
+  overflow-wrap:normal;
+  hyphens:none;
+}
+.v4-dashboard-card-copy p{
+  margin:0;
+  color:var(--ink-500);
+  font-size:.9rem;
+  line-height:1.42;
+  word-break:normal;
+  overflow-wrap:normal;
+  hyphens:none;
+}
+.dashboard-widget-icon{
+  width:48px;
+  height:48px;
+  border-radius:15px;
+  font-size:1.45rem;
+}
+.v4-dashboard-card-content{
+  min-width:0;
+  width:100%;
+  display:grid;
+  gap:14px;
+  align-content:start;
+}
+.v4-dashboard-detail-grid{
+  display:grid;
+  gap:8px;
+}
+.v4-dashboard-detail-row{
+  min-width:0;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:16px;
+  padding:12px 14px;
+  border-radius:14px;
+  background:var(--surface-soft);
+}
+.v4-dashboard-detail-row span{
+  min-width:0;
+  color:var(--ink-700);
+  word-break:normal;
+  overflow-wrap:normal;
+}
+.v4-dashboard-detail-row strong{
+  color:var(--blue-900);
+  text-align:right;
+  white-space:nowrap;
+}
+.v4-dashboard-task-list{
+  display:grid;
+  gap:10px;
+}
+.v4-dashboard-task-row{
+  width:100%;
+  min-width:0;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:14px;
+  align-items:center;
+  padding:15px 16px;
+  border-radius:16px;
+}
+.v4-dashboard-task-main{
+  min-width:0;
+  display:grid;
+  gap:4px;
+}
+.v4-dashboard-task-main strong{
+  min-width:0;
+  font-size:clamp(1.02rem,.98rem + .16vw,1.12rem);
+  line-height:1.25;
+  word-break:normal;
+  overflow-wrap:normal;
+  hyphens:none;
+}
+.v4-dashboard-task-main small{
+  color:var(--ink-500);
+  line-height:1.35;
+}
+.v4-dashboard-task-side{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.v4-dashboard-task-badges{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:6px;
+}
+.v4-dashboard-status-summary{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+.v4-dashboard-status-summary>div{
+  display:grid;
+  gap:4px;
+  padding:12px 14px;
+  border-radius:14px;
+  background:var(--blue-050);
+}
+.v4-dashboard-status-summary span{
+  display:block;
+  padding:0;
+  border-radius:0;
+  background:transparent;
+  color:var(--ink-500);
+  font-size:.8rem;
+  line-height:1.3;
+}
+.v4-dashboard-status-summary strong{
+  color:var(--blue-900);
+  font-size:1.45rem;
+  line-height:1;
+}
+.v4-dashboard-primary-value{
+  font-size:clamp(1.9rem,1.45rem + .9vw,2.6rem);
+  line-height:1.05;
+}
+.v4-dashboard-inline-metric{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:baseline;
+  gap:12px;
+}
+.v4-dashboard-inline-metric span{
+  color:var(--ink-500);
+  line-height:1.4;
+}
+@media(max-width:1000px){
+  .dashboard-widget.widget-s,
+  .dashboard-widget.widget-m,
+  .dashboard-widget.widget-l,
+  .dashboard-widget.v4-dashboard-birthdays,
+  .dashboard-widget.v4-dashboard-finance,
+  .dashboard-widget.v4-dashboard-metric-card{
+    grid-column:1/-1;
+  }
+}
+@media(max-width:640px){
+  .dashboard-widget-grid{
+    gap:14px;
+  }
+  .dashboard-widget{
+    border-radius:22px;
+  }
+  .v4-dashboard-card-layout{
+    gap:16px;
+  }
+  .v4-dashboard-card-meta{
+    gap:12px;
+  }
+  .dashboard-widget-icon{
+    width:44px;
+    height:44px;
+    border-radius:14px;
+    font-size:1.32rem;
+  }
+  .v4-dashboard-card-copy h3{
+    font-size:1.14rem;
+  }
+  .v4-dashboard-card-copy p{
+    font-size:.86rem;
+  }
+  .v4-dashboard-detail-row{
+    gap:10px;
+    padding:11px 12px;
+  }
+  .v4-dashboard-task-row{
+    grid-template-columns:minmax(0,1fr);
+    gap:10px;
+    padding:14px;
+  }
+  .v4-dashboard-task-side{
+    width:100%;
+    justify-content:space-between;
+  }
+  .v4-dashboard-task-badges{
+    justify-content:flex-start;
+  }
+  .v4-dashboard-status-summary{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:7px;
+  }
+  .v4-dashboard-status-summary>div{
+    padding:10px 8px;
+  }
+  .v4-dashboard-status-summary span{
+    font-size:.7rem;
+  }
+}
