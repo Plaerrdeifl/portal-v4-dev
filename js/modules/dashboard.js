@@ -25,34 +25,13 @@ const TASK_PRIORITY = {
 };
 
 const CONTRIBUTION_STATUS = {
-  NO_SEASON: {
-    label: "Keine laufende Saison",
-    type: "neutral"
-  },
-  NOT_ASSIGNED: {
-    label: "Noch nicht zugeordnet",
-    type: "warning"
-  },
-  EXEMPT: {
-    label: "Befreit",
-    type: "success"
-  },
-  OPEN: {
-    label: "Offen",
-    type: "danger"
-  },
-  PARTIAL: {
-    label: "Teilweise bezahlt",
-    type: "warning"
-  },
-  PENDING: {
-    label: "Zahlung wartet auf Bestätigung",
-    type: "warning"
-  },
-  PAID: {
-    label: "Bezahlt",
-    type: "success"
-  }
+  NO_SEASON: { label: "Keine laufende Saison", type: "neutral" },
+  NOT_ASSIGNED: { label: "Noch nicht zugeordnet", type: "warning" },
+  EXEMPT: { label: "Befreit", type: "success" },
+  OPEN: { label: "Offen", type: "danger" },
+  PARTIAL: { label: "Teilweise bezahlt", type: "warning" },
+  PENDING: { label: "Zahlung wartet auf Bestätigung", type: "warning" },
+  PAID: { label: "Bezahlt", type: "success" }
 };
 
 function money(value) {
@@ -74,61 +53,55 @@ function dateOnly(value) {
   }).format(date);
 }
 
+function detailRow(label, value) {
+  return `<div class="v4-dashboard-detail-row">
+    <span>${escapeHtml(label)}</span>
+    <strong>${escapeHtml(value)}</strong>
+  </div>`;
+}
+
 function card({
   icon,
   title,
   description = "",
-  size = "widget-s",
+  size = "widget-m",
   body = "",
   className = ""
 }) {
   return `<article class="card dashboard-widget ${escapeAttr(size)} ${escapeAttr(className)}">
-    <div class="dashboard-widget-head">
-      <span class="dashboard-widget-icon" aria-hidden="true">${icon}</span>
-      <div>
-        <h3>${escapeHtml(title)}</h3>
-        ${description ? `<p>${escapeHtml(description)}</p>` : ""}
+    <div class="v4-dashboard-card-layout">
+      <div class="v4-dashboard-card-meta">
+        <span class="dashboard-widget-icon" aria-hidden="true">${icon}</span>
+        <div class="v4-dashboard-card-copy">
+          <h3>${escapeHtml(title)}</h3>
+          ${description ? `<p>${escapeHtml(description)}</p>` : ""}
+        </div>
+      </div>
+      <div class="v4-dashboard-card-content">
+        ${body}
       </div>
     </div>
-    <div class="dashboard-widget-body">${body}</div>
   </article>`;
 }
 
 function contributionCard(contribution) {
   const status = CONTRIBUTION_STATUS[contribution?.status]
     || CONTRIBUTION_STATUS.NOT_ASSIGNED;
-
-  const details = [];
+  const rows = [];
 
   if (contribution?.className) {
-    details.push(`<div class="widget-value-line">
-      <span>Beitragsklasse</span>
-      <strong>${escapeHtml(contribution.className)}</strong>
-    </div>`);
+    rows.push(detailRow("Beitragsklasse", contribution.className));
   }
 
   if (!["NO_SEASON", "NOT_ASSIGNED"].includes(contribution?.status)) {
-    details.push(`<div class="widget-value-line">
-      <span>Beitrag</span>
-      <strong>${money(contribution.amountDue)}</strong>
-    </div>`);
-
-    details.push(`<div class="widget-value-line">
-      <span>Bestätigt bezahlt</span>
-      <strong>${money(contribution.paidAmount)}</strong>
-    </div>`);
+    rows.push(detailRow("Beitrag", money(contribution.amountDue)));
+    rows.push(detailRow("Bestätigt bezahlt", money(contribution.paidAmount)));
 
     if (Number(contribution.pendingAmount || 0) > 0) {
-      details.push(`<div class="widget-value-line">
-        <span>In Prüfung</span>
-        <strong>${money(contribution.pendingAmount)}</strong>
-      </div>`);
+      rows.push(detailRow("In Prüfung", money(contribution.pendingAmount)));
     }
 
-    details.push(`<div class="widget-value-line">
-      <span>Noch offen</span>
-      <strong>${money(contribution.openAmount)}</strong>
-    </div>`);
+    rows.push(detailRow("Noch offen", money(contribution.openAmount)));
   }
 
   return card({
@@ -137,14 +110,16 @@ function contributionCard(contribution) {
     description: contribution?.seasonName || "Laufende Saison",
     size: "widget-m",
     className: `v4-dashboard-contribution is-${escapeAttr(status.type)}`,
-    body: `<div class="v4-dashboard-contribution-status">
+    body: `<div class="v4-dashboard-topline">
       <span class="badge ${escapeAttr(status.type)}">${escapeHtml(status.label)}</span>
     </div>
-    <div class="widget-values">${details.join("")}</div>`
+    <div class="v4-dashboard-detail-grid">
+      ${rows.join("")}
+    </div>`
   });
 }
 
-function taskBadge(task) {
+function taskBadges(task) {
   const priorityType = task.priority === "URGENT"
     ? "danger"
     : task.priority === "HIGH"
@@ -165,12 +140,14 @@ function taskRows(items) {
     type="button"
     data-dashboard-task-id="${escapeAttr(task.id)}"
   >
-    <span class="v4-dashboard-task-copy">
+    <span class="v4-dashboard-task-main">
       <strong>${escapeHtml(task.title)}</strong>
       <small>${escapeHtml(task.teamName || (task.context === "BOARD" ? "Vorstand" : "Aufgabe"))}</small>
     </span>
-    <span class="v4-dashboard-task-badges">${taskBadge(task)}</span>
-    <span class="v4-dashboard-task-arrow" aria-hidden="true">›</span>
+    <span class="v4-dashboard-task-side">
+      <span class="v4-dashboard-task-badges">${taskBadges(task)}</span>
+      <span class="v4-dashboard-task-arrow" aria-hidden="true">›</span>
+    </span>
   </button>`).join("");
 }
 
@@ -199,9 +176,9 @@ function taskCard({
 
 function boardTaskSummary(statusCounts = {}) {
   return `<div class="v4-dashboard-status-summary">
-    <span><strong>${Number(statusCounts.OPEN || 0)}</strong> Offen</span>
-    <span><strong>${Number(statusCounts.IN_PROGRESS || 0)}</strong> In Bearbeitung</span>
-    <span><strong>${Number(statusCounts.WAITING || 0)}</strong> Wartet</span>
+    <div><strong>${Number(statusCounts.OPEN || 0)}</strong><span>Offen</span></div>
+    <div><strong>${Number(statusCounts.IN_PROGRESS || 0)}</strong><span>In Bearbeitung</span></div>
+    <div><strong>${Number(statusCounts.WAITING || 0)}</strong><span>Wartet</span></div>
   </div>`;
 }
 
@@ -230,7 +207,8 @@ function memberCountCard(count) {
     title: "Aktive Mitglieder",
     description: "Aktueller Fanclub-Bestand",
     size: "widget-s",
-    body: `<strong class="widget-main-value">${Number(count || 0)}</strong>`
+    className: "v4-dashboard-metric-card",
+    body: `<div class="v4-dashboard-primary-value">${Number(count || 0)}</div>`
   });
 }
 
@@ -241,12 +219,9 @@ function financeCard(finance) {
     description: "Aktuelle Salden aller aktiven Konten",
     size: "widget-m",
     className: "v4-dashboard-finance",
-    body: `<strong class="widget-main-value">${money(finance.totalBalance)}</strong>
-      <div class="widget-values">
-        ${(finance.accounts || []).map(account => `<div class="widget-value-line">
-          <span>${escapeHtml(account.name)}</span>
-          <strong>${money(account.balance)}</strong>
-        </div>`).join("")}
+    body: `<div class="v4-dashboard-primary-value">${money(finance.totalBalance)}</div>
+      <div class="v4-dashboard-detail-grid">
+        ${(finance.accounts || []).map(account => detailRow(account.name, money(account.balance))).join("")}
       </div>`
   });
 }
@@ -257,10 +232,11 @@ function openContributionsCard(finance) {
     title: "Offene Beiträge",
     description: finance.seasonName || "Laufende Saison",
     size: "widget-s",
-    body: `<strong class="widget-main-value">${Number(finance.openContributionCount || 0)}</strong>
-      <small class="v4-dashboard-card-foot">
-        ${escapeHtml(`${money(finance.openContributionAmount)} insgesamt offen`)}
-      </small>`
+    className: "v4-dashboard-metric-card",
+    body: `<div class="v4-dashboard-inline-metric">
+      <strong>${Number(finance.openContributionCount || 0)}</strong>
+      <span>${escapeHtml(`${money(finance.openContributionAmount)} insgesamt offen`)}</span>
+    </div>`
   });
 }
 
@@ -367,5 +343,6 @@ export async function hydrateDashboard(context = {}) {
 }
 
 const __V4_DASHBOARD_ROLE_AWARE_R1__ = true;
+const __V4_DASHBOARD_LAYOUT_CORR1__ = true;
 
 export function noop() {}
