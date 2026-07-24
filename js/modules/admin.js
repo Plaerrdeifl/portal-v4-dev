@@ -9,6 +9,7 @@ import {
   openDialog,
   optionList,
   runWrite,
+  showToast,
   statusBadge
 } from "./common.js";
 
@@ -121,6 +122,314 @@ function renderRequests(panel) {
   panel.querySelectorAll("[data-reject-request]").forEach(button => button.addEventListener("click", () => rejectRequest(pending.find(request => request.id === button.dataset.rejectRequest))));
 }
 
+function taskAccessSummary(user) {
+  if (!user.taskAccess) return "Nicht verfügbar";
+
+  const effective = user.taskAccess.effective || {};
+  const labels = ["Eigene Aufgaben"];
+
+  if (effective.canViewTeamSection) {
+    labels.push("Team");
+  }
+
+  if (effective.canViewBoardSection) {
+    labels.push("Vorstand");
+  }
+
+  if (effective.canViewArchiveSection) {
+    labels.push("Archiv");
+  }
+
+  if (effective.canManageTasks) {
+    labels.push("Verwaltung");
+  }
+
+  return labels.join(" · ");
+}
+
+function inheritedTaskAccessMarkup(user) {
+  const baseline = user.taskAccess?.baseline || {};
+  const items = [
+    ["Teamaufgaben", baseline.canViewTeamSection],
+    ["Vorstandsaufgaben", baseline.canViewBoardSection],
+    ["Archiv", baseline.canViewArchiveSection],
+    ["Aufgaben erstellen", baseline.canCreateTasks],
+    ["Global verwalten", baseline.canManageTasks],
+    ["Direkt übertragen", baseline.canDirectTransfer]
+  ].filter(([, enabled]) => enabled);
+
+  if (!items.length) {
+    return `<div class="notice">
+      <strong>Automatischer Rollenstandard</strong>
+      <p>Nur eigene, nicht archivierte Aufgaben.</p>
+    </div>`;
+  }
+
+  return `<div class="notice">
+    <strong>Automatischer Rollenstandard</strong>
+    <p>${items.map(([label]) => escapeHtml(label)).join(" · ")}</p>
+    <small>Diese Rechte werden aus Rolle, Amt und Teamfunktion geerbt und können hier nicht entfernt werden.</small>
+  </div>`;
+}
+
+function taskAccessTeamOptions(selectedIds = []) {
+  const selected = new Set(
+    (selectedIds || []).map(String)
+  );
+
+  return (snapshot?.taskAccessTeams || []).map(team => `
+    <label class="v4-task-access-team">
+      <input
+        type="checkbox"
+        name="taskArchiveTeam"
+        value="${escapeAttr(team.id)}"
+        ${selected.has(String(team.id)) ? "checked" : ""}
+      >
+      <span>${escapeHtml(team.name)}</span>
+    </label>
+  `).join("");
+}
+
+function editTaskAccess(user) {
+  const profile = user.taskAccess || {};
+  const baseline = profile.baseline || {};
+  const override = profile.override || {};
+  const archiveOptions = [
+    { value: "NONE", label: "Keine zusätzliche Archivfreigabe" },
+    { value: "OWN", label: "Nur eigene archivierte Aufgaben" },
+    { value: "SELECTED_TEAMS", label: "Ausgewählte Teamarchive" },
+    { value: "ALL_TEAMS", label: "Alle Teamarchive" },
+    { value: "FULL", label: "Vollständiges Archiv" }
+  ];
+
+  const dialog = openDialog({
+    title: "Aufgabenrechte",
+    kicker: `${user.userCode} · ${user.firstName} ${user.lastName}`,
+    submitLabel: "Zusatzrechte speichern",
+    body: `<form class="form-grid v4-task-access-form">
+      <input
+        type="hidden"
+        name="revision"
+        value="${escapeAttr(override.revision || 0)}"
+      >
+      <div class="full">
+        ${inheritedTaskAccessMarkup(user)}
+      </div>
+
+      <fieldset class="full v4-task-access-fieldset">
+        <legend>Zusätzliche Bereiche</legend>
+
+        <label class="v4-capability">
+          <input
+            type="checkbox"
+            name="viewAllTeamTasks"
+            ${override.viewAllTeamTasks ? "checked" : ""}
+            ${baseline.canViewTeamSection ? "disabled" : ""}
+          >
+          <span>
+            <strong>Alle Teamaufgaben anzeigen</strong>
+            <small>Gibt den allgemeinen Teamaufgaben-Bereich frei, unabhängig von eigener Teammitgliedschaft.</small>
+          </span>
+        </label>
+
+        <label class="v4-capability">
+          <input
+            type="checkbox"
+            name="viewBoardTasks"
+            ${override.viewBoardTasks ? "checked" : ""}
+            ${baseline.canViewBoardSection ? "disabled" : ""}
+          >
+          <span>
+            <strong>Vorstandsaufgaben anzeigen</strong>
+            <small>Gibt den Vorstandsaufgaben-Bereich frei, ohne ein Amt oder andere Vorstandsrechte zu vergeben.</small>
+          </span>
+        </label>
+      </fieldset>
+
+      <fieldset class="full v4-task-access-fieldset">
+        <legend>Zusätzliches Archiv</legend>
+
+        <label class="full">
+          Archivumfang
+          <select
+            name="archiveScope"
+            id="taskAccessArchiveScope"
+            ${baseline.archiveFull ? "disabled" : ""}
+          >
+            ${optionList(
+              archiveOptions,
+              override.archiveScope || "NONE"
+            )}
+          </select>
+          <small>
+            Bereits geerbte Teamarchive oder vollständige Vorstandsarchive bleiben immer erhalten.
+          </small>
+        </label>
+
+        <div
+          id="taskAccessArchiveTeams"
+          class="v4-task-access-teams"
+        >
+          ${taskAccessTeamOptions(override.archiveTeamIds || [])}
+        </div>
+      </fieldset>
+
+      <fieldset class="full v4-task-access-fieldset">
+        <legend>Zusätzliche Aktionen</legend>
+
+        <label class="v4-capability">
+          <input
+            type="checkbox"
+            name="canCreateTasks"
+            ${override.canCreateTasks ? "checked" : ""}
+            ${baseline.canCreateTasks ? "disabled" : ""}
+          >
+          <span>
+            <strong>Aufgaben erstellen</strong>
+            <small>Erlaubt das Erstellen in eigenen Teams beziehungsweise im zusätzlich sichtbaren Vorstandsbereich.</small>
+          </span>
+        </label>
+
+        <label class="v4-capability">
+          <input
+            type="checkbox"
+            name="canManageTasks"
+            ${override.canManageTasks ? "checked" : ""}
+            ${baseline.canManageTasks ? "disabled" : ""}
+          >
+          <span>
+            <strong>Aufgaben global verwalten</strong>
+            <small>Erteilt vollständige Aufgabenverwaltung einschließlich aller Bereiche und des vollständigen Archivs.</small>
+          </span>
+        </label>
+
+        <label class="v4-capability">
+          <input
+            type="checkbox"
+            name="canDirectTransfer"
+            ${override.canDirectTransfer ? "checked" : ""}
+            ${baseline.canDirectTransfer ? "disabled" : ""}
+          >
+          <span>
+            <strong>Sichtbare Aufgaben direkt übertragen</strong>
+            <small>Erlaubt nur die direkte Übertragung; keine zusätzlichen Bearbeitungs- oder Archivrechte.</small>
+          </span>
+        </label>
+      </fieldset>
+
+      <div class="full v4-task-access-reset">
+        <button
+          id="resetUserTaskAccess"
+          class="button small ghost"
+          type="button"
+          ${override.exists ? "" : "disabled"}
+        >
+          Auf Rollenstandard zurücksetzen
+        </button>
+      </div>
+    </form>`,
+    onSubmit: async () => {
+      const form = dialog.querySelector(
+        ".v4-task-access-form"
+      );
+
+      if (!(form instanceof HTMLFormElement)) {
+        throw new Error(
+          "Das Aufgabenrechte-Formular konnte nicht gelesen werden."
+        );
+      }
+
+      const archiveScope = form.elements
+        .namedItem("archiveScope")?.value || "NONE";
+
+      const archiveTeamIds = [
+        ...form.querySelectorAll(
+          'input[name="taskArchiveTeam"]:checked'
+        )
+      ].map(input => input.value);
+
+      snapshot = await runWrite(
+        () => call("save_user_task_access", {
+          userId: user.id,
+          revision: Number(
+            form.elements.namedItem("revision")?.value || 0
+          ),
+          viewAllTeamTasks: Boolean(
+            form.elements.namedItem("viewAllTeamTasks")?.checked
+          ),
+          viewBoardTasks: Boolean(
+            form.elements.namedItem("viewBoardTasks")?.checked
+          ),
+          archiveScope,
+          archiveTeamIds,
+          canCreateTasks: Boolean(
+            form.elements.namedItem("canCreateTasks")?.checked
+          ),
+          canManageTasks: Boolean(
+            form.elements.namedItem("canManageTasks")?.checked
+          ),
+          canDirectTransfer: Boolean(
+            form.elements.namedItem("canDirectTransfer")?.checked
+          ),
+          reset: false
+        }),
+        "Zusätzliche Aufgabenrechte wurden gespeichert."
+      );
+
+      render();
+    }
+  });
+
+  const scope = dialog.querySelector(
+    "#taskAccessArchiveScope"
+  );
+  const teams = dialog.querySelector(
+    "#taskAccessArchiveTeams"
+  );
+
+  const syncArchiveTeams = () => {
+    if (!teams) return;
+    teams.hidden = scope?.value !== "SELECTED_TEAMS";
+  };
+
+  scope?.addEventListener("change", syncArchiveTeams);
+  syncArchiveTeams();
+
+  dialog.querySelector("#resetUserTaskAccess")
+    ?.addEventListener("click", async event => {
+      const resetButton = event.currentTarget;
+
+      const confirmed = await confirmAction(
+        "Individuelle Aufgabenrechte entfernen und auf den automatisch geerbten Rollenstandard zurücksetzen?"
+      );
+
+      if (!confirmed) return;
+      if (resetButton) resetButton.disabled = true;
+
+      try {
+        snapshot = await runWrite(
+          () => call("save_user_task_access", {
+            userId: user.id,
+            revision: Number(override.revision || 0),
+            reset: true
+          }),
+          "Aufgabenrechte wurden auf den Rollenstandard zurückgesetzt."
+        );
+
+        if (dialog.open) dialog.close();
+        render();
+      } catch (error) {
+        if (resetButton) resetButton.disabled = false;
+        showToast(
+          error?.message
+            || "Aufgabenrechte konnten nicht zurückgesetzt werden.",
+          "error",
+          6500
+        );
+      }
+    });
+}
+
 async function editUser(user) {
   const match = user.memberId ? null : await loadMemberMatch(user.email, user.id);
   const selectedMemberId = user.memberId || (match?.status === "MATCH" ? match.member?.id || "" : "");
@@ -147,9 +456,77 @@ async function editUser(user) {
 
 function renderUsers(panel) {
   const users = snapshot.users || [];
-  panel.innerHTML = `<div class="v4-toolbar"><div><h3>Portalbenutzer</h3><p>${users.length} Benutzer · ${snapshot.activeAdminCount} aktive Administratoren</p></div></div>
-    ${users.length ? `<div class="v4-table-wrap"><table class="v4-table"><thead><tr><th>ID</th><th>Name</th><th>Rolle</th><th>Mitglied</th><th>Status</th><th></th></tr></thead><tbody>${users.map(user => `<tr><td><strong>${escapeHtml(user.userCode)}</strong></td><td>${escapeHtml(user.firstName)} ${escapeHtml(user.lastName)}<small>${escapeHtml(user.email)}</small></td><td>${escapeHtml(user.roleName)}</td><td>${escapeHtml(user.memberCode || "–")}</td><td>${statusBadge(user.status)}</td><td><button class="button small secondary" data-edit-user="${escapeAttr(user.id)}" type="button">Bearbeiten</button></td></tr>`).join("")}</tbody></table></div>` : empty("Noch keine Portalbenutzer.")}`;
-  panel.querySelectorAll("[data-edit-user]").forEach(button => button.addEventListener("click", async () => editUser(users.find(user => user.id === button.dataset.editUser))));
+
+  panel.innerHTML = `<div class="v4-toolbar">
+    <div>
+      <h3>Portalbenutzer</h3>
+      <p>${users.length} Benutzer · ${snapshot.activeAdminCount} aktive Administratoren</p>
+    </div>
+  </div>
+  ${users.length ? `<div class="v4-table-wrap">
+    <table class="v4-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Rolle</th>
+          <th>Mitglied</th>
+          <th>Aufgaben</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${users.map(user => `<tr>
+          <td><strong>${escapeHtml(user.userCode)}</strong></td>
+          <td>
+            ${escapeHtml(user.firstName)} ${escapeHtml(user.lastName)}
+            <small>${escapeHtml(user.email)}</small>
+          </td>
+          <td>${escapeHtml(user.roleName)}</td>
+          <td>${escapeHtml(user.memberCode || "–")}</td>
+          <td>
+            <small>${escapeHtml(taskAccessSummary(user))}</small>
+          </td>
+          <td>${statusBadge(user.status)}</td>
+          <td>
+            <div class="v4-row-actions">
+              ${snapshot.canManageTaskAccess ? `<button
+                class="button small secondary"
+                data-edit-user-task-access="${escapeAttr(user.id)}"
+                type="button"
+              >Aufgabenrechte</button>` : ""}
+              <button
+                class="button small secondary"
+                data-edit-user="${escapeAttr(user.id)}"
+                type="button"
+              >Bearbeiten</button>
+            </div>
+          </td>
+        </tr>`).join("")}
+      </tbody>
+    </table>
+  </div>` : empty("Noch keine Portalbenutzer.")}`;
+
+  panel.querySelectorAll("[data-edit-user]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const user = users.find(
+        item => item.id === button.dataset.editUser
+      );
+
+      if (user) await editUser(user);
+    });
+  });
+
+  panel.querySelectorAll("[data-edit-user-task-access]").forEach(button => {
+    button.addEventListener("click", () => {
+      const user = users.find(
+        item => item.id === button.dataset.editUserTaskAccess
+      );
+
+      if (user) editTaskAccess(user);
+    });
+  });
 }
 
 function roleForm(role = {}) {
@@ -379,5 +756,7 @@ export async function hydrateAdmin(context = {}) {
     if (status) { status.textContent = "Kein Zugriff"; status.className = "status-pill error"; }
   }
 }
+
+const __V4_ADMIN_TASK_ACCESS_R1__ = true;
 
 export function noop() {}

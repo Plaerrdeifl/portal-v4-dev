@@ -40,8 +40,11 @@ function label(items, value) {
 
 function canCreateTask() {
   return Boolean(
-    snapshot?.canCreateBoard
-    || (snapshot?.teams || []).some(team => team.canManage)
+    snapshot?.taskAccess?.canCreateTasks
+    || snapshot?.canCreateBoard
+    || (snapshot?.teams || []).some(
+      team => team.canCreate || team.canManage
+    )
   );
 }
 
@@ -73,11 +76,16 @@ function assignmentCandidates(context, teamId) {
 
 function taskForm(task = {}) {
   const teams = (snapshot?.teams || []).filter(
-    team => team.canManage || task.teamId === team.id
+    team => (
+      team.canCreate
+      || team.canManage
+      || task.teamId === team.id
+    )
   );
   const defaultContext = task.context
     || (
-      snapshot?.canCreateBoard && !teams.some(team => team.canManage)
+      snapshot?.canCreateBoard
+        && !teams.some(team => team.canCreate || team.canManage)
         ? "BOARD"
         : "TEAM"
     );
@@ -605,7 +613,11 @@ function transferCandidates(task) {
     if (task.context === "TEAM") {
       return (user.teamIds || []).includes(task.teamId);
     }
-    if (snapshot?.canCreateBoard || snapshot?.canManageAll) return true;
+    if (
+      snapshot?.canCreateBoard
+      || snapshot?.canManageAll
+      || snapshot?.taskAccess?.canDirectTransfer
+    ) return true;
     return Boolean(user.isOfficeHolder);
   });
 }
@@ -832,32 +844,173 @@ function openPermanentDelete(task) {
   });
 }
 
+function taskAccess() {
+  const access = snapshot?.taskAccess || {};
+  const teams = snapshot?.teams || [];
+
+  const canManageAll = Boolean(
+    access.canManageTasks ?? snapshot?.canManageAll
+  );
+  const isOfficeHolder = Boolean(
+    access.isOfficeHolder
+      ?? (snapshot?.canCreateBoard && !canManageAll)
+  );
+  const hasTeamMembership = Boolean(
+    access.hasTeamMembership ?? teams.length
+  );
+  const hasTeamLeadership = Boolean(
+    access.hasTeamLeadership
+      ?? teams.some(team => team.canManage)
+  );
+
+  return {
+    canViewTeamSection: Boolean(
+      access.canViewTeamSection
+        ?? (
+          canManageAll
+          || isOfficeHolder
+          || hasTeamMembership
+        )
+    ),
+    canViewBoardSection: Boolean(
+      access.canViewBoardSection
+        ?? (canManageAll || isOfficeHolder)
+    ),
+    canViewArchiveSection: Boolean(
+      access.canViewArchiveSection
+        ?? (
+          canManageAll
+          || isOfficeHolder
+          || hasTeamLeadership
+        )
+    ),
+    archiveFull: Boolean(
+      access.archiveFull
+        ?? (canManageAll || isOfficeHolder)
+    ),
+    archiveAllTeams: Boolean(access.archiveAllTeams),
+    archiveOwn: Boolean(access.archiveOwn),
+    archiveTeamIds: Array.isArray(access.archiveTeamIds)
+      ? access.archiveTeamIds.map(String)
+      : teams
+        .filter(team => team.canManage)
+        .map(team => String(team.id)),
+    canCreateTasks: Boolean(
+      access.canCreateTasks ?? canCreateTask()
+    ),
+    canManageTasks: canManageAll,
+    canDirectTransfer: Boolean(
+      access.canDirectTransfer
+        ?? (
+          canManageAll
+          || isOfficeHolder
+          || hasTeamLeadership
+        )
+    )
+  };
+}
+
+function availableTaskFilters() {
+  const access = taskAccess();
+
+  return [
+    ["mine", "Meine Aufgaben"],
+    ...(access.canViewTeamSection
+      ? [["team", "Teamaufgaben"]]
+      : []),
+    ...(access.canViewBoardSection
+      ? [["board", "Vorstandsaufgaben"]]
+      : []),
+    ...(access.canViewArchiveSection
+      ? [["archive", "Archiv"]]
+      : [])
+  ];
+}
+
+function normalizeTaskView() {
+  const allowed = new Set(
+    availableTaskFilters().map(([key]) => key)
+  );
+
+  if (!allowed.has(activeFilter)) {
+    activeFilter = "mine";
+  }
+
+  if (activeFilter !== "archive") {
+    activeArchiveTeamId = "";
+  }
+}
+
 function visibleTasks() {
   const tasks = snapshot?.tasks || [];
   const userId = currentUser().id;
+  const access = taskAccess();
 
   if (activeFilter === "team") {
+    if (!access.canViewTeamSection) return [];
+
     return tasks.filter(
-      task => task.context === "TEAM" && task.status !== "ARCHIVED"
+      task => (
+        task.context === "TEAM"
+        && task.status !== "ARCHIVED"
+      )
     );
   }
 
   if (activeFilter === "board") {
-    if (!snapshot?.canCreateBoard) return [];
+    if (!access.canViewBoardSection) return [];
+
     return tasks.filter(
-      task => task.context === "BOARD" && task.status !== "ARCHIVED"
+      task => (
+        task.context === "BOARD"
+        && task.status !== "ARCHIVED"
+      )
     );
   }
 
   if (activeFilter === "archive") {
-    return tasks.filter(task => (
-      task.status === "ARCHIVED"
-      && (!activeArchiveTeamId || task.teamId === activeArchiveTeamId)
-    ));
+    if (!access.canViewArchiveSection) return [];
+
+    return tasks.filter(task => {
+      if (task.status !== "ARCHIVED") return false;
+      if (access.archiveFull) return true;
+
+      if (
+        access.archiveAllTeams
+        && task.context === "TEAM"
+      ) {
+        return (
+          !activeArchiveTeamId
+          || task.teamId === activeArchiveTeamId
+        );
+      }
+
+      const ownTask = (
+        access.archiveOwn
+        && task.assignedUserId === userId
+      );
+
+      const teamTask = (
+        task.context === "TEAM"
+        && access.archiveTeamIds.includes(
+          String(task.teamId || "")
+        )
+      );
+
+      if (!ownTask && !teamTask) return false;
+
+      return (
+        !activeArchiveTeamId
+        || task.teamId === activeArchiveTeamId
+      );
+    });
   }
 
   return tasks.filter(
-    task => task.assignedUserId === userId && task.status !== "ARCHIVED"
+    task => (
+      task.assignedUserId === userId
+      && task.status !== "ARCHIVED"
+    )
   );
 }
 
@@ -1093,12 +1246,8 @@ function renderTabs() {
   const slot = document.getElementById("tasksTabs");
   if (!slot) return;
 
-  const filters = [
-    ["mine", "Meine Aufgaben"],
-    ["team", "Teamaufgaben"],
-    ["board", "Vorstandsaufgaben"],
-    ["archive", "Archiv"]
-  ];
+  normalizeTaskView();
+  const filters = availableTaskFilters();
 
   const archiveTeamName = activeArchiveTeamId
     ? (snapshot?.tasks || []).find(
@@ -1124,7 +1273,9 @@ function renderTabs() {
   slot.querySelectorAll("[data-task-filter]").forEach(button => {
     button.addEventListener("click", () => {
       activeFilter = button.dataset.taskFilter;
-      if (activeFilter !== "archive") activeArchiveTeamId = "";
+      if (activeFilter !== "archive") {
+        activeArchiveTeamId = "";
+      }
       renderAll();
     });
   });
@@ -1155,6 +1306,7 @@ function render() {
 }
 
 function renderAll() {
+  normalizeTaskView();
   renderTabs();
   render();
 
@@ -1196,5 +1348,7 @@ export async function hydrateTasks(context = {}) {
     }
   }
 }
+
+const __V4_ADMIN_TASK_ACCESS_TASKS_R1__ = true;
 
 export function noop() {}
