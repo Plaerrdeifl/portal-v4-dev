@@ -270,6 +270,7 @@ function memberForm(member = {}) {
     <input type="hidden" name="revision" value="${escapeAttr(member.revision || "")}">
     <label class="v4-field-half">Vorname<input name="firstName" required maxlength="160" value="${escapeAttr(member.firstName || "")}"></label>
     <label class="v4-field-half">Nachname<input name="lastName" required maxlength="160" value="${escapeAttr(member.lastName || "")}"></label>
+    <label class="v4-field-half">Geburtsdatum<input name="birthDate" type="date" max="${localDate()}" value="${escapeAttr(member.birthDate || "")}"></label>
     <label class="v4-field-half">E-Mail<input name="email" type="email" maxlength="320" value="${escapeAttr(member.email || "")}"></label>
     <label class="v4-field-half">Telefon<input name="phone" maxlength="80" value="${escapeAttr(member.phone || "")}"></label>
     <label class="v4-field-nine">Straße<input name="street" maxlength="160" value="${escapeAttr(member.street || "")}"></label>
@@ -292,6 +293,7 @@ function memberDetailMarkup(member) {
   return `<div class="v4-detail-grid v4-member-detail-grid">
     <div><span>Vorname</span><strong>${escapeHtml(member.firstName || "–")}</strong></div>
     <div><span>Nachname</span><strong>${escapeHtml(member.lastName || "–")}</strong></div>
+    <div><span>Geburtsdatum</span><strong>${escapeHtml(fmtDate(member.birthDate))}</strong></div>
     <div><span>E-Mail</span><strong>${escapeHtml(member.email || "–")}</strong></div>
     <div><span>Telefon</span><strong>${escapeHtml(member.phone || "–")}</strong></div>
     <div class="full"><span>Adresse</span><strong>${escapeHtml(address)}</strong></div>
