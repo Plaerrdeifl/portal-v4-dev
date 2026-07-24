@@ -1,4 +1,5 @@
-const CACHE_VERSION = "pd-portal-v4-push-newtasks-quiettime-r1-20260723";
+const CACHE_VERSION = "pd-portal-v4-task-access-push-r3-20260724";
+const LEGACY_CACHE_VERSION = "pd-portal-v4-push-newtasks-quiettime-r1-20260723";
 const APP_CACHE = `${CACHE_VERSION}-shell`;
 const SHELL = [
   "./",
@@ -17,6 +18,7 @@ const SHELL = [
   "./js/router.js",
   "./js/ui.js",
   "./js/push.js",
+  "./js/task-push-r3.js",
   "./js/pages.js",
   "./js/app.js",
   "./js/modules/common.js",
@@ -93,6 +95,31 @@ self.addEventListener("fetch", event => {
   event.respondWith(caches.match(request, { ignoreSearch: true }).then(cached => cached || fetch(request)));
 });
 
+function routeWithNotification(route, notificationId) {
+  const raw = String(route || "#/dashboard").trim();
+  const normalized = raw.startsWith("#/")
+    ? raw
+    : `#/${raw.replace(/^#?\/?/, "")}`;
+  const [path, query = ""] = normalized.split("?", 2);
+  const params = new URLSearchParams(query);
+  const id = String(notificationId || "").trim();
+
+  if (id) params.set("notificationId", id);
+
+  const suffix = params.toString();
+  return suffix ? `${path}?${suffix}` : path;
+}
+
+async function setBadgeCount(count) {
+  const next = Math.max(0, Number(count || 0));
+
+  if (next > 0 && self.registration.setAppBadge) {
+    await self.registration.setAppBadge(next);
+  } else if (self.registration.clearAppBadge) {
+    await self.registration.clearAppBadge();
+  }
+}
+
 self.addEventListener("push", event => {
   const fallback = {
     title: "Plärrdeifl Portal",
@@ -122,16 +149,8 @@ self.addEventListener("push", event => {
   ).href;
 
   event.waitUntil((async () => {
-    if (
-      self.registration.setAppBadge
-      && Number.isFinite(Number(payload.badgeCount))
-    ) {
-      const count = Math.max(0, Number(payload.badgeCount));
-
-      if (count > 0) await self.registration.setAppBadge(count);
-      else if (self.registration.clearAppBadge) {
-        await self.registration.clearAppBadge();
-      }
+    if (Number.isFinite(Number(payload.badgeCount))) {
+      await setBadgeCount(payload.badgeCount);
     }
 
     await self.registration.showNotification(
@@ -146,36 +165,60 @@ self.addEventListener("push", event => {
         renotify: true,
         data: {
           route: payload.route || fallback.route,
-          notificationId: payload.notificationId || ""
+          notificationId: payload.notificationId || "",
+          badgeCount: Math.max(0, Number(payload.badgeCount || 0)),
+          eventType: payload.eventType || ""
         }
       }
     );
-  })());
-});
 
-self.addEventListener("notificationclick", event => {
-  event.notification.close();
-
-  const route = event.notification.data?.route || "#/dashboard";
-  const targetUrl = new URL(route, self.registration.scope).href;
-
-  event.waitUntil((async () => {
     const windows = await self.clients.matchAll({
       type: "window",
       includeUncontrolled: true
     });
 
     for (const client of windows) {
-      if ("navigate" in client) {
-        await client.navigate(targetUrl);
-      }
-
       client.postMessage({
-        type: "OPEN_PUSH_ROUTE",
-        route
+        type: "PUSH_STATE_CHANGED",
+        eventType: payload.eventType || "",
+        badgeCount: Math.max(0, Number(payload.badgeCount || 0))
       });
+    }
+  })());
+});
 
-      return client.focus();
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+
+  const notificationId = event.notification.data?.notificationId || "";
+  const route = routeWithNotification(
+    event.notification.data?.route || "#/dashboard",
+    notificationId
+  );
+  const targetUrl = new URL(route, self.registration.scope).href;
+  const previousBadgeCount = Math.max(
+    0,
+    Number(event.notification.data?.badgeCount || 0)
+  );
+
+  event.waitUntil((async () => {
+    await setBadgeCount(Math.max(0, previousBadgeCount - 1));
+
+    const windows = await self.clients.matchAll({
+      type: "window",
+      includeUncontrolled: true
+    });
+    const target = windows.find(client => client.visibilityState === "visible")
+      || windows.find(client => client.focused)
+      || windows[0];
+
+    if (target) {
+      target.postMessage({
+        type: "OPEN_PUSH_ROUTE",
+        route,
+        notificationId
+      });
+      return target.focus();
     }
 
     return self.clients.openWindow(targetUrl);
