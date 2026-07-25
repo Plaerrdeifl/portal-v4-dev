@@ -28,7 +28,7 @@ test("personal dashboard defines only the approved widget catalog", async () => 
   );
 });
 
-test("dashboard supports compact standard and wide widget sizes", async () => {
+test("dashboard supports small compact standard and wide widget sizes", async () => {
   const [dashboard, css] = await Promise.all([
     read("js/modules/dashboard.js"),
     read("css/app.css")
@@ -36,8 +36,9 @@ test("dashboard supports compact standard and wide widget sizes", async () => {
 
   assert.match(
     dashboard,
-    /const ALL_SIZES = \["compact", "standard", "wide"\]/
+    /const ALL_SIZES = \["small", "compact", "standard", "wide"\]/
   );
+  assert.match(css, /\.dashboard-widget\.widget-size-small\{[\s\S]*grid-column:span 3/);
   assert.match(css, /\.dashboard-widget\.widget-size-compact\{[\s\S]*grid-column:span 4/);
   assert.match(css, /\.dashboard-widget\.widget-size-standard\{[\s\S]*grid-column:span 6/);
   assert.match(css, /\.dashboard-widget\.widget-size-wide\{[\s\S]*grid-column:span 12/);

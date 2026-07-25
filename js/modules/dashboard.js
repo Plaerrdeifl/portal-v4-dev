@@ -37,12 +37,19 @@ const CONTRIBUTION_STATUS = {
 };
 
 const SIZE_LABELS = {
+  small: "S · sehr kompakt",
   compact: "Kompakt",
   standard: "Standard",
   wide: "Breit"
 };
 
-const ALL_SIZES = ["compact", "standard", "wide"];
+const ALL_SIZES = ["small", "compact", "standard", "wide"];
+const SMALL_METRIC_ROW_KEYS = ["member_count", "open_contributions", "finance"];
+const SMALL_TITLES = {
+  member_count: "Mitglieder",
+  open_contributions: "Offen",
+  finance: "Kassen"
+};
 
 const WIDGET_CATALOG = [
   {
@@ -50,7 +57,8 @@ const WIDGET_CATALOG = [
     title: "Aktive Mitglieder",
     shortTitle: "Mitglieder",
     icon: "👥",
-    defaultSize: "compact"
+    defaultSize: "compact",
+    allowSmall: true
   },
   {
     key: "contribution",
@@ -64,7 +72,8 @@ const WIDGET_CATALOG = [
     title: "Offene Beiträge",
     shortTitle: "Offene Beiträge",
     icon: "📌",
-    defaultSize: "compact"
+    defaultSize: "compact",
+    allowSmall: true
   },
   {
     key: "birthdays",
@@ -92,7 +101,8 @@ const WIDGET_CATALOG = [
     title: "Fanclub-Kassen",
     shortTitle: "Kassen",
     icon: "💶",
-    defaultSize: "standard"
+    defaultSize: "standard",
+    allowSmall: true
   },
   {
     key: "board_tasks",
@@ -104,7 +114,9 @@ const WIDGET_CATALOG = [
 ].map((widget, index) => ({
   ...widget,
   defaultPosition: index,
-  allowedSizes: ALL_SIZES
+  allowedSizes: widget.allowSmall
+    ? ALL_SIZES
+    : ALL_SIZES.filter(size => size !== "small")
 }));
 
 const CATALOG_BY_KEY = new Map(
@@ -160,7 +172,11 @@ function card({
   className = ""
 }) {
   const normalizedSize = sizeClass(size);
-  const visibleTitle = normalizedSize === "compact" ? shortTitle : title;
+  const visibleTitle = normalizedSize === "small"
+    ? SMALL_TITLES[key] || shortTitle
+    : normalizedSize === "compact"
+      ? shortTitle
+      : title;
 
   return `<article
     class="card dashboard-widget widget-size-${escapeAttr(normalizedSize)} ${escapeAttr(className)}"
@@ -365,7 +381,7 @@ function memberCountCard(definition, count, size) {
 
 function financeCard(definition, finance, size) {
   const normalizedSize = sizeClass(size);
-  const accountLimit = normalizedSize === "compact"
+  const accountLimit = ["small", "compact"].includes(normalizedSize)
     ? 0
     : normalizedSize === "standard"
       ? 3
@@ -646,11 +662,26 @@ function editorRows(layout) {
 }
 
 function editorBody(layout) {
+  const availableKeys = new Set(layout.map(item => item.key));
+  const canUseSmallMetricRow = SMALL_METRIC_ROW_KEYS.every(
+    key => availableKeys.has(key)
+  );
+
   return `<form class="v4-dashboard-editor-form">
     <p class="subtle v4-dashboard-editor-intro">
       Wähle ausschließlich die für dich freigegebenen Widgets, ihre Größe
       und Reihenfolge.
     </p>
+
+    ${canUseSmallMetricRow
+      ? `<button
+          class="button secondary small v4-dashboard-small-row-button"
+          type="button"
+          data-dashboard-small-row
+        >
+          3er-Kennzahlenreihe
+        </button>`
+      : ""}
 
     <input
       type="hidden"
@@ -766,6 +797,40 @@ function bindEditorControls(form) {
 
     updateEditorOrder(form);
   });
+
+  form.querySelector("[data-dashboard-small-row]")
+    ?.addEventListener("click", () => {
+      const rows = SMALL_METRIC_ROW_KEYS.map(key =>
+        list.querySelector(`[data-widget-editor-key="${key}"]`)
+      );
+
+      if (rows.some(row => !row)) return;
+
+      for (const key of SMALL_METRIC_ROW_KEYS) {
+        const row = list.querySelector(
+          `[data-widget-editor-key="${key}"]`
+        );
+        const checkbox = row?.querySelector(
+          `[name="visible__${key}"]`
+        );
+        const select = row?.querySelector(
+          `[name="size__${key}"]`
+        );
+
+        if (checkbox) checkbox.checked = true;
+        if (select) select.value = "small";
+      }
+
+      for (const key of SMALL_METRIC_ROW_KEYS.slice().reverse()) {
+        const row = list.querySelector(
+          `[data-widget-editor-key="${key}"]`
+        );
+
+        if (row) list.insertBefore(row, list.firstElementChild);
+      }
+
+      updateEditorOrder(form);
+    });
 
   form.querySelector("[data-dashboard-reset]")
     ?.addEventListener("click", () => {
@@ -915,5 +980,6 @@ const __V4_DASHBOARD_ROLE_AWARE_R1__ = true;
 const __V4_DASHBOARD_LAYOUT_CORR1__ = true;
 const __V4_DASHBOARD_LAYOUT_CORR3__ = true;
 const __V4_PERSONAL_DASHBOARD_WIDGETS_R1__ = true;
+const __V4_DASHBOARD_SMALL_WIDGETS_R1__ = true;
 
 export function noop() {}
