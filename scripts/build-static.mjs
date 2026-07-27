@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 const root = resolve(import.meta.dirname, "..");
 const dist = resolve(root, "dist");
+const runtimeOutput = resolve(dist, "js", "runtime-config.js");
 
 const files = [
   "index.html",
@@ -24,6 +25,17 @@ const directories = [
   "pages"
 ];
 
+const allowedEnvironments = new Set(["LOCAL", "DEV", "PROD"]);
+const environment = String(
+  process.env.PORTAL_ENVIRONMENT || ""
+).trim().toUpperCase();
+
+if (!allowedEnvironments.has(environment)) {
+  throw new Error(
+    "PORTAL_ENVIRONMENT muss ausdrücklich LOCAL, DEV oder PROD sein."
+  );
+}
+
 await rm(dist, { recursive: true, force: true });
 await mkdir(dist, { recursive: true });
 
@@ -39,42 +51,126 @@ for (const directory of directories) {
   );
 }
 
-const supabaseUrl = String(process.env.SUPABASE_URL || "").trim();
+/*
+ * Eine möglicherweise vorhandene lokale Runtime-Konfiguration wird nach dem
+ * Kopieren immer entfernt. DEV und PROD dürfen sie niemals übernehmen.
+ */
+await rm(runtimeOutput, { force: true });
+
+const supabaseUrl = String(
+  process.env.SUPABASE_URL || ""
+).trim().replace(/\/$/, "");
+
 const publishableKey = String(
   process.env.SUPABASE_PUBLISHABLE_KEY
   || process.env.SUPABASE_ANON_KEY
   || ""
 ).trim();
 
-if (supabaseUrl && publishableKey) {
+const expectedProjectRef = String(
+  process.env.SUPABASE_EXPECTED_PROJECT_REF || ""
+).trim();
+
+const devProjectRef = "tpieykhhawszlzsoflnl";
+
+function validateRemoteProject(url, projectRef) {
+  if (!/^[a-z0-9]+$/.test(projectRef)) {
+    throw new Error(
+      "SUPABASE_EXPECTED_PROJECT_REF fehlt oder ist ungültig."
+    );
+  }
+
+  let parsedUrl;
+
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    throw new Error("SUPABASE_URL ist ungültig.");
+  }
+
+  const expectedHost = `${projectRef}.supabase.co`;
+
+  if (
+    parsedUrl.protocol !== "https:"
+    || parsedUrl.hostname !== expectedHost
+    || parsedUrl.username
+    || parsedUrl.password
+  ) {
+    throw new Error(
+      `SUPABASE_URL gehört nicht zum erwarteten Projekt ${projectRef}.`
+    );
+  }
+}
+
+async function generateRuntimeConfig() {
   await execFileAsync(
     process.execPath,
     [
       resolve(root, "scripts", "write-runtime-config.mjs"),
       "--environment",
-      "DEV",
+      environment,
       "--output",
-      resolve(dist, "js", "runtime-config.js")
+      runtimeOutput
     ],
     {
       cwd: root,
       env: process.env
     }
   );
+}
 
-  console.log("DEV-Runtime-Konfiguration aus Umgebungsvariablen erzeugt.");
-} else {
-  const localRuntime = resolve(root, "js", "runtime-config.js");
-
-  try {
-    await access(localRuntime, constants.R_OK);
-  } catch {
+if (environment === "LOCAL") {
+  if (Boolean(supabaseUrl) !== Boolean(publishableKey)) {
     throw new Error(
-      "SUPABASE_URL und SUPABASE_PUBLISHABLE_KEY fehlen und es existiert keine lokale Runtime-Konfiguration."
+      "Für LOCAL müssen Supabase URL und Browser-Schlüssel gemeinsam angegeben werden."
     );
   }
 
-  console.log("Vorhandene lokale DEV-Runtime-Konfiguration übernommen.");
+  if (supabaseUrl && publishableKey) {
+    await generateRuntimeConfig();
+  } else {
+    const localRuntime = resolve(root, "js", "runtime-config.js");
+
+    try {
+      await access(localRuntime, constants.R_OK);
+    } catch {
+      throw new Error(
+        "Für LOCAL fehlt eine lesbare js/runtime-config.js."
+      );
+    }
+
+    await cp(localRuntime, runtimeOutput);
+  }
+} else {
+  if (!supabaseUrl || !publishableKey) {
+    throw new Error(
+      "Für DEV und PROD sind SUPABASE_URL und SUPABASE_PUBLISHABLE_KEY erforderlich."
+    );
+  }
+
+  validateRemoteProject(supabaseUrl, expectedProjectRef);
+
+  if (
+    environment === "DEV"
+    && expectedProjectRef !== devProjectRef
+  ) {
+    throw new Error(
+      "DEV muss an das festgelegte Supabase-DEV-Projekt gebunden sein."
+    );
+  }
+
+  if (
+    environment === "PROD"
+    && expectedProjectRef === devProjectRef
+  ) {
+    throw new Error(
+      "PROD darf nicht mit dem Supabase-DEV-Projekt gebaut werden."
+    );
+  }
+
+  await generateRuntimeConfig();
 }
 
-console.log("Statisches Portal erfolgreich nach dist gebaut.");
+console.log(
+  `Statisches Portal für ${environment} erfolgreich nach dist gebaut.`
+);
