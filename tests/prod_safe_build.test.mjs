@@ -78,3 +78,29 @@ test("PROD cannot use the checked DEV Supabase project", async () => {
     /PROD darf nicht mit dem Supabase-DEV-Projekt gebaut werden/
   );
 });
+test("pull requests run read-only tests and an exact DEV build", async () => {
+  const workflow = await read(
+    ".github/workflows/validate-pull-request.yml"
+  );
+
+  assert.match(workflow, /pull_request:/);
+  assert.match(workflow, /branches:\s*\n\s+- main/);
+  assert.match(workflow, /contents: read/);
+  assert.doesNotMatch(workflow, /pages: write/);
+  assert.doesNotMatch(workflow, /id-token: write/);
+
+  assert.match(workflow, /run: npm ci/);
+  assert.match(workflow, /run: npm test/);
+  assert.match(workflow, /PORTAL_ENVIRONMENT: DEV/);
+
+  assert.match(
+    workflow,
+    /SUPABASE_EXPECTED_PROJECT_REF: \$\{\{ vars\.SUPABASE_PROJECT_REF \}\}/
+  );
+
+  assert.match(workflow, /run: npm run build/);
+  assert.match(
+    workflow,
+    /tpieykhhawszlzsoflnl\.supabase\.co/
+  );
+});
