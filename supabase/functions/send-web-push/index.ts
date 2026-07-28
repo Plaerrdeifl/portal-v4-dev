@@ -109,8 +109,7 @@ Deno.serve(async request => {
 
     const publicKey = env("VAPID_PUBLIC_KEY");
     const privateKey = env("VAPID_PRIVATE_KEY");
-    const subject = Deno.env.get("VAPID_SUBJECT")
-      || "https://plaerrdeifl.github.io";
+    const subject = env("VAPID_SUBJECT");
 
     webpush.setVapidDetails(subject, publicKey, privateKey);
 
