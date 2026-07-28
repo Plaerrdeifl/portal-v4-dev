@@ -22,7 +22,7 @@ function serviceKey() {
   const legacy = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (legacy) return legacy;
 
-  throw new Error("Kein Supabase-Secret-Key verfÃ¼gbar.");
+  throw new Error("Kein Supabase-Secret-Key verfügbar.");
 }
 
 async function rpc(supabaseUrl, key, functionName, payload = {}) {
