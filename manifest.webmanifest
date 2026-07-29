@@ -4,7 +4,7 @@
   "short_name": "Plärrdeifl",
   "description": "Plärrdeifl Portal V4 Core – Fanclub, Teams, Aufgaben und sichere Supabase-Anmeldung.",
   "lang": "de-DE",
-  "start_url": "./#/home",
+  "start_url": "./#/login",
   "scope": "./",
   "display": "standalone",
   "display_override": [
@@ -44,41 +44,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Portal öffnen",
-      "short_name": "Portal",
-      "url": "./#/home",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "Mit Google anmelden",
-      "short_name": "Login",
-      "url": "./#/login",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "Fanclub",
-      "short_name": "Fanclub",
-      "url": "./#/fanclub",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
     }
   ]
 }

@@ -63,8 +63,8 @@ test("cache identifies the opaque status-bar release", async () => {
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
-  assert.match(config, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
+  assert.match(index, /20260729-login-first-auth-gate-r1/);
+  assert.match(config, /20260729-login-first-auth-gate-r1/);
   assert.match(
     worker,
     /pd-portal-v4-push-newtasks-quiettime-r1-20260723/

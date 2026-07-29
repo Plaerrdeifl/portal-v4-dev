@@ -1,33 +1,72 @@
-const runtime = window.PD_RUNTIME_CONFIG || {};
+const runtime =
+  window.PD_RUNTIME_CONFIG || {};
 
 export const CONFIG = Object.freeze({
   app: {
     name: "Plärrdeifl Portal",
     shortName: "Plärrdeifl",
     version: "v4.0.0 Core",
-    build: "2026.07.19-supabase-core",
-    repository: "https://github.com/Plaerrdeifl/portal"
+    build: "2026.07.29-login-first-auth-gate-r1",
+    repository:
+      "https://github.com/Plaerrdeifl/portal"
   },
+
   supabase: {
-    url: String(runtime.supabaseUrl || "").trim(),
-    publishableKey: String(runtime.supabasePublishableKey || runtime.supabaseAnonKey || "").trim(),
-    environment: String(runtime.environment || "UNCONFIGURED").trim(),
+    url: String(
+      runtime.supabaseUrl || ""
+    ).trim(),
+
+    publishableKey: String(
+      runtime.supabasePublishableKey
+      || runtime.supabaseAnonKey
+      || ""
+    ).trim(),
+
+    environment: String(
+      runtime.environment || "UNCONFIGURED"
+    ).trim().toUpperCase(),
+
     configured: Boolean(
       String(runtime.supabaseUrl || "").trim()
-      && String(runtime.supabasePublishableKey || runtime.supabaseAnonKey || "").trim()
+      && String(
+        runtime.supabasePublishableKey
+        || runtime.supabaseAnonKey
+        || ""
+      ).trim()
     )
   },
+
   auth: {
     googleClientId: String(
       runtime.googleClientId
       || "628849757836-n6go6fl2j26pqbf640sg10gpmmbanlvg.apps.googleusercontent.com"
     ).trim(),
-    postLoginRouteKey: "pd_v4_post_login_route"
+
+    postLoginRouteKey:
+      "pd_v4_post_login_route"
   },
+
+  legal: {
+    imprintUrl: String(
+      runtime.legalImprintUrl || ""
+    ).trim(),
+
+    privacyUrl: String(
+      runtime.legalPrivacyUrl || ""
+    ).trim()
+  },
+
   pwa: {
-    serviceWorker: "./service-worker.js?v=20260724-dashboard-delivery-corr2&compat=20260723-ios-opaque-statusbar-bottomnav-final-r1",
-    installDismissKey: "pd_v4_install_dismissed",
-    updateReloadKey: "pd_v4_update_reload",
-    updateDismissKey: "pd_v4_update_dismissed"
+    serviceWorker:
+      "./service-worker.js?v=20260729-login-first-auth-gate-r1",
+
+    installDismissKey:
+      "pd_v4_install_dismissed",
+
+    updateReloadKey:
+      "pd_v4_update_reload",
+
+    updateDismissKey:
+      "pd_v4_update_dismissed"
   }
 });

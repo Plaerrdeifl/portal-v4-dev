@@ -76,7 +76,7 @@ test("dashboard corr3 resets the old nested status bubble", async () => {
   );
 });
 
-test("dashboard corr3 is versioned in HTML and service worker", async () => {
+test("dashboard corr3 remains active under the current shell release", async () => {
   const [index, worker] = await Promise.all([
     read("index.html"),
     read("service-worker.js")
@@ -84,16 +84,19 @@ test("dashboard corr3 is versioned in HTML and service worker", async () => {
 
   assert.match(
     index,
-    /name="pd-layout-release" content="20260724-dashboard-layout-corr3"/
+    /name="pd-release" content="20260729-login-first-auth-gate-r1"/
   );
+
   assert.match(
     index,
-    /app\.css\?v=20260724-dashboard-delivery-corr2&layout=20260724-dashboard-layout-corr3/
+    /app\.css\?v=20260729-login-first-auth-gate-r1/
   );
+
   assert.match(
     worker,
     /pd-portal-v4-dashboard-layout-corr3-20260724/
   );
+
   assert.match(
     worker,
     /pd-portal-v4-dashboard-delivery-corr2-20260724/

@@ -5,10 +5,22 @@ import test from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
 const read = path => readFile(resolve(root, path), "utf8");
-const release = "20260724-dashboard-delivery-corr2";
 
-test("dashboard delivery release versions every required entry point", async () => {
-  const [index, config, app, pages, install, worker] = await Promise.all([
+const shellRelease =
+  "20260729-login-first-auth-gate-r1";
+
+const dashboardRelease =
+  "20260724-dashboard-delivery-corr2";
+
+test("current shell versions every required entry point while retaining dashboard delivery", async () => {
+  const [
+    index,
+    config,
+    app,
+    pages,
+    install,
+    worker
+  ] = await Promise.all([
     read("index.html"),
     read("js/config.js"),
     read("js/app.js"),
@@ -17,24 +29,87 @@ test("dashboard delivery release versions every required entry point", async () 
     read("service-worker.js")
   ]);
 
-  assert.match(index, new RegExp(`name="pd-release" content="${release}"`));
-  assert.match(index, new RegExp(`css/app\\.css\\?v=${release}`));
-  assert.match(index, new RegExp(`js/app\\.js\\?v=${release}`));
-  assert.match(config, new RegExp(`service-worker\\.js\\?v=${release}`));
-  assert.match(app, new RegExp(`pages\\.js\\?v=${release}`));
-  assert.match(app, new RegExp(`install\\.js\\?v=${release}`));
-  assert.match(pages, new RegExp(`modules/dashboard\\.js\\?v=${release}`));
+  assert.match(
+    index,
+    new RegExp(
+      `name="pd-release" content="${shellRelease}"`
+    )
+  );
+
+  assert.match(
+    index,
+    new RegExp(
+      `css/app\\.css\\?v=${shellRelease}`
+    )
+  );
+
+  assert.match(
+    index,
+    new RegExp(
+      `js/app\\.js\\?v=${shellRelease}`
+    )
+  );
+
+  assert.match(
+    config,
+    new RegExp(
+      `service-worker\\.js\\?v=${shellRelease}`
+    )
+  );
+
+  assert.match(
+    app,
+    new RegExp(
+      `pages\\.js\\?v=${shellRelease}`
+    )
+  );
+
+  assert.match(
+    app,
+    new RegExp(
+      `install\\.js\\?v=${shellRelease}`
+    )
+  );
+
+  assert.match(
+    pages,
+    new RegExp(
+      `modules/dashboard\\.js\\?v=${dashboardRelease}`
+    )
+  );
+
   assert.equal(
-    (pages.match(new RegExp(`modules/dashboard\\.js\\?v=${release}`, "g")) || []).length,
+    (
+      pages.match(
+        new RegExp(
+          `modules/dashboard\\.js\\?v=${dashboardRelease}`,
+          "g"
+        )
+      ) || []
+    ).length,
     2
   );
-  assert.match(install, /function announceWaitingUpdate\(\)/);
-  assert.match(install, /registration\.waiting/);
-  assert.match(install, /await registration\.update\(\)/);
+
+  assert.match(
+    install,
+    /function announceWaitingUpdate()/
+  );
+
+  assert.match(
+    install,
+    /registration.waiting/
+  );
+
+  assert.match(
+    install,
+    /await registration.update()/
+  );
+
   assert.match(
     worker,
     /pd-portal-v4-dashboard-delivery-corr2-20260724/
   );
+
   assert.match(
     worker,
     /pd-portal-v4-dashboard-layout-corr1-20260724/
@@ -47,9 +122,21 @@ test("dashboard layout implementation remains present", async () => {
     read("js/modules/dashboard.js")
   ]);
 
-  assert.match(css, /V4 DASHBOARD LAYOUT CORR1/);
-  assert.match(css, /\.v4-dashboard-card-layout\{/);
-  assert.match(css, /@media\(max-width:980px\)/);
+  assert.match(
+    css,
+    /V4 DASHBOARD LAYOUT CORR1/
+  );
+
+  assert.match(
+    css,
+    /.v4-dashboard-card-layout{/
+  );
+
+  assert.match(
+    css,
+    /@media\(max-width:980px\)/
+  );
+
   assert.match(
     dashboard,
     /const __V4_DASHBOARD_LAYOUT_CORR1__ = true;/

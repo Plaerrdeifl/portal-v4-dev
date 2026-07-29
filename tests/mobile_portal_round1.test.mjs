@@ -45,19 +45,22 @@ test("mobile portal round one follows the approved layout rules", async () => {
 
 
   for (const markup of [index, sidebar]) {
-    assert.equal(markup.includes('class="portal-home-entry"'), true);
-    assert.equal(markup.includes('data-route="home"'), true);
-    assert.equal(markup.includes('<span>Zur Startseite</span>'), true);
-    assert.equal(markup.includes('id="portalNavFooter" class="nav nav-footer" aria-label="Portalnavigation" aria-hidden="true" hidden'), true);
+    assert.equal(markup.includes('class="portal-home-entry"'), false);
+    assert.equal(markup.includes('data-route="home"'), false);
+    assert.equal(markup.includes('<span>Zur Startseite</span>'), false);
+    assert.match(
+      markup,
+      /<nav\b(?=[^>]*\sid="portalNavFooter")(?=[^>]*\saria-hidden="true")(?=[^>]*\shidden(?:\s|>))[^>]*>/
+    );
   }
-  assert.equal(ui.includes("footerNav.replaceChildren"), false);
-  assert.equal(ui.includes("footerNav.hidden = !authenticatedPortal;"), true);
+  assert.equal(ui.includes("footerNav.replaceChildren"), true);
+  assert.equal(ui.includes("footerNav.hidden = true;"), true);
 
   assert.equal(ui.includes("prepareResponsiveTables"), true);
   assert.equal(ui.includes('leftKey === "install"'), true);
   assert.equal(app.includes('label: "Online"'), false);
   assert.equal(app.includes('label: "Live"'), true);
   assert.equal(app.includes('label: "Lädt …"'), true);
-  assert.equal(index.includes("20260723-ios-opaque-statusbar-bottomnav-final-r1"), true);
+  assert.equal(index.includes("20260729-login-first-auth-gate-r1"), true);
   assert.equal(worker.includes("pd-portal-v4-push-newtasks-quiettime-r1-20260723"), true);
 });

@@ -6,29 +6,67 @@ import test from "node:test";
 const root = path.resolve(import.meta.dirname, "..");
 const read = relativePath => fs.readFile(path.join(root, relativePath), "utf8");
 
-test("authentication transitions have one central controller", async () => {
-  const [app, pages, index, css] = await Promise.all([
+test("authentication transitions use one central login-first gate", async () => {
+  const [
+    app,
+    authGate,
+    index,
+    css
+  ] = await Promise.all([
     read("js/app.js"),
-    read("js/pages.js"),
+    read("js/auth-gate.js"),
     read("index.html"),
     read("css/app.css")
   ]);
 
-  assert.ok(app.includes("async function runAuthTransition"));
-  assert.ok(app.includes("onGoogleCredential: signInWithGoogleCredential"));
-  assert.ok(app.includes("await afterNextPaint()"));
-  assert.ok(app.includes("document.documentElement.dataset.authTransition"));
-  assert.ok(!app.includes("dataset.authReady"));
-  assert.ok(!pages.includes('import { navigate } from "./router.js";'));
-  assert.ok(!pages.includes("auth.signInWithGoogleIdToken"));
-  assert.ok(pages.includes("context.onGoogleCredential"));
-  assert.ok(!index.includes("data-auth-ready"));
-  assert.ok(!index.includes("data-startup-state"));
-  assert.ok(!css.includes("data-auth-ready"));
-  assert.ok(!css.includes("data-startup-state"));
+  assert.ok(
+    app.includes("initializeAuthGate")
+  );
+
+  assert.ok(
+    app.includes("await afterNextPaint()")
+  );
+
+  assert.ok(
+    !app.includes(
+      "async function runAuthTransition"
+    )
+  );
+
+  assert.ok(
+    !app.includes("setAuthTransition")
+  );
+
+  for (const required of [
+    "export function initializeAuthGate",
+    "export function showOpening",
+    "export function showChecking",
+    "export async function showLogin",
+    "export function showApp",
+    "renderGoogleSignInButton"
+  ]) {
+    assert.ok(
+      authGate.includes(required),
+      required
+    );
+  }
+
+  assert.ok(
+    index.includes('id="authGate"')
+  );
+
+  assert.ok(
+    index.includes('id="appShell"')
+  );
+
+  assert.ok(
+    css.includes(
+      "Login-first Auth Gate R1"
+    )
+  );
 });
 
-test("navigation uses one toggle state and a viewport-safe portal home footer", async () => {
+test("navigation uses one toggle state and a hidden empty portal footer", async () => {
   const [ui, sidebar, index, css] = await Promise.all([
     read("js/ui.js"),
     read("components/sidebar.html"),
@@ -42,13 +80,16 @@ test("navigation uses one toggle state and a viewport-safe portal home footer", 
   assert.ok(ui.includes("toggleMobileMenu();"));
   for (const markup of [sidebar, index]) {
     assert.ok(markup.includes('id="portalNavFooter"'));
-    assert.ok(markup.includes('class="portal-home-entry"'));
-    assert.ok(markup.includes('data-route="home"'));
-    assert.ok(markup.includes('<span>Zur Startseite</span>'));
-    assert.ok(markup.includes('id="portalNavFooter" class="nav nav-footer" aria-label="Portalnavigation" aria-hidden="true" hidden'));
+    assert.ok(!markup.includes('class="portal-home-entry"'));
+    assert.ok(!markup.includes('data-route="home"'));
+    assert.ok(!markup.includes('<span>Zur Startseite</span>'));
+    assert.match(
+      markup,
+      /<nav\b(?=[^>]*\sid="portalNavFooter")(?=[^>]*\saria-hidden="true")(?=[^>]*\shidden(?:\s|>))[^>]*>/
+    );
   }
-  assert.ok(!ui.includes("footerNav.replaceChildren"));
-  assert.ok(ui.includes("footerNav.hidden = !authenticatedPortal;"));
+  assert.ok(ui.includes("footerNav.replaceChildren"));
+  assert.ok(ui.includes("footerNav.hidden = true;"));
   assert.ok(css.includes(".sidebar .nav-main{flex:1 1 auto;min-width:0;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}"));
   assert.ok(css.includes(".sidebar .nav-footer{flex:0 0 auto;overflow:visible;position:relative;z-index:2;"));
   assert.ok(css.includes('html[data-portal-area="portal"] .sidebar{overflow:hidden!important;padding-bottom:calc(18px + var(--mobile-nav-height) + var(--mobile-safe-bottom))!important}'));

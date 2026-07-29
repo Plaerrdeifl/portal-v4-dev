@@ -109,82 +109,55 @@ export async function mountComponents() {
   ensureUserMenu();
 }
 
-function publicAreaActive() {
-  return Boolean(routes()[currentRoute()]?.public) || !auth.isAuthenticated();
-}
-
 function syncBrandContext() {
-  const publicArea = publicAreaActive();
-  const label = publicArea ? "ÖFFENTLICHER BEREICH" : "PORTAL";
-  const sidebarContext = document.getElementById("brandContext");
-  const mobileContext = document.getElementById("mobileBrandContext");
-  const sidebarCaption = document.querySelector(".sidebar-caption");
+  const sidebarContext =
+    document.getElementById("brandContext");
 
-  if (sidebarContext) sidebarContext.textContent = label;
-  if (mobileContext) mobileContext.textContent = label;
-  if (sidebarCaption) {
-    sidebarCaption.textContent = publicArea
-      ? "Öffentlicher Bereich"
-      : "Vereinsportal";
+  const mobileContext =
+    document.getElementById("mobileBrandContext");
+
+  const sidebarCaption =
+    document.querySelector(".sidebar-caption");
+
+  if (sidebarContext) {
+    sidebarContext.textContent = "PORTAL";
   }
 
-  const portalHomeButton = document.getElementById("portalHomeButton");
-  if (portalHomeButton) portalHomeButton.hidden = publicArea;
+  if (mobileContext) {
+    mobileContext.textContent = "PORTAL";
+  }
 
-  document.documentElement.dataset.portalArea = publicArea
-    ? "public"
-    : "portal";
+  if (sidebarCaption) {
+    sidebarCaption.textContent = "Vereinsportal";
+  }
+
+  const portalHomeButton =
+    document.getElementById("portalHomeButton");
+
+  if (portalHomeButton) {
+    portalHomeButton.hidden = true;
+  }
+
+  document.documentElement.dataset.portalArea =
+    auth.isAuthenticated()
+      ? "portal"
+      : "auth";
 }
 
 export function visibleRouteEntries() {
-  const current = routes()[currentRoute()];
-
-  if (current?.public || !auth.isAuthenticated()) {
-    const entries = Object.entries(routes())
-      .filter(([key, route]) => route.public && key !== "login")
-      .sort(
-        (left, right) =>
-          (left[1].publicOrder || 0) - (right[1].publicOrder || 0)
-      );
-
-    if (auth.hasPersistedSession()) {
-      entries.push([
-        "dashboard",
-        {
-          ...routes().dashboard,
-          title: "Ins Portal",
-          subtitle: "Gespeicherte Sitzung prüfen und Portal öffnen"
-        }
-      ]);
-    } else {
-      entries.push([
-        "login",
-        {
-          ...routes().login,
-          title: "Anmelden / Registrieren"
-        }
-      ]);
-    }
-
-    return entries;
+  if (!auth.isAuthenticated()) {
+    return [];
   }
 
-  if (auth.requiresProfile()) return [["profile", routes().profile]];
+  if (auth.requiresProfile()) {
+    return [
+      ["profile", routes().profile]
+    ];
+  }
 
-  const entries = fixedAuthenticatedOrder()
+  return fixedAuthenticatedOrder()
     .filter(key => auth.canAccessRoute(key))
     .map(key => [key, routes()[key]]);
-
-  entries.push([
-    "home",
-    {
-      ...routes().home,
-      title: "Zur Startseite",
-      subtitle: "Öffentlichen Bereich öffnen"
-    }
-  ]);
-
-  return entries;
 }
 
 function createRouteButton(key, route, className = "") {
@@ -225,13 +198,18 @@ export function renderNavigation() {
     window.dispatchEvent(new CustomEvent("pd-navigation-rendered"));
   }
 
-  const footerNav = document.getElementById("portalNavFooter");
+  const footerNav =
+    document.getElementById("portalNavFooter");
+
   if (footerNav) {
-    footerNav.hidden = !authenticatedPortal;
+    footerNav.hidden = true;
+
     footerNav.setAttribute(
       "aria-hidden",
-      authenticatedPortal ? "false" : "true"
+      "true"
     );
+
+    footerNav.replaceChildren();
   }
 
   syncBrandContext();
