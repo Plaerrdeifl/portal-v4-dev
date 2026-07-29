@@ -92,8 +92,13 @@ test("Supabase accepts small and all previous sizes", async () => {
   );
 });
 
-test("small release is additive to existing dashboard releases", async () => {
-  const [index, pages, worker, dashboard] = await Promise.all([
+test("small widgets remain additive under the current shell release", async () => {
+  const [
+    index,
+    pages,
+    worker,
+    dashboard
+  ] = await Promise.all([
     read("index.html"),
     read("js/pages.js"),
     read("service-worker.js"),
@@ -102,16 +107,14 @@ test("small release is additive to existing dashboard releases", async () => {
 
   assert.match(
     index,
-    /name="pd-dashboard-widgets-release" content="20260724-personal-dashboard-widgets-r1-fix4"/
+    /name="pd-release" content="20260729-login-first-auth-gate-r1"/
   );
+
   assert.match(
     index,
-    /name="pd-dashboard-small-release" content="20260725-dashboard-small-widgets-r1"/
+    /app\.css\?v=20260729-login-first-auth-gate-r1/
   );
-  assert.match(
-    index,
-    /widgets=20260724-personal-dashboard-widgets-r1-fix4&small=20260725-dashboard-small-widgets-r1/
-  );
+
   assert.equal(
     (
       pages.match(
@@ -120,11 +123,17 @@ test("small release is additive to existing dashboard releases", async () => {
     ).length,
     2
   );
-  assert.match(worker, /pd-portal-v4-dashboard-small-widgets-r1-20260725/);
+
+  assert.match(
+    worker,
+    /pd-portal-v4-login-first-auth-gate-r1-20260729/
+  );
+
   assert.match(
     worker,
     /pd-portal-v4-personal-dashboard-widgets-r1-fix4-20260724/
   );
+
   assert.match(
     dashboard,
     /const __V4_DASHBOARD_SMALL_WIDGETS_R1__ = true;/

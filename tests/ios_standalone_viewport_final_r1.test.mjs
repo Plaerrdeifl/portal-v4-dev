@@ -19,7 +19,7 @@ test("iOS standalone keeps viewport-fit with an opaque status bar", async () => 
 
   assert.match(
     index,
-    /<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">/
+    /<meta\s+name="viewport"\s+content="width=device-width, initial-scale=1, viewport-fit=cover"\s*>/
   );
 });
 
@@ -60,8 +60,8 @@ test("cache busting identifies the opaque iOS standalone viewport release", asyn
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
-  assert.match(config, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
+  assert.match(index, /20260729-login-first-auth-gate-r1/);
+  assert.match(config, /20260729-login-first-auth-gate-r1/);
   assert.match(
     worker,
     /pd-portal-v4-push-newtasks-quiettime-r1-20260723/

@@ -72,13 +72,34 @@ test("fanclub mobile review is compact and drill-down based", async () => {
   assert.match(fanclub, /data-open-finance-entry/);
   assert.doesNotMatch(fanclub, /id="financeAccountFilter"/);
 
-  assert.match(ui, /title: "Zur Startseite"/);
-  assert.match(app, /setAuthTransition/);
+  assert.doesNotMatch(
+    ui,
+    /title: "Zur Startseite"/
+  );
+
+  assert.match(
+    ui,
+    /footerNav\.hidden = true/
+  );
+
+  assert.match(
+    ui,
+    /footerNav\.replaceChildren\(\)/
+  );
+  assert.doesNotMatch(
+    app,
+    /setAuthTransition/
+  );
+
+  assert.match(
+    app,
+    /initializeAuthGate/
+  );
   assert.match(app, /await auth\.initialize\(\)/);
   assert.doesNotMatch(app, /window\.setTimeout\(\(\) => \{\s*auth\.initialize/);
   assert.match(pages, /context\.onGoogleCredential/);
   assert.doesNotMatch(index, /data-auth-ready/);
   assert.doesNotMatch(index, /data-startup-state/);
-  assert.match(index, /20260723-ios-opaque-statusbar-bottomnav-final-r1/);
+  assert.match(index, /20260729-login-first-auth-gate-r1/);
   assert.match(worker, /pd-portal-v4-push-newtasks-quiettime-r1-20260723/);
 });

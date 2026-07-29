@@ -118,8 +118,13 @@ test("Supabase migration validates and isolates dashboard preferences", async ()
   );
 });
 
-test("personal dashboard release is additive to Corr2 and Corr3 contracts", async () => {
-  const [index, pages, worker, dashboard] = await Promise.all([
+test("personal dashboard remains active under the current shell release", async () => {
+  const [
+    index,
+    pages,
+    worker,
+    dashboard
+  ] = await Promise.all([
     read("index.html"),
     read("js/pages.js"),
     read("service-worker.js"),
@@ -128,16 +133,14 @@ test("personal dashboard release is additive to Corr2 and Corr3 contracts", asyn
 
   assert.match(
     index,
-    /name="pd-layout-release" content="20260724-dashboard-layout-corr3"/
+    /name="pd-release" content="20260729-login-first-auth-gate-r1"/
   );
+
   assert.match(
     index,
-    /name="pd-dashboard-widgets-release" content="20260724-personal-dashboard-widgets-r1-fix4"/
+    /app\.css\?v=20260729-login-first-auth-gate-r1/
   );
-  assert.match(
-    index,
-    /layout=20260724-dashboard-layout-corr3&widgets=20260724-personal-dashboard-widgets-r1-fix4/
-  );
+
   assert.equal(
     (
       pages.match(
@@ -146,19 +149,27 @@ test("personal dashboard release is additive to Corr2 and Corr3 contracts", asyn
     ).length,
     2
   );
-  assert.match(worker, /pd-portal-v4-personal-dashboard-widgets-r1-fix4-20260724/);
+
+  assert.match(
+    worker,
+    /pd-portal-v4-personal-dashboard-widgets-r1-fix4-20260724/
+  );
+
   assert.match(
     worker,
     /pd-portal-v4-dashboard-layout-corr3-20260724/
   );
+
   assert.match(
     dashboard,
     /const cards = \[\];/
   );
+
   assert.match(
     dashboard,
     /panel\.classList\.toggle\("is-empty", cards\.length === 0\)/
   );
+
   assert.match(
     dashboard,
     /panel\.innerHTML = cards\.join\(""\)/
@@ -177,4 +188,3 @@ test("core migration contract includes personal dashboard migration", async () =
     /"20260724133000_add_role_aware_dashboard_r1\.sql",\s*"20260724193000_add_personal_dashboard_widgets_r1.sql"/
   );
 });
-

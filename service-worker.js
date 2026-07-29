@@ -1,4 +1,4 @@
-const CACHE_VERSION = "pd-portal-v4-dashboard-small-widgets-r1-20260725";
+const CACHE_VERSION = "pd-portal-v4-login-first-auth-gate-r1-20260729";
 const PREVIOUS_CACHE_VERSION = "pd-portal-v4-personal-dashboard-widgets-r1-fix4-20260724";
 const DASHBOARD_LAYOUT_CORR3_CACHE_VERSION = "pd-portal-v4-dashboard-layout-corr3-20260724";
 const DASHBOARD_DELIVERY_CORR2_CACHE_VERSION = "pd-portal-v4-dashboard-delivery-corr2-20260724";
@@ -22,6 +22,7 @@ const SHELL = [
   "./js/supabase-client.js",
   "./js/api.js",
   "./js/auth.js",
+  "./js/auth-gate.js",
   "./js/google-signin.js",
   "./js/install.js",
   "./js/router.js",
@@ -39,12 +40,6 @@ const SHELL = [
   "./js/modules/admin.js",
   "./components/sidebar.html",
   "./components/topbar.html",
-  "./pages/home.html",
-  "./pages/news.html",
-  "./pages/dates.html",
-  "./pages/about.html",
-  "./pages/contact.html",
-  "./pages/install.html",
   "./pages/login.html",
   "./pages/profile.html",
   "./pages/dashboard.html",

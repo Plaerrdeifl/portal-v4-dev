@@ -25,6 +25,7 @@ const sidebar = read("components/sidebar.html");
 const authSource = read("js/auth.js");
 const pagesSource = read("js/pages.js");
 const googleSignIn = read("js/google-signin.js");
+const authGate = read("js/auth-gate.js");
 const login = read("pages/login.html");
 const packageJson = JSON.parse(read("package.json"));
 
@@ -107,44 +108,85 @@ if (
   throw new Error("Das veraltete separate Mehr-Panel ist noch vorhanden.");
 }
 
-for (const [label, markup] of [["index.html", html], ["components/sidebar.html", sidebar]]) {
-  for (const required of [
-    'id="portalNavFooter"',
+for (const [label, markup] of [
+  ["index.html", html],
+  ["components/sidebar.html", sidebar]
+]) {
+  if (!markup.includes('id="portalNavFooter"')) {
+    throw new Error(
+      "Sicherer leerer Portal-Footer fehlt in " + label + "."
+    );
+  }
+
+  for (const forbidden of [
     'class="portal-home-entry"',
     'data-route="home"',
-    '<span>Zur Startseite</span>'
+    "<span>Zur Startseite</span>"
   ]) {
-    if (!markup.includes(required)) {
-      throw new Error(`Statischer Startseiten-Footer fehlt in ${label}: ${required}`);
+    if (markup.includes(forbidden)) {
+      throw new Error(
+        "Öffentlicher Startseiten-Rücksprung in "
+        + label
+        + ": "
+        + forbidden
+      );
     }
   }
+}
 
-  if (!markup.includes('id="portalNavFooter" class="nav nav-footer" aria-label="Portalnavigation" aria-hidden="true" hidden')) {
-    throw new Error(`Der Startseiten-Footer besitzt in ${label} keinen sicheren öffentlichen Initialzustand.`);
+if (!ui.includes("footerNav.replaceChildren")) {
+  throw new Error(
+    "Der obsolete Portal-Footer wird nicht geleert."
+  );
+}
+
+if (!ui.includes("footerNav.hidden = true")) {
+  throw new Error(
+    "Der obsolete Portal-Footer wird nicht verborgen."
+  );
+}
+
+for (const required of [
+  'id="authGate"',
+  'id="authGateOpening"',
+  'id="authGateLogin"',
+  'id="appShell"',
+  "DEV-PORTAL"
+]) {
+  if (!html.includes(required)) {
+    throw new Error(
+      "Login-first-Entry unvollständig: " + required
+    );
   }
 }
 
-if (ui.includes("footerNav.replaceChildren")) {
-  throw new Error("Der statische Startseiten-Footer wird noch dynamisch geleert.");
-}
-if (!ui.includes("footerNav.hidden = !authenticatedPortal;")) {
-  throw new Error("Der Startseiten-Footer wird nicht explizit an den authentifizierten Portalzustand gebunden.");
+for (const forbidden of [
+  "data-prerendered-public-home",
+  "public-home-actions",
+  "Portal installieren",
+  "Zur Startseite"
+]) {
+  if (html.includes(forbidden)) {
+    throw new Error(
+      "Öffentlicher Altbestand im Entry Point: "
+      + forbidden
+    );
+  }
 }
 
-if (html.includes('id="authTransitionOverlay"')) {
-  throw new Error("Der veraltete Auth-Übergangs-Layer ist noch vorhanden.");
-}
-
-if (!login.includes("public-login-inline")) {
-  throw new Error("Der Login verwendet nicht die kanonische Inhaltsseite.");
-}
-
-if (
-  login.includes("auth-page")
-  || login.includes("auth-brand-panel")
-  || login.includes("auth-card-wrap")
-) {
-  throw new Error("Der Login enthält noch die alte Vollseiten-Auth-Hülle.");
+for (const required of [
+  "renderGoogleSignInButton",
+  "initializeAuthGate",
+  "showOpening",
+  "showChecking",
+  "showLogin",
+  "showApp"
+]) {
+  if (!authGate.includes(required)) {
+    throw new Error(
+      "Auth-Gate unvollständig: " + required
+    );
+  }
 }
 
 if (!packageJson.scripts?.["check:frontend"]) {
@@ -190,10 +232,13 @@ if (googleSignIn.includes("use_fedcm_for_prompt")) {
 }
 
 if (
-  !pagesSource.includes("renderGoogleSignInButton")
+  !authGate.includes("renderGoogleSignInButton")
+  || authGate.includes("supabaseGoogleLogin")
   || pagesSource.includes("supabaseGoogleLogin")
 ) {
-  throw new Error("Die Loginseite verwendet nicht ausschließlich den offiziellen Google-Button.");
+  throw new Error(
+    "Das Auth-Gate verwendet nicht ausschließlich den offiziellen Google-Button."
+  );
 }
 
 if (
@@ -274,5 +319,5 @@ if (depth !== 0 || quote) {
 
 console.log(
   `FRONTEND_FOUNDATION_OK · ${cssFiles.length} CSS-Dateien · `
-  + "Google-Button ohne iframe-Clipping · Startseiten-Footer oberhalb der Bottom-Navigation"
+  + "Google-Button ohne iframe-Clipping · Login-first Auth-Gate ohne öffentlichen Portalbereich"
 );

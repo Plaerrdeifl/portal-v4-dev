@@ -1,4 +1,4 @@
-import { CONFIG } from "./config.js?v=20260724-dashboard-delivery-corr2";
+import { CONFIG } from "./config.js";
 import { api } from "./api.js";
 import { auth } from "./auth.js";
 import {
@@ -6,8 +6,21 @@ import {
   legacyRouteRedirect,
   routes
 } from "./router.js";
-import { hydratePage } from "./pages.js?v=20260724-dashboard-delivery-corr2";
-import { activateUpdate, initializeInstall } from "./install.js?v=20260724-dashboard-delivery-corr2";
+import {
+  hydratePage
+} from "./pages.js?v=20260729-login-first-auth-gate-r1";
+import {
+  activateUpdate,
+  initializeInstall
+} from "./install.js?v=20260729-login-first-auth-gate-r1";
+import {
+  initializeAuthGate,
+  showApp,
+  showChecking,
+  showLogin,
+  showOpening,
+  syncLegalLinks
+} from "./auth-gate.js";
 import {
   bindGlobalUi,
   loadFragment,
@@ -22,106 +35,134 @@ import {
 
 let renderSequence = 0;
 let authEventQueued = false;
+let authOperationActive = false;
 let apiActivity = api.activity();
-let authTransitionActive = false;
 
 function connectionState() {
   const current = auth.current();
 
   if (!navigator.onLine) {
-    return { label: "Offline", type: "error" };
+    return {
+      label: "Offline",
+      type: "error"
+    };
   }
 
   if (!CONFIG.supabase.configured) {
-    return { label: "Fehler", type: "error" };
+    return {
+      label: "Fehler",
+      type: "error"
+    };
   }
 
   if (current.error || apiActivity.error) {
-    return { label: "Fehler", type: "error" };
+    return {
+      label: "Fehler",
+      type: "error"
+    };
   }
 
   if (current.busy || apiActivity.busy) {
-    return { label: "Lädt …", type: "loading" };
+    return {
+      label: "Lädt …",
+      type: "loading"
+    };
   }
 
   if (!current.authenticated) {
-    return { label: "Live", type: "success" };
+    return {
+      label: "Live",
+      type: "success"
+    };
   }
 
   if (current.status === "ACTIVE") {
-    return { label: "Live", type: "success" };
+    return {
+      label: "Live",
+      type: "success"
+    };
   }
 
   if (current.status === "BLOCKED") {
-    return { label: "Fehler", type: "error" };
+    return {
+      label: "Fehler",
+      type: "error"
+    };
   }
 
-  return { label: "Lädt …", type: "loading" };
+  return {
+    label: "Lädt …",
+    type: "loading"
+  };
 }
 
 function afterNextPaint() {
   return new Promise(resolve => {
-    requestAnimationFrame(() => requestAnimationFrame(resolve));
+    requestAnimationFrame(
+      () => requestAnimationFrame(resolve)
+    );
   });
 }
 
 function replaceHash(target) {
-  const normalized = String(target || "#/home");
+  const normalized = String(
+    target || "#/login"
+  );
+
   const hash = normalized.startsWith("#/")
     ? normalized
-    : `#/${normalized.replace(/^#?\/?/, "")}`;
+    : "#/" + normalized.replace(/^#?\/?/, "");
+
   history.replaceState(null, "", hash);
 }
 
-function authenticatedTarget(current, consumeRemembered = false) {
+function rememberedTarget(current) {
+  if (current.status !== "ACTIVE") {
+    return "";
+  }
+
+  const remembered = auth.consumePostLoginRoute();
+
+  if (
+    !remembered
+    || !remembered.startsWith("#/")
+  ) {
+    return "";
+  }
+
+  const key = remembered
+    .replace(/^#\/?/, "")
+    .split(/[?&]/)[0];
+
+  if (
+    !routes()[key]
+    || routes()[key].public
+    || key === "profile"
+    || !auth.canAccessRoute(key)
+  ) {
+    return "";
+  }
+
+  return remembered;
+}
+
+function authenticatedTarget(
+  current,
+  consumeRemembered = false
+) {
+  if (current.status !== "ACTIVE") {
+    return "#/profile";
+  }
+
   if (consumeRemembered) {
-    const remembered = auth.consumePostLoginRoute();
-    if (remembered && current.status === "ACTIVE") return remembered;
+    const remembered = rememberedTarget(current);
+
+    if (remembered) {
+      return remembered;
+    }
   }
 
-  return current.status === "ACTIVE" ? "#/dashboard" : "#/profile";
-}
-
-function setAuthTransition(active, status = "Portal wird vorbereitet …") {
-  authTransitionActive = Boolean(active);
-  document.documentElement.dataset.authTransition = active ? "true" : "false";
-
-  const shell = document.getElementById("appShell");
-  if (shell) shell.inert = Boolean(active);
-
-  const splash = document.getElementById("appSplash");
-  if (!splash) return;
-
-  splash.hidden = !active;
-  splash.setAttribute("aria-busy", active ? "true" : "false");
-  const statusNode = document.getElementById("splashStatus");
-  if (statusNode && status) statusNode.textContent = status;
-}
-
-async function runAuthTransition({ status, operation, target, successMessage = "" }) {
-  if (authTransitionActive) {
-    throw new Error("Ein Anmeldewechsel wird bereits verarbeitet.");
-  }
-
-  setAuthTransition(true, status);
-  ++renderSequence;
-
-  try {
-    const result = await operation();
-    const resolvedTarget = typeof target === "function"
-      ? target(result || auth.current())
-      : target;
-
-    replaceHash(resolvedTarget || "#/home");
-    await renderRoute();
-    await afterNextPaint();
-
-    if (successMessage) showToast(successMessage, "success");
-    return result;
-  } finally {
-    await afterNextPaint();
-    setAuthTransition(false);
-  }
+  return "#/dashboard";
 }
 
 function updateChrome() {
@@ -130,55 +171,94 @@ function updateChrome() {
   updateActiveNavigation();
 
   const connection = connectionState();
-  setConnectionStatus(connection.label, connection.type);
-}
 
-async function ensureAuthForRoute(key) {
-  const route = routes()[key];
-  if (!route || (route.public && key !== "login")) return;
-  await auth.initialize();
+  setConnectionStatus(
+    connection.label,
+    connection.type
+  );
 }
 
 function enforceRoute(key) {
   const route = routes()[key];
-  if (!route) return "home";
-  if (route.public) return key;
+  const current = auth.current();
 
-  if (!auth.isAuthenticated()) {
+  if (!route) {
+    return current.authenticated
+      ? authenticatedTarget(current)
+          .replace(/^#\//, "")
+      : "login";
+  }
+
+  if (key === "login") {
+    if (!current.authenticated) {
+      return "login";
+    }
+
+    return current.status === "ACTIVE"
+      ? "dashboard"
+      : "profile";
+  }
+
+  if (!current.authenticated) {
     auth.rememberPostLoginRoute(location.hash);
+
     return "login";
   }
 
-  if (auth.requiresProfile()) return "profile";
-  if (!auth.canAccessRoute(key)) return "dashboard";
+  if (auth.requiresProfile()) {
+    return "profile";
+  }
+
+  if (!auth.canAccessRoute(key)) {
+    return "dashboard";
+  }
+
   return key;
 }
 
 async function renderRoute() {
-  if (legacyRouteRedirect()) return;
+  if (legacyRouteRedirect()) {
+    return;
+  }
 
   const requested = currentRoute();
-  await ensureAuthForRoute(requested);
-
   const allowed = enforceRoute(requested);
 
   if (allowed !== requested) {
-    replaceHash(allowed);
+    replaceHash("#/" + allowed);
+
     return renderRoute();
+  }
+
+  document.documentElement.dataset.route = allowed;
+
+  if (allowed === "login") {
+    updateChrome();
+
+    await showLogin({
+      onCredential: signInWithGoogleCredential
+    });
+
+    return;
   }
 
   const route = routes()[allowed];
   const renderId = ++renderSequence;
 
   setRouteHeader(route);
-  updateChrome();
-  document.documentElement.dataset.route = allowed;
 
   const view = document.getElementById("view");
-  if (!view) return;
+
+  if (!view) {
+    throw new Error(
+      "Der Portal-Inhaltsbereich fehlt."
+    );
+  }
 
   try {
-    const html = await loadFragment(`./pages/${route.page}`);
+    const html = await loadFragment(
+      "./pages/" + route.page
+    );
 
     if (
       renderId !== renderSequence
@@ -192,26 +272,54 @@ async function renderRoute() {
     await hydratePage(allowed, {
       isCurrent: () =>
         renderId === renderSequence
-        && currentRoute() === allowed,
-      onGoogleCredential: signInWithGoogleCredential
+        && currentRoute() === allowed
     });
 
-    if (renderId !== renderSequence) return;
+    if (renderId !== renderSequence) {
+      return;
+    }
 
-    view.focus({ preventScroll: true });
-    view.scrollTo({ top: 0, behavior: "instant" });
-  } catch (error) {
-    if (renderId !== renderSequence) return;
+    syncLegalLinks();
+    updateChrome();
 
-    view.innerHTML = `<section class="page">
-      <article class="card notice error">
-        <h2>Seite konnte nicht geladen werden</h2>
-        <p>${String(error?.message || error)}</p>
-      </article>
-    </section>`;
+    view.focus({
+      preventScroll: true
+    });
+
+    view.scrollTo({
+      top: 0,
+      behavior: "instant"
+    });
+
+    await afterNextPaint();
+
+    showApp({
+      authLayout: allowed === "profile"
+    });
+  }
+  catch (error) {
+    if (renderId !== renderSequence) {
+      return;
+    }
+
+    const message = String(
+      error?.message || error
+    );
+
+    view.innerHTML =
+      '<section class="page">' +
+      '<article class="card notice error">' +
+      '<h2>Seite konnte nicht geladen werden</h2>' +
+      "<p>" + message + "</p>" +
+      "</article>" +
+      "</section>";
+
+    showApp({
+      authLayout: allowed === "profile"
+    });
 
     showToast(
-      error?.message || "Seite konnte nicht geladen werden.",
+      message || "Seite konnte nicht geladen werden.",
       "error",
       7000
     );
@@ -219,35 +327,96 @@ async function renderRoute() {
 }
 
 function handleAuthChange() {
-  if (authTransitionActive || authEventQueued) return;
+  if (
+    authOperationActive
+    || authEventQueued
+  ) {
+    return;
+  }
 
   authEventQueued = true;
 
   queueMicrotask(async () => {
     authEventQueued = false;
-    updateChrome();
 
     const current = auth.current();
-    if (current.busy || current.status === "LOADING") return;
 
-    const route = routes()[currentRoute()];
+    if (
+      current.busy
+      || current.status === "LOADING"
+    ) {
+      return;
+    }
 
-    if (current.authenticated && currentRoute() === "login") {
-      replaceHash(authenticatedTarget(current, true));
-    } else if (!current.authenticated && !route?.public) {
+    if (
+      !current.authenticated
+      && currentRoute() !== "login"
+    ) {
       replaceHash("#/login");
+    }
+    else if (
+      current.authenticated
+      && currentRoute() === "login"
+    ) {
+      replaceHash(
+        authenticatedTarget(current)
+      );
     }
 
     await renderRoute();
   });
 }
 
-async function signInWithGoogleCredential(response, nonce) {
-  return runAuthTransition({
-    status: "Google-Anmeldung wird sicher geprüft …",
-    operation: () => auth.signInWithGoogleIdToken(response?.credential, nonce),
-    target: current => authenticatedTarget(current, true)
-  });
+async function signInWithGoogleCredential(
+  response,
+  nonce
+) {
+  if (authOperationActive) {
+    throw new Error(
+      "Eine Anmeldung wird bereits verarbeitet."
+    );
+  }
+
+  authOperationActive = true;
+
+  showChecking(
+    "Google-Anmeldung wird geprüft …",
+    "Portalstatus und Berechtigungen werden geladen."
+  );
+
+  try {
+    const current =
+      await auth.signInWithGoogleIdToken(
+        response?.credential,
+        nonce
+      );
+
+    replaceHash(
+      authenticatedTarget(current, true)
+    );
+
+    await renderRoute();
+
+    if (current.status === "ACTIVE") {
+      showToast(
+        "Anmeldung erfolgreich.",
+        "success"
+      );
+    }
+  }
+  catch (error) {
+    await showLogin({
+      onCredential: signInWithGoogleCredential,
+      errorMessage:
+        error?.message
+        || "Anmeldung konnte nicht abgeschlossen werden."
+    });
+
+    throw error;
+  }
+  finally {
+    authOperationActive = false;
+  }
 }
 
 async function refreshCurrentView() {
@@ -257,10 +426,11 @@ async function refreshCurrentView() {
     }
 
     await renderRoute();
-    showToast("Ansicht wurde aktualisiert.", "success");
-  } catch (error) {
+  }
+  catch (error) {
     showToast(
-      error?.message || "Aktualisierung fehlgeschlagen.",
+      error?.message
+      || "Aktualisierung fehlgeschlagen.",
       "error",
       6500
     );
@@ -268,25 +438,50 @@ async function refreshCurrentView() {
 }
 
 async function logout() {
+  if (authOperationActive) {
+    return;
+  }
+
+  authOperationActive = true;
+
+  showChecking(
+    "Abmeldung wird abgeschlossen …",
+    "Die lokale Portalsitzung wird sicher beendet."
+  );
+
   try {
-    await runAuthTransition({
-      status: "Abmeldung wird abgeschlossen …",
-      operation: () => auth.logout(),
-      target: "#/home",
-      successMessage: "Du wurdest abgemeldet."
-    });
-  } catch (error) {
+    await auth.logout();
+
+    replaceHash("#/login");
+
+    await renderRoute();
+
+    showToast(
+      "Du wurdest abgemeldet.",
+      "success"
+    );
+  }
+  catch (error) {
     showToast(
       error?.message || "Abmeldung fehlgeschlagen.",
       "error",
       6500
     );
+
+    await renderRoute();
+  }
+  finally {
+    authOperationActive = false;
   }
 }
 
 async function bootstrap() {
-  setAuthTransition(true, "Portalstatus wird geprüft …");
-  const hadInitialHash = Boolean(location.hash);
+  initializeAuthGate();
+
+  showOpening(
+    "Portal wird geöffnet …",
+    "Sichere Anmeldung wird vorbereitet."
+  );
 
   await mountComponents();
 
@@ -297,61 +492,112 @@ async function bootstrap() {
 
   initializeInstall();
 
-  window.addEventListener("pd-update-available", () => {
-    const banner = document.getElementById("updateBanner");
-    if (banner) banner.hidden = false;
-  });
+  window.addEventListener(
+    "pd-update-available",
+    () => {
+      const banner =
+        document.getElementById("updateBanner");
+
+      if (banner) {
+        banner.hidden = false;
+      }
+    }
+  );
 
   document.getElementById("updateButton")
-    ?.addEventListener("click", () => activateUpdate());
+    ?.addEventListener(
+      "click",
+      () => activateUpdate()
+    );
 
   document.getElementById("updateDismiss")
-    ?.addEventListener("click", () => {
-      const banner = document.getElementById("updateBanner");
-      if (banner) banner.hidden = true;
-    });
+    ?.addEventListener(
+      "click",
+      () => {
+        const banner =
+          document.getElementById("updateBanner");
+
+        if (banner) {
+          banner.hidden = true;
+        }
+      }
+    );
 
   navigator.serviceWorker?.addEventListener(
     "controllerchange",
     () => location.reload()
   );
 
-  window.addEventListener("hashchange", () => {
-    if (!authTransitionActive) renderRoute();
-  });
-  window.addEventListener("pd-api-state", event => {
-    apiActivity = event.detail || api.activity();
-    const connection = connectionState();
-    setConnectionStatus(connection.label, connection.type);
-  });
+  window.addEventListener(
+    "hashchange",
+    () => {
+      if (!authOperationActive) {
+        void renderRoute();
+      }
+    }
+  );
 
-  window.addEventListener("online", refreshCurrentView);
-  window.addEventListener("offline", updateChrome);
+  window.addEventListener(
+    "pd-api-state",
+    event => {
+      apiActivity =
+        event.detail || api.activity();
+
+      const connection = connectionState();
+
+      setConnectionStatus(
+        connection.label,
+        connection.type
+      );
+    }
+  );
+
+  window.addEventListener(
+    "online",
+    refreshCurrentView
+  );
+
+  window.addEventListener(
+    "offline",
+    updateChrome
+  );
 
   await auth.initialize();
-  window.addEventListener("pd-auth-change", handleAuthChange);
+
+  window.addEventListener(
+    "pd-auth-change",
+    handleAuthChange
+  );
+
+  const current = auth.current();
+  const hadInitialHash = Boolean(location.hash);
 
   if (!hadInitialHash) {
-    const current = auth.current();
     replaceHash(
-      !current.authenticated
-        ? "#/home"
-        : authenticatedTarget(current)
+      current.authenticated
+        ? authenticatedTarget(current)
+        : "#/login"
+    );
+  }
+  else if (
+    current.authenticated
+    && currentRoute() === "login"
+  ) {
+    replaceHash(
+      authenticatedTarget(current)
     );
   }
 
   await renderRoute();
-  await afterNextPaint();
-  setAuthTransition(false);
 }
 
 bootstrap().catch(async error => {
-  await afterNextPaint();
-  setAuthTransition(false);
   console.error(error);
-  showToast(
-    error?.message || "Portalstart fehlgeschlagen.",
-    "error",
-    9000
-  );
+
+  await showLogin({
+    onCredential: signInWithGoogleCredential,
+    errorMessage:
+      error?.message
+      || "Portalstart fehlgeschlagen."
+  });
 });
