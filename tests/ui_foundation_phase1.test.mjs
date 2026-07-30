@@ -116,10 +116,12 @@ test("forms, dialogs and Google button follow the global mobile contract", async
   assert.ok(common.includes("blurDialogFocus"));
   assert.ok(common.includes("focus({ preventScroll: true })"));
   assert.ok(css.includes("input,select,textarea{font-size:16px!important}"));
-  assert.ok(css.includes("padding-inline:10px"));
+  assert.ok(css.includes("padding-inline:0"));
+  assert.ok(css.includes("contain:inline-size"));
   assert.ok(css.includes(".google-signin-slot>div{"));
-  assert.ok(css.includes("max-width:none!important"));
-  assert.ok(css.includes("overflow:visible"));
+  assert.ok(css.includes("max-width:100%!important"));
+  assert.ok(css.includes("overflow:hidden"));
+  assert.ok(!css.includes("padding-inline:10px"));
   assert.ok(!css.includes(".fanclub-page{padding-bottom:calc"));
   assert.ok(css.includes(".v4-compact-page{min-height:0"));
 });

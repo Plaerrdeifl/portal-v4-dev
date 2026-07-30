@@ -58,7 +58,7 @@ export const CONFIG = Object.freeze({
 
   pwa: {
     serviceWorker:
-      "./service-worker.js?v=20260729-login-first-auth-gate-r1",
+      "./service-worker.js?v=20260730-google-signin-stable-width-r2",
 
     installDismissKey:
       "pd_v4_install_dismissed",

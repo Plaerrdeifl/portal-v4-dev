@@ -11,6 +11,7 @@ let credentialHandler = null;
 let noncePairPromise = null;
 const resizeObservers = new WeakMap();
 const renderedWidths = new WeakMap();
+const pendingResizeElements = new WeakSet();
 
 function googleIdentityApi() {
   return window.google?.accounts?.id || null;
@@ -145,6 +146,10 @@ function elementWidth(element) {
   return directRect || directClient || parentRect || parentClient || viewportFallback;
 }
 
+function resizeTarget(element) {
+  return element.parentElement || element;
+}
+
 function availableButtonWidth(element) {
   const measured = elementWidth(element);
   const safeWidth = measured > 0
@@ -210,10 +215,20 @@ export async function renderGoogleSignInButton(
 
   resizeObservers.get(element)?.disconnect();
   if (typeof ResizeObserver === "function") {
+    const observedElement = resizeTarget(element);
     const observer = new ResizeObserver(() => {
-      void afterLayout().then(() => drawButton(api, element));
+      if (pendingResizeElements.has(element)) return;
+
+      pendingResizeElements.add(element);
+
+      void afterLayout()
+        .then(() => drawButton(api, element))
+        .finally(() => {
+          pendingResizeElements.delete(element);
+        });
     });
-    observer.observe(element);
+
+    observer.observe(observedElement);
     resizeObservers.set(element, observer);
   }
 }

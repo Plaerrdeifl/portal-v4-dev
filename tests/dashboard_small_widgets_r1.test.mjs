@@ -107,12 +107,12 @@ test("small widgets remain additive under the current shell release", async () =
 
   assert.match(
     index,
-    /name="pd-release" content="20260729-login-first-auth-gate-r1"/
+    /name="pd-release" content="20260730-google-signin-stable-width-r2"/
   );
 
   assert.match(
     index,
-    /app\.css\?v=20260729-login-first-auth-gate-r1/
+    /app\.css\?v=20260730-google-signin-stable-width-r2/
   );
 
   assert.equal(
@@ -126,7 +126,7 @@ test("small widgets remain additive under the current shell release", async () =
 
   assert.match(
     worker,
-    /pd-portal-v4-login-first-auth-gate-r1-20260729/
+    /pd-portal-v4-google-signin-stable-width-r2-20260730/
   );
 
   assert.match(

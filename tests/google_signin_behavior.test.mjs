@@ -36,6 +36,7 @@ test(
     let callbackResult = null;
     let renderCount = 0;
     let resizeCallback = null;
+    let observedElement = null;
 
     globalThis.window = {
       google: {
@@ -95,7 +96,9 @@ test(
         resizeCallback = callback;
       }
 
-      observe() {}
+      observe(element) {
+        observedElement = element;
+      }
 
       disconnect() {}
     };
@@ -104,7 +107,16 @@ test(
       `../js/google-signin.js?test=${Date.now()}`
     );
 
+    const stableParent = {
+      clientWidth: 340,
+
+      getBoundingClientRect() {
+        return { width: this.clientWidth };
+      }
+    };
+
     const element = {
+      parentElement: stableParent,
       rendered: false,
       clientWidth: 300,
 
@@ -131,6 +143,11 @@ test(
     });
 
     assert.equal(typeof resizeCallback, "function");
+    assert.equal(
+      observedElement,
+      stableParent,
+      "Beobachtet werden muss der stabile Elterncontainer."
+    );
 
     await new Promise(resolve => setTimeout(resolve, 30));
 
@@ -164,8 +181,11 @@ test(
     assert.equal(renderOptions.locale, "de");
 
     element.rendered = true;
+    stableParent.clientWidth = 360;
     element.clientWidth = 320;
 
+    resizeCallback([]);
+    resizeCallback([]);
     resizeCallback([]);
 
     await new Promise(resolve => setTimeout(resolve, 30));
@@ -173,9 +193,18 @@ test(
     assert.equal(
       renderCount,
       2,
-      "Eine geänderte Breite muss genau ein Neurendern auslösen."
+      "Mehrere Resize-Signale derselben Layoutphase dürfen nur ein Neurendern auslösen."
     );
     assert.equal(renderOptions.width, 296);
+
+    resizeCallback([]);
+    await new Promise(resolve => setTimeout(resolve, 30));
+
+    assert.equal(
+      renderCount,
+      2,
+      "Eine unveränderte Slotbreite darf kein weiteres Rendern auslösen."
+    );
 
     initializeOptions.callback({
       credential: "jwt-token"
