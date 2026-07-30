@@ -176,11 +176,9 @@ function afterLayout() {
 
 function drawButton(api, element) {
   const width = availableButtonWidth(element);
-  const alreadyRendered = typeof element.hasChildNodes === "function"
-    ? element.hasChildNodes()
-    : Boolean(element.firstChild);
-
-  if (renderedWidths.get(element) === width && alreadyRendered) return;
+  // Google erzeugt das iframe asynchron. Der vorübergehende DOM-Zustand
+  // darf deshalb kein erneutes Rendern bei unveränderter Breite auslösen.
+  if (renderedWidths.get(element) === width) return;
 
   renderedWidths.set(element, width);
   element.replaceChildren();
