@@ -7,7 +7,7 @@ const root = resolve(import.meta.dirname, "..");
 const read = path => readFile(resolve(root, path), "utf8");
 
 const shellRelease =
-  "20260731-login-first-true-single-paint-r1";
+  "20260731-login-first-true-single-paint-r2";
 
 const dashboardRelease =
   "20260724-dashboard-delivery-corr2";

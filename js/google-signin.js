@@ -213,23 +213,56 @@ async function waitForRenderedButton(element) {
     );
   }
 
-  await new Promise(resolve => {
-    let finished = false;
+  let previousWidth = 0;
+  let previousHeight = 0;
+  let stableFrames = 0;
 
-    const finish = () => {
-      if (finished) return;
-      finished = true;
-      resolve();
-    };
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    const rect =
+      typeof iframe.getBoundingClientRect === "function"
+        ? iframe.getBoundingClientRect()
+        : null;
 
-    iframe.addEventListener?.("load", finish, {
-      once: true
+    const width = Math.round(
+      Number(rect?.width || 0)
+    );
+
+    const height = Math.round(
+      Number(rect?.height || 0)
+    );
+
+    if (width > 0 && height > 0) {
+      if (
+        width === previousWidth
+        && height === previousHeight
+      ) {
+        stableFrames += 1;
+      }
+      else {
+        previousWidth = width;
+        previousHeight = height;
+        stableFrames = 1;
+      }
+
+      if (stableFrames >= 3) {
+        await afterLayout();
+        return;
+      }
+    }
+    else {
+      previousWidth = 0;
+      previousHeight = 0;
+      stableFrames = 0;
+    }
+
+    await new Promise(resolve => {
+      window.setTimeout(resolve, 16);
     });
+  }
 
-    window.setTimeout(finish, 250);
-  });
-
-  await afterLayout();
+  throw new Error(
+    "Der Google-Anmeldebutton hat keine stabile sichtbare Größe erreicht."
+  );
 }
 
 export async function renderGoogleSignInButton(

@@ -47,8 +47,8 @@ test("cache identifies the opaque status-bar bottom-navigation release", async (
     read("service-worker.js")
   ]);
 
-  assert.match(index, /20260731-login-first-true-single-paint-r1/);
-  assert.match(config, /20260731-login-first-true-single-paint-r1/);
+  assert.match(index, /20260731-login-first-true-single-paint-r2/);
+  assert.match(config, /20260731-login-first-true-single-paint-r2/);
   assert.match(
     worker,
     /pd-portal-v4-push-newtasks-quiettime-r1-20260723/

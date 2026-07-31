@@ -28,6 +28,7 @@ test(
     let callbackResult = null;
     let renderCount = 0;
     let renderedIframe = null;
+    let geometryReadCount = 0;
 
     globalThis.ResizeObserver = class {
       constructor() {
@@ -54,6 +55,22 @@ test(
                   if (event === "load") {
                     setTimeout(callback, 0);
                   }
+                },
+
+                getBoundingClientRect() {
+                  geometryReadCount += 1;
+
+                  if (geometryReadCount < 3) {
+                    return {
+                      width: 0,
+                      height: 0
+                    };
+                  }
+
+                  return {
+                    width: 276,
+                    height: 44
+                  };
                 }
               };
             }
@@ -126,6 +143,11 @@ test(
 
     await module.renderGoogleSignInButton(element, options);
     await module.renderGoogleSignInButton(element, options);
+
+    assert.ok(
+      geometryReadCount >= 5,
+      "Die Freigabe muss auf eine stabile sichtbare iframe-Größe warten."
+    );
 
     assert.equal(
       renderCount,

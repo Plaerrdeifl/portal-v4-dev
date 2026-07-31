@@ -53,6 +53,16 @@ test(
       /await waitForRenderedButton\(element\)/
     );
 
+    assert.match(
+      google,
+      /width > 0 && height > 0/
+    );
+
+    assert.match(
+      google,
+      /stableFrames >= 3/
+    );
+
     assert.doesNotMatch(google, /ResizeObserver/);
     assert.match(google, /renderedElements\.has\(element\)/);
   }

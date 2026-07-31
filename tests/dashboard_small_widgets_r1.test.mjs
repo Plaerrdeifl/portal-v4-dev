@@ -107,12 +107,12 @@ test("small widgets remain additive under the current shell release", async () =
 
   assert.match(
     index,
-    /name="pd-release" content="20260731-login-first-true-single-paint-r1"/
+    /name="pd-release" content="20260731-login-first-true-single-paint-r2"/
   );
 
   assert.match(
     index,
-    /app\.css\?v=20260731-login-first-true-single-paint-r1/
+    /app\.css\?v=20260731-login-first-true-single-paint-r2/
   );
 
   assert.equal(
@@ -126,7 +126,7 @@ test("small widgets remain additive under the current shell release", async () =
 
   assert.match(
     worker,
-    /pd-portal-v4-login-first-true-single-paint-r1-20260731/
+    /pd-portal-v4-login-first-true-single-paint-r2-20260731/
   );
 
   assert.match(
