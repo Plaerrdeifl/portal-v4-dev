@@ -83,7 +83,8 @@ test("official Google Identity Services replaces the manual OAuth window", async
   assert.equal(googleSignIn.includes("width: 320"), false);
   assert.equal(googleSignIn.includes("BUTTON_HORIZONTAL_INSET"), true);
   assert.equal(googleSignIn.includes("await afterLayout()"), true);
-  assert.equal(googleSignIn.includes("ResizeObserver"), true);
+  assert.equal(googleSignIn.includes("ResizeObserver"), false);
+  assert.equal(googleSignIn.includes("waitForRenderedButton"), true);
   assert.equal(googleSignIn.includes("use_fedcm_for_button: true"), true);
   assert.equal(googleSignIn.includes("button_auto_select: false"), true);
   assert.equal(googleSignIn.includes("use_fedcm_for_prompt"), false);
@@ -104,7 +105,7 @@ test("official Google Identity Services replaces the manual OAuth window", async
   assert.equal(index.includes("https://accounts.google.com"), true);
   assert.equal(worker.includes("./js/google-signin.js"), true);
   assert.equal(worker.includes("./js/oauth-return-guard.js"), false);
-  assert.equal(index.includes("20260730-google-signin-stable-width-r2"), true);
+  assert.equal(index.includes("20260731-login-first-true-single-paint-r3"), true);
   assert.equal(
     worker.includes("pd-portal-v4-push-newtasks-quiettime-r1-20260723"),
     true

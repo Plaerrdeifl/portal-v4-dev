@@ -220,6 +220,18 @@ export function showChecking(
   showOpening(status, detail);
 }
 
+function revealPreparedLogin(opening, login) {
+  if (login) {
+    login.removeAttribute("data-preparing");
+    login.dataset.ready = "true";
+    login.hidden = false;
+  }
+
+  if (opening) {
+    opening.hidden = true;
+  }
+}
+
 export async function showLogin({
   onCredential,
   errorMessage = ""
@@ -244,12 +256,19 @@ export async function showLogin({
     gate.setAttribute("aria-busy", "false");
   }
 
+  const loginReady =
+    login?.dataset.ready === "true";
+
   if (opening) {
-    opening.hidden = true;
+    opening.hidden = loginReady;
   }
 
   if (login) {
     login.hidden = false;
+
+    if (!loginReady) {
+      login.dataset.preparing = "true";
+    }
   }
 
   if (error) {
@@ -280,6 +299,7 @@ export async function showLogin({
         "Die Anmeldung kann derzeit nicht gestartet werden.";
     }
 
+    revealPreparedLogin(opening, login);
     return;
   }
 
@@ -289,6 +309,7 @@ export async function showLogin({
     slot.textContent =
       "Die öffentliche Google Client-ID fehlt.";
 
+    revealPreparedLogin(opening, login);
     return;
   }
 
@@ -313,6 +334,8 @@ export async function showLogin({
         await onCredential(response, nonce);
       }
     });
+
+    revealPreparedLogin(opening, login);
   }
   catch (loadError) {
     slot.replaceChildren();
@@ -326,6 +349,8 @@ export async function showLogin({
         || "Google Identity Services ist nicht verfügbar."
       );
     }
+
+    revealPreparedLogin(opening, login);
   }
 }
 

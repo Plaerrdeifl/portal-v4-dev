@@ -73,6 +73,12 @@ async function refreshBootstrap() {
 function registerAuthListener(client) {
   if (authSubscription) return;
   const { data } = client.auth.onAuthStateChange((event, session) => {
+    // getSession() übernimmt den initialen Zustand bereits vollständig.
+    // INITIAL_SESSION darf deshalb keinen zweiten UI-Render auslösen.
+    if (event === "INITIAL_SESSION") {
+      return;
+    }
+
     window.setTimeout(async () => {
       state.session = session || null;
       if (!session) {
@@ -81,7 +87,7 @@ function registerAuthListener(client) {
         emit();
         return;
       }
-      if (["SIGNED_IN", "INITIAL_SESSION", "TOKEN_REFRESHED", "USER_UPDATED"].includes(event)) {
+      if (["SIGNED_IN", "TOKEN_REFRESHED", "USER_UPDATED"].includes(event)) {
         try {
           await refreshBootstrap();
         } catch (error) {
