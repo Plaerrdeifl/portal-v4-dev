@@ -523,26 +523,6 @@ async function bootstrap() {
       }
     );
 
-  let serviceWorkerControllerSeen =
-    Boolean(navigator.serviceWorker?.controller);
-  let serviceWorkerReloadRequested = false;
-
-  navigator.serviceWorker?.addEventListener(
-    "controllerchange",
-    () => {
-      if (!serviceWorkerControllerSeen) {
-        serviceWorkerControllerSeen = true;
-        return;
-      }
-
-      if (serviceWorkerReloadRequested) {
-        return;
-      }
-
-      serviceWorkerReloadRequested = true;
-      location.reload();
-    }
-  );
 
   window.addEventListener(
     "hashchange",

@@ -3,6 +3,7 @@ import { CONFIG } from "./config.js?v=20260724-dashboard-delivery-corr2";
 let initialized = false;
 let deferredPrompt = null;
 let registration = null;
+let reloadAfterExplicitUpdate = false;
 
 export function isStandalone() {
   return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
@@ -56,6 +57,16 @@ async function registerServiceWorker() {
 export function initializeInstall() {
   if (initialized) return;
   initialized = true;
+
+  navigator.serviceWorker?.addEventListener(
+    "controllerchange",
+    () => {
+      if (!reloadAfterExplicitUpdate) return;
+
+      reloadAfterExplicitUpdate = false;
+      location.reload();
+    }
+  );
 
   window.addEventListener("beforeinstallprompt", event => {
     event.preventDefault();
@@ -114,6 +125,7 @@ export async function activateUpdate() {
 
   if (!registration.waiting) return false;
 
+  reloadAfterExplicitUpdate = true;
   registration.waiting.postMessage({ type: "SKIP_WAITING" });
   return true;
 }

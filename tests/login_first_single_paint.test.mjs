@@ -2,41 +2,41 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const app = await readFile(
-  new URL("../js/app.js", import.meta.url),
-  "utf8"
-);
+const [app, install] = await Promise.all([
+  readFile(new URL("../js/app.js", import.meta.url), "utf8"),
+  readFile(new URL("../js/install.js", import.meta.url), "utf8")
+]);
 
-test("first service-worker claim does not visibly reload login", () => {
-  assert.match(
+test("service-worker changes do not automatically reload login", () => {
+  assert.doesNotMatch(
     app,
-    /let serviceWorkerControllerSeen\s*=\s*Boolean\(navigator\.serviceWorker\?\.controller\)/
-  );
-
-  assert.match(
-    app,
-    /if \(!serviceWorkerControllerSeen\) \{\s*serviceWorkerControllerSeen = true;\s*return;\s*\}/
+    /serviceWorkerControllerSeen|serviceWorkerReloadRequested/
   );
 
   assert.doesNotMatch(
     app,
-    /"controllerchange",\s*\(\) => location\.reload\(\)/
+    /serviceWorker\?\.addEventListener\(\s*"controllerchange"/
+  );
+
+  assert.match(
+    install,
+    /if \(!reloadAfterExplicitUpdate\) return;/
   );
 });
 
-test("later service-worker replacements still reload once", () => {
+test("reload occurs only after explicit update activation", () => {
   assert.match(
-    app,
-    /let serviceWorkerReloadRequested = false/
+    install,
+    /let reloadAfterExplicitUpdate = false/
   );
 
   assert.match(
-    app,
-    /if \(serviceWorkerReloadRequested\) \{\s*return;\s*\}/
+    install,
+    /reloadAfterExplicitUpdate = true;\s*registration\.waiting\.postMessage/
   );
 
   assert.match(
-    app,
-    /serviceWorkerReloadRequested = true;\s*location\.reload\(\)/
+    install,
+    /if \(!reloadAfterExplicitUpdate\) return;\s*reloadAfterExplicitUpdate = false;\s*location\.reload\(\)/
   );
 });
