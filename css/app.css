@@ -196,6 +196,14 @@
   text-align:center;
 }
 
+.auth-login-card[data-preparing="true"]{
+  position:absolute;
+  left:0;
+  right:0;
+  visibility:hidden;
+  pointer-events:none;
+}
+
 .auth-login-card h1{
   margin:0 0 20px;
   font-size:clamp(1.2rem,4vw,1.48rem);

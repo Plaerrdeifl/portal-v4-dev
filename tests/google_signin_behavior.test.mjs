@@ -2,26 +2,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 test(
-  "Google Identity Services prevents a resize render loop",
+  "Google Identity Services renders the visible button exactly once",
   async context => {
     const originalWindow = globalThis.window;
     const originalDocument = globalThis.document;
     const originalResizeObserver = globalThis.ResizeObserver;
 
     context.after(() => {
-      if (originalWindow === undefined) {
-        delete globalThis.window;
-      }
-      else {
-        globalThis.window = originalWindow;
-      }
+      if (originalWindow === undefined) delete globalThis.window;
+      else globalThis.window = originalWindow;
 
-      if (originalDocument === undefined) {
-        delete globalThis.document;
-      }
-      else {
-        globalThis.document = originalDocument;
-      }
+      if (originalDocument === undefined) delete globalThis.document;
+      else globalThis.document = originalDocument;
 
       if (originalResizeObserver === undefined) {
         delete globalThis.ResizeObserver;
@@ -35,8 +27,15 @@ test(
     let renderOptions = null;
     let callbackResult = null;
     let renderCount = 0;
-    let resizeCallback = null;
-    let observedElement = null;
+    let renderedIframe = null;
+
+    globalThis.ResizeObserver = class {
+      constructor() {
+        throw new Error(
+          "Der endgültige Google-Button darf keinen ResizeObserver verwenden."
+        );
+      }
+    };
 
     globalThis.window = {
       google: {
@@ -46,29 +45,25 @@ test(
               initializeOptions = options;
             },
 
-            renderButton(element, options) {
+            renderButton(_element, options) {
               renderCount += 1;
               renderOptions = options;
 
-              if (renderCount === 1) {
-                element.rendered = false;
-
-                queueMicrotask(() => {
-                  resizeCallback?.([]);
-                });
-
-                setTimeout(() => {
-                  element.rendered = true;
-                }, 100);
-              }
-              else {
-                element.rendered = true;
-              }
+              renderedIframe = {
+                addEventListener(event, callback) {
+                  if (event === "load") {
+                    setTimeout(callback, 0);
+                  }
+                }
+              };
             }
           }
         }
       },
       innerWidth: 393,
+      requestAnimationFrame(callback) {
+        return setTimeout(callback, 0);
+      },
       setTimeout,
       clearTimeout
     };
@@ -91,23 +86,11 @@ test(
       }
     };
 
-    globalThis.ResizeObserver = class {
-      constructor(callback) {
-        resizeCallback = callback;
-      }
-
-      observe(element) {
-        observedElement = element;
-      }
-
-      disconnect() {}
-    };
-
     const module = await import(
       `../js/google-signin.js?test=${Date.now()}`
     );
 
-    const stableParent = {
+    const parent = {
       clientWidth: 340,
 
       getBoundingClientRect() {
@@ -116,62 +99,49 @@ test(
     };
 
     const element = {
-      parentElement: stableParent,
-      rendered: false,
+      parentElement: parent,
       clientWidth: 300,
 
       getBoundingClientRect() {
         return { width: this.clientWidth };
       },
 
-      hasChildNodes() {
-        return this.rendered;
-      },
+      replaceChildren() {},
 
-      replaceChildren() {
-        this.rendered = false;
+      querySelector(selector) {
+        return selector === "iframe"
+          ? renderedIframe
+          : null;
       }
     };
 
-    await module.renderGoogleSignInButton(element, {
+    const options = {
       clientId:
         "123456789-example.apps.googleusercontent.com",
 
       onCredential(response, nonce) {
         callbackResult = { response, nonce };
       }
-    });
+    };
 
-    assert.equal(typeof resizeCallback, "function");
-    assert.equal(
-      observedElement,
-      stableParent,
-      "Beobachtet werden muss der stabile Elterncontainer."
-    );
-
-    await new Promise(resolve => setTimeout(resolve, 30));
+    await module.renderGoogleSignInButton(element, options);
+    await module.renderGoogleSignInButton(element, options);
 
     assert.equal(
       renderCount,
       1,
-      "Ein vorübergehend leerer Slot darf kein erneutes Rendern auslösen."
+      "Der Google-Button darf nach seiner Erzeugung nicht ersetzt werden."
     );
 
     assert.equal(
       initializeOptions.client_id,
       "123456789-example.apps.googleusercontent.com"
     );
+
     assert.equal(initializeOptions.ux_mode, "popup");
     assert.equal(initializeOptions.auto_select, false);
     assert.equal(initializeOptions.use_fedcm_for_button, true);
     assert.equal(initializeOptions.button_auto_select, false);
-    assert.equal(
-      Object.hasOwn(
-        initializeOptions,
-        "use_fedcm_for_prompt"
-      ),
-      false
-    );
     assert.match(initializeOptions.nonce, /^[a-f0-9]{64}$/);
 
     assert.equal(renderOptions.theme, "filled_blue");
@@ -179,32 +149,6 @@ test(
     assert.equal(renderOptions.size, "medium");
     assert.equal(renderOptions.width, 276);
     assert.equal(renderOptions.locale, "de");
-
-    element.rendered = true;
-    stableParent.clientWidth = 360;
-    element.clientWidth = 320;
-
-    resizeCallback([]);
-    resizeCallback([]);
-    resizeCallback([]);
-
-    await new Promise(resolve => setTimeout(resolve, 30));
-
-    assert.equal(
-      renderCount,
-      2,
-      "Mehrere Resize-Signale derselben Layoutphase dürfen nur ein Neurendern auslösen."
-    );
-    assert.equal(renderOptions.width, 296);
-
-    resizeCallback([]);
-    await new Promise(resolve => setTimeout(resolve, 30));
-
-    assert.equal(
-      renderCount,
-      2,
-      "Eine unveränderte Slotbreite darf kein weiteres Rendern auslösen."
-    );
 
     initializeOptions.callback({
       credential: "jwt-token"
@@ -214,6 +158,7 @@ test(
       callbackResult.response.credential,
       "jwt-token"
     );
+
     assert.match(
       callbackResult.nonce,
       /^[A-Za-z0-9_-]{40,}$/

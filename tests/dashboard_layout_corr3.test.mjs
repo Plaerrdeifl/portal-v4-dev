@@ -84,12 +84,12 @@ test("dashboard corr3 remains active under the current shell release", async () 
 
   assert.match(
     index,
-    /name="pd-release" content="20260730-google-signin-stable-width-r2"/
+    /name="pd-release" content="20260731-login-first-true-single-paint-r1"/
   );
 
   assert.match(
     index,
-    /app\.css\?v=20260730-google-signin-stable-width-r2/
+    /app\.css\?v=20260731-login-first-true-single-paint-r1/
   );
 
   assert.match(

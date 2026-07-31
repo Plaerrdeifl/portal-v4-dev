@@ -1,4 +1,4 @@
-const CACHE_VERSION = "pd-portal-v4-google-signin-stable-width-r2-20260730";
+const CACHE_VERSION = "pd-portal-v4-login-first-true-single-paint-r1-20260731";
 const PREVIOUS_CACHE_VERSION = "pd-portal-v4-personal-dashboard-widgets-r1-fix4-20260724";
 const DASHBOARD_LAYOUT_CORR3_CACHE_VERSION = "pd-portal-v4-dashboard-layout-corr3-20260724";
 const DASHBOARD_DELIVERY_CORR2_CACHE_VERSION = "pd-portal-v4-dashboard-delivery-corr2-20260724";

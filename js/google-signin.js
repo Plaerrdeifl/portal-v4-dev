@@ -9,9 +9,7 @@ let libraryPromise = null;
 let initializedClientId = "";
 let credentialHandler = null;
 let noncePairPromise = null;
-const resizeObservers = new WeakMap();
-const renderedWidths = new WeakMap();
-const pendingResizeElements = new WeakSet();
+const renderedElements = new WeakSet();
 
 function googleIdentityApi() {
   return window.google?.accounts?.id || null;
@@ -146,10 +144,6 @@ function elementWidth(element) {
   return directRect || directClient || parentRect || parentClient || viewportFallback;
 }
 
-function resizeTarget(element) {
-  return element.parentElement || element;
-}
-
 function availableButtonWidth(element) {
   const measured = elementWidth(element);
   const safeWidth = measured > 0
@@ -180,18 +174,15 @@ function afterLayout() {
 }
 
 function drawButton(api, element) {
-  const width = availableButtonWidth(element);
-  // Google erzeugt das iframe asynchron. Der vorübergehende DOM-Zustand
-  // darf deshalb kein erneutes Rendern bei unveränderter Breite auslösen.
-  if (renderedWidths.get(element) === width) return;
+  if (renderedElements.has(element)) return;
 
-  renderedWidths.set(element, width);
+  const width = availableButtonWidth(element);
+
   element.replaceChildren();
+
   api.renderButton(element, {
     type: "standard",
     theme: "filled_blue",
-    // Medium verhindert die personalisierte Kontodarstellung. Der zusätzliche
-    // Breitenabstand hält das von Google gerenderte iframe vollständig im Slot.
     size: "medium",
     text: "signin_with",
     shape: "pill",
@@ -199,6 +190,46 @@ function drawButton(api, element) {
     width,
     locale: "de"
   });
+
+  renderedElements.add(element);
+}
+
+async function waitForRenderedButton(element) {
+  let iframe = null;
+
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    iframe = element.querySelector?.("iframe") || null;
+
+    if (iframe) break;
+
+    await new Promise(resolve => {
+      window.setTimeout(resolve, 16);
+    });
+  }
+
+  if (!iframe) {
+    throw new Error(
+      "Der Google-Anmeldebutton wurde nicht vollständig aufgebaut."
+    );
+  }
+
+  await new Promise(resolve => {
+    let finished = false;
+
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      resolve();
+    };
+
+    iframe.addEventListener?.("load", finish, {
+      once: true
+    });
+
+    window.setTimeout(finish, 250);
+  });
+
+  await afterLayout();
 }
 
 export async function renderGoogleSignInButton(
@@ -210,25 +241,8 @@ export async function renderGoogleSignInButton(
   }
 
   const api = await initializeGoogleIdentity(clientId, onCredential);
+
   await afterLayout();
   drawButton(api, element);
-
-  resizeObservers.get(element)?.disconnect();
-  if (typeof ResizeObserver === "function") {
-    const observedElement = resizeTarget(element);
-    const observer = new ResizeObserver(() => {
-      if (pendingResizeElements.has(element)) return;
-
-      pendingResizeElements.add(element);
-
-      void afterLayout()
-        .then(() => drawButton(api, element))
-        .finally(() => {
-          pendingResizeElements.delete(element);
-        });
-    });
-
-    observer.observe(observedElement);
-    resizeObservers.set(element, observer);
-  }
+  await waitForRenderedButton(element);
 }

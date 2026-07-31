@@ -108,7 +108,14 @@ test("forms, dialogs and Google button follow the global mobile contract", async
   assert.ok(google.includes("BUTTON_HORIZONTAL_INSET = 24"));
   assert.ok(google.includes("availableButtonWidth"));
   assert.ok(google.includes("await afterLayout()"));
-  assert.ok(google.includes("ResizeObserver"));
+  assert.equal(
+    google.includes("ResizeObserver"),
+    false
+  );
+  assert.equal(
+    google.includes("waitForRenderedButton"),
+    true
+  );
   assert.ok(google.includes('size: "medium"'));
   assert.ok(!google.includes('size: "large"'));
   assert.ok(!google.includes("width: 320"));
