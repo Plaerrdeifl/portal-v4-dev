@@ -7,7 +7,7 @@ const root = resolve(import.meta.dirname, "..");
 const read = path => readFile(resolve(root, path), "utf8");
 
 const shellRelease =
-  "20260729-login-first-auth-gate-r1";
+  "20260730-google-signin-stable-width-r2";
 
 const dashboardRelease =
   "20260724-dashboard-delivery-corr2";

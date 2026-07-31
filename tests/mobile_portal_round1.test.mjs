@@ -61,6 +61,6 @@ test("mobile portal round one follows the approved layout rules", async () => {
   assert.equal(app.includes('label: "Online"'), false);
   assert.equal(app.includes('label: "Live"'), true);
   assert.equal(app.includes('label: "Lädt …"'), true);
-  assert.equal(index.includes("20260729-login-first-auth-gate-r1"), true);
+  assert.equal(index.includes("20260730-google-signin-stable-width-r2"), true);
   assert.equal(worker.includes("pd-portal-v4-push-newtasks-quiettime-r1-20260723"), true);
 });

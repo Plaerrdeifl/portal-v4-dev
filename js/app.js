@@ -8,11 +8,11 @@ import {
 } from "./router.js";
 import {
   hydratePage
-} from "./pages.js?v=20260729-login-first-auth-gate-r1";
+} from "./pages.js?v=20260730-google-signin-stable-width-r2";
 import {
   activateUpdate,
   initializeInstall
-} from "./install.js?v=20260729-login-first-auth-gate-r1";
+} from "./install.js?v=20260730-google-signin-stable-width-r2";
 import {
   initializeAuthGate,
   showApp,

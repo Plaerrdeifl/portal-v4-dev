@@ -79,8 +79,9 @@ for (const required of [
   ".sidebar .nav-footer{flex:0 0 auto;overflow:visible;position:relative;z-index:2;",
   'html[data-portal-area="portal"] .sidebar{overflow:hidden!important;padding-bottom:calc(18px + var(--mobile-nav-height) + var(--mobile-safe-bottom))!important}',
   ".google-signin-slot>div{",
-  "padding-inline:10px",
-  "max-width:none!important"
+  "padding-inline:0",
+  "contain:inline-size",
+  "max-width:100%!important"
 ]) {
   if (!appCss.includes(required)) {
     throw new Error(`Globale Frontend-Grundlage unvollständig: ${required}`);

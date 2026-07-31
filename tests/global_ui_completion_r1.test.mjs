@@ -83,7 +83,7 @@ test("cache busting identifies global UI completion R1", async () => {
     read("js/config.js"),
     read("service-worker.js")
   ]);
-  assert.match(index, /20260729-login-first-auth-gate-r1/);
-  assert.match(config, /20260729-login-first-auth-gate-r1/);
+  assert.match(index, /20260730-google-signin-stable-width-r2/);
+  assert.match(config, /20260730-google-signin-stable-width-r2/);
   assert.match(worker, /pd-portal-v4-push-newtasks-quiettime-r1-20260723/);
 });

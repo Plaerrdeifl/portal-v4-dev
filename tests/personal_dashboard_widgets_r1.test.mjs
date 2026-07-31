@@ -133,12 +133,12 @@ test("personal dashboard remains active under the current shell release", async 
 
   assert.match(
     index,
-    /name="pd-release" content="20260729-login-first-auth-gate-r1"/
+    /name="pd-release" content="20260730-google-signin-stable-width-r2"/
   );
 
   assert.match(
     index,
-    /app\.css\?v=20260729-login-first-auth-gate-r1/
+    /app\.css\?v=20260730-google-signin-stable-width-r2/
   );
 
   assert.equal(
