@@ -45,7 +45,12 @@ test(
 
     assert.match(
       css,
-      /auth-login-card\[data-preparing="true"\][\s\S]*visibility:hidden/
+      /auth-login-card\[data-preparing="true"\]\{[^}]*opacity:0/
+    );
+
+    assert.doesNotMatch(
+      css,
+      /auth-login-card\[data-preparing="true"\]\{[^}]*visibility:hidden/
     );
 
     assert.match(

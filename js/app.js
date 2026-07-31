@@ -8,11 +8,11 @@ import {
 } from "./router.js";
 import {
   hydratePage
-} from "./pages.js?v=20260731-login-first-true-single-paint-r2";
+} from "./pages.js?v=20260731-login-first-true-single-paint-r3";
 import {
   activateUpdate,
   initializeInstall
-} from "./install.js?v=20260731-login-first-true-single-paint-r2";
+} from "./install.js?v=20260731-login-first-true-single-paint-r3";
 import {
   initializeAuthGate,
   showApp,
