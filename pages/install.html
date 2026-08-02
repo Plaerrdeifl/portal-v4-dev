@@ -1,12 +1,47 @@
 <section class="page public-page install-page">
   <article class="card public-page-card">
-    <div class="card-icon">📱</div>
+    <div class="card-icon" aria-hidden="true">📱</div>
     <h2>Portal als App nutzen</h2>
-    <p id="installIntro">Lege das Plärrdeifl Portal auf deinem Home-Bildschirm ab.</p>
-    <div id="installInstructions" class="install-instructions"></div>
-    <div class="action-row">
-      <button id="pageInstallButton" class="button primary" type="button">Portal installieren</button>
+
+    <p id="installIntro">
+      Füge das Plärrdeifl Portal über das Menü deines Smartphones zum Home-Bildschirm hinzu.
+    </p>
+
+    <div id="installInstructions" class="install-instructions">
+      <div class="install-guide-grid">
+        <section class="install-guide" aria-labelledby="installAndroidTitle">
+          <h3 id="installAndroidTitle">Android mit Chrome</h3>
+
+          <ol>
+            <li>Öffne das Portal in Google Chrome.</li>
+            <li>Tippe oben rechts auf das Menü mit den drei Punkten.</li>
+            <li>Wähle <strong>App installieren</strong> oder <strong>Zum Startbildschirm hinzufügen</strong>.</li>
+            <li>Bestätige die angezeigte Installation.</li>
+          </ol>
+        </section>
+
+        <section class="install-guide" aria-labelledby="installIosTitle">
+          <h3 id="installIosTitle">iPhone oder iPad mit Safari</h3>
+
+          <ol>
+            <li>Öffne das Portal in Safari.</li>
+            <li>Tippe auf das Teilen-Symbol.</li>
+            <li>Wähle <strong>Zum Home-Bildschirm</strong>.</li>
+            <li>Aktiviere – falls angezeigt – <strong>Als Web-App öffnen</strong> und tippe auf <strong>Hinzufügen</strong>.</li>
+          </ol>
+        </section>
+      </div>
+
+      <p class="subtle install-browser-note">
+        Die Bezeichnung der Menüpunkte kann je nach Browser- und Betriebssystemversion leicht abweichen.
+      </p>
     </div>
-    <p id="installResult" class="subtle" aria-live="polite"></p>
+
+    <p
+      id="installResult"
+      class="notice success install-result"
+      aria-live="polite"
+      hidden
+    ></p>
   </article>
 </section>

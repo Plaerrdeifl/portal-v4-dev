@@ -61,6 +61,6 @@ test("mobile portal round one follows the approved layout rules", async () => {
   assert.equal(app.includes('label: "Online"'), false);
   assert.equal(app.includes('label: "Live"'), true);
   assert.equal(app.includes('label: "Lädt …"'), true);
-  assert.equal(index.includes("20260731-login-first-true-single-paint-r3"), true);
+  assert.equal(index.includes("20260802-pwa-install-guidance-r1"), true);
   assert.equal(worker.includes("pd-portal-v4-push-newtasks-quiettime-r1-20260723"), true);
 });

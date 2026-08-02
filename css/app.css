@@ -582,6 +582,15 @@ label{display:grid;gap:7px;color:var(--ink-700);font-size:.88rem;font-weight:750
 .install-instructions{margin:18px 0;color:var(--ink-700);line-height:1.65}
 .install-instructions ol{margin:0;padding-left:24px}
 .install-instructions li+li{margin-top:8px}
+.install-guide-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.install-guide{padding:16px;border:1px solid var(--line);border-radius:16px}
+.install-guide h3{margin:0 0 12px}
+.install-guide ol{margin:0;padding-left:22px}
+.install-guide li{line-height:1.55}
+.install-browser-note{margin:2px 0 0}
+.install-result{margin-top:18px}
+.install-result[hidden],.install-instructions[hidden]{display:none}
+@media (max-width:700px){.install-guide-grid{grid-template-columns:1fr}}
 .google-signin-slot{position:relative;min-height:48px;display:flex;align-items:center}
 .google-signin-slot.is-busy{pointer-events:none;opacity:.72}
 .google-signin-slot.is-busy::after{content:attr(data-status);position:absolute;left:0;right:0;top:calc(100% + 7px);font-size:.78rem;color:var(--ink-500)}

@@ -164,7 +164,7 @@ for (const required of [
 for (const forbidden of [
   "data-prerendered-public-home",
   "public-home-actions",
-  "Portal installieren",
+  "Android mit Chrome",
   "Zur Startseite"
 ]) {
   if (html.includes(forbidden)) {

@@ -133,12 +133,12 @@ test("personal dashboard remains active under the current shell release", async 
 
   assert.match(
     index,
-    /name="pd-release" content="20260731-login-first-true-single-paint-r3"/
+    /name="pd-release" content="20260802-pwa-install-guidance-r1"/
   );
 
   assert.match(
     index,
-    /app\.css\?v=20260731-login-first-true-single-paint-r3/
+    /app\.css\?v=20260802-pwa-install-guidance-r1/
   );
 
   assert.equal(

@@ -2,7 +2,6 @@ import { auth } from "./auth.js";
 import { renderGoogleSignInButton } from "./google-signin.js";
 import { CONFIG } from "./config.js?v=20260724-dashboard-delivery-corr2";
 import { showToast } from "./ui.js";
-import { installState, requestInstall } from "./install.js";
 
 const moduleCache = new Map();
 
@@ -22,20 +21,29 @@ function setText(id, value) {
 }
 
 function hydrateInstall() {
-  const state = installState();
+  const standalone =
+    window.matchMedia?.("(display-mode: standalone)")?.matches === true
+    || window.navigator.standalone === true;
+
   const instructions = document.getElementById("installInstructions");
-  const button = document.getElementById("pageInstallButton");
+  const result = document.getElementById("installResult");
+
+  setText(
+    "installIntro",
+    standalone
+      ? "Das Plärrdeifl Portal läuft bereits als installierte App."
+      : "Füge das Plärrdeifl Portal über das Menü deines Smartphones zum Home-Bildschirm hinzu."
+  );
+
   if (instructions) {
-    instructions.innerHTML = state.ios
-      ? "<p>Öffne das Teilen-Menü und wähle <strong>Zum Home-Bildschirm</strong>.</p>"
-      : "<p>Nutze den Installieren-Button oder das Installationssymbol deines Browsers.</p>";
+    instructions.hidden = standalone;
   }
-  if (button) {
-    button.hidden = state.standalone || state.ios;
-    button.addEventListener("click", async () => {
-      const result = await requestInstall();
-      setText("installResult", result.installed ? "Installation gestartet." : "Installation wird auf diesem Gerät derzeit nicht angeboten.");
-    });
+
+  if (result) {
+    result.hidden = !standalone;
+    result.textContent = standalone
+      ? "Das Portal ist auf diesem Gerät bereits als App geöffnet."
+      : "";
   }
 }
 
