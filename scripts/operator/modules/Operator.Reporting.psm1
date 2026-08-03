@@ -3,6 +3,8 @@ $ErrorActionPreference = 'Stop'
 
 $manifestModulePath = [IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot, 'Operator.Manifest.psm1'))
 Import-Module -Name $manifestModulePath -ErrorAction Stop
+$environmentModulePath = [IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot, 'Operator.Environment.psm1'))
+Import-Module -Name $environmentModulePath -ErrorAction Stop
 
 function Write-OperatorAtomicText {
     param(
@@ -33,6 +35,149 @@ function Write-OperatorAtomicText {
 function ConvertTo-OperatorUtcTimestamp {
     param([Parameter(Mandatory = $true)][DateTime]$Value)
     return $Value.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss.fffZ', [Globalization.CultureInfo]::InvariantCulture)
+}
+
+function Assert-OperatorClosedProperties {
+    param(
+        [Parameter(Mandatory = $true)]$InputObject,
+        [Parameter(Mandatory = $true)][string[]]$PropertyNames,
+        [Parameter(Mandatory = $true)][string]$ObjectName
+    )
+    if ($null -eq $InputObject) { throw "$ObjectName is missing." }
+    $actualNames = @($InputObject.PSObject.Properties.Name)
+    foreach ($name in $PropertyNames) {
+        if ($actualNames -cnotcontains $name) { throw "$ObjectName is missing required property '$name'." }
+    }
+    foreach ($name in $actualNames) {
+        if ($PropertyNames -cnotcontains $name) { throw "$ObjectName contains unsupported property '$name'." }
+    }
+}
+
+function Assert-OperatorReportTimestamp {
+    param(
+        [Parameter(Mandatory = $true)][string]$Value,
+        [Parameter(Mandatory = $true)][string]$PropertyName
+    )
+    $parsed = [DateTime]::MinValue
+    if (-not [DateTime]::TryParseExact($Value, 'yyyy-MM-ddTHH:mm:ss.fffZ', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$parsed)) {
+        throw "$PropertyName must be a canonical UTC timestamp."
+    }
+}
+
+function Test-OperatorReportInteger {
+    param([AllowNull()]$Value)
+    return $Value -is [byte] -or $Value -is [int16] -or $Value -is [int32] -or $Value -is [int64]
+}
+
+function Test-OperatorClosedReportObject {
+    param(
+        [AllowNull()]$InputObject,
+        [Parameter(Mandatory = $true)][string[]]$PropertyNames
+    )
+    if ($null -eq $InputObject -or $InputObject -isnot [pscustomobject]) { return $false }
+    $actualNames = @($InputObject.PSObject.Properties.Name)
+    if ($actualNames.Count -ne $PropertyNames.Count) { return $false }
+    foreach ($name in $PropertyNames) { if ($actualNames -cnotcontains $name) { return $false } }
+    return $true
+}
+
+function Test-OperatorReportString {
+    param([AllowNull()]$Value, [switch]$AllowEmpty)
+    if ($Value -isnot [string]) { return $false }
+    $text = [string]$Value
+    if (-not $AllowEmpty -and [string]::IsNullOrWhiteSpace($text)) { return $false }
+    return $text.IndexOf([char]0) -lt 0 -and $text.IndexOf("`r", [StringComparison]::Ordinal) -lt 0 -and $text.IndexOf("`n", [StringComparison]::Ordinal) -lt 0
+}
+
+function Test-OperatorReportTimestamp {
+    param([AllowNull()]$Value)
+    if (-not (Test-OperatorReportString -Value $Value)) { return $false }
+    $parsed = [DateTime]::MinValue
+    $styles = [Globalization.DateTimeStyles]::AssumeUniversal -bor [Globalization.DateTimeStyles]::AdjustToUniversal
+    return [DateTime]::TryParseExact([string]$Value, 'yyyy-MM-ddTHH:mm:ss.fffZ', [Globalization.CultureInfo]::InvariantCulture, $styles, [ref]$parsed)
+}
+
+function Test-OperatorRepositorySnapshotReportContract {
+    param([AllowNull()]$RepositorySnapshot)
+    try {
+        if (-not (Test-OperatorClosedReportObject -InputObject $RepositorySnapshot -PropertyNames @('schemaVersion', 'repositoryRoot', 'headSha', 'branch', 'upstream', 'remotes', 'workingTreeState', 'capturedAtUtc'))) { return $false }
+        if (-not (Test-OperatorReportInteger -Value $RepositorySnapshot.schemaVersion) -or [int64]$RepositorySnapshot.schemaVersion -ne 1) { return $false }
+        if (-not (Test-OperatorReportString -Value $RepositorySnapshot.repositoryRoot)) { return $false }
+        if (-not [IO.Path]::IsPathRooted([string]$RepositorySnapshot.repositoryRoot)) { return $false }
+        if (-not (Test-OperatorReportString -Value $RepositorySnapshot.headSha) -or -not [regex]::IsMatch([string]$RepositorySnapshot.headSha, '^[a-f0-9]{40}$', [Text.RegularExpressions.RegexOptions]::CultureInvariant)) { return $false }
+        if (-not (Test-OperatorReportString -Value $RepositorySnapshot.branch)) { return $false }
+        if ($null -ne $RepositorySnapshot.upstream -and -not (Test-OperatorReportString -Value $RepositorySnapshot.upstream -AllowEmpty)) { return $false }
+        if (-not (Test-OperatorReportTimestamp -Value $RepositorySnapshot.capturedAtUtc)) { return $false }
+        if ($null -eq $RepositorySnapshot.remotes -or $RepositorySnapshot.remotes -isnot [System.Array]) { return $false }
+        $remotes = @($RepositorySnapshot.remotes)
+        if ($remotes.Count -ne 2) { return $false }
+        foreach ($remote in $remotes) {
+            if (-not (Test-OperatorClosedReportObject -InputObject $remote -PropertyNames @('name', 'url'))) { return $false }
+            if (-not (Test-OperatorReportString -Value $remote.name) -or -not (Test-OperatorReportString -Value $remote.url)) { return $false }
+            $isOrigin = [string]$remote.name -ceq 'origin' -and [string]$remote.url -ceq 'https://github.com/Plaerrdeifl/portal.git'
+            $isV4Dev = [string]$remote.name -ceq 'v4dev' -and [string]$remote.url -ceq 'https://github.com/Plaerrdeifl/portal-v4-dev.git'
+            if (-not $isOrigin -and -not $isV4Dev) { return $false }
+        }
+        if (@($remotes | Where-Object { $_.name -is [string] -and [string]$_.name -ceq 'origin' }).Count -ne 1 -or @($remotes | Where-Object { $_.name -is [string] -and [string]$_.name -ceq 'v4dev' }).Count -ne 1) { return $false }
+        if (-not (Test-OperatorClosedReportObject -InputObject $RepositorySnapshot.workingTreeState -PropertyNames @('isClean', 'entries'))) { return $false }
+        $state = $RepositorySnapshot.workingTreeState
+        if ($state.isClean -isnot [bool] -or $null -eq $state.entries -or $state.entries -isnot [System.Array]) { return $false }
+        $entries = @($state.entries)
+        foreach ($entry in $entries) {
+            if (-not (Test-OperatorClosedReportObject -InputObject $entry -PropertyNames @('path', 'status', 'originalPath'))) { return $false }
+            if (-not (Test-OperatorReportString -Value $entry.path) -or -not (Test-OperatorReportString -Value $entry.status) -or ([string]$entry.status).Length -ne 2) { return $false }
+            if ($null -ne $entry.originalPath -and -not (Test-OperatorReportString -Value $entry.originalPath -AllowEmpty)) { return $false }
+        }
+        if ([bool]$state.isClean -ne ($entries.Count -eq 0)) { return $false }
+        return $true
+    }
+    catch { return $false }
+}
+
+function Test-OperatorWorkingTreeFingerprintReportContract {
+    param([AllowNull()]$WorkingTreeFingerprint)
+    try {
+        if (-not (Test-OperatorClosedReportObject -InputObject $WorkingTreeFingerprint -PropertyNames @('schemaVersion', 'algorithm', 'fingerprint', 'headSha', 'entryCount', 'createdAtUtc'))) { return $false }
+        if (-not (Test-OperatorReportInteger -Value $WorkingTreeFingerprint.schemaVersion) -or [int64]$WorkingTreeFingerprint.schemaVersion -ne 1) { return $false }
+        if (-not (Test-OperatorReportString -Value $WorkingTreeFingerprint.algorithm) -or [string]$WorkingTreeFingerprint.algorithm -cne 'SHA256') { return $false }
+        if (-not (Test-OperatorReportString -Value $WorkingTreeFingerprint.fingerprint) -or -not [regex]::IsMatch([string]$WorkingTreeFingerprint.fingerprint, '^[a-f0-9]{64}$', [Text.RegularExpressions.RegexOptions]::CultureInvariant)) { return $false }
+        if (-not (Test-OperatorReportString -Value $WorkingTreeFingerprint.headSha) -or -not [regex]::IsMatch([string]$WorkingTreeFingerprint.headSha, '^[a-f0-9]{40}$', [Text.RegularExpressions.RegexOptions]::CultureInvariant)) { return $false }
+        if (-not (Test-OperatorReportInteger -Value $WorkingTreeFingerprint.entryCount) -or [int64]$WorkingTreeFingerprint.entryCount -lt 0) { return $false }
+        if (-not (Test-OperatorReportTimestamp -Value $WorkingTreeFingerprint.createdAtUtc)) { return $false }
+        return $true
+    }
+    catch { return $false }
+}
+
+function Write-OperatorEnvironmentReport {
+    param(
+        [Parameter(Mandatory = $true)][string]$RunDirectory,
+        [Parameter(Mandatory = $true)]$EnvironmentSnapshot
+    )
+    $validation = Test-OperatorEnvironmentSnapshot -Snapshot $EnvironmentSnapshot
+    if (-not $validation.isValid) { throw 'Environment snapshot semantic validation failed.' }
+    $json = ConvertTo-Json -InputObject $EnvironmentSnapshot -Depth 16
+    Write-OperatorAtomicText -LiteralPath ([IO.Path]::Combine($RunDirectory, 'environment.json')) -Text ($json + [Environment]::NewLine)
+}
+
+function Write-OperatorRepositorySnapshotReport {
+    param(
+        [Parameter(Mandatory = $true)][string]$RunDirectory,
+        [Parameter(Mandatory = $true)]$RepositorySnapshot
+    )
+    if (-not (Test-OperatorRepositorySnapshotReportContract -RepositorySnapshot $RepositorySnapshot)) { throw 'Repository snapshot report input is invalid.' }
+    $json = ConvertTo-Json -InputObject $RepositorySnapshot -Depth 16
+    Write-OperatorAtomicText -LiteralPath ([IO.Path]::Combine($RunDirectory, 'repository-snapshot.json')) -Text ($json + [Environment]::NewLine)
+}
+
+function Write-OperatorWorkingTreeFingerprintReport {
+    param(
+        [Parameter(Mandatory = $true)][string]$RunDirectory,
+        [Parameter(Mandatory = $true)]$WorkingTreeFingerprint
+    )
+    if (-not (Test-OperatorWorkingTreeFingerprintReportContract -WorkingTreeFingerprint $WorkingTreeFingerprint)) { throw 'Working-tree fingerprint report input is invalid.' }
+    $json = ConvertTo-Json -InputObject $WorkingTreeFingerprint -Depth 8
+    Write-OperatorAtomicText -LiteralPath ([IO.Path]::Combine($RunDirectory, 'working-tree-fingerprint.json')) -Text ($json + [Environment]::NewLine)
 }
 
 function New-OperatorResult {
@@ -141,9 +286,11 @@ function Write-OperatorInvocationReport {
         [Parameter(Mandatory = $true)][string]$ManifestPath,
         [Parameter(Mandatory = $true)][string]$OperatorVersion
     )
+    $registeredStages = @('SelfTest', 'Preflight', 'LocalVerify', 'LocalFreeze', 'DevDeploy', 'DevVerify', 'ProdPreflight', 'ProdDeploy', 'ProdVerify')
+    $reportedStage = if ($registeredStages -ccontains $Stage) { $Stage } else { 'INVALID' }
     $invocation = [pscustomobject][ordered]@{
-        stage = $Stage
-        manifestPath = $ManifestPath
+        stage = $reportedStage
+        manifestPath = '<redacted>'
         invokedAtUtc = ConvertTo-OperatorUtcTimestamp -Value ([DateTime]::UtcNow)
     }
     Write-OperatorAtomicText -LiteralPath ([IO.Path]::Combine($RunDirectory, 'invocation.json')) -Text (ConvertTo-Json -InputObject $invocation -Depth 8)
@@ -158,7 +305,7 @@ function Write-OperatorManifestReports {
             'Manifest validation failed.',
             'Manifest is unavailable.',
             'Manifest was not evaluated because the invocation stage is invalid.',
-            'Manifest was not evaluated because deployment stages are blocked in package A.',
+            'Manifest was not evaluated because deployment stages are blocked in package B.',
             'Manifest processing did not complete because of an internal operator error.'
         )]
         [string]$RejectedReason = 'Manifest is unavailable.',
@@ -216,6 +363,9 @@ function Write-OperatorFinalReport {
 
 Export-ModuleMember -Function @(
     'Write-OperatorAtomicText',
+    'Write-OperatorEnvironmentReport',
+    'Write-OperatorRepositorySnapshotReport',
+    'Write-OperatorWorkingTreeFingerprintReport',
     'New-OperatorResult',
     'Test-OperatorResultSemantics',
     'Write-OperatorInvocationReport',
