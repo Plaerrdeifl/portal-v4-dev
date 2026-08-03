@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://plaerrdeifl.invalid/schemas/operator/result-v1.schema.json",
+  "title": "Plaerrdeifl Portal Operator result schema 1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "operatorVersion",
+    "runId",
+    "stage",
+    "status",
+    "exitCode",
+    "startedAtUtc",
+    "finishedAtUtc",
+    "durationMs",
+    "runDirectory",
+    "checks",
+    "messages",
+    "cleanup"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "integer", "enum": [1] },
+    "operatorVersion": { "type": "string", "enum": ["1.0.0"] },
+    "runId": { "type": "string", "pattern": "^[0-9]{8}T[0-9]{9}Z-[0-9a-f]{12}$" },
+    "stage": {
+      "type": "string",
+      "enum": ["SelfTest", "Preflight", "LocalVerify", "LocalFreeze", "DevDeploy", "DevVerify", "ProdPreflight", "ProdDeploy", "ProdVerify"]
+    },
+    "status": { "type": "string", "enum": ["passed", "failed", "blocked", "error"] },
+    "exitCode": { "type": "integer", "enum": [0, 10, 20, 30, 40] },
+    "startedAtUtc": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$" },
+    "finishedAtUtc": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$" },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "runDirectory": { "type": "string", "minLength": 1, "maxLength": 1024 },
+    "moduleId": { "type": "string", "pattern": "^M[0-9]{3}$" },
+    "revision": { "type": "string", "pattern": "^R[1-9][0-9]*$" },
+    "manifestSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["checkId", "targetId", "status", "startedAtUtc", "finishedAtUtc", "durationMs", "summary"],
+        "properties": {
+          "checkId": { "type": "string", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$" },
+          "targetId": { "type": "string", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$" },
+          "status": { "type": "string", "enum": ["passed", "failed", "blocked", "skipped", "error"] },
+          "startedAtUtc": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$" },
+          "finishedAtUtc": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$" },
+          "durationMs": { "type": "integer", "minimum": 0 },
+          "summary": { "type": "string", "minLength": 1, "maxLength": 1000 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": { "type": "string", "maxLength": 1000 }
+    },
+    "cleanup": {
+      "type": "object",
+      "required": ["status", "ownedProcessCount", "terminatedProcessCount", "remainingOwnedProcessCount"],
+      "properties": {
+        "status": { "type": "string", "enum": ["passed", "failed", "skipped"] },
+        "ownedProcessCount": { "type": "integer", "minimum": 0 },
+        "terminatedProcessCount": { "type": "integer", "minimum": 0 },
+        "remainingOwnedProcessCount": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

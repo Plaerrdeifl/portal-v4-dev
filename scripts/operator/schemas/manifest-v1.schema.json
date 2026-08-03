@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://plaerrdeifl.invalid/schemas/operator/manifest-v1.schema.json",
+  "title": "Plaerrdeifl Portal Operator manifest schema 1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "resultSchemaVersion",
+    "operatorVersion",
+    "moduleId",
+    "revision",
+    "name",
+    "stages"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "integer", "enum": [1] },
+    "resultSchemaVersion": { "type": "integer", "enum": [1] },
+    "operatorVersion": { "type": "string", "enum": ["1.0.0"] },
+    "moduleId": { "type": "string", "pattern": "^M[0-9]{3}$" },
+    "revision": { "type": "string", "pattern": "^R[1-9][0-9]*$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "stages": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 4,
+      "properties": {
+        "SelfTest": {
+          "type": "object",
+          "required": ["checks"],
+          "properties": {
+            "checks": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "required": ["checkId", "targetId", "timeoutProfile", "required"],
+                "properties": {
+                  "checkId": { "type": "string", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$" },
+                  "targetId": { "type": "string", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$" },
+                  "timeoutProfile": { "type": "string", "enum": ["short", "standard", "long"] },
+                  "required": { "type": "boolean" }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "Preflight": {
+          "type": "object",
+          "required": ["checks"],
+          "properties": {
+            "checks": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "required": ["checkId", "targetId", "timeoutProfile", "required"],
+                "properties": {
+                  "checkId": { "type": "string", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$" },
+                  "targetId": { "type": "string", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$" },
+                  "timeoutProfile": { "type": "string", "enum": ["short", "standard", "long"] },
+                  "required": { "type": "boolean" }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "LocalVerify": {
+          "type": "object",
+          "required": ["checks"],
+          "properties": {
+            "checks": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "required": ["checkId", "targetId", "timeoutProfile", "required"],
+                "properties": {
+                  "checkId": { "type": "string", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$" },
+                  "targetId": { "type": "string", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$" },
+                  "timeoutProfile": { "type": "string", "enum": ["short", "standard", "long"] },
+                  "required": { "type": "boolean" }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "LocalFreeze": {
+          "type": "object",
+          "required": ["checks"],
+          "properties": {
+            "checks": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "required": ["checkId", "targetId", "timeoutProfile", "required"],
+                "properties": {
+                  "checkId": { "type": "string", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$" },
+                  "targetId": { "type": "string", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$" },
+                  "timeoutProfile": { "type": "string", "enum": ["short", "standard", "long"] },
+                  "required": { "type": "boolean" }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
