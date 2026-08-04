@@ -25,8 +25,10 @@ try {
     Import-Module -Name ([IO.Path]::Combine($moduleRoot, 'Operator.Git.psm1')) -Force -ErrorAction Stop
     Import-Module -Name ([IO.Path]::Combine($moduleRoot, 'Operator.Environment.psm1')) -Force -ErrorAction Stop
     Import-Module -Name ([IO.Path]::Combine($moduleRoot, 'Operator.Security.psm1')) -Force -ErrorAction Stop
+    Import-Module -Name ([IO.Path]::Combine($moduleRoot, 'Operator.Process.psm1')) -Force -ErrorAction Stop
 
     $runContext = New-OperatorRunContext
+    Initialize-OperatorProcessRunReports -RunContext $runContext
     $isLocalStage = Test-OperatorLocalStage -Stage $Stage
     $isDeploymentStage = Test-OperatorDeploymentStage -Stage $Stage
     $invocationStage = if ($isLocalStage -or $isDeploymentStage) { $Stage } else { 'INVALID' }
@@ -42,9 +44,9 @@ try {
     }
 
     if ($isDeploymentStage) {
-        Write-OperatorManifestReports -RunDirectory $runContext.RunDirectory -ManifestImport $null -RejectedReason 'Manifest was not evaluated because deployment stages are blocked in package B.'
+        Write-OperatorManifestReports -RunDirectory $runContext.RunDirectory -ManifestImport $null -RejectedReason 'Manifest was not evaluated because deployment stages are blocked in package C.'
         $finished = [DateTime]::UtcNow
-        $result = New-OperatorResult -RunId $runContext.RunId -Stage $Stage -Status blocked -ExitCode 20 -StartedAtUtc $runContext.StartedAtUtc -FinishedAtUtc $finished -RunDirectory $runContext.RunDirectory -Messages @('Deployment stages remain blocked in M000-R1-B.')
+        $result = New-OperatorResult -RunId $runContext.RunId -Stage $Stage -Status blocked -ExitCode 20 -StartedAtUtc $runContext.StartedAtUtc -FinishedAtUtc $finished -RunDirectory $runContext.RunDirectory -Messages @('Die vollständige Check-Orchestrierung, M000-Checks und Abnahme folgen in M000-R1-D.')
         Write-OperatorFinalReport -RunDirectory $runContext.RunDirectory -Result $result
         exit 20
     }
@@ -84,12 +86,11 @@ try {
 
     Write-OperatorManifestReports -RunDirectory $runContext.RunDirectory -ManifestImport $manifestImport
     $finished = [DateTime]::UtcNow
-    $result = New-OperatorResult -RunId $runContext.RunId -Stage $Stage -Status blocked -ExitCode 20 -StartedAtUtc $runContext.StartedAtUtc -FinishedAtUtc $finished -RunDirectory $runContext.RunDirectory -Messages @('Process manager and complete check execution follow in packages C and D.') -ModuleId ([string]$manifestImport.Manifest.moduleId) -Revision ([string]$manifestImport.Manifest.revision) -ManifestSha256 ([string]$manifestImport.Sha256)
+    $result = New-OperatorResult -RunId $runContext.RunId -Stage $Stage -Status blocked -ExitCode 20 -StartedAtUtc $runContext.StartedAtUtc -FinishedAtUtc $finished -RunDirectory $runContext.RunDirectory -Messages @('Die vollständige Check-Orchestrierung, M000-Checks und Abnahme folgen in M000-R1-D.') -ModuleId ([string]$manifestImport.Manifest.moduleId) -Revision ([string]$manifestImport.Manifest.revision) -ManifestSha256 ([string]$manifestImport.Sha256)
     Write-OperatorFinalReport -RunDirectory $runContext.RunDirectory -Result $result
     exit 20
 }
 catch {
-    $internalMessage = [string]$_.Exception.Message
     if ($null -ne $runContext) {
         try {
             $snapshotPath = [IO.Path]::Combine($runContext.RunDirectory, 'manifest.snapshot.json')
@@ -112,6 +113,6 @@ catch {
             }
         }
     }
-    [Console]::Error.WriteLine("Portal operator internal error: $internalMessage")
+    [Console]::Error.WriteLine('Portal operator encountered an internal error.')
     exit 40
 }

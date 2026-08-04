@@ -5,23 +5,73 @@ $manifestModulePath = [IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot, '
 Import-Module -Name $manifestModulePath -ErrorAction Stop
 $environmentModulePath = [IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot, 'Operator.Environment.psm1'))
 Import-Module -Name $environmentModulePath -ErrorAction Stop
+$securityModulePath = [IO.Path]::GetFullPath([IO.Path]::Combine($PSScriptRoot, 'Operator.Security.psm1'))
+Import-Module -Name $securityModulePath -ErrorAction Stop
+
+$script:ReportingStreamCharacterLimit = 5242880
+$script:ReportingRunIdPattern = '^\d{8}T\d{9}Z-[a-f0-9]{12}$'
+
+function Get-OperatorReportingSafeExistingDirectory {
+    param([Parameter(Mandatory = $true)]$LiteralPath)
+    if ($LiteralPath -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$LiteralPath)) { throw 'Directory path input is invalid.' }
+    $value = [string]$LiteralPath
+    if (-not [IO.Path]::IsPathRooted($value) -or $value.StartsWith('\\', [StringComparison]::Ordinal) -or $value.StartsWith('\\?\', [StringComparison]::Ordinal) -or $value.StartsWith('\\.\', [StringComparison]::Ordinal)) { throw 'Directory path is not a permitted local absolute path.' }
+    try {
+        $fullPath = [IO.Path]::GetFullPath($value).TrimEnd('\', '/')
+        $volumeRoot = [IO.Path]::GetPathRoot($fullPath)
+        $drive = New-Object -TypeName IO.DriveInfo -ArgumentList $volumeRoot
+        if ($drive.DriveType -eq [IO.DriveType]::Network) { throw 'network' }
+        $relative = $fullPath.Substring($volumeRoot.Length)
+        $cursor = $volumeRoot
+        foreach ($segment in @($relative -split '[\\/]' | Where-Object { -not [string]::IsNullOrEmpty([string]$_) })) {
+            $cursor = [IO.Path]::Combine($cursor, [string]$segment)
+            $item = Get-Item -LiteralPath $cursor -Force -ErrorAction Stop
+            if (-not $item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'reparse' }
+            $cursor = [IO.Path]::GetFullPath([string]$item.FullName).TrimEnd('\', '/')
+        }
+        $final = Get-Item -LiteralPath $fullPath -Force -ErrorAction Stop
+        if (-not $final.PSIsContainer -or ($final.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'directory' }
+        return [IO.Path]::GetFullPath([string]$final.FullName).TrimEnd('\', '/')
+    }
+    catch { throw 'Directory path failed local safety validation.' }
+}
+
+function Get-OperatorReportingStandardRunRoot {
+    $localAppData = [Environment]::GetEnvironmentVariable('LOCALAPPDATA')
+    if ($localAppData -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$localAppData)) { throw 'Standard operator run root is unavailable.' }
+    try {
+        $localRoot = Get-OperatorReportingSafeExistingDirectory -LiteralPath ([string]$localAppData)
+        $expected = [IO.Path]::GetFullPath([IO.Path]::Combine($localRoot, 'Plaerrdeifl', 'PortalOperator', 'runs')).TrimEnd('\', '/')
+        $validated = Get-OperatorReportingSafeExistingDirectory -LiteralPath $expected
+        if (-not [string]::Equals($validated, $expected, [StringComparison]::OrdinalIgnoreCase)) { throw 'mismatch' }
+        return $validated
+    }
+    catch { throw 'Standard operator run root failed safety validation.' }
+}
 
 function Write-OperatorAtomicText {
     param(
         [Parameter(Mandatory = $true)][string]$LiteralPath,
         [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Text
     )
-    $fullPath = [IO.Path]::GetFullPath($LiteralPath)
+    if ($LiteralPath -isnot [string] -or $Text -isnot [string]) { throw 'Atomic text input types are invalid.' }
+    try { $fullPath = [IO.Path]::GetFullPath([string]$LiteralPath) }
+    catch { throw 'Atomic text target path is invalid.' }
     $directory = [IO.Path]::GetDirectoryName($fullPath)
-    if ([string]::IsNullOrWhiteSpace($directory) -or -not [IO.Directory]::Exists($directory)) {
-        throw "Target directory for '$fullPath' does not exist."
+    if ([string]::IsNullOrWhiteSpace($directory)) { throw 'Atomic text target path is invalid.' }
+    [void](Get-OperatorReportingSafeExistingDirectory -LiteralPath $directory)
+    if ([IO.File]::Exists($fullPath) -or [IO.Directory]::Exists($fullPath)) {
+        try { $targetItem = Get-Item -LiteralPath $fullPath -Force -ErrorAction Stop }
+        catch { throw 'Atomic text target could not be inspected safely.' }
+        if ($targetItem.PSIsContainer -or ($targetItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Atomic text target is not a safe regular file.' }
     }
     $temporaryPath = [IO.Path]::Combine($directory, ('.' + [IO.Path]::GetFileName($fullPath) + '.' + [Guid]::NewGuid().ToString('N') + '.tmp'))
+    $backupPath = [IO.Path]::Combine($directory, ('.' + [IO.Path]::GetFileName($fullPath) + '.' + [Guid]::NewGuid().ToString('N') + '.bak'))
     $encoding = New-Object Text.UTF8Encoding($false)
     try {
         [IO.File]::WriteAllText($temporaryPath, $Text, $encoding)
         if ([IO.File]::Exists($fullPath)) {
-            [IO.File]::Replace($temporaryPath, $fullPath, $null)
+            [IO.File]::Replace($temporaryPath, $fullPath, $backupPath, $true)
         }
         else {
             [IO.File]::Move($temporaryPath, $fullPath)
@@ -29,6 +79,7 @@ function Write-OperatorAtomicText {
     }
     finally {
         if ([IO.File]::Exists($temporaryPath)) { [IO.File]::Delete($temporaryPath) }
+        if ([IO.File]::Exists($backupPath)) { [IO.File]::Delete($backupPath) }
     }
 }
 
@@ -306,6 +357,7 @@ function Write-OperatorManifestReports {
             'Manifest is unavailable.',
             'Manifest was not evaluated because the invocation stage is invalid.',
             'Manifest was not evaluated because deployment stages are blocked in package B.',
+            'Manifest was not evaluated because deployment stages are blocked in package C.',
             'Manifest processing did not complete because of an internal operator error.'
         )]
         [string]$RejectedReason = 'Manifest is unavailable.',
@@ -361,6 +413,176 @@ function Write-OperatorFinalReport {
     }
 }
 
+function Assert-OperatorSafeRunDirectory {
+    param([Parameter(Mandatory = $true)][string]$RunDirectory)
+    $fullPath = Get-OperatorReportingSafeExistingDirectory -LiteralPath $RunDirectory
+    $runRoot = Get-OperatorReportingStandardRunRoot
+    $runId = [string][IO.Path]::GetFileName($fullPath)
+    if (-not [regex]::IsMatch($runId, $script:ReportingRunIdPattern, [Text.RegularExpressions.RegexOptions]::CultureInvariant)) { throw 'Run directory identifier is invalid.' }
+    $parent = [IO.Path]::GetDirectoryName($fullPath)
+    if (-not [string]::Equals($parent, $runRoot, [StringComparison]::OrdinalIgnoreCase)) { throw 'Run directory is outside the standard operator run root.' }
+    return $fullPath
+}
+
+function Assert-OperatorSafeProcessDirectory {
+    param([Parameter(Mandatory = $true)][string]$ProcessDirectory)
+    $fullPath = Get-OperatorReportingSafeExistingDirectory -LiteralPath $ProcessDirectory
+    $name = [string][IO.Path]::GetFileName($fullPath)
+    $match = [regex]::Match($name, '^(?<sequence>\d{4})-(?<target>[a-z0-9]+(?:[.-][a-z0-9]+)*)$', [Text.RegularExpressions.RegexOptions]::CultureInvariant)
+    if (-not $match.Success -or [int]$match.Groups['sequence'].Value -lt 1) { throw 'Process directory name is invalid.' }
+    $processesRoot = [IO.Path]::GetDirectoryName($fullPath)
+    if ([string][IO.Path]::GetFileName($processesRoot) -cne 'processes') { throw 'Process directory parent is invalid.' }
+    $runDirectory = [IO.Path]::GetDirectoryName($processesRoot)
+    $validatedRun = Assert-OperatorSafeRunDirectory -RunDirectory $runDirectory
+    if (-not [string]::Equals([IO.Path]::GetDirectoryName($fullPath), [IO.Path]::Combine($validatedRun, 'processes'), [StringComparison]::OrdinalIgnoreCase)) { throw 'Process directory structure is invalid.' }
+    $registration = $null
+    try { $registration = Get-OperatorProcessTargetRegistration -TargetId ([string]$match.Groups['target'].Value) }
+    catch { throw 'Process directory target registration could not be validated.' }
+    if ($null -eq $registration) { throw 'Process directory target is not registered.' }
+    return $fullPath
+}
+
+function Test-OperatorProcessReportContract {
+    param([AllowNull()]$ProcessReport)
+    try {
+        $properties = @('schemaVersion', 'sequence', 'targetId', 'status', 'exitCode', 'startedAtUtc', 'finishedAtUtc', 'durationMs', 'workerPid', 'targetPid', 'timedOut', 'healthStatus', 'stdoutTruncated', 'stderrTruncated', 'cleanup')
+        if (-not (Test-OperatorClosedReportObject -InputObject $ProcessReport -PropertyNames $properties)) { return $false }
+        if (-not (Test-OperatorReportInteger -Value $ProcessReport.schemaVersion) -or [int64]$ProcessReport.schemaVersion -ne 1) { return $false }
+        if (-not (Test-OperatorReportInteger -Value $ProcessReport.sequence) -or [int64]$ProcessReport.sequence -lt 1 -or [int64]$ProcessReport.sequence -gt 9999) { return $false }
+        if ($ProcessReport.targetId -isnot [string] -or -not [regex]::IsMatch([string]$ProcessReport.targetId, '^[a-z0-9]+(?:[.-][a-z0-9]+)*$', [Text.RegularExpressions.RegexOptions]::CultureInvariant)) { return $false }
+        if ($ProcessReport.status -isnot [string] -or @('passed', 'failed', 'blocked', 'error') -cnotcontains [string]$ProcessReport.status) { return $false }
+        if ($null -ne $ProcessReport.exitCode -and -not (Test-OperatorReportInteger -Value $ProcessReport.exitCode)) { return $false }
+        if (-not (Test-OperatorReportTimestamp -Value $ProcessReport.startedAtUtc) -or -not (Test-OperatorReportTimestamp -Value $ProcessReport.finishedAtUtc)) { return $false }
+        if (-not (Test-OperatorReportInteger -Value $ProcessReport.durationMs) -or [int64]$ProcessReport.durationMs -lt 0) { return $false }
+        foreach ($pidValue in @($ProcessReport.workerPid, $ProcessReport.targetPid)) {
+            if ($null -ne $pidValue -and (-not (Test-OperatorReportInteger -Value $pidValue) -or [int64]$pidValue -le 0)) { return $false }
+        }
+        if ($null -ne $ProcessReport.workerPid -and $null -ne $ProcessReport.targetPid -and [int64]$ProcessReport.workerPid -eq [int64]$ProcessReport.targetPid) { return $false }
+        if ($ProcessReport.timedOut -isnot [bool] -or $ProcessReport.stdoutTruncated -isnot [bool] -or $ProcessReport.stderrTruncated -isnot [bool]) { return $false }
+        if ($ProcessReport.healthStatus -isnot [string] -or @('not-configured', 'passed', 'failed') -cnotcontains [string]$ProcessReport.healthStatus) { return $false }
+        if (-not (Test-OperatorClosedReportObject -InputObject $ProcessReport.cleanup -PropertyNames @('status', 'ownedProcessCount', 'terminatedProcessCount', 'remainingOwnedProcessCount'))) { return $false }
+        if ($ProcessReport.cleanup.status -isnot [string] -or @('passed', 'failed') -cnotcontains [string]$ProcessReport.cleanup.status) { return $false }
+        foreach ($count in @($ProcessReport.cleanup.ownedProcessCount, $ProcessReport.cleanup.terminatedProcessCount, $ProcessReport.cleanup.remainingOwnedProcessCount)) {
+            if (-not (Test-OperatorReportInteger -Value $count) -or [int64]$count -lt 0) { return $false }
+        }
+        $started = [DateTime]::MinValue
+        $finished = [DateTime]::MinValue
+        $styles = [Globalization.DateTimeStyles]::AssumeUniversal -bor [Globalization.DateTimeStyles]::AdjustToUniversal
+        if (-not [DateTime]::TryParseExact([string]$ProcessReport.startedAtUtc, 'yyyy-MM-ddTHH:mm:ss.fffZ', [Globalization.CultureInfo]::InvariantCulture, $styles, [ref]$started)) { return $false }
+        if (-not [DateTime]::TryParseExact([string]$ProcessReport.finishedAtUtc, 'yyyy-MM-ddTHH:mm:ss.fffZ', [Globalization.CultureInfo]::InvariantCulture, $styles, [ref]$finished)) { return $false }
+        if ($finished -lt $started) { return $false }
+        $measuredDuration = [Math]::Max(0, [int64][Math]::Round(($finished - $started).TotalMilliseconds))
+        if ([Math]::Abs([int64]$ProcessReport.durationMs - $measuredDuration) -gt 1000) { return $false }
+        $ownedCount = [int64]$ProcessReport.cleanup.ownedProcessCount
+        $terminatedCount = [int64]$ProcessReport.cleanup.terminatedProcessCount
+        $remainingCount = [int64]$ProcessReport.cleanup.remainingOwnedProcessCount
+        if ($terminatedCount -gt $ownedCount -or $remainingCount -gt $ownedCount -or ($terminatedCount + $remainingCount) -gt $ownedCount) { return $false }
+        $status = [string]$ProcessReport.status
+        if ($status -ceq 'passed') {
+            if ($null -eq $ProcessReport.workerPid -or $null -eq $ProcessReport.targetPid -or [int64]$ProcessReport.workerPid -eq [int64]$ProcessReport.targetPid) { return $false }
+            if ($null -eq $ProcessReport.exitCode -or [int64]$ProcessReport.exitCode -ne 0 -or [bool]$ProcessReport.timedOut) { return $false }
+            if (@('passed', 'not-configured') -cnotcontains [string]$ProcessReport.healthStatus) { return $false }
+            if ([string]$ProcessReport.cleanup.status -cne 'passed' -or $remainingCount -ne 0 -or $ownedCount -lt 2) { return $false }
+        }
+        if ($status -ceq 'failed') {
+            if ($null -eq $ProcessReport.workerPid -or $null -eq $ProcessReport.targetPid -or [int64]$ProcessReport.workerPid -eq [int64]$ProcessReport.targetPid -or $ownedCount -lt 2) { return $false }
+            if ([string]$ProcessReport.cleanup.status -cne 'passed' -or $remainingCount -ne 0) { return $false }
+            $hasNonZeroExit = $null -ne $ProcessReport.exitCode -and [int64]$ProcessReport.exitCode -ne 0
+            if (-not $hasNonZeroExit -and -not [bool]$ProcessReport.timedOut -and [string]$ProcessReport.healthStatus -cne 'failed') { return $false }
+        }
+        if (@('blocked', 'error') -ccontains $status -and $null -eq $ProcessReport.workerPid -and $null -eq $ProcessReport.targetPid) {
+            if ($ownedCount -ne 0 -or $terminatedCount -ne 0 -or $remainingCount -ne 0) { return $false }
+        }
+        if ([string]$ProcessReport.healthStatus -ceq 'failed' -and $status -ceq 'passed') { return $false }
+        if ([string]$ProcessReport.cleanup.status -ceq 'failed' -and $status -cne 'blocked') { return $false }
+        if ([string]$ProcessReport.cleanup.status -ceq 'failed' -and $remainingCount -le 0) { return $false }
+        if ([string]$ProcessReport.cleanup.status -ceq 'passed' -and $remainingCount -ne 0) { return $false }
+        if ([bool]$ProcessReport.timedOut -and @('failed', 'blocked') -cnotcontains $status) { return $false }
+        return $true
+    }
+    catch { return $false }
+}
+
+function Test-OperatorCleanupReportContract {
+    param([AllowNull()]$CleanupReport)
+    try {
+        if (-not (Test-OperatorClosedReportObject -InputObject $CleanupReport -PropertyNames @('schemaVersion', 'status', 'ownedProcessCount', 'terminatedProcessCount', 'remainingOwnedProcessCount', 'completedAtUtc'))) { return $false }
+        if (-not (Test-OperatorReportInteger -Value $CleanupReport.schemaVersion) -or [int64]$CleanupReport.schemaVersion -ne 1) { return $false }
+        if ($CleanupReport.status -isnot [string] -or @('passed', 'failed', 'skipped') -cnotcontains [string]$CleanupReport.status) { return $false }
+        foreach ($count in @($CleanupReport.ownedProcessCount, $CleanupReport.terminatedProcessCount, $CleanupReport.remainingOwnedProcessCount)) {
+            if (-not (Test-OperatorReportInteger -Value $count) -or [int64]$count -lt 0) { return $false }
+        }
+        $ownedCount = [int64]$CleanupReport.ownedProcessCount
+        $terminatedCount = [int64]$CleanupReport.terminatedProcessCount
+        $remainingCount = [int64]$CleanupReport.remainingOwnedProcessCount
+        if ($terminatedCount -gt $ownedCount -or $remainingCount -gt $ownedCount -or ($terminatedCount + $remainingCount) -gt $ownedCount) { return $false }
+        if (-not (Test-OperatorReportTimestamp -Value $CleanupReport.completedAtUtc)) { return $false }
+        if ([string]$CleanupReport.status -ceq 'skipped' -and ([int64]$CleanupReport.ownedProcessCount -ne 0 -or [int64]$CleanupReport.terminatedProcessCount -ne 0 -or [int64]$CleanupReport.remainingOwnedProcessCount -ne 0)) { return $false }
+        if ([string]$CleanupReport.status -ceq 'passed' -and [int64]$CleanupReport.remainingOwnedProcessCount -ne 0) { return $false }
+        if ([string]$CleanupReport.status -ceq 'failed' -and [int64]$CleanupReport.remainingOwnedProcessCount -eq 0) { return $false }
+        return $true
+    }
+    catch { return $false }
+}
+
+function Write-OperatorProcessReport {
+    param(
+        [Parameter(Mandatory = $true)]$ProcessDirectory,
+        [Parameter(Mandatory = $true)]$ProcessReport
+    )
+    if ($ProcessDirectory -isnot [string]) { throw 'Process directory must be a string.' }
+    if (-not (Test-OperatorProcessReportContract -ProcessReport $ProcessReport)) { throw 'Process report input is invalid.' }
+    $directory = Assert-OperatorSafeProcessDirectory -ProcessDirectory $ProcessDirectory
+    $expectedName = ('{0:D4}-{1}' -f [int]$ProcessReport.sequence, [string]$ProcessReport.targetId)
+    if ([string][IO.Path]::GetFileName($directory) -cne $expectedName) { throw 'Process report does not match its directory.' }
+    $json = ConvertTo-Json -InputObject $ProcessReport -Depth 8
+    Write-OperatorAtomicText -LiteralPath ([IO.Path]::Combine($directory, 'process.json')) -Text ($json + [Environment]::NewLine)
+}
+
+function Write-OperatorProcessLog {
+    param(
+        [Parameter(Mandatory = $true)]$ProcessDirectory,
+        [Parameter(Mandatory = $true)]$Stream,
+        [Parameter(Mandatory = $true)][AllowEmptyString()]$Text
+    )
+    if ($ProcessDirectory -isnot [string] -or $Stream -isnot [string] -or @('stdout', 'stderr') -cnotcontains [string]$Stream -or $Text -isnot [string]) { throw 'Process log input types are invalid.' }
+    $directory = Assert-OperatorSafeProcessDirectory -ProcessDirectory $ProcessDirectory
+    $safeText = Protect-OperatorLogText -Text $Text
+    if (-not (Test-OperatorLogTextSafe -Text $safeText)) { throw 'Process log input could not be made safe.' }
+    if ($safeText.Length -gt $script:ReportingStreamCharacterLimit) { throw 'Process log exceeds the final character limit.' }
+    Write-OperatorAtomicText -LiteralPath ([IO.Path]::Combine($directory, ($Stream + '.log'))) -Text $safeText
+}
+
+function Write-OperatorRunProcessLogs {
+    param(
+        [Parameter(Mandatory = $true)]$RunDirectory,
+        [Parameter(Mandatory = $true)][AllowEmptyString()]$StdoutText,
+        [Parameter(Mandatory = $true)][AllowEmptyString()]$StderrText
+    )
+    if ($RunDirectory -isnot [string] -or $StdoutText -isnot [string] -or $StderrText -isnot [string]) { throw 'Run process log input types are invalid.' }
+    $directory = Assert-OperatorSafeRunDirectory -RunDirectory $RunDirectory
+    $safeStdout = Protect-OperatorLogText -Text $StdoutText
+    $safeStderr = Protect-OperatorLogText -Text $StderrText
+    $marker = '[TRUNCATED:stream-limit]' + [Environment]::NewLine
+    if ($safeStdout.Length -gt $script:ReportingStreamCharacterLimit) { $safeStdout = $safeStdout.Substring(0, $script:ReportingStreamCharacterLimit - $marker.Length) + $marker }
+    if ($safeStderr.Length -gt $script:ReportingStreamCharacterLimit) { $safeStderr = $safeStderr.Substring(0, $script:ReportingStreamCharacterLimit - $marker.Length) + $marker }
+    if (-not (Test-OperatorLogTextSafe -Text $safeStdout) -or -not (Test-OperatorLogTextSafe -Text $safeStderr)) { throw 'Run log input could not be made safe.' }
+    Write-OperatorAtomicText -LiteralPath ([IO.Path]::Combine($directory, 'stdout.log')) -Text $safeStdout
+    Write-OperatorAtomicText -LiteralPath ([IO.Path]::Combine($directory, 'stderr.log')) -Text $safeStderr
+}
+
+function Write-OperatorCleanupReport {
+    param(
+        [Parameter(Mandatory = $true)]$RunDirectory,
+        [Parameter(Mandatory = $true)]$CleanupReport
+    )
+    if ($RunDirectory -isnot [string]) { throw 'Run directory must be a string.' }
+    if (-not (Test-OperatorCleanupReportContract -CleanupReport $CleanupReport)) { throw 'Cleanup report input is invalid.' }
+    $directory = Assert-OperatorSafeRunDirectory -RunDirectory $RunDirectory
+    $json = ConvertTo-Json -InputObject $CleanupReport -Depth 4
+    Write-OperatorAtomicText -LiteralPath ([IO.Path]::Combine($directory, 'cleanup.json')) -Text ($json + [Environment]::NewLine)
+}
+
 Export-ModuleMember -Function @(
     'Write-OperatorAtomicText',
     'Write-OperatorEnvironmentReport',
@@ -370,5 +592,11 @@ Export-ModuleMember -Function @(
     'Test-OperatorResultSemantics',
     'Write-OperatorInvocationReport',
     'Write-OperatorManifestReports',
-    'Write-OperatorFinalReport'
+    'Write-OperatorFinalReport',
+    'Test-OperatorProcessReportContract',
+    'Test-OperatorCleanupReportContract',
+    'Write-OperatorProcessReport',
+    'Write-OperatorProcessLog',
+    'Write-OperatorRunProcessLogs',
+    'Write-OperatorCleanupReport'
 )

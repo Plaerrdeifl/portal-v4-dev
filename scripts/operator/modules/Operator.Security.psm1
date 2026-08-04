@@ -479,6 +479,71 @@ function Test-OperatorGitArgumentsReadOnly {
     return [pscustomobject][ordered]@{ isAllowed = $allowed; targetId = $TargetId; description = if ($allowed) { 'Arguments exactly match the registered read-only Git target.' } else { 'Arguments are not an exact registered read-only Git operation.' } }
 }
 
+function Protect-OperatorSensitiveLogValues {
+    param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$Text)
+    $protected = $Text
+    $options = [Text.RegularExpressions.RegexOptions]::CultureInvariant
+    $ignoreCase = $options -bor [Text.RegularExpressions.RegexOptions]::IgnoreCase
+    $singleLine = $options -bor [Text.RegularExpressions.RegexOptions]::Singleline
+    $protected = [regex]::Replace($protected, '-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----.*?-----END (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----', '[REDACTED:private-key]', $singleLine)
+    $protected = [regex]::Replace($protected, '(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}(?![A-Za-z0-9_-])', '[REDACTED:jwt]', $options)
+    $protected = [regex]::Replace($protected, '(?<![A-Za-z0-9_])(?:sbp_|sb_secret_)[A-Za-z0-9_-]{12,}', '[REDACTED:supabase-token]', $options)
+    $protected = [regex]::Replace($protected, '(?<![A-Za-z0-9_])(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{20,}', '[REDACTED:github-token]', $options)
+    $protected = [regex]::Replace($protected, '(?<![A-Za-z0-9_])github_pat_[A-Za-z0-9_]{20,}', '[REDACTED:github-token]', $options)
+    $protected = [regex]::Replace($protected, '[A-Za-z][A-Za-z0-9+.-]{0,31}://[^\s/:@]+:[^\s/@]+@[^\s]+', '[REDACTED:url-userinfo]', $options)
+    $passwordPattern = '(?i)(?:^|[;\s])(?:Pass' + 'word|Pwd)\s*=\s*[^;\s]+'
+    $passwordReplacement = ' Pass' + 'word=[REDACTED:password]'
+    $protected = [regex]::Replace($protected, $passwordPattern, $passwordReplacement, $options)
+    $protected = [regex]::Replace($protected, '(?i)(?<prefix>(?:^|[\s,{;])["'']?(?:password|passwd|secret|token|api_key|private_key|service_role)["'']?\s*(?:=|:)\s*)[^,;}\r\n]+', '${prefix}[REDACTED:sensitive-value]', $options)
+
+    foreach ($projectRef in $script:ForbiddenProjectRefs) {
+        $protected = [regex]::Replace($protected, [regex]::Escape([string]$projectRef), '[REDACTED:project-ref]', $ignoreCase)
+    }
+    foreach ($marker in @(
+        'V4_M000_R1_SELFTEST_OK',
+        'V4_M000_R1_PREFLIGHT_OK',
+        'V4_M000_R1_LOCAL_OK',
+        'V4_M000_R1_LOCAL_FROZEN'
+    )) {
+        $protected = $protected.Replace($marker, '[REDACTED:reserved-marker]')
+    }
+    return $protected
+}
+
+function Protect-OperatorLogText {
+    param([Parameter(Mandatory = $false)][AllowNull()]$Text)
+
+    if ($null -eq $Text) { return '' }
+    if ($Text -isnot [string]) { throw 'Log text must be a string or null.' }
+
+    $options = [Text.RegularExpressions.RegexOptions]::CultureInvariant
+    $protected = [regex]::Replace([string]$Text, '\x1B(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1B\\))', '', $options)
+    $protected = [regex]::Replace($protected, '[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', $options)
+    $protected = $protected.Replace("`r`n", "`n").Replace("`r", "`n")
+    $protected = Protect-OperatorSensitiveLogValues -Text $protected
+
+    $lines = @($protected -split "`n", -1)
+    $lineMarker = '[TRUNCATED:line]'
+    for ($index = 0; $index -lt $lines.Count; $index++) {
+        $line = [string]$lines[$index]
+        if ($line.Length -gt 65536) {
+            $lines[$index] = $line.Substring(0, 65536 - $lineMarker.Length) + $lineMarker
+        }
+    }
+    $bounded = $lines -join [Environment]::NewLine
+    return Protect-OperatorSensitiveLogValues -Text $bounded
+}
+
+function Test-OperatorLogTextSafe {
+    param([Parameter(Mandatory = $false)][AllowNull()]$Text)
+    if ($null -eq $Text) { return $true }
+    if ($Text -isnot [string]) { return $false }
+    try {
+        return [string]::Equals([string]$Text, (Protect-OperatorLogText -Text $Text), [StringComparison]::Ordinal)
+    }
+    catch { return $false }
+}
+
 Export-ModuleMember -Function @(
     'New-OperatorPathPolicy',
     'Resolve-OperatorRepositoryRelativePath',
@@ -494,5 +559,7 @@ Export-ModuleMember -Function @(
     'Test-OperatorSupabaseLinkState',
     'Get-OperatorAllowedReadOnlyGitTargets',
     'Test-OperatorGitTargetAllowed',
-    'Test-OperatorGitArgumentsReadOnly'
+    'Test-OperatorGitArgumentsReadOnly',
+    'Protect-OperatorLogText',
+    'Test-OperatorLogTextSafe'
 )

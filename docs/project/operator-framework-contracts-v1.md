@@ -4,9 +4,9 @@ The Plaerrdeifl Portal Operator framework version is `1.0.0`. Manifest schema 1 
 
 ## Stages, status, and exit codes
 
-Local stages are `SelfTest`, `Preflight`, `LocalVerify`, and `LocalFreeze`. Package B accepts a valid manifest for these stages but returns `blocked`/`20`, because process management and complete check execution arrive in packages C/D. `DevDeploy`, `DevVerify`, `ProdPreflight`, `ProdDeploy`, and `ProdVerify` are actively blocked with `blocked`/`20`.
+Local stages are `SelfTest`, `Preflight`, `LocalVerify`, and `LocalFreeze`. Package C accepts a valid manifest for these stages but returns `blocked`/`20`, because complete check orchestration arrives in package D. `DevDeploy`, `DevVerify`, `ProdPreflight`, `ProdDeploy`, and `ProdVerify` are actively blocked with `blocked`/`20`.
 
-The status/exit-code pairs are: `passed`/`0`, `failed`/`10`, `blocked`/`20`, and `error`/`30` (invocation or manifest) or `error`/`40` (internal operator failure). M000-R1-B never produces a passed run.
+The status/exit-code pairs are: `passed`/`0`, `failed`/`10`, `blocked`/`20`, and `error`/`30` (invocation or manifest) or `error`/`40` (internal operator failure). M000-R1-C never produces a passed overall operator run.
 
 ## Manifest contract
 
@@ -44,6 +44,36 @@ Environment snapshot schema 1 is closed and contains a canonical UTC capture tim
 
 Local mode blocks DEV ref `tpieykhhawszlzsoflnl`, PROD ref `wplescvhlgctynkfwvrj`, matching Supabase/database hosts, remote database URLs, classical key-value connection strings with non-local `Host`, `Server`, `Data Source`, `Address`, `Addr`, or `Network Address`, forbidden project arguments, environment values, and known Supabase link files. Connection-metadata source IDs are case-sensitive, limited to `^[a-z0-9][a-z0-9._-]{0,63}$`, and never coerced or echoed when malformed. Reports identify only validated non-sensitive sources such as the environment-variable name. Missing link files and `localhost`, `127.0.0.1`, `::1`, or `[::1]` targets are accepted.
 
+## Process target contract
+
+The immutable package-C process registry contains exactly `npm.test`, `npm.check-frontend`, `npm.check-static`, `npm.build`, and the nine public `fixture.*` targets. Validation compares every field, ordered non-empty array, health definition and implementation mapping against the complete approved matrix without type coercion. NPM targets allow `LocalVerify`/`LocalFreeze`; fixture targets allow `SelfTest`; none allows `Preflight`. Manifests can select only an ID and allowed timeout profile and can never supply launch data.
+
+Target syntax and ordinal registry lookup precede every side effect. Invalid and unknown IDs return a closed `process-rejection` object with `<redacted>`, null sequence, no PID, and skipped zero-count cleanup. They never create `processes`, logs, or `process.json`. Only registered targets enter regular process-attempt reporting.
+
+NPM launch resolution accepts only an Application result for `node.exe`, rejects network/device/reparse paths, derives `node_modules/npm/bin/npm-cli.js` from that installation, and reads `package.json` through a strict UTF-8 stream limited to 1,048,576 bytes plus one detection byte. The fixed script property must exist as a real non-empty string. Fixture resolution accepts only the current Windows PowerShell 5.1 `powershell.exe`, the repository-owned fixture, and `-File`; no shell command or execution-policy override exists.
+
+## Worker, Job Object, timeout, and health contracts
+
+The manager starts a fixed worker behind a unique local named-event gate. It creates and configures a Windows Job Object with kill-on-close, assigns the worker, and only then signals the gate. The worker resolves the registry target again, starts it, and atomically writes the closed start control record. After target and stream completion it atomically writes a closed transient completion record; only that validated record supplies the target exit code, while the worker code remains an internal protocol signal. All descendants inherit job membership. Job cleanup, handle disposal, gate disposal, transient-record removal and stream completion are attempted independently in `finally`; only PIDs queried from the unique job are counted or terminated.
+
+The fixed named mutex `Local\Plaerrdeifl-M000-RunLock-<RunId>` serializes all attempts, initialization and completion within one run, with a maximum wait of 330 seconds. It is acquired before sequence allocation and retained until reports are durable. An abandoned mutex requires a complete integrity audit before work continues. Every existing attempt sequence must be unique and gapless from 0001, use a registered target, contain exactly the three durable artifacts, have passed zero-remaining cleanup, and contain no transient or foreign entry.
+
+Start timeout is registry-owned and runtime timeout is selected only from `short` = 15, `standard` = 60, or `long` = 300 seconds. Package C supports only the fixed `stdout-token` health check. A health token counts only while the target is still active in the job. A no-health target may finish before the manager's first membership query once its valid start record exists. Health failure and runtime timeout produce failed process attempts and immediate owned-job cleanup.
+
+## Process log, redaction, and report contracts
+
+stdout and stderr are drained concurrently into independent 5,242,880-character bounded buffers. Excess data is consumed without storage. After protection and normalization, the final text is bounded again so the complete fixed truncation marker remains inside the same character limit, and the effective truncation state is recorded. One protection pass removes ANSI and forbidden controls before redaction, then repeats the sensitive-value and reserved-marker scan after line bounding; control-split values cannot reappear. Run aggregation uses equally bounded `StringBuilder` buffers, counts headers and one complete marker, and still bounded-reads and validates every later log after storage is full. Invalid late data publishes no replacement run report.
+
+Durable process artifacts are confined to the canonical, local and reparse-free `%LOCALAPPDATA%\Plaerrdeifl\PortalOperator\runs\<RunId>` tree. Process artifacts may exist only in exact `processes\<four-digit-sequence>-<registered-target>` children. Every existing path segment is inspected; UNC, device, network, junction, symlink and look-alike paths are rejected by both manager-side writers and the worker before launch.
+
+`process.json` is closed and records sequence, registered target, status, nullable exit/PIDs, canonical timestamps, duration, timeout and health state, truncation flags, and nested cleanup counters. Passed and failed started targets require distinct PIDs, at least two observed owned processes, passed zero-remaining cleanup, and a real success or failure cause. Null-PID prestart results require all counters to be zero. Failed cleanup requires a positive remaining count and forces `blocked`; all counter sums are bounded by owned count in both process and run cleanup reports.
+
+## Foreign-process protection and package C/D separation
+
+Cleanup never uses a process-name search, WMI/CIM tree search, `taskkill`, or broad termination. Pre-existing PowerShell, Node, and NPM processes are never assigned to the unique job, included in its counters, or terminated. If job assignment fails after worker creation, only the known process handle is used for two bounded termination/verification attempts; a surviving worker is reported as remaining and blocks the attempt. Closing the job handle is the final kill-on-close safeguard for only its owned tree.
+
+Package C supplies process mechanics and safe fixtures but does not invoke a process through `portal-operator.ps1`. That entry point initializes empty run logs and skipped cleanup, then retains blocked/error package behavior. Check orchestration, productive M000 checks, Pester acceptance, a successful SelfTest, LocalVerify, LocalFreeze, and freeze/deployment behavior belong to package D or later.
+
 ## Package boundaries
 
-Package A provides entry, manifest/result contracts, strict schema validation, run identity/directory, registry foundation, and basic reporting. Package B adds only trusted Git/environment/security data contracts and validated snapshot writers. It does not execute native programs, emit synthetic repository snapshots, register complete checks, or implement processes, health, deployment, SelfTest, LocalVerify, or LocalFreeze. The general process manager belongs exclusively to package C, with complete check execution following in C/D. M000-R1 is not complete after package B.
+Package A provides entry, manifest/result contracts, strict schema validation, run identity/directory, registry foundation, and basic reporting. Package B adds trusted Git/environment/security data contracts and validated snapshot writers. Package C adds the general local process manager, safe fixtures, bounded logging, redaction, and owned-tree cleanup without adding check orchestration. Complete checks and successful operator stages follow only in package D. M000-R1 is not complete after package C.
