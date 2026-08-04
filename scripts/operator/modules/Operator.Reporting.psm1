@@ -277,6 +277,122 @@ function New-OperatorResult {
     return [pscustomobject]$result
 }
 
+function Test-OperatorResultCleanupSemantics {
+    param([AllowNull()]$Cleanup)
+
+    $errors = New-Object 'Collections.Generic.List[string]'
+
+    $cleanupObject = if (
+        $Cleanup -is [System.Collections.IDictionary]
+    ) {
+        [pscustomobject]$Cleanup
+    }
+    else {
+        $Cleanup
+    }
+
+    if (-not (
+        Test-OperatorClosedReportObject `
+            -InputObject $cleanupObject `
+            -PropertyNames @(
+                'status'
+                'ownedProcessCount'
+                'terminatedProcessCount'
+                'remainingOwnedProcessCount'
+            )
+    )) {
+        $errors.Add(
+            '$.cleanup: object does not match the result cleanup contract.'
+        )
+
+        return [pscustomobject][ordered]@{
+            IsValid = $false
+            Errors  = @($errors.ToArray())
+        }
+    }
+
+    if (
+        $cleanupObject.status -isnot [string] -or
+        @('passed', 'failed', 'skipped') -cnotcontains
+            [string]$cleanupObject.status
+    ) {
+        $errors.Add('$.cleanup.status: value is invalid.')
+    }
+
+    $countsValid = $true
+
+    foreach (
+        $name in @(
+            'ownedProcessCount'
+            'terminatedProcessCount'
+            'remainingOwnedProcessCount'
+        )
+    ) {
+        $value = $cleanupObject.$name
+
+        if (
+            -not (Test-OperatorReportInteger -Value $value) -or
+            [int64]$value -lt 0
+        ) {
+            $errors.Add(
+                '$.cleanup.{0}: value must be a non-negative integer.' -f
+                $name
+            )
+
+            $countsValid = $false
+        }
+    }
+
+    if ($countsValid) {
+        $owned = [int64]$cleanupObject.ownedProcessCount
+        $terminated = [int64]$cleanupObject.terminatedProcessCount
+        $remaining = [int64]$cleanupObject.remainingOwnedProcessCount
+
+        if (
+            $terminated -gt $owned -or
+            $remaining -gt $owned -or
+            ($terminated + $remaining) -gt $owned
+        ) {
+            $errors.Add('$.cleanup: process counters are inconsistent.')
+        }
+
+        if (
+            [string]$cleanupObject.status -ceq 'skipped' -and
+            (
+                $owned -ne 0 -or
+                $terminated -ne 0 -or
+                $remaining -ne 0
+            )
+        ) {
+            $errors.Add(
+                '$.cleanup: skipped cleanup requires zero process counters.'
+            )
+        }
+
+        if (
+            [string]$cleanupObject.status -ceq 'passed' -and
+            $remaining -ne 0
+        ) {
+            $errors.Add(
+                '$.cleanup: passed cleanup requires zero remaining owned processes.'
+            )
+        }
+
+        if (
+            [string]$cleanupObject.status -ceq 'failed' -and
+            $remaining -eq 0
+        ) {
+            $errors.Add(
+                '$.cleanup: failed cleanup requires at least one remaining owned process.'
+            )
+        }
+    }
+
+    return [pscustomobject][ordered]@{
+        IsValid = ($errors.Count -eq 0)
+        Errors  = @($errors.ToArray())
+    }
+}
 function Test-OperatorResultSemantics {
     param([Parameter(Mandatory = $true)]$Result)
     $errors = New-Object 'Collections.Generic.List[string]'
@@ -286,6 +402,12 @@ function Test-OperatorResultSemantics {
         return [pscustomobject][ordered]@{ IsValid = $false; Errors = @($errors.ToArray()) }
     }
 
+    $cleanupValidation =
+        Test-OperatorResultCleanupSemantics -Cleanup $Result.cleanup
+
+    foreach ($cleanupError in @($cleanupValidation.Errors)) {
+        $errors.Add([string]$cleanupError)
+    }
     $expectedExitCode = switch ([string]$Result.status) {
         'passed' { 0; break }
         'failed' { 10; break }
@@ -318,7 +440,7 @@ function Test-OperatorResultSemantics {
             if ($null -eq $Result.PSObject.Properties[$name]) { $errors.Add("$.${name}: property is required for passed results.") }
         }
         foreach ($check in @($Result.checks)) {
-            if (@('passed', 'skipped') -notcontains [string]$check.status) { $errors.Add('$.checks: passed results may contain only passed or skipped checks.') }
+            if ([string]$check.status -cne 'passed') { $errors.Add('$.checks: passed results require every check to be passed.') }
         }
         if ([string]$Result.cleanup.status -ne 'passed') { $errors.Add('$.cleanup.status: passed results require passed cleanup.') }
         if ([int]$Result.cleanup.remainingOwnedProcessCount -ne 0) { $errors.Add('$.cleanup.remainingOwnedProcessCount: passed results require zero remaining owned processes.') }
