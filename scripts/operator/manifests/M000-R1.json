@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "resultSchemaVersion": 1,
+  "operatorVersion": "1.0.0",
+  "moduleId": "M000",
+  "revision": "R1",
+  "name": "M000 R1 local operator acceptance",
+  "stages": {
+    "SelfTest": {
+      "checks": [
+        { "checkId": "selftest.exit-success", "targetId": "fixture.exit-success", "timeoutProfile": "short", "required": true },
+        { "checkId": "selftest.stderr-success", "targetId": "fixture.stderr-success", "timeoutProfile": "short", "required": true },
+        { "checkId": "selftest.exit-failure", "targetId": "fixture.exit-failure", "timeoutProfile": "short", "required": true },
+        { "checkId": "selftest.health-ready", "targetId": "fixture.health-ready", "timeoutProfile": "short", "required": true },
+        { "checkId": "selftest.health-failure", "targetId": "fixture.health-failure", "timeoutProfile": "short", "required": true },
+        { "checkId": "selftest.timeout", "targetId": "fixture.timeout", "timeoutProfile": "short", "required": true },
+        { "checkId": "selftest.child-tree", "targetId": "fixture.child-tree", "timeoutProfile": "short", "required": true },
+        { "checkId": "selftest.secret-output", "targetId": "fixture.secret-output", "timeoutProfile": "short", "required": true },
+        { "checkId": "selftest.large-output", "targetId": "fixture.large-output", "timeoutProfile": "standard", "required": true }
+      ]
+    },
+    "Preflight": {
+      "checks": [
+        { "checkId": "repository.policy", "targetId": "operator.repository", "timeoutProfile": "standard", "required": true },
+        { "checkId": "environment.required", "targetId": "operator.environment", "timeoutProfile": "short", "required": true },
+        { "checkId": "local.isolation", "targetId": "operator.local-mode", "timeoutProfile": "short", "required": true },
+        { "checkId": "path.scope", "targetId": "operator.changed-paths", "timeoutProfile": "short", "required": true },
+        { "checkId": "secret.hints", "targetId": "operator.secret-hints", "timeoutProfile": "short", "required": true }
+      ]
+    },
+    "LocalVerify": {
+      "checks": [
+        { "checkId": "repository.policy", "targetId": "operator.repository", "timeoutProfile": "standard", "required": true },
+        { "checkId": "environment.required", "targetId": "operator.environment", "timeoutProfile": "short", "required": true },
+        { "checkId": "local.isolation", "targetId": "operator.local-mode", "timeoutProfile": "short", "required": true },
+        { "checkId": "path.scope", "targetId": "operator.changed-paths", "timeoutProfile": "short", "required": true },
+        { "checkId": "secret.hints", "targetId": "operator.secret-hints", "timeoutProfile": "short", "required": true },
+        { "checkId": "local.test", "targetId": "npm.test", "timeoutProfile": "standard", "required": true },
+        { "checkId": "local.frontend", "targetId": "npm.check-frontend", "timeoutProfile": "standard", "required": true },
+        { "checkId": "local.static", "targetId": "npm.check-static", "timeoutProfile": "standard", "required": true },
+        { "checkId": "fingerprint.capture", "targetId": "operator.fingerprint-capture", "timeoutProfile": "standard", "required": true }
+      ]
+    },
+    "LocalFreeze": {
+      "checks": [
+        { "checkId": "repository.policy", "targetId": "operator.repository", "timeoutProfile": "standard", "required": true },
+        { "checkId": "environment.required", "targetId": "operator.environment", "timeoutProfile": "short", "required": true },
+        { "checkId": "local.isolation", "targetId": "operator.local-mode", "timeoutProfile": "short", "required": true },
+        { "checkId": "path.scope", "targetId": "operator.changed-paths", "timeoutProfile": "short", "required": true },
+        { "checkId": "secret.hints", "targetId": "operator.secret-hints", "timeoutProfile": "short", "required": true },
+        { "checkId": "local.test", "targetId": "npm.test", "timeoutProfile": "standard", "required": true },
+        { "checkId": "local.frontend", "targetId": "npm.check-frontend", "timeoutProfile": "standard", "required": true },
+        { "checkId": "local.static", "targetId": "npm.check-static", "timeoutProfile": "standard", "required": true },
+        { "checkId": "local.build", "targetId": "npm.build", "timeoutProfile": "long", "required": true },
+        { "checkId": "fingerprint.compare", "targetId": "operator.fingerprint-compare", "timeoutProfile": "standard", "required": true }
+      ]
+    }
+  }
+}

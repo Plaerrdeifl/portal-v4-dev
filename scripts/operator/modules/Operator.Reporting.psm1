@@ -358,6 +358,8 @@ function Write-OperatorManifestReports {
             'Manifest was not evaluated because the invocation stage is invalid.',
             'Manifest was not evaluated because deployment stages are blocked in package B.',
             'Manifest was not evaluated because deployment stages are blocked in package C.',
+            'Manifest was not evaluated because deployment stages are blocked.',
+            'Manifest was not evaluated because reference input is blocked.',
             'Manifest processing did not complete because of an internal operator error.'
         )]
         [string]$RejectedReason = 'Manifest is unavailable.',
@@ -588,6 +590,8 @@ Export-ModuleMember -Function @(
     'Write-OperatorEnvironmentReport',
     'Write-OperatorRepositorySnapshotReport',
     'Write-OperatorWorkingTreeFingerprintReport',
+    'Test-OperatorRepositorySnapshotReportContract',
+    'Test-OperatorWorkingTreeFingerprintReportContract',
     'New-OperatorResult',
     'Test-OperatorResultSemantics',
     'Write-OperatorInvocationReport',
