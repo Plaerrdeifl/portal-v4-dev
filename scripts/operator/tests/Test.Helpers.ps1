@@ -34,9 +34,15 @@ function Set-D2EnvironmentValue {
     [Environment]::SetEnvironmentVariable($Name, $Value, 'Process')
 }
 
+function Restore-D2EnvironmentValue {
+    param([Parameter(Mandatory = $true)][string]$Name)
+    if (-not $script:D2EnvironmentBackup.ContainsKey($Name)) { return }
+    [Environment]::SetEnvironmentVariable($Name, $script:D2EnvironmentBackup[$Name], 'Process')
+    $script:D2EnvironmentBackup.Remove($Name)
+}
+
 function Restore-D2Environment {
-    foreach ($name in @($script:D2EnvironmentBackup.Keys)) { [Environment]::SetEnvironmentVariable([string]$name, $script:D2EnvironmentBackup[$name], 'Process') }
-    $script:D2EnvironmentBackup.Clear()
+    foreach ($name in @($script:D2EnvironmentBackup.Keys)) { Restore-D2EnvironmentValue -Name ([string]$name) }
 }
 
 function New-D2LocalAppData {

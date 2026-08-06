@@ -87,13 +87,27 @@ try {
     Import-Module -Name $processModulePath -ErrorAction Stop
     $registration = Get-OperatorProcessTargetRegistration -TargetId $TargetId
     if ($null -eq $registration) { $workerExitCode = 97; throw 'registration' }
+    if ($registration.environmentProfile -isnot [string] -or @('inherit', 'local-build') -cnotcontains [string]$registration.environmentProfile) { $workerExitCode = 97; throw 'environment-profile' }
+    if ([string]$registration.environmentProfile -ceq 'local-build' -and $TargetId -cne 'npm.build') { $workerExitCode = 97; throw 'environment-profile-target' }
     $launch = Resolve-OperatorProcessLaunchDefinition -RepositoryRoot $RepositoryRoot -TargetId $TargetId
 
     $gate = [Threading.EventWaitHandle]::OpenExisting($GateName)
     if (-not $gate.WaitOne([TimeSpan]::FromSeconds(30))) { $workerExitCode = 98; throw 'gate-timeout' }
 
     $targetArguments = ConvertTo-OperatorWindowsCommandLine -Arguments ([string[]]$launch.arguments)
-    $target = [Plaerrdeifl.Operator.RelayProcess]::Start([string]$launch.executablePath, $targetArguments, [string]$launch.workingDirectory)
+    if ([string]$registration.environmentProfile -ceq 'inherit') {
+        $target = [Plaerrdeifl.Operator.RelayProcess]::Start([string]$launch.executablePath, $targetArguments, [string]$launch.workingDirectory)
+    }
+    else {
+        $previousPortalEnvironment = [Environment]::GetEnvironmentVariable('PORTAL_ENVIRONMENT', [EnvironmentVariableTarget]::Process)
+        try {
+            [Environment]::SetEnvironmentVariable('PORTAL_ENVIRONMENT', 'LOCAL', [EnvironmentVariableTarget]::Process)
+            $target = [Plaerrdeifl.Operator.RelayProcess]::Start([string]$launch.executablePath, $targetArguments, [string]$launch.workingDirectory)
+        }
+        finally {
+            [Environment]::SetEnvironmentVariable('PORTAL_ENVIRONMENT', $previousPortalEnvironment, [EnvironmentVariableTarget]::Process)
+        }
+    }
 
     $record = [pscustomobject][ordered]@{
         schemaVersion = [int]1

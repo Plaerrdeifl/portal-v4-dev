@@ -10,9 +10,40 @@ Describe 'Operator registry acceptance' {
             $actual = @(Get-OperatorProcessTargetRegistrySnapshot)
             $actual.Count | Should Be 13; (@($actual.targetId) -join ',') | Should BeExactly ($expected -join ',')
         }
+        It 'assigns local-build only to npm.build and inherit to all other targets' {
+            $actual = @(Get-OperatorProcessTargetRegistrySnapshot)
+            (@($actual | Where-Object { $_.targetId -ceq 'npm.build' })).Count | Should Be 1
+            (@($actual | Where-Object { $_.targetId -ceq 'npm.build' }))[0].environmentProfile | Should BeExactly 'local-build'
+            @($actual | Where-Object { $_.targetId -cne 'npm.build' }).Count | Should Be 12
+            @($actual | Where-Object { $_.targetId -cne 'npm.build' -and $_.environmentProfile -cne 'inherit' }).Count | Should Be 0
+        }
         It 'returns immutable registry copies' {
-            $first = @(Get-OperatorProcessTargetRegistrySnapshot); $first[0].targetId = 'tampered'; $first[0].allowedStages[0] = 'SelfTest'
-            $second = @(Get-OperatorProcessTargetRegistrySnapshot); $second[0].targetId | Should BeExactly 'npm.test'; $second[0].allowedStages[0] | Should BeExactly 'LocalVerify'
+            $first = @(Get-OperatorProcessTargetRegistrySnapshot); $first[0].targetId = 'tampered'; $first[0].allowedStages[0] = 'SelfTest'; $first[0].environmentProfile = 'local-build'
+            $second = @(Get-OperatorProcessTargetRegistrySnapshot); $second[0].targetId | Should BeExactly 'npm.test'; $second[0].allowedStages[0] | Should BeExactly 'LocalVerify'; $second[0].environmentProfile | Should BeExactly 'inherit'
+        }
+        It 'rejects a missing environment profile in the trusted registry' {
+            InModuleScope Operator.Process {
+                $registration = $script:ProcessTargetRegistry[0]
+                $profile = [string]$registration.environmentProfile
+                try {
+                    $registration.PSObject.Properties.Remove('environmentProfile')
+                    { Assert-OperatorProcessTargetRegistry } | Should Throw
+                }
+                finally {
+                    if ($null -eq $registration.PSObject.Properties['environmentProfile']) { Add-Member -InputObject $registration -NotePropertyName environmentProfile -NotePropertyValue $profile }
+                }
+            }
+        }
+        It 'rejects an unknown environment profile in the trusted registry' {
+            InModuleScope Operator.Process {
+                $registration = $script:ProcessTargetRegistry[0]
+                $profile = [string]$registration.environmentProfile
+                try {
+                    $registration.environmentProfile = 'unknown'
+                    { Assert-OperatorProcessTargetRegistry } | Should Throw
+                }
+                finally { $registration.environmentProfile = $profile }
+            }
         }
     }
 
@@ -23,6 +54,18 @@ Describe 'Operator registry acceptance' {
             $snapshot.Count | Should Be 20
         }
         It 'permits idempotent registration in the same module instance' { [void](Register-M000R1Checks); (Register-M000R1Checks).count | Should Be 20 }
+
+        It 'keeps exactly 19 ordinal-unique D paths inside the checks module' {
+            InModuleScope M000.R1.Checks {
+                $paths = @($script:AllowedDPaths)
+                $ordinalPaths = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+                $paths.Count | Should Be 19
+                foreach ($path in $paths) { $ordinalPaths.Add([string]$path) | Should Be $true }
+                $ordinalPaths.Count | Should Be 19
+                $ordinalPaths.Contains('scripts/operator/Operator.ProcessWorker.ps1') | Should Be $true
+                $ordinalPaths.Contains('scripts/operator/modules/Operator.Process.psm1') | Should Be $true
+            }
+        }
 
         It 'rejects a missing known registration as internal binding error' {
             $definition = Get-M000R1CheckDefinition -CheckId 'repository.policy' -TargetId 'operator.repository'

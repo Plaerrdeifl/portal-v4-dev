@@ -222,4 +222,47 @@ Describe 'Operator process acceptance' {
             (Test-OperatorResultSemantics $result).IsValid | Should Be $false
         }
     }
+
+    Context 'deterministic local build environment' {
+        It 'runs npm.build as LOCAL while preserving ambient PROD and Git status' {
+            $statusBefore = (git status --porcelain=v1 --untracked-files=all) -join "`n"
+            $context = $null
+            Set-D2EnvironmentValue -Name 'PORTAL_ENVIRONMENT' -Value 'PROD'
+            try {
+                $context = New-D2RunContext -LocalAppData $localAppData
+                Initialize-OperatorProcessRunReports $context
+                $result = Invoke-OperatorProcessTarget $context $script:D2TestRoot LocalFreeze npm.build long
+                $result.status | Should BeExactly 'passed'
+                $result.exitCode | Should Be 0
+                [Environment]::GetEnvironmentVariable('PORTAL_ENVIRONMENT', 'Process') | Should BeExactly 'PROD'
+            }
+            finally {
+                if ($null -ne $context) { try { Complete-OperatorProcessRun $context | Out-Null } catch { Write-Verbose 'Local build test cleanup failed.' } }
+                Restore-D2EnvironmentValue -Name 'PORTAL_ENVIRONMENT'
+            }
+            $statusAfter = (git status --porcelain=v1 --untracked-files=all) -join "`n"
+            $statusAfter | Should BeExactly $statusBefore
+        }
+
+        It 'runs npm.build as LOCAL while preserving an unset ambient value and Git status' {
+            $statusBefore = (git status --porcelain=v1 --untracked-files=all) -join "`n"
+            $context = $null
+            Set-D2EnvironmentValue -Name 'PORTAL_ENVIRONMENT' -Value $null
+            try {
+                [Environment]::GetEnvironmentVariable('PORTAL_ENVIRONMENT', 'Process') | Should Be $null
+                $context = New-D2RunContext -LocalAppData $localAppData
+                Initialize-OperatorProcessRunReports $context
+                $result = Invoke-OperatorProcessTarget $context $script:D2TestRoot LocalFreeze npm.build long
+                $result.status | Should BeExactly 'passed'
+                $result.exitCode | Should Be 0
+                [Environment]::GetEnvironmentVariable('PORTAL_ENVIRONMENT', 'Process') | Should Be $null
+            }
+            finally {
+                if ($null -ne $context) { try { Complete-OperatorProcessRun $context | Out-Null } catch { Write-Verbose 'Local build test cleanup failed.' } }
+                Restore-D2EnvironmentValue -Name 'PORTAL_ENVIRONMENT'
+            }
+            $statusAfter = (git status --porcelain=v1 --untracked-files=all) -join "`n"
+            $statusAfter | Should BeExactly $statusBefore
+        }
+    }
 }

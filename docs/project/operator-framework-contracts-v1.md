@@ -1,79 +1,139 @@
-# Operator framework contracts v1
+# Operator-Framework-Verträge V1
 
-The Plaerrdeifl Portal Operator framework version is `1.0.0`. Manifest schema 1 and result schema 1 are closed contracts; unknown properties are rejected.
+## Zweck und Geltungsbereich
 
-## Stages, status, and exit codes
+Dieses Dokument ist der verbindliche technische Vertrag des lokalen Plaerrdeifl Portal Operators in Version `1.0.0`. Es beschreibt die implementierten Grenzen für Aufruf, Manifest, Checks, Prozesse, Berichte, Sicherheit, Repositoryprüfung und wiederholte Ausführung. Maßgeblich sind `scripts/operator/portal-operator.ps1`, das Manifest `scripts/operator/manifests/M000-R1.json`, die registrierten M000-R1-Checks sowie die Operator-Module und deren Abnahmetests.
 
-Local stages are `SelfTest`, `Preflight`, `LocalVerify`, and `LocalFreeze`. Package C accepts a valid manifest for these stages but returns `blocked`/`20`, because complete check orchestration arrives in package D. `DevDeploy`, `DevVerify`, `ProdPreflight`, `ProdDeploy`, and `ProdVerify` are actively blocked with `blocked`/`20`.
+Der Vertrag gilt ausschließlich für lokale Prüfungen. DEV- und PROD-Stufen sind weder freigegeben noch als Deployment implementiert. `LocalFreeze` prüft nur den Freeze-Vertrag; die Stufe erzeugt keinen Commit und führt kein Deployment aus.
 
-The status/exit-code pairs are: `passed`/`0`, `failed`/`10`, `blocked`/`20`, and `error`/`30` (invocation or manifest) or `error`/`40` (internal operator failure). M000-R1-C never produces a passed overall operator run.
+## Versionen und Stufen
 
-## Manifest contract
+- Operatorversion: `1.0.0`
+- Manifestschema: `1`
+- Resultatschema: `1`
+- Timeoutprofile: `short` = 15 Sekunden, `standard` = 60 Sekunden, `long` = 300 Sekunden
 
-The manifest identifies schema versions, operator version, module, revision, name, and one to four local stage definitions. Each stage contains one or more unique checks with only `checkId`, `targetId`, `timeoutProfile`, and `required`. Objects are closed. Executable content, commands, arbitrary arguments, URLs, SQL, credentials, secrets, custom timeouts, and success markers are not permitted. Input is strictly decoded as UTF-8, duplicate object properties and non-strict JSON are rejected, and the original bytes are SHA-256 hashed before parsing.
+Manifest- und Resultatschema sind geschlossene Verträge; unbekannte Zusatzfelder werden abgewiesen.
 
-## Result contract and reporting
+| Stufe | Zustand | Vertrag |
+| --- | --- | --- |
+| `SelfTest` | unterstützt | Prüft die neun fest registrierten Prozess-Fixtures und ihre erwarteten Ergebnisse. |
+| `Preflight` | unterstützt | Prüft Repositorypolicy, erforderliche Umgebung, lokale Isolation, Pfadumfang und Secret-Hinweise. |
+| `LocalVerify` | unterstützt | Führt die fünf Preflight-Prüfungen, `npm test`, `npm run check:frontend`, `npm run check:static` und eine frische Fingerprinterfassung aus. |
+| `LocalFreeze` | unterstützt | Verlangt eine gültige `ReferenceRunId`, prüft den Freeze-Vertrag, führt die gebundenen lokalen Prüfungen einschließlich Build aus und vergleicht den frischen Fingerprint mit dem vollständigen bestandenen `LocalVerify`-Referenzlauf. Erstellt keinen Commit. |
+| `DevDeploy`, `DevVerify` | gesperrt | Enden ohne Manifestauswertung und ohne Deployment mit `blocked`/`20`. |
+| `ProdPreflight`, `ProdDeploy`, `ProdVerify` | gesperrt | Enden ohne Manifestauswertung und ohne Deployment mit `blocked`/`20`. |
 
-Result schema 1 records run identity, stage, status, exit code, UTC timestamps, duration, run directory, checks, messages, and cleanup; module, revision, and manifest hash are optional except for passed results. Schema validation is followed by semantic validation of status/exit-code pairing, timestamps, duration, passed-check states, and cleanup. Reports are UTF-8 without BOM and are replaced atomically from a temporary file in the same directory. Snapshot writers accept only fully typed closed objects, reject CR/LF/null in reported strings, and complete validation before creating or replacing a report. No type coercion can make invalid external data reportable. `invocation.json` contains only an exact registered stage or `INVALID`, always redacts `manifestPath` to `<redacted>`, and retains only its canonical UTC invocation time.
+## Status-, Exitcode- und Prioritätsvertrag
 
-Success markers are centrally owned by reporting: `V4_M000_R1_SELFTEST_OK`, `V4_M000_R1_PREFLIGHT_OK`, `V4_M000_R1_LOCAL_OK`, and `V4_M000_R1_LOCAL_FROZEN`. A marker can appear only after schema and semantic validation and an atomic `result.json` write for `passed`/`0`; neither manifests nor checks can supply one.
+| Status | Exitcode | Bedeutung |
+| --- | ---: | --- |
+| `passed` | `0` | Vollständig validierter Erfolg. |
+| `failed` | `10` | Eine ausgeführte fachliche Prüfung ist fehlgeschlagen. |
+| `blocked` | `20` | Eine Sicherheits-, Policy-, Referenz- oder Cleanup-Bedingung sperrt den Lauf. |
+| `error` | `30` | Aufruf-, Manifest- oder sonstiger externer Integritätsfehler. |
+| `error` | `40` | Interner Operator- oder Vertragsfehler. |
 
-## Timeouts and registry
+Bei mehreren Ergebnissen gilt absteigend: Cleanup-Fehler, `error`/`40`, `error`/`30`, `blocked`/`20`, `failed`/`10`, `passed`/`0`. Bei gleicher Priorität bleibt der zuerst festgestellte Grund erhalten. Ein Cleanup-Fehler verhindert immer `passed` und wird als `blocked`/`20` klassifiziert.
 
-The immutable timeout profiles are `short` = 15 seconds, `standard` = 60 seconds, and `long` = 300 seconds. The code-owned registry maps a unique `CheckId` + `TargetId` to non-empty local `AllowedStages` and a trusted-code `Handler`. Manifests cannot register or execute handlers. Registry reads return copies.
+Öffentliches `stderr` verwendet ausschließlich feste Meldungen. Interne Pfade, ungeprüfte Eingaben, Manifestinhalte, Exceptiontexte und Stackinformationen dürfen dort nicht erscheinen.
 
-## Repository snapshot and Git inspection
+## Manifestimport und Bindung
 
-Repository snapshot schema 1 is closed and records repository root, full lowercase HEAD SHA, case-sensitive branch, nullable upstream, exact ordinal remote name/URL mappings, working-tree state, and canonical UTC capture time. Malformed snapshot data produces a structured invalid result with fixed violations; only a malformed trusted policy is an internal error. The trusted policy owns expected root, branch, upstream, exact remotes, and optional HEAD binding. The M000 working policy and report writer require `infra/m000-r1`, no upstream, `origin` = `https://github.com/Plaerrdeifl/portal.git`, and `v4dev` = `https://github.com/Plaerrdeifl/portal-v4-dev.git`. Query, fragment, credentials, alternative schemes, relative forms, and URL normalization are forbidden.
+Manifestdaten sind ausschließlich Daten und niemals ausführbarer Code. Der Import ist auf 1.048.576 Byte begrenzt, dekodiert strikt als UTF-8, akzeptiert nur striktes JSON, verwirft Duplicate Properties und begrenzt die Rekursionstiefe auf 32. Manifest- und eingebettete Stufen-/Checkobjekte sind geschlossen; zusätzliche Felder sind verboten. Insbesondere dürfen Manifestdaten keine Befehle, Scriptblöcke, Argumentlisten, URLs, SQL, Zugangsdaten, Secrets, frei gewählte Timeouts, Handler oder Erfolgsmarker bereitstellen.
 
-The package-B Git inspection plan is immutable and read-only. It covers root, HEAD, branch, upstream, remote URLs, and porcelain status. It is data for the later process manager, not an execution wrapper; package B never starts Git. Only exact registered target-and-argument pairs pass the security contract. No network or write operation is registered.
+Der SHA-256-Hash wird aus den ursprünglichen Manifestbytes vor dem Parsing gebildet. Der Import bindet Manifestobjekt, Snapshot, Originalpfad, Hash und Schema-/Operatorversion. Vor der Orchestrierung, vor jedem Check, nach der Ausführung und vor der finalen Ausgabe wird diese Bindung erneut geprüft. Dateiinhalt, Snapshot, Objekt, Hash und Version müssen zusammenpassen. Eine äußere Mutation ergibt `error`/`30`; ein beschädigter interner Bindungsvertrag ergibt `error`/`40`. Nach einer früheren Ablehnung werden keine Repository-, npm- oder Prozessaktionen gestartet.
 
-## Working-tree fingerprint
+## Checkregistry und sequenzielle Orchestrierung
 
-Working-tree fingerprint schema 1 reports algorithm `SHA256`, lowercase fingerprint, HEAD, entry count, and UTC creation time. The hash is computed from canonical UTF-8-without-BOM data containing HEAD, branch, upstream, ordinally sorted remote mappings, and ordinally sorted repository-relative status entries. Every dynamic field is encoded by UTF-8 byte length and Base64 rather than raw delimiters. Each entry includes its status and a distinct file/hash, missing/deleted, directory, or final-reparse-point representation. A final reparse point is not followed or hashed; any parent reparse point blocks the fingerprint. Absolute repository paths, timestamps, source content, and diffs are excluded. Comparison first validates both operands as closed PSCustomObjects with integer schema 1, exact `SHA256`, lowercase 64-character fingerprint, lowercase 40-character HEAD, non-negative integer entry count, and exact canonical UTC timestamp. Invalid operands return a fixed non-match without exposing values; equally invalid operands never match.
+Die codeeigene Checkregistry enthält exakt 20 eindeutige Paare aus `checkId` und `targetId`: neun SelfTest-Checks, fünf gemeinsame Repository-/Umgebungs-/Sicherheitschecks, vier lokale npm-Checks sowie `fingerprint.capture` und `fingerprint.compare`. Stufe, Timeoutprofil, Pflichtstatus, Semantik und Handlerreferenz werden gegen die unveränderliche Matrix geprüft. Fremde oder lediglich textgleiche Handler werden abgewiesen.
 
-## Path and secret policy
+Alle Manifestchecks sind erforderlich und werden strikt in Manifestreihenfolge ausgeführt. Es gibt keine parallele Handlerausführung. Bei einer Ablehnung oder einem nicht bestandenen Pflichtcheck endet die Sequenz; nachfolgende Handler werden nicht aufgerufen. Ein insgesamt bestandener Lauf akzeptiert weder `failed`, `blocked`, `error` noch `skipped` in seiner Checkliste.
 
-The deny-by-default change policy allows only `scripts/operator/**`, `docs/project/**`, and `docs/modules/M000/R1/**`. `.gitignore` and every unlisted path are blocked. The repository root must be an existing non-reparse directory reached without an absolute parent junction or symlink. Canonical Windows resolution rejects absolute, UNC, device, drive, ADS, control characters, traversal, `.git`, root-escaping, and reparse-point routes. Segments with trailing spaces or dots, reserved device names including extension forms, 8.3 short names, case variants that resolve to a differently spelled existing entry, and other normalization aliases are forbidden. The canonical target is derived segment by segment after `GetFullPath`; its slash-normalized relative path must equal the checked input ordinally, without relying on a prefix-only containment decision.
+## Prozessregistry, Start und Laufzeit
 
-Secret scanning is a blocking hint mechanism for regular text files within the repository up to 1,048,576 bytes. A bounded stream reads at most one additional byte to detect oversize files. Findings are closed metadata containing only rule ID, relative path, safe line number, severity, and fixed description. Matches, full lines, credentials, connection strings, and exception text are never reported. Placeholders and explicit example/dummy forms are excluded.
+Die unveränderliche Prozessregistry enthält exakt 13 Targets:
 
-## Environment and local-mode protection
+- npm: `npm.test`, `npm.check-frontend`, `npm.check-static`, `npm.build`
+- SelfTest-Fixtures: `fixture.exit-success`, `fixture.stderr-success`, `fixture.exit-failure`, `fixture.health-ready`, `fixture.health-failure`, `fixture.timeout`, `fixture.child-tree`, `fixture.secret-output`, `fixture.large-output`
 
-Environment snapshot schema 1 is closed and contains a canonical UTC capture time plus exactly one deterministic record for every trusted tool ID: scalar ID, Boolean required/available flags, nullable control-character-free resolved path, nullable detected version, trusted nullable version requirement, allowed scalar version status, and non-empty control-character-free detection source. Schema version must be an actual integer equal to 1 before any numeric conversion. Semantic validation rejects strings, nulls, Booleans, objects, arrays, missing, duplicate, unknown, extended, nested, or script-valued records and inconsistent availability or version states before reporting. Malformed external structures return fixed violations without exposing unchecked names or values; only malformed trusted tool requirements are internal errors. Unavailable tools have neither path nor detected version. Detection is read-only and never runs a tool. Windows PowerShell requires 5.1; Node requires `>=24.18.0 <25`; unavailable execution-derived versions remain unknown. Project-local Supabase candidates and package metadata require a fully normalized path with no reparse point in any existing segment; a global CLI is ignored. Pester is enumerated without import or installation.
+Manifestdaten wählen nur ein registriertes Target und ein erlaubtes Timeoutprofil. Pfade, Befehle, Argumente, Umgebungen, Health-Logik und Handler stammen ausschließlich aus vertrauenswürdigem Code. Eine dynamische Befehlsausführung aus Manifestdaten ist ausgeschlossen. Npm wird über das zur lokalen Node-Installation gehörende `npm-cli.js` und einen fest gebundenen `package.json`-Scriptnamen gestartet; Fixtures werden über Windows PowerShell 5.1 und die repositoryeigene Fixturedatei aufgerufen.
 
-Local mode blocks DEV ref `tpieykhhawszlzsoflnl`, PROD ref `wplescvhlgctynkfwvrj`, matching Supabase/database hosts, remote database URLs, classical key-value connection strings with non-local `Host`, `Server`, `Data Source`, `Address`, `Addr`, or `Network Address`, forbidden project arguments, environment values, and known Supabase link files. Connection-metadata source IDs are case-sensitive, limited to `^[a-z0-9][a-z0-9._-]{0,63}$`, and never coerced or echoed when malformed. Reports identify only validated non-sensitive sources such as the environment-variable name. Missing link files and `localhost`, `127.0.0.1`, `::1`, or `[::1]` targets are accepted.
+Jede Registrierung besitzt das geschlossene `environmentProfile` `inherit` oder `local-build`. Ausschließlich `npm.build` verwendet `local-build` und wird für `LocalVerify`/`LocalFreeze` innerhalb des kontrollierten Workers immer mit `PORTAL_ENVIRONMENT=LOCAL` gestartet. Ein ambienter DEV-/PROD-Wert darf den lokalen Operatorbuild nicht beeinflussen; der Aufrufer muss `PORTAL_ENVIRONMENT` nicht vorbereiten. Unmittelbar nach dem Startversuch wird der vorherige Workerwert auch bei einem Startfehler wiederhergestellt. Die übrigen zwölf Targets verwenden `inherit` und behalten ihr bisheriges Umgebungsverhalten.
 
-## Process target contract
+Der Manager erzeugt ein eindeutiges lokales Start-Gate, startet den festen Worker, erstellt ein Windows Job Object mit Kill-on-close, ordnet den Worker zu und öffnet erst danach das Gate. Der Worker validiert das Target erneut. `stdout` und `stderr` werden gleichzeitig, aber getrennt abgeführt und gespeichert. Starttimeout und Laufzeittimeout sind codegebunden. Der einzige Health-Typ ist `stdout-token`; ein Token zählt nur, solange das Target noch dem Job angehört.
 
-The immutable package-C process registry contains exactly `npm.test`, `npm.check-frontend`, `npm.check-static`, `npm.build`, and the nine public `fixture.*` targets. Validation compares every field, ordered non-empty array, health definition and implementation mapping against the complete approved matrix without type coercion. NPM targets allow `LocalVerify`/`LocalFreeze`; fixture targets allow `SelfTest`; none allows `Preflight`. Manifests can select only an ID and allowed timeout profile and can never supply launch data.
+Worker, Target und Nachkommen bilden den eigenen Prozessbaum. Timeout- und Health-Fehler lösen eine unmittelbare Bereinigung dieses Job Objects aus. Beendet oder gezählt werden ausschließlich PIDs aus dem eindeutigen Job beziehungsweise, bei fehlgeschlagener Jobzuordnung, der konkret gestartete Worker über dessen Handle. Prozessnamensuche, WMI-/CIM-Baumsuche, `taskkill` und breite Terminierung sind ausgeschlossen. Fremde oder bereits vorhandene PowerShell-, Node- und npm-Prozesse bleiben unberührt.
 
-Target syntax and ordinal registry lookup precede every side effect. Invalid and unknown IDs return a closed `process-rejection` object with `<redacted>`, null sequence, no PID, and skipped zero-count cleanup. They never create `processes`, logs, or `process.json`. Only registered targets enter regular process-attempt reporting.
+## Cleanup- und Prozessberichtvertrag
 
-NPM launch resolution accepts only an Application result for `node.exe`, rejects network/device/reparse paths, derives `node_modules/npm/bin/npm-cli.js` from that installation, and reads `package.json` through a strict UTF-8 stream limited to 1,048,576 bytes plus one detection byte. The fixed script property must exist as a real non-empty string. Fixture resolution accepts only the current Windows PowerShell 5.1 `powershell.exe`, the repository-owned fixture, and `-File`; no shell command or execution-policy override exists.
+Jeder Cleanupzustand enthält `status`, `ownedProcessCount`, `terminatedProcessCount` und `remainingOwnedProcessCount`. Alle Zähler sind nichtnegative Ganzzahlen; terminierte und verbleibende Prozesse dürfen weder einzeln noch zusammen die Zahl eigener Prozesse überschreiten. `passed` verlangt null verbleibende eigene Prozesse, `failed` mindestens einen verbleibenden eigenen Prozess und `skipped` ausschließlich Nullzähler.
 
-## Worker, Job Object, timeout, and health contracts
+Ein Prozessversuch schreibt getrennte `stdout.log`, `stderr.log` und `process.json`. Gestartete bestandene oder fehlgeschlagene Targets benötigen verschiedene positive Worker-/Target-PIDs, mindestens zwei beobachtete eigene Prozesse, bestandenen Cleanup und null verbleibende Prozesse. Vor einem weiteren Versuch wird eine lückenlose Sequenz ab `0001` mit exakt diesen drei dauerhaften Artefakten geprüft. Fremde, fehlende, zusätzliche oder transiente Einträge sperren die Fortsetzung.
 
-The manager starts a fixed worker behind a unique local named-event gate. It creates and configures a Windows Job Object with kill-on-close, assigns the worker, and only then signals the gate. The worker resolves the registry target again, starts it, and atomically writes the closed start control record. After target and stream completion it atomically writes a closed transient completion record; only that validated record supplies the target exit code, while the worker code remains an internal protocol signal. All descendants inherit job membership. Job cleanup, handle disposal, gate disposal, transient-record removal and stream completion are attempted independently in `finally`; only PIDs queried from the unique job are counted or terminated.
+Der Laufcleanup vereinigt Inline-Git-Prozesse und Prozessmanager-Zähler. `Complete-OperatorProcessRun` wird pro Stufe genau einmal ausgeführt. Ein Cleanupfehler oder ein verbleibender eigener Prozess verhindert `passed`, auch wenn alle fachlichen Checks bestanden sind.
 
-The fixed named mutex `Local\Plaerrdeifl-M000-RunLock-<RunId>` serializes all attempts, initialization and completion within one run, with a maximum wait of 330 seconds. It is acquired before sequence allocation and retained until reports are durable. An abandoned mutex requires a complete integrity audit before work continues. Every existing attempt sequence must be unique and gapless from 0001, use a registered target, contain exactly the three durable artifacts, have passed zero-remaining cleanup, and contain no transient or foreign entry.
+## Berichte, atomare Writer und Erfolgsmarker
 
-Start timeout is registry-owned and runtime timeout is selected only from `short` = 15, `standard` = 60, or `long` = 300 seconds. Package C supports only the fixed `stdout-token` health check. A health token counts only while the target is still active in the job. A no-health target may finish before the manager's first membership query once its valid start record exists. Health failure and runtime timeout produce failed process attempts and immediate owned-job cleanup.
+Zum Vertragsumfang gehören insbesondere:
 
-## Process log, redaction, and report contracts
+- `invocation.json` mit registrierter Stufe oder `INVALID`, redigiertem `manifestPath` und kanonischem UTC-Zeitpunkt,
+- `manifest.snapshot.json` und `manifest.sha256` für ein importiertes oder fest klassifiziert abgelehntes Manifest,
+- `result.json` nach Resultatschema 1 und zusätzlicher semantischer Prüfung,
+- `cleanup.json` mit geschlossenem Cleanupvertrag,
+- Repository-, Umgebungs-, Fingerprint- und Prozessreports sowie begrenzte Run-/Prozesslogs.
 
-stdout and stderr are drained concurrently into independent 5,242,880-character bounded buffers. Excess data is consumed without storage. After protection and normalization, the final text is bounded again so the complete fixed truncation marker remains inside the same character limit, and the effective truncation state is recorded. One protection pass removes ANSI and forbidden controls before redaction, then repeats the sensitive-value and reserved-marker scan after line bounding; control-split values cannot reappear. Run aggregation uses equally bounded `StringBuilder` buffers, counts headers and one complete marker, and still bounded-reads and validates every later log after storage is full. Invalid late data publishes no replacement run report.
+Alle Writer validieren geschlossene Typ- und Semantikverträge vor der Veröffentlichung und schreiben UTF-8 ohne BOM atomar über eine temporäre Datei im selben Verzeichnis. Ungültige Daten dürfen keinen vorhandenen gültigen Report ersetzen. Dictionary-Cleanupobjekte werden für die Resultatvertragsprüfung zu einem Objekt normalisiert; die Typ- und Zählerregeln bleiben dabei unverändert.
 
-Durable process artifacts are confined to the canonical, local and reparse-free `%LOCALAPPDATA%\Plaerrdeifl\PortalOperator\runs\<RunId>` tree. Process artifacts may exist only in exact `processes\<four-digit-sequence>-<registered-target>` children. Every existing path segment is inspected; UNC, device, network, junction, symlink and look-alike paths are rejected by both manager-side writers and the worker before launch.
+Reservierte Erfolgsmarker werden ausschließlich zentral durch den finalen Reporter ausgegeben, nachdem ein semantisch validiertes `result.json` atomar geschrieben wurde und `passed`/`0` vorliegt:
 
-`process.json` is closed and records sequence, registered target, status, nullable exit/PIDs, canonical timestamps, duration, timeout and health state, truncation flags, and nested cleanup counters. Passed and failed started targets require distinct PIDs, at least two observed owned processes, passed zero-remaining cleanup, and a real success or failure cause. Null-PID prestart results require all counters to be zero. Failed cleanup requires a positive remaining count and forces `blocked`; all counter sums are bounded by owned count in both process and run cleanup reports.
+- `V4_M000_R1_SELFTEST_OK`
+- `V4_M000_R1_PREFLIGHT_OK`
+- `V4_M000_R1_LOCAL_OK`
+- `V4_M000_R1_LOCAL_FROZEN`
 
-## Foreign-process protection and package C/D separation
+Manifest, Check, Prozessausgabe und Log dürfen keinen Erfolgsmarker erzeugen. Nicht bestandene oder nicht validierte Resultate erzeugen keinen Marker.
 
-Cleanup never uses a process-name search, WMI/CIM tree search, `taskkill`, or broad termination. Pre-existing PowerShell, Node, and NPM processes are never assigned to the unique job, included in its counters, or terminated. If job assignment fails after worker creation, only the known process handle is used for two bounded termination/verification attempts; a surviving worker is reported as remaining and blocks the attempt. Closing the job handle is the final kill-on-close safeguard for only its owned tree.
+## Logredaktion und Secret-Schutz
 
-Package C supplies process mechanics and safe fixtures but does not invoke a process through `portal-operator.ps1`. That entry point initializes empty run logs and skipped cleanup, then retains blocked/error package behavior. Check orchestration, productive M000 checks, Pester acceptance, a successful SelfTest, LocalVerify, LocalFreeze, and freeze/deployment behavior belong to package D or later.
+Pro Prozess werden `stdout` und `stderr` unabhängig auf 5.242.880 Zeichen begrenzt; überschüssige Ausgabe wird weiter konsumiert, aber nicht gespeichert. Nach Schutz und Normalisierung wird erneut begrenzt, sodass der vollständige Marker `[TRUNCATED:stream-limit]` innerhalb des Limits bleibt. Run-Aggregate wenden dieselben Grenzen an und prüfen auch später gelesene, nicht mehr aufgenommene Logs.
 
-## Package boundaries
+Die Schutzfolge entfernt ANSI- und verbotene Steuerzeichen, normalisiert Zeilenenden, redigiert unter anderem private Schlüssel, JWT-artige Werte, GitHub-/Supabase-Token, Passwörter, Verbindungsdaten, URL-Userinfo, verbotene Projekt-Refs und reservierte Erfolgsmarker und begrenzt Einzelzeilen. Anschließend werden Secret- und Markerprüfungen wiederholt. Reports enthalten keine Trefferwerte, vollständigen Quellzeilen oder Secrets.
 
-Package A provides entry, manifest/result contracts, strict schema validation, run identity/directory, registry foundation, and basic reporting. Package B adds trusted Git/environment/security data contracts and validated snapshot writers. Package C adds the general local process manager, safe fixtures, bounded logging, redaction, and owned-tree cleanup without adding check orchestration. Complete checks and successful operator stages follow only in package D. M000-R1 is not complete after package C.
+Der Secret-Hinweis-Scanner liest nur reguläre, nicht als Reparse Point markierte Textdateien innerhalb des Repositorys und höchstens 1.048.576 Byte plus ein Erkennungsbyte. Findings enthalten nur Regel-ID, relativen Pfad, sichere Zeilennummer, Schweregrad und feste Beschreibung. Dokumentierte Platzhalter und explizite Beispiel-/Dummywerte werden ausgenommen.
+
+## Repositorypfade und lokaler Isolationsvertrag
+
+Die allgemeine deny-by-default-Pfadpolicy erlaubt nur `scripts/operator/**`, `docs/project/**` und `docs/modules/M000/R1/**`; alle anderen Pfade, insbesondere Produktcode, `tests/**`, `package.json`, `package-lock.json`, `.gitignore`, `.git/**`, `supabase/**` und `.github/**`, sind gesperrt. Für M000-R1-D wird dieser Rahmen zusätzlich auf die exakt 19 im Checkmodul registrierten Lieferpfade eingeschränkt.
+
+Die kanonische Pfadauflösung verwirft leere und absolute Pfade, UNC-, Device-, Drive- und ADS-Formen, Steuerzeichen, `.`-/`..`-Traversal, `.git`, Root-Ausbruch, Reparse-Routen, Segmente mit abschließenden Leerzeichen oder Punkten, reservierte Windows-Gerätenamen, 8.3-Kurznamen, abweichende Groß-/Kleinschreibung bestehender Einträge und Normalisierungsaliasse. Repositoryroot und vorhandene Elternsegmente müssen lokale, existierende, reparsefreie Verzeichnisse sein. Containment wird nicht durch einen bloßen Stringpräfix entschieden.
+
+Lokale Läufe dürfen keine DEV-/PROD-Verbindungsdaten verwenden. Verboten sind die gebundenen DEV-/PROD-Projekt-Refs, zugehörige Supabase-/Datenbankhosts, nichtlokale PostgreSQL- und Supabase-URLs, klassische Verbindungsstrings mit nichtlokalem Host, verbotene `--project-ref`-Argumente, passende Umgebungswerte und bekannte Linkdateien. Nur `localhost`, `127.0.0.1`, `::1` und `[::1]` gelten als lokal. Der lokale Lauf führt keine WordPress-, Docker- oder Supabase-Aktion aus.
+
+## Repositorypolicy und Working-Tree-Fingerprint
+
+Die vertrauenswürdige Policy bindet:
+
+- den tatsächlich aus dem Entry-Point abgeleiteten Repositoryroot,
+- Branch `infra/m000-r1`,
+- keinen Upstream,
+- exakt `origin` = `https://github.com/Plaerrdeifl/portal.git` und `v4dev` = `https://github.com/Plaerrdeifl/portal-v4-dev.git`,
+- einen vollständigen erwarteten HEAD, sofern die Stufe beziehungsweise Referenzprüfung ihn bindet.
+
+Die sechs erlaubten Git-Abfragen sind fest, lesend und umfassen Root, HEAD, Branch, Upstream, Remote-URLs und Porcelain-Status. Netzwerk- und Schreiboperationen sind nicht registriert.
+
+Der Working-Tree-Fingerprint verwendet Schema 1 und `SHA256`. Seine kanonischen UTF-8-Daten enthalten HEAD, Branch, Upstream, ordinal sortierte Remotes und ordinal sortierte Statuspfade einschließlich Status, Originalpfad und typabhängiger Inhaltsrepräsentation. Dynamische Felder werden längencodiert und Base64-kodiert. Absolute Pfade, Zeitstempel, Diffs und Klartextinhalte gehen nicht in den Hash ein. Ungültige Fingerprintobjekte stimmen niemals überein.
+
+Nach lokal verändernden Prüfschritten wird der Repositoryzustand frisch erfasst. `LocalVerify` vergleicht diesen frischen Fingerprint mit seinem Startzustand und veröffentlicht ihn erst bei Übereinstimmung. `LocalFreeze` vergleicht den frischen Zustand sowohl mit seinem Startzustand als auch mit dem Fingerprint des Referenzlaufs. Stale Context-Daten ersetzen keine frische Erfassung.
+
+## `ReferenceRunId` und Freeze-Referenz
+
+`ReferenceRunId` ist ausschließlich für `LocalFreeze` erlaubt und dort zwingend. Alle anderen Stufen sperren einen übergebenen Wert. Syntax, lokaler Runpfad und reparsefreie Struktur werden geprüft.
+
+Die Referenz muss ein vollständiger `LocalVerify`-Lauf mit `passed`/`0` sein. Geprüft werden RunId, Stufe, Modul, Revision, Operatorversion, Manifest-Snapshot und -Hash, Invocation-Metadaten, Repositoryroot, Branch, HEAD, Remotes, Environmentreport, Resultatsemantik, exakte neun Checks in Reihenfolge, sichere Texte, der exakte Satz aus drei npm-Prozessversuchen, deren Reports und getrennte Logs, Rootlogs, Summary, Cleanupzähler und null verbleibende eigene Prozesse. Der Referenzfingerprint muss sowohl zum Referenzsnapshot als auch zum frisch erfassten aktuellen Zustand passen. Fehlende, zusätzliche, beschädigte oder abweichende Artefakte sperren den Freeze oder werden als Aufruffehler klassifiziert.
+
+## Idempotenz und Wiederholung
+
+Die Registrierung der exakt 20 Checks ist innerhalb derselben Modulinstanz idempotent; abweichende bestehende Registrierungen werden nicht überschrieben, sondern abgewiesen. Jeder Operatorlauf erhält eine neue RunId und ein eigenes lokales Runverzeichnis. Ein bereits initialisierter Lauf wird nicht zurückgesetzt, aktive Versuche werden durch den rungebundenen Mutex serialisiert, und bestehende Versuche werden vor Fortsetzung vollständig geprüft.
+
+Wiederholte Aufrufe verändern keine getrackten Repositorydateien, erzeugen keinen Commit und senden keine Remoteoperation. Sie dürfen bei identischer Eingabe und unverändertem Zustand nur über dieselben geschlossenen Verträge fortfahren. Ein früher abgelehnter Aufruf startet keine spätere Repository-, npm- oder Prozessaktion; Cleanup und sichere Abschlussberichte bleiben dennoch verpflichtend.

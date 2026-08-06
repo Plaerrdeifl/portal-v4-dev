@@ -20,7 +20,9 @@ $script:GitTerminationWaitMilliseconds = 5000
 $script:RunLogCharacterLimit = 5242880
 $script:AllowedDPaths = @(
     'scripts/operator/checks/M000.R1.Checks.psm1',
+    'scripts/operator/Operator.ProcessWorker.ps1',
     'scripts/operator/modules/Operator.Orchestration.psm1',
+    'scripts/operator/modules/Operator.Process.psm1',
     'scripts/operator/manifests/M000-R1.json',
     'scripts/operator/portal-operator.ps1',
     'scripts/operator/modules/Operator.Reporting.psm1',
