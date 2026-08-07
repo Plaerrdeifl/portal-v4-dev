@@ -7,13 +7,15 @@
 **Main vor P800-Integration:** `2c77d1e4edbd398fa60bcbb707b55c46f53a448d`
 **P800 Runtime-/Security-Reparaturbaseline:** `03fd7286aac4fd53243a2b00e05cf0d9cb31e61f`
 **P800 Reparaturbranch vor Doku-Closeout:** `7b7f076c54c9d923d122c5831aa8b6f06e55de8a`
+**Finale technische DEV-Baseline:** `55ffccb6b501dd5973ad044b885e3ef5a74ead00`
+**Abschlussstatus:** `P800 FREIGEGEBEN`
 **Supabase DEV:** `tpieykhhawszlzsoflnl`
 
 ## 1. Zweck
 
 P800 prüft und stabilisiert die vorhandene V4-DEV-Baseline vor dem Start weiterer Module.
 
-Die technische Reparatur ist abgeschlossen. Die Integration nach `main` und die anschließende Live-Abnahme auf `https://dev.plaerrdeifl.de/` bilden das letzte Freigabegate. Bis dahin bleibt M210 gesperrt.
+Die technische Reparatur, die Integration nach `main`, der Cloudflare-Deploy und die Live-Abnahme auf `https://dev.plaerrdeifl.de/` sind abgeschlossen. P800 ist final freigegeben. M210 ist für die nachfolgende Modulplanung entsperrt.
 
 ## 2. Geprüfte Identitäten
 
@@ -52,13 +54,13 @@ P800 verändert M000 nicht.
 
 | Block | Inhalt | Stand nach Reparatur |
 |---|---|---|
-| B00 | Identität und DEV-Zuordnung | technisch geklärt; final nach `main`-Integration |
+| B00 | Identität und DEV-Zuordnung | BESTANDEN |
 | B01 | Repository, Toolchain, Tests und Build | BESTANDEN |
 | B02 | Auth, Rollen, RLS und Security | BESTANDEN |
 | B03 | Portalbereiche und Finanzregression | BESTANDEN |
 | B04 | Mobile, PWA, Cache und Push | BESTANDEN |
 | B05 | Robustheit und Performance | BESTANDEN |
-| B06 | Dokumentation und Reproduzierbarkeit | repariert; final nach PR/Merge-Abnahme |
+| B06 | Dokumentation und Reproduzierbarkeit | BESTANDEN |
 
 ## 4. Reproduzierbare Test-/Build-Baseline
 
@@ -237,33 +239,60 @@ Remote Checks:
 
 ### P800-R11
 
-Diese Abschlussdokumentation bereitet den Pull Request `fix/p800-dev-baseline-r1 -> main` vor.
+Abschlussdokumentation auf dem Reparaturbranch aktualisiert, als docs-only Commit verifiziert und Pull Request #10 gegen `main` erstellt.
 
-Der PR darf geprüft werden, ohne PROD oder Supabase erneut zu verändern. Der Merge nach `main` ist ein eigener Freigabeschritt.
+Ergebnis: **BESTANDEN**
 
-## 7. Aktueller Freigabestatus
+### P800-R12
 
-Die Reparatur selbst ist abgeschlossen und als Release Candidate verifiziert.
+Pull Request #10 wurde per Merge-Commit nach `main` integriert.
 
-Noch erforderlich für die endgültige P800-Freigabe:
+Finale technische DEV-Baseline:
 
-1. Pull Request gegen `main` prüfen.
-2. Merge nach `main` separat freigeben und durchführen.
-3. erfolgreichen Cloudflare-Deploy des gemergten `main` prüfen.
-4. `https://dev.plaerrdeifl.de/` live gegen den gemergten Stand abnehmen.
-5. abschließende P800-Freigabeentscheidung dokumentieren.
+`55ffccb6b501dd5973ad044b885e3ef5a74ead00`
 
-Bis dahin:
+Nachgewiesen:
+
+- PR #10 erfolgreich gemergt
+- `main` zeigt auf den erwarteten Merge-Commit
+- GitHub Actions erfolgreich
+- Cloudflare Pages erfolgreich
+- `https://dev.plaerrdeifl.de/` erfolgreich erreichbar
+- Live-Portal und Cloudflare-Deploy byte-identisch für Portal-HTML, Runtime-Konfiguration, Manifest und Service Worker
+- Runtime-Umgebung: `DEV`
+- Runtime-Supabase: `tpieykhhawszlzsoflnl`
+
+Ergebnis: **BESTANDEN**
+
+### P800-R13
+
+Der formale P800-Abschluss wird mit diesem Dokumentationsschritt auf `main` festgeschrieben.
+
+Festgelegter Endstatus:
+
+- B00 bis B06: **BESTANDEN**
+- P800: **ABGESCHLOSSEN / FREIGEGEBEN**
+- M210: **ENTSPERRT**
+- M000: **EINGEFROREN**
+- PROD: **UNVERÄNDERT**
+
+## 7. Finaler Freigabestatus
+
+P800 ist nach technischer Reparatur, Sicherheitsabgleich, reproduzierbarer Test-/Build-Abnahme, Merge nach `main`, erfolgreichem Cloudflare-Deploy und erfolgreicher Live-DEV-Abnahme final freigegeben.
+
+Die nicht blockierenden technischen Schulden P800-F04 bis P800-F06 bleiben als spätere Folgearbeiten bestehen und verhindern die Baseline-Freigabe nicht.
 
 ```text
 Technischer DEV-Betrieb:   STABIL
-P800-Reparatur:            ABGESCHLOSSEN
-P800-Release-Candidate:    VERIFIZIERT
-PROD:                      UNVERÄNDERT
+Finale technische Baseline: 55ffccb6b501dd5973ad044b885e3ef5a74ead00
+B00-B06:                   BESTANDEN
+P800:                      ABGESCHLOSSEN / FREIGEGEBEN
+M210:                      ENTSPERRT
 M000:                      EINGEFROREN
-M210:                      GESPERRT BIS FINALER P800-FREIGABE
-P800-Freigabe:             NOCH NICHT FINAL ERTEILT
+PROD:                      UNVERÄNDERT
 ```
+
+Mit diesem Stand darf die nachfolgende Modulplanung auf der freigegebenen DEV-Baseline fortgesetzt werden.
 
 ## 8. Historische Dokumente
 
