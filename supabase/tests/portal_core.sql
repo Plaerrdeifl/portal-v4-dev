@@ -958,5 +958,295 @@ begin
 end
 $event_api_verification$;
 
+do $public_event_api_verification$
+declare
+  v_today date := (now() at time zone 'Europe/Berlin')::date;
+  v_result jsonb;
+  v_events jsonb;
+  v_event jsonb;
+  v_keys text[];
+  v_allowed_keys text[] := array[
+    'description',
+    'displayTitle',
+    'endDate',
+    'endTime',
+    'eventDate',
+    'eventTime',
+    'eventType',
+    'homeAway',
+    'venue'
+  ];
+  v_table text;
+  v_privilege text;
+begin
+  if to_regprocedure('public.pd_public_events()') is null then
+    raise exception 'Öffentliche D-011-Terminfunktion fehlt.';
+  end if;
+
+  if not (
+    select proc.prosecdef
+    from pg_proc as proc
+    where proc.oid = to_regprocedure('public.pd_public_events()')
+  ) then
+    raise exception 'pd_public_events ist nicht SECURITY DEFINER.';
+  end if;
+
+  if (
+    select proc.provolatile
+    from pg_proc as proc
+    where proc.oid = to_regprocedure('public.pd_public_events()')
+  ) <> 's' then
+    raise exception 'pd_public_events ist nicht STABLE.';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_proc as proc
+    where proc.oid = to_regprocedure('public.pd_public_events()')
+      and 'search_path=""' = any(proc.proconfig)
+  ) then
+    raise exception 'pd_public_events verwendet keinen leeren search_path.';
+  end if;
+
+  if not has_function_privilege(
+    'anon',
+    'public.pd_public_events()',
+    'EXECUTE'
+  ) then
+    raise exception 'anon darf pd_public_events nicht ausführen.';
+  end if;
+
+  if has_function_privilege(
+    'authenticated',
+    'public.pd_public_events()',
+    'EXECUTE'
+  ) then
+    raise exception 'authenticated darf pd_public_events nicht ausführen.';
+  end if;
+
+  if exists (
+    select 1
+    from pg_proc as proc
+    cross join lateral aclexplode(
+      coalesce(
+        proc.proacl,
+        acldefault('f', proc.proowner)
+      )
+    ) as acl_item
+    where proc.oid = to_regprocedure('public.pd_public_events()')
+      and acl_item.grantee = 0
+      and acl_item.privilege_type = 'EXECUTE'
+  ) then
+    raise exception 'PUBLIC darf pd_public_events nicht ausführen.';
+  end if;
+
+  if has_function_privilege(
+    'anon',
+    'public.pd_api(text,jsonb)',
+    'EXECUTE'
+  ) then
+    raise exception 'anon darf pd_api nach D-011 weiterhin nicht ausführen.';
+  end if;
+
+  foreach v_table in array array[
+    'app_modules.events',
+    'app_modules.event_games'
+  ]
+  loop
+    foreach v_privilege in array array[
+      'SELECT',
+      'INSERT',
+      'UPDATE',
+      'DELETE'
+    ]
+    loop
+      if has_table_privilege('anon', v_table, v_privilege) then
+        raise exception 'anon besitzt unerlaubtes Recht % auf %',
+          v_privilege,
+          v_table;
+      end if;
+    end loop;
+  end loop;
+
+  delete from app_modules.events;
+
+  insert into app_modules.events (
+    id,
+    event_type,
+    title,
+    event_date,
+    event_time,
+    visibility
+  )
+  values
+    (
+      '00000000-0000-4210-8000-000000000401',
+      'FANCLUB',
+      'Öffentlich heute',
+      v_today,
+      null,
+      'PUBLIC'
+    ),
+    (
+      '00000000-0000-4210-8000-000000000402',
+      'OTHER',
+      'Öffentlich künftig',
+      v_today + 1,
+      time '18:00',
+      'PUBLIC'
+    ),
+    (
+      '00000000-0000-4210-8000-000000000403',
+      'FANCLUB',
+      'Intern heute',
+      v_today,
+      null,
+      'INTERNAL'
+    ),
+    (
+      '00000000-0000-4210-8000-000000000404',
+      'OTHER',
+      'Intern künftig',
+      v_today + 1,
+      time '17:00',
+      'INTERNAL'
+    ),
+    (
+      '00000000-0000-4210-8000-000000000405',
+      'OTHER',
+      'Öffentlich vergangen',
+      v_today - 1,
+      null,
+      'PUBLIC'
+    );
+
+  v_result := public.pd_public_events();
+  v_events := v_result -> 'events';
+
+  if jsonb_array_length(v_events) <> 2
+     or v_events -> 0 ->> 'displayTitle' <> 'Öffentlich heute'
+     or v_events -> 1 ->> 'displayTitle' <> 'Öffentlich künftig' then
+    raise exception 'D-011 filtert PUBLIC/INTERNAL oder Vergangenheit falsch: %',
+      v_events;
+  end if;
+
+  delete from app_modules.events;
+
+  insert into app_modules.events (
+    id,
+    event_type,
+    title,
+    event_date,
+    event_time,
+    end_date,
+    end_time,
+    venue,
+    description,
+    visibility
+  )
+  values
+    (
+      '00000000-0000-4210-8000-000000000501',
+      'FANCLUB',
+      'Fanclub ohne Uhrzeit A',
+      v_today,
+      null,
+      null,
+      null,
+      'Clubheim',
+      'Fanclubbeschreibung',
+      'PUBLIC'
+    ),
+    (
+      '00000000-0000-4210-8000-000000000502',
+      'OTHER',
+      'Sonstiges ohne Uhrzeit B',
+      v_today,
+      null,
+      v_today + 1,
+      time '10:00',
+      null,
+      null,
+      'PUBLIC'
+    ),
+    (
+      '00000000-0000-4210-8000-000000000503',
+      'GAME',
+      null,
+      v_today,
+      time '18:00',
+      null,
+      null,
+      'Stadion',
+      null,
+      'PUBLIC'
+    ),
+    (
+      '00000000-0000-4210-8000-000000000504',
+      'GAME',
+      null,
+      v_today + 1,
+      time '19:00',
+      null,
+      null,
+      null,
+      'Auswärtsspiel',
+      'PUBLIC'
+    );
+
+  insert into app_modules.event_games (
+    event_id,
+    home_away,
+    opponent_name
+  )
+  values
+    (
+      '00000000-0000-4210-8000-000000000503',
+      'HOME',
+      'Heimgegner'
+    ),
+    (
+      '00000000-0000-4210-8000-000000000504',
+      'AWAY',
+      'Auswärtsgegner'
+    );
+
+  v_result := public.pd_public_events();
+  v_events := v_result -> 'events';
+
+  if jsonb_array_length(v_events) <> 4
+     or v_events -> 0 ->> 'displayTitle' <> 'Fanclub ohne Uhrzeit A'
+     or v_events -> 1 ->> 'displayTitle' <> 'Sonstiges ohne Uhrzeit B'
+     or v_events -> 2 ->> 'displayTitle'
+       <> 'Mighty Dogs Schweinfurt – Heimgegner'
+     or v_events -> 3 ->> 'displayTitle'
+       <> 'Auswärtsgegner – Mighty Dogs Schweinfurt' then
+    raise exception 'D-011-Titel oder Reihenfolge sind ungültig: %',
+      v_events;
+  end if;
+
+  if v_events -> 0 -> 'homeAway' is distinct from 'null'::jsonb
+     or v_events -> 1 -> 'homeAway' is distinct from 'null'::jsonb
+     or v_events -> 2 ->> 'homeAway' <> 'HOME'
+     or v_events -> 3 ->> 'homeAway' <> 'AWAY' then
+    raise exception 'D-011 veröffentlicht homeAway nicht typgerecht.';
+  end if;
+
+  for v_event in
+    select item.value
+    from jsonb_array_elements(v_events) as item(value)
+  loop
+    select array_agg(key order by key)
+    into v_keys
+    from jsonb_object_keys(v_event) as keys(key);
+
+    if v_keys is distinct from v_allowed_keys then
+      raise exception 'D-011-Public-Schema besitzt unerlaubte Keys: %',
+        v_keys;
+    end if;
+  end loop;
+end
+$public_event_api_verification$;
+
 select 'PORTAL_CORE_STRUCTURE_OK' as result;
 rollback;
