@@ -45,19 +45,10 @@ test("remote builds cannot inherit a local runtime configuration", async () => {
   assert.match(build, /await cp\(localRuntime, runtimeOutput\)/);
 });
 
-test("DEV deployment declares and verifies the DEV environment", async () => {
-  const workflow = await read(
-    ".github/workflows/deploy-v4-dev-pages.yml"
-  );
-
-  assert.match(workflow, /PORTAL_ENVIRONMENT: DEV/);
-  assert.match(
-    workflow,
-    /SUPABASE_EXPECTED_PROJECT_REF: \$\{\{ vars\.SUPABASE_PROJECT_REF \}\}/
-  );
-  assert.match(
-    workflow,
-    /grep -q '"environment": "DEV"' dist\/js\/runtime-config\.js/
+test("obsolete GitHub Pages DEV deployment workflow remains absent", async () => {
+  await assert.rejects(
+    read(".github/workflows/deploy-v4-dev-pages.yml"),
+    { code: "ENOENT" }
   );
 });
 test("PROD cannot use the checked DEV Supabase project", async () => {
