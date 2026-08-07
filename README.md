@@ -5,8 +5,10 @@ Aktuelle technische Referenz für das Plärrdeifl Portal V4.
 **Stand:** 7. August 2026
 **DEV:** `https://dev.plaerrdeifl.de/`
 **DEV-Branch:** `main`
-**geprüfte DEV-Baseline:** `2c77d1e4edbd398fa60bcbb707b55c46f53a448d`
+**P800-Reparaturbranch:** `fix/p800-dev-baseline-r1`
+**P800-Release-Candidate vor Doku-Closeout:** `7b7f076c54c9d923d122c5831aa8b6f06e55de8a`
 **Supabase DEV:** `tpieykhhawszlzsoflnl`
+**DEV-Hosting:** Cloudflare Pages
 
 ## Aktueller Funktionsumfang
 
@@ -88,8 +90,13 @@ Aktuelle DEV-Zielidentität:
 
 - Portal: `https://dev.plaerrdeifl.de/`
 - Git-Branch: `main`
+- Hosting/Deployment: Cloudflare Pages über die GitHub-Integration
 - Supabase-Projekt: `plaerrdeifl-portal-dev`
 - Supabase-Ref: `tpieykhhawszlzsoflnl`
+
+Der frühere Repository-Workflow `.github/workflows/deploy-v4-dev-pages.yml` für GitHub Pages ist obsolet und wurde in P800 entfernt.
+
+Der aktuelle P800-Reparaturstand ist als Release Candidate auf `fix/p800-dev-baseline-r1` verifiziert. Die endgültige DEV-Baseline wird erst nach Merge nach `main`, erfolgreichem Cloudflare-Deploy und Live-Abnahme von `https://dev.plaerrdeifl.de/` festgeschrieben.
 
 PROD darf durch normale DEV-Arbeiten nicht verändert werden.
 

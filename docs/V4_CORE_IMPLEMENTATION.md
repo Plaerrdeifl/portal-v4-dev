@@ -3,7 +3,7 @@
 **Stand:** 7. August 2026
 **DEV-URL:** `https://dev.plaerrdeifl.de/`
 **DEV-Branch:** `main`
-**geprüfte Baseline:** `2c77d1e4edbd398fa60bcbb707b55c46f53a448d`
+**P800-Release-Candidate vor Doku-Closeout:** `7b7f076c54c9d923d122c5831aa8b6f06e55de8a`
 
 ## 1. Systemgrenze
 
@@ -15,6 +15,7 @@ Der aktive Portalpfad basiert auf:
 - SQL-Migrationen
 - kontrollierter RPC-Schnittstelle
 - optionalen Edge-/Push-Komponenten
+- Cloudflare Pages für DEV-Hosting und Branch-Previews
 
 Apps Script und Google Sheets sind keine aktive V4-Anwendungsdatenbank mehr. Alte Dateien oder Dokumentationen hierzu besitzen nur historischen Referenzwert.
 
@@ -111,12 +112,12 @@ Die Push-Service-RPCs werden nicht pauschal öffentlich freigegeben. Benötigte 
 
 Datenbankänderungen erfolgen ausschließlich über versionierte SQL-Migrationen.
 
-P800 hat zwei Baseline-Probleme identifiziert:
+P800 hat zwei Baseline-Probleme behoben:
 
 1. eine auf DEV bereits angewendete Härtungsmigration fehlte im Repository;
 2. die Default Privileges für zukünftige Objekte waren nicht ausreichend restriktiv und zwischen Cloud-DEV und lokalem Neuaufbau nicht reproduzierbar.
 
-Die lokale P800-Reparatur ergänzt:
+Die P800-Reparatur enthält:
 
 `20260802211306_harden_pd_api_revoke_anon_execute.sql`
 
@@ -124,7 +125,9 @@ und:
 
 `20260807120000_harden_public_default_privileges.sql`
 
-Der daraus resultierende Default-Deny-Vertrag für neue von `postgres` erzeugte Objekte lautet:
+Die zweite Migration wurde kontrolliert auf Supabase DEV angewendet und anschließend live geprüft.
+
+Der resultierende Default-Deny-Vertrag für neue von `postgres` erzeugte Objekte lautet:
 
 - keine Default-Rechte für `anon`
 - keine Default-Rechte für `authenticated`
@@ -133,7 +136,36 @@ Der daraus resultierende Default-Deny-Vertrag für neue von `postgres` erzeugte 
 
 Benötigte Rechte müssen objektbezogen ausdrücklich vergeben werden.
 
-## 8. Bekannte nicht blockierende technische Schulden
+## 8. DEV-Deployment
+
+DEV wird über Cloudflare Pages bereitgestellt.
+
+Der aktuelle Zielpfad lautet:
+
+- Repository: `Plaerrdeifl/portal-v4-dev`
+- Zielbranch: `main`
+- Live-URL: `https://dev.plaerrdeifl.de/`
+- Branch-Previews: `*.portal-v4-dev.pages.dev`
+
+Der frühere Workflow `.github/workflows/deploy-v4-dev-pages.yml` für GitHub Pages war obsolet und wurde im P800-Reparaturbranch entfernt.
+
+Die Cloudflare-GitHub-Integration hat die Reparaturcommits `f86c7cd...` und `7b7f076...` erfolgreich als Branch-Preview deployt.
+
+## 9. P800-Verifikation
+
+Nach dem Deployment-Contract-Fix wurden erneut erfolgreich ausgeführt:
+
+- gezielter Build-/Deploy-Vertragstest: 6/6
+- gesamte Testsuite: 182/182
+- Static-Check
+- Frontend-Check
+- `git diff --check`
+
+GitHub Actions und Cloudflare Pages waren für `7b7f076c54c9d923d122c5831aa8b6f06e55de8a` erfolgreich.
+
+Die endgültige P800-Freigabe erfolgt erst nach Merge des Release Candidates nach `main`, erfolgreichem Cloudflare-Deploy des gemergten Stands und Live-Abnahme.
+
+## 10. Bekannte nicht blockierende technische Schulden
 
 ### Aufgaben-Snapshot
 
@@ -153,10 +185,10 @@ Es soll kein pauschales Indexing ohne konkrete Zugriffsmuster erfolgen.
 
 Sie sollen in einem späteren Cleanup entweder sauber integriert oder entfernt werden.
 
-## 9. Historische Dokumente
+## 11. Historische Dokumente
 
 Frühere Phase-1-/Phase-2-Abnahmen und ältere Testberichte bilden ihren damaligen Projektstand ab.
 
 Sie sind keine aktuelle Aussage über den heutigen Login, den heutigen DEV-Deploy, vorhandene Finanzen, vorhandenes Push/PWA oder die aktuelle PostgreSQL-Struktur.
 
-Die aktuelle Baseline wird in `P800_DEV_BASELINE_R1.md` dokumentiert.
+Die aktuelle P800-Baseline wird in `P800_DEV_BASELINE_R1.md` dokumentiert.

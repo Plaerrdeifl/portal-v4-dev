@@ -11,12 +11,16 @@ Aktuelle DEV-Zielumgebung:
 - Portal: `https://dev.plaerrdeifl.de/`
 - Repository: `Plaerrdeifl/portal-v4-dev`
 - Deployment-Branch: `main`
-- geprüfter Deployment-Baseline-Commit: `2c77d1e4edbd398fa60bcbb707b55c46f53a448d`
+- Hosting: Cloudflare Pages
+- Branch-Previews: `*.portal-v4-dev.pages.dev`
+- P800-Release-Candidate vor Doku-Closeout: `7b7f076c54c9d923d122c5831aa8b6f06e55de8a`
 - Supabase-Projekt: `plaerrdeifl-portal-dev`
 - Supabase-Ref: `tpieykhhawszlzsoflnl`
 - Supabase-URL: `https://tpieykhhawszlzsoflnl.supabase.co`
 
 DEV und PROD sind strikt getrennt.
+
+Der frühere GitHub-Pages-Workflow `.github/workflows/deploy-v4-dev-pages.yml` gehört nicht mehr zum aktuellen DEV-Betrieb und wurde im P800-Reparaturbranch entfernt.
 
 ## 2. Google-Login
 
@@ -50,15 +54,25 @@ Das Frontend benötigt ausschließlich browsergeeignete öffentliche Laufzeitwer
 
 Der Publishable Key ist kein Service-Role-Schlüssel.
 
-Der Service-Role-Schlüssel darf niemals im Frontend, im statischen Build, in `runtime-config.js` oder als öffentlich auslieferbare Pages-Variable verwendet werden.
+Der Service-Role-Schlüssel darf niemals im Frontend, im statischen Build oder in `runtime-config.js` verwendet werden.
 
-## 4. Build
+## 4. Build und Deployment
 
 Der statische Build wird über den Repository-Buildprozess erzeugt.
 
 Für DEV wird eine DEV-spezifische Runtime-Konfiguration generiert.
 
-Der reproduzierbare P800-Baseline-Test für Commit `2c77d1e4edbd398fa60bcbb707b55c46f53a448d` ergab zwei identische Builds mit 61 Dateien und ohne Manifestabweichung.
+Cloudflare Pages ist der aktive DEV-Deploymentpfad. Die GitHub-Integration erstellt Branch-Previews und übernimmt nach Integration nach `main` den DEV-Deploy.
+
+Der alte GitHub-Pages-Workflow wurde entfernt; der Testvertrag stellt ausdrücklich sicher, dass er nicht wieder als DEV-Deploymentpfad eingeführt wird.
+
+Die P800-Reparatur wurde lokal und remote verifiziert:
+
+- vollständige Testsuite: 182/182
+- Static-Check: bestanden
+- Frontend-Check: bestanden
+- Cloudflare-Preview: erfolgreich
+- GitHub Actions: erfolgreich
 
 ## 5. Datenbankänderungen
 
@@ -76,6 +90,8 @@ supabase db reset --local
 
 gegen einen frischen lokalen Stand geprüft werden.
 
+P800 hat die Repository-/DEV-Abweichung für `20260802211306_harden_pd_api_revoke_anon_execute` geschlossen und die neue Migration `20260807120000_harden_public_default_privileges` kontrolliert auf Supabase DEV angewendet.
+
 ## 6. Sicherheitsgrenze
 
 Browserzugriff:
@@ -88,19 +104,32 @@ Nicht zulässig:
 
 Interne Push-Servicefunktionen besitzen nur die konkret benötigten expliziten `service_role`-Rechte.
 
-Neue Datenbankobjekte erhalten nach der P800-Härtung keine pauschalen Rechte für Browser- oder Service-Rollen.
+Neue von `postgres` erzeugte Datenbankobjekte erhalten nach der P800-Härtung keine pauschalen Rechte für Browser- oder Service-Rollen und kein automatisches Funktions-EXECUTE über `PUBLIC`.
 
 ## 7. P800-Reparaturstand
 
-Die P800-Reparatur wird isoliert auf `fix/p800-dev-baseline-r1` bearbeitet.
+Reparaturbranch:
 
-Der Reparatur-Worktree lautet:
+`fix/p800-dev-baseline-r1`
+
+Reparatur-Worktree:
 
 `C:\Projekte\PDAPP\frontend\portal-v4-dev-p800-r1`
 
-Die lokalen Reparaturmigrationen wurden erfolgreich gegen einen vollständigen lokalen Supabase-Neuaufbau geprüft.
+Wesentliche bestätigte Stände:
 
-Solange sie nicht committed, gepusht und ausdrücklich auf DEV angewendet wurden, verändern sie die DEV-Cloud nicht.
+- Baseline-Reparaturcommit: `03fd7286aac4fd53243a2b00e05cf0d9cb31e61f`
+- GitHub-Pages-Workflow entfernt: `f86c7cd03bd2580db9f68d8791b6a2d5ef1d8a07`
+- Deployment-Testvertrag korrigiert: `7b7f076c54c9d923d122c5831aa8b6f06e55de8a`
+
+Supabase DEV ist für F01/F02 abgeglichen und nachgeprüft.
+
+Der Reparaturbranch ist Release Candidate. Die endgültige P800-Freigabe erfolgt erst nach:
+
+1. PR-Abnahme,
+2. separat freigegebenem Merge nach `main`,
+3. erfolgreichem Cloudflare-Deploy des `main`-Stands,
+4. Live-Abnahme auf `https://dev.plaerrdeifl.de/`.
 
 ## 8. PROD-Schutz
 

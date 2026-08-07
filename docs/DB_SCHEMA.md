@@ -1,7 +1,8 @@
 # Plärrdeifl Portal V4 – aktuelle Datenbankstruktur
 
 **Stand:** 7. August 2026
-**Referenz-Baseline:** `2c77d1e4edbd398fa60bcbb707b55c46f53a448d`
+**P800-Reparaturbaseline:** `03fd7286aac4fd53243a2b00e05cf0d9cb31e61f`
+**Supabase DEV:** `tpieykhhawszlzsoflnl`
 
 Diese Datei beschreibt die aktive PostgreSQL-/Supabase-Struktur des V4-Portals.
 
@@ -79,7 +80,7 @@ Jede fachliche Aktion muss darüber hinaus innerhalb der Datenbank die aktuelle 
 
 Serverseitige Funktionen dürfen nicht durch pauschale Default-Rechte zugänglich werden.
 
-Beispielsweise erhalten die benötigten Web-Push-RPCs ihre Rechte gezielt für `service_role`.
+Die benötigten Web-Push-RPCs erhalten ihre Rechte gezielt für `service_role`.
 
 Damit gilt:
 
@@ -89,7 +90,7 @@ Damit gilt:
 
 ## 6. Default Privileges
 
-P800 führt für zukünftig durch `postgres` erzeugte Objekte ein reproduzierbares Default-Deny-Modell ein.
+P800 hat für zukünftig durch `postgres` erzeugte Objekte ein reproduzierbares Default-Deny-Modell eingeführt.
 
 Die Migration `20260807120000_harden_public_default_privileges.sql` entzieht:
 
@@ -98,23 +99,41 @@ Die Migration `20260807120000_harden_public_default_privileges.sql` entzieht:
 - Default-Rechte auf neue Sequenzen für `anon`, `authenticated`, `service_role`
 - Default-Rechte auf neue Funktionen für `anon`, `authenticated`, `service_role`
 
-Bestehende, ausdrücklich benötigte Objekt-Grants werden dadurch nicht verändert.
+Die Migration wurde am 7. August 2026 kontrolliert auf Supabase DEV angewendet.
+
+Die Nachprüfung auf DEV bestätigte:
+
+- `pd_api`: `anon` ohne EXECUTE
+- `pd_api`: `authenticated` mit EXECUTE
+- keine pauschalen Default-Rechte für `anon`, `authenticated` oder `service_role`
+- kein automatisches Funktions-EXECUTE über `PUBLIC`
+- die benötigten Push-Funktionen behalten ihre expliziten `service_role`-Grants
+
+Ein transaktionaler Future-Object-Probe bestätigte das Default-Deny-Modell; die Testobjekte wurden vollständig zurückgerollt.
+
+Die Plattform-Defaults von `supabase_admin` wurden nicht verändert.
 
 ## 7. Migrationen
 
 Die Datenbankhistorie liegt versioniert unter `supabase/migrations`.
 
-P800 stellt zusätzlich die auf DEV bereits vorhandene, im Repository aber zuvor fehlende Migration wieder her:
+P800 stellt die auf DEV bereits vorhandene, im Repository zuvor fehlende Migration wieder her:
 
 `20260802211306_harden_pd_api_revoke_anon_execute.sql`
 
-Sie enthält die bereits auf DEV wirksame Entziehung:
+Sie enthält:
 
 ```sql
 revoke execute
 on function public.pd_api(text, jsonb)
 from anon;
 ```
+
+Die DEV-Migrationshistorie enthält außerdem die neu angewendete Migration:
+
+`20260807120000_harden_public_default_privileges`
+
+Damit sind Repository und Supabase DEV für beide P800-Härtungsschritte nachvollziehbar abgeglichen.
 
 ## 8. Finanzdaten
 

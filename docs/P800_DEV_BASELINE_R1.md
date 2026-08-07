@@ -4,29 +4,33 @@
 **Projekt:** Plärrdeifl Portal V4
 **DEV-URL:** `https://dev.plaerrdeifl.de/`
 **DEV-Branch:** `main`
-**geprüfter Baseline-Commit:** `2c77d1e4edbd398fa60bcbb707b55c46f53a448d`
+**Main vor P800-Integration:** `2c77d1e4edbd398fa60bcbb707b55c46f53a448d`
+**P800 Runtime-/Security-Reparaturbaseline:** `03fd7286aac4fd53243a2b00e05cf0d9cb31e61f`
+**P800 Reparaturbranch vor Doku-Closeout:** `7b7f076c54c9d923d122c5831aa8b6f06e55de8a`
 **Supabase DEV:** `tpieykhhawszlzsoflnl`
 
 ## 1. Zweck
 
-P800 prüft die vorhandene V4-DEV-Baseline vor dem Start weiterer Module.
+P800 prüft und stabilisiert die vorhandene V4-DEV-Baseline vor dem Start weiterer Module.
 
-Ziel ist der Nachweis, dass der bestehende Portalstand technisch stabil, sicher abgegrenzt, reproduzierbar und dokumentiert ist.
-
-M210 bleibt gesperrt, bis die P800-Reparatur abgeschlossen, auf DEV nachvollziehbar angewendet und die Baseline erneut freigegeben wurde.
+Die technische Reparatur ist abgeschlossen. Die Integration nach `main` und die anschließende Live-Abnahme auf `https://dev.plaerrdeifl.de/` bilden das letzte Freigabegate. Bis dahin bleibt M210 gesperrt.
 
 ## 2. Geprüfte Identitäten
 
 ### Frontend DEV
 
-- URL: `https://dev.plaerrdeifl.de/`
-- Branch: `main`
-- Baseline: `2c77d1e4edbd398fa60bcbb707b55c46f53a448d`
+- Repository: `Plaerrdeifl/portal-v4-dev`
+- Zielbranch: `main`
+- DEV-URL: `https://dev.plaerrdeifl.de/`
+- aktiver Deploypfad: Cloudflare Pages über die GitHub-Integration
+- Branch-Previews: `*.portal-v4-dev.pages.dev`
+- der frühere GitHub-Pages-Workflow wurde als obsolet entfernt
 
 ### Supabase DEV
 
 - Projekt: `plaerrdeifl-portal-dev`
 - Ref: `tpieykhhawszlzsoflnl`
+- URL: `https://tpieykhhawszlzsoflnl.supabase.co`
 
 ### Supabase PROD
 
@@ -39,224 +43,230 @@ PROD wurde durch P800 nicht verändert.
 
 M000 ist abgeschlossen und eingefroren.
 
-Technischer Freeze:
-
-`2b6da38722d389a2074b1ec1a186a438f2b39875`
-
-Formaler Abschluss:
-
-`97b1af34cf64e78f5dd5bf6b29025e0b856fd70f`
+- technischer Freeze: `2b6da38722d389a2074b1ec1a186a438f2b39875`
+- formaler Abschluss: `97b1af34cf64e78f5dd5bf6b29025e0b856fd70f`
 
 P800 verändert M000 nicht.
 
 ## 3. Auditblöcke
 
-| Block | Inhalt | Ergebnis der Erstprüfung |
+| Block | Inhalt | Stand nach Reparatur |
 |---|---|---|
-| B00 | Identität und DEV-Zuordnung | BESTANDEN |
+| B00 | Identität und DEV-Zuordnung | technisch geklärt; final nach `main`-Integration |
 | B01 | Repository, Toolchain, Tests und Build | BESTANDEN |
-| B02 | Auth, Rollen, RLS und Security | FUNKTIONAL BESTANDEN |
+| B02 | Auth, Rollen, RLS und Security | BESTANDEN |
 | B03 | Portalbereiche und Finanzregression | BESTANDEN |
 | B04 | Mobile, PWA, Cache und Push | BESTANDEN |
 | B05 | Robustheit und Performance | BESTANDEN |
-| B06 | Dokumentation und Reproduzierbarkeit | NICHT FREIGABEFÄHIG |
+| B06 | Dokumentation und Reproduzierbarkeit | repariert; final nach PR/Merge-Abnahme |
 
-Der technische Portalbetrieb war stabil. Die Baseline-Freigabe wurde wegen Reproduzierbarkeits- und Dokumentationsabweichungen nicht erteilt.
+## 4. Reproduzierbare Test-/Build-Baseline
 
-## 4. B01 – reproduzierbarer Build
-
-Ergebnisse:
+Nachgewiesen wurden unter anderem:
 
 - Node.js `v24.18.0`
-- npm `12.0.1`
-- `npm ci` erfolgreich
-- Node-Tests erfolgreich
+- npm-Installationslauf erfolgreich
+- vollständige Testsuite erfolgreich
 - statische Prüfungen erfolgreich
 - Frontend-Prüfung erfolgreich
-- Syntaxprüfung ohne Fehler
-- zwei identische statische Builds
-- jeweils 61 Builddateien
-- keine Manifestabweichungen
+- JavaScript-Syntaxprüfung erfolgreich
+- zwei identische statische Builds mit jeweils 61 Dateien
+- direkter Buildvergleich ohne Abweichung
 
-Build-Fingerprint:
+Historischer Build-Fingerprint der geprüften Ausgangsbaseline:
 
 `7143223d3a124b8e4c1211dce4c9fb737eff028b988f26f6147e20dd5f3d0137`
 
+Für den finalen P800-Reparaturbranch wurden zusätzlich nach der Entfernung des obsoleten GitHub-Pages-Workflows erneut 182/182 Tests sowie Static- und Frontend-Checks erfolgreich ausgeführt.
+
 ## 5. Findings
 
-### P800-F01 – HIGH – fehlende angewendete DEV-Migration
+### P800-F01 – HIGH – angewendete DEV-Migration fehlte im Repository
 
-Auf DEV war bereits `20260802211306_harden_pd_api_revoke_anon_execute` wirksam, im Repository der Baseline fehlte die entsprechende Datei jedoch.
+Auf DEV war `20260802211306_harden_pd_api_revoke_anon_execute` bereits wirksam, im Repository der Ausgangsbaseline fehlte die Datei.
 
-Lokale Reparatur:
+Reparatur:
 
 `supabase/migrations/20260802211306_harden_pd_api_revoke_anon_execute.sql`
 
-Status:
+Status: **BEHOBEN**
 
-**lokal behoben und reproduzierbar geprüft**
-
-Noch nicht committed, gepusht oder erneut mit DEV abgeglichen.
+Die Migration ist versioniert im Reparaturstand enthalten. DEV-Migrationshistorie und Repository sind auf den exakten Zeitstempel `20260802211306` abgeglichen.
 
 ### P800-F02 – HIGH – permissive Default Privileges
 
-DEV besaß für zukünftige Objekte im Schema `public` zu weit gefasste Default-Rechte.
+Für zukünftige von `postgres` erzeugte Objekte im Schema `public` waren die Default-Rechte zu weit gefasst.
 
-Lokale Reparatur:
+Reparatur:
 
 `supabase/migrations/20260807120000_harden_public_default_privileges.sql`
 
-Zielmodell:
+Status: **BEHOBEN UND AUF DEV ANGEWENDET**
 
-- `anon`: keine pauschalen Default-Rechte
-- `authenticated`: keine pauschalen Default-Rechte
-- `service_role`: keine pauschalen Default-Rechte
-- `PUBLIC`: kein automatisches EXECUTE auf neue Funktionen
-- benötigte Rechte nur durch explizite GRANTs
+Auf DEV wurde nachgewiesen:
 
-Der vollständige lokale Neuaufbau bestätigte:
+- kein pauschales Defaultrecht für `anon`
+- kein pauschales Defaultrecht für `authenticated`
+- kein pauschales Defaultrecht für `service_role`
+- kein automatisches Funktions-EXECUTE über `PUBLIC`
+- benötigte Push-Servicefunktionen behalten ihre expliziten `service_role`-Grants
+- ein transaktionaler Future-Object-Probe bestätigte das Default-Deny-Modell und wurde vollständig zurückgerollt
 
-```text
-table_anon=false
-table_authenticated=false
-table_service_role=false
-sequence_anon=false
-sequence_authenticated=false
-sequence_service_role=false
-function_anon=false
-function_authenticated=false
-function_service_role=false
-```
-
-Die bestehenden benötigten Push-Funktionen blieben ausdrücklich erreichbar:
-
-```text
-push_validate_service_role=true
-push_claim_service_role=true
-push_complete_service_role=true
-```
-
-Status:
-
-**lokal behoben und reproduzierbar geprüft**
-
-Noch nicht committed, gepusht oder auf DEV angewendet.
+Die Plattform-Defaults von `supabase_admin` wurden nicht verändert.
 
 ### P800-F03 – MEDIUM – veraltete Kerndokumentation
 
-Die Baseline-Dokumentation enthielt widersprüchliche historische Aussagen, darunter Finanzen als zukünftiges Modul, alter Entwicklungsbranch, alte Pages-URL, Google-Login als Zukunftsfunktion und die frühere Sheet-Struktur als scheinbar aktuelle DB-Dokumentation.
+Mehrere zentrale Dokumente enthielten historische Aussagen als scheinbar aktuellen Stand.
 
-P800-R04 ersetzt die zentralen aktuellen Referenzen durch den geprüften Istzustand.
+Status: **BEHOBEN**
 
-Status:
-
-**mit P800-R04 lokal behoben, finale Git-/Releaseprüfung noch ausstehend**
+Aktuelle Referenzen wurden auf die reale V4-Architektur, Supabase DEV, bestehende Finanzfunktionen, Google-Login und den tatsächlichen Deploypfad aktualisiert.
 
 ### P800-F04 – MEDIUM – schreibender Aufgaben-Snapshot
 
 `tasks_snapshot` kann abgelaufene Pending-Transfers bereinigen und dadurch beim Snapshot-Aufruf schreiben.
 
-Kein aktueller Funktionsfehler. Spätere Folgearbeit: lesende Snapshot-Semantik und Maintenance-/Expiry-Logik klarer trennen.
+Status: **NICHT BLOCKIERENDE TECHNISCHE SCHULD**
 
 ### P800-F05 – MEDIUM – gezielte FK-Indizes vor Skalierung
 
-Supabase meldet mehrere nicht indizierte Fremdschlüssel. Aufgrund der aktuell kleinen Datenmengen besteht kein gegenwärtiger Performance-Blocker.
+Mehrere Fremdschlüssel sind aktuell nicht zusätzlich indiziert.
 
-Spätere Folgearbeit: Indizes anhand realer Zugriffsmuster gezielt ergänzen.
+Status: **NICHT BLOCKIERENDE TECHNISCHE SCHULD**
+
+Indizes sollen anhand realer Zugriffsmuster gezielt ergänzt werden.
 
 ### P800-F06 – LOW – alte ausgelieferte JavaScript-Artefakte
 
-`js/warmup.js` und `js/performance.js` befinden sich nicht im aktiven Anwendungspfad, werden vom aktuellen Build aber mit ausgeliefert.
+`js/warmup.js` und `js/performance.js` liegen nicht im aktiven Anwendungspfad, werden aber weiterhin ausgeliefert.
 
-Spätere Folgearbeit: sauber integrieren oder entfernen.
+Status: **NICHT BLOCKIERENDE TECHNISCHE SCHULD**
+
+### P800-F07 – HIGH – obsoleter GitHub-Pages-Deployworkflow
+
+Im Repository existierte noch `.github/workflows/deploy-v4-dev-pages.yml`, obwohl DEV tatsächlich über Cloudflare Pages bereitgestellt wird.
+
+Status: **BEHOBEN**
+
+- Commit `f86c7cd03bd2580db9f68d8791b6a2d5ef1d8a07` entfernt den obsoleten Workflow.
+- Der zugehörige veraltete Testvertrag wurde in Commit `7b7f076c54c9d923d122c5831aa8b6f06e55de8a` korrigiert.
+- GitHub Actions und Cloudflare Pages waren auf `7b7f076...` erfolgreich.
+- Cloudflare erzeugte erfolgreich die Branch-Preview für `fix/p800-dev-baseline-r1`.
 
 ## 6. Reparatursequenz
 
-### P800-R01
+### P800-R01 bis R04
 
-Isolierter Reparatur-Worktree:
-
-`C:\Projekte\PDAPP\frontend\portal-v4-dev-p800-r1`
-
-Branch:
-
-`fix/p800-dev-baseline-r1`
-
-Basis:
-
-`2c77d1e4edbd398fa60bcbb707b55c46f53a448d`
+- isolierter Reparatur-Worktree und Branch erstellt
+- beide P800-Migrationen ergänzt
+- vollständiger lokaler Supabase-Neuaufbau erfolgreich
+- zentrale Dokumentation auf die reale V4-Architektur umgestellt
 
 Ergebnis: **BESTANDEN**
 
-### P800-R02
+### P800-R05
 
-Zwei Sicherheits-/Reproduzierbarkeitsmigrationen erstellt und fachlich korrigiert.
+Vollständige lokale Test-/Build-Abnahme:
+
+- 182/182 Tests
+- Static-Check
+- Frontend-Check
+- Syntaxprüfung
+- zwei reproduzierbare Builds
+- direkter Buildvergleich ohne Abweichung
+- `git diff --check` ohne Fehler
 
 Ergebnis: **BESTANDEN**
 
-### P800-R03
+### P800-R06
 
-Vollständiger lokaler Supabase-Neuaufbau durchgeführt.
+Lokaler Reparaturcommit:
 
-Nachgewiesen:
+`03fd7286aac4fd53243a2b00e05cf0d9cb31e61f`
 
-- beide P800-Migrationen werden erfolgreich angewendet
-- `anon` bleibt von `pd_api` ausgeschlossen
-- `authenticated` behält den vorgesehenen `pd_api`-Zugang
-- Default-Deny für neue Tabellen
-- Default-Deny für neue Sequenzen
-- Default-Deny für neue Funktionen
-- kein pauschaler Service-Role-Zugang
-- benötigte Push-Service-Grants bleiben erhalten
-- Testobjekte werden per Rollback vollständig entfernt
+Ergebnis: **BESTANDEN**
 
-Ergebnis:
+### P800-R07
 
-`P800_R03_LOCAL_MIGRATION_BASELINE_OK`
+Reparaturcommit auf `v4dev/fix/p800-dev-baseline-r1` gepusht und remote verifiziert.
 
-### P800-R04
+Ergebnis: **BESTANDEN**
 
-Aktuelle technische Kerndokumentation wird auf den geprüften Istzustand gebracht.
+### P800-R08
 
-Betroffene aktuelle Referenzen:
+DEV-Migrationshistorie read-only geprüft.
 
-- `README.md`
-- `docs/V4_CORE_IMPLEMENTATION.md`
-- `docs/V4_DEV_ACTIVATION.md`
-- `docs/DB_SCHEMA.md`
-- `docs/P800_DEV_BASELINE_R1.md`
+Ergebnis: **BESTANDEN**
 
-Historische Phase-1-/Phase-2-Dokumente werden nicht nachträglich inhaltlich umgeschrieben.
+### P800-R09
+
+Migration `20260807120000_harden_public_default_privileges` kontrolliert auf Supabase DEV angewendet und live verifiziert.
+
+Ergebnis: **BESTANDEN**
+
+### P800-R10A
+
+Obsoleten GitHub-Pages-Workflow entfernt.
+
+Commit:
+
+`f86c7cd03bd2580db9f68d8791b6a2d5ef1d8a07`
+
+Cloudflare-Branch-Preview erfolgreich.
+
+### P800-R10B/R10C
+
+Veralteten Deployment-Testvertrag ausschließlich in `tests/prod_safe_build.test.mjs` korrigiert.
+
+Nachprüfung:
+
+- gezielter Test: 6/6
+- gesamte Testsuite: 182/182
+- Static-Check: bestanden
+- Frontend-Check: bestanden
+- `git diff --check`: 0
+
+Commit:
+
+`7b7f076c54c9d923d122c5831aa8b6f06e55de8a`
+
+Remote Checks:
+
+- GitHub Actions: erfolgreich
+- Cloudflare Pages: erfolgreich
+
+### P800-R11
+
+Diese Abschlussdokumentation bereitet den Pull Request `fix/p800-dev-baseline-r1 -> main` vor.
+
+Der PR darf geprüft werden, ohne PROD oder Supabase erneut zu verändern. Der Merge nach `main` ist ein eigener Freigabeschritt.
 
 ## 7. Aktueller Freigabestatus
 
-Vor der endgültigen P800-Freigabe sind mindestens noch erforderlich:
+Die Reparatur selbst ist abgeschlossen und als Release Candidate verifiziert.
 
-1. Git-Diff und Dokumentationsumfang prüfen.
-2. gesamte lokale Test-/Build-Baseline erneut ausführen.
-3. Reparaturänderungen sauber committen.
-4. freigegebenen Reparaturbranch pushen.
-5. DEV-Migrationshistorie kontrolliert mit dem Repository abgleichen.
-6. neue Default-Privilege-Migration auf DEV anwenden.
-7. DEV-Sicherheitszustand erneut prüfen.
-8. DEV-Build/Deployment kontrolliert aktualisieren, soweit der freigegebene Ablauf dies vorsieht.
-9. abschließende P800-Freigabeentscheidung treffen.
+Noch erforderlich für die endgültige P800-Freigabe:
+
+1. Pull Request gegen `main` prüfen.
+2. Merge nach `main` separat freigeben und durchführen.
+3. erfolgreichen Cloudflare-Deploy des gemergten `main` prüfen.
+4. `https://dev.plaerrdeifl.de/` live gegen den gemergten Stand abnehmen.
+5. abschließende P800-Freigabeentscheidung dokumentieren.
 
 Bis dahin:
 
 ```text
 Technischer DEV-Betrieb:   STABIL
-Lokale Reparatur:          IN ARBEIT
+P800-Reparatur:            ABGESCHLOSSEN
+P800-Release-Candidate:    VERIFIZIERT
 PROD:                      UNVERÄNDERT
 M000:                      EINGEFROREN
-M210:                      GESPERRT
-P800-Freigabe:             NOCH NICHT ERTEILT
+M210:                      GESPERRT BIS FINALER P800-FREIGABE
+P800-Freigabe:             NOCH NICHT FINAL ERTEILT
 ```
 
 ## 8. Historische Dokumente
 
-Frühere Dateien wie `TEST_REPORT.md`, `PHASE1_ABNAHME.md` und `PHASE2_ABNAHME.md` bilden den damaligen Projektstand ab.
+Frühere Dateien wie `TEST_REPORT.md`, `PHASE1_ABNAHME.md` und `PHASE2_ABNAHME.md` bilden ihren damaligen Projektstand ab.
 
-Sie bleiben als historische Nachweise erhalten, sind aber keine aktuelle technische Baseline.
-
-Bei Widersprüchen ist für den heutigen V4-Stand diese P800-Dokumentation zusammen mit den aktuellen technischen Referenzdokumenten maßgeblich.
+Sie bleiben als historische Nachweise erhalten, sind aber keine aktuelle technische Baseline. Bei Widersprüchen sind diese P800-Dokumentation und die aktuellen technischen Referenzdokumente maßgeblich.
