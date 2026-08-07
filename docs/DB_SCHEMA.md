@@ -1,33 +1,137 @@
-# Datenbankschema-Ergänzung R7.1 / M4
+# Plärrdeifl Portal V4 – aktuelle Datenbankstruktur
 
-## Allgemeiner Tabellenstandard
+**Stand:** 7. August 2026
+**Referenz-Baseline:** `2c77d1e4edbd398fa60bcbb707b55c46f53a448d`
 
-- Header: Zeile 1
-- Daten: ab Zeile 2
-- keine reservierten Leerzeilen
-- keine Formeln in DB-Tabellen
-- stabile fachliche IDs
+Diese Datei beschreibt die aktive PostgreSQL-/Supabase-Struktur des V4-Portals.
 
-## DB_Benutzer
+Frühere Beschreibungen von `DB_Benutzer`, `DB_BenutzerAntraege`, `DB_AuditLog` und vergleichbaren Google-Sheet-Strukturen gehören zum Legacy-System und sind nicht das aktuelle V4-Datenbankschema.
 
-| Feld | Regel |
+## 1. Grundstruktur
+
+Die Fachanwendung verwendet getrennte PostgreSQL-Schemas:
+
+### `app_portal`
+
+Portalweite Kerninformationen, beispielsweise Portalbenutzer, Rollen und Berechtigungen, Einstellungen, Benachrichtigungen, Push-Abonnements und Audit-/Portalzustände.
+
+### `app_fanclub`
+
+Fanclubbezogene Fachdaten, beispielsweise Mitglieder, Ämter, Beiträge und bestehende Finanzdaten.
+
+### `app_modules`
+
+Modulbezogene Fachobjekte, beispielsweise Teams, Aufgaben, Aufgabenverlauf sowie Transfer- und Workflowdaten.
+
+### `app_private`
+
+Interne Funktionen und Implementierungslogik.
+
+Dieses Schema ist kein Browser-API-Schema und darf nicht als öffentliche Anwendungsoberfläche verwendet werden.
+
+### `public`
+
+Kontrollierte technische Eintrittspunkte.
+
+Die zentrale Browserfunktion ist:
+
+`public.pd_api(text, jsonb)`
+
+Zusätzliche öffentliche Funktionen existieren nur für klar begrenzte interne beziehungsweise serverseitige Abläufe.
+
+## 2. Authentifizierung und Portalidentität
+
+Supabase Auth verwaltet die externe Authentifizierungsidentität.
+
+Portalrechte werden nicht unmittelbar aus Google-Profilfeldern abgeleitet.
+
+Der Datenbankzustand entscheidet unter anderem über Portalaktivierung, Rolle, Fähigkeiten, Mitgliedsverknüpfung und administrative Rechte.
+
+Google-Metadaten dürfen für Namensvorschläge verwendet werden, aber nicht als Autorisierungsquelle.
+
+## 3. Zugriffsschutz
+
+Für die Fachdatentabellen gilt:
+
+- RLS aktiviert
+- kein direkter Browser-Tabellenzugriff
+- kein allgemeiner Zugriff der Rollen `anon` oder `authenticated` auf Anwendungsschemas
+- fachliche Zugriffe ausschließlich über kontrollierte Funktionen
+
+Die fehlenden direkten Tabellen-Policies im Anwendungsbereich sind unter diesem Architekturmodell beabsichtigt, weil die Tabellen bereits auf Grant-/Schemaebene nicht direkt erreichbar sind.
+
+## 4. Browser-RPC
+
+Browseraktionen verwenden:
+
+`public.pd_api(text, jsonb)`
+
+Aktueller Berechtigungsvertrag:
+
+| Rolle | EXECUTE auf `pd_api` |
 |---|---|
-| Benutzer-ID | stabiler technischer Schlüssel |
-| Vorname | Pflicht; getrimmt; kein E-Mail-/Platzhalter-/Formel-Fallback |
-| Nachname | Pflicht; getrimmt; kein E-Mail-/Platzhalter-/Formel-Fallback |
-| Anzeigename | ausschließlich aus validiertem Vorname + Nachname |
-| Aktiv | Aktivierung/Reaktivierung nur mit vollständigem Namen |
-| Google-Sub | verifizierte Google-Identität; ersetzt keine Namensfelder |
-| Google-E-Mail | Kontakt-/Loginwert; ersetzt keine Namensfelder |
+| `anon` | nein |
+| `authenticated` | ja |
 
-## DB_BenutzerAntraege
+Jede fachliche Aktion muss darüber hinaus innerhalb der Datenbank die aktuelle Benutzeridentität und die erforderliche Capability beziehungsweise Berechtigung prüfen.
 
-Offene, genehmigte oder zu übernehmende Anträge benötigen gültigen Vor- und Nachnamen. Ein unvollständiger Antrag ist nicht genehmigungsfähig. Die Google-Profilwerte `given_name` und `family_name` dürfen als editierbare Vorbelegung dienen.
+## 5. Service-RPCs
 
-## DB_AuditLog
+Serverseitige Funktionen dürfen nicht durch pauschale Default-Rechte zugänglich werden.
 
-M4-Namensvorgänge speichern Objekt-ID, ausführenden Benutzer, Zeitpunkt, Aktion, betroffene Feldnamen und Ergebnis. Alte und neue vollständige Namen werden nicht unnötig dauerhaft abgelegt.
+Beispielsweise erhalten die benötigten Web-Push-RPCs ihre Rechte gezielt für `service_role`.
 
-## Integritätsabfrage
+Damit gilt:
 
-`apiGetNameIntegrityStatus` beziehungsweise `m4NameIntegrityReport()` ermittelt Gesamtzahlen, fehlende Vornamen, fehlende Nachnamen, aktive unvollständige Benutzer, unvollständige relevante Anträge und den Status der geschützten Admin-IDs `U-0001` und `U-0009`.
+- kein allgemeines Service-Role-Defaultrecht
+- benötigte Serverrechte nur durch explizites `GRANT`
+- Service-Role-Schlüssel niemals im Browser
+
+## 6. Default Privileges
+
+P800 führt für zukünftig durch `postgres` erzeugte Objekte ein reproduzierbares Default-Deny-Modell ein.
+
+Die Migration `20260807120000_harden_public_default_privileges.sql` entzieht:
+
+- automatisches Funktions-EXECUTE von `PUBLIC`
+- Default-Rechte auf neue Tabellen für `anon`, `authenticated`, `service_role`
+- Default-Rechte auf neue Sequenzen für `anon`, `authenticated`, `service_role`
+- Default-Rechte auf neue Funktionen für `anon`, `authenticated`, `service_role`
+
+Bestehende, ausdrücklich benötigte Objekt-Grants werden dadurch nicht verändert.
+
+## 7. Migrationen
+
+Die Datenbankhistorie liegt versioniert unter `supabase/migrations`.
+
+P800 stellt zusätzlich die auf DEV bereits vorhandene, im Repository aber zuvor fehlende Migration wieder her:
+
+`20260802211306_harden_pd_api_revoke_anon_execute.sql`
+
+Sie enthält die bereits auf DEV wirksame Entziehung:
+
+```sql
+revoke execute
+on function public.pd_api(text, jsonb)
+from anon;
+```
+
+## 8. Finanzdaten
+
+Beiträge und Fanclub-Finanzen sind Bestandteil des vorhandenen Systems.
+
+Die bestehende Finanzfunktion ist produktiv und wird nicht als zukünftiges Grundmodul betrachtet.
+
+Das spätere Fanbus-Modul darf auf dieser Struktur nur gezielt für fanbusbezogene Zahlungen, Abrechnung und Auswertung aufbauen.
+
+## 9. Änderungsregel
+
+Neue Datenbankobjekte oder strukturelle Änderungen werden ausschließlich über versionierte Migrationen eingeführt.
+
+Nicht zulässig als Normalprozess sind:
+
+- unversionierte Studio-Strukturänderungen
+- manuelle Cloud-DDL ohne entsprechende Repository-Migration
+- pauschale Browsergrants
+- pauschale Service-Role-Grants
+- Verwendung von Google-Metadaten als Autorisierung

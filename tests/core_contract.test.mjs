@@ -60,12 +60,20 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260724133000_add_role_aware_dashboard_r1.sql",
     "20260724193000_add_personal_dashboard_widgets_r1.sql",
     "20260725010000_add_dashboard_small_widget_size_r1.sql",
-    "20260727203211_harden_private_function_privileges_and_push_runtime.sql"
+    "20260727203211_harden_private_function_privileges_and_push_runtime.sql",
+    "20260802211306_harden_pd_api_revoke_anon_execute.sql",
+    "20260807120000_harden_public_default_privileges.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
   const seed = await read(`supabase/migrations/${names[3]}`);
   const api = await read(`supabase/migrations/${names[4]}`);
+  const pdApiAnonHardening = await read(
+    "supabase/migrations/20260802211306_harden_pd_api_revoke_anon_execute.sql"
+  );
+  const publicDefaultPrivileges = await read(
+    "supabase/migrations/20260807120000_harden_public_default_privileges.sql"
+  );
   for (const schema of ["app_portal", "app_fanclub", "app_modules", "app_private"]) {
     assert.match(tables + api, new RegExp(schema.replace("_", "_")));
   }
@@ -77,6 +85,26 @@ test("database migrations are ordered and contain the core contract", async () =
   assert.match(api, /grant execute on function public\.pd_api\(text, jsonb\) to authenticated/);
   assert.match(api, /grant execute on function public\.pd_create_bootstrap_token[\s\S]+to service_role/);
   assert.doesNotMatch(api, /grant\s+(?:all|select|insert|update|delete)[\s\S]+to\s+anon/i);
+  assert.match(
+    pdApiAnonHardening,
+    /revoke\s+execute\s+on\s+function\s+public\.pd_api\(text,\s*jsonb\)\s+from\s+anon\s*;/i
+  );
+  assert.match(
+    publicDefaultPrivileges,
+    /alter\s+default\s+privileges\s+for\s+role\s+postgres\s+revoke\s+execute\s+on\s+functions\s+from\s+public\s*;/i
+  );
+  assert.match(
+    publicDefaultPrivileges,
+    /alter\s+default\s+privileges\s+for\s+role\s+postgres\s+in\s+schema\s+public\s+revoke\s+all\s+on\s+tables\s+from\s+anon\s*,\s*authenticated\s*,\s*service_role\s*;/i
+  );
+  assert.match(
+    publicDefaultPrivileges,
+    /alter\s+default\s+privileges\s+for\s+role\s+postgres\s+in\s+schema\s+public\s+revoke\s+all\s+on\s+sequences\s+from\s+anon\s*,\s*authenticated\s*,\s*service_role\s*;/i
+  );
+  assert.match(
+    publicDefaultPrivileges,
+    /alter\s+default\s+privileges\s+for\s+role\s+postgres\s+in\s+schema\s+public\s+revoke\s+all\s+on\s+functions\s+from\s+anon\s*,\s*authenticated\s*,\s*service_role\s*;/i
+  );
 });
 
 test("dynamic roles and fixed offices are documented as V4 decisions", async () => {
