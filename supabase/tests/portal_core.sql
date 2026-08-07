@@ -329,5 +329,634 @@ begin
 end
 $event_model_verification$;
 
+do $event_api_verification$
+declare
+  v_reader_id uuid := '00000000-0000-4210-8000-000000000101';
+  v_admin_id uuid := '00000000-0000-4210-8000-000000000102';
+  v_list_fanclub_id uuid := '00000000-0000-4210-8000-000000000201';
+  v_list_home_id uuid := '00000000-0000-4210-8000-000000000202';
+  v_list_away_id uuid := '00000000-0000-4210-8000-000000000203';
+  v_list_other_id uuid := '00000000-0000-4210-8000-000000000204';
+  v_list_past_id uuid := '00000000-0000-4210-8000-000000000205';
+  v_created_fanclub_id uuid;
+  v_created_other_id uuid;
+  v_created_game_id uuid;
+  v_today date := (now() at time zone 'Europe/Berlin')::date;
+  v_response jsonb;
+  v_events jsonb;
+  v_event_count bigint;
+  v_function text;
+begin
+  foreach v_function in array array[
+    'app_private.api_events_list()',
+    'app_private.api_event_create(jsonb)',
+    'app_private.api_event_update(jsonb)',
+    'app_private.api_event_delete(jsonb)'
+  ]
+  loop
+    if to_regprocedure(v_function) is null then
+      raise exception 'Interne M210-API-Funktion fehlt: %', v_function;
+    end if;
+    if has_function_privilege('anon', v_function, 'EXECUTE')
+       or has_function_privilege('authenticated', v_function, 'EXECUTE') then
+      raise exception 'Browserrolle darf interne M210-Funktion ausführen: %',
+        v_function;
+    end if;
+  end loop;
+
+  if has_function_privilege(
+    'anon',
+    'public.pd_api_before_events_r1(text,jsonb)',
+    'EXECUTE'
+  ) or has_function_privilege(
+    'authenticated',
+    'public.pd_api_before_events_r1(text,jsonb)',
+    'EXECUTE'
+  ) then
+    raise exception 'Browserrolle darf den internen Vorgänger-Dispatcher ausführen.';
+  end if;
+
+  delete from app_modules.events;
+
+  insert into auth.users (id, email)
+  values
+    (v_reader_id, 'm210-reader@example.invalid'),
+    (v_admin_id, 'm210-admin@example.invalid');
+
+  insert into app_portal.users (
+    id,
+    user_code,
+    email,
+    first_name,
+    last_name,
+    role_id
+  )
+  values
+    (
+      v_reader_id,
+      'U-M210-READER',
+      'm210-reader@example.invalid',
+      'M210',
+      'Reader',
+      '00000000-0000-4000-8000-000000000002'
+    ),
+    (
+      v_admin_id,
+      'U-M210-ADMIN',
+      'm210-admin@example.invalid',
+      'M210',
+      'Admin',
+      '00000000-0000-4000-8000-000000000001'
+    );
+
+  insert into app_modules.events (
+    id,
+    event_type,
+    title,
+    event_date,
+    event_time,
+    visibility,
+    created_by,
+    updated_by
+  )
+  values
+    (
+      v_list_fanclub_id,
+      'FANCLUB',
+      'Lesetest Fanclub',
+      v_today,
+      null,
+      'INTERNAL',
+      v_admin_id,
+      v_admin_id
+    ),
+    (
+      v_list_home_id,
+      'GAME',
+      null,
+      v_today,
+      time '18:00',
+      'PUBLIC',
+      v_admin_id,
+      v_admin_id
+    ),
+    (
+      v_list_away_id,
+      'GAME',
+      null,
+      v_today,
+      time '20:00',
+      'INTERNAL',
+      v_admin_id,
+      v_admin_id
+    ),
+    (
+      v_list_other_id,
+      'OTHER',
+      'Lesetest Sonstiges',
+      v_today + 1,
+      null,
+      'PUBLIC',
+      v_admin_id,
+      v_admin_id
+    ),
+    (
+      v_list_past_id,
+      'OTHER',
+      'Vergangener Termin',
+      v_today - 1,
+      null,
+      'PUBLIC',
+      v_admin_id,
+      v_admin_id
+    );
+
+  insert into app_modules.event_games (
+    event_id,
+    home_away,
+    opponent_name
+  )
+  values
+    (v_list_home_id, 'HOME', 'Heimgegner'),
+    (v_list_away_id, 'AWAY', 'Auswärtsgegner');
+
+  perform set_config('request.jwt.claim.sub', v_reader_id::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    jsonb_build_object(
+      'sub', v_reader_id,
+      'role', 'authenticated'
+    )::text,
+    true
+  );
+
+  v_response := public.pd_api('events_list', '{}'::jsonb);
+
+  if not coalesce((v_response ->> 'ok')::boolean, false) then
+    raise exception 'Aktiver Portalbenutzer kann die Terminliste nicht abrufen: %',
+      v_response;
+  end if;
+
+  v_events := v_response #> '{data,events}';
+
+  if jsonb_array_length(v_events) <> 4 then
+    raise exception 'Terminliste enthält nicht exakt die erwarteten Termine: %',
+      v_events;
+  end if;
+
+  if v_events -> 0 ->> 'id' <> v_list_fanclub_id::text
+     or v_events -> 1 ->> 'id' <> v_list_home_id::text
+     or v_events -> 2 ->> 'id' <> v_list_away_id::text
+     or v_events -> 3 ->> 'id' <> v_list_other_id::text then
+    raise exception 'Terminliste ist nicht chronologisch und deterministisch sortiert: %',
+      v_events;
+  end if;
+
+  if v_events -> 0 ->> 'displayTitle' <> 'Lesetest Fanclub'
+     or v_events -> 3 ->> 'displayTitle' <> 'Lesetest Sonstiges' then
+    raise exception 'Nicht-Spieltermine verwenden nicht ihren gespeicherten Titel.';
+  end if;
+
+  if v_events -> 1 ->> 'displayTitle'
+       <> 'Mighty Dogs Schweinfurt – Heimgegner' then
+    raise exception 'HOME-displayTitle ist ungültig.';
+  end if;
+
+  if v_events -> 2 ->> 'displayTitle'
+       <> 'Auswärtsgegner – Mighty Dogs Schweinfurt' then
+    raise exception 'AWAY-displayTitle ist ungültig.';
+  end if;
+
+  if v_events -> 1 ->> 'visibility' <> 'PUBLIC'
+     or v_events -> 2 ->> 'visibility' <> 'INTERNAL' then
+    raise exception 'PUBLIC und INTERNAL sind nicht gemeinsam sichtbar.';
+  end if;
+
+  if exists (
+    select 1
+    from jsonb_array_elements(v_events) as item(value)
+    where coalesce((item.value ->> 'canManage')::boolean, false)
+  ) then
+    raise exception 'Benutzer ohne events.manage erhält canManage=true.';
+  end if;
+
+  select count(*) into v_event_count
+  from app_modules.events;
+
+  v_response := public.pd_api(
+    'event_create',
+    jsonb_build_object(
+      'eventType', 'OTHER',
+      'title', 'Nicht erlaubt',
+      'eventDate', v_today::text,
+      'visibility', 'PUBLIC'
+    )
+  );
+
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or coalesce(v_response #>> '{error,code}', '') <> '42501'
+     or (select count(*) from app_modules.events) <> v_event_count then
+    raise exception 'Benutzer ohne events.manage durfte einen Termin erstellen.';
+  end if;
+
+  v_response := public.pd_api(
+    'event_update',
+    jsonb_build_object(
+      'id', v_list_home_id,
+      'expectedRevision', 1,
+      'eventType', 'GAME',
+      'eventDate', v_today::text,
+      'eventTime', '18:30',
+      'visibility', 'PUBLIC',
+      'homeAway', 'HOME',
+      'opponentName', 'Geänderter Gegner'
+    )
+  );
+
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or coalesce(v_response #>> '{error,code}', '') <> '42501'
+     or exists (
+       select 1
+       from app_modules.events as event
+       where event.id = v_list_home_id
+         and event.revision <> 1
+     ) then
+    raise exception 'Benutzer ohne events.manage durfte einen Termin ändern.';
+  end if;
+
+  v_response := public.pd_api(
+    'event_delete',
+    jsonb_build_object(
+      'id', v_list_home_id,
+      'expectedRevision', 1
+    )
+  );
+
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or coalesce(v_response #>> '{error,code}', '') <> '42501'
+     or not exists (
+       select 1
+       from app_modules.events
+       where id = v_list_home_id
+     ) then
+    raise exception 'Benutzer ohne events.manage durfte einen Termin löschen.';
+  end if;
+
+  if not app_private.has_capability(v_admin_id, 'events.manage') then
+    raise exception 'portal.admin-Override für events.manage ist nicht wirksam.';
+  end if;
+
+  perform set_config('request.jwt.claim.sub', v_admin_id::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    jsonb_build_object(
+      'sub', v_admin_id,
+      'role', 'authenticated'
+    )::text,
+    true
+  );
+
+  v_response := public.pd_api('events_list', '{}'::jsonb);
+  v_events := v_response #> '{data,events}';
+
+  if not coalesce((v_response ->> 'ok')::boolean, false)
+     or exists (
+       select 1
+       from jsonb_array_elements(v_events) as item(value)
+       where not coalesce((item.value ->> 'canManage')::boolean, false)
+     ) then
+    raise exception 'portal.admin erhält in der Terminliste nicht canManage=true.';
+  end if;
+
+  v_response := public.pd_api(
+    'event_create',
+    jsonb_build_object(
+      'eventType', 'FANCLUB',
+      'title', 'API Fanclub',
+      'eventDate', (v_today + 2)::text,
+      'eventTime', '19:00',
+      'venue', 'Clubheim',
+      'description', 'Fanclub-Testtermin',
+      'visibility', 'INTERNAL'
+    )
+  );
+
+  if not coalesce((v_response ->> 'ok')::boolean, false) then
+    raise exception 'FANCLUB-Create ist fehlgeschlagen: %', v_response;
+  end if;
+
+  select event.id
+  into v_created_fanclub_id
+  from app_modules.events as event
+  where event.title = 'API Fanclub'
+    and event.created_by = v_admin_id;
+
+  if v_created_fanclub_id is null
+     or not exists (
+       select 1
+       from app_modules.events as event
+       where event.id = v_created_fanclub_id
+         and event.event_type = 'FANCLUB'
+         and event.revision = 1
+         and event.created_by = v_admin_id
+         and event.updated_by = v_admin_id
+     )
+     or exists (
+       select 1
+       from app_modules.event_games
+       where event_id = v_created_fanclub_id
+     ) then
+    raise exception 'FANCLUB wurde nicht korrekt erstellt.';
+  end if;
+
+  v_response := public.pd_api(
+    'event_create',
+    jsonb_build_object(
+      'eventType', 'OTHER',
+      'title', 'API Sonstiges',
+      'eventDate', (v_today + 3)::text,
+      'visibility', 'PUBLIC'
+    )
+  );
+
+  if not coalesce((v_response ->> 'ok')::boolean, false) then
+    raise exception 'OTHER-Create ist fehlgeschlagen: %', v_response;
+  end if;
+
+  select event.id
+  into v_created_other_id
+  from app_modules.events as event
+  where event.title = 'API Sonstiges'
+    and event.created_by = v_admin_id;
+
+  if v_created_other_id is null
+     or not exists (
+       select 1
+       from app_modules.events as event
+       where event.id = v_created_other_id
+         and event.event_type = 'OTHER'
+         and event.revision = 1
+     )
+     or exists (
+       select 1
+       from app_modules.event_games
+       where event_id = v_created_other_id
+     ) then
+    raise exception 'OTHER wurde nicht korrekt erstellt.';
+  end if;
+
+  v_response := public.pd_api(
+    'event_create',
+    jsonb_build_object(
+      'eventType', 'GAME',
+      'title', 'Darf nicht gespeichert werden',
+      'eventDate', (v_today + 4)::text,
+      'eventTime', '20:00',
+      'venue', 'Stadion',
+      'visibility', 'PUBLIC',
+      'homeAway', 'HOME',
+      'opponentName', 'API Gegner'
+    )
+  );
+
+  if not coalesce((v_response ->> 'ok')::boolean, false) then
+    raise exception 'GAME-Create ist fehlgeschlagen: %', v_response;
+  end if;
+
+  select game.event_id
+  into v_created_game_id
+  from app_modules.event_games as game
+  where game.opponent_name = 'API Gegner';
+
+  if v_created_game_id is null
+     or not exists (
+       select 1
+       from app_modules.events as event
+       where event.id = v_created_game_id
+         and event.event_type = 'GAME'
+         and event.title is null
+         and event.revision = 1
+         and event.created_by = v_admin_id
+         and event.updated_by = v_admin_id
+     )
+     or (
+       select count(*)
+       from app_modules.event_games
+       where event_id = v_created_game_id
+     ) <> 1 then
+    raise exception 'GAME wurde nicht atomar und korrekt erstellt.';
+  end if;
+
+  if not exists (
+    select 1
+    from app_portal.audit_events as audit
+    where audit.action = 'EVENT_CREATED'
+      and audit.entity_type = 'event'
+      and audit.entity_id = v_created_game_id::text
+      and audit.actor_user_id = v_admin_id
+      and audit.after_data is not null
+  ) then
+    raise exception 'Create-Audit für GAME fehlt.';
+  end if;
+
+  v_response := public.pd_api(
+    'event_update',
+    jsonb_build_object(
+      'id', v_created_other_id,
+      'expectedRevision', 1,
+      'eventType', 'OTHER',
+      'title', 'API Sonstiges geändert',
+      'eventDate', (v_today + 3)::text,
+      'eventTime', '10:00',
+      'visibility', 'INTERNAL'
+    )
+  );
+
+  if not coalesce((v_response ->> 'ok')::boolean, false)
+     or not exists (
+       select 1
+       from app_modules.events as event
+       where event.id = v_created_other_id
+         and event.title = 'API Sonstiges geändert'
+         and event.revision = 2
+         and event.updated_by = v_admin_id
+     ) then
+    raise exception 'Gültiges Update erhöht die Revision nicht exakt um 1.';
+  end if;
+
+  v_response := public.pd_api(
+    'event_update',
+    jsonb_build_object(
+      'id', v_created_other_id,
+      'expectedRevision', 1,
+      'eventType', 'OTHER',
+      'title', 'Veraltete Änderung',
+      'eventDate', (v_today + 3)::text,
+      'visibility', 'PUBLIC'
+    )
+  );
+
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or coalesce(v_response #>> '{error,code}', '') <> '40001'
+     or not exists (
+       select 1
+       from app_modules.events as event
+       where event.id = v_created_other_id
+         and event.title = 'API Sonstiges geändert'
+         and event.revision = 2
+     ) then
+    raise exception 'Update mit falscher expectedRevision wurde nicht abgelehnt.';
+  end if;
+
+  v_response := public.pd_api(
+    'event_update',
+    jsonb_build_object(
+      'id', v_created_game_id,
+      'expectedRevision', 1,
+      'eventType', 'FANCLUB',
+      'title', 'Spiel wurde Fanclubtermin',
+      'eventDate', (v_today + 4)::text,
+      'visibility', 'INTERNAL'
+    )
+  );
+
+  if not coalesce((v_response ->> 'ok')::boolean, false)
+     or not exists (
+       select 1
+       from app_modules.events as event
+       where event.id = v_created_game_id
+         and event.event_type = 'FANCLUB'
+         and event.title = 'Spiel wurde Fanclubtermin'
+         and event.revision = 2
+     )
+     or exists (
+       select 1
+       from app_modules.event_games
+       where event_id = v_created_game_id
+     ) then
+    raise exception 'GAME zu FANCLUB wurde nicht atomar umgesetzt.';
+  end if;
+
+  v_response := public.pd_api(
+    'event_update',
+    jsonb_build_object(
+      'id', v_created_fanclub_id,
+      'expectedRevision', 1,
+      'eventType', 'GAME',
+      'title', 'Darf nicht gespeichert werden',
+      'eventDate', (v_today + 2)::text,
+      'eventTime', '19:30',
+      'visibility', 'PUBLIC',
+      'homeAway', 'AWAY',
+      'opponentName', 'Wechselgegner'
+    )
+  );
+
+  if not coalesce((v_response ->> 'ok')::boolean, false)
+     or not exists (
+       select 1
+       from app_modules.events as event
+       join app_modules.event_games as game
+         on game.event_id = event.id
+       where event.id = v_created_fanclub_id
+         and event.event_type = 'GAME'
+         and event.title is null
+         and event.revision = 2
+         and game.home_away = 'AWAY'
+         and game.opponent_name = 'Wechselgegner'
+     ) then
+    raise exception 'FANCLUB zu GAME wurde nicht atomar umgesetzt.';
+  end if;
+
+  if exists (
+    select 1
+    from app_modules.event_games as game
+    join app_modules.events as event
+      on event.id = game.event_id
+    where event.event_type <> 'GAME'
+  ) or exists (
+    select 1
+    from app_modules.events as event
+    left join app_modules.event_games as game
+      on game.event_id = event.id
+    where event.event_type = 'GAME'
+      and game.event_id is null
+  ) then
+    raise exception 'Typwechsel hinterließ widersprüchliche Game-Daten.';
+  end if;
+
+  if not exists (
+    select 1
+    from app_portal.audit_events as audit
+    where audit.action = 'EVENT_UPDATED'
+      and audit.entity_id = v_created_fanclub_id::text
+      and audit.actor_user_id = v_admin_id
+      and audit.before_data is not null
+      and audit.after_data is not null
+  ) then
+    raise exception 'Update-Audit fehlt.';
+  end if;
+
+  v_response := public.pd_api(
+    'event_delete',
+    jsonb_build_object(
+      'id', v_created_fanclub_id,
+      'expectedRevision', 1
+    )
+  );
+
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or coalesce(v_response #>> '{error,code}', '') <> '40001'
+     or not exists (
+       select 1
+       from app_modules.events
+       where id = v_created_fanclub_id
+     )
+     or not exists (
+       select 1
+       from app_modules.event_games
+       where event_id = v_created_fanclub_id
+     ) then
+    raise exception 'Delete mit falscher expectedRevision wurde nicht abgelehnt.';
+  end if;
+
+  v_response := public.pd_api(
+    'event_delete',
+    jsonb_build_object(
+      'id', v_created_fanclub_id,
+      'expectedRevision', 2
+    )
+  );
+
+  if not coalesce((v_response ->> 'ok')::boolean, false)
+     or exists (
+       select 1
+       from app_modules.events
+       where id = v_created_fanclub_id
+     )
+     or exists (
+       select 1
+       from app_modules.event_games
+       where event_id = v_created_fanclub_id
+     ) then
+    raise exception 'Delete mit korrekter Revision oder Cascade ist fehlgeschlagen.';
+  end if;
+
+  if not exists (
+    select 1
+    from app_portal.audit_events as audit
+    where audit.action = 'EVENT_DELETED'
+      and audit.entity_type = 'event'
+      and audit.entity_id = v_created_fanclub_id::text
+      and audit.actor_user_id = v_admin_id
+      and audit.before_data ->> 'event_type' = 'GAME'
+      and audit.before_data ->> 'opponentName' = 'Wechselgegner'
+      and audit.after_data is null
+  ) then
+    raise exception 'Delete-Audit mit gesichertem Vorzustand fehlt.';
+  end if;
+end
+$event_api_verification$;
+
 select 'PORTAL_CORE_STRUCTURE_OK' as result;
 rollback;
