@@ -21,6 +21,13 @@ const ROUTES = Object.freeze({
     icon: "🏠",
     order: 10
   },
+  dates: {
+    title: "Termine",
+    subtitle: "Kommende Termine und Spieltage",
+    page: "dates.html",
+    icon: "📅",
+    order: 15
+  },
   fanclub: {
     title: "Fanclub",
     subtitle: "Mitglieder, Beiträge, Zahlungen und Finanzen",
@@ -61,7 +68,6 @@ const ROUTES = Object.freeze({
 const LEGACY = Object.freeze({
   home: { target: "login", tab: "" },
   news: { target: "login", tab: "" },
-  dates: { target: "login", tab: "" },
   about: { target: "login", tab: "" },
   contact: { target: "login", tab: "" },
   install: { target: "login", tab: "" },
@@ -77,6 +83,7 @@ export function routes() {
 export function fixedAuthenticatedOrder() {
   return [
     "dashboard",
+    "dates",
     "fanclub",
     "tasks",
     "teams",

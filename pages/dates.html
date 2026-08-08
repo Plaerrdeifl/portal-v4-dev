@@ -1,7 +1,23 @@
-<section class="page public-page">
-  <article class="card public-page-card">
-    <div class="card-icon">📅</div>
-    <h2>Termine</h2>
-    <p id="publicDatesText">Kommende Termine werden hier angekündigt.</p>
-  </article>
+<section id="m210DatesPage" class="page module-shell v4-compact-page dates-page">
+  <div class="v4-module-surface">
+    <div id="m210DatesModuleHead" class="v4-heading-row v4-section-heading">
+      <div>
+        <h3>Kommende Termine</h3>
+        <p>Spieltage und Fanclubtermine auf einen Blick</p>
+      </div>
+      <div id="m210DatesManagement">
+        <button
+          id="m210AddEventButton"
+          class="button secondary v4-heading-action"
+          type="button"
+          hidden
+        >Termin hinzufügen</button>
+      </div>
+    </div>
+    <div class="v4-heading-row v4-subheading-row">
+      <p id="m210DatesSummary" class="subtle">Termine werden geladen …</p>
+      <span id="m210DatesStatus" class="status-pill">Lädt</span>
+    </div>
+    <div id="m210DatesList" class="module-panel" aria-live="polite"></div>
+  </div>
 </section>
