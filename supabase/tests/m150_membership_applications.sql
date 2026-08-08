@@ -581,7 +581,601 @@ begin
 end
 $m150_verification$;
 
-select pass('PORTAL_CORE_STRUCTURE_OK - M150 F1.2A contract');
+do $m150_conversion_verification$
+declare
+  v_role_member constant uuid := '00000000-0000-4000-8000-000000000002';
+  v_u1 constant uuid := '15000000-0000-4000-8000-000000000001';
+  v_u2 constant uuid := '15000000-0000-4000-8000-000000000002';
+  v_admin constant uuid := '15000000-0000-4000-8000-000000000099';
+  v_stale_office_user constant uuid := '15000000-0000-4000-8000-000000000199';
+  v_active_member constant uuid := '15000000-0000-4001-8000-000000000099';
+  v_inactive_member constant uuid := '15000000-0000-4001-8000-000000000199';
+  v_admin_app constant uuid := '15000000-0000-4002-8000-000000000101';
+  v_pending_app constant uuid := '15000000-0000-4002-8000-000000000102';
+  v_rejected_app constant uuid := '15000000-0000-4002-8000-000000000103';
+  v_withdrawn_app constant uuid := '15000000-0000-4002-8000-000000000104';
+  v_new_app constant uuid := '15000000-0000-4002-8000-000000000105';
+  v_reactivate_app constant uuid := '15000000-0000-4002-8000-000000000106';
+  v_resolve_app constant uuid := '15000000-0000-4002-8000-000000000107';
+  v_reactivate_active_app constant uuid := '15000000-0000-4002-8000-000000000108';
+  v_resolve_inactive_app constant uuid := '15000000-0000-4002-8000-000000000109';
+  v_stale_office_app constant uuid := '15000000-0000-4002-8000-000000000110';
+  v_response jsonb;
+  v_new_member_id uuid;
+  v_members_before bigint;
+  v_members_after_new bigint;
+  v_access_before bigint;
+  v_users_before bigint;
+  v_links_before bigint;
+  v_offices_before jsonb;
+  v_accounts_before bigint;
+  v_entries_before bigint;
+  v_reports_before bigint;
+  v_votes_before bigint;
+  v_inactive_before jsonb;
+  v_active_before jsonb;
+  v_office_member_before uuid;
+  v_stale_office_before jsonb;
+  v_count bigint;
+  v_privilege text;
+begin
+  if not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'app_fanclub'
+      and table_name = 'membership_applications'
+      and column_name = 'converted_at'
+      and data_type = 'timestamp with time zone'
+  ) or not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'app_fanclub'
+      and table_name = 'membership_applications'
+      and column_name = 'converted_by'
+      and data_type = 'uuid'
+  ) or not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'app_fanclub'
+      and table_name = 'membership_applications'
+      and column_name = 'converted_member_id'
+      and data_type = 'uuid'
+  ) or not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'app_fanclub'
+      and table_name = 'membership_applications'
+      and column_name = 'conversion_mode'
+      and data_type = 'text'
+  ) then
+    raise exception 'Conversion-Felder fehlen oder besitzen falsche Typen.';
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'app_fanclub.membership_applications'::regclass
+      and conname = 'membership_applications_conversion_mode_check'
+  ) or not exists (
+    select 1 from pg_constraint
+    where conrelid = 'app_fanclub.membership_applications'::regclass
+      and conname = 'membership_applications_conversion_state_check'
+  ) then
+    raise exception 'Conversion-Constraints fehlen.';
+  end if;
+
+  foreach v_privilege in array array['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER']
+  loop
+    if has_table_privilege('anon', 'app_fanclub.membership_applications', v_privilege)
+       or has_table_privilege('authenticated', 'app_fanclub.membership_applications', v_privilege)
+       or has_table_privilege('anon', 'app_fanclub.members', v_privilege)
+       or has_table_privilege('authenticated', 'app_fanclub.members', v_privilege) then
+      raise exception 'Browserrolle besitzt direktes Conversion-Tabellenrecht %.', v_privilege;
+    end if;
+  end loop;
+
+  if has_function_privilege(
+       'authenticated',
+       'app_private.api_membership_application_convert(jsonb)',
+       'EXECUTE'
+     ) then
+    raise exception 'authenticated darf die private Conversion-Funktion direkt ausfuehren.';
+  end if;
+
+  if has_function_privilege('anon', 'public.pd_api(text,jsonb)', 'EXECUTE')
+     or not has_function_privilege('authenticated', 'public.pd_api(text,jsonb)', 'EXECUTE') then
+    raise exception 'pd_api-Grant ist nach F1.2B fuer anon/authenticated falsch.';
+  end if;
+
+  insert into app_fanclub.members (
+    id, member_code, first_name, last_name, birth_date, email, phone,
+    street, house_number, postal_code, city, joined_on, left_on, status, notes
+  ) values (
+    v_inactive_member, 'M-M150-INACTIVE', 'Bestand', 'Unveraendert', date '1980-05-06',
+    'bestand@example.invalid', '09999', 'Alte Strasse', '9', '99999', 'Altort',
+    date '2010-04-03', date '2020-08-09', 'INACTIVE', 'Interne Bestandsnotiz'
+  );
+
+  insert into auth.users (id, email)
+  values (v_stale_office_user, 'm150-stale-office@example.invalid');
+
+  insert into app_portal.users (
+    id, user_code, email, first_name, last_name, role_id
+  ) values (
+    v_stale_office_user,
+    'U-M150-STALE-OFFICE',
+    'm150-stale-office@example.invalid',
+    'Stale',
+    'Amt',
+    v_role_member
+  );
+
+  insert into app_portal.user_member_links (user_id, member_id)
+  values (v_stale_office_user, v_inactive_member);
+
+  select to_jsonb(member)
+  into v_inactive_before
+  from app_fanclub.members as member
+  where member.id = v_inactive_member;
+
+  select to_jsonb(member)
+  into v_active_before
+  from app_fanclub.members as member
+  where member.id = v_active_member;
+
+  insert into app_fanclub.membership_applications (
+    id, first_name, last_name, birth_date, email, phone, street, house_number,
+    postal_code, city, applicant_message, status, submitted_at, decided_at,
+    decided_by, decision_method, decision_reason_internal, declaration_version,
+    statutes_version, statutes_reference, declaration_confirmed, statutes_confirmed
+  ) values
+    (v_admin_app, 'Admin', 'Versuch', date '1990-01-01', 'admin-convert@example.invalid', '01001', 'A', '1', '10001', 'Ort', null, 'APPROVED', now(), now(), v_u1, 'VOTE_MAJORITY', null, 'D1', 'S1', 'satzung-2026', true, true),
+    (v_pending_app, 'Pending', 'Conversion', date '1990-01-02', 'pending-convert@example.invalid', '01002', 'B', '2', '10002', 'Ort', null, 'PENDING', now(), null, null, null, null, 'D1', 'S1', 'satzung-2026', true, true),
+    (v_rejected_app, 'Rejected', 'Conversion', date '1990-01-03', 'rejected-convert@example.invalid', '01003', 'C', '3', '10003', 'Ort', null, 'REJECTED', now(), now(), v_u1, 'VOTE_MAJORITY', 'Abgelehnt', 'D1', 'S1', 'satzung-2026', true, true),
+    (v_withdrawn_app, 'Withdrawn', 'Conversion', date '1990-01-04', 'withdrawn-convert@example.invalid', '01004', 'D', '4', '10004', 'Ort', null, 'WITHDRAWN', now(), null, null, null, null, 'D1', 'S1', 'satzung-2026', true, true),
+    (v_new_app, 'Neu', 'Mitglied', date '1991-02-03', ' M150-MATCH@Example.Invalid ', '+49 170 7654321', 'Neue Strasse', '12a', '86150', 'Augsburg', 'NICHT IN NOTES UEBERNEHMEN', 'APPROVED', timestamptz '2026-01-15 23:30:00+00', now(), v_u1, 'VOTE_MAJORITY', null, 'D1', 'S1', 'satzung-2026', true, true),
+    (v_reactivate_app, 'Antrag', 'DarfBestandNichtAendern', date '2001-02-03', 'neu@example.invalid', '01111', 'Neue Daten', '77', '77777', 'Neuort', 'GEHEIM REACTIVATE', 'APPROVED', timestamptz '2026-07-15 22:30:00+00', now(), v_u1, 'VOTE_MAJORITY', null, 'D1', 'S1', 'satzung-2026', true, true),
+    (v_resolve_app, 'Anna', 'Antrag', date '1990-02-03', 'm150-match@example.invalid', '+49 170 123456', 'Andere Strasse', '5', '55555', 'Anderswo', 'GEHEIM RESOLVE', 'APPROVED', now(), now(), v_u1, 'VOTE_MAJORITY', null, 'D1', 'S1', 'satzung-2026', true, true),
+    (v_reactivate_active_app, 'Active', 'NichtReaktivieren', date '1990-01-08', 'active-reactivate@example.invalid', '01008', 'H', '8', '10008', 'Ort', null, 'APPROVED', now(), now(), v_u1, 'VOTE_MAJORITY', null, 'D1', 'S1', 'satzung-2026', true, true),
+    (v_resolve_inactive_app, 'Inactive', 'NichtAufloesen', date '1990-01-09', 'inactive-resolve@example.invalid', '01009', 'I', '9', '10009', 'Ort', null, 'APPROVED', now(), now(), v_u1, 'VOTE_MAJORITY', null, 'D1', 'S1', 'satzung-2026', true, true),
+    (v_stale_office_app, 'Stale', 'Office', date '1990-01-10', 'stale-office@example.invalid', '01010', 'J', '10', '10010', 'Ort', null, 'APPROVED', now(), now(), v_u1, 'VOTE_MAJORITY', null, 'D1', 'S1', 'satzung-2026', true, true);
+
+  begin
+    update app_fanclub.membership_applications
+    set converted_at = now()
+    where id = v_pending_app;
+    raise exception 'Partielle Conversion-Metadaten wurden akzeptiert.';
+  exception when check_violation then null;
+  end;
+
+  begin
+    update app_fanclub.membership_applications
+    set converted_at = now(),
+        converted_by = v_u1,
+        converted_member_id = v_active_member,
+        conversion_mode = 'RESOLVE_EXISTING_ACTIVE'
+    where id = v_pending_app;
+    raise exception 'PENDING Antrag akzeptierte vollstaendige Conversion-Metadaten.';
+  exception when check_violation then null;
+  end;
+
+  if exists (
+    select 1
+    from app_fanclub.membership_applications as application
+    where application.id = v_pending_app
+      and (
+        application.converted_at is not null
+        or application.converted_by is not null
+        or application.converted_member_id is not null
+        or application.conversion_mode is not null
+      )
+  ) then
+    raise exception 'Fehlgeschlagener APPROVED-DB-Constraint hinterliess Conversion-Metadaten.';
+  end if;
+
+  select office.member_id
+  into v_office_member_before
+  from app_fanclub.office_slots as office
+  where office.code = 'SCHRIFTFUEHRER';
+
+  update app_fanclub.office_slots
+  set member_id = v_inactive_member
+  where code = 'SCHRIFTFUEHRER';
+
+  select to_jsonb(office)
+  into v_stale_office_before
+  from app_fanclub.office_slots as office
+  where office.code = 'SCHRIFTFUEHRER';
+
+  perform set_config('request.jwt.claim.sub', v_u1::text, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', v_u1, 'role', 'authenticated')::text, true);
+  v_response := public.pd_api(
+    'membership_application_convert',
+    jsonb_build_object(
+      'id', v_stale_office_app,
+      'expectedRevision', 1,
+      'mode', 'REACTIVATE_EXISTING',
+      'targetMemberId', v_inactive_member
+    )
+  );
+
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,code}' <> '23514'
+     or v_response #>> '{error,message}' <> 'M150_REACTIVATION_OFFICE_ASSIGNMENT_REQUIRES_REVIEW'
+     or (select to_jsonb(member) from app_fanclub.members as member where member.id = v_inactive_member) <> v_inactive_before
+     or not exists (
+       select 1
+       from app_fanclub.membership_applications as application
+       where application.id = v_stale_office_app
+         and application.revision = 1
+         and application.converted_at is null
+         and application.converted_by is null
+         and application.converted_member_id is null
+         and application.conversion_mode is null
+     )
+     or (select to_jsonb(office) from app_fanclub.office_slots as office where office.code = 'SCHRIFTFUEHRER') <> v_stale_office_before
+     or exists (
+       select 1
+       from app_portal.audit_events as audit
+       where audit.action = 'MEMBERSHIP_APPLICATION_CONVERTED'
+         and audit.entity_id = v_stale_office_app::text
+     )
+     or exists (
+       select 1
+       from app_private.m150_current_board() as board
+       where board.user_id = v_stale_office_user
+     ) then
+    raise exception 'Stale Amtszuordnung wurde nicht vollstaendig mutationsfrei blockiert: %', v_response;
+  end if;
+
+  update app_fanclub.office_slots
+  set member_id = v_office_member_before
+  where code = 'SCHRIFTFUEHRER';
+
+  if (select count(*) from app_private.m150_current_board()) <> 5 then
+    raise exception 'Vorstandsfixture wurde nach stale Amtszuordnung nicht wiederhergestellt.';
+  end if;
+
+  select count(*) into v_members_before from app_fanclub.members;
+  select count(*) into v_access_before from app_portal.access_requests;
+  select count(*) into v_users_before from app_portal.users;
+  select count(*) into v_links_before from app_portal.user_member_links;
+  select jsonb_agg(to_jsonb(office) order by office.code)
+    into v_offices_before from app_fanclub.office_slots as office;
+  select count(*) into v_accounts_before from app_fanclub.finance_accounts;
+  select count(*) into v_entries_before from app_fanclub.finance_entries;
+  select count(*) into v_reports_before from app_fanclub.contribution_payment_reports;
+  select count(*) into v_votes_before from app_fanclub.membership_application_votes;
+
+  perform set_config('request.jwt.claim.sub', v_admin::text, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
+  v_response := public.pd_api(
+    'membership_application_convert',
+    jsonb_build_object('id', v_admin_app, 'expectedRevision', 1, 'mode', 'NEW_MEMBER')
+  );
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,code}' <> '42501'
+     or (select count(*) from app_fanclub.members) <> v_members_before
+     or (select converted_at from app_fanclub.membership_applications where id = v_admin_app) is not null then
+    raise exception 'Admin ohne Amt durfte konvertieren oder erzeugte eine Mutation: %', v_response;
+  end if;
+
+  perform set_config('request.jwt.claim.sub', v_u1::text, true);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', v_u1, 'role', 'authenticated')::text, true);
+
+  foreach v_response in array array[
+    public.pd_api('membership_application_convert', jsonb_build_object('id', v_pending_app, 'expectedRevision', 1, 'mode', 'NEW_MEMBER')),
+    public.pd_api('membership_application_convert', jsonb_build_object('id', v_rejected_app, 'expectedRevision', 1, 'mode', 'NEW_MEMBER')),
+    public.pd_api('membership_application_convert', jsonb_build_object('id', v_withdrawn_app, 'expectedRevision', 1, 'mode', 'NEW_MEMBER'))
+  ]
+  loop
+    if coalesce((v_response ->> 'ok')::boolean, false)
+       or v_response #>> '{error,message}' <> 'M150_CONVERSION_REQUIRES_APPROVED' then
+      raise exception 'Nicht-APPROVED Antrag konnte konvertiert werden: %', v_response;
+    end if;
+  end loop;
+
+  if (select count(*) from app_fanclub.members) <> v_members_before then
+    raise exception 'Statusfehler erzeugten Mitgliedsmutationen.';
+  end if;
+
+  v_response := public.pd_api(
+    'membership_application_convert',
+    jsonb_build_object('id', v_new_app, 'expectedRevision', 99, 'mode', 'NEW_MEMBER')
+  );
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,message}' <> 'M150_REVISION_CONFLICT'
+     or (select count(*) from app_fanclub.members) <> v_members_before then
+    raise exception 'Revision Conflict war nicht mutationsfrei: %', v_response;
+  end if;
+
+  v_response := public.pd_api(
+    'membership_application_convert',
+    jsonb_build_object('id', v_new_app, 'expectedRevision', 1, 'mode', 'NEW_MEMBER', 'targetMemberId', v_active_member)
+  );
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,message}' <> 'M150_NEW_MEMBER_TARGET_FORBIDDEN' then
+    raise exception 'NEW_MEMBER akzeptierte targetMemberId: %', v_response;
+  end if;
+
+  v_response := public.pd_api(
+    'membership_application_convert',
+    jsonb_build_object('id', v_reactivate_app, 'expectedRevision', 1, 'mode', 'REACTIVATE_EXISTING')
+  );
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,message}' <> 'M150_TARGET_MEMBER_REQUIRED' then
+    raise exception 'REACTIVATE_EXISTING akzeptierte fehlende targetMemberId: %', v_response;
+  end if;
+
+  v_response := public.pd_api(
+    'membership_application_convert',
+    jsonb_build_object('id', v_resolve_app, 'expectedRevision', 1, 'mode', 'RESOLVE_EXISTING_ACTIVE')
+  );
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,message}' <> 'M150_TARGET_MEMBER_REQUIRED' then
+    raise exception 'RESOLVE_EXISTING_ACTIVE akzeptierte fehlende targetMemberId: %', v_response;
+  end if;
+
+  v_response := public.pd_api(
+    'membership_application_convert',
+    jsonb_build_object('id', v_reactivate_app, 'expectedRevision', 1, 'mode', 'REACTIVATE_EXISTING', 'targetMemberId', 'keine-uuid')
+  );
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,message}' <> 'M150_INVALID_TARGET_MEMBER_ID' then
+    raise exception 'Ungueltige targetMemberId wurde akzeptiert: %', v_response;
+  end if;
+
+  v_response := public.pd_api(
+    'membership_application_convert',
+    jsonb_build_object(
+      'id', v_reactivate_app,
+      'expectedRevision', 1,
+      'mode', 'REACTIVATE_EXISTING',
+      'targetMemberId', '15000000-0000-4001-8000-000000000999'
+    )
+  );
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,message}' <> 'M150_TARGET_MEMBER_NOT_FOUND' then
+    raise exception 'Nicht existente targetMemberId wurde akzeptiert: %', v_response;
+  end if;
+
+  v_response := public.pd_api(
+    'membership_application_convert',
+    jsonb_build_object('id', v_reactivate_active_app, 'expectedRevision', 1, 'mode', 'REACTIVATE_EXISTING', 'targetMemberId', v_active_member)
+  );
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,message}' <> 'M150_REACTIVATION_REQUIRES_INACTIVE_MEMBER'
+     or (select to_jsonb(member) from app_fanclub.members as member where member.id = v_active_member) <> v_active_before then
+    raise exception 'ACTIVE Mitglied wurde reaktiviert oder mutiert: %', v_response;
+  end if;
+
+  v_response := public.pd_api(
+    'membership_application_convert',
+    jsonb_build_object('id', v_resolve_inactive_app, 'expectedRevision', 1, 'mode', 'RESOLVE_EXISTING_ACTIVE', 'targetMemberId', v_inactive_member)
+  );
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,message}' <> 'M150_RESOLUTION_REQUIRES_ACTIVE_MEMBER'
+     or (select to_jsonb(member) from app_fanclub.members as member where member.id = v_inactive_member) <> v_inactive_before then
+    raise exception 'INACTIVE Mitglied wurde als aktiv aufgeloest oder mutiert: %', v_response;
+  end if;
+
+  v_response := public.pd_api(
+    'membership_application_convert',
+    jsonb_build_object('id', v_new_app, 'expectedRevision', 1, 'mode', 'NEW_MEMBER')
+  );
+  if not coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{data,conversionMode}' <> 'NEW_MEMBER'
+     or v_response #>> '{data,convertedBy}' <> v_u1::text
+     or v_response #>> '{data,convertedAt}' is null then
+    raise exception 'NEW_MEMBER Conversion fehlgeschlagen: %', v_response;
+  end if;
+
+  v_new_member_id := (v_response #>> '{data,convertedMemberId}')::uuid;
+  select count(*) into v_members_after_new from app_fanclub.members;
+  if v_members_after_new <> v_members_before + 1
+     or not exists (
+       select 1
+       from app_fanclub.members as member
+       where member.id = v_new_member_id
+         and member.first_name = 'Neu'
+         and member.last_name = 'Mitglied'
+         and member.birth_date = date '1991-02-03'
+         and member.email = ' M150-MATCH@Example.Invalid '
+         and member.phone = '+49 170 7654321'
+         and member.street = 'Neue Strasse'
+         and member.house_number = '12a'
+         and member.postal_code = '86150'
+         and member.city = 'Augsburg'
+         and member.joined_on = date '2026-01-16'
+         and member.status = 'ACTIVE'
+         and member.left_on is null
+         and member.notes = ''
+         and member.member_code like 'PD-%'
+     ) then
+    raise exception 'NEW_MEMBER uebernahm Antrag, Berlin-Datum, Status oder Member-Code-Vertrag nicht korrekt.';
+  end if;
+
+  v_response := public.pd_api(
+    'membership_application_convert',
+    jsonb_build_object('id', v_new_app, 'expectedRevision', 2, 'mode', 'NEW_MEMBER')
+  );
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,message}' <> 'M150_APPLICATION_ALREADY_CONVERTED'
+     or (select count(*) from app_fanclub.members) <> v_members_after_new then
+    raise exception 'Zweite NEW_MEMBER Conversion war nicht idempotent: %', v_response;
+  end if;
+
+  begin
+    update app_fanclub.membership_applications
+    set status = 'WITHDRAWN',
+        decided_at = null,
+        decided_by = null,
+        decision_method = null,
+        decision_reason_internal = null,
+        applicant_notice = null
+    where id = v_new_app;
+    raise exception 'Konvertierter Antrag konnte APPROVED verlassen.';
+  exception when check_violation then null;
+  end;
+
+  if not exists (
+    select 1
+    from app_fanclub.membership_applications as application
+    where application.id = v_new_app
+      and application.status = 'APPROVED'
+      and application.revision = 2
+      and application.converted_at is not null
+      and application.converted_by = v_u1
+      and application.converted_member_id = v_new_member_id
+      and application.conversion_mode = 'NEW_MEMBER'
+  ) then
+    raise exception 'Fehlgeschlagener Statuswechsel veraenderte Status oder Conversion-Metadaten.';
+  end if;
+
+  v_response := public.pd_api(
+    'membership_application_convert',
+    jsonb_build_object('id', v_reactivate_app, 'expectedRevision', 1, 'mode', 'REACTIVATE_EXISTING', 'targetMemberId', v_inactive_member)
+  );
+  if not coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{data,conversionMode}' <> 'REACTIVATE_EXISTING'
+     or (v_response #>> '{data,convertedMemberId}')::uuid <> v_inactive_member
+     or not exists (
+       select 1
+       from app_fanclub.members as member
+       where member.id = v_inactive_member
+         and member.member_code = v_inactive_before ->> 'member_code'
+         and member.first_name = v_inactive_before ->> 'first_name'
+         and member.last_name = v_inactive_before ->> 'last_name'
+         and member.birth_date = (v_inactive_before ->> 'birth_date')::date
+         and member.email = v_inactive_before ->> 'email'
+         and member.phone = v_inactive_before ->> 'phone'
+         and member.street = v_inactive_before ->> 'street'
+         and member.house_number = v_inactive_before ->> 'house_number'
+         and member.postal_code = v_inactive_before ->> 'postal_code'
+         and member.city = v_inactive_before ->> 'city'
+         and member.notes = v_inactive_before ->> 'notes'
+         and member.status = 'ACTIVE'
+         and member.left_on is null
+         and member.joined_on = date '2026-07-16'
+     ) then
+    raise exception 'REACTIVATE_EXISTING verletzte Identitaet, Member-Code, Stammdaten oder Berlin-Datum: %', v_response;
+  end if;
+
+  v_response := public.pd_api(
+    'membership_application_convert',
+    jsonb_build_object('id', v_resolve_app, 'expectedRevision', 1, 'mode', 'RESOLVE_EXISTING_ACTIVE', 'targetMemberId', v_active_member)
+  );
+  if not coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{data,conversionMode}' <> 'RESOLVE_EXISTING_ACTIVE'
+     or (v_response #>> '{data,convertedMemberId}')::uuid <> v_active_member
+     or (select to_jsonb(member) from app_fanclub.members as member where member.id = v_active_member) <> v_active_before then
+    raise exception 'RESOLVE_EXISTING_ACTIVE mutierte das Mitglied oder setzte Metadaten nicht: %', v_response;
+  end if;
+
+  begin
+    update app_fanclub.membership_applications
+    set converted_member_id = v_active_member
+    where id = v_new_app;
+    raise exception 'converted_member_id konnte nach Conversion geaendert werden.';
+  exception when sqlstate '22000' then null;
+  end;
+
+  begin
+    update app_fanclub.membership_applications
+    set conversion_mode = 'RESOLVE_EXISTING_ACTIVE'
+    where id = v_new_app;
+    raise exception 'conversion_mode konnte nach Conversion geaendert werden.';
+  exception when sqlstate '22000' then null;
+  end;
+
+  begin
+    update app_fanclub.membership_applications
+    set converted_at = converted_at + interval '1 second'
+    where id = v_new_app;
+    raise exception 'converted_at konnte nach Conversion geaendert werden.';
+  exception when sqlstate '22000' then null;
+  end;
+
+  begin
+    update app_fanclub.membership_applications
+    set converted_by = v_u2
+    where id = v_new_app;
+    raise exception 'converted_by konnte nach Conversion geaendert werden.';
+  exception when sqlstate '22000' then null;
+  end;
+
+  if (select count(*) from app_fanclub.members) <> v_members_before + 1
+     or (select count(*) from app_portal.access_requests) <> v_access_before
+     or (select count(*) from app_portal.users) <> v_users_before
+     or (select count(*) from app_portal.user_member_links) <> v_links_before
+     or (select jsonb_agg(to_jsonb(office) order by office.code) from app_fanclub.office_slots as office) <> v_offices_before
+     or (select count(*) from app_fanclub.finance_accounts) <> v_accounts_before
+     or (select count(*) from app_fanclub.finance_entries) <> v_entries_before
+     or (select count(*) from app_fanclub.contribution_payment_reports) <> v_reports_before
+     or (select count(*) from app_fanclub.membership_application_votes) <> v_votes_before then
+    raise exception 'Conversion erzeugte unzulaessige Portal-, Amts-, Finance- oder Vote-Seiteneffekte.';
+  end if;
+
+  select count(*)
+  into v_count
+  from app_portal.audit_events as audit
+  where audit.action = 'MEMBERSHIP_APPLICATION_CONVERTED'
+    and audit.entity_type = 'membership_application'
+    and audit.entity_id in (v_new_app::text, v_reactivate_app::text, v_resolve_app::text)
+    and audit.metadata ? 'conversionMode'
+    and audit.metadata ? 'memberId'
+    and audit.metadata ? 'convertedBy'
+    and audit.metadata ? 'convertedAt';
+  if v_count <> 3 then
+    raise exception 'Conversion-Audit ist unvollstaendig.';
+  end if;
+
+  if not exists (
+    select 1 from app_portal.audit_events as audit
+    where audit.entity_id = v_new_app::text
+      and audit.action = 'MEMBERSHIP_APPLICATION_CONVERTED'
+      and audit.metadata ->> 'conversionMode' = 'NEW_MEMBER'
+      and (audit.metadata ->> 'newMemberCreated')::boolean
+      and (audit.metadata ->> 'memberId')::uuid = v_new_member_id
+  ) or not exists (
+    select 1 from app_portal.audit_events as audit
+    where audit.entity_id = v_reactivate_app::text
+      and audit.action = 'MEMBERSHIP_APPLICATION_CONVERTED'
+      and audit.metadata ->> 'conversionMode' = 'REACTIVATE_EXISTING'
+      and audit.metadata ->> 'previousStatus' = 'INACTIVE'
+      and (audit.metadata ->> 'previousJoinedOn')::date = date '2010-04-03'
+      and (audit.metadata ->> 'previousLeftOn')::date = date '2020-08-09'
+  ) or not exists (
+    select 1 from app_portal.audit_events as audit
+    where audit.entity_id = v_resolve_app::text
+      and audit.action = 'MEMBERSHIP_APPLICATION_CONVERTED'
+      and audit.metadata ->> 'conversionMode' = 'RESOLVE_EXISTING_ACTIVE'
+      and not (audit.metadata ->> 'memberMutationPerformed')::boolean
+  ) then
+    raise exception 'Modusspezifischer Conversion-Audit ist unvollstaendig.';
+  end if;
+
+  if exists (
+    select 1
+    from app_portal.audit_events as audit
+    where audit.action = 'MEMBERSHIP_APPLICATION_CONVERTED'
+      and audit.entity_id in (v_new_app::text, v_reactivate_app::text, v_resolve_app::text)
+      and lower(
+        coalesce(audit.before_data, '{}'::jsonb)::text
+        || coalesce(audit.after_data, '{}'::jsonb)::text
+        || coalesce(audit.metadata, '{}'::jsonb)::text
+      ) ~ '(m150-match@example|neu@example|nicht in notes|geheim reactivate|geheim resolve)'
+  ) then
+    raise exception 'Conversion-Audit enthaelt vollstaendige Antragspersonendaten.';
+  end if;
+
+  v_response := public.pd_api('events_list', '{}'::jsonb);
+  if not coalesce((v_response ->> 'ok')::boolean, false) then
+    raise exception 'M210-Regression nach F1.2B: events_list ist fehlgeschlagen: %', v_response;
+  end if;
+end
+$m150_conversion_verification$;
+
+select pass('PORTAL_CORE_STRUCTURE_OK - M150 F1.2A/F1.2B contract');
 select * from finish();
 
 rollback;

@@ -68,7 +68,9 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260808130000_add_public_events_read_api_r1.sql",
     "20260808140000_repair_birth_date_baseline_bf_003.sql",
     "20260808150000_add_membership_application_model_r1.sql",
-    "20260808151000_add_membership_application_internal_api_r1.sql"
+    "20260808151000_add_membership_application_internal_api_r1.sql",
+    "20260809001000_add_membership_application_conversion_r1.sql",
+    "20260809002000_add_membership_application_conversion_api_r1.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
@@ -111,6 +113,25 @@ test("database migrations are ordered and contain the core contract", async () =
     publicDefaultPrivileges,
     /alter\s+default\s+privileges\s+for\s+role\s+postgres\s+in\s+schema\s+public\s+revoke\s+all\s+on\s+functions\s+from\s+anon\s*,\s*authenticated\s*,\s*service_role\s*;/i
   );
+});
+
+test("M150 conversion remains behind the authenticated additive RPC boundary", async () => {
+  const model = await read(
+    "supabase/migrations/20260809001000_add_membership_application_conversion_r1.sql"
+  );
+  const api = await read(
+    "supabase/migrations/20260809002000_add_membership_application_conversion_api_r1.sql"
+  );
+
+  assert.match(model, /membership_applications_conversion_state_check/);
+  assert.match(model, /M150_CONVERSION_IMMUTABLE/);
+  assert.match(api, /when 'membership_application_convert'/);
+  assert.match(api, /return public\.pd_api_before_membership_application_conversion_r1\(p_action, p_payload\)/);
+  assert.match(api, /m150_require_current_board_member\(\)/);
+  assert.doesNotMatch(api, /service[_-]?role/i);
+  assert.doesNotMatch(api, /grant execute[\s\S]+to anon/i);
+  assert.doesNotMatch(api, /(?:insert into|update|delete from)\s+app_portal\.access_requests\b/i);
+  assert.doesNotMatch(api, /(?:insert into|update|delete from)\s+app_fanclub\.(?:finance_|contribution_)/i);
 });
 
 test("dynamic roles and fixed offices are documented as V4 decisions", async () => {
