@@ -65,7 +65,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260807120000_harden_public_default_privileges.sql",
     "20260807120100_add_central_event_model_r1.sql",
     "20260808120000_add_internal_events_api_r1.sql",
-    "20260808130000_add_public_events_read_api_r1.sql"
+    "20260808130000_add_public_events_read_api_r1.sql",
+    "20260808140000_repair_birth_date_baseline_bf_003.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
