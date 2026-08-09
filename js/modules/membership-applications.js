@@ -301,8 +301,8 @@ function decisionMarkup(detail) {
     <div class="v4-detail-grid">
       <div><span>Entschieden am</span><strong>${escapeHtml(fmtDateTime(detail.decidedAt))}</strong></div>
       <div><span>Entscheidungsart</span><strong>${escapeHtml(DECISION_METHOD[detail.decisionMethod] || detail.decisionMethod || "–")}</strong></div>
-      <div class="full v4-m150-internal-reason"><span>Interner Entscheidungsgrund – nicht für den Antragsteller</span><strong class="v4-preserve-lines">${escapeHtml(detail.decisionReasonInternal || "–")}</strong></div>
-      <div class="full v4-m150-applicant-notice"><span>Separate Mitteilung an den Antragsteller</span><strong class="v4-preserve-lines">${escapeHtml(detail.applicantNotice || "–")}</strong></div>
+      <div class="full v4-m150-internal-reason"><span>${detail.status === "REJECTED" ? "Interner Ablehnungsgrund – wird nicht an den Antragsteller gesendet" : "Interner Entscheidungsgrund – nicht für den Antragsteller"}</span><strong class="v4-preserve-lines">${escapeHtml(detail.decisionReasonInternal || "–")}</strong></div>
+      ${detail.status === "REJECTED" && detail.applicantNotice ? `<div class="full v4-m150-applicant-notice"><span>Separate Mitteilung an den Antragsteller</span><strong class="v4-preserve-lines">${escapeHtml(detail.applicantNotice)}</strong></div>` : ""}
     </div>
   </section>`;
 }
@@ -523,7 +523,11 @@ async function handleVote(detail, vote) {
       body: `<form class="form-grid v4-smart-form v4-m150-form">
         <label class="v4-field-full">Interner Ablehnungsgrund
           <textarea name="reasonInternal" rows="5" maxlength="4000" required></textarea>
-          <small>Dieser Grund ist nicht für den Antragsteller bestimmt.</small>
+          <small>Intern – wird nicht an den Antragsteller gesendet.</small>
+        </label>
+        <label class="v4-field-full">Mitteilung an Antragsteller (optional)
+          <textarea name="applicantNotice" rows="4" maxlength="2000"></textarea>
+          <small>Optional – diese Mitteilung kann in der Ablehnungs-E-Mail verwendet werden.</small>
         </label>
       </form>`,
       onSubmit: async values => executeWrite({
@@ -534,7 +538,8 @@ async function handleVote(detail, vote) {
           id: detail.id,
           vote: "NO",
           expectedRevision: detail.revision,
-          reasonInternal: values.reasonInternal
+          reasonInternal: values.reasonInternal,
+          ...(values.applicantNotice ? { applicantNotice: values.applicantNotice } : {})
         })
       })
     });
@@ -565,13 +570,13 @@ function openManualDecision(detail, decision) {
     submitLabel: rejected ? "Ablehnen" : "Aufnehmen",
     danger: rejected,
     body: `<form class="form-grid v4-smart-form v4-m150-form">
-      <label class="v4-field-full">Interner Entscheidungsgrund
+      <label class="v4-field-full">${rejected ? "Interner Ablehnungsgrund" : "Interner Entscheidungsgrund"}
         <textarea name="reasonInternal" rows="5" maxlength="4000" required></textarea>
-        <small>Dieser Text bleibt intern.</small>
+        <small>${rejected ? "Intern – wird nicht an den Antragsteller gesendet." : "Dieser Text bleibt intern."}</small>
       </label>
       ${rejected ? `<label class="v4-field-full">Mitteilung an Antragsteller (optional)
-        <textarea name="applicantNotice" rows="4" maxlength="4000"></textarea>
-        <small>Diese Mitteilung ist ausdrücklich vom internen Grund getrennt.</small>
+        <textarea name="applicantNotice" rows="4" maxlength="2000"></textarea>
+        <small>Optional – diese Mitteilung kann in der Ablehnungs-E-Mail verwendet werden.</small>
       </label>` : ""}
     </form>`,
     onSubmit: async values => {

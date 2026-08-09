@@ -143,6 +143,29 @@ test("seven-day decisions use only the server flag and separate both texts", () 
   assert.doesNotMatch(moduleSource, /new Date|Date\.now|setDate|setTime|86400000|\+\s*7/);
 });
 
+test("rejection communication keeps the internal reason and applicant notice separate", () => {
+  const voting = sourceBlock(moduleSource, "async function handleVote", "function openManualDecision");
+  const manual = sourceBlock(moduleSource, "function openManualDecision", "function comparisonMemberMarkup");
+  const detail = sourceBlock(moduleSource, "function decisionMarkup", "function conversionMarkup");
+
+  assert.match(moduleSource, /Intern – wird nicht an den Antragsteller gesendet\./);
+  assert.match(moduleSource, /Optional – diese Mitteilung kann in der Ablehnungs-E-Mail verwendet werden\./);
+  assert.match(voting, /name="reasonInternal"[\s\S]*maxlength="4000" required/);
+  assert.match(voting, /name="applicantNotice"[\s\S]*maxlength="2000"/);
+  assert.match(voting, /values\.applicantNotice \? \{ applicantNotice: values\.applicantNotice \} : \{\}/);
+  assert.match(manual, /rejected \? `<label[\s\S]*name="applicantNotice"[\s\S]*maxlength="2000"/);
+  assert.match(manual, /if \(rejected && values\.applicantNotice\) payload\.applicantNotice = values\.applicantNotice/);
+  assert.match(detail, /detail\.status === "REJECTED" && detail\.applicantNotice/);
+  assert.match(detail, /Separate Mitteilung an den Antragsteller/);
+  assert.doesNotMatch(moduleSource, /applicantNotice\s*[:=]\s*(?:values\.)?reasonInternal/);
+  assert.doesNotMatch(moduleSource, /reasonInternal\s*[:=]\s*(?:values\.)?applicantNotice/);
+});
+
+test("the browser contains no mail delivery, provider, or WordPress integration", () => {
+  assert.doesNotMatch(moduleSource, /wp_mail|wordpress|smtp|sendgrid|mailgun|resend|brevo|pg_net/i);
+  assert.doesNotMatch(moduleSource, /membership_email_(?:claim|complete)|email_outbox|sendEmail|sendMail/i);
+});
+
 test("duplicate hints never perform or preselect an automatic association", () => {
   assert.match(moduleSource, /Hinweise – keine automatische Zuordnung/);
   assert.match(moduleSource, /wählen keinen Datensatz aus/);
