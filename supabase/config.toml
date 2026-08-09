@@ -423,3 +423,6 @@ enabled = false
 
 [functions.send-web-push]
 verify_jwt = false
+
+[functions.m150-membership-submit]
+verify_jwt = false
