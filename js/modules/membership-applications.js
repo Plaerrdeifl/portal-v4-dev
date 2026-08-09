@@ -12,6 +12,7 @@ import {
   runWrite,
   showToast
 } from "./common.js";
+import { downloadMembershipApplicationPdf } from "./membership-application-pdf.js";
 
 const APPLICATION_STATUS = Object.freeze({
   PENDING: { label: "Offen", type: "warning" },
@@ -373,6 +374,11 @@ function applicationDetailMarkup(detail) {
         ${detail.applicantMessage ? `<div class="full"><span>Nachricht des Antragstellers</span><strong class="v4-preserve-lines">${escapeHtml(detail.applicantMessage)}</strong></div>` : ""}
       </div>
     </section>
+    <section class="v4-m150-section">
+      <div class="dialog-actions v4-m150-inline-actions">
+        <button class="button secondary" type="button" data-m150-download-pdf>Antrag als PDF</button>
+      </div>
+    </section>
     ${voteRosterMarkup(detail)}
     ${decisionMarkup(detail)}
     ${duplicateHintsMarkup(detail)}
@@ -382,6 +388,27 @@ function applicationDetailMarkup(detail) {
 }
 
 function bindDetailActions(dialog, detail) {
+  dialog.querySelector("[data-m150-download-pdf]")
+    ?.addEventListener("click", async event => {
+      const button = event.currentTarget;
+      const defaultLabel = button.textContent;
+      button.disabled = true;
+      button.setAttribute("aria-busy", "true");
+      button.textContent = "PDF wird erstellt …";
+      try {
+        const freshDetail = await loadApplicationDetail(detail.id);
+        if (freshDetail?.id !== detail.id) {
+          throw new Error("Unerwartete Antrags-ID.");
+        }
+        await downloadMembershipApplicationPdf(freshDetail);
+      } catch {
+        showToast("Der PDF-Download konnte nicht erstellt werden. Bitte erneut versuchen.", "error", 6500);
+      } finally {
+        button.disabled = false;
+        button.removeAttribute("aria-busy");
+        button.textContent = defaultLabel;
+      }
+    });
   dialog.querySelectorAll("[data-m150-vote]").forEach(button => {
     button.addEventListener("click", () => handleVote(detail, button.dataset.m150Vote));
   });

@@ -6,8 +6,9 @@ import test from "node:test";
 const root = path.resolve(import.meta.dirname, "..");
 const read = relativePath => fs.readFile(path.join(root, relativePath), "utf8");
 
-const [moduleSource, fanclub, worker, router, fanclubPage, css, documentation] = await Promise.all([
+const [moduleSource, pdfSource, fanclub, worker, router, fanclubPage, css, documentation] = await Promise.all([
   read("js/modules/membership-applications.js"),
+  read("js/modules/membership-application-pdf.js"),
   read("js/modules/fanclub.js"),
   read("service-worker.js"),
   read("js/router.js"),
@@ -54,7 +55,10 @@ test("tab visibility requires the current active member to hold a current office
 test("the module uses only the five accepted pd_api actions", () => {
   assert.match(moduleSource, /from "\.\/common\.js"/);
   assert.match(moduleSource, /\bcall\(/);
-  assert.doesNotMatch(moduleSource, /getSupabaseClient|supabase-client|\.rpc\(|\.from\(/);
+  assert.doesNotMatch(
+    moduleSource,
+    /getSupabaseClient|supabase-client|@supabase\/supabase-js|createClient|\.rpc\s*\(|(?:supabase(?:Client)?|client)\s*\.\s*from\s*\(/i
+  );
 
   const calls = [...moduleSource.matchAll(/call\("([^"]+)"/g)].map(match => match[1]);
   assert.deepEqual(
@@ -122,6 +126,55 @@ test("details are freshly loaded and cover person, application, decision, and vo
   assert.match(moduleSource, /Separate Mitteilung an den Antragsteller/);
   assert.match(moduleSource, /Eigene Stimme/);
   assert.match(moduleSource, /Noch keine Stimme/);
+});
+
+test("PDF download is always offered and reauthorizes with a fresh matching detail", () => {
+  assert.match(moduleSource, /from "\.\/membership-application-pdf\.js"/);
+  const detailMarkup = sourceBlock(
+    moduleSource,
+    "function applicationDetailMarkup",
+    "function bindDetailActions"
+  );
+  const binding = sourceBlock(
+    moduleSource,
+    "function bindDetailActions",
+    "function showApplicationDetail"
+  );
+
+  assert.match(detailMarkup, />Antrag als PDF<\/button>/);
+  assert.match(detailMarkup, /data-m150-download-pdf/);
+  assert.equal((detailMarkup.match(/data-m150-download-pdf/g) || []).length, 1);
+
+  const freshCallAt = binding.indexOf("await loadApplicationDetail(detail.id)");
+  const idCheckAt = binding.indexOf("freshDetail?.id !== detail.id");
+  const pdfAt = binding.indexOf("await downloadMembershipApplicationPdf(freshDetail)");
+  assert.ok(freshCallAt >= 0);
+  assert.ok(idCheckAt > freshCallAt);
+  assert.ok(pdfAt > idCheckAt);
+  assert.doesNotMatch(binding, /downloadMembershipApplicationPdf\(detail\)/);
+  assert.match(binding, /catch \{[\s\S]*Der PDF-Download konnte nicht erstellt werden/);
+  assert.match(binding, /finally \{[\s\S]*button\.disabled = false/);
+});
+
+test("PDF integration adds no data API, direct table, or finance action", () => {
+  const combinedSource = `${moduleSource}\n${pdfSource}`;
+  assert.doesNotMatch(
+    combinedSource,
+    /getSupabaseClient|supabase-client|@supabase\/supabase-js|createClient|\.rpc\s*\(|(?:supabase(?:Client)?|client)\s*\.\s*from\s*\(|fetch\s*\(|service_role|localStorage|sessionStorage|indexedDB|\bcaches\b/i
+  );
+  assert.doesNotMatch(combinedSource, /\b(?:finance|sepa|payment|contribution)\b/i);
+
+  const calls = [...moduleSource.matchAll(/call\("([^"]+)"/g)].map(match => match[1]);
+  assert.deepEqual(
+    [...new Set(calls)].sort(),
+    [
+      "membership_application_convert",
+      "membership_application_detail",
+      "membership_application_manual_decide",
+      "membership_application_vote",
+      "membership_applications_list"
+    ].sort()
+  );
 });
 
 test("voting is immutable, revision-aware, and requires the decisive NO reason", () => {
@@ -284,9 +337,10 @@ test("M150 UI does not add unrelated writes or browser-native dialogs", () => {
 });
 
 test("service worker cache and responsive M150 styling are extended", () => {
-  assert.match(worker, /const CACHE_VERSION = "pd-portal-v4-m150-membership-applications-r1-20260809"/);
-  assert.match(worker, /const PREVIOUS_CACHE_VERSION = "pd-portal-v4-pwa-install-guidance-r1-20260802"/);
+  assert.match(worker, /const CACHE_VERSION = "pd-portal-v4-m150-application-pdf-r1-20260809"/);
+  assert.match(worker, /const PREVIOUS_CACHE_VERSION = "pd-portal-v4-m150-membership-applications-r1-20260809"/);
   assert.match(worker, /"\.\/js\/modules\/membership-applications\.js"/);
+  assert.match(worker, /"\.\/js\/modules\/membership-application-pdf\.js"/);
   assert.match(css, /M150 R1 F1\.3/);
   assert.match(css, /\.v4-m150-compact-row/);
   assert.match(css, /\.v4-m150-comparison/);
