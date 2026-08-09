@@ -426,3 +426,6 @@ verify_jwt = false
 
 [functions.m150-membership-submit]
 verify_jwt = false
+
+[functions.m150-membership-email-dispatch]
+verify_jwt = false

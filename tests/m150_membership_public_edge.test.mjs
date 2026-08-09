@@ -40,7 +40,8 @@ test("only the M150 function receives its dedicated JWT bypass config", () => {
     .map(match => match[1]);
   assert.deepEqual(functionSections, [
     "send-web-push",
-    "m150-membership-submit"
+    "m150-membership-submit",
+    "m150-membership-email-dispatch"
   ]);
   assert.equal(
     (config.match(/^\[functions\.m150-membership-submit\]$/gm) || []).length,
