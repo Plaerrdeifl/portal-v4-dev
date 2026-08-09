@@ -1,5 +1,6 @@
-const CACHE_VERSION = "pd-portal-v4-pwa-install-guidance-r1-20260802";
-const PREVIOUS_CACHE_VERSION = "pd-portal-v4-personal-dashboard-widgets-r1-fix4-20260724";
+const CACHE_VERSION = "pd-portal-v4-m150-membership-applications-r1-20260809";
+const PREVIOUS_CACHE_VERSION = "pd-portal-v4-pwa-install-guidance-r1-20260802";
+const PERSONAL_DASHBOARD_WIDGETS_CACHE_VERSION = "pd-portal-v4-personal-dashboard-widgets-r1-fix4-20260724";
 const DASHBOARD_LAYOUT_CORR3_CACHE_VERSION = "pd-portal-v4-dashboard-layout-corr3-20260724";
 const DASHBOARD_DELIVERY_CORR2_CACHE_VERSION = "pd-portal-v4-dashboard-delivery-corr2-20260724";
 const DASHBOARD_LAYOUT_CORR1_CACHE_VERSION = "pd-portal-v4-dashboard-layout-corr1-20260724";
@@ -35,6 +36,7 @@ const SHELL = [
   "./js/modules/profile.js",
   "./js/modules/dashboard.js",
   "./js/modules/fanclub.js",
+  "./js/modules/membership-applications.js",
   "./js/modules/tasks.js",
   "./js/modules/teams.js",
   "./js/modules/admin.js",
