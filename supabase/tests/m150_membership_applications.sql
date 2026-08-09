@@ -207,7 +207,7 @@ begin
     (v_incomplete_app, 'Incomplete', 'Board', date '1995-01-01', 'incomplete@example.invalid', '01005', 'E', '5', '55555', 'Ort', null, now(), 'D1', 'S1', 'satzung-2026', true, true),
     (v_roster_app, 'Roster', 'Change', date '1996-01-01', 'roster@example.invalid', '01006', 'F', '6', '66666', 'Ort', null, now(), 'D1', 'S1', 'satzung-2026', true, true),
     (v_hint_app, 'Anna', 'Antrag', date '1990-02-03', 'm150-match@example.invalid', '+49 170 123456', 'G', '7', '77777', 'Ort', 'Nur Hinweis', now(), 'D1', 'S1', 'satzung-2026', true, true),
-    (v_hint_other, 'Andere', 'Person', date '1997-01-01', 'M150-MATCH@example.invalid', '0170999', 'H', '8', '88888', 'Ort', null, now(), 'D1', 'S1', 'satzung-2026', true, true),
+    (v_hint_other, 'Andere', 'Person', date '1997-01-01', 'm150-hint-other@example.invalid', '+49 170 123456', 'H', '8', '88888', 'Ort', null, now(), 'D1', 'S1', 'satzung-2026', true, true),
     (v_roster_before_vote_app, 'Roster', 'BeforeVote', date '1998-01-01', 'roster-before@example.invalid', '01007', 'I', '9', '99991', 'Ort', null, ((((now() at time zone 'Europe/Berlin')::date - 7)::timestamp) at time zone 'Europe/Berlin'), 'D1', 'S1', 'satzung-2026', true, true),
     (v_roster_non_voter_app, 'Roster', 'NonVoter', date '1999-01-01', 'roster-non-voter@example.invalid', '01008', 'J', '10', '99992', 'Ort', null, now(), 'D1', 'S1', 'satzung-2026', true, true);
 
@@ -1175,7 +1175,602 @@ begin
 end
 $m150_conversion_verification$;
 
-select pass('PORTAL_CORE_STRUCTURE_OK - M150 F1.2A/F1.2B contract');
+do $m150_public_intake_verification$
+declare
+  v_role_member constant uuid := '00000000-0000-4000-8000-000000000002';
+  v_existing_active_member constant uuid := '15000000-0000-4001-8000-000000000301';
+  v_existing_inactive_member constant uuid := '15000000-0000-4001-8000-000000000302';
+  v_existing_portal_user constant uuid := '15000000-0000-4000-8000-000000000303';
+  v_today date := (clock_timestamp() at time zone 'Europe/Berlin')::date;
+  v_base_payload jsonb;
+  v_payload jsonb;
+  v_response jsonb;
+  v_application_id uuid;
+  v_phone_application_id uuid;
+  v_original_application jsonb;
+  v_count bigint;
+  v_applications_before bigint;
+  v_members_before bigint;
+  v_users_before bigint;
+  v_links_before bigint;
+  v_access_before bigint;
+  v_accounts_before bigint;
+  v_entries_before bigint;
+  v_reports_before bigint;
+  v_idempotency_before bigint;
+  v_audit_before bigint;
+  v_board_member_before uuid;
+  v_key text;
+  v_privilege text;
+begin
+  if to_regclass('app_private.membership_application_intake_idempotency') is null then
+    raise exception 'F1.4A-Idempotency-Tabelle fehlt.';
+  end if;
+
+  if not (select relrowsecurity
+          from pg_class
+          where oid = 'app_private.membership_application_intake_idempotency'::regclass) then
+    raise exception 'F1.4A-Idempotency-Tabelle besitzt kein RLS.';
+  end if;
+
+  if exists (
+    select 1
+    from information_schema.columns as column_info
+    where column_info.table_schema = 'app_private'
+      and column_info.table_name = 'membership_application_intake_idempotency'
+      and column_info.column_name not in (
+        'idempotency_key',
+        'payload_sha256',
+        'application_id',
+        'outcome',
+        'created_at'
+      )
+  ) then
+    raise exception 'Idempotency-Tabelle speichert unzulässige Felder.';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_indexes
+    where schemaname = 'app_fanclub'
+      and indexname = 'membership_applications_pending_email_unique'
+      and indexdef ilike '%unique%'
+      and indexdef ilike '%m150_normalize_email%'
+      and indexdef ilike '%status = ''PENDING''%'
+  ) or not exists (
+    select 1
+    from pg_indexes
+    where schemaname = 'app_fanclub'
+      and indexname = 'membership_applications_pending_identity_unique'
+      and indexdef ilike '%unique%'
+      and indexdef ilike '%m150_normalize_name%'
+      and indexdef ilike '%birth_date%'
+      and indexdef ilike '%status = ''PENDING''%'
+  ) then
+    raise exception 'Concurrency-sichere PENDING-Duplicate-Invarianten fehlen.';
+  end if;
+
+  if has_function_privilege(
+       'anon',
+       'public.m150_submit_membership_application(jsonb,text)',
+       'EXECUTE'
+     ) or has_function_privilege(
+       'authenticated',
+       'public.m150_submit_membership_application(jsonb,text)',
+       'EXECUTE'
+     ) or not has_function_privilege(
+       'service_role',
+       'public.m150_submit_membership_application(jsonb,text)',
+       'EXECUTE'
+     ) then
+    raise exception 'Service-only Wrapper-Grants sind falsch.';
+  end if;
+
+  if has_function_privilege(
+       'service_role',
+       'app_private.m150_submit_membership_application(jsonb,text)',
+       'EXECUTE'
+     ) then
+    raise exception 'service_role darf die private Intake-Funktion direkt ausführen.';
+  end if;
+
+  foreach v_privilege in array array[
+    'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'
+  ]
+  loop
+    if has_table_privilege(
+         'service_role',
+         'app_private.membership_application_intake_idempotency',
+         v_privilege
+       ) or has_table_privilege(
+         'service_role',
+         'app_fanclub.membership_applications',
+         v_privilege
+       ) or has_table_privilege(
+         'service_role',
+         'app_fanclub.membership_application_board_roster',
+         v_privilege
+       ) then
+      raise exception 'service_role besitzt direktes Intake-Tabellenrecht %.', v_privilege;
+    end if;
+  end loop;
+
+  if has_function_privilege('anon', 'public.pd_api(text,jsonb)', 'EXECUTE')
+     or not has_function_privilege('authenticated', 'public.pd_api(text,jsonb)', 'EXECUTE') then
+    raise exception 'public.pd_api-Rechte wurden durch F1.4A verändert.';
+  end if;
+
+  if not has_function_privilege('anon', 'public.pd_public_events()', 'EXECUTE')
+     or has_function_privilege('authenticated', 'public.pd_public_events()', 'EXECUTE') then
+    raise exception 'M210-Rechte wurden durch F1.4A verändert.';
+  end if;
+
+  if pg_get_functiondef(
+       'app_private.m150_submit_membership_application(jsonb,text)'::regprocedure
+     ) ~* 'portal\.admin|require_capability|has_capability' then
+    raise exception 'Intake enthält eine Admin-/Capability-Fallbacklogik.';
+  end if;
+
+  insert into app_fanclub.members (
+    id, member_code, first_name, last_name, birth_date, email, phone, status
+  ) values
+    (
+      v_existing_active_member,
+      'M-M150-INTAKE-ACTIVE',
+      'Aktiv',
+      'Bestand',
+      date '1980-01-01',
+      'existing-active-intake@example.invalid',
+      '08001',
+      'ACTIVE'
+    ),
+    (
+      v_existing_inactive_member,
+      'M-M150-INTAKE-INACTIVE',
+      'Inaktiv',
+      'Bestand',
+      date '1981-02-03',
+      'existing-inactive-intake@example.invalid',
+      '08002',
+      'INACTIVE'
+    );
+
+  insert into auth.users (id, email)
+  values (v_existing_portal_user, 'existing-portal-intake@example.invalid');
+
+  insert into app_portal.users (
+    id, user_code, email, first_name, last_name, role_id
+  ) values (
+    v_existing_portal_user,
+    'U-M150-INTAKE-PORTAL',
+    'existing-portal-intake@example.invalid',
+    'Portal',
+    'Bestand',
+    v_role_member
+  );
+
+  v_base_payload := jsonb_build_object(
+    'firstName', 'Public',
+    'lastName', 'Adult',
+    'birthDate', '1990-04-05',
+    'email', 'public-adult@example.invalid',
+    'phone', '+49 170 5550001',
+    'street', 'Öffentliche Straße',
+    'houseNumber', '10a',
+    'postalCode', '86150',
+    'city', 'Augsburg',
+    'applicantMessage', 'Öffentliche Antragsnachricht',
+    'declarationConfirmed', true,
+    'declarationVersion', 'D-PUBLIC-1',
+    'statutesConfirmed', true,
+    'statutesVersion', 'S-PUBLIC-1',
+    'statutesReference', 'satzung-public-2026'
+  );
+
+  select count(*) into v_applications_before from app_fanclub.membership_applications;
+  select count(*) into v_members_before from app_fanclub.members;
+  select count(*) into v_users_before from app_portal.users;
+  select count(*) into v_links_before from app_portal.user_member_links;
+  select count(*) into v_access_before from app_portal.access_requests;
+  select count(*) into v_accounts_before from app_fanclub.finance_accounts;
+  select count(*) into v_entries_before from app_fanclub.finance_entries;
+  select count(*) into v_reports_before from app_fanclub.contribution_payment_reports;
+  select count(*) into v_idempotency_before
+  from app_private.membership_application_intake_idempotency;
+  select count(*) into v_audit_before
+  from app_portal.audit_events
+  where action = 'MEMBERSHIP_APPLICATION_SUBMITTED_PUBLIC';
+
+  v_response := public.m150_submit_membership_application(
+    v_base_payload,
+    'm150-public-intake-created-1'
+  );
+  v_application_id := (v_response ->> 'applicationId')::uuid;
+
+  if not coalesce((v_response ->> 'accepted')::boolean, false)
+     or not coalesce((v_response ->> 'created')::boolean, false)
+     or v_application_id is null then
+    raise exception 'Gültiger Erwachsener erzeugte keinen Antrag: %', v_response;
+  end if;
+
+  if not exists (
+    select 1
+    from app_fanclub.membership_applications as application
+    where application.id = v_application_id
+      and application.status = 'PENDING'
+      and application.submitted_at = transaction_timestamp()
+      and application.first_name = 'Public'
+      and application.last_name = 'Adult'
+      and application.birth_date = date '1990-04-05'
+      and application.declaration_confirmed
+      and application.declaration_version = 'D-PUBLIC-1'
+      and application.statutes_confirmed
+      and application.statutes_version = 'S-PUBLIC-1'
+      and application.statutes_reference = 'satzung-public-2026'
+      and application.applicant_message = 'Öffentliche Antragsnachricht'
+  ) then
+    raise exception 'PENDING-Antrag, Serverzeit oder Erklärungs-/Satzungsdaten sind falsch.';
+  end if;
+
+  if (select count(*)
+      from app_fanclub.membership_application_board_roster as roster
+      where roster.application_id = v_application_id) <> 5
+     or (select count(distinct roster.office_code)
+         from app_fanclub.membership_application_board_roster as roster
+         where roster.application_id = v_application_id) <> 5
+     or (select count(distinct roster.voter_user_id)
+         from app_fanclub.membership_application_board_roster as roster
+         where roster.application_id = v_application_id) <> 5 then
+    raise exception 'Öffentlicher Antrag besitzt keinen vollständigen F1.2A-Board-Snapshot.';
+  end if;
+
+  if not exists (
+    select 1
+    from app_private.membership_application_intake_idempotency as intake
+    where intake.idempotency_key = 'm150-public-intake-created-1'
+      and intake.payload_sha256 = encode(
+        extensions.digest(v_base_payload::text, 'sha256'),
+        'hex'
+      )
+      and intake.application_id = v_application_id
+      and intake.outcome = 'CREATED'
+  ) then
+    raise exception 'DB-seitiger Payload-Hash oder CREATED-Idempotency-Ergebnis fehlt.';
+  end if;
+
+  if (select count(*)
+      from app_portal.audit_events as audit
+      where audit.action = 'MEMBERSHIP_APPLICATION_SUBMITTED_PUBLIC'
+        and audit.entity_type = 'membership_application'
+        and audit.entity_id = v_application_id::text
+        and audit.actor_user_id is null
+        and audit.before_data is null
+        and audit.after_data is null
+        and audit.metadata = jsonb_build_object(
+          'source', 'WORDPRESS_PUBLIC_INTAKE',
+          'status', 'PENDING'
+        )) <> 1 then
+    raise exception 'Submission-Audit fehlt oder ist nicht datensparsam.';
+  end if;
+
+  if exists (
+    select 1
+    from app_portal.audit_events as audit
+    where audit.action = 'MEMBERSHIP_APPLICATION_SUBMITTED_PUBLIC'
+      and audit.entity_id = v_application_id::text
+      and lower(
+        coalesce(audit.before_data, '{}'::jsonb)::text
+        || coalesce(audit.after_data, '{}'::jsonb)::text
+        || coalesce(audit.metadata, '{}'::jsonb)::text
+      ) ~ '(public-adult|5550001|öffentliche straße|antragsnachricht|1990-04-05)'
+  ) then
+    raise exception 'Submission-Audit enthält unnötige PII.';
+  end if;
+
+  if (select count(*) from app_fanclub.members) <> v_members_before
+     or (select count(*) from app_portal.users) <> v_users_before
+     or (select count(*) from app_portal.user_member_links) <> v_links_before
+     or (select count(*) from app_portal.access_requests) <> v_access_before
+     or (select count(*) from app_fanclub.finance_accounts) <> v_accounts_before
+     or (select count(*) from app_fanclub.finance_entries) <> v_entries_before
+     or (select count(*) from app_fanclub.contribution_payment_reports) <> v_reports_before then
+    raise exception 'Öffentlicher Intake erzeugte Mitglieds-, Portal- oder Finance-/SEPA-Nebenwirkungen.';
+  end if;
+
+  select count(*) into v_audit_before
+  from app_portal.audit_events
+  where action = 'MEMBERSHIP_APPLICATION_SUBMITTED_PUBLIC';
+  select count(*) into v_applications_before from app_fanclub.membership_applications;
+
+  v_response := public.m150_submit_membership_application(
+    v_base_payload,
+    'm150-public-intake-created-1'
+  );
+  if not coalesce((v_response ->> 'accepted')::boolean, false)
+     or coalesce((v_response ->> 'created')::boolean, true)
+     or (v_response ->> 'applicationId')::uuid <> v_application_id
+     or (select count(*) from app_fanclub.membership_applications) <> v_applications_before
+     or (select count(*) from app_portal.audit_events
+         where action = 'MEMBERSHIP_APPLICATION_SUBMITTED_PUBLIC') <> v_audit_before then
+    raise exception 'Idempotency-Retry erzeugte Antrag oder Audit erneut: %', v_response;
+  end if;
+
+  begin
+    perform public.m150_submit_membership_application(
+      v_base_payload || jsonb_build_object('city', 'Andere Stadt'),
+      'm150-public-intake-created-1'
+    );
+    raise exception 'Wiederverwendeter Idempotency-Key mit anderem Payload wurde akzeptiert.';
+  exception
+    when sqlstate '22023' then
+      if sqlerrm <> 'M150_IDEMPOTENCY_KEY_REUSED' then raise; end if;
+  end;
+
+  select to_jsonb(application)
+  into v_original_application
+  from app_fanclub.membership_applications as application
+  where application.id = v_application_id;
+  select count(*) into v_audit_before
+  from app_portal.audit_events
+  where action = 'MEMBERSHIP_APPLICATION_SUBMITTED_PUBLIC';
+
+  v_payload := v_base_payload || jsonb_build_object(
+    'firstName', 'Andere',
+    'lastName', 'Emailperson',
+    'birthDate', '1989-03-04',
+    'email', ' PUBLIC-ADULT@EXAMPLE.INVALID ',
+    'phone', '09001',
+    'applicantMessage', 'Darf nichts überschreiben'
+  );
+  v_response := public.m150_submit_membership_application(
+    v_payload,
+    'm150-public-intake-duplicate-email'
+  );
+  if coalesce((v_response ->> 'created')::boolean, true)
+     or (v_response ->> 'applicationId')::uuid <> v_application_id
+     or (select to_jsonb(application)
+         from app_fanclub.membership_applications as application
+         where application.id = v_application_id) <> v_original_application then
+    raise exception 'Normalisierte PENDING-E-Mail-Dublette war nicht neutral: %', v_response;
+  end if;
+
+  v_payload := v_base_payload || jsonb_build_object(
+    'firstName', '  PUBLIC ',
+    'lastName', ' adult  ',
+    'email', 'identity-duplicate@example.invalid',
+    'phone', '09002',
+    'applicantMessage', 'Identitätsdublette'
+  );
+  v_response := public.m150_submit_membership_application(
+    v_payload,
+    'm150-public-intake-duplicate-identity'
+  );
+  if coalesce((v_response ->> 'created')::boolean, true)
+     or (v_response ->> 'applicationId')::uuid <> v_application_id then
+    raise exception 'Normalisierte PENDING-Identitätsdublette erzeugte einen Antrag: %', v_response;
+  end if;
+
+  if (select count(*)
+      from app_portal.audit_events
+      where action = 'MEMBERSHIP_APPLICATION_SUBMITTED_PUBLIC') <> v_audit_before then
+    raise exception 'PENDING-Dublette erzeugte ein Submission-Audit.';
+  end if;
+
+  select count(*) into v_applications_before from app_fanclub.membership_applications;
+  v_payload := v_base_payload || jsonb_build_object(
+    'firstName', 'Telefon',
+    'lastName', 'NurHinweis',
+    'birthDate', '1988-07-08',
+    'email', 'phone-only-intake@example.invalid',
+    'applicantMessage', 'Telefon blockiert nicht'
+  );
+  v_response := public.m150_submit_membership_application(
+    v_payload,
+    'm150-public-intake-phone-only'
+  );
+  v_phone_application_id := (v_response ->> 'applicationId')::uuid;
+  if not coalesce((v_response ->> 'created')::boolean, false)
+     or (select count(*) from app_fanclub.membership_applications) <> v_applications_before + 1 then
+    raise exception 'Gleiche Telefonnummer allein blockierte den Antrag: %', v_response;
+  end if;
+
+  for v_payload, v_key in
+    select payload, idempotency_key
+    from (values
+      (
+        v_base_payload || jsonb_build_object(
+          'firstName', 'Aktiv',
+          'lastName', 'Antrag',
+          'birthDate', '1987-01-02',
+          'email', 'existing-active-intake@example.invalid',
+          'phone', '09101'
+        ),
+        'm150-public-intake-existing-active'
+      ),
+      (
+        v_base_payload || jsonb_build_object(
+          'firstName', '  INAKTIV ',
+          'lastName', ' bestand ',
+          'birthDate', '1981-02-03',
+          'email', 'inactive-application@example.invalid',
+          'phone', '09102'
+        ),
+        'm150-public-intake-existing-inactive'
+      ),
+      (
+        v_base_payload || jsonb_build_object(
+          'firstName', 'Portal',
+          'lastName', 'Antrag',
+          'birthDate', '1986-03-04',
+          'email', 'existing-portal-intake@example.invalid',
+          'phone', '09103'
+        ),
+        'm150-public-intake-existing-portal'
+      )
+    ) as fixture(payload, idempotency_key)
+  loop
+    v_response := public.m150_submit_membership_application(v_payload, v_key);
+    if not coalesce((v_response ->> 'created')::boolean, false) then
+      raise exception 'Bestehendes Mitglied/Portaluser blockierte Antrag automatisch: %', v_response;
+    end if;
+  end loop;
+
+  select count(*) into v_applications_before from app_fanclub.membership_applications;
+  select count(*) into v_idempotency_before
+  from app_private.membership_application_intake_idempotency;
+  select count(*) into v_audit_before
+  from app_portal.audit_events
+  where action = 'MEMBERSHIP_APPLICATION_SUBMITTED_PUBLIC';
+
+  v_payload := v_base_payload || jsonb_build_object(
+    'firstName', 'Zu',
+    'lastName', 'Jung',
+    'birthDate', to_char(v_today - interval '17 years', 'YYYY-MM-DD'),
+    'email', 'underage-intake@example.invalid',
+    'phone', '09201'
+  );
+  begin
+    perform public.m150_submit_membership_application(
+      v_payload,
+      'm150-public-intake-underage'
+    );
+    raise exception 'Unter-18-Antrag wurde akzeptiert.';
+  exception
+    when sqlstate '22023' then
+      if sqlerrm <> 'M150_PUBLIC_INTAKE_ADULT_REQUIRED' then raise; end if;
+  end;
+
+  if (select count(*) from app_fanclub.membership_applications) <> v_applications_before
+     or (select count(*)
+         from app_private.membership_application_intake_idempotency) <> v_idempotency_before
+     or (select count(*) from app_portal.audit_events
+         where action = 'MEMBERSHIP_APPLICATION_SUBMITTED_PUBLIC') <> v_audit_before
+     or exists (
+       select 1
+       from app_fanclub.membership_application_board_roster as roster
+       where roster.application_id in (
+         select application.id
+         from app_fanclub.membership_applications as application
+         where application.email = 'underage-intake@example.invalid'
+       )
+     ) then
+    raise exception 'Unter-18-Antrag hinterließ durable Intake-Daten.';
+  end if;
+
+  v_payload := v_base_payload || jsonb_build_object(
+    'birthDate', to_char(v_today + 1, 'YYYY-MM-DD'),
+    'email', 'future-birth-intake@example.invalid'
+  );
+  begin
+    perform public.m150_submit_membership_application(
+      v_payload,
+      'm150-public-intake-future-birth'
+    );
+    raise exception 'Zukünftiges Geburtsdatum wurde akzeptiert.';
+  exception
+    when sqlstate '22023' then
+      if sqlerrm <> 'M150_PUBLIC_INTAKE_INVALID_PAYLOAD' then raise; end if;
+  end;
+
+  foreach v_payload in array array[
+    v_base_payload || jsonb_build_object(
+      'declarationConfirmed', false,
+      'email', 'declaration-false@example.invalid'
+    ),
+    v_base_payload || jsonb_build_object(
+      'statutesConfirmed', false,
+      'email', 'statutes-false@example.invalid'
+    )
+  ]
+  loop
+    begin
+      perform public.m150_submit_membership_application(
+        v_payload,
+        'm150-public-intake-confirmation-' || extensions.gen_random_uuid()::text
+      );
+      raise exception 'Fehlende Erklärung/Satzungsbestätigung wurde akzeptiert.';
+    exception
+      when sqlstate '22023' then
+        if sqlerrm <> 'M150_PUBLIC_INTAKE_DECLARATION_REQUIRED' then raise; end if;
+    end;
+  end loop;
+
+  foreach v_payload in array array[
+    v_base_payload || jsonb_build_object('status', 'APPROVED'),
+    v_base_payload - 'city'
+  ]
+  loop
+    begin
+      perform public.m150_submit_membership_application(
+        v_payload,
+        'm150-public-intake-invalid-' || extensions.gen_random_uuid()::text
+      );
+      raise exception 'Unbekannter Payload-Key oder fehlendes Pflichtfeld wurde akzeptiert.';
+    exception
+      when sqlstate '22023' then
+        if sqlerrm <> 'M150_PUBLIC_INTAKE_INVALID_PAYLOAD' then raise; end if;
+    end;
+  end loop;
+
+  select count(*) into v_applications_before from app_fanclub.membership_applications;
+  select count(*) into v_idempotency_before
+  from app_private.membership_application_intake_idempotency;
+  select count(*) into v_audit_before
+  from app_portal.audit_events
+  where action = 'MEMBERSHIP_APPLICATION_SUBMITTED_PUBLIC';
+
+  select office.member_id
+  into v_board_member_before
+  from app_fanclub.office_slots as office
+  where office.code = 'SCHRIFTFUEHRER';
+
+  update app_fanclub.office_slots
+  set member_id = null
+  where code = 'SCHRIFTFUEHRER';
+
+  v_payload := v_base_payload || jsonb_build_object(
+    'firstName', 'Board',
+    'lastName', 'Unvollständig',
+    'birthDate', '1985-05-06',
+    'email', 'board-unavailable-intake@example.invalid',
+    'phone', '09301'
+  );
+  begin
+    perform public.m150_submit_membership_application(
+      v_payload,
+      'm150-public-intake-board-unavailable'
+    );
+    raise exception 'Unvollständiger Vorstand akzeptierte öffentlichen Antrag.';
+  exception
+    when sqlstate 'P1501' then
+      if sqlerrm <> 'M150_PUBLIC_INTAKE_BOARD_UNAVAILABLE' then raise; end if;
+  end;
+
+  update app_fanclub.office_slots
+  set member_id = v_board_member_before
+  where code = 'SCHRIFTFUEHRER';
+
+  if (select count(*) from app_fanclub.membership_applications) <> v_applications_before
+     or (select count(*)
+         from app_private.membership_application_intake_idempotency) <> v_idempotency_before
+     or (select count(*) from app_portal.audit_events
+         where action = 'MEMBERSHIP_APPLICATION_SUBMITTED_PUBLIC') <> v_audit_before then
+    raise exception 'Board-Fehler hinterließ Application, Idempotency oder Audit.';
+  end if;
+
+  if (select count(*) from app_fanclub.members) <> v_members_before
+     or (select count(*) from app_portal.users) <> v_users_before
+     or (select count(*) from app_portal.user_member_links) <> v_links_before
+     or (select count(*) from app_portal.access_requests) <> v_access_before
+     or (select count(*) from app_fanclub.finance_accounts) <> v_accounts_before
+     or (select count(*) from app_fanclub.finance_entries) <> v_entries_before
+     or (select count(*) from app_fanclub.contribution_payment_reports) <> v_reports_before then
+    raise exception 'F1.4A erzeugte automatische Mitgliedschaft, Portalzugang oder Finance-/SEPA-Daten.';
+  end if;
+end
+$m150_public_intake_verification$;
+
+select pass('PORTAL_CORE_STRUCTURE_OK - M150 F1.2A/F1.2B/F1.4A contract');
 select * from finish();
 
 rollback;
