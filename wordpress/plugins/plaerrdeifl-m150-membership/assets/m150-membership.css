@@ -1,0 +1,117 @@
+.pd-m150-membership {
+    --pd-m150-accent: #8b1f2d;
+    --pd-m150-border: #d8d8d8;
+    --pd-m150-error: #9f1c1c;
+    --pd-m150-success: #176b35;
+    max-width: 52rem;
+    margin-inline: auto;
+}
+
+.pd-m150-membership .pd-m150-documents {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
+}
+
+.pd-m150-membership .pd-m150-privacy-note {
+    margin-block: 1rem 1.5rem;
+}
+
+.pd-m150-membership .pd-m150-form {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.pd-m150-membership .pd-m150-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.pd-m150-membership .pd-m150-field,
+.pd-m150-membership .pd-m150-field-wide {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.pd-m150-membership .pd-m150-field input,
+.pd-m150-membership .pd-m150-field-wide textarea {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0.7rem;
+    border: 1px solid var(--pd-m150-border);
+    border-radius: 0.25rem;
+    font: inherit;
+}
+
+.pd-m150-membership .pd-m150-confirmation {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.65rem;
+    align-items: start;
+}
+
+.pd-m150-membership .pd-m150-confirmation input {
+    margin-top: 0.25rem;
+}
+
+.pd-m150-membership .pd-m150-submit {
+    justify-self: start;
+    padding: 0.75rem 1.15rem;
+    border: 0;
+    border-radius: 0.25rem;
+    background: var(--pd-m150-accent);
+    color: #fff;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+}
+
+.pd-m150-membership .pd-m150-submit:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.pd-m150-membership .pd-m150-status {
+    min-height: 1.5em;
+}
+
+.pd-m150-membership .pd-m150-status[data-kind="error"] {
+    color: var(--pd-m150-error);
+}
+
+.pd-m150-membership .pd-m150-status[data-kind="success"] {
+    color: var(--pd-m150-success);
+    font-weight: 700;
+}
+
+.pd-m150-membership .pd-m150-status a {
+    margin-left: 0.25rem;
+}
+
+.pd-m150-unavailable {
+    padding: 1rem;
+    border-left: 0.25rem solid #8b1f2d;
+}
+
+.pd-m150-admin .pd-m150-admin-media {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    align-items: center;
+}
+
+.pd-m150-admin .pd-m150-admin-current {
+    flex-basis: 100%;
+    margin: 0.25rem 0 0;
+}
+
+@media (max-width: 42rem) {
+    .pd-m150-membership .pd-m150-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pd-m150-membership .pd-m150-submit {
+        width: 100%;
+    }
+}
