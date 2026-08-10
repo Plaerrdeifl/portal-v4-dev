@@ -16,8 +16,10 @@ test("admin exposes additive user task access controls", async () => {
   assert.match(admin, /viewBoardTasks/);
   assert.match(admin, /archiveScope/);
   assert.match(admin, /archiveTeamIds/);
-  assert.match(admin, /canCreateTasks/);
-  assert.match(admin, /canManageTasks/);
+  assert.doesNotMatch(admin, /name="canCreateTasks"/);
+  assert.doesNotMatch(admin, /name="canManageTasks"/);
+  assert.match(admin, /function editPersonalCapabilities\(user\)/);
+  assert.match(admin, /set_user_capabilities/);
   assert.match(admin, /canDirectTransfer/);
   assert.match(admin, /Auf Rollenstandard zurücksetzen/);
   assert.match(

@@ -75,7 +75,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260809095000_add_membership_application_public_intake_api_r1.sql",
     "20260809143000_add_m150_membership_communication_core_r1.sql",
     "20260809190000_add_m150_membership_retention_r1.sql",
-    "20260810080000_add_m150_membership_application_withdraw_r1.sql"
+    "20260810080000_add_m150_membership_application_withdraw_r1.sql",
+    "20260810140000_add_central_user_capabilities_m010_r1.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);

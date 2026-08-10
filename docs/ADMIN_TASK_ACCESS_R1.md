@@ -16,19 +16,24 @@ Dort werden getrennt angezeigt:
 - individuell gespeicherte Zusatzrechte;
 - daraus berechneter effektiver Zugriff.
 
-## Zusatzrechte
+## Aufgabenspezifische Zusatzregeln
 
 - alle Teamaufgaben;
 - Vorstandsaufgaben;
 - Archiv: eigene / ausgewählte Teams / alle Teams / vollständig;
-- Aufgaben erstellen;
-- Aufgaben global verwalten;
 - sichtbare Aufgaben direkt übertragen.
+
+Die früheren persönlichen Schalter `Aufgaben erstellen` und `Aufgaben global
+verwalten` werden nicht mehr hier geführt. Sie entsprechen den zentralen
+Capabilities `tasks.create` und `tasks.manage` unter
+`Administration → Benutzer → Zusatzrechte`.
 
 ## Rücksetzung
 
-`Auf Rollenstandard zurücksetzen` löscht nur die individuellen Zusatzrechte.
-Ämter, Teamrollen, Portalrollen und deren Mindestzugriffe bleiben unverändert.
+`Auf Rollenstandard zurücksetzen` löscht nur die individuellen
+aufgabenspezifischen Regeln. Ämter, Teamrollen, Portalrollen und deren
+Mindestzugriffe bleiben unverändert. Zentrale persönliche Capabilities bleiben
+ebenfalls unverändert.
 
 ## Sicherheit
 
