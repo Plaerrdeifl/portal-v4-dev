@@ -52,7 +52,7 @@ test("tab visibility requires the current active member to hold a current office
   assert.doesNotMatch(visibility, /portal\.admin|members\.manage|users\.manage|isAdmin|hasCapability/);
 });
 
-test("the module uses only the five accepted pd_api actions", () => {
+test("the module uses only the six accepted pd_api actions", () => {
   assert.match(moduleSource, /from "\.\/common\.js"/);
   assert.match(moduleSource, /\bcall\(/);
   assert.doesNotMatch(
@@ -68,6 +68,7 @@ test("the module uses only the five accepted pd_api actions", () => {
       "membership_application_detail",
       "membership_application_manual_decide",
       "membership_application_vote",
+      "membership_application_withdraw",
       "membership_applications_list"
     ].sort()
   );
@@ -172,6 +173,7 @@ test("PDF integration adds no data API, direct table, or finance action", () => 
       "membership_application_detail",
       "membership_application_manual_decide",
       "membership_application_vote",
+      "membership_application_withdraw",
       "membership_applications_list"
     ].sort()
   );
@@ -194,6 +196,49 @@ test("seven-day decisions use only the server flag and separate both texts", () 
   assert.match(moduleSource, /payload\.applicantNotice = values\.applicantNotice/);
   assert.match(moduleSource, /Mitteilung an Antragsteller \(optional\)/);
   assert.doesNotMatch(moduleSource, /new Date|Date\.now|setDate|setTime|86400000|\+\s*7/);
+});
+
+test("withdrawal is PENDING-only, confirmed, revision-safe, and field-minimal", () => {
+  const actions = sourceBlock(
+    moduleSource,
+    "function detailActionsMarkup",
+    "function applicationDetailMarkup"
+  );
+  const withdrawal = sourceBlock(
+    moduleSource,
+    "async function handleWithdraw",
+    "async function handleVote"
+  );
+
+  assert.match(actions, /if \(detail\.status === "PENDING"\)[\s\S]*data-m150-withdraw/);
+  assert.equal((actions.match(/data-m150-withdraw/g) || []).length, 1);
+  assert.match(actions, /<h3>Antrag zurückgezogen<\/h3>/);
+  assert.match(actions, /Nur verwenden, wenn der Antragsteller seinen Antrag außerhalb des Portals zurückgezogen hat\./);
+  assert.match(actions, /kann in M150 R1 nicht rückgängig gemacht werden/);
+  assert.match(actions, />Als zurückgezogen markieren<\/button>/);
+
+  const confirmationAt = withdrawal.indexOf("await confirmAction(");
+  const mutationAt = withdrawal.indexOf('call("membership_application_withdraw"');
+  const mutationPayload = withdrawal.slice(mutationAt, withdrawal.indexOf("})", mutationAt) + 2);
+  assert.ok(confirmationAt >= 0);
+  assert.ok(mutationAt > confirmationAt);
+  assert.match(withdrawal, /id: detail\.id,[\s\S]*expectedRevision: detail\.revision/);
+  assert.match(withdrawal, /Der Antrag wurde als zurückgezogen markiert\./);
+  assert.doesNotMatch(mutationPayload, /reasonInternal|applicantNotice|reason|message|email/i);
+  assert.doesNotMatch(withdrawal, /fetch|getSupabaseClient|\.rpc\s*\(|\.from\s*\(/i);
+});
+
+test("withdrawal errors are user-friendly and refresh stale application state", () => {
+  for (const code of [
+    "M150_APPLICATION_ALREADY_WITHDRAWN",
+    "M150_WITHDRAW_REQUIRES_PENDING",
+    "M150_REVISION_CONFLICT"
+  ]) {
+    assert.match(moduleSource, new RegExp(code));
+  }
+  assert.match(moduleSource, /Der Antrag wurde bereits als zurückgezogen markiert\./);
+  assert.match(moduleSource, /Nur offene Anträge können als zurückgezogen markiert werden\./);
+  assert.match(moduleSource, /M150_APPLICATION_ALREADY_WITHDRAWN[\s\S]*M150_WITHDRAW_REQUIRES_PENDING/);
 });
 
 test("rejection communication keeps the internal reason and applicant notice separate", () => {
@@ -337,8 +382,8 @@ test("M150 UI does not add unrelated writes or browser-native dialogs", () => {
 });
 
 test("service worker cache and responsive M150 styling are extended", () => {
-  assert.match(worker, /const CACHE_VERSION = "pd-portal-v4-m150-application-pdf-r1-20260809"/);
-  assert.match(worker, /const PREVIOUS_CACHE_VERSION = "pd-portal-v4-m150-membership-applications-r1-20260809"/);
+  assert.match(worker, /const CACHE_VERSION = "pd-portal-v4-m150-withdrawn-r1-20260810"/);
+  assert.match(worker, /const PREVIOUS_CACHE_VERSION = "pd-portal-v4-m150-application-pdf-r1-20260809"/);
   assert.match(worker, /"\.\/js\/modules\/membership-applications\.js"/);
   assert.match(worker, /"\.\/js\/modules\/membership-application-pdf\.js"/);
   assert.match(css, /M150 R1 F1\.3/);

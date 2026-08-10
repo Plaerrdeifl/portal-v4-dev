@@ -10,6 +10,7 @@ const modelPath = "supabase/migrations/20260808150000_add_membership_application
 const apiPath = "supabase/migrations/20260808151000_add_membership_application_internal_api_r1.sql";
 const conversionModelPath = "supabase/migrations/20260809001000_add_membership_application_conversion_r1.sql";
 const conversionApiPath = "supabase/migrations/20260809002000_add_membership_application_conversion_api_r1.sql";
+const withdrawalApiPath = "supabase/migrations/20260810080000_add_m150_membership_application_withdraw_r1.sql";
 
 test("M150 F1.2A model is isolated, constrained, immutable and default-deny", async () => {
   const model = await read(modelPath);
@@ -278,4 +279,59 @@ test("M150 F1.2B exposes conversion details and data-minimal audit through pd_ap
   assert.match(sqlTest, /Admin ohne Amt durfte konvertieren oder erzeugte eine Mutation/);
   assert.match(sqlTest, /Zweite NEW_MEMBER Conversion war nicht idempotent/);
   assert.match(sqlTest, /M210-Regression nach F1\.2B/);
+});
+
+test("M150 F1.7C implements a strict, revision-safe PENDING to WITHDRAWN mutation", async () => {
+  const migration = await read(withdrawalApiPath);
+  const withdrawal = migration.slice(
+    migration.indexOf("create or replace function app_private.api_membership_application_withdraw"),
+    migration.indexOf("alter function public.pd_api")
+  );
+
+  assert.match(withdrawal, /m150_require_current_board_member\(\)/);
+  assert.match(withdrawal, /jsonb_typeof\(p_payload\) <> 'object'/i);
+  assert.match(withdrawal, /jsonb_object_keys\(p_payload\)/i);
+  assert.match(withdrawal, /payload_key\.key not in \('id', 'expectedRevision'\)/i);
+  assert.match(withdrawal, /from app_fanclub\.membership_applications[\s\S]+for update/i);
+  assert.match(withdrawal, /M150_APPLICATION_NOT_FOUND/);
+  assert.match(withdrawal, /v_application\.revision <> v_expected_revision[\s\S]+M150_REVISION_CONFLICT/i);
+  assert.match(withdrawal, /status = 'WITHDRAWN'[\s\S]+M150_APPLICATION_ALREADY_WITHDRAWN/i);
+  assert.match(withdrawal, /status <> 'PENDING'[\s\S]+M150_WITHDRAW_REQUIRES_PENDING/i);
+  assert.match(withdrawal, /set status = 'WITHDRAWN',[\s\S]+revision = application\.revision \+ 1,[\s\S]+updated_at = v_withdrawn_at/i);
+  assert.doesNotMatch(withdrawal, /m150_assert_board_ready|m150_lock_board_roster/i);
+  assert.doesNotMatch(withdrawal, /\b(decided_at|decided_by|decision_method|decision_reason_internal|rejection_applicant_notice|converted_at|converted_by|converted_member_id|conversion_mode)\s*=/i);
+});
+
+test("M150 F1.7C has no adjacent mutations, mail enqueue, or personal audit payload", async () => {
+  const migration = await read(withdrawalApiPath);
+  const withdrawal = migration.slice(
+    migration.indexOf("create or replace function app_private.api_membership_application_withdraw"),
+    migration.indexOf("alter function public.pd_api")
+  );
+
+  assert.match(withdrawal, /MEMBERSHIP_APPLICATION_WITHDRAWN/);
+  assert.match(withdrawal, /jsonb_build_object\('status', 'PENDING'\)/);
+  assert.match(withdrawal, /jsonb_build_object\('status', 'WITHDRAWN'\)/);
+  assert.doesNotMatch(withdrawal, /m150_enqueue_membership_email|'RECEIPT'|'REJECTION'|'ADMISSION'|'WITHDRAWAL'/i);
+  assert.doesNotMatch(withdrawal, /(?:insert into|update|delete from)\s+app_fanclub\.(?:members\b|membership_application_votes\b|membership_application_board_roster\b|office_slots\b|finance_|contribution_)/i);
+  assert.doesNotMatch(withdrawal, /(?:insert into|update|delete from)\s+app_portal\./i);
+  assert.doesNotMatch(withdrawal, /\b(?:first_name|last_name|birth_date|email|phone|street|house_number|postal_code|city|applicant_message|reasonInternal|applicantNotice)\b/i);
+});
+
+test("M150 F1.7C exposes withdrawal only through the authenticated pd_api chain", async () => {
+  const migration = await read(withdrawalApiPath);
+  const docs = await read("docs/M150_R1_F1_7C_WITHDRAWN.md");
+  const sqlTest = await read("supabase/tests/m150_membership_applications.sql");
+
+  assert.match(migration, /rename to pd_api_before_membership_application_withdraw_r1/i);
+  assert.match(migration, /when 'membership_application_withdraw'/);
+  assert.match(migration, /return public\.pd_api_before_membership_application_withdraw_r1\(/i);
+  assert.match(migration, /revoke all on function app_private\.api_membership_application_withdraw\(jsonb\)[\s\S]+from public, anon, authenticated, service_role/i);
+  assert.match(migration, /revoke all on function public\.pd_api\(text, jsonb\)[\s\S]+from public, anon, authenticated, service_role/i);
+  assert.match(migration, /grant execute on function public\.pd_api\(text, jsonb\)[\s\S]+to authenticated/i);
+  assert.equal((migration.match(/create or replace function public\./gi) ?? []).length, 1);
+  assert.match(docs, /PENDING -> WITHDRAWN/);
+  assert.match(docs, /keine automatische E-Mail/i);
+  assert.match(sqlTest, /Admin ohne aktuelles Amt durfte einen Antrag zurückziehen/);
+  assert.match(sqlTest, /Board-Roster-Wechsel blockierte den zulässigen Rückzug/);
 });

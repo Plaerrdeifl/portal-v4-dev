@@ -1770,7 +1770,410 @@ begin
 end
 $m150_public_intake_verification$;
 
-select pass('PORTAL_CORE_STRUCTURE_OK - M150 F1.2A/F1.2B/F1.4A contract');
+do $m150_withdrawal_verification$
+declare
+  v_u1 constant uuid := '15000000-0000-4000-8000-000000000001';
+  v_u2 constant uuid := '15000000-0000-4000-8000-000000000002';
+  v_u3 constant uuid := '15000000-0000-4000-8000-000000000003';
+  v_admin constant uuid := '15000000-0000-4000-8000-000000000099';
+  v_m6 constant uuid := '15000000-0000-4001-8000-000000000006';
+  v_withdraw_app constant uuid := '15000000-0000-4002-8000-000000000201';
+  v_approved_app constant uuid := '15000000-0000-4002-8000-000000000202';
+  v_rejected_app constant uuid := '15000000-0000-4002-8000-000000000203';
+  v_admin_app constant uuid := '15000000-0000-4002-8000-000000000204';
+  v_conflict_app constant uuid := '15000000-0000-4002-8000-000000000205';
+  v_roster_app constant uuid := '15000000-0000-4002-8000-000000000206';
+  v_payload_app constant uuid := '15000000-0000-4002-8000-000000000207';
+  v_response jsonb;
+  v_application_before jsonb;
+  v_roster_before jsonb;
+  v_offices_before jsonb;
+  v_office_member_before uuid;
+  v_members_before bigint;
+  v_users_before bigint;
+  v_links_before bigint;
+  v_access_before bigint;
+  v_accounts_before bigint;
+  v_entries_before bigint;
+  v_reports_before bigint;
+  v_votes_before bigint;
+  v_rosters_before bigint;
+  v_outbox_before bigint;
+begin
+  if has_function_privilege(
+       'authenticated',
+       'app_private.api_membership_application_withdraw(jsonb)',
+       'EXECUTE'
+     )
+     or has_function_privilege(
+       'service_role',
+       'app_private.api_membership_application_withdraw(jsonb)',
+       'EXECUTE'
+     ) then
+    raise exception 'Withdrawal-Privatfunktion ist direkt für eine Browser-/Service-Rolle ausführbar.';
+  end if;
+
+  if exists (
+       select 1
+       from pg_proc as function_acl
+       cross join lateral aclexplode(
+         coalesce(
+           function_acl.proacl,
+           acldefault('f', function_acl.proowner)
+         )
+       ) as privilege
+       where function_acl.oid = 'public.pd_api(text,jsonb)'::regprocedure
+         and privilege.grantee = 0
+         and privilege.privilege_type = 'EXECUTE'
+     )
+     or has_function_privilege('anon', 'public.pd_api(text,jsonb)', 'EXECUTE')
+     or not has_function_privilege('authenticated', 'public.pd_api(text,jsonb)', 'EXECUTE') then
+    raise exception 'pd_api-Grant ist nach F1.7C für public/anon/authenticated falsch.';
+  end if;
+
+  insert into app_fanclub.membership_applications (
+    id, first_name, last_name, birth_date, email, phone, street, house_number,
+    postal_code, city, applicant_message, status, submitted_at, decided_at,
+    decided_by, decision_method, decision_reason_internal, declaration_version,
+    statutes_version, statutes_reference, declaration_confirmed, statutes_confirmed
+  ) values
+    (
+      v_withdraw_app, 'Withdraw', 'Secret', date '1992-03-04',
+      'withdraw@example.invalid', '01701234567', 'Geheime Strasse', '21',
+      '86150', 'Augsburg', 'WITHDRAW-SECRET-NACHRICHT', 'PENDING', now(),
+      null, null, null, null, 'D1', 'S1', 'satzung-2026', true, true
+    ),
+    (
+      v_approved_app, 'Approved', 'Withdraw', date '1991-01-02',
+      'approved-withdraw@example.invalid', '01002', 'B', '2', '10002', 'Ort',
+      null, 'APPROVED', now(), now(), v_u1, 'VOTE_MAJORITY', null,
+      'D1', 'S1', 'satzung-2026', true, true
+    ),
+    (
+      v_rejected_app, 'Rejected', 'Withdraw', date '1991-01-03',
+      'rejected-withdraw@example.invalid', '01003', 'C', '3', '10003', 'Ort',
+      null, 'REJECTED', now(), now(), v_u1, 'VOTE_MAJORITY', 'Interner Grund',
+      'D1', 'S1', 'satzung-2026', true, true
+    ),
+    (
+      v_admin_app, 'Admin', 'Withdraw', date '1991-01-04',
+      'admin-withdraw@example.invalid', '01004', 'D', '4', '10004', 'Ort',
+      null, 'PENDING', now(), null, null, null, null,
+      'D1', 'S1', 'satzung-2026', true, true
+    ),
+    (
+      v_conflict_app, 'Conflict', 'Withdraw', date '1991-01-05',
+      'conflict-withdraw@example.invalid', '01005', 'E', '5', '10005', 'Ort',
+      null, 'PENDING', now(), null, null, null, null,
+      'D1', 'S1', 'satzung-2026', true, true
+    ),
+    (
+      v_roster_app, 'Roster', 'Withdraw', date '1991-01-06',
+      'roster-withdraw@example.invalid', '01006', 'F', '6', '10006', 'Ort',
+      null, 'PENDING', now(), null, null, null, null,
+      'D1', 'S1', 'satzung-2026', true, true
+    ),
+    (
+      v_payload_app, 'Payload', 'Withdraw', date '1991-01-07',
+      'payload-withdraw@example.invalid', '01007', 'G', '7', '10007', 'Ort',
+      null, 'PENDING', now(), null, null, null, null,
+      'D1', 'S1', 'satzung-2026', true, true
+    );
+
+  insert into app_fanclub.membership_application_votes (
+    application_id,
+    voter_user_id,
+    vote,
+    reason_internal
+  ) values (
+    v_withdraw_app,
+    v_u2,
+    'YES',
+    null
+  );
+
+  select count(*) into v_members_before from app_fanclub.members;
+  select count(*) into v_users_before from app_portal.users;
+  select count(*) into v_links_before from app_portal.user_member_links;
+  select count(*) into v_access_before from app_portal.access_requests;
+  select count(*) into v_accounts_before from app_fanclub.finance_accounts;
+  select count(*) into v_entries_before from app_fanclub.finance_entries;
+  select count(*) into v_reports_before from app_fanclub.contribution_payment_reports;
+  select count(*) into v_votes_before from app_fanclub.membership_application_votes;
+  select count(*) into v_rosters_before from app_fanclub.membership_application_board_roster;
+  select count(*) into v_outbox_before
+  from app_private.membership_application_email_outbox;
+  select jsonb_agg(to_jsonb(office) order by office.code)
+  into v_offices_before
+  from app_fanclub.office_slots as office;
+
+  if (select count(*)
+      from app_private.membership_application_email_outbox as outbox
+      where outbox.application_id = v_withdraw_app
+        and outbox.email_type = 'RECEIPT') <> 1 then
+    raise exception 'Vorhandene RECEIPT-Historie für Withdrawal-Fixture fehlt.';
+  end if;
+
+  perform set_config('request.jwt.claim.sub', v_admin::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub', v_admin, 'role', 'authenticated')::text,
+    true
+  );
+  v_response := public.pd_api(
+    'membership_application_withdraw',
+    jsonb_build_object('id', v_admin_app, 'expectedRevision', 1)
+  );
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,code}' <> '42501'
+     or not exists (
+       select 1
+       from app_fanclub.membership_applications as application
+       where application.id = v_admin_app
+         and application.status = 'PENDING'
+         and application.revision = 1
+     ) then
+    raise exception 'Admin ohne aktuelles Amt durfte einen Antrag zurückziehen oder erzeugte eine Mutation: %', v_response;
+  end if;
+
+  perform set_config('request.jwt.claim.sub', v_u1::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub', v_u1, 'role', 'authenticated')::text,
+    true
+  );
+
+  select to_jsonb(application)
+  into v_application_before
+  from app_fanclub.membership_applications as application
+  where application.id = v_conflict_app;
+  v_response := public.pd_api(
+    'membership_application_withdraw',
+    jsonb_build_object('id', v_conflict_app, 'expectedRevision', 99)
+  );
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,message}' <> 'M150_REVISION_CONFLICT'
+     or (select to_jsonb(application)
+         from app_fanclub.membership_applications as application
+         where application.id = v_conflict_app) <> v_application_before then
+    raise exception 'Withdrawal-Revision-Konflikt war nicht mutationsfrei: %', v_response;
+  end if;
+
+  v_response := public.pd_api(
+    'membership_application_withdraw',
+    jsonb_build_object(
+      'id', v_payload_app,
+      'expectedRevision', 1,
+      'reasonInternal', 'nicht erlaubt'
+    )
+  );
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,message}' <> 'M150_INVALID_WITHDRAW_PAYLOAD'
+     or (select status from app_fanclub.membership_applications where id = v_payload_app) <> 'PENDING' then
+    raise exception 'Withdrawal akzeptierte ein zusätzliches Payload-Feld: %', v_response;
+  end if;
+
+  v_response := public.pd_api(
+    'membership_application_withdraw',
+    jsonb_build_object('id', v_withdraw_app, 'expectedRevision', 1)
+  );
+  if not coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{data,status}' <> 'WITHDRAWN'
+     or (v_response #>> '{data,revision}')::integer <> 2 then
+    raise exception 'PENDING-Antrag wurde nicht revisionssicher WITHDRAWN: %', v_response;
+  end if;
+
+  if not exists (
+    select 1
+    from app_fanclub.membership_applications as application
+    where application.id = v_withdraw_app
+      and application.status = 'WITHDRAWN'
+      and application.revision = 2
+      and application.decided_at is null
+      and application.decided_by is null
+      and application.decision_method is null
+      and application.decision_reason_internal is null
+      and application.rejection_applicant_notice is null
+      and application.converted_at is null
+      and application.converted_by is null
+      and application.converted_member_id is null
+      and application.conversion_mode is null
+  ) then
+    raise exception 'WITHDRAWN setzte unzulässige Decision- oder Conversion-Felder.';
+  end if;
+
+  if (select count(*)
+      from app_fanclub.membership_application_votes as vote
+      where vote.application_id = v_withdraw_app
+        and vote.voter_user_id = v_u2
+        and vote.vote = 'YES') <> 1 then
+    raise exception 'Vorhandene Stimme wurde beim Rückzug verändert oder gelöscht.';
+  end if;
+
+  perform set_config('request.jwt.claim.sub', v_u3::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub', v_u3, 'role', 'authenticated')::text,
+    true
+  );
+  v_response := public.pd_api(
+    'membership_application_vote',
+    jsonb_build_object('id', v_withdraw_app, 'vote', 'YES', 'expectedRevision', 2)
+  );
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,message}' <> 'M150_APPLICATION_ALREADY_DECIDED'
+     or (select count(*) from app_fanclub.membership_application_votes where application_id = v_withdraw_app) <> 1 then
+    raise exception 'Nach WITHDRAWN konnte eine weitere Stimme abgegeben werden: %', v_response;
+  end if;
+
+  perform set_config('request.jwt.claim.sub', v_u1::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub', v_u1, 'role', 'authenticated')::text,
+    true
+  );
+  v_response := public.pd_api(
+    'membership_application_manual_decide',
+    jsonb_build_object(
+      'id', v_withdraw_app,
+      'decision', 'APPROVED',
+      'reasonInternal', 'nicht erlaubt',
+      'expectedRevision', 2
+    )
+  );
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,message}' <> 'M150_APPLICATION_ALREADY_DECIDED' then
+    raise exception 'Nach WITHDRAWN war eine manuelle Entscheidung möglich: %', v_response;
+  end if;
+
+  v_response := public.pd_api(
+    'membership_application_convert',
+    jsonb_build_object(
+      'id', v_withdraw_app,
+      'expectedRevision', 2,
+      'mode', 'NEW_MEMBER'
+    )
+  );
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,message}' <> 'M150_CONVERSION_REQUIRES_APPROVED' then
+    raise exception 'Nach WITHDRAWN war eine Conversion möglich: %', v_response;
+  end if;
+
+  v_response := public.pd_api(
+    'membership_application_withdraw',
+    jsonb_build_object('id', v_withdraw_app, 'expectedRevision', 2)
+  );
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,message}' <> 'M150_APPLICATION_ALREADY_WITHDRAWN'
+     or (select revision from app_fanclub.membership_applications where id = v_withdraw_app) <> 2 then
+    raise exception 'Zweiter Withdrawal-Versuch wurde nicht eindeutig abgewiesen: %', v_response;
+  end if;
+
+  foreach v_response in array array[
+    public.pd_api(
+      'membership_application_withdraw',
+      jsonb_build_object('id', v_approved_app, 'expectedRevision', 1)
+    ),
+    public.pd_api(
+      'membership_application_withdraw',
+      jsonb_build_object('id', v_rejected_app, 'expectedRevision', 1)
+    )
+  ]
+  loop
+    if coalesce((v_response ->> 'ok')::boolean, false)
+       or v_response #>> '{error,message}' <> 'M150_WITHDRAW_REQUIRES_PENDING' then
+      raise exception 'Nicht-PENDING Antrag konnte WITHDRAWN werden: %', v_response;
+    end if;
+  end loop;
+
+  select jsonb_agg(to_jsonb(roster) order by roster.office_code)
+  into v_roster_before
+  from app_fanclub.membership_application_board_roster as roster
+  where roster.application_id = v_roster_app;
+  select office.member_id
+  into v_office_member_before
+  from app_fanclub.office_slots as office
+  where office.code = 'SCHRIFTFUEHRER';
+
+  update app_fanclub.office_slots
+  set member_id = v_m6
+  where code = 'SCHRIFTFUEHRER';
+
+  v_response := public.pd_api(
+    'membership_application_withdraw',
+    jsonb_build_object('id', v_roster_app, 'expectedRevision', 1)
+  );
+
+  update app_fanclub.office_slots
+  set member_id = v_office_member_before
+  where code = 'SCHRIFTFUEHRER';
+
+  if not coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{data,status}' <> 'WITHDRAWN'
+     or (select jsonb_agg(to_jsonb(roster) order by roster.office_code)
+         from app_fanclub.membership_application_board_roster as roster
+         where roster.application_id = v_roster_app) <> v_roster_before then
+    raise exception 'Board-Roster-Wechsel blockierte den zulässigen Rückzug oder veränderte den Snapshot: %', v_response;
+  end if;
+
+  if (select count(*)
+      from app_private.membership_application_email_outbox as outbox
+      where outbox.application_id = v_withdraw_app
+        and outbox.email_type = 'RECEIPT') <> 1
+     or exists (
+       select 1
+       from app_private.membership_application_email_outbox as outbox
+       where outbox.application_id in (v_withdraw_app, v_roster_app)
+         and outbox.email_type in ('REJECTION', 'ADMISSION')
+     )
+     or (select count(*) from app_private.membership_application_email_outbox) <> v_outbox_before then
+    raise exception 'Withdrawal löschte RECEIPT-Historie oder erzeugte eine REJECTION-/ADMISSION-/WITHDRAWAL-Mail.';
+  end if;
+
+  if (select count(*)
+      from app_portal.audit_events as audit
+      where audit.action = 'MEMBERSHIP_APPLICATION_WITHDRAWN'
+        and audit.entity_type = 'membership_application'
+        and audit.entity_id = v_withdraw_app::text
+        and audit.actor_user_id = v_u1
+        and audit.before_data = jsonb_build_object('status', 'PENDING')
+        and audit.after_data = jsonb_build_object('status', 'WITHDRAWN')
+        and jsonb_object_length(audit.metadata) = 1
+        and audit.metadata ? 'withdrawnAt') <> 1 then
+    raise exception 'Datensparsames MEMBERSHIP_APPLICATION_WITHDRAWN-Audit fehlt.';
+  end if;
+
+  if exists (
+    select 1
+    from app_portal.audit_events as audit
+    where audit.action = 'MEMBERSHIP_APPLICATION_WITHDRAWN'
+      and audit.entity_id = v_withdraw_app::text
+      and lower(
+        coalesce(audit.before_data, '{}'::jsonb)::text
+        || coalesce(audit.after_data, '{}'::jsonb)::text
+        || coalesce(audit.metadata, '{}'::jsonb)::text
+      ) ~ '(withdraw-secret|withdraw@example|01701234567|geheime strasse|1992-03-04)'
+  ) then
+    raise exception 'Withdrawal-Audit enthält personenbezogene Vollantragsdaten.';
+  end if;
+
+  if (select count(*) from app_fanclub.members) <> v_members_before
+     or (select count(*) from app_portal.users) <> v_users_before
+     or (select count(*) from app_portal.user_member_links) <> v_links_before
+     or (select count(*) from app_portal.access_requests) <> v_access_before
+     or (select count(*) from app_fanclub.finance_accounts) <> v_accounts_before
+     or (select count(*) from app_fanclub.finance_entries) <> v_entries_before
+     or (select count(*) from app_fanclub.contribution_payment_reports) <> v_reports_before
+     or (select count(*) from app_fanclub.membership_application_votes) <> v_votes_before
+     or (select count(*) from app_fanclub.membership_application_board_roster) <> v_rosters_before
+     or (select jsonb_agg(to_jsonb(office) order by office.code)
+         from app_fanclub.office_slots as office) <> v_offices_before then
+    raise exception 'Withdrawal erzeugte Mitglieds-, Portal-, Vote-, Roster-, Amts- oder Finanzmutationen.';
+  end if;
+end
+$m150_withdrawal_verification$;
+
+select pass('PORTAL_CORE_STRUCTURE_OK - M150 F1.2A/F1.2B/F1.4A/F1.7C contract');
 select * from finish();
 
 rollback;
