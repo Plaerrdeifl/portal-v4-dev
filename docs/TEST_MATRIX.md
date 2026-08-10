@@ -18,6 +18,17 @@ Navigation, Aufgaben AUF-01 bis AUF-14, Teams/Datenschutz, Fanclub/Zahlungen/Fin
 
 Produktive Google-Anmeldung, echte Sitzungen, Datenbankmigration, parallele Schreibvorgänge, reale Browser-/Geräteinstallation und Live-Deployment müssen durch den Operator ausgeführt werden. `AUSSTEHEND_OPERATOR` bedeutet ausdrücklich nicht bestanden.
 
+## M010-R1 – Zentrales Berechtigungsmodell
+
+Die F1-Abdeckung liegt in
+`tests/m010_central_authorization.test.mjs` und
+`supabase/tests/m010_central_authorization.sql`. Sie umfasst Rolle, Amt,
+persönliche Grants, Mehrfachquellen, beide Revoke-Fälle, Admin-Wildcard,
+verbotenes persönliches `portal.admin`, User-/Rollenstatus, Audit,
+`events.manage`, Task-Legacy-Migration und die unveränderte M150-Amtsgrenze.
+Die Ausführung ist Bestandteil des separaten F2-Laufs und wurde in F1 nicht
+vorgenommen.
+
 ## Fortgeltendes M5-Gate A-M3-01
 
 Parallele Beitragsreaktivierung, Zahlungsbestätigung, wiederholte Request-IDs, Teilfehler, parallele Team-/Aufgabenänderungen, Revisionskonflikte sowie die vollständige Rechte-/Negativmatrix sind in isolierten Datenbankkopien nachzuweisen.

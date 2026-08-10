@@ -1,6 +1,6 @@
 # Plärrdeifl Portal V4 – aktuelle Datenbankstruktur
 
-**Stand:** 7. August 2026
+**Stand:** 10. August 2026
 **P800-Reparaturbaseline:** `03fd7286aac4fd53243a2b00e05cf0d9cb31e61f`
 **Supabase DEV:** `tpieykhhawszlzsoflnl`
 
@@ -47,6 +47,13 @@ Supabase Auth verwaltet die externe Authentifizierungsidentität.
 Portalrechte werden nicht unmittelbar aus Google-Profilfeldern abgeleitet.
 
 Der Datenbankzustand entscheidet unter anderem über Portalaktivierung, Rolle, Fähigkeiten, Mitgliedsverknüpfung und administrative Rechte.
+
+Persönliche additive globale Capabilities liegen in
+`app_portal.user_capabilities`. Die zentrale Auswertung erfolgt ausschließlich
+über `app_private.has_capability`: `ROLE OR OFFICE OR PERSONAL`, zusätzlich zum
+bestehenden rollenbasierten `ADMIN_OVERRIDE`. `portal.admin` kann nicht
+persönlich vergeben werden. Herkunft und Mehrfachquellen liefert
+`app_private.user_capability_provenance`.
 
 Google-Metadaten dürfen für Namensvorschläge verwendet werden, aber nicht als Autorisierungsquelle.
 

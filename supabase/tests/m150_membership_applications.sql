@@ -2138,7 +2138,10 @@ begin
         and audit.actor_user_id = v_u1
         and audit.before_data = jsonb_build_object('status', 'PENDING')
         and audit.after_data = jsonb_build_object('status', 'WITHDRAWN')
-        and jsonb_object_length(audit.metadata) = 1
+        and (
+          select count(*)
+          from jsonb_object_keys(audit.metadata)
+        ) = 1
         and audit.metadata ? 'withdrawnAt') <> 1 then
     raise exception 'Datensparsames MEMBERSHIP_APPLICATION_WITHDRAWN-Audit fehlt.';
   end if;

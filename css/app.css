@@ -1181,6 +1181,11 @@ html[data-route="home"] .app-footer{flex:none!important;padding-top:11px!importa
 .v4-capability strong,.v4-capability small,.v4-capability code{display:block}
 .v4-capability small{color:var(--ink-500);margin:3px 0}
 .v4-capability code{font-size:.72rem;color:var(--blue-800)}
+.v4-personal-capability>span{min-width:0;flex:1}
+.v4-capability-effective{display:inline-flex!important;margin-top:7px;padding:3px 8px;border-radius:999px;background:var(--surface-soft);color:var(--ink-500);font-size:.7rem;font-weight:800}
+.v4-capability-effective.is-effective{background:#e9f8ef;color:#17663a}
+.v4-capability-sources{display:flex!important;flex-wrap:wrap;gap:5px;margin-top:7px}
+.v4-capability-sources>span{display:inline-flex;padding:3px 7px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink-500);font-size:.68rem;font-weight:700}
 .v4-history{margin-top:20px}
 .v4-history summary{cursor:pointer;font-weight:850;padding:12px 0}
 .v4-admin-tabs{margin-bottom:18px}

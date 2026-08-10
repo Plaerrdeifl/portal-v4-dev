@@ -99,12 +99,17 @@ begin
   ) then
     raise exception 'events.manage wurde einer Portalrolle automatisch zugewiesen.';
   end if;
-  if exists (
-    select 1
-    from app_fanclub.office_capabilities
-    where capability_code = 'events.manage'
-  ) then
-    raise exception 'events.manage wurde einem Amt automatisch zugewiesen.';
+  if (select count(*)
+      from app_fanclub.office_capabilities
+      where capability_code = 'events.manage'
+        and office_code in (
+          'VORSTAND_1',
+          'VORSTAND_2',
+          'VORSTAND_3',
+          'KASSIER',
+          'SCHRIFTFUEHRER'
+        )) <> 5 then
+    raise exception 'events.manage fehlt bei mindestens einem der fuenf Aemter.';
   end if;
   if to_regprocedure('public.pd_api(text,jsonb)') is null then
     raise exception 'Portal-RPC fehlt.';

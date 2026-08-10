@@ -15,10 +15,11 @@ Administration ist ausschließlich für Admin sichtbar und serverseitig geschüt
 2. Freischaltungsanträge
 3. Teams und Teamfunktionen
 4. Portalrollen und Rechte
-5. Navigation und Dashboard
-6. Backups
-7. Systemstatus
-8. System bereinigen
+5. Persönliche additive Zusatzrechte je Benutzer
+6. Navigation und Dashboard
+7. Backups
+8. Systemstatus
+9. System bereinigen
 
 ## Namenspflicht
 
@@ -26,4 +27,7 @@ Benutzer und Anträge zeigen Vor- und Nachname getrennt. Anlage, Bearbeitung, Ge
 
 ## Unveränderliche Grenzen
 
-Admin-Override, drei feste Portalrollen, fünf feste Amtsplätze, feste Hauptnavigation und AE-R7.1-01 können über die Oberfläche nicht deaktiviert werden.
+Admin-Override, fünf feste Amtsplätze, feste Hauptnavigation und AE-R7.1-01
+können über die Oberfläche nicht deaktiviert werden. `portal.admin` kann nicht
+als persönliches Zusatzrecht vergeben werden. Persönliche Rechte sind additiv
+und ersetzen weder Rolle noch Amt.
