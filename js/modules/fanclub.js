@@ -14,6 +14,10 @@ import {
   showToast,
   statusBadge
 } from "./common.js";
+import {
+  renderMembershipApplications,
+  resetMembershipApplications
+} from "./membership-applications.js";
 
 let snapshot = null;
 let activeTab = "members";
@@ -230,6 +234,9 @@ function tabs() {
   const items = [
     ["members", "Mitglieder"],
     ["offices", "Vorstand"],
+    ...(canViewMembershipApplications()
+      ? [["membership-applications", "Mitgliedsanträge"]]
+      : []),
     ...(snapshot?.canReadFinance
       ? [
           ["contributions", "Beiträge"],
@@ -257,6 +264,15 @@ function tabs() {
       render();
     });
   });
+}
+
+function canViewMembershipApplications() {
+  const user = auth.current().user;
+  const member = user?.member;
+  if (!user || !member || member.status !== "ACTIVE") return false;
+  return (snapshot?.offices || []).some(
+    office => String(office.memberId || "") === String(member.id || "")
+  );
 }
 
 function memberStatusBadge(status) {
@@ -1561,14 +1577,34 @@ function render() {
   const panel = document.getElementById("fanclubPanel");
   if (!panel || !snapshot) return;
 
+  if (activeTab !== "membership-applications") {
+    resetMembershipApplications();
+  }
+
   if (activeTab === "offices") {
     renderOffices(panel);
+  } else if (activeTab === "membership-applications") {
+    void renderMembershipApplications(panel, {
+      members: snapshot?.members || [],
+      refreshMembers: refreshMembershipApplicationMembers
+    });
   } else if (activeTab === "contributions") {
     renderContributions(panel);
   } else if (activeTab === "cashbook") {
     renderCashbook(panel);
   } else {
     renderMembers(panel);
+  }
+}
+
+async function refreshMembershipApplicationMembers() {
+  try {
+    const refreshed = await call("fanclub_snapshot");
+    snapshot = refreshed;
+    return snapshot?.members || [];
+  } catch (error) {
+    if (snapshot) snapshot = { ...snapshot, members: [] };
+    throw error;
   }
 }
 
@@ -1590,6 +1626,7 @@ export async function hydrateFanclub(context = {}) {
   if (!panel) return;
 
   panel.innerHTML = '<article class="card loading-card"><h3>Fanclubdaten werden geladen …</h3></article>';
+  resetMembershipApplications();
 
   try {
     snapshot = await call("fanclub_snapshot");
