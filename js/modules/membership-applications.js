@@ -47,7 +47,9 @@ const ERROR_MESSAGES = Object.freeze({
   M150_TARGET_MEMBER_NOT_FOUND: "Das ausgewählte Mitglied wurde nicht mehr gefunden.",
   M150_REACTIVATION_OFFICE_ASSIGNMENT_REQUIRES_REVIEW: "Dieses ehemalige Mitglied ist noch einem Vorstandsamt zugeordnet. Die Amtszuordnung muss zuerst bewusst im Bereich ‚Vorstand‘ geklärt werden. M150 reaktiviert keine Ämter automatisch.",
   M150_VOTE_ALREADY_EXISTS: "Für diesen Antrag wurde die eigene Stimme bereits abgegeben.",
-  M150_APPLICATION_ALREADY_DECIDED: "Der Antrag wurde bereits entschieden."
+  M150_APPLICATION_ALREADY_DECIDED: "Der Antrag wurde bereits entschieden.",
+  M150_APPLICATION_ALREADY_WITHDRAWN: "Der Antrag wurde bereits als zurückgezogen markiert.",
+  M150_WITHDRAW_REQUIRES_PENDING: "Nur offene Anträge können als zurückgezogen markiert werden."
 });
 
 const REFRESH_AFTER_ERROR = new Set([
@@ -62,7 +64,9 @@ const REFRESH_AFTER_ERROR = new Set([
   "M150_TARGET_MEMBER_NOT_FOUND",
   "M150_REACTIVATION_OFFICE_ASSIGNMENT_REQUIRES_REVIEW",
   "M150_VOTE_ALREADY_EXISTS",
-  "M150_APPLICATION_ALREADY_DECIDED"
+  "M150_APPLICATION_ALREADY_DECIDED",
+  "M150_APPLICATION_ALREADY_WITHDRAWN",
+  "M150_WITHDRAW_REQUIRES_PENDING"
 ]);
 
 let applications = [];
@@ -340,6 +344,13 @@ function detailActionsMarkup(detail) {
           <button class="button primary" type="button" data-m150-manual-decision="APPROVED">Aufnehmen</button>
         </div>
       </div>` : ""}
+      <div class="v4-m150-withdrawal">
+        <h3>Antrag zurückgezogen</h3>
+        <p class="subtle">Nur verwenden, wenn der Antragsteller seinen Antrag außerhalb des Portals zurückgezogen hat. Der Rückzug beendet die Bearbeitung und kann in M150 R1 nicht rückgängig gemacht werden.</p>
+        <div class="dialog-actions v4-m150-inline-actions">
+          <button class="button danger" type="button" data-m150-withdraw>Als zurückgezogen markieren</button>
+        </div>
+      </div>
     </section>`;
   }
 
@@ -417,6 +428,8 @@ function bindDetailActions(dialog, detail) {
   });
   dialog.querySelector("[data-m150-convert]")
     ?.addEventListener("click", () => openConversionDialog(detail));
+  dialog.querySelector("[data-m150-withdraw]")
+    ?.addEventListener("click", () => handleWithdraw(detail));
 }
 
 function showApplicationDetail(detail) {
@@ -521,6 +534,27 @@ async function executeConversionWrite({ id, operation, successMessage }) {
       8200
     );
   }
+}
+
+async function handleWithdraw(detail) {
+  const confirmed = await confirmAction(
+    "Der Rückzug beendet die Bearbeitung und kann in M150 R1 nicht rückgängig gemacht werden.",
+    {
+      danger: true,
+      title: "Antrag als zurückgezogen markieren?",
+      submitLabel: "Als zurückgezogen markieren"
+    }
+  );
+  if (!confirmed) return;
+
+  await executeWrite({
+    id: detail.id,
+    successMessage: "Der Antrag wurde als zurückgezogen markiert.",
+    operation: () => call("membership_application_withdraw", {
+      id: detail.id,
+      expectedRevision: detail.revision
+    })
+  });
 }
 
 async function handleVote(detail, vote) {
