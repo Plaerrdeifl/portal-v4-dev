@@ -35,13 +35,14 @@ test("F1.4B artifacts and function location are exact", async () => {
   );
 });
 
-test("only the M150 function receives its dedicated JWT bypass config", () => {
+test("only explicitly approved functions receive dedicated JWT bypass config", () => {
   const functionSections = [...config.matchAll(/^\[functions\.([^\]]+)\]$/gm)]
     .map(match => match[1]);
   assert.deepEqual(functionSections, [
     "send-web-push",
     "m150-membership-submit",
-    "m150-membership-email-dispatch"
+    "m150-membership-email-dispatch",
+    "m310-fanbus-register"
   ]);
   assert.equal(
     (config.match(/^\[functions\.m150-membership-submit\]$/gm) || []).length,
@@ -54,6 +55,14 @@ test("only the M150 function receives its dedicated JWT bypass config", () => {
   assert.match(
     config,
     /^\[functions\.send-web-push\]\r?\nverify_jwt = false\s*$/m
+  );
+  assert.equal(
+    (config.match(/^\[functions\.m310-fanbus-register\]$/gm) || []).length,
+    1
+  );
+  assert.match(
+    config,
+    /^\[functions\.m310-fanbus-register\]\r?\nverify_jwt = false\s*$/m
   );
 });
 

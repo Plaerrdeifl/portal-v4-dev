@@ -173,12 +173,13 @@ export function preloadAuthenticatedModules(keys = ["dashboard", "dates", "fancl
 }
 
 export async function hydratePage(key, context = {}) {
-  if (["home", "news", "about", "contact", "fanbuses"].includes(key)) return;
+  if (["home", "news", "about", "contact"].includes(key)) return;
   if (key === "install") return hydrateInstall();
   if (key === "login") return hydrateLogin(context);
   if (key === "profile") return feature("./modules/profile.js", "hydrateProfile", context);
   if (key === "dashboard") return feature("./modules/dashboard.js?v=20260724-dashboard-delivery-corr2&feature=20260724-personal-dashboard-widgets-r1-fix4&small=20260725-dashboard-small-widgets-r1", "hydrateDashboard", context);
   if (key === "dates") return feature("./modules/dates.js", "hydrateDates", context);
+  if (key === "fanbuses") return feature("./modules/fanbuses.js", "hydrateFanbuses", context);
   if (key === "fanclub") return feature("./modules/fanclub.js", "hydrateFanclub", context);
   if (key === "tasks") return feature("./modules/tasks.js", "hydrateTasks", context);
   if (key === "teams") return feature("./modules/teams.js", "hydrateTeams", context);

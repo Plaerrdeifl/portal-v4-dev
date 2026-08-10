@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="de" data-route="fanbus-registration">
+<head>
+  <meta charset="utf-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+  <meta name="theme-color" content="#041c33">
+  <meta name="color-scheme" content="light">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta
+    name="description"
+    content="Zentrale Anmeldung zu einer Fanbusfahrt der Plärrdeifl."
+  >
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; frame-src https://accounts.google.com https://challenges.cloudflare.com https://*.supabase.co; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://accounts.google.com https://challenges.cloudflare.com; script-src 'self' https://cdn.jsdelivr.net https://accounts.google.com https://challenges.cloudflare.com; connect-src 'self' https://*.supabase.co https://accounts.google.com https://challenges.cloudflare.com wss://*.supabase.co http://127.0.0.1:54321 http://localhost:54321 ws://127.0.0.1:54321 ws://localhost:54321; worker-src 'self'; form-action 'self' https://accounts.google.com https://*.supabase.co"
+  >
+
+  <link rel="icon" type="image/x-icon" href="./favicon.ico">
+  <link
+    rel="icon"
+    type="image/png"
+    sizes="32x32"
+    href="./assets/icons/icon-32.png"
+  >
+  <link
+    rel="stylesheet"
+    href="./css/tokens.css?v=20260802-pwa-install-guidance-r1"
+  >
+  <link
+    rel="stylesheet"
+    href="./css/app.css?v=20260802-pwa-install-guidance-r1"
+  >
+  <style>
+    .fanbus-public-shell{width:min(780px,100%);margin:0 auto;padding:clamp(22px,5vw,52px) max(14px,env(safe-area-inset-right)) max(36px,calc(24px + env(safe-area-inset-bottom))) max(14px,env(safe-area-inset-left));display:grid;gap:18px}
+    .fanbus-public-brand{display:flex;align-items:center;gap:12px;color:var(--ink-900);text-decoration:none;font-weight:900}
+    .fanbus-public-brand img{width:52px;height:52px;border-radius:14px}
+    .fanbus-public-brand span{display:grid;line-height:1.05}
+    .fanbus-public-brand small{margin-top:5px;color:var(--ink-500);font-size:.7rem;letter-spacing:.17em}
+    .fanbus-public-header h1{margin:0;font-size:clamp(1.7rem,6vw,2.5rem);letter-spacing:-.035em}
+    .fanbus-public-header p{margin:8px 0 0;color:var(--ink-500);line-height:1.55}
+    .fanbus-public-form{margin-top:18px}
+    .fanbus-public-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px}
+    .fanbus-public-actions .button{flex:1 1 220px}
+    .fanbus-public-consent{align-items:flex-start}
+    .fanbus-public-consent input{margin-top:2px;flex:none}
+    .fanbus-public-consent span{line-height:1.45}
+    .fanbus-public-legal-link{color:var(--blue-800)}
+    .fanbus-public-google{min-height:52px;margin:16px 0;display:flex;justify-content:center;align-items:center;overflow:hidden}
+    .fanbus-public-turnstile{min-height:66px;margin-top:16px;overflow:hidden}
+    .fanbus-public-status{margin-top:0}
+    .fanbus-public-status[hidden],.fanbus-public-form[hidden],.fanbus-public-google[hidden]{display:none!important}
+    @media (max-width:620px){.fanbus-public-form.form-grid{grid-template-columns:1fr}.fanbus-public-form .full{grid-column:auto}.fanbus-public-shell{gap:14px}.card{padding:18px}}
+  </style>
+  <title>Fanbus-Anmeldung · Plärrdeifl</title>
+</head>
+<body>
+  <noscript>
+    <div class="noscript">Für die Fanbus-Anmeldung muss JavaScript aktiviert sein.</div>
+  </noscript>
+
+  <main class="fanbus-public-shell">
+    <a class="fanbus-public-brand" href="./" aria-label="Zum Plärrdeifl Portal">
+      <img src="./assets/icons/icon-192.png" alt="">
+      <span>Plärrdeifl<small>FANBUS-ANMELDUNG</small></span>
+    </a>
+
+    <header class="fanbus-public-header">
+      <h1>Fanbus-Anmeldung</h1>
+      <p>Hier findest du alle Informationen zur ausgewählten Fahrt und kannst dich anmelden.</p>
+    </header>
+
+    <section id="m310PublicTrip" class="card loading-card" aria-live="polite">
+      <div class="spinner" aria-hidden="true"></div>
+      <p>Fanbusfahrt wird geladen …</p>
+    </section>
+
+    <section id="m310RegistrationPanel" class="card" hidden>
+      <div class="section-title">
+        <div>
+          <h2 id="m310RegistrationTitle">Anmelden</h2>
+          <p id="m310RegistrationIntro">Wähle deine bevorzugte Stimmung im Bus.</p>
+        </div>
+      </div>
+
+      <div
+        id="m310RegistrationStatus"
+        class="notice fanbus-public-status"
+        role="status"
+        aria-live="polite"
+        hidden
+      ></div>
+
+      <div id="m310GoogleSignIn" class="google-signin-slot fanbus-public-google" hidden></div>
+
+      <form id="m310PortalForm" class="form-grid fanbus-public-form" novalidate hidden>
+        <div id="m310PortalIdentity" class="readonly full"></div>
+        <label class="full">
+          Buspräferenz
+          <select name="busPreference" required>
+            <option value="EGAL">Egal</option>
+            <option value="RUHIG">Ruhig</option>
+            <option value="PARTY">Party</option>
+          </select>
+        </label>
+        <label class="check-row full fanbus-public-consent">
+          <input name="privacyConfirmed" type="checkbox" required>
+          <span id="m310PortalPrivacyConsent"></span>
+        </label>
+        <label class="check-row full fanbus-public-consent">
+          <input name="termsConfirmed" type="checkbox" required>
+          <span id="m310PortalTermsConsent"></span>
+        </label>
+        <div class="fanbus-public-actions full">
+          <button class="button primary" type="submit">Verbindlich anmelden</button>
+        </div>
+      </form>
+
+      <form id="m310GuestForm" class="form-grid fanbus-public-form" novalidate hidden>
+        <label>
+          Vorname
+          <input name="firstName" type="text" autocomplete="given-name" maxlength="120" required>
+        </label>
+        <label>
+          Nachname
+          <input name="lastName" type="text" autocomplete="family-name" maxlength="120" required>
+        </label>
+        <label class="full">
+          E-Mail
+          <input name="email" type="email" autocomplete="email" maxlength="320" required>
+        </label>
+        <label class="full">
+          Buspräferenz
+          <select name="busPreference" required>
+            <option value="EGAL">Egal</option>
+            <option value="RUHIG">Ruhig</option>
+            <option value="PARTY">Party</option>
+          </select>
+        </label>
+        <label class="check-row full fanbus-public-consent">
+          <input name="privacyConfirmed" type="checkbox" required>
+          <span id="m310GuestPrivacyConsent"></span>
+        </label>
+        <label class="check-row full fanbus-public-consent">
+          <input name="termsConfirmed" type="checkbox" required>
+          <span id="m310GuestTermsConsent"></span>
+        </label>
+        <div id="m310Turnstile" class="fanbus-public-turnstile full"></div>
+        <div class="fanbus-public-actions full">
+          <button class="button primary" type="submit">Verbindlich als Gast anmelden</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script src="./js/runtime-config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7"></script>
+  <script type="module" src="./js/fanbus-registration.js"></script>
+</body>
+</html>
