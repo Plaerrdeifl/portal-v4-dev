@@ -103,7 +103,7 @@ final class PD_M310_Fanbus_Plugin
             'Portal-Anmelde-URL',
             'portal_registration_url',
             'url',
-            'https://portal.example.de/fanbus-anmeldung.html'
+            'https://portal.example.de/fanbus-anmeldung'
         );
     }
 
@@ -210,7 +210,7 @@ final class PD_M310_Fanbus_Plugin
         if ($portal_url === null) {
             self::settings_error(
                 'pd_m310_invalid_portal_url',
-                'Die Portal-Anmelde-URL muss eine absolute HTTPS-URL zu fanbus-anmeldung.html ohne Query oder Fragment sein.'
+                'Die Portal-Anmelde-URL muss eine absolute HTTPS-URL zu /fanbus-anmeldung ohne Query oder Fragment sein.'
             );
         }
 
@@ -239,11 +239,20 @@ final class PD_M310_Fanbus_Plugin
         }
 
         $path = wp_parse_url($url, PHP_URL_PATH);
-        if (!is_string($path) || !str_ends_with($path, '/fanbus-anmeldung.html')) {
+        if (
+            !is_string($path)
+            || !in_array(
+                $path,
+                array('/fanbus-anmeldung', '/fanbus-anmeldung.html'),
+                true
+            )
+        ) {
             return null;
         }
 
-        return $url;
+        return $path === '/fanbus-anmeldung.html'
+            ? substr($url, 0, -5)
+            : $url;
     }
 
     private static function validated_https_url(mixed $value, bool $preserve_path): ?string
