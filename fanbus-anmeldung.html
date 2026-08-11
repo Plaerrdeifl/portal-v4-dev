@@ -34,6 +34,14 @@
     href="./css/app.css?v=20260802-pwa-install-guidance-r1"
   >
   <style>
+    html[data-route="fanbus-registration"],
+    html[data-route="fanbus-registration"] body{
+      height:auto!important;
+      min-height:100%;
+      max-height:none!important;
+      overflow-x:hidden!important;
+      overflow-y:auto!important;
+    }
     .fanbus-public-shell{width:min(780px,100%);margin:0 auto;padding:clamp(22px,5vw,52px) max(14px,env(safe-area-inset-right)) max(36px,calc(24px + env(safe-area-inset-bottom))) max(14px,env(safe-area-inset-left));display:grid;gap:18px}
     .fanbus-public-brand{display:flex;align-items:center;gap:12px;color:var(--ink-900);text-decoration:none;font-weight:900}
     .fanbus-public-brand img{width:52px;height:52px;border-radius:14px}
