@@ -6,6 +6,7 @@ import {
   escapeAttr,
   escapeHtml,
   hasCapability,
+  importIcs,
   loading,
   openDialog,
   optionList,
@@ -28,6 +29,21 @@ const HOME_AWAY = [
   { value: "HOME", label: "Heimspiel" },
   { value: "AWAY", label: "Auswärtsspiel" }
 ];
+
+const ICS_PROFILE = Object.freeze({
+  sourceKey: "ERV_BAYERNLIGA_2026_27",
+  label: "ERV Bayernliga 2026/27"
+});
+const MAX_ICS_BYTES = 1024 * 1024;
+const DIFF_LABELS = Object.freeze({
+  eventDate: "Datum",
+  eventTime: "Uhrzeit",
+  endDate: "Enddatum",
+  endTime: "Endzeit",
+  venue: "Ort",
+  homeAway: "Heim/Auswärts",
+  opponentName: "Gegner"
+});
 
 const DATE_FORMAT = new Intl.DateTimeFormat("de-DE", {
   day: "2-digit",
@@ -169,6 +185,7 @@ function render() {
   const panel = document.getElementById("m210DatesList");
   const summary = document.getElementById("m210DatesSummary");
   const addButton = document.getElementById("m210AddEventButton");
+  const importButton = document.getElementById("m210ImportScheduleButton");
   if (!panel) return;
 
   const items = events();
@@ -177,6 +194,11 @@ function render() {
   if (addButton) {
     addButton.hidden = !canManage;
     addButton.onclick = canManage ? () => openEventEditor() : null;
+  }
+
+  if (importButton) {
+    importButton.hidden = !canManage;
+    importButton.onclick = canManage ? () => openIcsImport() : null;
   }
 
   if (summary) {
@@ -323,6 +345,170 @@ function openEventEditor(event = null) {
   const typeSelect = dialog.querySelector("#m210DateEventType");
   typeSelect?.addEventListener("change", () => syncEventTypeFields(dialog));
   syncEventTypeFields(dialog);
+}
+
+function importValue(value) {
+  if (value === null || value === undefined || value === "") return "–";
+  if (value === "HOME") return "Heimspiel";
+  if (value === "AWAY") return "Auswärtsspiel";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return formatCalendarDate(value);
+  if (/^\d{2}:\d{2}/.test(String(value))) return timeLabel(value);
+  return String(value);
+}
+
+function importStatusBadge(status) {
+  const labels = { NEW: "Neu", CHANGED: "Geändert", UNCHANGED: "Unverändert" };
+  const classes = { NEW: "success", CHANGED: "warning", UNCHANGED: "neutral" };
+  return `<span class="badge ${classes[status] || "neutral"}">${escapeHtml(labels[status] || status)}</span>`;
+}
+
+function importDiffs(item) {
+  if (!Array.isArray(item.diffs) || !item.diffs.length) return "";
+  return `<div class="meta-grid">${item.diffs.map(diff => `<div class="meta-item">
+    <small>${escapeHtml(DIFF_LABELS[diff.field] || diff.field)}</small>
+    <strong>${escapeHtml(importValue(diff.old))} → ${escapeHtml(importValue(diff.new))}</strong>
+  </div>`).join("")}</div>`;
+}
+
+function previewMarkup(preview) {
+  const summary = preview?.summary || {};
+  const items = Array.isArray(preview?.items) ? preview.items : [];
+  return `<div class="v4-heading-row v4-subheading-row">
+    <div><h3>Importvorschau</h3><p class="subtle">${escapeHtml(preview?.sourceLabel || ICS_PROFILE.label)}</p></div>
+    <span class="status-pill success">Analysiert</span>
+  </div>
+  <div class="meta-grid">
+    <div class="meta-item"><small>Neu</small><strong>${escapeHtml(summary.new ?? 0)}</strong></div>
+    <div class="meta-item"><small>Geändert</small><strong>${escapeHtml(summary.changed ?? 0)}</strong></div>
+    <div class="meta-item"><small>Unverändert</small><strong>${escapeHtml(summary.unchanged ?? 0)}</strong></div>
+  </div>
+  <div class="v4-card-grid">${items.map(item => `<article class="card entity-card" data-m210-import-status="${escapeAttr(item.status)}">
+    <div class="entity-head"><div><span class="subtle">${escapeHtml(formatCalendarDate(item.eventDate))} · ${escapeHtml(timeLabel(item.eventTime))}</span><h3>${escapeHtml(item.displayTitle || "Spiel")}</h3></div>${importStatusBadge(item.status)}</div>
+    <div class="meta-grid">
+      <div class="meta-item"><small>Ende</small><strong>${escapeHtml(item.endDate ? `${formatCalendarDate(item.endDate)} · ${timeLabel(item.endTime)}` : "–")}</strong></div>
+      <div class="meta-item"><small>Ort</small><strong>${escapeHtml(item.venue || "–")}</strong></div>
+      <div class="meta-item"><small>UID</small><strong>${escapeHtml(item.uid)}</strong></div>
+    </div>
+    ${importDiffs(item)}
+  </article>`).join("")}</div>`;
+}
+
+function importResultMarkup(result) {
+  const summary = result?.summary || {};
+  return `<article class="card notice success">
+    <strong>Spielplanimport abgeschlossen</strong>
+    <p>${escapeHtml(summary.created ?? 0)} Termine wurden erstellt, ${escapeHtml(summary.updated ?? 0)} aktualisiert und ${escapeHtml(summary.unchanged ?? 0)} unverändert belassen.</p>
+    <small>Importlauf: ${escapeHtml(result?.runId || "–")}</small>
+  </article>`;
+}
+
+function openIcsImport() {
+  let selectedFile = null;
+  let preview = null;
+  const dialog = openDialog({
+    title: "Spielplan importieren",
+    kicker: "ICS-Spielplanimport",
+    body: `<form id="m210IcsImportForm" class="form-grid v4-smart-form">
+      <label class="full">Importprofil
+        <select name="sourceKey" required><option value="${escapeAttr(ICS_PROFILE.sourceKey)}">${escapeHtml(ICS_PROFILE.label)}</option></select>
+      </label>
+      <label class="full">ICS-Datei
+        <input name="icsFile" type="file" accept=".ics,text/calendar" required>
+      </label>
+    </form>
+    <div id="m210IcsImportStatus" class="notice" role="status">Wähle eine ICS-Datei mit höchstens 1 MiB aus.</div>
+    <div id="m210IcsImportPreview"></div>
+    <div class="dialog-actions">
+      <button class="button ghost" type="button" data-v4-dialog-close>Schließen</button>
+      <button id="m210IcsAnalyzeButton" class="button secondary" type="button">Analysieren</button>
+      <button id="m210IcsConfirmButton" class="button primary" type="button" hidden>Import bestätigen</button>
+    </div>`
+  });
+  const fileInput = dialog.querySelector('input[name="icsFile"]');
+  const analyzeButton = dialog.querySelector("#m210IcsAnalyzeButton");
+  const confirmButton = dialog.querySelector("#m210IcsConfirmButton");
+  const status = dialog.querySelector("#m210IcsImportStatus");
+  const previewPanel = dialog.querySelector("#m210IcsImportPreview");
+
+  fileInput?.addEventListener("change", () => {
+    selectedFile = fileInput.files?.[0] || null;
+    preview = null;
+    confirmButton.hidden = true;
+    previewPanel.innerHTML = "";
+    status.textContent = selectedFile ? `Ausgewählt: ${selectedFile.name}` : "Wähle eine ICS-Datei aus.";
+  });
+
+  analyzeButton?.addEventListener("click", async () => {
+    selectedFile = fileInput?.files?.[0] || null;
+    if (!selectedFile || !/\.ics$/i.test(selectedFile.name)) {
+      status.textContent = "Bitte wähle eine .ics-Datei aus.";
+      return;
+    }
+    if (selectedFile.size > MAX_ICS_BYTES) {
+      status.textContent = "Die ICS-Datei darf höchstens 1 MiB groß sein.";
+      return;
+    }
+    analyzeButton.disabled = true;
+    confirmButton.hidden = true;
+    status.textContent = "Die ICS-Datei wird serverseitig analysiert …";
+    try {
+      preview = await importIcs("preview", selectedFile, ICS_PROFILE.sourceKey);
+      previewPanel.innerHTML = previewMarkup(preview);
+      status.textContent = "Die Vorschau ist bereit. Prüfe alle Änderungen vor der Bestätigung.";
+      confirmButton.disabled = false;
+      confirmButton.hidden = false;
+    } catch (error) {
+      preview = null;
+      previewPanel.innerHTML = "";
+      status.textContent = error?.message || "Die ICS-Datei konnte nicht analysiert werden.";
+    } finally {
+      analyzeButton.disabled = false;
+    }
+  });
+
+  confirmButton?.addEventListener("click", async () => {
+    if (!selectedFile || !preview?.previewFingerprint) return;
+    confirmButton.disabled = true;
+    analyzeButton.disabled = true;
+    status.textContent = "Der Import wird atomar bestätigt …";
+    try {
+      const result = await runWrite(
+        () => importIcs(
+          "confirm",
+          selectedFile,
+          ICS_PROFILE.sourceKey,
+          preview.previewFingerprint
+        ),
+        "Der Spielplan wurde importiert."
+      );
+      preview = null;
+      confirmButton.hidden = true;
+      fileInput.disabled = true;
+      previewPanel.innerHTML = importResultMarkup(result);
+      status.textContent = "Der bestätigte Importlauf wurde protokolliert.";
+      try {
+        snapshot = await call("events_list");
+        render();
+      } catch (refreshError) {
+        showToast(
+          refreshError?.message || "Die Terminliste konnte nach dem Import nicht aktualisiert werden.",
+          "error",
+          5200
+        );
+      }
+    } catch (error) {
+      if (error?.code === "PREVIEW_STALE") {
+        preview = null;
+        confirmButton.hidden = true;
+        status.textContent = "Die Vorschau ist nicht mehr aktuell. Analysiere die Datei erneut.";
+      } else {
+        status.textContent = error?.message || "Der Import konnte nicht bestätigt werden.";
+        confirmButton.disabled = false;
+      }
+    } finally {
+      if (!fileInput.disabled) analyzeButton.disabled = false;
+    }
+  });
 }
 
 async function deleteEvent(event, button) {
