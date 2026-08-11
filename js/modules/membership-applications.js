@@ -142,12 +142,12 @@ function renderApplicationList() {
         <p>Interne Bearbeitung durch den aktuellen Vorstand</p>
       </div>
     </div>
-    <div class="v4-m150-filterbar">
+    <div class="v4-list-filterbar">
       <label class="v4-compact-search">
         <span class="sr-only">Mitgliedsanträge durchsuchen</span>
         <input id="membershipApplicationSearch" type="search" placeholder="Namen durchsuchen …" autocomplete="off" value="${escapeAttr(nameSearch)}">
       </label>
-      <label class="v4-m150-status-filter">Status
+      <label class="v4-filter-field">Status
         <select id="membershipApplicationStatusFilter">
           <option value="PENDING" ${statusFilter === "PENDING" ? "selected" : ""}>Offen</option>
           <option value="APPROVED" ${statusFilter === "APPROVED" ? "selected" : ""}>Angenommen</option>
@@ -170,14 +170,14 @@ function renderApplicationList() {
           </tr>`).join("")}</tbody>
         </table>
       </div>
-      <div class="v4-mobile-records v4-m150-mobile-list" aria-label="Mitgliedsanträge">
-        ${visible.map(application => `<button class="v4-m150-compact-row" type="button" data-membership-application-id="${escapeAttr(application.id)}">
-          <span class="v4-m150-compact-copy">
-            <strong>${escapeHtml(applicationName(application))}</strong>
+      <div class="v4-mobile-records v4-compact-record-list" aria-label="Mitgliedsanträge">
+        ${visible.map(application => `<button class="v4-compact-record" type="button" data-membership-application-id="${escapeAttr(application.id)}">
+          <span class="v4-compact-record-copy">
             <small>Eingang ${escapeHtml(fmtDate(application.submittedAt))}</small>
+            <strong>${escapeHtml(applicationName(application))}</strong>
             ${voteSummary(application)}
           </span>
-          <span class="v4-m150-compact-status">${applicationStatusBadge(application.status)}</span>
+          <span class="v4-compact-record-end">${applicationStatusBadge(application.status)}</span>
           <span class="v4-row-chevron" aria-hidden="true">›</span>
         </button>`).join("")}
       </div>

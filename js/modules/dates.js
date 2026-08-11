@@ -52,6 +52,9 @@ const DATE_FORMAT = new Intl.DateTimeFormat("de-DE", {
 });
 
 let snapshot = { events: [] };
+let searchQuery = "";
+let typeFilter = "ALL";
+let visibilityFilter = "ALL";
 
 function events() {
   return Array.isArray(snapshot?.events) ? snapshot.events : [];
@@ -106,72 +109,102 @@ function timeLabel(value) {
   return time ? `${time} Uhr` : "Uhrzeit noch offen";
 }
 
-function endLabel(event) {
-  const parts = [];
+function visibleEvents() {
+  const query = searchQuery.trim().toLocaleLowerCase("de-DE");
 
-  if (event.endDate) {
-    parts.push(formatCalendarDate(event.endDate));
-  }
+  return events().filter(event => {
+    const matchesType = typeFilter === "ALL" || event.eventType === typeFilter;
+    const matchesVisibility = visibilityFilter === "ALL"
+      || event.visibility === visibilityFilter;
+    const searchable = [
+      event.displayTitle,
+      event.title,
+      event.opponentName,
+      event.venue,
+      event.eventType,
+      typeLabel(event.eventType),
+      event.homeAway,
+      homeAwayLabel(event.homeAway)
+    ].filter(Boolean).join(" ").toLocaleLowerCase("de-DE");
 
-  if (event.endTime) {
-    parts.push(timeLabel(event.endTime));
-  }
-
-  return parts.length ? `Ende: ${parts.join(" · ")}` : "";
+    return matchesType && matchesVisibility && (!query || searchable.includes(query));
+  });
 }
 
-function badges(event) {
-  const labels = [
-    `<span class="badge neutral">${escapeHtml(typeLabel(event.eventType))}</span>`,
-    `<span class="badge ${event.visibility === "PUBLIC" ? "success" : "neutral"}">${escapeHtml(visibilityLabel(event.visibility))}</span>`
-  ];
-
-  if (event.eventType === "GAME" && event.homeAway) {
-    labels.push(
-      `<span class="badge warning">${escapeHtml(homeAwayLabel(event.homeAway))}</span>`
-    );
-  }
-
-  return labels.join("");
-}
-
-function eventMeta(event) {
-  const items = [];
-  const end = endLabel(event);
-
-  if (event.venue) {
-    items.push(`<div class="meta-item"><small>Ort</small><strong>${escapeHtml(event.venue)}</strong></div>`);
-  }
-
-  if (end) {
-    items.push(`<div class="meta-item"><small>Terminende</small><strong>${escapeHtml(end.replace(/^Ende:\s*/, ""))}</strong></div>`);
-  }
-
-  return items.length ? `<div class="meta-grid">${items.join("")}</div>` : "";
-}
-
-function eventActions(event, canManage) {
+function eventDetailActions(event, canManage) {
   if (!canManage || event.canManage === false) return "";
 
-  return `<div class="v4-card-actions">
+  return `<div class="v4-detail-actions dialog-actions">
     <button class="button small secondary" type="button" data-m210-edit-event="${escapeAttr(event.id)}">Bearbeiten</button>
     <button class="button small danger" type="button" data-m210-delete-event="${escapeAttr(event.id)}">Löschen</button>
   </div>`;
 }
 
-function eventCard(event, canManage) {
-  return `<article class="card entity-card m210-date-card" data-m210-event-id="${escapeAttr(event.id)}">
-    <div class="entity-head">
-      <div>
-        <span class="subtle">${escapeHtml(formatCalendarDate(event.eventDate))} · ${escapeHtml(timeLabel(event.eventTime))}</span>
-        <h3>${escapeHtml(event.displayTitle || "Termin")}</h3>
-      </div>
-      <div class="badge-stack">${badges(event)}</div>
+function eventDetailMarkup(event, canManage) {
+  return `<div>
+    <div class="v4-detail-grid">
+      <div><span>Datum</span><strong>${escapeHtml(formatCalendarDate(event.eventDate))}</strong></div>
+      <div><span>Uhrzeit</span><strong>${escapeHtml(timeLabel(event.eventTime))}</strong></div>
+      ${event.endDate ? `<div><span>Enddatum</span><strong>${escapeHtml(formatCalendarDate(event.endDate))}</strong></div>` : ""}
+      ${event.endTime ? `<div><span>Endzeit</span><strong>${escapeHtml(timeLabel(event.endTime))}</strong></div>` : ""}
+      <div><span>Typ</span><strong><span class="badge neutral">${escapeHtml(typeLabel(event.eventType))}</span></strong></div>
+      <div><span>Sichtbarkeit</span><strong><span class="badge ${event.visibility === "PUBLIC" ? "success" : "neutral"}">${escapeHtml(visibilityLabel(event.visibility))}</span></strong></div>
+      <div class="full"><span>Titel</span><strong>${escapeHtml(event.displayTitle || event.title || "Termin")}</strong></div>
+      ${event.venue ? `<div class="full"><span>Ort</span><strong>${escapeHtml(event.venue)}</strong></div>` : ""}
+      ${event.eventType === "GAME" && event.homeAway ? `<div><span>Heim/Auswärts</span><strong>${escapeHtml(homeAwayLabel(event.homeAway))}</strong></div>` : ""}
+      ${event.eventType === "GAME" && event.opponentName ? `<div><span>Gegner</span><strong>${escapeHtml(event.opponentName)}</strong></div>` : ""}
+      ${event.description ? `<div class="full"><span>Beschreibung</span><strong class="v4-preserve-lines">${escapeHtml(event.description)}</strong></div>` : ""}
     </div>
-    ${eventMeta(event)}
-    ${event.description ? `<p class="v4-preserve-lines">${escapeHtml(event.description)}</p>` : ""}
-    ${eventActions(event, canManage)}
-  </article>`;
+    ${eventDetailActions(event, canManage)}
+  </div>`;
+}
+
+function openEventDetail(event) {
+  const canManage = hasCapability("events.manage") && event.canManage !== false;
+  const dialog = openDialog({
+    title: event.displayTitle || event.title || "Termin",
+    kicker: `${formatCalendarDate(event.eventDate)} · ${timeLabel(event.eventTime)}`,
+    body: eventDetailMarkup(event, canManage)
+  });
+
+  dialog.querySelector("[data-m210-edit-event]")?.addEventListener("click", () => {
+    openEventEditor(event);
+  });
+  dialog.querySelector("[data-m210-delete-event]")?.addEventListener("click", async clickEvent => {
+    await deleteEvent(event, clickEvent.currentTarget);
+  });
+}
+
+function eventTable(items) {
+  return `<div class="v4-table-wrap v4-desktop-table">
+    <table class="v4-table v4-compact-table">
+      <thead><tr><th>Datum</th><th>Uhrzeit</th><th>Termin</th><th>Typ</th><th>Gegner</th><th>Heim/Auswärts</th><th>Sichtbarkeit</th><th></th></tr></thead>
+      <tbody>${items.map(event => `<tr class="v4-interactive-row" tabindex="0" role="button" data-m210-open-event="${escapeAttr(event.id)}" aria-label="Details zu ${escapeAttr(event.displayTitle || event.title || "Termin")}">
+        <td>${escapeHtml(formatCalendarDate(event.eventDate))}</td>
+        <td>${escapeHtml(timeLabel(event.eventTime))}</td>
+        <td><strong>${escapeHtml(event.displayTitle || event.title || "Termin")}</strong>${event.venue ? `<small>${escapeHtml(event.venue)}</small>` : ""}</td>
+        <td><span class="badge neutral">${escapeHtml(typeLabel(event.eventType))}</span></td>
+        <td>${escapeHtml(event.eventType === "GAME" ? event.opponentName || "–" : "–")}</td>
+        <td>${escapeHtml(event.eventType === "GAME" ? homeAwayLabel(event.homeAway) || "–" : "–")}</td>
+        <td><span class="badge ${event.visibility === "PUBLIC" ? "success" : "neutral"}">${escapeHtml(visibilityLabel(event.visibility))}</span></td>
+        <td><span class="v4-row-chevron" aria-hidden="true">›</span></td>
+      </tr>`).join("")}</tbody>
+    </table>
+  </div>`;
+}
+
+function eventMobileList(items) {
+  return `<div class="v4-mobile-records v4-compact-record-list" aria-label="Termine">
+    ${items.map(event => `<button class="v4-compact-record" type="button" data-m210-open-event="${escapeAttr(event.id)}">
+      <span class="v4-compact-record-copy">
+        <small>${escapeHtml(formatCalendarDate(event.eventDate))} · ${escapeHtml(timeLabel(event.eventTime))}</small>
+        <strong>${escapeHtml(event.displayTitle || event.title || "Termin")}</strong>
+        <span>${escapeHtml(typeLabel(event.eventType))}${event.eventType === "GAME" && event.homeAway ? ` · ${escapeHtml(homeAwayLabel(event.homeAway))}` : ""}</span>
+      </span>
+      <span class="v4-compact-record-end"><span class="badge ${event.visibility === "PUBLIC" ? "success" : "neutral"}">${escapeHtml(visibilityLabel(event.visibility))}</span></span>
+      <span class="v4-row-chevron" aria-hidden="true">›</span>
+    </button>`).join("")}
+  </div>`;
 }
 
 function setStatus(label, type = "") {
@@ -188,7 +221,8 @@ function render() {
   const importButton = document.getElementById("m210ImportScheduleButton");
   if (!panel) return;
 
-  const items = events();
+  const allItems = events();
+  const items = visibleEvents();
   const canManage = hasCapability("events.manage");
 
   if (addButton) {
@@ -202,27 +236,62 @@ function render() {
   }
 
   if (summary) {
-    summary.textContent = items.length === 1
+    summary.textContent = allItems.length === 1
       ? "1 kommender Termin"
-      : `${items.length} kommende Termine`;
+      : `${allItems.length} kommende Termine`;
   }
 
-  panel.innerHTML = items.length
-    ? `<div id="m210DatesCards" class="v4-card-grid">${items.map(event => eventCard(event, canManage)).join("")}</div>`
-    : empty("Aktuell sind keine kommenden Termine eingetragen.");
+  panel.innerHTML = `<div class="v4-list-filterbar">
+    <label class="v4-compact-search">
+      <span class="sr-only">Termine durchsuchen</span>
+      <input id="m210EventSearch" type="search" placeholder="Termine durchsuchen …" autocomplete="off" value="${escapeAttr(searchQuery)}">
+    </label>
+    <label class="v4-filter-field">Typ
+      <select id="m210EventTypeFilter">
+        <option value="ALL" ${typeFilter === "ALL" ? "selected" : ""}>Alle</option>
+        ${EVENT_TYPES.map(item => `<option value="${escapeAttr(item.value)}" ${typeFilter === item.value ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
+      </select>
+    </label>
+    <label class="v4-filter-field">Sichtbarkeit
+      <select id="m210EventVisibilityFilter">
+        <option value="ALL" ${visibilityFilter === "ALL" ? "selected" : ""}>Alle</option>
+        ${VISIBILITIES.map(item => `<option value="${escapeAttr(item.value)}" ${visibilityFilter === item.value ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
+      </select>
+    </label>
+  </div>
+  ${items.length
+    ? `${eventTable(items)}${eventMobileList(items)}`
+    : empty(allItems.length ? "Keine Termine entsprechen der Suche oder den gewählten Filtern." : "Aktuell sind keine kommenden Termine eingetragen.")}`;
 
-  panel.querySelectorAll("[data-m210-edit-event]").forEach(button => {
-    button.addEventListener("click", () => {
-      const event = items.find(item => item.id === button.dataset.m210EditEvent);
-      if (event) openEventEditor(event);
-    });
+  panel.querySelector("#m210EventSearch")?.addEventListener("input", inputEvent => {
+    searchQuery = inputEvent.currentTarget.value;
+    render();
+    const search = document.getElementById("m210EventSearch");
+    search?.focus({ preventScroll: true });
+    search?.setSelectionRange(search.value.length, search.value.length);
+  });
+  panel.querySelector("#m210EventTypeFilter")?.addEventListener("change", changeEvent => {
+    typeFilter = changeEvent.currentTarget.value;
+    render();
+  });
+  panel.querySelector("#m210EventVisibilityFilter")?.addEventListener("change", changeEvent => {
+    visibilityFilter = changeEvent.currentTarget.value;
+    render();
   });
 
-  panel.querySelectorAll("[data-m210-delete-event]").forEach(button => {
-    button.addEventListener("click", async () => {
-      const event = items.find(item => item.id === button.dataset.m210DeleteEvent);
-      if (event) await deleteEvent(event, button);
-    });
+  panel.querySelectorAll("[data-m210-open-event]").forEach(record => {
+    const open = () => {
+      const event = allItems.find(item => item.id === record.dataset.m210OpenEvent);
+      if (event) openEventDetail(event);
+    };
+    record.addEventListener("click", open);
+    if (record.matches("tr")) {
+      record.addEventListener("keydown", keyEvent => {
+        if (keyEvent.key !== "Enter" && keyEvent.key !== " ") return;
+        keyEvent.preventDefault();
+        open();
+      });
+    }
   });
 
   setStatus("Aktuell", "success");
@@ -233,34 +302,34 @@ function eventForm(event = {}) {
   const isGame = eventType === "GAME";
 
   return `<form id="m210DateForm" class="form-grid v4-smart-form">
-    <label>Typ
+    <label class="v4-field-half">Typ
       <select id="m210DateEventType" name="eventType" required>${optionList(EVENT_TYPES, eventType)}</select>
     </label>
-    <label>Sichtbarkeit
+    <label class="v4-field-half">Sichtbarkeit
       <select name="visibility" required>${optionList(VISIBILITIES, event.visibility || "PUBLIC")}</select>
     </label>
-    <label id="m210DateTitleField" class="full" ${isGame ? "hidden" : ""}>Titel
+    <label id="m210DateTitleField" class="v4-field-full" ${isGame ? "hidden" : ""}>Titel
       <input name="title" value="${escapeAttr(event.title || "")}" ${isGame ? "" : "required"}>
     </label>
-    <label>Datum
+    <label class="v4-field-half v4-field-mobile-full">Datum
       <input name="eventDate" type="date" required value="${escapeAttr(event.eventDate || "")}">
     </label>
-    <label>Uhrzeit
+    <label class="v4-field-half v4-field-mobile-full">Uhrzeit
       <input name="eventTime" type="time" value="${escapeAttr(timeValue(event.eventTime))}">
     </label>
-    <label>Enddatum
+    <label class="v4-field-half v4-field-mobile-full">Enddatum
       <input name="endDate" type="date" value="${escapeAttr(event.endDate || "")}">
     </label>
-    <label>Endzeit
+    <label class="v4-field-half v4-field-mobile-full">Endzeit
       <input name="endTime" type="time" value="${escapeAttr(timeValue(event.endTime))}">
     </label>
-    <label class="full">Ort
+    <label class="v4-field-full">Ort
       <input name="venue" value="${escapeAttr(event.venue || "")}">
     </label>
-    <label class="full">Beschreibung
-      <textarea name="description" rows="4">${escapeHtml(event.description || "")}</textarea>
+    <label class="v4-field-full">Beschreibung
+      <textarea name="description" rows="3">${escapeHtml(event.description || "")}</textarea>
     </label>
-    <div id="m210DateGameFields" class="full form-grid" ${isGame ? "" : "hidden"}>
+    <div id="m210DateGameFields" class="v4-field-full v4-form-pair" ${isGame ? "" : "hidden"}>
       <label>Heim/Auswärts
         <select name="homeAway" ${isGame ? "required" : ""}>${optionList(HOME_AWAY, event.homeAway || "HOME")}</select>
       </label>

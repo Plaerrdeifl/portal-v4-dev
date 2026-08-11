@@ -5381,16 +5381,20 @@ html[data-portal-area="portal"] .v4-toolbar p{
   }
 }
 
-/* M150 R1 F1.3 – interne Mitgliedsanträge */
-.v4-m150-filterbar{
-  display:grid;
-  grid-template-columns:minmax(220px,1fr) minmax(180px,auto);
+/* Einheitliche kompakte Modulübersichten – M150 / M210 / M310 */
+.v4-list-filterbar{
+  display:flex;
+  flex-wrap:wrap;
   gap:10px;
   align-items:end;
   margin-bottom:12px;
 }
-.v4-m150-status-filter{
+.v4-list-filterbar .v4-compact-search{
+  flex:1 1 260px!important;
+}
+.v4-filter-field{
   display:grid;
+  flex:0 1 180px;
   gap:4px;
   color:var(--ink-500);
   font-size:.72rem;
@@ -5398,7 +5402,8 @@ html[data-portal-area="portal"] .v4-toolbar p{
   text-transform:uppercase;
   letter-spacing:.035em;
 }
-.v4-m150-status-filter select{
+.v4-filter-field select{
+  width:100%;
   min-height:42px;
   border:1px solid var(--line);
   border-radius:12px;
@@ -5410,6 +5415,89 @@ html[data-portal-area="portal"] .v4-toolbar p{
   text-transform:none;
   letter-spacing:normal;
 }
+.v4-compact-table th,
+.v4-compact-table td{
+  padding:10px 12px;
+  vertical-align:middle;
+}
+.v4-interactive-row{
+  cursor:pointer;
+}
+.v4-interactive-row:focus-visible{
+  position:relative;
+  z-index:1;
+  outline:3px solid var(--blue-400);
+  outline-offset:-3px;
+  background:var(--blue-050);
+}
+.v4-compact-record-list{
+  gap:7px!important;
+}
+.v4-compact-record{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  gap:10px;
+  align-items:center;
+  width:100%;
+  min-width:0;
+  padding:10px 12px;
+  border:1px solid rgba(126,145,171,.22);
+  border-radius:14px;
+  background:#fff;
+  color:var(--ink-900);
+  text-align:left;
+  box-shadow:var(--shadow-sm);
+  cursor:pointer;
+}
+.v4-compact-record:hover{
+  border-color:var(--blue-400);
+  background:var(--blue-050);
+}
+.v4-compact-record:focus-visible{
+  outline:3px solid var(--blue-400);
+  outline-offset:2px;
+}
+.v4-compact-record-copy{
+  display:grid;
+  min-width:0;
+  gap:2px;
+}
+.v4-compact-record-copy strong,
+.v4-compact-record-copy small,
+.v4-compact-record-copy span{
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.v4-compact-record-copy strong{
+  font-size:.94rem;
+  line-height:1.25;
+}
+.v4-compact-record-copy small,
+.v4-compact-record-copy>span{
+  color:var(--ink-500);
+  font-size:.72rem;
+  line-height:1.3;
+}
+.v4-compact-record-end{
+  display:grid;
+  justify-items:end;
+  gap:4px;
+  max-width:145px;
+  text-align:right;
+}
+.v4-compact-record-end small{
+  color:var(--ink-500);
+  font-size:.68rem;
+  line-height:1.25;
+}
+.v4-form-pair{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px 12px;
+}
+.v4-form-pair>label{
+  min-width:0;
+}
 .v4-m150-table td{
   vertical-align:middle;
 }
@@ -5420,36 +5508,7 @@ html[data-portal-area="portal"] .v4-toolbar p{
   font-weight:750;
   white-space:nowrap;
 }
-.v4-m150-compact-row{
-  display:grid;
-  grid-template-columns:minmax(0,1fr) auto auto;
-  gap:10px;
-  align-items:center;
-  width:100%;
-  min-width:0;
-  padding:13px 14px;
-  border:1px solid rgba(126,145,171,.22);
-  border-radius:17px;
-  background:rgba(255,255,255,.94);
-  color:var(--ink-900);
-  text-align:left;
-  box-shadow:var(--shadow-sm);
-}
-.v4-m150-compact-copy{
-  display:grid;
-  min-width:0;
-  gap:3px;
-}
-.v4-m150-compact-copy strong,
-.v4-m150-compact-copy small{
-  overflow-wrap:anywhere;
-}
-.v4-m150-compact-copy small{
-  color:var(--ink-500);
-}
-.v4-m150-compact-status{
-  align-self:start;
-}
+/* M150 R1 F1.3 – fachlich besondere Mitgliedsantragsbereiche */
 .v4-m150-section + .v4-m150-section{
   margin-top:16px;
   padding-top:16px;
@@ -5605,8 +5664,13 @@ html[data-portal-area="portal"] .v4-toolbar p{
 }
 
 @media(max-width:700px){
-  .v4-m150-filterbar{
-    grid-template-columns:1fr;
+  .v4-list-filterbar{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+  .v4-list-filterbar .v4-compact-search{
+    grid-column:1/-1;
   }
   .v4-m150-comparison{
     grid-template-columns:1fr;
@@ -5617,6 +5681,36 @@ html[data-portal-area="portal"] .v4-toolbar p{
   .v4-m150-vote-row>span:last-child{
     justify-items:end;
     text-align:right;
+  }
+}
+@media(max-width:430px){
+  .v4-smart-form>.v4-field-mobile-full,
+  .v4-smart-form>.v4-field-datetime{
+    grid-column:1/-1!important;
+  }
+}
+@media(max-width:350px){
+  .v4-list-filterbar,
+  .v4-form-pair{
+    grid-template-columns:1fr;
+  }
+  .v4-filter-field,
+  .v4-list-filterbar .v4-compact-search{
+    grid-column:auto;
+  }
+  .v4-compact-record{
+    grid-template-columns:minmax(0,1fr) auto;
+  }
+  .v4-compact-record-end{
+    grid-column:1/-1;
+    grid-row:2;
+    justify-items:start;
+    max-width:none;
+    text-align:left;
+  }
+  .v4-compact-record>.v4-row-chevron{
+    grid-column:2;
+    grid-row:1;
   }
 }
 

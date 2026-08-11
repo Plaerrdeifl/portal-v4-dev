@@ -228,15 +228,6 @@ function capacityLabel(trip) {
     : `${active} Anmeldungen · Kapazität noch offen`;
 }
 
-function tripMeta(trip) {
-  return `<div class="meta-grid">
-    <div class="meta-item"><small>Abfahrt</small><strong>${escapeHtml(formatBerlinDateTime(trip.departureAt))}</strong></div>
-    <div class="meta-item"><small>Fahrtpreis</small><strong>${escapeHtml(formatMoney(trip.priceCents))}</strong></div>
-    <div class="meta-item"><small>Kapazität</small><strong>${escapeHtml(capacityLabel(trip))}</strong></div>
-    <div class="meta-item"><small>Anmeldezeitraum</small><strong>${escapeHtml(trip.registrationOpensAt ? `${formatBerlinDateTime(trip.registrationOpensAt)} bis ${formatBerlinDateTime(trip.registrationClosesAt)}` : "Noch nicht festgelegt")}</strong></div>
-  </div>`;
-}
-
 function tripActions(trip) {
   const canManage = hasCapability("fanbus.manage") && trip.canManage !== false;
   const canManageRegistrations = hasCapability("fanbus.registrations.manage")
@@ -267,23 +258,69 @@ function tripActions(trip) {
     actions.push(`<button class="button small secondary" type="button" data-m310-registrations="${escapeAttr(trip.id)}">Teilnehmer</button>`);
   }
 
-  return actions.length ? `<div class="v4-card-actions">${actions.join("")}</div>` : "";
+  return actions.length ? `<div class="v4-detail-actions dialog-actions">${actions.join("")}</div>` : "";
 }
 
-function tripCard(trip) {
-  return `<article class="card entity-card" data-m310-trip-id="${escapeAttr(trip.id)}">
-    <div class="entity-head">
-      <div>
-        <span class="subtle">${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeLabel(trip.eventTime))}</span>
-        <h3>${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</h3>
-      </div>
-      ${tripBadges(trip)}
+function tripDetailMarkup(trip) {
+  return `<div>
+    <div class="v4-detail-grid">
+      <div class="full"><span>Fahrt / Spiel</span><strong>${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</strong></div>
+      <div><span>Termin</span><strong>${escapeHtml(formatCalendarDate(trip.eventDate))}</strong></div>
+      <div><span>Spielzeit</span><strong>${escapeHtml(eventTimeLabel(trip.eventTime))}</strong></div>
+      ${trip.opponentName ? `<div><span>Gegner</span><strong>${escapeHtml(trip.opponentName)}</strong></div>` : ""}
+      ${trip.venue ? `<div><span>Ziel / Ort</span><strong>${escapeHtml(trip.venue)}</strong></div>` : ""}
+      <div><span>Abfahrt</span><strong>${escapeHtml(formatBerlinDateTime(trip.departureAt))}</strong></div>
+      <div><span>Fahrtpreis</span><strong>${escapeHtml(formatMoney(trip.priceCents))}</strong></div>
+      <div><span>Anmeldungen / Kapazität</span><strong>${escapeHtml(capacityLabel(trip))}</strong></div>
+      <div><span>Status</span>${tripBadges(trip)}</div>
+      <div><span>Anmeldung öffnet</span><strong>${escapeHtml(formatBerlinDateTime(trip.registrationOpensAt))}</strong></div>
+      <div><span>Anmeldung schließt</span><strong>${escapeHtml(formatBerlinDateTime(trip.registrationClosesAt))}</strong></div>
+      ${trip.departureInfo ? `<div class="full"><span>Abfahrtsinformation</span><strong class="v4-preserve-lines">${escapeHtml(trip.departureInfo)}</strong></div>` : ""}
     </div>
-    ${trip.venue ? `<p class="subtle">${escapeHtml(trip.venue)}</p>` : ""}
-    ${trip.departureInfo ? `<p class="v4-preserve-lines"><strong>Abfahrtsinfo:</strong> ${escapeHtml(trip.departureInfo)}</p>` : ""}
-    ${tripMeta(trip)}
     ${tripActions(trip)}
-  </article>`;
+  </div>`;
+}
+
+function openTripDetail(trip) {
+  const dialog = openDialog({
+    title: trip.displayTitle || "Fanbusfahrt",
+    kicker: `${formatCalendarDate(trip.eventDate)} · ${eventTimeLabel(trip.eventTime)}`,
+    body: tripDetailMarkup(trip)
+  });
+  bindTripActions(dialog, [trip]);
+}
+
+function tripTable(items) {
+  return `<div class="v4-table-wrap v4-desktop-table">
+    <table class="v4-table v4-compact-table">
+      <thead><tr><th>Datum</th><th>Fahrt / Spiel</th><th>Ziel / Gegner</th><th>Status</th><th>Anmeldungen</th><th></th></tr></thead>
+      <tbody>${items.map(trip => `<tr class="v4-interactive-row" tabindex="0" role="button" data-m310-open-trip="${escapeAttr(trip.id)}" aria-label="Details zu ${escapeAttr(trip.displayTitle || "Fanbusfahrt")}">
+        <td>${escapeHtml(formatCalendarDate(trip.eventDate))}<small>${escapeHtml(eventTimeLabel(trip.eventTime))}</small></td>
+        <td><strong>${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</strong></td>
+        <td>${escapeHtml(trip.opponentName || trip.venue || "–")}</td>
+        <td>${tripBadges(trip)}</td>
+        <td>${escapeHtml(capacityLabel(trip))}</td>
+        <td><span class="v4-row-chevron" aria-hidden="true">›</span></td>
+      </tr>`).join("")}</tbody>
+    </table>
+  </div>`;
+}
+
+function tripMobileList(items) {
+  return `<div class="v4-mobile-records v4-compact-record-list" aria-label="Fanbusfahrten">
+    ${items.map(trip => `<button class="v4-compact-record" type="button" data-m310-open-trip="${escapeAttr(trip.id)}">
+      <span class="v4-compact-record-copy">
+        <small>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeLabel(trip.eventTime))}</small>
+        <strong>${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</strong>
+        <span>${escapeHtml(trip.opponentName || trip.venue || capacityLabel(trip))}</span>
+      </span>
+      <span class="v4-compact-record-end">
+        ${tripBadges(trip)}
+        <small>${escapeHtml(capacityLabel(trip))}</small>
+      </span>
+      <span class="v4-row-chevron" aria-hidden="true">›</span>
+    </button>`).join("")}
+  </div>`;
 }
 
 function setStatus(label, type = "") {
@@ -314,10 +351,23 @@ function render() {
   }
 
   panel.innerHTML = items.length
-    ? `<div class="v4-card-grid">${items.map(tripCard).join("")}</div>`
+    ? `${tripTable(items)}${tripMobileList(items)}`
     : empty("Aktuell sind keine kommenden Fanbusfahrten verfügbar.");
 
-  bindTripActions(panel, items);
+  panel.querySelectorAll("[data-m310-open-trip]").forEach(record => {
+    const open = () => {
+      const trip = items.find(item => item.id === record.dataset.m310OpenTrip);
+      if (trip) openTripDetail(trip);
+    };
+    record.addEventListener("click", open);
+    if (record.matches("tr")) {
+      record.addEventListener("keydown", keyEvent => {
+        if (keyEvent.key !== "Enter" && keyEvent.key !== " ") return;
+        keyEvent.preventDefault();
+        open();
+      });
+    }
+  });
   setStatus("Aktuell", "success");
 }
 
@@ -377,7 +427,7 @@ async function openTripCreate() {
       title: "Fanbusfahrt anlegen",
       kicker: "Vorhandenen Termin auswählen",
       body: `<form class="form-grid v4-smart-form">
-        <label class="full">Termin
+        <label class="v4-field-full">Termin
           <select name="eventId" required>${optionList(
             events.map(event => ({ value: event.id, label: availableEventLabel(event) })),
             "",
@@ -403,28 +453,28 @@ function tripForm(trip) {
   const required = trip.status === "PUBLISHED" ? "required" : "";
 
   return `<form class="form-grid v4-smart-form">
-    <label>Abfahrt in Berlin
+    <label class="v4-field-half v4-field-datetime">Abfahrt in Berlin
       <input name="departureAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(trip.departureAt))}" ${required}>
     </label>
-    <label>Kapazität
+    <label class="v4-field-half">Kapazität
       <input name="capacity" type="number" min="1" step="1" value="${escapeAttr(trip.capacity ?? "")}" ${required}>
     </label>
-    <label class="full">Abfahrtsinformation
+    <label class="v4-field-full">Abfahrtsinformation
       <textarea name="departureInfo" rows="3" ${required}>${escapeHtml(trip.departureInfo || "")}</textarea>
     </label>
-    <label>Anmeldung startet in Berlin
+    <label class="v4-field-half v4-field-datetime">Anmeldung startet in Berlin
       <input name="registrationOpensAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(trip.registrationOpensAt))}" ${required}>
     </label>
-    <label>Anmeldung endet in Berlin
+    <label class="v4-field-half v4-field-datetime">Anmeldung endet in Berlin
       <input name="registrationClosesAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(trip.registrationClosesAt))}" ${required}>
     </label>
-    <label>Fahrtpreis in Euro
+    <label class="v4-field-half">Fahrtpreis in Euro
       <input name="price" inputmode="decimal" pattern="[0-9]+([,.][0-9]{1,2})?" value="${escapeAttr(centsToEuroInput(trip.priceCents))}" placeholder="25,00" ${required}>
     </label>
-    <label class="full">Datenschutz-Referenz
+    <label class="v4-field-full">Datenschutz-Referenz
       <textarea name="privacyReference" rows="2" ${required}>${escapeHtml(trip.privacyReference || "")}</textarea>
     </label>
-    <label class="full">Teilnahmebedingungen-Referenz
+    <label class="v4-field-full">Teilnahmebedingungen-Referenz
       <textarea name="termsReference" rows="2" ${required}>${escapeHtml(trip.termsReference || "")}</textarea>
     </label>
   </form>`;
