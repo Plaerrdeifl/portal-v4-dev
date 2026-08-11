@@ -46,6 +46,12 @@ const MONEY_FORMAT = new Intl.NumberFormat("de-DE", {
   currency: "EUR"
 });
 
+const BUS_PREFERENCES = [
+  { value: "RUHIG", label: "Ruhig" },
+  { value: "PARTY", label: "Party" },
+  { value: "EGAL", label: "Egal" }
+];
+
 let snapshot = { trips: [] };
 
 function trips() {
@@ -564,7 +570,11 @@ function registrationStatusText(value) {
 }
 
 function sourceText(value) {
-  return value === "PORTAL" ? "Portal" : "Gast";
+  return {
+    PORTAL: "Portal",
+    GUEST: "Gast",
+    MANUAL: "Manuell"
+  }[value] || value || "–";
 }
 
 function busPreferenceText(value) {
@@ -585,7 +595,7 @@ function registrationCard(registration) {
       <span class="badge ${registration.status === "ACTIVE" ? "success" : "neutral"}">${escapeHtml(registrationStatusText(registration.status))}</span>
     </div>
     <div class="meta-grid">
-      <div class="meta-item"><small>E-Mail</small><strong>${escapeHtml(registration.email)}</strong></div>
+      <div class="meta-item"><small>E-Mail</small><strong>${escapeHtml(registration.email || "–")}</strong></div>
       <div class="meta-item"><small>Buspräferenz</small><strong>${escapeHtml(busPreferenceText(registration.busPreference))}</strong></div>
       <div class="meta-item"><small>Angemeldet</small><strong>${escapeHtml(formatBerlinDateTime(registration.registeredAt))}</strong></div>
       <div class="meta-item"><small>Storniert</small><strong>${escapeHtml(registration.cancelledAt ? formatBerlinDateTime(registration.cancelledAt) : "–")}</strong></div>
@@ -596,15 +606,26 @@ function registrationCard(registration) {
 
 function registrationsMarkup(data) {
   const registrations = Array.isArray(data?.registrations) ? data.registrations : [];
-  return registrations.length
+  const addAction = hasCapability("fanbus.registrations.manage")
+    ? `<div class="v4-heading-row v4-subheading-row">
+      <p class="subtle">Mitfahrer verwalten</p>
+      <button class="button small secondary v4-heading-action" type="button" data-m310-add-registration>Mitfahrer hinzufügen</button>
+    </div>`
+    : "";
+  const list = registrations.length
     ? `<div class="module-panel">${registrations.map(registrationCard).join("")}</div>`
     : empty("Für diese Fanbusfahrt liegen noch keine Anmeldungen vor.");
+
+  return `${addAction}${list}`;
 }
 
 function renderRegistrationsDialog(dialog, trip, data) {
   const body = dialog.querySelector("#v4DialogBody");
   if (!body) return;
   body.innerHTML = registrationsMarkup(data);
+
+  body.querySelector("[data-m310-add-registration]")
+    ?.addEventListener("click", () => openManualRegistration(trip));
 
   body.querySelectorAll("[data-m310-cancel-registration]").forEach(button => {
     button.addEventListener("click", async () => {
@@ -643,6 +664,153 @@ function renderRegistrationsDialog(dialog, trip, data) {
       }
     });
   });
+}
+
+function manualPersonLabel(person) {
+  const type = person.personType === "MEMBER" ? "Mitglied" : "Portalnutzer";
+  const email = person.email ? ` · ${person.email}` : "";
+  return `${person.lastName || ""}, ${person.firstName || ""} · ${type}${email}`;
+}
+
+function manualRegistrationForm(people) {
+  const personOptions = people.map(person => {
+    const id = person.personType === "MEMBER" ? person.memberId : person.portalUserId;
+    const value = `${person.personType}:${id}`;
+    return `<option value="${escapeAttr(value)}">${escapeHtml(manualPersonLabel(person))}</option>`;
+  }).join("");
+
+  return `<form id="m310ManualRegistrationForm" class="form-grid v4-smart-form">
+    <label class="v4-field-half">Art der Erfassung
+      <select name="mode" required>
+        <option value="PERSON">Mitglied / Portalnutzer</option>
+        <option value="GUEST">Gast</option>
+      </select>
+    </label>
+    <label class="v4-field-half">Buspräferenz
+      <select name="busPreference" required>${optionList(BUS_PREFERENCES, "EGAL")}</select>
+    </label>
+    <label class="v4-field-full" data-m310-manual-person>Person
+      <select name="personKey" required>
+        <option value="">Person auswählen</option>
+        ${personOptions}
+      </select>
+    </label>
+    <label class="v4-field-half" data-m310-manual-guest hidden>Vorname
+      <input name="firstName" autocomplete="given-name" disabled>
+    </label>
+    <label class="v4-field-half" data-m310-manual-guest hidden>Nachname
+      <input name="lastName" autocomplete="family-name" disabled>
+    </label>
+    <label class="v4-field-full" data-m310-manual-guest hidden>E-Mail (optional)
+      <input name="email" type="email" autocomplete="email" disabled>
+    </label>
+    <label class="v4-field-full v4-compact-check">
+      <input name="consentConfirmed" type="checkbox" required>
+      <span>Die Person hat die Teilnahmebedingungen akzeptiert und wurde auf die Datenschutzhinweise hingewiesen.</span>
+    </label>
+  </form>`;
+}
+
+function syncManualRegistrationMode(dialog) {
+  const form = dialog.querySelector("#m310ManualRegistrationForm");
+  const isGuest = form?.elements.namedItem("mode")?.value === "GUEST";
+  const personField = dialog.querySelector("[data-m310-manual-person]");
+  const personSelect = form?.elements.namedItem("personKey");
+
+  if (personField) personField.hidden = isGuest;
+  if (personSelect) {
+    personSelect.disabled = isGuest;
+    personSelect.required = !isGuest;
+  }
+
+  dialog.querySelectorAll("[data-m310-manual-guest]").forEach(field => {
+    field.hidden = !isGuest;
+    const input = field.querySelector("input");
+    if (!input) return;
+    input.disabled = !isGuest;
+    input.required = isGuest && input.name !== "email";
+  });
+}
+
+function manualRegistrationError(outcome) {
+  return {
+    ALREADY_ACTIVE: "Für diese Person besteht bereits eine aktive Anmeldung.",
+    FULL: "Die Fanbusfahrt ist bereits ausgebucht.",
+    NOT_STARTED: "Der Anmeldezeitraum hat noch nicht begonnen.",
+    CLOSED: "Der Anmeldezeitraum ist beendet.",
+    UNAVAILABLE: "Die Fanbusfahrt ist derzeit nicht für Anmeldungen verfügbar."
+  }[outcome] || "Die manuelle Anmeldung konnte nicht angelegt werden.";
+}
+
+function manualAttemptFor(currentAttempt, fingerprint) {
+  return currentAttempt?.fingerprint === fingerprint
+    ? currentAttempt
+    : { fingerprint, key: crypto.randomUUID() };
+}
+
+async function openManualRegistration(trip) {
+  if (!hasCapability("fanbus.registrations.manage")) return;
+
+  try {
+    const lookup = await call("fanbus_registration_people_list");
+    const people = Array.isArray(lookup?.people) ? lookup.people : [];
+    let manualAttempt = null;
+    const dialog = openDialog({
+      title: "Mitfahrer hinzufügen",
+      kicker: trip.displayTitle || "Fanbusfahrt",
+      body: manualRegistrationForm(people),
+      submitLabel: "Mitfahrer anmelden",
+      onSubmit: async values => {
+        const payload = {
+          tripId: trip.id,
+          mode: values.mode,
+          busPreference: values.busPreference,
+          privacyConfirmed: values.consentConfirmed === "on",
+          termsConfirmed: values.consentConfirmed === "on"
+        };
+
+        if (values.mode === "PERSON") {
+          const person = people.find(item => {
+            const id = item.personType === "MEMBER" ? item.memberId : item.portalUserId;
+            return `${item.personType}:${id}` === values.personKey;
+          });
+          if (!person) throw new Error("Bitte wähle eine vorhandene Person aus.");
+          payload.personType = person.personType;
+          if (person.personType === "MEMBER") payload.memberId = person.memberId;
+          else payload.portalUserId = person.portalUserId;
+        } else {
+          payload.firstName = values.firstName;
+          payload.lastName = values.lastName;
+          payload.email = values.email || null;
+        }
+
+        const fingerprint = JSON.stringify(payload);
+        manualAttempt = manualAttemptFor(manualAttempt, fingerprint);
+        const result = await call("fanbus_registration_create_manual", {
+          ...payload,
+          idempotencyKey: manualAttempt.key
+        });
+        if (result?.outcome !== "CREATED") {
+          throw new Error(manualRegistrationError(result?.outcome));
+        }
+
+        const [nextData, nextSnapshot] = await Promise.all([
+          call("fanbus_registrations_list", { tripId: trip.id }),
+          call("fanbus_trips_list")
+        ]);
+        snapshot = nextSnapshot || { trips: [] };
+        render();
+        showToast("Mitfahrer wurde angemeldet.", "success", 3800);
+        setTimeout(() => showRegistrationsDialog(trip, nextData), 0);
+      }
+    });
+
+    dialog.querySelector('[name="mode"]')
+      ?.addEventListener("change", () => syncManualRegistrationMode(dialog));
+    syncManualRegistrationMode(dialog);
+  } catch (error) {
+    showToast(error?.message || "Die Personenauswahl konnte nicht geladen werden.", "error", 5200);
+  }
 }
 
 function showRegistrationsDialog(trip, data) {
