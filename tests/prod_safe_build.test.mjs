@@ -89,9 +89,20 @@ test("pull requests run read-only tests and an exact DEV build", async () => {
     /SUPABASE_EXPECTED_PROJECT_REF: \$\{\{ vars\.SUPABASE_PROJECT_REF \}\}/
   );
 
+  assert.match(
+    workflow,
+    /M310_TURNSTILE_SITE_KEY: \$\{\{ vars\.M310_TURNSTILE_SITE_KEY \}\}/
+  );
+
   assert.match(workflow, /run: npm run build/);
+  assert.match(
+    workflow,
+    /grep -q '\"m310TurnstileSiteKey\":' dist\/js\/runtime-config\.js/
+  );
   assert.match(
     workflow,
     /tpieykhhawszlzsoflnl\.supabase\.co/
   );
+  assert.doesNotMatch(workflow, /\$\{\{\s*secrets\./);
+  assert.doesNotMatch(workflow, /\bdeploy(?:ment)?\b/i);
 });
