@@ -387,7 +387,7 @@ test("service worker cache and responsive M150 styling are extended", () => {
   assert.match(worker, /"\.\/js\/modules\/membership-applications\.js"/);
   assert.match(worker, /"\.\/js\/modules\/membership-application-pdf\.js"/);
   assert.match(css, /M150 R1 F1\.3/);
-  assert.match(css, /\.v4-m150-compact-row/);
+  assert.match(css, /\.v4-compact-record/);
   assert.match(css, /\.v4-m150-comparison/);
 });
 
