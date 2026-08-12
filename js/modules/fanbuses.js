@@ -12,8 +12,11 @@ import {
   runWrite,
   showToast
 } from "./common.js";
+import { downloadFanbusRegistrationsXlsx } from "./fanbus-xlsx.js";
 
 const BERLIN_TIME_ZONE = "Europe/Berlin";
+const PRIVACY_REFERENCE = "https://plaerrdeifl.de/datenschutzerklaerung/";
+const TERMS_REFERENCE = "https://plaerrdeifl.de/fanbus-teilnahmebedingungen/";
 
 const DATE_FORMAT = new Intl.DateTimeFormat("de-DE", {
   day: "2-digit",
@@ -260,6 +263,10 @@ function tripActions(trip) {
     actions.push(`<button class="button small ghost" type="button" data-m310-close="${escapeAttr(trip.id)}">Fahrt schließen</button>`);
   }
 
+  if (canManage && trip.status === "CLOSED") {
+    actions.push(`<button class="button small secondary" type="button" data-m310-reopen="${escapeAttr(trip.id)}">Wieder als Entwurf öffnen</button>`);
+  }
+
   if (canManageRegistrations) {
     actions.push(`<button class="button small secondary" type="button" data-m310-registrations="${escapeAttr(trip.id)}">Teilnehmer</button>`);
   }
@@ -399,6 +406,13 @@ function bindTripActions(panel, items) {
     });
   });
 
+  panel.querySelectorAll("[data-m310-reopen]").forEach(button => {
+    button.addEventListener("click", () => {
+      const trip = items.find(item => item.id === button.dataset.m310Reopen);
+      if (trip) reopenTrip(trip, button);
+    });
+  });
+
   panel.querySelectorAll("[data-m310-delete]").forEach(button => {
     button.addEventListener("click", () => {
       const trip = items.find(item => item.id === button.dataset.m310Delete);
@@ -459,7 +473,7 @@ function tripForm(trip) {
   const required = trip.status === "PUBLISHED" ? "required" : "";
 
   return `<form class="form-grid v4-smart-form">
-    <label class="v4-field-half v4-field-datetime">Abfahrt in Berlin
+    <label class="v4-field-half v4-field-datetime">Abfahrt
       <input name="departureAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(trip.departureAt))}" ${required}>
     </label>
     <label class="v4-field-half">Kapazität
@@ -468,20 +482,14 @@ function tripForm(trip) {
     <label class="v4-field-full">Abfahrtsinformation
       <textarea name="departureInfo" rows="3" ${required}>${escapeHtml(trip.departureInfo || "")}</textarea>
     </label>
-    <label class="v4-field-half v4-field-datetime">Anmeldung startet in Berlin
+    <label class="v4-field-half v4-field-datetime">Anmeldung startet
       <input name="registrationOpensAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(trip.registrationOpensAt))}" ${required}>
     </label>
-    <label class="v4-field-half v4-field-datetime">Anmeldung endet in Berlin
+    <label class="v4-field-half v4-field-datetime">Anmeldung endet
       <input name="registrationClosesAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(trip.registrationClosesAt))}" ${required}>
     </label>
-    <label class="v4-field-half">Fahrtpreis in Euro
+    <label class="v4-field-half">Fahrtpreis
       <input name="price" inputmode="decimal" pattern="[0-9]+([,.][0-9]{1,2})?" value="${escapeAttr(centsToEuroInput(trip.priceCents))}" placeholder="25,00" ${required}>
-    </label>
-    <label class="v4-field-full">Datenschutz-Referenz
-      <textarea name="privacyReference" rows="2" ${required}>${escapeHtml(trip.privacyReference || "")}</textarea>
-    </label>
-    <label class="v4-field-full">Teilnahmebedingungen-Referenz
-      <textarea name="termsReference" rows="2" ${required}>${escapeHtml(trip.termsReference || "")}</textarea>
     </label>
   </form>`;
 }
@@ -496,8 +504,8 @@ function tripUpdatePayload(trip, values) {
     registrationClosesAt: berlinLocalToIso(values.registrationClosesAt, "Das Anmeldeende"),
     priceCents: euroInputToCents(values.price),
     capacity: capacityValue(values.capacity),
-    privacyReference: String(values.privacyReference || "").trim() || null,
-    termsReference: String(values.termsReference || "").trim() || null
+    privacyReference: PRIVACY_REFERENCE,
+    termsReference: TERMS_REFERENCE
   };
 }
 
@@ -533,6 +541,20 @@ async function closeTrip(trip, button) {
   );
   if (!confirmed) return;
   await runTripWrite(button, "fanbus_trip_close", trip, "Fanbusfahrt wurde geschlossen.");
+}
+
+async function reopenTrip(trip, button) {
+  const confirmed = await confirmAction(
+    "Die Fanbusfahrt wird wieder als Entwurf geöffnet. Sie ist danach nicht öffentlich verfügbar und kann wieder bearbeitet werden. Löschen ist weiterhin nur möglich, wenn keine Anmeldungen zur Fahrt vorhanden sind.",
+    { title: "Fanbusfahrt wieder öffnen", submitLabel: "Als Entwurf öffnen" }
+  );
+  if (!confirmed) return;
+  await runTripWrite(
+    button,
+    "fanbus_trip_reopen",
+    trip,
+    "Fanbusfahrt wurde wieder als Entwurf geöffnet."
+  );
 }
 
 async function deleteTrip(trip, button) {
@@ -609,7 +631,10 @@ function registrationsMarkup(data) {
   const addAction = hasCapability("fanbus.registrations.manage")
     ? `<div class="v4-heading-row v4-subheading-row">
       <p class="subtle">Mitfahrer verwalten</p>
-      <button class="button small secondary v4-heading-action" type="button" data-m310-add-registration>Mitfahrer hinzufügen</button>
+      <div class="v4-detail-actions v4-heading-action">
+        <button class="button small primary" type="button" data-m310-export-registrations>Excel exportieren</button>
+        <button class="button small secondary" type="button" data-m310-add-registration>Mitfahrer hinzufügen</button>
+      </div>
     </div>`
     : "";
   const list = registrations.length
@@ -626,6 +651,18 @@ function renderRegistrationsDialog(dialog, trip, data) {
 
   body.querySelector("[data-m310-add-registration]")
     ?.addEventListener("click", () => openManualRegistration(trip));
+
+  body.querySelector("[data-m310-export-registrations]")
+    ?.addEventListener("click", () => {
+      if (!hasCapability("fanbus.registrations.manage")) return;
+      try {
+        const registrations = Array.isArray(data?.registrations) ? data.registrations : [];
+        downloadFanbusRegistrationsXlsx(trip, registrations);
+        showToast("Excel-Datei wurde erstellt.", "success", 3800);
+      } catch (error) {
+        showToast(error?.message || "Die Excel-Datei konnte nicht erstellt werden.", "error", 5200);
+      }
+    });
 
   body.querySelectorAll("[data-m310-cancel-registration]").forEach(button => {
     button.addEventListener("click", async () => {
