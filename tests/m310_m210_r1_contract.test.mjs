@@ -21,6 +21,16 @@ function cssRule(selector) {
   return css.slice(openingBrace + 1, closingBrace);
 }
 
+function cssRuleAfter(selector, marker) {
+  const markerStart = css.indexOf(marker);
+  assert.notEqual(markerStart, -1, `CSS-Marker fehlt: ${marker}`);
+  const start = css.indexOf(selector, markerStart);
+  assert.notEqual(start, -1, `CSS-Selektor nach Marker fehlt: ${selector}`);
+  const openingBrace = css.indexOf("{", start);
+  const closingBrace = css.indexOf("}", openingBrace);
+  return css.slice(openingBrace + 1, closingBrace);
+}
+
 function assertTwoLineMobileTitle(selector) {
   const rule = cssRule(selector);
   assert.match(rule, /display:\s*-webkit-box/);
@@ -54,23 +64,40 @@ test("M310 editor removes the manual start field and defaults the close date in 
   assert.match(fanbuses, /Number\(match\[3\]\) - 3/);
   assert.match(fanbuses, /T20:00/);
   assert.doesNotMatch(fanbuses, /registrationOpensAt: berlinLocalToIso/);
-  assert.match(css, /:has\(#m310TripEditorForm\)[\s\S]+overflow-y:auto/);
 });
 
-test("M310 editor remains content-sized and only scrolls when viewport space is exhausted", () => {
-  const dialog = cssRule(".v4-dialog:has(#m310TripEditorForm)");
-  const shell = cssRule(".v4-dialog:has(#m310TripEditorForm) .v4-dialog-shell");
-  const body = cssRule(".v4-dialog:has(#m310TripEditorForm) #v4DialogBody");
+test("M210 and M310 editors use the shared member and finance dialog contract", () => {
+  const standardMarker = "/* Gemeinsamer kompakter Dialog */";
+  const dialog = cssRuleAfter(".v4-dialog", standardMarker);
+  const shell = cssRuleAfter(".v4-dialog-shell", standardMarker);
+  const body = cssRuleAfter("#v4DialogBody", standardMarker);
 
-  assert.match(dialog, /(?:^|;)\s*height:\s*auto!important/);
-  assert.match(dialog, /max-height:\s*calc\(100dvh[^;]+safe-area-inset-top[^;]+safe-area-inset-bottom/);
-  assert.match(shell, /(?:^|;)\s*height:\s*auto!important/);
-  assert.match(shell, /max-height:\s*calc\(100dvh[^;]+safe-area-inset-top[^;]+safe-area-inset-bottom/);
-  assert.doesNotMatch(shell, /(?:^|;)\s*height:\s*calc\(100dvh/);
+  assert.doesNotMatch(css, /:has\(#m310TripEditorForm\)/);
+  assert.doesNotMatch(
+    css,
+    /\.v4-smart-form>\.v4-field-mobile-full\s*,[\s\S]{0,120}\.v4-smart-form>\.v4-field-datetime/
+  );
+  assert.match(dialog, /width:\s*min\(720px,calc\(100vw - 24px\)\)!important/);
+  assert.match(dialog, /max-height:\s*calc\(100dvh - 24px\)!important/);
+  assert.match(shell, /display:\s*flex!important/);
+  assert.match(shell, /flex-direction:\s*column!important/);
+  assert.match(shell, /height:\s*auto!important/);
+  assert.match(shell, /min-height:\s*0!important/);
+  assert.match(shell, /max-height:\s*calc\(100dvh - 24px\)!important/);
   assert.match(body, /flex:\s*0 1 auto!important/);
-  assert.match(body, /(?:^|;)\s*height:\s*auto!important/);
+  assert.match(body, /height:\s*auto!important/);
   assert.match(body, /min-height:\s*0!important/);
-  assert.match(body, /overflow-y:\s*auto!important/);
+  assert.match(body, /overflow:\s*auto!important/);
+  assert.match(body, /padding:\s*13px 16px!important/);
+  assert.match(css, /@media\(max-width:350px\)\{\.v4-smart-form>\*\{grid-column:1\/-1!important\}/);
+});
+
+test("M210 game fields follow the existing two-field mobile form pattern", () => {
+  const pair = cssRule(".v4-form-pair");
+  assert.match(dates, /id="m210DateGameFields" class="v4-field-full v4-form-pair"/);
+  assert.match(pair, /display:\s*grid/);
+  assert.match(pair, /grid-template-columns:\s*repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(css, /@media\(max-width:350px\)[\s\S]+\.v4-form-pair\{[\s\S]+grid-template-columns:1fr/);
 });
 
 test("M310 keeps an unsaved default auto-managed until the close field is edited", () => {
