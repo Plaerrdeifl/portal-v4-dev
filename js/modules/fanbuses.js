@@ -227,6 +227,25 @@ function tripBadges(trip) {
   </div>`;
 }
 
+function mobileTripStatus(trip) {
+  if (trip.status === "DRAFT") return { label: "Entwurf", type: "neutral" };
+  if (trip.status === "CLOSED") return { label: "Geschlossen", type: "neutral" };
+
+  const value = trip.registrationStatus;
+  return {
+    OPEN: { label: "Offen", type: "success" },
+    NOT_STARTED: { label: "Startet später", type: "warning" },
+    FULL: { label: "Ausgebucht", type: "danger" },
+    CLOSED: { label: "Geschlossen", type: "neutral" },
+    UNAVAILABLE: { label: "Nicht verfügbar", type: "neutral" }
+  }[value] || { label: "Nicht verfügbar", type: "neutral" };
+}
+
+function mobileTripStatusBadge(trip) {
+  const status = mobileTripStatus(trip);
+  return `<span class="badge ${status.type}">${escapeHtml(status.label)}</span>`;
+}
+
 function capacityLabel(trip) {
   const active = Number(trip.activeRegistrationCount || 0);
   return trip.capacity !== null
@@ -234,7 +253,7 @@ function capacityLabel(trip) {
     && trip.capacity !== ""
     && Number.isInteger(Number(trip.capacity))
     ? `${active} / ${Number(trip.capacity)} Anmeldungen`
-    : `${active} Anmeldungen · Kapazität noch offen`;
+    : `${active} Anmeldungen · Kapazität offen`;
 }
 
 function tripActions(trip) {
@@ -288,7 +307,7 @@ function tripDetailMarkup(trip) {
       <div><span>Status</span>${tripBadges(trip)}</div>
       <div><span>Anmeldung öffnet</span><strong>${escapeHtml(formatBerlinDateTime(trip.registrationOpensAt))}</strong></div>
       <div><span>Anmeldung schließt</span><strong>${escapeHtml(formatBerlinDateTime(trip.registrationClosesAt))}</strong></div>
-      ${trip.departureInfo ? `<div class="full"><span>Abfahrtsinformation</span><strong class="v4-preserve-lines">${escapeHtml(trip.departureInfo)}</strong></div>` : ""}
+      ${trip.departureInfo ? `<div class="full"><span>Treffpunkt / Abfahrtsort</span><strong class="v4-preserve-lines">${escapeHtml(trip.departureInfo)}</strong></div>` : ""}
     </div>
     ${tripActions(trip)}
   </div>`;
@@ -321,14 +340,14 @@ function tripTable(items) {
 
 function tripMobileList(items) {
   return `<div class="v4-mobile-records v4-compact-record-list" aria-label="Fanbusfahrten">
-    ${items.map(trip => `<button class="v4-compact-record" type="button" data-m310-open-trip="${escapeAttr(trip.id)}">
-      <span class="v4-compact-record-copy">
+    ${items.map(trip => `<button class="v4-compact-record v4-m310-mobile-trip" type="button" data-m310-open-trip="${escapeAttr(trip.id)}">
+      <span class="v4-m310-mobile-trip-meta">
         <small>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeLabel(trip.eventTime))}</small>
-        <strong>${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</strong>
-        <span>${escapeHtml(trip.opponentName || trip.venue || capacityLabel(trip))}</span>
+        ${mobileTripStatusBadge(trip)}
       </span>
-      <span class="v4-compact-record-end">
-        ${tripBadges(trip)}
+      <strong class="v4-m310-mobile-trip-title">${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</strong>
+      <span class="v4-m310-mobile-trip-footer">
+        <span>${escapeHtml(trip.venue || trip.opponentName || "Ziel noch offen")}</span>
         <small>${escapeHtml(capacityLabel(trip))}</small>
       </span>
       <span class="v4-row-chevron" aria-hidden="true">›</span>
@@ -341,6 +360,7 @@ function setStatus(label, type = "") {
   if (!status) return;
   status.textContent = label;
   status.className = `status-pill${type ? ` ${type}` : ""}`;
+  status.hidden = type === "success";
 }
 
 function render() {
@@ -469,24 +489,32 @@ async function openTripCreate() {
   }
 }
 
+function defaultRegistrationClosesInput(departureAt) {
+  const departure = toBerlinInputValue(departureAt);
+  const match = /^(\d{4})-(\d{2})-(\d{2})T\d{2}:\d{2}$/.exec(departure);
+  if (!match) return "";
+
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]) - 3));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}T20:00`;
+}
+
 function tripForm(trip) {
   const required = trip.status === "PUBLISHED" ? "required" : "";
+  const registrationClosesAt = toBerlinInputValue(trip.registrationClosesAt)
+    || defaultRegistrationClosesInput(trip.departureAt);
 
-  return `<form class="form-grid v4-smart-form">
+  return `<form id="m310TripEditorForm" class="form-grid v4-smart-form">
     <label class="v4-field-half v4-field-datetime">Abfahrt
       <input name="departureAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(trip.departureAt))}" ${required}>
     </label>
     <label class="v4-field-half">Kapazität
       <input name="capacity" type="number" min="1" step="1" value="${escapeAttr(trip.capacity ?? "")}" ${required}>
     </label>
-    <label class="v4-field-full">Abfahrtsinformation
+    <label class="v4-field-full">Treffpunkt / Abfahrtsort
       <textarea name="departureInfo" rows="3" ${required}>${escapeHtml(trip.departureInfo || "")}</textarea>
     </label>
-    <label class="v4-field-half v4-field-datetime">Anmeldung startet
-      <input name="registrationOpensAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(trip.registrationOpensAt))}" ${required}>
-    </label>
     <label class="v4-field-half v4-field-datetime">Anmeldung endet
-      <input name="registrationClosesAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(trip.registrationClosesAt))}" ${required}>
+      <input name="registrationClosesAt" type="datetime-local" step="60" value="${escapeAttr(registrationClosesAt)}" ${required}>
     </label>
     <label class="v4-field-half">Fahrtpreis
       <input name="price" inputmode="decimal" pattern="[0-9]+([,.][0-9]{1,2})?" value="${escapeAttr(centsToEuroInput(trip.priceCents))}" placeholder="25,00" ${required}>
@@ -500,7 +528,6 @@ function tripUpdatePayload(trip, values) {
     expectedRevision: Number(trip.revision),
     departureAt: berlinLocalToIso(values.departureAt, "Die Abfahrt"),
     departureInfo: String(values.departureInfo || "").trim() || null,
-    registrationOpensAt: berlinLocalToIso(values.registrationOpensAt, "Der Anmeldestart"),
     registrationClosesAt: berlinLocalToIso(values.registrationClosesAt, "Das Anmeldeende"),
     priceCents: euroInputToCents(values.price),
     capacity: capacityValue(values.capacity),
@@ -510,7 +537,7 @@ function tripUpdatePayload(trip, values) {
 }
 
 function openTripEditor(trip) {
-  openDialog({
+  const dialog = openDialog({
     title: "Fanbusfahrt bearbeiten",
     kicker: trip.displayTitle || "Fanbusfahrt",
     body: tripForm(trip),
@@ -521,6 +548,28 @@ function openTripEditor(trip) {
         "Fanbusfahrt wurde aktualisiert."
       );
       render();
+    }
+  });
+
+  const form = dialog.querySelector("#m310TripEditorForm");
+  const departure = form?.elements.namedItem("departureAt");
+  const registrationCloses = form?.elements.namedItem("registrationClosesAt");
+  let registrationClosesAutoManaged = !trip.registrationClosesAt;
+
+  const disableRegistrationClosesAutoManagement = () => {
+    registrationClosesAutoManaged = false;
+  };
+
+  registrationCloses?.addEventListener("input", disableRegistrationClosesAutoManagement);
+  registrationCloses?.addEventListener("change", disableRegistrationClosesAutoManagement);
+  departure?.addEventListener("change", () => {
+    if (!registrationCloses || !registrationClosesAutoManaged || !departure.value) return;
+    try {
+      registrationCloses.value = defaultRegistrationClosesInput(
+        berlinLocalToIso(departure.value, "Die Abfahrt")
+      );
+    } catch {
+      // Die native Datumseingabe zeigt die Validierung beim Speichern an.
     }
   });
 }

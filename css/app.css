@@ -1548,6 +1548,143 @@ body.overlay-open .view{overflow:hidden!important;touch-action:none}
   }
 }
 
+/* M310 – mobile Fanbuskarten und Bearbeitungsdialog */
+@media(max-width:860px){
+  #m310FanbusStatus[hidden]{
+    display:none!important;
+  }
+  #m310FanbusPage #m310AddTripButton{
+    min-height:36px!important;
+    padding:6px 9px!important;
+    font-size:.78rem!important;
+    white-space:nowrap;
+  }
+  #m310FanbusList .v4-m310-mobile-trip{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 18px;
+    grid-template-areas:
+      "meta chevron"
+      "title chevron"
+      "footer chevron";
+    gap:4px 8px;
+    align-items:start;
+  }
+  #m310FanbusList .v4-m310-mobile-trip-meta{
+    grid-area:meta;
+    display:flex;
+    min-width:0;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+  }
+  #m310FanbusList .v4-m310-mobile-trip-meta small{
+    min-width:0;
+    color:var(--ink-500);
+    font-size:.72rem;
+    line-height:1.3;
+  }
+  #m310FanbusList .v4-m310-mobile-trip-meta .badge{
+    flex:none;
+  }
+  #m310FanbusList .v4-m310-mobile-trip-title{
+    display:-webkit-box;
+    grid-area:title;
+    min-width:0;
+    overflow:hidden;
+    -webkit-box-orient:vertical;
+    -webkit-line-clamp:2;
+    overflow-wrap:normal;
+    line-height:1.28;
+  }
+  #m310FanbusList .v4-m310-mobile-trip-footer{
+    display:flex;
+    grid-area:footer;
+    min-width:0;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    color:var(--ink-500);
+    font-size:.72rem;
+    line-height:1.3;
+  }
+  #m310FanbusList .v4-m310-mobile-trip-footer>span,
+  #m310FanbusList .v4-m310-mobile-trip-footer small{
+    min-width:0;
+    overflow-wrap:anywhere;
+  }
+  #m310FanbusList .v4-m310-mobile-trip-footer small{
+    flex:none;
+    text-align:right;
+  }
+  #m310FanbusList .v4-m310-mobile-trip>.v4-row-chevron{
+    grid-area:chevron;
+    align-self:center;
+    justify-self:end;
+  }
+  .v4-dialog:has(#m310TripEditorForm){
+    max-height:calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;
+  }
+  .v4-dialog:has(#m310TripEditorForm) .v4-dialog-shell{
+    height:calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;
+    max-height:calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;
+  }
+  .v4-dialog:has(#m310TripEditorForm) #v4DialogBody{
+    flex:1 1 auto!important;
+    overflow-y:auto!important;
+    padding-bottom:calc(13px + env(safe-area-inset-bottom))!important;
+  }
+}
+
+/* M210 – dreizeilige mobile Terminkarten */
+@media(max-width:860px){
+  #m210DatesList .v4-compact-record.v4-m210-mobile-event{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 18px;
+    grid-template-areas:
+      "meta chevron"
+      "title chevron";
+    gap:4px 8px;
+    align-items:start;
+  }
+  #m210DatesList .v4-compact-record.v4-m210-mobile-event .v4-m210-mobile-event-meta{
+    display:flex;
+    grid-area:meta;
+    min-width:0;
+    align-items:center;
+    gap:6px;
+    overflow:hidden;
+    color:var(--ink-500);
+    font-size:.68rem;
+    font-weight:750;
+    line-height:1.3;
+    white-space:nowrap;
+  }
+  #m210DatesList .v4-compact-record.v4-m210-mobile-event .v4-m210-mobile-event-meta small,
+  #m210DatesList .v4-compact-record.v4-m210-mobile-event .v4-m210-mobile-event-meta>span:not(.badge){
+    flex:none;
+  }
+  #m210DatesList .v4-compact-record.v4-m210-mobile-event .v4-m210-mobile-event-meta .badge{
+    flex:none;
+    padding:3px 6px;
+    font-size:.64rem;
+  }
+  #m210DatesList .v4-compact-record.v4-m210-mobile-event .v4-m210-mobile-event-title{
+    display:-webkit-box;
+    grid-area:title;
+    min-width:0;
+    overflow:hidden;
+    -webkit-box-orient:vertical;
+    -webkit-line-clamp:2;
+    overflow-wrap:normal;
+    line-height:1.28;
+  }
+  #m210DatesList .v4-compact-record.v4-m210-mobile-event>.v4-row-chevron{
+    grid-area:chevron;
+    align-self:center;
+    justify-self:end;
+  }
+}
+
 @media(max-width:520px){
   .public-login-inline{
     min-height:calc(100dvh - var(--topbar-height) - 36px);
