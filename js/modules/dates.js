@@ -55,6 +55,7 @@ let snapshot = { events: [] };
 let searchQuery = "";
 let typeFilter = "ALL";
 let visibilityFilter = "ALL";
+let homeAwayFilter = "ALL";
 
 function events() {
   return Array.isArray(snapshot?.events) ? snapshot.events : [];
@@ -116,6 +117,8 @@ function visibleEvents() {
     const matchesType = typeFilter === "ALL" || event.eventType === typeFilter;
     const matchesVisibility = visibilityFilter === "ALL"
       || event.visibility === visibilityFilter;
+    const matchesHomeAway = homeAwayFilter === "ALL"
+      || (event.eventType === "GAME" && event.homeAway === homeAwayFilter);
     const searchable = [
       event.displayTitle,
       event.title,
@@ -127,7 +130,8 @@ function visibleEvents() {
       homeAwayLabel(event.homeAway)
     ].filter(Boolean).join(" ").toLocaleLowerCase("de-DE");
 
-    return matchesType && matchesVisibility && (!query || searchable.includes(query));
+    return matchesType && matchesVisibility && matchesHomeAway
+      && (!query || searchable.includes(query));
   });
 }
 
@@ -195,13 +199,13 @@ function eventTable(items) {
 
 function eventMobileList(items) {
   return `<div class="v4-mobile-records v4-compact-record-list" aria-label="Termine">
-    ${items.map(event => `<button class="v4-compact-record" type="button" data-m210-open-event="${escapeAttr(event.id)}">
-      <span class="v4-compact-record-copy">
+    ${items.map(event => `<button class="v4-compact-record v4-m210-mobile-event" type="button" data-m210-open-event="${escapeAttr(event.id)}">
+      <span class="v4-m210-mobile-event-meta">
         <small>${escapeHtml(formatCalendarDate(event.eventDate))} · ${escapeHtml(timeLabel(event.eventTime))}</small>
-        <strong>${escapeHtml(event.displayTitle || event.title || "Termin")}</strong>
-        <span>${escapeHtml(typeLabel(event.eventType))}${event.eventType === "GAME" && event.homeAway ? ` · ${escapeHtml(homeAwayLabel(event.homeAway))}` : ""}</span>
+        <span>${escapeHtml(event.eventType === "GAME" ? homeAwayLabel(event.homeAway) : typeLabel(event.eventType))}</span>
+        <span class="badge ${event.visibility === "PUBLIC" ? "success" : "neutral"}">${escapeHtml(visibilityLabel(event.visibility))}</span>
       </span>
-      <span class="v4-compact-record-end"><span class="badge ${event.visibility === "PUBLIC" ? "success" : "neutral"}">${escapeHtml(visibilityLabel(event.visibility))}</span></span>
+      <strong class="v4-m210-mobile-event-title">${escapeHtml(event.displayTitle || event.title || "Termin")}</strong>
       <span class="v4-row-chevron" aria-hidden="true">›</span>
     </button>`).join("")}
   </div>`;
@@ -258,6 +262,12 @@ function render() {
         ${VISIBILITIES.map(item => `<option value="${escapeAttr(item.value)}" ${visibilityFilter === item.value ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
       </select>
     </label>
+    <label class="v4-filter-field">Heim/Auswärts
+      <select id="m210EventHomeAwayFilter">
+        <option value="ALL" ${homeAwayFilter === "ALL" ? "selected" : ""}>Alle</option>
+        ${HOME_AWAY.map(item => `<option value="${escapeAttr(item.value)}" ${homeAwayFilter === item.value ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
+      </select>
+    </label>
   </div>
   ${items.length
     ? `${eventTable(items)}${eventMobileList(items)}`
@@ -276,6 +286,10 @@ function render() {
   });
   panel.querySelector("#m210EventVisibilityFilter")?.addEventListener("change", changeEvent => {
     visibilityFilter = changeEvent.currentTarget.value;
+    render();
+  });
+  panel.querySelector("#m210EventHomeAwayFilter")?.addEventListener("change", changeEvent => {
+    homeAwayFilter = changeEvent.currentTarget.value;
     render();
   });
 

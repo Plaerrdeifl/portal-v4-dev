@@ -1548,6 +1548,135 @@ body.overlay-open .view{overflow:hidden!important;touch-action:none}
   }
 }
 
+/* M310 – mobile Fanbuskarten und Bearbeitungsdialog */
+@media(max-width:860px){
+  #m310FanbusStatus[hidden]{
+    display:none!important;
+  }
+  #m310FanbusPage #m310AddTripButton{
+    min-height:36px!important;
+    padding:6px 9px!important;
+    font-size:.78rem!important;
+    white-space:nowrap;
+  }
+  #m310FanbusList .v4-m310-mobile-trip{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 18px;
+    grid-template-areas:
+      "meta chevron"
+      "title chevron"
+      "footer chevron";
+    gap:4px 8px;
+    align-items:start;
+  }
+  #m310FanbusList .v4-m310-mobile-trip-meta{
+    grid-area:meta;
+    display:flex;
+    min-width:0;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+  }
+  #m310FanbusList .v4-m310-mobile-trip-meta small{
+    min-width:0;
+    color:var(--ink-500);
+    font-size:.72rem;
+    line-height:1.3;
+  }
+  #m310FanbusList .v4-m310-mobile-trip-meta .badge{
+    flex:none;
+  }
+  #m310FanbusList .v4-m310-mobile-trip-title{
+    display:-webkit-box;
+    grid-area:title;
+    min-width:0;
+    overflow:hidden;
+    -webkit-box-orient:vertical;
+    -webkit-line-clamp:2;
+    white-space:normal;
+    text-overflow:clip;
+    overflow-wrap:normal;
+    line-height:1.28;
+  }
+  #m310FanbusList .v4-m310-mobile-trip-footer{
+    display:flex;
+    grid-area:footer;
+    min-width:0;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    color:var(--ink-500);
+    font-size:.72rem;
+    line-height:1.3;
+  }
+  #m310FanbusList .v4-m310-mobile-trip-footer>span,
+  #m310FanbusList .v4-m310-mobile-trip-footer small{
+    min-width:0;
+    overflow-wrap:anywhere;
+  }
+  #m310FanbusList .v4-m310-mobile-trip-footer small{
+    flex:none;
+    text-align:right;
+  }
+  #m310FanbusList .v4-m310-mobile-trip>.v4-row-chevron{
+    grid-area:chevron;
+    align-self:center;
+    justify-self:end;
+  }
+}
+
+/* M210 – dreizeilige mobile Terminkarten */
+@media(max-width:860px){
+  #m210DatesList .v4-compact-record.v4-m210-mobile-event{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 18px;
+    grid-template-areas:
+      "meta chevron"
+      "title chevron";
+    gap:4px 8px;
+    align-items:start;
+  }
+  #m210DatesList .v4-compact-record.v4-m210-mobile-event .v4-m210-mobile-event-meta{
+    display:flex;
+    grid-area:meta;
+    min-width:0;
+    align-items:center;
+    gap:6px;
+    overflow:hidden;
+    color:var(--ink-500);
+    font-size:.68rem;
+    font-weight:750;
+    line-height:1.3;
+    white-space:nowrap;
+  }
+  #m210DatesList .v4-compact-record.v4-m210-mobile-event .v4-m210-mobile-event-meta small,
+  #m210DatesList .v4-compact-record.v4-m210-mobile-event .v4-m210-mobile-event-meta>span:not(.badge){
+    flex:none;
+  }
+  #m210DatesList .v4-compact-record.v4-m210-mobile-event .v4-m210-mobile-event-meta .badge{
+    flex:none;
+    padding:3px 6px;
+    font-size:.64rem;
+  }
+  #m210DatesList .v4-compact-record.v4-m210-mobile-event .v4-m210-mobile-event-title{
+    display:-webkit-box;
+    grid-area:title;
+    min-width:0;
+    overflow:hidden;
+    -webkit-box-orient:vertical;
+    -webkit-line-clamp:2;
+    white-space:normal;
+    text-overflow:clip;
+    overflow-wrap:normal;
+    line-height:1.28;
+  }
+  #m210DatesList .v4-compact-record.v4-m210-mobile-event>.v4-row-chevron{
+    grid-area:chevron;
+    align-self:center;
+    justify-self:end;
+  }
+}
+
 @media(max-width:520px){
   .public-login-inline{
     min-height:calc(100dvh - var(--topbar-height) - 36px);
@@ -5683,12 +5812,6 @@ html[data-portal-area="portal"] .v4-toolbar p{
     text-align:right;
   }
 }
-@media(max-width:430px){
-  .v4-smart-form>.v4-field-mobile-full,
-  .v4-smart-form>.v4-field-datetime{
-    grid-column:1/-1!important;
-  }
-}
 @media(max-width:350px){
   .v4-list-filterbar,
   .v4-form-pair{
@@ -5711,6 +5834,42 @@ html[data-portal-area="portal"] .v4-toolbar p{
   .v4-compact-record>.v4-row-chevron{
     grid-column:2;
     grid-row:1;
+  }
+}
+
+/* M210 – mobile Terminzeilen: Sichtbarkeit neben der unteren Meta-Zeile */
+@media(max-width:860px){
+  #m210DatesList .v4-compact-record{
+    grid-template-columns:minmax(0,1fr) auto auto;
+    grid-template-areas:
+      "date date chevron"
+      "title title chevron"
+      "meta badge chevron";
+    row-gap:2px;
+  }
+  #m210DatesList .v4-compact-record-copy{
+    display:contents;
+  }
+  #m210DatesList .v4-compact-record-copy small{
+    grid-area:date;
+  }
+  #m210DatesList .v4-compact-record-copy strong{
+    display:-webkit-box;
+    grid-area:title;
+    -webkit-box-orient:vertical;
+    -webkit-line-clamp:2;
+    overflow:hidden;
+  }
+  #m210DatesList .v4-compact-record-copy>span{
+    grid-area:meta;
+  }
+  #m210DatesList .v4-compact-record-end{
+    grid-area:badge;
+    max-width:none;
+  }
+  #m210DatesList .v4-compact-record>.v4-row-chevron{
+    grid-area:chevron;
+    align-self:center;
   }
 }
 

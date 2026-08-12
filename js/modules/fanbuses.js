@@ -12,8 +12,11 @@ import {
   runWrite,
   showToast
 } from "./common.js";
+import { downloadFanbusRegistrationsXlsx } from "./fanbus-xlsx.js";
 
 const BERLIN_TIME_ZONE = "Europe/Berlin";
+const PRIVACY_REFERENCE = "https://plaerrdeifl.de/datenschutzerklaerung/";
+const TERMS_REFERENCE = "https://plaerrdeifl.de/fanbus-teilnahmebedingungen/";
 
 const DATE_FORMAT = new Intl.DateTimeFormat("de-DE", {
   day: "2-digit",
@@ -224,6 +227,25 @@ function tripBadges(trip) {
   </div>`;
 }
 
+function mobileTripStatus(trip) {
+  if (trip.status === "DRAFT") return { label: "Entwurf", type: "neutral" };
+  if (trip.status === "CLOSED") return { label: "Geschlossen", type: "neutral" };
+
+  const value = trip.registrationStatus;
+  return {
+    OPEN: { label: "Offen", type: "success" },
+    NOT_STARTED: { label: "Startet später", type: "warning" },
+    FULL: { label: "Ausgebucht", type: "danger" },
+    CLOSED: { label: "Geschlossen", type: "neutral" },
+    UNAVAILABLE: { label: "Nicht verfügbar", type: "neutral" }
+  }[value] || { label: "Nicht verfügbar", type: "neutral" };
+}
+
+function mobileTripStatusBadge(trip) {
+  const status = mobileTripStatus(trip);
+  return `<span class="badge ${status.type}">${escapeHtml(status.label)}</span>`;
+}
+
 function capacityLabel(trip) {
   const active = Number(trip.activeRegistrationCount || 0);
   return trip.capacity !== null
@@ -231,7 +253,7 @@ function capacityLabel(trip) {
     && trip.capacity !== ""
     && Number.isInteger(Number(trip.capacity))
     ? `${active} / ${Number(trip.capacity)} Anmeldungen`
-    : `${active} Anmeldungen · Kapazität noch offen`;
+    : `${active} Anmeldungen · Kapazität offen`;
 }
 
 function tripActions(trip) {
@@ -260,6 +282,10 @@ function tripActions(trip) {
     actions.push(`<button class="button small ghost" type="button" data-m310-close="${escapeAttr(trip.id)}">Fahrt schließen</button>`);
   }
 
+  if (canManage && trip.status === "CLOSED") {
+    actions.push(`<button class="button small secondary" type="button" data-m310-reopen="${escapeAttr(trip.id)}">Wieder als Entwurf öffnen</button>`);
+  }
+
   if (canManageRegistrations) {
     actions.push(`<button class="button small secondary" type="button" data-m310-registrations="${escapeAttr(trip.id)}">Teilnehmer</button>`);
   }
@@ -281,7 +307,7 @@ function tripDetailMarkup(trip) {
       <div><span>Status</span>${tripBadges(trip)}</div>
       <div><span>Anmeldung öffnet</span><strong>${escapeHtml(formatBerlinDateTime(trip.registrationOpensAt))}</strong></div>
       <div><span>Anmeldung schließt</span><strong>${escapeHtml(formatBerlinDateTime(trip.registrationClosesAt))}</strong></div>
-      ${trip.departureInfo ? `<div class="full"><span>Abfahrtsinformation</span><strong class="v4-preserve-lines">${escapeHtml(trip.departureInfo)}</strong></div>` : ""}
+      ${trip.departureInfo ? `<div class="full"><span>Treffpunkt / Abfahrtsort</span><strong class="v4-preserve-lines">${escapeHtml(trip.departureInfo)}</strong></div>` : ""}
     </div>
     ${tripActions(trip)}
   </div>`;
@@ -314,14 +340,14 @@ function tripTable(items) {
 
 function tripMobileList(items) {
   return `<div class="v4-mobile-records v4-compact-record-list" aria-label="Fanbusfahrten">
-    ${items.map(trip => `<button class="v4-compact-record" type="button" data-m310-open-trip="${escapeAttr(trip.id)}">
-      <span class="v4-compact-record-copy">
+    ${items.map(trip => `<button class="v4-compact-record v4-m310-mobile-trip" type="button" data-m310-open-trip="${escapeAttr(trip.id)}">
+      <span class="v4-m310-mobile-trip-meta">
         <small>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeLabel(trip.eventTime))}</small>
-        <strong>${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</strong>
-        <span>${escapeHtml(trip.opponentName || trip.venue || capacityLabel(trip))}</span>
+        ${mobileTripStatusBadge(trip)}
       </span>
-      <span class="v4-compact-record-end">
-        ${tripBadges(trip)}
+      <strong class="v4-m310-mobile-trip-title">${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</strong>
+      <span class="v4-m310-mobile-trip-footer">
+        <span>${escapeHtml(trip.venue || trip.opponentName || "Ziel noch offen")}</span>
         <small>${escapeHtml(capacityLabel(trip))}</small>
       </span>
       <span class="v4-row-chevron" aria-hidden="true">›</span>
@@ -334,6 +360,7 @@ function setStatus(label, type = "") {
   if (!status) return;
   status.textContent = label;
   status.className = `status-pill${type ? ` ${type}` : ""}`;
+  status.hidden = type === "success";
 }
 
 function render() {
@@ -399,6 +426,13 @@ function bindTripActions(panel, items) {
     });
   });
 
+  panel.querySelectorAll("[data-m310-reopen]").forEach(button => {
+    button.addEventListener("click", () => {
+      const trip = items.find(item => item.id === button.dataset.m310Reopen);
+      if (trip) reopenTrip(trip, button);
+    });
+  });
+
   panel.querySelectorAll("[data-m310-delete]").forEach(button => {
     button.addEventListener("click", () => {
       const trip = items.find(item => item.id === button.dataset.m310Delete);
@@ -455,33 +489,35 @@ async function openTripCreate() {
   }
 }
 
+function defaultRegistrationClosesInput(departureAt) {
+  const departure = toBerlinInputValue(departureAt);
+  const match = /^(\d{4})-(\d{2})-(\d{2})T\d{2}:\d{2}$/.exec(departure);
+  if (!match) return "";
+
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]) - 3));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}T20:00`;
+}
+
 function tripForm(trip) {
   const required = trip.status === "PUBLISHED" ? "required" : "";
+  const registrationClosesAt = toBerlinInputValue(trip.registrationClosesAt)
+    || defaultRegistrationClosesInput(trip.departureAt);
 
-  return `<form class="form-grid v4-smart-form">
-    <label class="v4-field-half v4-field-datetime">Abfahrt in Berlin
+  return `<form id="m310TripEditorForm" class="form-grid v4-smart-form">
+    <label class="v4-field-half v4-field-datetime">Abfahrt
       <input name="departureAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(trip.departureAt))}" ${required}>
     </label>
     <label class="v4-field-half">Kapazität
       <input name="capacity" type="number" min="1" step="1" value="${escapeAttr(trip.capacity ?? "")}" ${required}>
     </label>
-    <label class="v4-field-full">Abfahrtsinformation
+    <label class="v4-field-full">Treffpunkt / Abfahrtsort
       <textarea name="departureInfo" rows="3" ${required}>${escapeHtml(trip.departureInfo || "")}</textarea>
     </label>
-    <label class="v4-field-half v4-field-datetime">Anmeldung startet in Berlin
-      <input name="registrationOpensAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(trip.registrationOpensAt))}" ${required}>
+    <label class="v4-field-half v4-field-datetime">Anmeldung endet
+      <input name="registrationClosesAt" type="datetime-local" step="60" value="${escapeAttr(registrationClosesAt)}" ${required}>
     </label>
-    <label class="v4-field-half v4-field-datetime">Anmeldung endet in Berlin
-      <input name="registrationClosesAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(trip.registrationClosesAt))}" ${required}>
-    </label>
-    <label class="v4-field-half">Fahrtpreis in Euro
+    <label class="v4-field-half">Fahrtpreis
       <input name="price" inputmode="decimal" pattern="[0-9]+([,.][0-9]{1,2})?" value="${escapeAttr(centsToEuroInput(trip.priceCents))}" placeholder="25,00" ${required}>
-    </label>
-    <label class="v4-field-full">Datenschutz-Referenz
-      <textarea name="privacyReference" rows="2" ${required}>${escapeHtml(trip.privacyReference || "")}</textarea>
-    </label>
-    <label class="v4-field-full">Teilnahmebedingungen-Referenz
-      <textarea name="termsReference" rows="2" ${required}>${escapeHtml(trip.termsReference || "")}</textarea>
     </label>
   </form>`;
 }
@@ -492,17 +528,16 @@ function tripUpdatePayload(trip, values) {
     expectedRevision: Number(trip.revision),
     departureAt: berlinLocalToIso(values.departureAt, "Die Abfahrt"),
     departureInfo: String(values.departureInfo || "").trim() || null,
-    registrationOpensAt: berlinLocalToIso(values.registrationOpensAt, "Der Anmeldestart"),
     registrationClosesAt: berlinLocalToIso(values.registrationClosesAt, "Das Anmeldeende"),
     priceCents: euroInputToCents(values.price),
     capacity: capacityValue(values.capacity),
-    privacyReference: String(values.privacyReference || "").trim() || null,
-    termsReference: String(values.termsReference || "").trim() || null
+    privacyReference: PRIVACY_REFERENCE,
+    termsReference: TERMS_REFERENCE
   };
 }
 
 function openTripEditor(trip) {
-  openDialog({
+  const dialog = openDialog({
     title: "Fanbusfahrt bearbeiten",
     kicker: trip.displayTitle || "Fanbusfahrt",
     body: tripForm(trip),
@@ -513,6 +548,28 @@ function openTripEditor(trip) {
         "Fanbusfahrt wurde aktualisiert."
       );
       render();
+    }
+  });
+
+  const form = dialog.querySelector("#m310TripEditorForm");
+  const departure = form?.elements.namedItem("departureAt");
+  const registrationCloses = form?.elements.namedItem("registrationClosesAt");
+  let registrationClosesAutoManaged = !trip.registrationClosesAt;
+
+  const disableRegistrationClosesAutoManagement = () => {
+    registrationClosesAutoManaged = false;
+  };
+
+  registrationCloses?.addEventListener("input", disableRegistrationClosesAutoManagement);
+  registrationCloses?.addEventListener("change", disableRegistrationClosesAutoManagement);
+  departure?.addEventListener("change", () => {
+    if (!registrationCloses || !registrationClosesAutoManaged || !departure.value) return;
+    try {
+      registrationCloses.value = defaultRegistrationClosesInput(
+        berlinLocalToIso(departure.value, "Die Abfahrt")
+      );
+    } catch {
+      // Die native Datumseingabe zeigt die Validierung beim Speichern an.
     }
   });
 }
@@ -533,6 +590,20 @@ async function closeTrip(trip, button) {
   );
   if (!confirmed) return;
   await runTripWrite(button, "fanbus_trip_close", trip, "Fanbusfahrt wurde geschlossen.");
+}
+
+async function reopenTrip(trip, button) {
+  const confirmed = await confirmAction(
+    "Die Fanbusfahrt wird wieder als Entwurf geöffnet. Sie ist danach nicht öffentlich verfügbar und kann wieder bearbeitet werden. Löschen ist weiterhin nur möglich, wenn keine Anmeldungen zur Fahrt vorhanden sind.",
+    { title: "Fanbusfahrt wieder öffnen", submitLabel: "Als Entwurf öffnen" }
+  );
+  if (!confirmed) return;
+  await runTripWrite(
+    button,
+    "fanbus_trip_reopen",
+    trip,
+    "Fanbusfahrt wurde wieder als Entwurf geöffnet."
+  );
 }
 
 async function deleteTrip(trip, button) {
@@ -609,7 +680,10 @@ function registrationsMarkup(data) {
   const addAction = hasCapability("fanbus.registrations.manage")
     ? `<div class="v4-heading-row v4-subheading-row">
       <p class="subtle">Mitfahrer verwalten</p>
-      <button class="button small secondary v4-heading-action" type="button" data-m310-add-registration>Mitfahrer hinzufügen</button>
+      <div class="v4-detail-actions v4-heading-action">
+        <button class="button small primary" type="button" data-m310-export-registrations>Excel exportieren</button>
+        <button class="button small secondary" type="button" data-m310-add-registration>Mitfahrer hinzufügen</button>
+      </div>
     </div>`
     : "";
   const list = registrations.length
@@ -626,6 +700,18 @@ function renderRegistrationsDialog(dialog, trip, data) {
 
   body.querySelector("[data-m310-add-registration]")
     ?.addEventListener("click", () => openManualRegistration(trip));
+
+  body.querySelector("[data-m310-export-registrations]")
+    ?.addEventListener("click", () => {
+      if (!hasCapability("fanbus.registrations.manage")) return;
+      try {
+        const registrations = Array.isArray(data?.registrations) ? data.registrations : [];
+        downloadFanbusRegistrationsXlsx(trip, registrations);
+        showToast("Excel-Datei wurde erstellt.", "success", 3800);
+      } catch (error) {
+        showToast(error?.message || "Die Excel-Datei konnte nicht erstellt werden.", "error", 5200);
+      }
+    });
 
   body.querySelectorAll("[data-m310-cancel-registration]").forEach(button => {
     button.addEventListener("click", async () => {
