@@ -1593,6 +1593,8 @@ body.overlay-open .view{overflow:hidden!important;touch-action:none}
     overflow:hidden;
     -webkit-box-orient:vertical;
     -webkit-line-clamp:2;
+    white-space:normal;
+    text-overflow:clip;
     overflow-wrap:normal;
     line-height:1.28;
   }
@@ -1622,14 +1624,17 @@ body.overlay-open .view{overflow:hidden!important;touch-action:none}
     justify-self:end;
   }
   .v4-dialog:has(#m310TripEditorForm){
+    height:auto!important;
     max-height:calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;
   }
   .v4-dialog:has(#m310TripEditorForm) .v4-dialog-shell{
-    height:calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;
+    height:auto!important;
     max-height:calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;
   }
   .v4-dialog:has(#m310TripEditorForm) #v4DialogBody{
-    flex:1 1 auto!important;
+    flex:0 1 auto!important;
+    height:auto!important;
+    min-height:0!important;
     overflow-y:auto!important;
     padding-bottom:calc(13px + env(safe-area-inset-bottom))!important;
   }
@@ -1675,6 +1680,8 @@ body.overlay-open .view{overflow:hidden!important;touch-action:none}
     overflow:hidden;
     -webkit-box-orient:vertical;
     -webkit-line-clamp:2;
+    white-space:normal;
+    text-overflow:clip;
     overflow-wrap:normal;
     line-height:1.28;
   }

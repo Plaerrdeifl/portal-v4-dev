@@ -13,6 +13,28 @@ const [fanbuses, dates, css, migration] = await Promise.all([
   read("supabase/migrations/20260812223000_open_fanbus_registration_on_publish_m310_r1.sql")
 ]);
 
+function cssRule(selector) {
+  const start = css.indexOf(selector);
+  assert.notEqual(start, -1, `CSS-Selektor fehlt: ${selector}`);
+  const openingBrace = css.indexOf("{", start);
+  const closingBrace = css.indexOf("}", openingBrace);
+  return css.slice(openingBrace + 1, closingBrace);
+}
+
+function assertTwoLineMobileTitle(selector) {
+  const rule = cssRule(selector);
+  assert.match(rule, /display:\s*-webkit-box/);
+  assert.match(rule, /-webkit-box-orient:\s*vertical/);
+  assert.match(rule, /-webkit-line-clamp:\s*2/);
+  assert.match(rule, /white-space:\s*normal/);
+  assert.match(rule, /text-overflow:\s*clip/);
+  assert.match(rule, /overflow:\s*hidden/);
+  assert.match(rule, /min-width:\s*0/);
+  assert.doesNotMatch(rule, /white-space:\s*nowrap/);
+  assert.doesNotMatch(rule, /text-overflow:\s*ellipsis/);
+  assert.doesNotMatch(rule, /(?:^|;)\s*(?:height|max-height)\s*:/);
+}
+
 test("M310 mobile card exposes one primary status and one capacity value", () => {
   assert.match(fanbuses, /function mobileTripStatus\(trip\)/);
   assert.match(fanbuses, /if \(trip\.status === "DRAFT"\) return \{ label: "Entwurf"/);
@@ -20,7 +42,7 @@ test("M310 mobile card exposes one primary status and one capacity value", () =>
   assert.match(fanbuses, /v4-m310-mobile-trip-meta[\s\S]+mobileTripStatusBadge\(trip\)/);
   assert.doesNotMatch(fanbuses, /v4-m310-mobile-trip[\s\S]{0,900}tripBadges\(trip\)/);
   assert.match(fanbuses, /Kapazität offen/);
-  assert.match(css, /v4-m310-mobile-trip-title[\s\S]+-webkit-line-clamp:2/);
+  assertTwoLineMobileTitle("#m310FanbusList .v4-m310-mobile-trip-title");
   assert.match(css, /v4-m310-mobile-trip>\.v4-row-chevron/);
 });
 
@@ -33,6 +55,22 @@ test("M310 editor removes the manual start field and defaults the close date in 
   assert.match(fanbuses, /T20:00/);
   assert.doesNotMatch(fanbuses, /registrationOpensAt: berlinLocalToIso/);
   assert.match(css, /:has\(#m310TripEditorForm\)[\s\S]+overflow-y:auto/);
+});
+
+test("M310 editor remains content-sized and only scrolls when viewport space is exhausted", () => {
+  const dialog = cssRule(".v4-dialog:has(#m310TripEditorForm)");
+  const shell = cssRule(".v4-dialog:has(#m310TripEditorForm) .v4-dialog-shell");
+  const body = cssRule(".v4-dialog:has(#m310TripEditorForm) #v4DialogBody");
+
+  assert.match(dialog, /(?:^|;)\s*height:\s*auto!important/);
+  assert.match(dialog, /max-height:\s*calc\(100dvh[^;]+safe-area-inset-top[^;]+safe-area-inset-bottom/);
+  assert.match(shell, /(?:^|;)\s*height:\s*auto!important/);
+  assert.match(shell, /max-height:\s*calc\(100dvh[^;]+safe-area-inset-top[^;]+safe-area-inset-bottom/);
+  assert.doesNotMatch(shell, /(?:^|;)\s*height:\s*calc\(100dvh/);
+  assert.match(body, /flex:\s*0 1 auto!important/);
+  assert.match(body, /(?:^|;)\s*height:\s*auto!important/);
+  assert.match(body, /min-height:\s*0!important/);
+  assert.match(body, /overflow-y:\s*auto!important/);
 });
 
 test("M310 keeps an unsaved default auto-managed until the close field is edited", () => {
@@ -82,5 +120,7 @@ test("M210 mobile metadata is compact and home-away filtering composes with exis
   assert.match(dates, /id="m210EventHomeAwayFilter"/);
   assert.match(dates, /matchesHomeAway = homeAwayFilter === "ALL"/);
   assert.match(dates, /matchesType && matchesVisibility && matchesHomeAway/);
-  assert.match(css, /v4-m210-mobile-event-title[\s\S]+-webkit-line-clamp:2/);
+  assertTwoLineMobileTitle(
+    "#m210DatesList .v4-compact-record.v4-m210-mobile-event .v4-m210-mobile-event-title"
+  );
 });
