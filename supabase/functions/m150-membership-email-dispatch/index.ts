@@ -2,10 +2,10 @@ const BATCH_LIMIT = 5;
 const PROVIDER_TIMEOUT_MS = 15_000;
 const MIN_DISPATCH_SECRET_BYTES = 32;
 const MAX_EMAIL_HEADER_LENGTH = 320;
-const MAX_API_KEY_LENGTH = 2048;
+const MAX_SECRET_LENGTH = 2048;
+const MAX_SMTP_RESPONSE_BYTES = 64 * 1024;
 
 const DISPATCH_SECRET_HEADER = "X-M150-Mail-Dispatch-Secret";
-const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 const encoder = new TextEncoder();
 
@@ -14,7 +14,10 @@ type EmailType = "RECEIPT" | "REJECTION" | "ADMISSION";
 type RuntimeConfig = {
   supabaseUrl: string;
   supabaseSecretKey: string;
-  resendApiKey: string;
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPassword: string;
   emailFrom: string;
   emailReplyTo?: string;
 };
@@ -35,6 +38,12 @@ type EmailContent = {
 };
 
 class DispatchError extends Error {
+  constructor(readonly code: string) {
+    super(code);
+  }
+}
+
+class SmtpProviderError extends Error {
   constructor(readonly code: string) {
     super(code);
   }
@@ -135,15 +144,51 @@ function validatedMailHeader(name: string, required: boolean) {
   return value;
 }
 
-function loadRuntimeConfig(): RuntimeConfig {
-  const resendApiKey = requiredEnvironmentValue("RESEND_API_KEY");
-  if (resendApiKey.length > MAX_API_KEY_LENGTH || hasCrlf(resendApiKey)) {
+function validatedSmtpHost() {
+  const host = requiredEnvironmentValue("M150_SMTP_HOST");
+  if (
+    host.length > 253
+    || !/^(?=.{1,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/.test(host)
+  ) {
     throw new DispatchError("CONFIG_INVALID");
   }
+  return host.toLowerCase();
+}
+
+function validatedSmtpPort() {
+  const rawPort = requiredEnvironmentValue("M150_SMTP_PORT");
+  if (!/^[0-9]{1,5}$/.test(rawPort)) {
+    throw new DispatchError("CONFIG_INVALID");
+  }
+
+  const port = Number(rawPort);
+  if (!Number.isSafeInteger(port) || port < 1 || port > 65_535) {
+    throw new DispatchError("CONFIG_INVALID");
+  }
+  return port;
+}
+
+function validatedSecret(name: string) {
+  const value = Deno.env.get(name);
+  if (value === undefined || value.length === 0 || value.length > MAX_SECRET_LENGTH) {
+    throw new DispatchError("CONFIG_INVALID");
+  }
+  return value;
+}
+
+function loadRuntimeConfig(): RuntimeConfig {
   const supabaseSecretKey = configuredSupabaseSecretKey();
   if (
-    supabaseSecretKey.length > MAX_API_KEY_LENGTH
+    supabaseSecretKey.length > MAX_SECRET_LENGTH
     || hasCrlf(supabaseSecretKey)
+  ) {
+    throw new DispatchError("CONFIG_INVALID");
+  }
+  const emailFrom = validatedMailHeader("M150_EMAIL_FROM", true) as string;
+  const emailReplyTo = validatedMailHeader("M150_EMAIL_REPLY_TO", false);
+  if (
+    !parseMailbox(emailFrom, true)
+    || (emailReplyTo && !parseMailbox(emailReplyTo, true))
   ) {
     throw new DispatchError("CONFIG_INVALID");
   }
@@ -151,9 +196,12 @@ function loadRuntimeConfig(): RuntimeConfig {
   return {
     supabaseUrl: validatedSupabaseUrl(),
     supabaseSecretKey,
-    resendApiKey,
-    emailFrom: validatedMailHeader("M150_EMAIL_FROM", true) as string,
-    emailReplyTo: validatedMailHeader("M150_EMAIL_REPLY_TO", false)
+    smtpHost: validatedSmtpHost(),
+    smtpPort: validatedSmtpPort(),
+    smtpUser: validatedSecret("M150_SMTP_USER"),
+    smtpPassword: validatedSecret("M150_SMTP_PASSWORD"),
+    emailFrom,
+    emailReplyTo
   };
 }
 
@@ -332,44 +380,279 @@ function buildEmail(claim: ClaimedEvent): EmailContent {
   throw new DispatchError("CLAIM_RPC_FAILED");
 }
 
-async function sendWithResend(
+type Mailbox = {
+  address: string;
+  domain: string;
+  displayName?: string;
+};
+
+function parseMailbox(value: string, allowDisplayName: boolean): Mailbox | null {
+  let address = value.trim();
+  let displayName: string | undefined;
+
+  if (allowDisplayName && address.endsWith(">")) {
+    const match = address.match(/^(.*)<([^<>]+)>$/);
+    if (!match) return null;
+    displayName = match[1].trim().replace(/^"(.*)"$/, "$1").trim();
+    address = match[2].trim();
+  }
+
+  if (
+    address.length > 254
+    || !/^[\x21-\x7e]+$/.test(address)
+    || /[<>()[\]:;,\\"]/.test(address)
+  ) {
+    return null;
+  }
+
+  const separator = address.lastIndexOf("@");
+  if (
+    separator <= 0
+    || separator !== address.indexOf("@")
+    || separator === address.length - 1
+  ) {
+    return null;
+  }
+
+  const domain = address.slice(separator + 1);
+  if (
+    !/^(?=.{1,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/.test(domain)
+  ) {
+    return null;
+  }
+
+  return { address, domain: domain.toLowerCase(), displayName };
+}
+
+function base64Utf8(value: string) {
+  const bytes = encoder.encode(value);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function encodeHeaderText(value: string) {
+  const chunks: string[] = [];
+  let current = "";
+
+  for (const character of value) {
+    if (current && encoder.encode(current + character).byteLength > 42) {
+      chunks.push(current);
+      current = character;
+    } else {
+      current += character;
+    }
+  }
+  if (current) chunks.push(current);
+
+  return chunks
+    .map(chunk => `=?UTF-8?B?${base64Utf8(chunk)}?=`)
+    .join("\r\n ");
+}
+
+function addressHeader(mailbox: Mailbox) {
+  if (!mailbox.displayName) return mailbox.address;
+  return `${encodeHeaderText(mailbox.displayName)} <${mailbox.address}>`;
+}
+
+function mimeBase64(value: string) {
+  return base64Utf8(value).match(/.{1,76}/g)?.join("\r\n") || "";
+}
+
+async function sha256Hex(value: string) {
+  const digest = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", encoder.encode(value))
+  );
+  return [...digest].map(byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function buildSmtpMessage(
+  claim: ClaimedEvent,
+  email: EmailContent,
+  sender: Mailbox,
+  recipient: Mailbox,
+  replyTo?: Mailbox
+) {
+  const outboxHash = await sha256Hex(claim.outboxId);
+  const boundary = `m150-${outboxHash.slice(0, 32)}`;
+  const headers = [
+    `From: ${addressHeader(sender)}`,
+    `To: ${recipient.address}`,
+    `Subject: ${encodeHeaderText(email.subject)}`,
+    `Date: ${new Date().toUTCString()}`,
+    `Message-ID: <m150-${outboxHash}@${sender.domain}>`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/alternative; boundary="${boundary}"`
+  ];
+  if (replyTo) headers.splice(2, 0, `Reply-To: ${addressHeader(replyTo)}`);
+
+  return [
+    ...headers,
+    "",
+    `--${boundary}`,
+    "Content-Type: text/plain; charset=UTF-8",
+    "Content-Transfer-Encoding: base64",
+    "",
+    mimeBase64(email.text),
+    `--${boundary}`,
+    "Content-Type: text/html; charset=UTF-8",
+    "Content-Transfer-Encoding: base64",
+    "",
+    mimeBase64(email.html),
+    `--${boundary}--`
+  ].join("\r\n");
+}
+
+class SmtpSession {
+  private buffer = "";
+  private responseBytes = 0;
+  private readonly decoder = new TextDecoder();
+
+  constructor(private readonly connection: Deno.Conn) {}
+
+  private async write(value: string) {
+    const bytes = encoder.encode(value);
+    let offset = 0;
+    while (offset < bytes.byteLength) {
+      const written = await this.connection.write(bytes.subarray(offset));
+      if (written <= 0) throw new SmtpProviderError("PROVIDER_PROTOCOL");
+      offset += written;
+    }
+  }
+
+  async writeLine(value: string) {
+    await this.write(`${value}\r\n`);
+  }
+
+  private async readLine() {
+    while (!this.buffer.includes("\n")) {
+      const chunk = new Uint8Array(4096);
+      const read = await this.connection.read(chunk);
+      if (read === null) throw new SmtpProviderError("PROVIDER_PROTOCOL");
+      this.responseBytes += read;
+      if (this.responseBytes > MAX_SMTP_RESPONSE_BYTES) {
+        throw new SmtpProviderError("PROVIDER_PROTOCOL");
+      }
+      this.buffer += this.decoder.decode(chunk.subarray(0, read), { stream: true });
+    }
+
+    const end = this.buffer.indexOf("\n");
+    const line = this.buffer.slice(0, end).replace(/\r$/, "");
+    this.buffer = this.buffer.slice(end + 1);
+    return line;
+  }
+
+  private async readReply() {
+    let replyCode: number | undefined;
+
+    for (let lineCount = 0; lineCount < 100; lineCount += 1) {
+      const line = await this.readLine();
+      const match = line.match(/^([0-9]{3})([ -])/);
+      if (!match) throw new SmtpProviderError("PROVIDER_PROTOCOL");
+
+      const code = Number(match[1]);
+      if (replyCode === undefined) replyCode = code;
+      if (code !== replyCode) throw new SmtpProviderError("PROVIDER_PROTOCOL");
+      if (match[2] === " ") return code;
+    }
+
+    throw new SmtpProviderError("PROVIDER_PROTOCOL");
+  }
+
+  async expect(expectedCodes: number[]) {
+    this.responseBytes = 0;
+    const code = await this.readReply();
+    if (!expectedCodes.includes(code)) {
+      throw new SmtpProviderError(`PROVIDER_SMTP_${code}`);
+    }
+  }
+
+  async command(value: string, expectedCodes: number[]) {
+    await this.writeLine(value);
+    await this.expect(expectedCodes);
+  }
+
+  async data(message: string) {
+    const dotStuffed = message.replace(/(^|\r\n)\./g, "$1..");
+    await this.write(`${dotStuffed}\r\n.\r\n`);
+    await this.expect([250]);
+  }
+}
+
+async function sendWithSmtp(
   config: RuntimeConfig,
   claim: ClaimedEvent,
   email: EmailContent
 ): Promise<string | null> {
-  const body: Record<string, unknown> = {
-    from: config.emailFrom,
-    to: [claim.recipientEmail],
-    subject: email.subject,
-    text: email.text,
-    html: email.html
-  };
-  if (config.emailReplyTo) body.reply_to = config.emailReplyTo;
+  let connection: Deno.Conn | undefined;
+  let timedOut = false;
+  let timeoutId: number | undefined;
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
-  let response: Response;
+  const delivery = async () => {
+    const sender = parseMailbox(config.emailFrom, true);
+    const recipient = parseMailbox(claim.recipientEmail, false);
+    const replyTo = config.emailReplyTo
+      ? parseMailbox(config.emailReplyTo, true)
+      : undefined;
+    if (!sender || !recipient || (config.emailReplyTo && !replyTo)) {
+      throw new SmtpProviderError("PROVIDER_ADDRESS_INVALID");
+    }
+
+    const message = await buildSmtpMessage(
+      claim,
+      email,
+      sender,
+      recipient,
+      replyTo
+    );
+    const establishedConnection = await Deno.connectTls({
+      hostname: config.smtpHost,
+      port: config.smtpPort
+    });
+    if (timedOut) {
+      establishedConnection.close();
+      throw new SmtpProviderError("PROVIDER_TIMEOUT");
+    }
+    connection = establishedConnection;
+
+    const session = new SmtpSession(connection);
+    await session.expect([220]);
+    await session.command(`EHLO ${sender.domain}`, [250]);
+    await session.command("AUTH LOGIN", [334]);
+    await session.command(base64Utf8(config.smtpUser), [334]);
+    await session.command(base64Utf8(config.smtpPassword), [235]);
+    await session.command(`MAIL FROM:<${sender.address}>`, [250]);
+    await session.command(`RCPT TO:<${recipient.address}>`, [250, 251]);
+    await session.command("DATA", [354]);
+    await session.data(message);
+  };
+
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      timedOut = true;
+      try {
+        connection?.close();
+      } catch {
+        // The provider result remains a controlled timeout if the socket is closed.
+      }
+      reject(new SmtpProviderError("PROVIDER_TIMEOUT"));
+    }, PROVIDER_TIMEOUT_MS);
+  });
 
   try {
-    response = await fetch(RESEND_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${config.resendApiKey}`,
-        "Content-Type": "application/json",
-        "Idempotency-Key": claim.outboxId
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal
-    });
-  } catch {
-    return "PROVIDER_NETWORK";
+    await Promise.race([delivery(), timeout]);
+    return null;
+  } catch (error) {
+    if (error instanceof SmtpProviderError) return error.code;
+    return timedOut ? "PROVIDER_TIMEOUT" : "PROVIDER_NETWORK";
   } finally {
-    clearTimeout(timeout);
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+    try {
+      connection?.close();
+    } catch {
+      // The SMTP transaction has already been classified above.
+    }
   }
-
-  await response.body?.cancel();
-  if (response.status >= 200 && response.status < 300) return null;
-  return `PROVIDER_HTTP_${response.status}`;
 }
 
 Deno.serve(async request => {
@@ -407,7 +690,7 @@ Deno.serve(async request => {
       if (!claim) break;
 
       const email = buildEmail(claim);
-      const providerErrorCode = await sendWithResend(config, claim, email);
+      const providerErrorCode = await sendWithSmtp(config, claim, email);
 
       if (providerErrorCode === null) {
         await completeEvent(config, claim, true, null);

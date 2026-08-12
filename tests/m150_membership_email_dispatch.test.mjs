@@ -50,7 +50,10 @@ test("all runtime configuration is validated before the first claim", () => {
     "SUPABASE_URL",
     "SUPABASE_SECRET_KEYS",
     "SUPABASE_SERVICE_ROLE_KEY",
-    "RESEND_API_KEY",
+    "M150_SMTP_HOST",
+    "M150_SMTP_PORT",
+    "M150_SMTP_USER",
+    "M150_SMTP_PASSWORD",
     "M150_EMAIL_FROM",
     "M150_EMAIL_REPLY_TO"
   ]) {
@@ -97,7 +100,7 @@ test("batch is sequential, fixed at five events, and remains at most ten", () =>
 });
 
 test("there are exactly three fixed M150 templates with text and HTML", () => {
-  const templateBlock = sourceBlock(functionSource, "function buildEmail", "async function sendWithResend");
+  const templateBlock = sourceBlock(functionSource, "function buildEmail", "type Mailbox");
   assert.deepEqual(
     [...templateBlock.matchAll(/case "([A-Z]+)"/g)].map(match => match[1]),
     ["RECEIPT", "REJECTION", "ADMISSION"]
@@ -110,7 +113,7 @@ test("there are exactly three fixed M150 templates with text and HTML", () => {
 test("applicant notice is rejection-only and all HTML application text is escaped", () => {
   const receipt = sourceBlock(functionSource, 'case "RECEIPT"', 'case "REJECTION"');
   const rejection = sourceBlock(functionSource, 'case "REJECTION"', 'case "ADMISSION"');
-  const admission = sourceBlock(functionSource, 'case "ADMISSION"', "async function sendWithResend");
+  const admission = sourceBlock(functionSource, 'case "ADMISSION"', "type Mailbox");
   assert.doesNotMatch(receipt, /applicantNotice/);
   assert.match(rejection, /claim\.applicantNotice/);
   assert.match(rejection, /escapedHtmlWithBreaks\(applicantNotice\)/);
@@ -125,38 +128,48 @@ test("applicant notice is rejection-only and all HTML application text is escape
   );
 });
 
-test("Resend transport is fixed, authenticated, idempotent, and time-bounded", () => {
-  assert.match(functionSource, /https:\/\/api\.resend\.com\/emails/);
-  assert.match(functionSource, /Authorization: `Bearer \$\{config\.resendApiKey\}`/);
-  assert.match(functionSource, /"Content-Type": "application\/json"/);
-  assert.match(functionSource, /"Idempotency-Key": claim\.outboxId/);
+test("lima-city transport uses implicit TLS SMTP authentication and is time-bounded", () => {
+  assert.match(
+    functionSource,
+    /Deno\.connectTls\(\{\s*hostname: config\.smtpHost,\s*port: config\.smtpPort\s*\}\)/
+  );
+  assert.doesNotMatch(functionSource, /Deno\.(?:connect|startTls)\(/);
+  assert.match(functionSource, /session\.command\("AUTH LOGIN", \[334\]\)/);
+  assert.match(functionSource, /base64Utf8\(config\.smtpUser\)/);
+  assert.match(functionSource, /base64Utf8\(config\.smtpPassword\)/);
+  assert.match(functionSource, /session\.command\("DATA", \[354\]\)/);
+  assert.match(functionSource, /Reply-To: \$\{addressHeader\(replyTo\)\}/);
+  assert.match(functionSource, /Content-Type: text\/plain; charset=UTF-8/);
+  assert.match(functionSource, /Content-Type: text\/html; charset=UTF-8/);
+  assert.doesNotMatch(functionSource, /RESEND|api\.resend\.com/i);
+  assert.match(functionSource, /sha256Hex\(claim\.outboxId\)/);
+  assert.match(functionSource, /Message-ID: <m150-\$\{outboxHash\}@\$\{sender\.domain\}>/);
   assert.doesNotMatch(functionSource, /crypto\.randomUUID|Math\.random|gen_random_uuid/);
-  assert.match(functionSource, /text: email\.text/);
-  assert.match(functionSource, /html: email\.html/);
   assert.match(functionSource, /const PROVIDER_TIMEOUT_MS = 15_000/);
-  assert.match(functionSource, /controller\.abort\(\)/);
+  assert.match(functionSource, /connection\?\.close\(\)/);
 });
 
-test("only provider 2xx completes successfully and failures remain technical", () => {
-  assert.match(functionSource, /response\.status >= 200 && response\.status < 300/);
-  assert.match(functionSource, /return `PROVIDER_HTTP_\$\{response\.status\}`/);
-  assert.match(functionSource, /return "PROVIDER_NETWORK"/);
+test("only accepted SMTP delivery completes successfully and failures remain technical", () => {
+  assert.match(functionSource, /await session\.data\(message\)/);
+  assert.match(functionSource, /await this\.expect\(\[250\]\)/);
+  assert.match(functionSource, /`PROVIDER_SMTP_\$\{code\}`/);
+  assert.match(functionSource, /"PROVIDER_NETWORK"/);
+  assert.match(functionSource, /"PROVIDER_TIMEOUT"/);
+  assert.match(functionSource, /"PROVIDER_PROTOCOL"/);
   assert.match(functionSource, /completeEvent\(config, claim, true, null\)/);
   assert.match(functionSource, /completeEvent\(config, claim, false, providerErrorCode\)/);
-  assert.doesNotMatch(functionSource, /response\.(?:text|json)\(\)[\s\S]{0,120}PROVIDER/);
-  assert.doesNotMatch(functionSource, /providerResponse|providerBody|providerId/);
+  assert.doesNotMatch(functionSource, /console\.|error\.message|error\.stack/);
 });
 
-test("implementation contains no browser, WordPress, SMTP, cron, or deployment integration", () => {
+test("implementation contains no browser, WordPress, cron, or deployment integration", () => {
   assert.doesNotMatch(
     functionSource,
-    /wp_mail|wordpress|php\s+mail|smtp|window\.|document\.|localStorage|serviceWorker|cron|schedule|deploy|production|prod\b/i
+    /wp_mail|wordpress|php\s+mail|window\.|document\.|localStorage|serviceWorker|cron|schedule|deploy|production|prod\b/i
   );
 });
 
 test("documentation records operational boundaries and prerequisites", () => {
   for (const phrase of [
-    "Resend",
     "Supabase Edge Function",
     "F1.6A",
     "Claim",
