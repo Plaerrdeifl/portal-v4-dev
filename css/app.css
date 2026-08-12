@@ -5714,6 +5714,42 @@ html[data-portal-area="portal"] .v4-toolbar p{
   }
 }
 
+/* M210 – mobile Terminzeilen: Sichtbarkeit neben der unteren Meta-Zeile */
+@media(max-width:860px){
+  #m210DatesList .v4-compact-record{
+    grid-template-columns:minmax(0,1fr) auto auto;
+    grid-template-areas:
+      "date date chevron"
+      "title title chevron"
+      "meta badge chevron";
+    row-gap:2px;
+  }
+  #m210DatesList .v4-compact-record-copy{
+    display:contents;
+  }
+  #m210DatesList .v4-compact-record-copy small{
+    grid-area:date;
+  }
+  #m210DatesList .v4-compact-record-copy strong{
+    display:-webkit-box;
+    grid-area:title;
+    -webkit-box-orient:vertical;
+    -webkit-line-clamp:2;
+    overflow:hidden;
+  }
+  #m210DatesList .v4-compact-record-copy>span{
+    grid-area:meta;
+  }
+  #m210DatesList .v4-compact-record-end{
+    grid-area:badge;
+    max-width:none;
+  }
+  #m210DatesList .v4-compact-record>.v4-row-chevron{
+    grid-area:chevron;
+    align-self:center;
+  }
+}
+
 /* V4 DASHBOARD SMALL WIDGETS R1 */
 .dashboard-widget.widget-size-small{
   grid-column:span 3;
