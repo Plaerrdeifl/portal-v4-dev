@@ -1181,6 +1181,11 @@ html[data-route="home"] .app-footer{flex:none!important;padding-top:11px!importa
 .v4-capability strong,.v4-capability small,.v4-capability code{display:block}
 .v4-capability small{color:var(--ink-500);margin:3px 0}
 .v4-capability code{font-size:.72rem;color:var(--blue-800)}
+.v4-personal-capability>span{min-width:0;flex:1}
+.v4-capability-effective{display:inline-flex!important;margin-top:7px;padding:3px 8px;border-radius:999px;background:var(--surface-soft);color:var(--ink-500);font-size:.7rem;font-weight:800}
+.v4-capability-effective.is-effective{background:#e9f8ef;color:#17663a}
+.v4-capability-sources{display:flex!important;flex-wrap:wrap;gap:5px;margin-top:7px}
+.v4-capability-sources>span{display:inline-flex;padding:3px 7px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink-500);font-size:.68rem;font-weight:700}
 .v4-history{margin-top:20px}
 .v4-history summary{cursor:pointer;font-weight:850;padding:12px 0}
 .v4-admin-tabs{margin-bottom:18px}
@@ -5373,6 +5378,339 @@ html[data-portal-area="portal"] .v4-toolbar p{
   }
   .widget-size-compact .v4-dashboard-card-copy h3{
     font-size:.72rem;
+  }
+}
+
+/* Einheitliche kompakte Modulübersichten – M150 / M210 / M310 */
+.v4-list-filterbar{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:end;
+  margin-bottom:12px;
+}
+.v4-list-filterbar .v4-compact-search{
+  flex:1 1 260px!important;
+}
+.v4-filter-field{
+  display:grid;
+  flex:0 1 180px;
+  gap:4px;
+  color:var(--ink-500);
+  font-size:.72rem;
+  font-weight:850;
+  text-transform:uppercase;
+  letter-spacing:.035em;
+}
+.v4-filter-field select{
+  width:100%;
+  min-height:42px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#fff;
+  padding:8px 34px 8px 11px;
+  color:var(--ink-900);
+  font-size:.92rem;
+  font-weight:750;
+  text-transform:none;
+  letter-spacing:normal;
+}
+.v4-compact-table th,
+.v4-compact-table td{
+  padding:10px 12px;
+  vertical-align:middle;
+}
+.v4-interactive-row{
+  cursor:pointer;
+}
+.v4-interactive-row:focus-visible{
+  position:relative;
+  z-index:1;
+  outline:3px solid var(--blue-400);
+  outline-offset:-3px;
+  background:var(--blue-050);
+}
+.v4-compact-record-list{
+  gap:7px!important;
+}
+.v4-compact-record{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  gap:10px;
+  align-items:center;
+  width:100%;
+  min-width:0;
+  padding:10px 12px;
+  border:1px solid rgba(126,145,171,.22);
+  border-radius:14px;
+  background:#fff;
+  color:var(--ink-900);
+  text-align:left;
+  box-shadow:var(--shadow-sm);
+  cursor:pointer;
+}
+.v4-compact-record:hover{
+  border-color:var(--blue-400);
+  background:var(--blue-050);
+}
+.v4-compact-record:focus-visible{
+  outline:3px solid var(--blue-400);
+  outline-offset:2px;
+}
+.v4-compact-record-copy{
+  display:grid;
+  min-width:0;
+  gap:2px;
+}
+.v4-compact-record-copy strong,
+.v4-compact-record-copy small,
+.v4-compact-record-copy span{
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.v4-compact-record-copy strong{
+  font-size:.94rem;
+  line-height:1.25;
+}
+.v4-compact-record-copy small,
+.v4-compact-record-copy>span{
+  color:var(--ink-500);
+  font-size:.72rem;
+  line-height:1.3;
+}
+.v4-compact-record-end{
+  display:grid;
+  justify-items:end;
+  gap:4px;
+  max-width:145px;
+  text-align:right;
+}
+.v4-compact-record-end small{
+  color:var(--ink-500);
+  font-size:.68rem;
+  line-height:1.25;
+}
+.v4-form-pair{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px 12px;
+}
+.v4-form-pair>label{
+  min-width:0;
+}
+.v4-m150-table td{
+  vertical-align:middle;
+}
+.v4-m150-vote-summary{
+  display:block;
+  color:var(--ink-500);
+  font-size:.78rem;
+  font-weight:750;
+  white-space:nowrap;
+}
+/* M150 R1 F1.3 – fachlich besondere Mitgliedsantragsbereiche */
+.v4-m150-section + .v4-m150-section{
+  margin-top:16px;
+  padding-top:16px;
+  border-top:1px solid #dbe3ec;
+}
+.v4-m150-section h3{
+  margin:0;
+  font-size:1rem;
+}
+.v4-m150-own-vote{
+  margin-bottom:9px;
+  padding:9px 11px;
+  border-radius:12px;
+  background:var(--blue-050);
+  color:var(--blue-900);
+  font-size:.84rem;
+}
+.v4-m150-votes{
+  display:grid;
+  gap:7px;
+}
+.v4-m150-vote-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:9px 11px;
+  border:1px solid #dbe3ec;
+  border-radius:12px;
+  background:#fff;
+}
+.v4-m150-vote-row.is-own{
+  border-color:#86b7e8;
+  background:#f1f7ff;
+}
+.v4-m150-vote-row.is-missing{
+  color:var(--ink-500);
+  background:#f7f9fb;
+}
+.v4-m150-vote-row>span{
+  display:grid;
+  gap:3px;
+  min-width:0;
+}
+.v4-m150-vote-row>span:last-child{
+  justify-items:end;
+  flex:none;
+}
+.v4-m150-vote-row small{
+  color:var(--ink-500);
+  font-size:.7rem;
+}
+.v4-m150-hint-groups{
+  display:grid;
+  gap:8px;
+}
+.v4-m150-hint-groups>div{
+  padding:10px 12px;
+  border:1px solid #ead7a3;
+  border-radius:12px;
+  background:#fffaf0;
+}
+.v4-m150-hint-groups ul{
+  margin:6px 0 0;
+  padding-left:19px;
+}
+.v4-m150-hint-groups li+li{
+  margin-top:4px;
+}
+.v4-m150-internal-reason{
+  border-left:4px solid #8a5a13;
+}
+.v4-m150-applicant-notice{
+  border-left:4px solid #3477b8;
+}
+.v4-m150-actions>div+div{
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid #dbe3ec;
+}
+.v4-dialog .v4-m150-inline-actions{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+}
+.v4-m150-mode-options{
+  display:grid;
+  gap:8px;
+  min-width:0;
+  margin:0;
+  padding:11px 12px;
+  border:1px solid #d5dee9;
+  border-radius:14px;
+  background:#fff;
+}
+.v4-m150-mode-options legend{
+  padding:0 4px;
+  color:#40526a;
+  font-size:.78rem;
+  font-weight:850;
+}
+.v4-dialog .v4-m150-mode-options label,
+.v4-dialog .v4-m150-explicit-confirm{
+  display:flex!important;
+  grid-template-columns:none!important;
+  flex-direction:row!important;
+  align-items:flex-start!important;
+  gap:9px!important;
+  min-height:40px;
+  padding:8px 9px;
+  border:1px solid #dbe3ec;
+  border-radius:11px;
+  background:#f8fafc;
+  font-size:.82rem!important;
+}
+.v4-dialog .v4-m150-mode-options input[type="radio"],
+.v4-dialog .v4-m150-explicit-confirm input[type="checkbox"]{
+  display:inline-block!important;
+  flex:0 0 19px!important;
+  width:19px!important;
+  min-width:19px!important;
+  max-width:19px!important;
+  height:19px!important;
+  min-height:19px!important;
+  max-height:19px!important;
+  margin:1px 0 0!important;
+  padding:0!important;
+}
+.v4-m150-conversion-mode{
+  display:grid;
+  gap:11px;
+}
+.v4-m150-conversion-mode>.notice{
+  margin:0;
+}
+.v4-m150-comparison{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+.v4-m150-comparison>div{
+  min-width:0;
+  padding:11px;
+  border:1px solid #dbe3ec;
+  border-radius:14px;
+  background:#fff;
+}
+.v4-m150-comparison h3{
+  margin:0 0 8px;
+  font-size:.9rem;
+}
+.v4-m150-retry{
+  display:flex;
+  justify-content:flex-end;
+}
+
+@media(max-width:700px){
+  .v4-list-filterbar{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+  .v4-list-filterbar .v4-compact-search{
+    grid-column:1/-1;
+  }
+  .v4-m150-comparison{
+    grid-template-columns:1fr;
+  }
+  .v4-m150-vote-row{
+    align-items:flex-start;
+  }
+  .v4-m150-vote-row>span:last-child{
+    justify-items:end;
+    text-align:right;
+  }
+}
+@media(max-width:430px){
+  .v4-smart-form>.v4-field-mobile-full,
+  .v4-smart-form>.v4-field-datetime{
+    grid-column:1/-1!important;
+  }
+}
+@media(max-width:350px){
+  .v4-list-filterbar,
+  .v4-form-pair{
+    grid-template-columns:1fr;
+  }
+  .v4-filter-field,
+  .v4-list-filterbar .v4-compact-search{
+    grid-column:auto;
+  }
+  .v4-compact-record{
+    grid-template-columns:minmax(0,1fr) auto;
+  }
+  .v4-compact-record-end{
+    grid-column:1/-1;
+    grid-row:2;
+    justify-items:start;
+    max-width:none;
+    text-align:left;
+  }
+  .v4-compact-record>.v4-row-chevron{
+    grid-column:2;
+    grid-row:1;
   }
 }
 

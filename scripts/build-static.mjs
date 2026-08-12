@@ -11,6 +11,7 @@ const runtimeOutput = resolve(dist, "js", "runtime-config.js");
 
 const files = [
   "index.html",
+  "fanbus-anmeldung.html",
   "offline.html",
   "favicon.ico",
   "manifest.webmanifest",

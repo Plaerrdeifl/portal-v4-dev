@@ -60,12 +60,40 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260724133000_add_role_aware_dashboard_r1.sql",
     "20260724193000_add_personal_dashboard_widgets_r1.sql",
     "20260725010000_add_dashboard_small_widget_size_r1.sql",
-    "20260727203211_harden_private_function_privileges_and_push_runtime.sql"
+    "20260727203211_harden_private_function_privileges_and_push_runtime.sql",
+    "20260802211306_harden_pd_api_revoke_anon_execute.sql",
+    "20260807120000_harden_public_default_privileges.sql",
+    "20260807120100_add_central_event_model_r1.sql",
+    "20260808120000_add_internal_events_api_r1.sql",
+    "20260808130000_add_public_events_read_api_r1.sql",
+    "20260808140000_repair_birth_date_baseline_bf_003.sql",
+    "20260808150000_add_membership_application_model_r1.sql",
+    "20260808151000_add_membership_application_internal_api_r1.sql",
+    "20260809001000_add_membership_application_conversion_r1.sql",
+    "20260809002000_add_membership_application_conversion_api_r1.sql",
+    "20260809094500_add_membership_application_public_intake_model_r1.sql",
+    "20260809095000_add_membership_application_public_intake_api_r1.sql",
+    "20260809143000_add_m150_membership_communication_core_r1.sql",
+    "20260809190000_add_m150_membership_retention_r1.sql",
+    "20260810080000_add_m150_membership_application_withdraw_r1.sql",
+    "20260810140000_add_central_user_capabilities_m010_r1.sql",
+    "20260810174420_add_fanbus_core_m310_r1.sql",
+    "20260810181918_add_internal_fanbus_api_m310_r1.sql",
+    "20260810194738_add_public_fanbus_registration_m310_r1.sql",
+    "20260810203931_add_public_fanbus_list_m310_r1.sql",
+    "20260811123652_add_m210_ics_import_r2.sql",
+    "20260811150000_add_manual_fanbus_registrations_m310_r1.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
   const seed = await read(`supabase/migrations/${names[3]}`);
   const api = await read(`supabase/migrations/${names[4]}`);
+  const pdApiAnonHardening = await read(
+    "supabase/migrations/20260802211306_harden_pd_api_revoke_anon_execute.sql"
+  );
+  const publicDefaultPrivileges = await read(
+    "supabase/migrations/20260807120000_harden_public_default_privileges.sql"
+  );
   for (const schema of ["app_portal", "app_fanclub", "app_modules", "app_private"]) {
     assert.match(tables + api, new RegExp(schema.replace("_", "_")));
   }
@@ -77,6 +105,45 @@ test("database migrations are ordered and contain the core contract", async () =
   assert.match(api, /grant execute on function public\.pd_api\(text, jsonb\) to authenticated/);
   assert.match(api, /grant execute on function public\.pd_create_bootstrap_token[\s\S]+to service_role/);
   assert.doesNotMatch(api, /grant\s+(?:all|select|insert|update|delete)[\s\S]+to\s+anon/i);
+  assert.match(
+    pdApiAnonHardening,
+    /revoke\s+execute\s+on\s+function\s+public\.pd_api\(text,\s*jsonb\)\s+from\s+anon\s*;/i
+  );
+  assert.match(
+    publicDefaultPrivileges,
+    /alter\s+default\s+privileges\s+for\s+role\s+postgres\s+revoke\s+execute\s+on\s+functions\s+from\s+public\s*;/i
+  );
+  assert.match(
+    publicDefaultPrivileges,
+    /alter\s+default\s+privileges\s+for\s+role\s+postgres\s+in\s+schema\s+public\s+revoke\s+all\s+on\s+tables\s+from\s+anon\s*,\s*authenticated\s*,\s*service_role\s*;/i
+  );
+  assert.match(
+    publicDefaultPrivileges,
+    /alter\s+default\s+privileges\s+for\s+role\s+postgres\s+in\s+schema\s+public\s+revoke\s+all\s+on\s+sequences\s+from\s+anon\s*,\s*authenticated\s*,\s*service_role\s*;/i
+  );
+  assert.match(
+    publicDefaultPrivileges,
+    /alter\s+default\s+privileges\s+for\s+role\s+postgres\s+in\s+schema\s+public\s+revoke\s+all\s+on\s+functions\s+from\s+anon\s*,\s*authenticated\s*,\s*service_role\s*;/i
+  );
+});
+
+test("M150 conversion remains behind the authenticated additive RPC boundary", async () => {
+  const model = await read(
+    "supabase/migrations/20260809001000_add_membership_application_conversion_r1.sql"
+  );
+  const api = await read(
+    "supabase/migrations/20260809002000_add_membership_application_conversion_api_r1.sql"
+  );
+
+  assert.match(model, /membership_applications_conversion_state_check/);
+  assert.match(model, /M150_CONVERSION_IMMUTABLE/);
+  assert.match(api, /when 'membership_application_convert'/);
+  assert.match(api, /return public\.pd_api_before_membership_application_conversion_r1\(p_action, p_payload\)/);
+  assert.match(api, /m150_require_current_board_member\(\)/);
+  assert.doesNotMatch(api, /service[_-]?role/i);
+  assert.doesNotMatch(api, /grant execute[\s\S]+to anon/i);
+  assert.doesNotMatch(api, /(?:insert into|update|delete from)\s+app_portal\.access_requests\b/i);
+  assert.doesNotMatch(api, /(?:insert into|update|delete from)\s+app_fanclub\.(?:finance_|contribution_)/i);
 });
 
 test("dynamic roles and fixed offices are documented as V4 decisions", async () => {

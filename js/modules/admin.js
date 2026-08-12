@@ -147,14 +147,119 @@ function taskAccessSummary(user) {
   return labels.join(" · ");
 }
 
+function effectiveCapability(user, code) {
+  return (user.effectiveCapabilities || []).find(
+    capability => capability.code === code
+  ) || null;
+}
+
+function capabilitySourceLabel(source) {
+  const detail = source.detail || {};
+
+  if (source.source === "ROLE") {
+    return `Rolle: ${detail.roleName || detail.roleCode || "Portalrolle"}`;
+  }
+
+  if (source.source === "OFFICE") {
+    return `Amt: ${detail.officeLabel || detail.officeCode || "Amt"}`;
+  }
+
+  if (source.source === "PERSONAL") return "Persönlich";
+  if (source.source === "ADMIN_OVERRIDE") return "Admin-Override";
+  return source.source || "Unbekannte Quelle";
+}
+
+function personalCapabilitySummary(user) {
+  const personalCount = (user.personalCapabilities || []).length;
+  const effectiveCount = (user.effectiveCapabilities || []).length;
+  return `${personalCount} persönlich · ${effectiveCount} effektiv`;
+}
+
+function editPersonalCapabilities(user) {
+  const personal = new Set(user.personalCapabilities || []);
+  const grouped = new Map();
+
+  for (const capability of snapshot.personalCapabilityCatalog || []) {
+    if (!grouped.has(capability.category)) {
+      grouped.set(capability.category, []);
+    }
+    grouped.get(capability.category).push(capability);
+  }
+
+  openDialog({
+    title: "Zusatzrechte",
+    kicker: `${user.userCode} · ${user.firstName} ${user.lastName}`,
+    submitLabel: "Zusatzrechte speichern",
+    body: `<form>
+      <div class="notice">
+        <strong>Additive persönliche Rechte</strong>
+        <p>Nur der persönliche Anteil ist editierbar. Rechte aus Rolle, Amt oder Admin-Override bleiben beim Entfernen eines persönlichen Hakens wirksam.</p>
+      </div>
+      <div class="v4-capability-groups v4-personal-capability-groups">
+        ${[...grouped.entries()].map(([category, capabilities]) => `
+          <fieldset>
+            <legend>${escapeHtml(category)}</legend>
+            ${capabilities.map(capability => {
+              const effective = effectiveCapability(user, capability.code);
+              const sources = effective?.sources || [];
+              const inheritedSources = sources.filter(
+                source => source.source !== "PERSONAL"
+              );
+
+              return `<label class="v4-capability v4-personal-capability">
+                <input
+                  type="checkbox"
+                  name="personalCapability"
+                  value="${escapeAttr(capability.code)}"
+                  ${personal.has(capability.code) ? "checked" : ""}
+                >
+                <span>
+                  <strong>${escapeHtml(capability.name)}</strong>
+                  <small>${escapeHtml(capability.description || "")}</small>
+                  <code>${escapeHtml(capability.code)}</code>
+                  <span class="v4-capability-effective ${effective ? "is-effective" : ""}">
+                    ${effective ? "Effektiv vorhanden" : "Nicht effektiv vorhanden"}
+                  </span>
+                  <span class="v4-capability-sources">
+                    ${inheritedSources.length
+                      ? inheritedSources.map(source => `<span>${escapeHtml(capabilitySourceLabel(source))}</span>`).join("")
+                      : "<span>Keine geerbte Quelle</span>"}
+                    ${personal.has(capability.code) ? "<span>Persönlich</span>" : ""}
+                  </span>
+                </span>
+              </label>`;
+            }).join("")}
+          </fieldset>
+        `).join("")}
+      </div>
+    </form>`,
+    onSubmit: async () => {
+      const capabilities = [
+        ...document.querySelectorAll(
+          '#v4DialogBody input[name="personalCapability"]:checked'
+        )
+      ].map(input => input.value);
+
+      snapshot = await runWrite(
+        () => call("set_user_capabilities", {
+          userId: user.id,
+          capabilities,
+          expectedCapabilities: user.personalCapabilities || []
+        }),
+        "Persönliche Zusatzrechte wurden aktualisiert."
+      );
+
+      render();
+    }
+  });
+}
+
 function inheritedTaskAccessMarkup(user) {
   const baseline = user.taskAccess?.baseline || {};
   const items = [
     ["Teamaufgaben", baseline.canViewTeamSection],
     ["Vorstandsaufgaben", baseline.canViewBoardSection],
     ["Archiv", baseline.canViewArchiveSection],
-    ["Aufgaben erstellen", baseline.canCreateTasks],
-    ["Global verwalten", baseline.canManageTasks],
     ["Direkt übertragen", baseline.canDirectTransfer]
   ].filter(([, enabled]) => enabled);
 
@@ -203,9 +308,9 @@ function editTaskAccess(user) {
   ];
 
   const dialog = openDialog({
-    title: "Aufgabenrechte",
+    title: "Aufgabenspezifische Rechte",
     kicker: `${user.userCode} · ${user.firstName} ${user.lastName}`,
-    submitLabel: "Zusatzrechte speichern",
+    submitLabel: "Aufgabenregeln speichern",
     body: `<form class="form-grid v4-task-access-form">
       <input
         type="hidden"
@@ -280,32 +385,6 @@ function editTaskAccess(user) {
         <label class="v4-capability">
           <input
             type="checkbox"
-            name="canCreateTasks"
-            ${override.canCreateTasks ? "checked" : ""}
-            ${baseline.canCreateTasks ? "disabled" : ""}
-          >
-          <span>
-            <strong>Aufgaben erstellen</strong>
-            <small>Erlaubt das Erstellen in eigenen Teams beziehungsweise im zusätzlich sichtbaren Vorstandsbereich.</small>
-          </span>
-        </label>
-
-        <label class="v4-capability">
-          <input
-            type="checkbox"
-            name="canManageTasks"
-            ${override.canManageTasks ? "checked" : ""}
-            ${baseline.canManageTasks ? "disabled" : ""}
-          >
-          <span>
-            <strong>Aufgaben global verwalten</strong>
-            <small>Erteilt vollständige Aufgabenverwaltung einschließlich aller Bereiche und des vollständigen Archivs.</small>
-          </span>
-        </label>
-
-        <label class="v4-capability">
-          <input
-            type="checkbox"
             name="canDirectTransfer"
             ${override.canDirectTransfer ? "checked" : ""}
             ${baseline.canDirectTransfer ? "disabled" : ""}
@@ -362,18 +441,12 @@ function editTaskAccess(user) {
           ),
           archiveScope,
           archiveTeamIds,
-          canCreateTasks: Boolean(
-            form.elements.namedItem("canCreateTasks")?.checked
-          ),
-          canManageTasks: Boolean(
-            form.elements.namedItem("canManageTasks")?.checked
-          ),
           canDirectTransfer: Boolean(
             form.elements.namedItem("canDirectTransfer")?.checked
           ),
           reset: false
         }),
-        "Zusätzliche Aufgabenrechte wurden gespeichert."
+        "Aufgabenspezifische Zusatzregeln wurden gespeichert."
       );
 
       render();
@@ -400,7 +473,7 @@ function editTaskAccess(user) {
       const resetButton = event.currentTarget;
 
       const confirmed = await confirmAction(
-        "Individuelle Aufgabenrechte entfernen und auf den automatisch geerbten Rollenstandard zurücksetzen?"
+        "Individuelle aufgabenspezifische Regeln entfernen? Globale persönliche Capabilities bleiben erhalten."
       );
 
       if (!confirmed) return;
@@ -413,7 +486,7 @@ function editTaskAccess(user) {
             revision: Number(override.revision || 0),
             reset: true
           }),
-          "Aufgabenrechte wurden auf den Rollenstandard zurückgesetzt."
+          "Aufgabenspezifische Regeln wurden zurückgesetzt."
         );
 
         if (dialog.open) dialog.close();
@@ -471,6 +544,7 @@ function renderUsers(panel) {
           <th>Name</th>
           <th>Rolle</th>
           <th>Mitglied</th>
+          ${snapshot.canManagePersonalCapabilities ? "<th>Zusatzrechte</th>" : ""}
           <th>Aufgaben</th>
           <th>Status</th>
           <th></th>
@@ -485,17 +559,25 @@ function renderUsers(panel) {
           </td>
           <td>${escapeHtml(user.roleName)}</td>
           <td>${escapeHtml(user.memberCode || "–")}</td>
+          ${snapshot.canManagePersonalCapabilities ? `<td>
+            <small>${escapeHtml(personalCapabilitySummary(user))}</small>
+          </td>` : ""}
           <td>
             <small>${escapeHtml(taskAccessSummary(user))}</small>
           </td>
           <td>${statusBadge(user.status)}</td>
           <td>
             <div class="v4-row-actions">
+              ${snapshot.canManagePersonalCapabilities ? `<button
+                class="button small primary"
+                data-edit-user-capabilities="${escapeAttr(user.id)}"
+                type="button"
+              >Zusatzrechte</button>` : ""}
               ${snapshot.canManageTaskAccess ? `<button
                 class="button small secondary"
                 data-edit-user-task-access="${escapeAttr(user.id)}"
                 type="button"
-              >Aufgabenrechte</button>` : ""}
+              >Aufgabenregeln</button>` : ""}
               <button
                 class="button small secondary"
                 data-edit-user="${escapeAttr(user.id)}"
@@ -525,6 +607,16 @@ function renderUsers(panel) {
       );
 
       if (user) editTaskAccess(user);
+    });
+  });
+
+  panel.querySelectorAll("[data-edit-user-capabilities]").forEach(button => {
+    button.addEventListener("click", () => {
+      const user = users.find(
+        item => item.id === button.dataset.editUserCapabilities
+      );
+
+      if (user) editPersonalCapabilities(user);
     });
   });
 }

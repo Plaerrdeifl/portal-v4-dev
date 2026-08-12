@@ -1,34 +1,23 @@
-<section class="page module-shell v4-compact-page fanbus-page">
+<section id="m310FanbusPage" class="page module-shell v4-compact-page fanbus-page dates-page">
   <div class="v4-module-surface">
-    <div class="p3-fanbus-preview-grid">
-      <article class="p3-fanbus-primary-card">
-        <div class="p3-fanbus-icon" aria-hidden="true">🚌</div>
-        <div>
-          <span class="p3-card-eyebrow">Plärrdeifl Portal v4</span>
-          <h3>Eigenständiges Bus-Modul</h3>
-          <p>Fahrten, mehrere Busse, Kategorien, Gruppenanmeldungen, Zahlungen und Bus-Orga-Abläufe werden später in einem eigenen Fachmodul umgesetzt.</p>
-        </div>
-      </article>
-      <article class="p3-preview-card">
-        <span class="p3-preview-icon" aria-hidden="true">👥</span>
-        <strong>Teilnehmer und Gruppen</strong>
-        <p>Einzel- und Gruppenanmeldungen, Gäste sowie wiederkehrende Gruppen.</p>
-      </article>
-      <article class="p3-preview-card">
-        <span class="p3-preview-icon" aria-hidden="true">↔</span>
-        <strong>Automatische Zuordnung</strong>
-        <p>Buskategorie und Kapazität mit Schutz manueller Entscheidungen.</p>
-      </article>
-      <article class="p3-preview-card">
-        <span class="p3-preview-icon" aria-hidden="true">€</span>
-        <strong>Eigene Bus-Kasse</strong>
-        <p>Zahlungen werden getrennt von der allgemeinen Vereinskasse geführt.</p>
-      </article>
-      <article class="p3-preview-card">
-        <span class="p3-preview-icon" aria-hidden="true">▦</span>
-        <strong>Mobile Bus-Orga</strong>
-        <p>Teilnehmerlisten, Zahlungsstatus und operative Aktionen direkt unterwegs.</p>
-      </article>
+    <div class="v4-heading-row v4-section-heading">
+      <div>
+        <h3>Fanbusfahrten</h3>
+        <p>Abfahrten, Preise und Anmeldestatus zu kommenden Terminen</p>
+      </div>
+      <div id="m310FanbusManagement">
+        <button
+          id="m310AddTripButton"
+          class="button secondary v4-heading-action"
+          type="button"
+          hidden
+        >Fanbusfahrt anlegen</button>
+      </div>
     </div>
+    <div class="v4-heading-row v4-subheading-row">
+      <p id="m310FanbusSummary" class="subtle">Fanbusfahrten werden geladen …</p>
+      <span id="m310FanbusStatus" class="status-pill">Lädt</span>
+    </div>
+    <div id="m310FanbusList" class="module-panel" aria-live="polite"></div>
   </div>
 </section>

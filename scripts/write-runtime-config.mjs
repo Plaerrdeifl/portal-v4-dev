@@ -49,6 +49,10 @@ const googleClientId = String(
   process.env.GOOGLE_CLIENT_ID || ""
 ).trim();
 
+const m310TurnstileSiteKey = String(
+  process.env.M310_TURNSTILE_SITE_KEY || ""
+).trim();
+
 const legalImprintUrl = String(
   process.env.LEGAL_IMPRINT_URL || ""
 ).trim();
@@ -71,6 +75,16 @@ if (
 ) {
   throw new Error(
     "Die Umgebung muss exakt DEV oder PROD sein."
+  );
+}
+
+if (
+  !m310TurnstileSiteKey
+  || m310TurnstileSiteKey === "YOUR_TURNSTILE_SITE_KEY"
+) {
+  throw new Error(
+    "M310_TURNSTILE_SITE_KEY ist für DEV und PROD erforderlich " +
+    "und darf kein Platzhalter sein."
   );
 }
 
@@ -228,6 +242,7 @@ const privacyUrl = validateLegalUrl(
 const runtime = {
   supabaseUrl: url,
   supabasePublishableKey: key,
+  m310TurnstileSiteKey,
   environment,
   legalImprintUrl: imprintUrl,
   legalPrivacyUrl: privacyUrl

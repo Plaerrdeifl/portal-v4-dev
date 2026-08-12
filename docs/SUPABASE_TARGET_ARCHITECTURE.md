@@ -127,15 +127,21 @@ Datenbankfunktionen und werden auditiert.
 
 Berechtigungen werden in einem zentralen Katalog geführt.
 
-Rechte können aus folgenden Quellen entstehen:
+Globale Capabilities können ausschließlich aus folgenden Quellen entstehen:
 
-1. Portalrolle,
-2. festes Amt,
-3. Teamrolle,
-4. Teamfunktion,
-5. direkte fachliche Beziehung, beispielsweise eine eigene Aufgabe.
+1. Portalrolle (`ROLE`),
+2. festes Amt (`OFFICE`),
+3. persönliches additives Zusatzrecht (`PERSONAL`),
+4. rollenbasierter `portal.admin`-Wildcard (`ADMIN_OVERRIDE`).
 
-Zusätzliche Amts- oder Teamrechte ersetzen die Portalrolle nicht.
+Es gilt `ROLE OR OFFICE OR PERSONAL`, zusätzlich zum bestehenden
+`ADMIN_OVERRIDE`. Persönliche Rechte können nur hinzufügen; Deny,
+Negativrechte und das Entfernen geerbter Rechte existieren nicht.
+
+Teamrollen, Teamfunktionen und direkte fachliche Beziehungen bleiben auf ihre
+jeweilige Domain begrenzte Zugriffsregeln. Sie sind keine allgemeinen globalen
+Capability-Quellen. Zusätzliche Amts- oder persönliche Rechte ersetzen die
+Portalrolle nicht. Eine persönliche Capability ersetzt niemals ein echtes Amt.
 
 Berechtigungen werden nicht aus Browserzustand, ausgeblendeter Navigation,
 Google-Metadaten oder frei veränderbaren Benutzer-Metadaten abgeleitet.

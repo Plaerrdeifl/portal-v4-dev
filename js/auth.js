@@ -210,7 +210,7 @@ export const auth = Object.freeze({
   canAccessRoute(key) {
     if (!this.isActive()) return key === "profile" && this.isAuthenticated();
     if (key === "profile") return false;
-    if (key === "dashboard") return true;
+    if (["dashboard", "dates"].includes(key)) return true;
     return Boolean(state.bootstrap?.navigation?.[key]);
   },
 

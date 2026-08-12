@@ -10,6 +10,10 @@ export function call(action, payload = {}) {
   return api.call(action, payload);
 }
 
+export function importIcs(action, file, sourceKey, previewFingerprint = "") {
+  return api.importIcs(action, file, sourceKey, previewFingerprint);
+}
+
 export function currentUser() {
   return auth.current().user || {};
 }

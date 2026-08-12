@@ -45,6 +45,7 @@ jobs:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_EXPECTED_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          M310_TURNSTILE_SITE_KEY: ${{ vars.M310_TURNSTILE_SITE_KEY }}
         run: npm run build
 
       - name: Verify DEV output
@@ -55,4 +56,5 @@ jobs:
           test -s dist/service-worker.js
           test -s dist/manifest.webmanifest
           grep -q '"environment": "DEV"' dist/js/runtime-config.js
+          grep -q '"m310TurnstileSiteKey":' dist/js/runtime-config.js
           grep -q 'tpieykhhawszlzsoflnl.supabase.co' dist/js/runtime-config.js
