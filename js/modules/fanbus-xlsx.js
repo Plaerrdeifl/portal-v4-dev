@@ -192,8 +192,8 @@ function worksheetXml(trip, registrations) {
     <col min="8" max="9" width="22" customWidth="1"/>
   </cols>
   <sheetData>${rowXml}</sheetData>
-  <mergeCells count="6"><mergeCell ref="B1:I1"/><mergeCell ref="B2:I2"/><mergeCell ref="B3:I3"/><mergeCell ref="B4:I4"/><mergeCell ref="B5:I5"/><mergeCell ref="B6:I6"/></mergeCells>
   <autoFilter ref="A8:I${lastRow}"/>
+  <mergeCells count="6"><mergeCell ref="B1:I1"/><mergeCell ref="B2:I2"/><mergeCell ref="B3:I3"/><mergeCell ref="B4:I4"/><mergeCell ref="B5:I5"/><mergeCell ref="B6:I6"/></mergeCells>
 </worksheet>`;
 }
 
