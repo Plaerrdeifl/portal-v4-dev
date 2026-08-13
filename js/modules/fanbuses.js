@@ -266,7 +266,7 @@ function tripActions(trip) {
     const registrationLabel = trip.registrationStatus === "OPEN"
       ? "Jetzt anmelden"
       : "Anmeldung ansehen";
-    actions.push(`<a class="button small primary" href="./fanbus-anmeldung.html?trip=${escapeAttr(trip.id)}">${registrationLabel}</a>`);
+    actions.push(`<a class="button small primary" href="./fanbus-anmeldung?trip=${escapeAttr(trip.id)}">${registrationLabel}</a>`);
   }
 
   if (canManage && trip.status !== "CLOSED") {

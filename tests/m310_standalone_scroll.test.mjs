@@ -5,6 +5,14 @@ import test from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
 
+function sourceBlock(source, startMarker, endMarker) {
+  const start = source.indexOf(startMarker);
+  const end = source.indexOf(endMarker, start + startMarker.length);
+  assert.notEqual(start, -1, `Startmarker fehlt: ${startMarker}`);
+  assert.notEqual(end, -1, `Endmarker fehlt: ${endMarker}`);
+  return source.slice(start, end);
+}
+
 test("M310 standalone page owns a route-scoped vertical scroll contract", async () => {
   const [html, registrationScript] = await Promise.all([
     readFile(resolve(root, "fanbus-anmeldung.html"), "utf8"),
@@ -138,6 +146,86 @@ test("M310 WordPress links use the canonical extensionless registration route", 
     /add_query_arg\('trip', \$trip\['tripId'\], \$portal_url\)/
   );
   assert.doesNotMatch(renderTrip, /fanbus-anmeldung\.html/);
+});
+
+test("M310 portal and WordPress use the same canonical registration deep link", async () => {
+  const [fanbuses, plugin, registrationScript] = await Promise.all([
+    readFile(resolve(root, "js", "modules", "fanbuses.js"), "utf8"),
+    readFile(
+      resolve(
+        root,
+        "wordpress",
+        "plugins",
+        "plaerrdeifl-m310-fanbus",
+        "plaerrdeifl-m310-fanbus.php"
+      ),
+      "utf8"
+    ),
+    readFile(resolve(root, "js", "fanbus-registration.js"), "utf8")
+  ]);
+  const tripActions = sourceBlock(
+    fanbuses,
+    "function tripActions(trip)",
+    "function tripDetailMarkup(trip)"
+  );
+  const renderTrip = sourceBlock(
+    plugin,
+    "private static function render_trip",
+    "private static function status_presentation"
+  );
+  const initialize = sourceBlock(
+    registrationScript,
+    "async function initialize()",
+    "elements.portalForm.addEventListener"
+  );
+
+  const portalLink = tripActions.match(
+    /href="(\.\/fanbus-anmeldung)\?trip=\$\{escapeAttr\(trip\.id\)\}"/
+  );
+  const wordpressLink = plugin.match(
+    /'https:\/\/portal\.example\.de(\/fanbus-anmeldung)'/
+  );
+
+  assert.ok(portalLink, "Der interne kanonische M310-Link fehlt.");
+  assert.ok(wordpressLink, "Der kanonische WordPress-Pfad fehlt.");
+  assert.equal(
+    new URL(portalLink[1], "https://portal.example.de/").pathname,
+    wordpressLink[1]
+  );
+  assert.doesNotMatch(tripActions, /fanbus-anmeldung\.html/);
+  assert.match(tripActions, /\?trip=\$\{escapeAttr\(trip\.id\)\}/);
+  assert.match(renderTrip, /add_query_arg\('trip', \$trip\['tripId'\], \$portal_url\)/);
+  assert.match(renderTrip, /href="<\?php echo esc_url\(\$deep_link\); \?>"/);
+  assert.match(
+    initialize,
+    /new URLSearchParams\(window\.location\.search\)\.get\("trip"\) \|\| ""/
+  );
+  assert.match(initialize, /if \(!UUID_PATTERN\.test\(tripId\)\)/);
+  assert.match(initialize, /trip = await loadTrip\(tripId\)/);
+});
+
+test("M310 canonical navigation keeps the existing service-worker safety contract", async () => {
+  const worker = await readFile(resolve(root, "service-worker.js"), "utf8");
+  const fetchHandler = sourceBlock(
+    worker,
+    'self.addEventListener("fetch", event => {',
+    "function routeWithNotification"
+  );
+  const pushContract = worker.slice(worker.indexOf("function routeWithNotification"));
+
+  assert.match(
+    fetchHandler,
+    /if \(request\.mode === "navigate"\) \{[\s\S]*?event\.respondWith\(fetch\(request, \{ cache: "no-store" \}\)\.then\(response => response\.ok \? response : offlineDocument\(\)\)\.catch\(offlineDocument\)\);[\s\S]*?return;/
+  );
+  assert.match(
+    worker,
+    /async function offlineDocument\(\) \{[\s\S]*?caches\.match\("\.\/offline\.html", \{ ignoreSearch: true \}\)/
+  );
+  assert.doesNotMatch(fetchHandler, /fanbus-anmeldung/);
+  assert.match(pushContract, /self\.addEventListener\("push"/);
+  assert.match(pushContract, /self\.addEventListener\("notificationclick"/);
+  assert.match(pushContract, /client\.navigate\(targetUrl\)/);
+  assert.match(pushContract, /self\.clients\.openWindow\(targetUrl\)/);
 });
 
 test("M310 WordPress presentation is portal-scoped, readable and mobile-safe", async () => {
