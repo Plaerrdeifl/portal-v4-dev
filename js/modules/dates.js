@@ -316,25 +316,25 @@ function eventForm(event = {}) {
   const isGame = eventType === "GAME";
 
   return `<form id="m210DateForm" class="form-grid v4-smart-form">
-    <label class="v4-field-half">Typ
+    <label class="v4-field-five">Typ
       <select id="m210DateEventType" name="eventType" required>${optionList(EVENT_TYPES, eventType)}</select>
     </label>
-    <label class="v4-field-half">Sichtbarkeit
+    <label class="v4-field-seven">Sichtbarkeit
       <select name="visibility" required>${optionList(VISIBILITIES, event.visibility || "PUBLIC")}</select>
     </label>
     <label id="m210DateTitleField" class="v4-field-full" ${isGame ? "hidden" : ""}>Titel
       <input name="title" value="${escapeAttr(event.title || "")}" ${isGame ? "" : "required"}>
     </label>
-    <label class="v4-field-half v4-field-mobile-full">Datum
+    <label class="v4-field-seven">Datum
       <input name="eventDate" type="date" required value="${escapeAttr(event.eventDate || "")}">
     </label>
-    <label class="v4-field-half v4-field-mobile-full">Uhrzeit
+    <label class="v4-field-five">Uhrzeit
       <input name="eventTime" type="time" value="${escapeAttr(timeValue(event.eventTime))}">
     </label>
-    <label class="v4-field-half v4-field-mobile-full">Enddatum
+    <label class="v4-field-seven">Enddatum
       <input name="endDate" type="date" value="${escapeAttr(event.endDate || "")}">
     </label>
-    <label class="v4-field-half v4-field-mobile-full">Endzeit
+    <label class="v4-field-five">Endzeit
       <input name="endTime" type="time" value="${escapeAttr(timeValue(event.endTime))}">
     </label>
     <label class="v4-field-full">Ort
@@ -343,14 +343,12 @@ function eventForm(event = {}) {
     <label class="v4-field-full">Beschreibung
       <textarea name="description" rows="3">${escapeHtml(event.description || "")}</textarea>
     </label>
-    <div id="m210DateGameFields" class="v4-field-full v4-form-pair" ${isGame ? "" : "hidden"}>
-      <label>Heim/Auswärts
-        <select name="homeAway" ${isGame ? "required" : ""}>${optionList(HOME_AWAY, event.homeAway || "HOME")}</select>
-      </label>
-      <label>Gegner
-        <input name="opponentName" value="${escapeAttr(event.opponentName || "")}" ${isGame ? "required" : ""}>
-      </label>
-    </div>
+    <label class="v4-field-five" data-m210-game-field ${isGame ? "" : "hidden"}>Heim/Auswärts
+      <select name="homeAway" ${isGame ? "required" : ""}>${optionList(HOME_AWAY, event.homeAway || "HOME")}</select>
+    </label>
+    <label class="v4-field-seven" data-m210-game-field ${isGame ? "" : "hidden"}>Gegner
+      <input name="opponentName" value="${escapeAttr(event.opponentName || "")}" ${isGame ? "required" : ""}>
+    </label>
   </form>`;
 }
 
@@ -359,13 +357,15 @@ function syncEventTypeFields(dialog) {
   const typeSelect = form?.elements.namedItem("eventType");
   const titleField = dialog.querySelector("#m210DateTitleField");
   const titleInput = form?.elements.namedItem("title");
-  const gameFields = dialog.querySelector("#m210DateGameFields");
+  const gameFields = dialog.querySelectorAll("[data-m210-game-field]");
   const homeAway = form?.elements.namedItem("homeAway");
   const opponentName = form?.elements.namedItem("opponentName");
   const isGame = typeSelect?.value === "GAME";
 
   if (titleField) titleField.hidden = isGame;
-  if (gameFields) gameFields.hidden = !isGame;
+  gameFields.forEach(field => {
+    field.hidden = !isGame;
+  });
 
   if (titleInput) {
     titleInput.required = !isGame;

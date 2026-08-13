@@ -504,19 +504,19 @@ function tripForm(trip) {
     || defaultRegistrationClosesInput(trip.departureAt);
 
   return `<form id="m310TripEditorForm" class="form-grid v4-smart-form">
-    <label class="v4-field-half v4-field-datetime">Abfahrt
+    <label class="v4-field-seven">Abfahrt
       <input name="departureAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(trip.departureAt))}" ${required}>
     </label>
-    <label class="v4-field-half">Kapazität
+    <label class="v4-field-five">Kapazität
       <input name="capacity" type="number" min="1" step="1" value="${escapeAttr(trip.capacity ?? "")}" ${required}>
     </label>
     <label class="v4-field-full">Treffpunkt / Abfahrtsort
       <textarea name="departureInfo" rows="3" ${required}>${escapeHtml(trip.departureInfo || "")}</textarea>
     </label>
-    <label class="v4-field-half v4-field-datetime">Anmeldung endet
+    <label class="v4-field-seven">Anmeldung endet
       <input name="registrationClosesAt" type="datetime-local" step="60" value="${escapeAttr(registrationClosesAt)}" ${required}>
     </label>
-    <label class="v4-field-half">Fahrtpreis
+    <label class="v4-field-five">Fahrtpreis
       <input name="price" inputmode="decimal" pattern="[0-9]+([,.][0-9]{1,2})?" value="${escapeAttr(centsToEuroInput(trip.priceCents))}" placeholder="25,00" ${required}>
     </label>
   </form>`;

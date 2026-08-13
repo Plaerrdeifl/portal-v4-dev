@@ -139,3 +139,30 @@ test("M310 WordPress links use the canonical extensionless registration route", 
   );
   assert.doesNotMatch(renderTrip, /fanbus-anmeldung\.html/);
 });
+
+test("M310 WordPress presentation is portal-scoped, readable and mobile-safe", async () => {
+  const pluginRoot = resolve(
+    root,
+    "wordpress",
+    "plugins",
+    "plaerrdeifl-m310-fanbus"
+  );
+  const [plugin, style] = await Promise.all([
+    readFile(resolve(pluginRoot, "plaerrdeifl-m310-fanbus.php"), "utf8"),
+    readFile(resolve(pluginRoot, "assets", "m310-fanbus.css"), "utf8")
+  ]);
+
+  assert.match(style, /\.pd-m310-fanbus\s*\{[\s\S]+color:\s*var\(--pd-m310-ink\)/);
+  assert.match(style, /\.pd-m310-fanbus \.pd-m310-title\s*\{[\s\S]+color:\s*var\(--pd-m310-ink\)[\s\S]+white-space:\s*normal/);
+  assert.match(style, /\.pd-m310-fanbus \.pd-m310-meta-item dd\s*\{[\s\S]+color:\s*var\(--pd-m310-ink\)/);
+  assert.match(style, /\.pd-m310-fanbus \.pd-m310-departure-info p\s*\{[\s\S]+color:\s*#40526a/);
+  assert.match(style, /\.pd-m310-fanbus \.pd-m310-status-open\s*\{[\s\S]+background:\s*#e7f8ef[\s\S]+color:\s*#0f6940/);
+  assert.match(style, /\.pd-m310-fanbus \.pd-m310-link:visited[\s\S]+background:\s*var\(--pd-m310-blue\)[\s\S]+color:\s*#ffffff/);
+  assert.match(style, /@media \(max-width: 36rem\)[\s\S]+overflow-x:\s*hidden[\s\S]+\.pd-m310-fanbus \.pd-m310-link\s*\{[\s\S]+width:\s*100%/);
+  assert.match(style, /grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(style, /@media \(max-width: 36rem\)[\s\S]+\.pd-m310-fanbus \.pd-m310-meta\s*\{[\s\S]+grid-template-columns:\s*1fr/);
+
+  assert.match(plugin, /private const RPC_PATH = '\/rest\/v1\/rpc\/pd_public_fanbus_trips'/);
+  assert.match(plugin, /'OPEN' => array\('label' => 'Offen', 'class' => 'pd-m310-status-open'\)/);
+  assert.match(plugin, /add_query_arg\('trip', \$trip\['tripId'\], \$portal_url\)/);
+});

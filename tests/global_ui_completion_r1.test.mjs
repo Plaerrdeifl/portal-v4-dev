@@ -51,13 +51,17 @@ test("mobile navigation is compact and still includes the real safe area", async
 
 test("native iOS date controls match the shared field geometry", async () => {
   const css = await read("css/app.css");
-  assert.match(css, /input\[type="date"\][\s\S]*-webkit-appearance:none!important/);
-  assert.match(css, /block-size:42px!important/);
-  assert.match(css, /min-block-size:42px!important/);
-  assert.match(css, /max-block-size:42px!important/);
+  const nativeControlRule = css.match(
+    /\.v4-dialog input:is\(\[type="date"\],\[type="time"\],\[type="datetime-local"\]\),\s*\.user-profile-dialog input:is\(\[type="date"\],\[type="time"\],\[type="datetime-local"\]\)\{([^}]*)\}/
+  );
+  assert.ok(nativeControlRule, "Der gemeinsame iOS-Control-Vertrag fehlt.");
+  assert.match(nativeControlRule[1], /-webkit-appearance:none!important/);
+  assert.match(nativeControlRule[1], /block-size:42px!important/);
+  assert.match(nativeControlRule[1], /min-block-size:42px!important/);
+  assert.match(nativeControlRule[1], /max-block-size:42px!important/);
   assert.match(css, /::-webkit-date-and-time-value/);
   assert.match(css, /::-webkit-datetime-edit/);
-  assert.match(css, /\.v4-smart-form>label:has\(>input\[type="date"\]\)\{overflow:hidden\}/);
+  assert.match(css, /\.v4-smart-form>label:has\(>input:is\(\[type="date"\],\[type="time"\],\[type="datetime-local"\]\)\)\{overflow:hidden\}/);
   assert.match(
     css,
     /\.v4-smart-form>\.v4-field-four\{grid-column:span 6!important\}/
