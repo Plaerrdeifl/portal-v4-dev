@@ -5620,6 +5620,112 @@ html[data-portal-area="portal"] .v4-toolbar p{
   font-size:.68rem;
   line-height:1.25;
 }
+.v4-m310-registration-toolbar{
+  align-items:center;
+}
+.v4-m310-registration-toolbar-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  min-width:0;
+}
+.v4-m310-registration-toolbar-actions .button{
+  flex:1 1 130px;
+  min-width:0;
+}
+.v4-m310-registration-list{
+  display:grid;
+  gap:7px;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+}
+.v4-m310-registration-record{
+  display:grid;
+  grid-template-columns:minmax(0,1.2fr) minmax(0,.85fr) minmax(0,1.1fr) minmax(205px,auto);
+  grid-template-areas:"person summary email footer";
+  gap:8px 10px;
+  align-items:center;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  padding:10px 12px;
+  border:1px solid rgba(126,145,171,.22);
+  border-radius:14px;
+  background:#fff;
+  color:var(--ink-900);
+  box-shadow:var(--shadow-sm);
+  box-sizing:border-box;
+}
+.v4-m310-registration-person{
+  display:flex;
+  grid-area:person;
+  align-items:center;
+  justify-content:space-between;
+  gap:7px;
+  min-width:0;
+}
+.v4-m310-registration-person strong,
+.v4-m310-registration-summary,
+.v4-m310-registration-email,
+.v4-m310-registration-footer{
+  min-width:0;
+}
+.v4-m310-registration-person strong,
+.v4-m310-registration-email{
+  overflow-wrap:anywhere;
+}
+.v4-m310-registration-person strong{
+  font-size:.94rem;
+  line-height:1.25;
+}
+.v4-m310-registration-summary{
+  grid-area:summary;
+}
+.v4-m310-registration-email{
+  grid-area:email;
+}
+.v4-m310-registration-person .badge{
+  flex:none;
+  padding:4px 7px;
+  font-size:.68rem;
+}
+.v4-m310-registration-summary,
+.v4-m310-registration-email,
+.v4-m310-registration-footer small{
+  color:var(--ink-500);
+  font-size:.72rem;
+  line-height:1.3;
+}
+.v4-m310-registration-footer{
+  display:flex;
+  grid-area:footer;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px 9px;
+  flex-wrap:wrap;
+}
+.v4-m310-registration-footer .button{
+  flex:none;
+}
+@media(max-width:620px){
+  .v4-m310-registration-toolbar{
+    align-items:stretch;
+  }
+  .v4-m310-registration-toolbar-actions{
+    width:100%;
+  }
+  .v4-m310-registration-record{
+    grid-template-columns:minmax(0,1fr);
+    grid-template-areas:"person" "summary" "email" "footer";
+    gap:3px;
+    padding:9px 10px;
+  }
+  .v4-m310-registration-footer{
+    justify-content:space-between;
+    margin-top:3px;
+  }
+}
 .v4-form-pair{
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));

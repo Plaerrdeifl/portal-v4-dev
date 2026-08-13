@@ -239,7 +239,7 @@ test("M310 UI exposes manual registration only through the registration capabili
   assert.match(ui, /call\("fanbus_registrations_list", \{ tripId: trip\.id \}\)/);
   assert.match(ui, /call\("fanbus_trips_list"\)/);
   assert.match(ui, /MANUAL: "Manuell"/);
-  assert.match(ui, /registration\.email \|\| "–"/);
+  assert.match(ui, /const email = registration\.email[\s\S]+v4-m310-registration-email/);
 });
 
 test("manual UI idempotency attempt is bound to the complete business payload", () => {

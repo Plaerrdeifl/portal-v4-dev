@@ -57,6 +57,51 @@ test("M310 mobile card exposes one primary status and one capacity value", () =>
   assert.match(css, /v4-m310-mobile-trip>\.v4-row-chevron/);
 });
 
+test("M310 registrations use compact operational records without empty cancellation metadata", () => {
+  const start = fanbuses.indexOf("function registrationCard(registration)");
+  const end = fanbuses.indexOf("function registrationsMarkup(data)", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+  const card = fanbuses.slice(start, end);
+
+  assert.match(card, /class="v4-m310-registration-record"/);
+  assert.doesNotMatch(card, /card entity-card|entity-head|meta-grid|meta-item|v4-card-actions/);
+  assert.match(card, /class="badge \$\{registration\.status === "ACTIVE" \? "success" : "neutral"\}"/);
+  assert.match(card, /sourceText\(registration\.source\)/);
+  assert.match(card, /busPreferenceText\(registration\.busPreference\)/);
+  assert.match(card, /const email = registration\.email[\s\S]+v4-m310-registration-email/);
+  assert.match(card, /formatBerlinDateTime\(registration\.registeredAt\)/);
+  assert.match(card, /registration\.status === "CANCELLED" && registration\.cancelledAt/);
+  assert.doesNotMatch(card, /"–"/);
+  assert.match(card, /isActive[\s\S]+data-m310-cancel-registration=[\s\S]+>Stornieren<\/button>/);
+
+  const registrationFlowEnd = fanbuses.indexOf("function manualPersonLabel(person)", end);
+  const registrationFlow = fanbuses.slice(end, registrationFlowEnd);
+  assert.match(registrationFlow, /hasCapability\("fanbus\.registrations\.manage"\)/);
+  assert.match(registrationFlow, /querySelectorAll\("\[data-m310-cancel-registration\]"\)/);
+  assert.match(
+    registrationFlow,
+    /call\("fanbus_registration_cancel", \{[\s\S]+id: registration\.id,[\s\S]+expectedRevision: Number\(registration\.revision\)/
+  );
+
+  const listRule = cssRule(".v4-m310-registration-list");
+  const recordRule = cssRule(".v4-m310-registration-record");
+  const toolbarActionsRule = cssRule(".v4-m310-registration-toolbar-actions");
+  assert.match(listRule, /gap:\s*7px/);
+  assert.match(listRule, /min-width:\s*0/);
+  assert.match(listRule, /max-width:\s*100%/);
+  assert.match(recordRule, /grid-template-columns:\s*minmax\(0,1\.2fr\)/);
+  assert.match(recordRule, /min-width:\s*0/);
+  assert.match(recordRule, /max-width:\s*100%/);
+  assert.match(toolbarActionsRule, /display:\s*flex/);
+  assert.match(toolbarActionsRule, /flex-wrap:\s*wrap/);
+  assert.match(css, /\.v4-m310-registration-email\{[\s\S]{0,80}overflow-wrap:anywhere/);
+  assert.match(
+    css,
+    /@media\(max-width:620px\)\{[\s\S]{0,500}\.v4-m310-registration-record\{[^}]*grid-template-columns:minmax\(0,1fr\)[^}]*\}/
+  );
+});
+
 test("M310 editor removes the manual start field and defaults the close date in Berlin calendar days", () => {
   assert.match(fanbuses, /Treffpunkt \/ Abfahrtsort/);
   assert.doesNotMatch(fanbuses, /name="registrationOpensAt"/);
