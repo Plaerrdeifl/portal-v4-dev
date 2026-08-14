@@ -85,7 +85,7 @@ test("smart forms constrain intrinsic date width and preserve a real column gap"
   );
   assert.match(
     css,
-    /\.v4-smart-form>label:has\(>input\[type="date"\]\)\{overflow:hidden\}/
+    /\.v4-smart-form>label:has\(>input:is\(\[type="date"\],\[type="time"\],\[type="datetime-local"\]\)\)\{overflow:hidden\}/
   );
   assert.match(
     css,

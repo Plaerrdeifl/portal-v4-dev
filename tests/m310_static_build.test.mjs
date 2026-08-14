@@ -107,14 +107,30 @@ test("M310 standalone registration is part of every static build artifact contra
       }
     );
 
-    const [sourceStandalone, builtStandalone, builtIndex] =
+    const [
+      sourceStandalone,
+      builtStandalone,
+      builtIndex,
+      builtFanbuses,
+      builtRegistration,
+      builtWorker
+    ] =
       await Promise.all([
         readFile(join(root, "fanbus-anmeldung.html"), "utf8"),
         readFile(
           join(fixture, "dist", "fanbus-anmeldung.html"),
           "utf8"
         ),
-        readFile(join(fixture, "dist", "index.html"), "utf8")
+        readFile(join(fixture, "dist", "index.html"), "utf8"),
+        readFile(
+          join(fixture, "dist", "js", "modules", "fanbuses.js"),
+          "utf8"
+        ),
+        readFile(
+          join(fixture, "dist", "js", "fanbus-registration.js"),
+          "utf8"
+        ),
+        readFile(join(fixture, "dist", "service-worker.js"), "utf8")
       ]);
 
     assert.equal(builtStandalone, sourceStandalone);
@@ -126,6 +142,23 @@ test("M310 standalone registration is part of every static build artifact contra
     assert.match(
       builtStandalone,
       /<title>Fanbus-Anmeldung · Plärrdeifl<\/title>/
+    );
+    assert.match(
+      builtStandalone,
+      /<script src="\.\/js\/runtime-config\.js"><\/script>[\s\S]*?<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2\.110\.7"><\/script>[\s\S]*?<script type="module" src="\.\/js\/fanbus-registration\.js"><\/script>/
+    );
+    assert.match(
+      builtFanbuses,
+      /href="\.\/fanbus-anmeldung\?trip=\$\{escapeAttr\(trip\.id\)\}"/
+    );
+    assert.doesNotMatch(builtFanbuses, /fanbus-anmeldung\.html\?trip=/);
+    assert.match(
+      builtRegistration,
+      /new URLSearchParams\(window\.location\.search\)\.get\("trip"\)/
+    );
+    assert.match(
+      builtWorker,
+      /if \(request\.mode === "navigate"\) \{[\s\S]*?fetch\(request, \{ cache: "no-store" \}\)[\s\S]*?offlineDocument/
     );
   } finally {
     await rm(fixture, { recursive: true, force: true });

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plärrdeifl M310 Fanbusfahrten
  * Description: Öffentliche Anzeige der Fanbusfahrten mit Verlinkung zur zentralen Anmeldung.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Requires PHP: 8.3
  */
 
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 
 final class PD_M310_Fanbus_Plugin
 {
-    private const VERSION = '1.0.0';
+    private const VERSION = '1.0.1';
     private const OPTION_NAME = 'plaerrdeifl_m310_fanbus_settings';
     private const SETTINGS_GROUP = 'plaerrdeifl_m310_fanbus_settings_group';
     private const ADMIN_SLUG = 'plaerrdeifl-m310-fanbus';
@@ -662,11 +662,11 @@ final class PD_M310_Fanbus_Plugin
     private static function status_presentation(string $status): array
     {
         return array(
-            'NOT_STARTED' => array('label' => 'Anmeldung startet bald', 'class' => 'pd-m310-status-upcoming'),
-            'OPEN' => array('label' => 'Anmeldung offen', 'class' => 'pd-m310-status-open'),
+            'NOT_STARTED' => array('label' => 'Startet später', 'class' => 'pd-m310-status-upcoming'),
+            'OPEN' => array('label' => 'Offen', 'class' => 'pd-m310-status-open'),
             'FULL' => array('label' => 'Ausgebucht', 'class' => 'pd-m310-status-full'),
-            'CLOSED' => array('label' => 'Anmeldung geschlossen', 'class' => 'pd-m310-status-closed'),
-            'UNAVAILABLE' => array('label' => 'Derzeit nicht verfügbar', 'class' => 'pd-m310-status-unavailable'),
+            'CLOSED' => array('label' => 'Geschlossen', 'class' => 'pd-m310-status-closed'),
+            'UNAVAILABLE' => array('label' => 'Nicht verfügbar', 'class' => 'pd-m310-status-unavailable'),
         )[$status];
     }
 

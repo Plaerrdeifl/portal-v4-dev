@@ -6,9 +6,10 @@ import test from "node:test";
 const root = resolve(import.meta.dirname, "..");
 const read = path => readFile(join(root, path), "utf8");
 
-const [fanbuses, dates, css, migration] = await Promise.all([
+const [fanbuses, dates, finance, css, migration] = await Promise.all([
   read("js/modules/fanbuses.js"),
   read("js/modules/dates.js"),
+  read("js/modules/fanclub.js"),
   read("css/app.css"),
   read("supabase/migrations/20260812223000_open_fanbus_registration_on_publish_m310_r1.sql")
 ]);
@@ -56,6 +57,51 @@ test("M310 mobile card exposes one primary status and one capacity value", () =>
   assert.match(css, /v4-m310-mobile-trip>\.v4-row-chevron/);
 });
 
+test("M310 registrations use compact operational records without empty cancellation metadata", () => {
+  const start = fanbuses.indexOf("function registrationCard(registration)");
+  const end = fanbuses.indexOf("function registrationsMarkup(data)", start);
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+  const card = fanbuses.slice(start, end);
+
+  assert.match(card, /class="v4-m310-registration-record"/);
+  assert.doesNotMatch(card, /card entity-card|entity-head|meta-grid|meta-item|v4-card-actions/);
+  assert.match(card, /class="badge \$\{registration\.status === "ACTIVE" \? "success" : "neutral"\}"/);
+  assert.match(card, /sourceText\(registration\.source\)/);
+  assert.match(card, /busPreferenceText\(registration\.busPreference\)/);
+  assert.match(card, /const email = registration\.email[\s\S]+v4-m310-registration-email/);
+  assert.match(card, /formatBerlinDateTime\(registration\.registeredAt\)/);
+  assert.match(card, /registration\.status === "CANCELLED" && registration\.cancelledAt/);
+  assert.doesNotMatch(card, /"–"/);
+  assert.match(card, /isActive[\s\S]+data-m310-cancel-registration=[\s\S]+>Stornieren<\/button>/);
+
+  const registrationFlowEnd = fanbuses.indexOf("function manualPersonLabel(person)", end);
+  const registrationFlow = fanbuses.slice(end, registrationFlowEnd);
+  assert.match(registrationFlow, /hasCapability\("fanbus\.registrations\.manage"\)/);
+  assert.match(registrationFlow, /querySelectorAll\("\[data-m310-cancel-registration\]"\)/);
+  assert.match(
+    registrationFlow,
+    /call\("fanbus_registration_cancel", \{[\s\S]+id: registration\.id,[\s\S]+expectedRevision: Number\(registration\.revision\)/
+  );
+
+  const listRule = cssRule(".v4-m310-registration-list");
+  const recordRule = cssRule(".v4-m310-registration-record");
+  const toolbarActionsRule = cssRule(".v4-m310-registration-toolbar-actions");
+  assert.match(listRule, /gap:\s*7px/);
+  assert.match(listRule, /min-width:\s*0/);
+  assert.match(listRule, /max-width:\s*100%/);
+  assert.match(recordRule, /grid-template-columns:\s*minmax\(0,1\.2fr\)/);
+  assert.match(recordRule, /min-width:\s*0/);
+  assert.match(recordRule, /max-width:\s*100%/);
+  assert.match(toolbarActionsRule, /display:\s*flex/);
+  assert.match(toolbarActionsRule, /flex-wrap:\s*wrap/);
+  assert.match(css, /\.v4-m310-registration-email\{[\s\S]{0,80}overflow-wrap:anywhere/);
+  assert.match(
+    css,
+    /@media\(max-width:620px\)\{[\s\S]{0,500}\.v4-m310-registration-record\{[^}]*grid-template-columns:minmax\(0,1fr\)[^}]*\}/
+  );
+});
+
 test("M310 editor removes the manual start field and defaults the close date in Berlin calendar days", () => {
   assert.match(fanbuses, /Treffpunkt \/ Abfahrtsort/);
   assert.doesNotMatch(fanbuses, /name="registrationOpensAt"/);
@@ -87,17 +133,44 @@ test("M210 and M310 editors use the shared member and finance dialog contract", 
   assert.match(body, /flex:\s*0 1 auto!important/);
   assert.match(body, /height:\s*auto!important/);
   assert.match(body, /min-height:\s*0!important/);
-  assert.match(body, /overflow:\s*auto!important/);
+  assert.match(body, /overflow-x:\s*hidden!important/);
+  assert.match(body, /overflow-y:\s*auto!important/);
+  assert.doesNotMatch(body, /(?:^|;)\s*overflow:\s*auto!important/);
   assert.match(body, /padding:\s*13px 16px!important/);
   assert.match(css, /@media\(max-width:350px\)\{\.v4-smart-form>\*\{grid-column:1\/-1!important\}/);
 });
 
-test("M210 game fields follow the existing two-field mobile form pattern", () => {
-  const pair = cssRule(".v4-form-pair");
-  assert.match(dates, /id="m210DateGameFields" class="v4-field-full v4-form-pair"/);
-  assert.match(pair, /display:\s*grid/);
-  assert.match(pair, /grid-template-columns:\s*repeat\(2,minmax\(0,1fr\)\)/);
-  assert.match(css, /@media\(max-width:350px\)[\s\S]+\.v4-form-pair\{[\s\S]+grid-template-columns:1fr/);
+test("cash, M210 and M310 retain semantic two-column tracks on iPhone", () => {
+  assert.match(finance, /v4-field-seven">Konto<select[\s\S]+v4-field-five">Betrag/);
+  assert.match(finance, /v4-field-five">Buchungsdatum[\s\S]+v4-field-seven">Zahlungsart/);
+
+  assert.match(dates, /v4-field-five">Typ[\s\S]+v4-field-seven">Sichtbarkeit/);
+  assert.match(dates, /v4-field-seven">Datum[\s\S]+v4-field-five">Uhrzeit/);
+  assert.match(dates, /v4-field-seven">Enddatum[\s\S]+v4-field-five">Endzeit/);
+  assert.match(
+    dates,
+    /v4-field-five" data-m210-game-field[\s\S]+Heim\/Auswärts[\s\S]+v4-field-seven" data-m210-game-field[\s\S]+Gegner/
+  );
+  assert.doesNotMatch(dates, /id="m210DateGameFields"|class="v4-field-full v4-form-pair"/);
+
+  assert.match(fanbuses, /v4-field-seven">Abfahrt[\s\S]+v4-field-five">Kapazität/);
+  assert.match(fanbuses, /v4-field-seven">Anmeldung endet[\s\S]+v4-field-five">Fahrtpreis/);
+
+  assert.doesNotMatch(
+    css,
+    /@media\(max-width:430px\)[\s\S]{0,180}v4-field-(?:seven|five)[\s\S]{0,80}grid-column:span 6/
+  );
+  assert.match(css, /@media\(max-width:350px\)\{\.v4-smart-form>\*\{grid-column:1\/-1!important\}/);
+});
+
+test("shared smart-form controls shrink inside tracks including iOS date controls", () => {
+  const workflowStart = css.indexOf("/* Kompakte Workflows R1");
+  const workflow = css.slice(workflowStart, css.indexOf("/* V4 TASK HISTORY", workflowStart));
+
+  assert.match(workflow, /grid-template-columns:repeat\(12,minmax\(0,1fr\)\)/);
+  assert.match(workflow, /\.v4-smart-form input,\.v4-smart-form select,\.v4-smart-form textarea\{[^}]*box-sizing:border-box!important[^}]*width:100%!important[^}]*min-width:0!important[^}]*max-width:100%!important[^}]*\}/);
+  assert.match(css, /input:is\(\[type="date"\],\[type="time"\],\[type="datetime-local"\]\)/);
+  assert.doesNotMatch(css, /:has\(#m310TripEditorForm\)/);
 });
 
 test("M310 keeps an unsaved default auto-managed until the close field is edited", () => {

@@ -266,7 +266,7 @@ function tripActions(trip) {
     const registrationLabel = trip.registrationStatus === "OPEN"
       ? "Jetzt anmelden"
       : "Anmeldung ansehen";
-    actions.push(`<a class="button small primary" href="./fanbus-anmeldung.html?trip=${escapeAttr(trip.id)}">${registrationLabel}</a>`);
+    actions.push(`<a class="button small primary" href="./fanbus-anmeldung?trip=${escapeAttr(trip.id)}">${registrationLabel}</a>`);
   }
 
   if (canManage && trip.status !== "CLOSED") {
@@ -504,19 +504,19 @@ function tripForm(trip) {
     || defaultRegistrationClosesInput(trip.departureAt);
 
   return `<form id="m310TripEditorForm" class="form-grid v4-smart-form">
-    <label class="v4-field-half v4-field-datetime">Abfahrt
+    <label class="v4-field-seven">Abfahrt
       <input name="departureAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(trip.departureAt))}" ${required}>
     </label>
-    <label class="v4-field-half">Kapazität
+    <label class="v4-field-five">Kapazität
       <input name="capacity" type="number" min="1" step="1" value="${escapeAttr(trip.capacity ?? "")}" ${required}>
     </label>
     <label class="v4-field-full">Treffpunkt / Abfahrtsort
       <textarea name="departureInfo" rows="3" ${required}>${escapeHtml(trip.departureInfo || "")}</textarea>
     </label>
-    <label class="v4-field-half v4-field-datetime">Anmeldung endet
+    <label class="v4-field-seven">Anmeldung endet
       <input name="registrationClosesAt" type="datetime-local" step="60" value="${escapeAttr(registrationClosesAt)}" ${required}>
     </label>
-    <label class="v4-field-half">Fahrtpreis
+    <label class="v4-field-five">Fahrtpreis
       <input name="price" inputmode="decimal" pattern="[0-9]+([,.][0-9]{1,2})?" value="${escapeAttr(centsToEuroInput(trip.priceCents))}" placeholder="25,00" ${required}>
     </label>
   </form>`;
@@ -657,37 +657,43 @@ function busPreferenceText(value) {
 }
 
 function registrationCard(registration) {
-  return `<article class="card entity-card">
-    <div class="entity-head">
-      <div>
-        <span class="subtle">${escapeHtml(sourceText(registration.source))}</span>
-        <h3>${escapeHtml(`${registration.firstName} ${registration.lastName}`)}</h3>
-      </div>
+  const isActive = registration.status === "ACTIVE";
+  const email = registration.email
+    ? `<span class="v4-m310-registration-email">${escapeHtml(registration.email)}</span>`
+    : "";
+  const cancelledAt = registration.status === "CANCELLED" && registration.cancelledAt
+    ? `<small class="v4-m310-registration-cancelled">Storniert ${escapeHtml(formatBerlinDateTime(registration.cancelledAt))}</small>`
+    : "";
+
+  return `<article class="v4-m310-registration-record">
+    <div class="v4-m310-registration-person">
+      <strong>${escapeHtml(`${registration.firstName} ${registration.lastName}`)}</strong>
       <span class="badge ${registration.status === "ACTIVE" ? "success" : "neutral"}">${escapeHtml(registrationStatusText(registration.status))}</span>
     </div>
-    <div class="meta-grid">
-      <div class="meta-item"><small>E-Mail</small><strong>${escapeHtml(registration.email || "–")}</strong></div>
-      <div class="meta-item"><small>Buspräferenz</small><strong>${escapeHtml(busPreferenceText(registration.busPreference))}</strong></div>
-      <div class="meta-item"><small>Angemeldet</small><strong>${escapeHtml(formatBerlinDateTime(registration.registeredAt))}</strong></div>
-      <div class="meta-item"><small>Storniert</small><strong>${escapeHtml(registration.cancelledAt ? formatBerlinDateTime(registration.cancelledAt) : "–")}</strong></div>
+    <span class="v4-m310-registration-summary">${escapeHtml(sourceText(registration.source))} · Buspräferenz: ${escapeHtml(busPreferenceText(registration.busPreference))}</span>
+    ${email}
+    <div class="v4-m310-registration-footer">
+      <small>Angemeldet ${escapeHtml(formatBerlinDateTime(registration.registeredAt))}</small>
+      ${isActive
+        ? `<button class="button small danger" type="button" data-m310-cancel-registration="${escapeAttr(registration.id)}">Stornieren</button>`
+        : cancelledAt}
     </div>
-    ${registration.status === "ACTIVE" ? `<div class="v4-card-actions"><button class="button small danger" type="button" data-m310-cancel-registration="${escapeAttr(registration.id)}">Anmeldung stornieren</button></div>` : ""}
   </article>`;
 }
 
 function registrationsMarkup(data) {
   const registrations = Array.isArray(data?.registrations) ? data.registrations : [];
   const addAction = hasCapability("fanbus.registrations.manage")
-    ? `<div class="v4-heading-row v4-subheading-row">
+    ? `<div class="v4-heading-row v4-subheading-row v4-m310-registration-toolbar">
       <p class="subtle">Mitfahrer verwalten</p>
-      <div class="v4-detail-actions v4-heading-action">
+      <div class="v4-m310-registration-toolbar-actions">
         <button class="button small primary" type="button" data-m310-export-registrations>Excel exportieren</button>
         <button class="button small secondary" type="button" data-m310-add-registration>Mitfahrer hinzufügen</button>
       </div>
     </div>`
     : "";
   const list = registrations.length
-    ? `<div class="module-panel">${registrations.map(registrationCard).join("")}</div>`
+    ? `<div class="v4-m310-registration-list">${registrations.map(registrationCard).join("")}</div>`
     : empty("Für diese Fanbusfahrt liegen noch keine Anmeldungen vor.");
 
   return `${addAction}${list}`;
