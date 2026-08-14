@@ -20,11 +20,15 @@ type GuestRequest = {
   lastName: string;
   email: string;
   busPreference: "RUHIG" | "PARTY" | "EGAL";
+  boardingStopId?: string;
+  operationalNote?: string;
   companions: Array<{
     firstName: string;
     lastName: string;
     email?: string;
     busPreference: "RUHIG" | "PARTY" | "EGAL";
+    boardingStopId?: string;
+    operationalNote?: string;
   }>;
   privacyConfirmed: true;
   termsConfirmed: true;
@@ -50,7 +54,9 @@ const REQUIRED_BODY_KEYS = Object.freeze([
   "idempotencyKey",
   "turnstileToken"
 ]);
-const ALLOWED_BODY_KEYS = new Set([...REQUIRED_BODY_KEYS, "companions"]);
+const ALLOWED_BODY_KEYS = new Set([
+  ...REQUIRED_BODY_KEYS, "companions", "boardingStopId", "operationalNote"
+]);
 
 function loadConfig(): RuntimeConfig | null {
   const supabaseUrl = String(Deno.env.get("SUPABASE_URL") || "").trim().replace(/\/+$/, "");
@@ -240,14 +246,18 @@ function parseGuestRequest(value: unknown): GuestRequest | null {
     || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email.trim())
     || typeof value.busPreference !== "string"
     || !["RUHIG", "PARTY", "EGAL"].includes(value.busPreference)
+    || (value.boardingStopId !== undefined && (typeof value.boardingStopId !== "string" || !UUID_PATTERN.test(value.boardingStopId)))
+    || (value.operationalNote !== undefined && (typeof value.operationalNote !== "string" || value.operationalNote.trim().length > 240))
     || !Array.isArray(companions)
     || companions.length > 19
     || !companions.every(companion => isPlainObject(companion)
-      && Object.keys(companion).every(key => ["firstName", "lastName", "email", "busPreference"].includes(key))
+      && Object.keys(companion).every(key => ["firstName", "lastName", "email", "busPreference", "boardingStopId", "operationalNote"].includes(key))
       && typeof companion.firstName === "string" && companion.firstName.trim().length >= 1 && companion.firstName.trim().length <= 120
       && typeof companion.lastName === "string" && companion.lastName.trim().length >= 1 && companion.lastName.trim().length <= 120
       && (companion.email === undefined || (typeof companion.email === "string" && (!companion.email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(companion.email.trim()))))
-      && typeof companion.busPreference === "string" && ["RUHIG", "PARTY", "EGAL"].includes(companion.busPreference))
+      && typeof companion.busPreference === "string" && ["RUHIG", "PARTY", "EGAL"].includes(companion.busPreference)
+      && (companion.boardingStopId === undefined || (typeof companion.boardingStopId === "string" && UUID_PATTERN.test(companion.boardingStopId)))
+      && (companion.operationalNote === undefined || (typeof companion.operationalNote === "string" && companion.operationalNote.trim().length <= 240)))
     || value.privacyConfirmed !== true
     || value.termsConfirmed !== true
     || typeof value.idempotencyKey !== "string"
@@ -265,10 +275,14 @@ function parseGuestRequest(value: unknown): GuestRequest | null {
     lastName: value.lastName.trim(),
     email: value.email.trim(),
     busPreference: value.busPreference as GuestRequest["busPreference"],
+    ...(typeof value.boardingStopId === "string" ? { boardingStopId: value.boardingStopId } : {}),
+    ...(typeof value.operationalNote === "string" && value.operationalNote.trim() ? { operationalNote: value.operationalNote.trim() } : {}),
     companions: companions.map(companion => ({
       firstName: String(companion.firstName).trim(), lastName: String(companion.lastName).trim(),
       ...(typeof companion.email === "string" && companion.email.trim() ? { email: companion.email.trim() } : {}),
-      busPreference: companion.busPreference as GuestRequest["busPreference"]
+      busPreference: companion.busPreference as GuestRequest["busPreference"],
+      ...(typeof companion.boardingStopId === "string" ? { boardingStopId: companion.boardingStopId } : {}),
+      ...(typeof companion.operationalNote === "string" && companion.operationalNote.trim() ? { operationalNote: companion.operationalNote.trim() } : {})
     })),
     privacyConfirmed: true,
     termsConfirmed: true,
@@ -486,6 +500,8 @@ Deno.serve(async request => {
             lastName: guestRequest.lastName,
             email: guestRequest.email,
             busPreference: guestRequest.busPreference,
+            ...(guestRequest.boardingStopId ? { boardingStopId: guestRequest.boardingStopId } : {}),
+            ...(guestRequest.operationalNote ? { operationalNote: guestRequest.operationalNote } : {}),
             companions: guestRequest.companions,
             privacyConfirmed: guestRequest.privacyConfirmed,
             termsConfirmed: guestRequest.termsConfirmed
