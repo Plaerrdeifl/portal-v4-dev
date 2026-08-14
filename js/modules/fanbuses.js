@@ -194,6 +194,7 @@ function registrationStatusLabel(value) {
   return {
     NOT_STARTED: "Anmeldung startet …",
     OPEN: "Offen",
+    WAITLIST: "Warteliste",
     FULL: "Ausgebucht",
     CLOSED: "Geschlossen",
     UNAVAILABLE: "Nicht verfügbar"
@@ -203,7 +204,7 @@ function registrationStatusLabel(value) {
 function registrationStatusBadge(value) {
   const type = value === "OPEN"
     ? "success"
-    : value === "NOT_STARTED"
+    : value === "NOT_STARTED" || value === "WAITLIST"
       ? "warning"
       : value === "FULL"
         ? "danger"
@@ -235,6 +236,7 @@ function mobileTripStatus(trip) {
   return {
     OPEN: { label: "Offen", type: "success" },
     NOT_STARTED: { label: "Startet später", type: "warning" },
+    WAITLIST: { label: "Warteliste", type: "warning" },
     FULL: { label: "Ausgebucht", type: "danger" },
     CLOSED: { label: "Geschlossen", type: "neutral" },
     UNAVAILABLE: { label: "Nicht verfügbar", type: "neutral" }
@@ -263,7 +265,7 @@ function tripActions(trip) {
   const actions = [];
 
   if (trip.status === "PUBLISHED") {
-    const registrationLabel = trip.registrationStatus === "OPEN"
+    const registrationLabel = ["OPEN", "WAITLIST"].includes(trip.registrationStatus)
       ? "Jetzt anmelden"
       : "Anmeldung ansehen";
     actions.push(`<a class="button small primary" href="./fanbus-anmeldung?trip=${escapeAttr(trip.id)}">${registrationLabel}</a>`);
@@ -288,6 +290,9 @@ function tripActions(trip) {
 
   if (canManageRegistrations) {
     actions.push(`<button class="button small secondary" type="button" data-m310-registrations="${escapeAttr(trip.id)}">Teilnehmer</button>`);
+  }
+  if (canManage) {
+    actions.push(`<button class="button small secondary" type="button" data-m320-buses="${escapeAttr(trip.id)}">Busse</button>`);
   }
 
   return actions.length ? `<div class="v4-detail-actions dialog-actions">${actions.join("")}</div>` : "";
@@ -444,6 +449,12 @@ function bindTripActions(panel, items) {
     button.addEventListener("click", () => {
       const trip = items.find(item => item.id === button.dataset.m310Registrations);
       if (trip) openRegistrations(trip, button);
+    });
+  });
+  panel.querySelectorAll("[data-m320-buses]").forEach(button => {
+    button.addEventListener("click", () => {
+      const trip = items.find(item => item.id === button.dataset.m320Buses);
+      if (trip) openBuses(trip, button);
     });
   });
 }
@@ -637,7 +648,7 @@ async function runTripWrite(button, action, trip, successMessage) {
 }
 
 function registrationStatusText(value) {
-  return value === "ACTIVE" ? "Aktiv" : "Storniert";
+  return { ACTIVE: "Bestätigt", WAITLISTED: "Warteliste", CANCELLED: "Storniert" }[value] || value;
 }
 
 function sourceText(value) {
@@ -656,8 +667,14 @@ function busPreferenceText(value) {
   }[value] || value || "–";
 }
 
-function registrationCard(registration) {
+function registrationCard(registration, buses = []) {
   const isActive = registration.status === "ACTIVE";
+  const bookingRole = registration.bookingRole === "COMPANION" ? "Begleiter" : "Hauptperson";
+  const occupancy = bus => Number(bus.occupancy ?? bus.occupied ?? 0);
+  const assignedBus = buses.find(bus => bus.id === registration.busId);
+  const preferenceMismatch = assignedBus
+    && ["RUHIG", "PARTY"].includes(registration.busPreference)
+    && assignedBus.category !== registration.busPreference;
   const email = registration.email
     ? `<span class="v4-m310-registration-email">${escapeHtml(registration.email)}</span>`
     : "";
@@ -665,38 +682,137 @@ function registrationCard(registration) {
     ? `<small class="v4-m310-registration-cancelled">Storniert ${escapeHtml(formatBerlinDateTime(registration.cancelledAt))}</small>`
     : "";
 
-  return `<article class="v4-m310-registration-record">
+  return `<article class="v4-m310-registration-record" data-m320-registration-record="${escapeAttr(registration.id)}">
     <div class="v4-m310-registration-person">
       <strong>${escapeHtml(`${registration.firstName} ${registration.lastName}`)}</strong>
       <span class="badge ${registration.status === "ACTIVE" ? "success" : "neutral"}">${escapeHtml(registrationStatusText(registration.status))}</span>
     </div>
-    <span class="v4-m310-registration-summary">${escapeHtml(sourceText(registration.source))} · Buspräferenz: ${escapeHtml(busPreferenceText(registration.busPreference))}</span>
+    <span class="v4-m310-registration-summary">${escapeHtml(bookingRole)} · ${escapeHtml(sourceText(registration.source))} · Buspräferenz: ${escapeHtml(busPreferenceText(registration.busPreference))}${registration.bookingParticipantCount > 1 ? ` · Gemeinsam angemeldet (${registration.bookingParticipantCount} Personen)` : ""}</span>
+    ${preferenceMismatch ? `<small class="notice warning">Buswunsch weicht von der Buskategorie ${escapeHtml(assignedBus.category)} ab.</small>` : ""}
     ${email}
     <div class="v4-m310-registration-footer">
       <small>Angemeldet ${escapeHtml(formatBerlinDateTime(registration.registeredAt))}</small>
-      ${isActive
-        ? `<button class="button small danger" type="button" data-m310-cancel-registration="${escapeAttr(registration.id)}">Stornieren</button>`
-        : cancelledAt}
+      ${isActive ? `<select aria-label="Buszuordnung" data-m320-assignment="${escapeAttr(registration.id)}"><option value="">Nicht zugeordnet</option>${buses.filter(bus => bus.isActive).map(bus => `<option value="${escapeAttr(bus.id)}"${bus.id === registration.busId ? " selected" : ""}>${escapeHtml(`${bus.label} · ${occupancy(bus)}/${bus.capacity}`)}</option>`).join("")}</select>` : ""}
+      ${registration.status === "WAITLISTED" ? `<small>Wartelistenposition ${escapeHtml(registration.waitlistPosition || "–")}</small>${Number(registration.waitlistPosition) === 1 ? `<button class="button small primary" type="button" data-m320-promote="${escapeAttr(registration.id)}" data-revision="${escapeAttr(registration.revision)}">Promotion bestätigen</button>` : ""}` : ""}
+      ${registration.status !== "CANCELLED" ? `<button class="button small secondary" type="button" data-m320-edit-registration="${escapeAttr(registration.id)}">Bearbeiten</button><button class="button small danger" type="button" data-m310-cancel-registration="${escapeAttr(registration.id)}">Stornieren</button>` : cancelledAt}
     </div>
   </article>`;
 }
 
 function registrationsMarkup(data) {
   const registrations = Array.isArray(data?.registrations) ? data.registrations : [];
+  const buses = Array.isArray(data?.buses) ? data.buses : [];
   const addAction = hasCapability("fanbus.registrations.manage")
     ? `<div class="v4-heading-row v4-subheading-row v4-m310-registration-toolbar">
       <p class="subtle">Mitfahrer verwalten</p>
       <div class="v4-m310-registration-toolbar-actions">
         <button class="button small primary" type="button" data-m310-export-registrations>Excel exportieren</button>
         <button class="button small secondary" type="button" data-m310-add-registration>Mitfahrer hinzufügen</button>
+        ${hasCapability("fanbus.manage") ? `<button class="button small secondary" type="button" data-m320-manage-buses>Busse (${buses.length})</button>` : ""}
       </div>
     </div>`
     : "";
+  const busOptions = buses.map(bus =>
+    `<option value="${escapeAttr(bus.id)}">${escapeHtml(bus.label)}</option>`
+  ).join("");
+  const filters = `<form class="form-grid v4-smart-form" data-m320-registration-filters>
+    <label class="v4-field-full">Suche
+      <input name="search" type="search" placeholder="Vorname, Nachname oder E-Mail">
+    </label>
+    <label>Status<select name="status"><option value="ALL">Alle</option><option value="ACTIVE">Bestätigt</option><option value="WAITLISTED">Warteliste</option><option value="CANCELLED">Storniert</option></select></label>
+    <label>Buspräferenz<select name="preference"><option value="ALL">Alle</option><option value="RUHIG">Ruhig</option><option value="PARTY">Party</option><option value="EGAL">Egal</option></select></label>
+    <label>Bus<select name="bus"><option value="ALL">Alle</option><option value="UNASSIGNED">Nicht zugeordnet</option>${busOptions}</select></label>
+    <label>Zuordnung<select name="assignment"><option value="ALL">Alle</option><option value="ASSIGNED">Zugeordnet</option><option value="UNASSIGNED">Nicht zugeordnet</option></select></label>
+  </form>`;
+  const warning = Number(data?.summary?.activeBusCapacity || 0)
+      < Number(data?.summary?.activeCount || 0)
+    ? `<div class="notice warning" role="status">Warnung: Die Kapazität der aktiven Busse (${escapeHtml(data.summary.activeBusCapacity)}) liegt unter der Zahl bestätigter Teilnehmer (${escapeHtml(data.summary.activeCount)}).</div>`
+    : "";
   const list = registrations.length
-    ? `<div class="v4-m310-registration-list">${registrations.map(registrationCard).join("")}</div>`
-    : empty("Für diese Fanbusfahrt liegen noch keine Anmeldungen vor.");
+    ? `<div class="v4-m310-registration-list" data-m320-registration-list>${registrations.map(registration => registrationCard(registration, buses)).join("")}<p class="subtle" data-m320-filter-empty hidden>Keine Teilnehmer entsprechen den Filtern.</p></div>`
+    : `<div data-m320-registration-list>${empty("Für diese Fanbusfahrt liegen noch keine Anmeldungen vor.")}</div>`;
 
-  return `${addAction}${list}`;
+  return `${addAction}${warning}${filters}${list}`;
+}
+
+function filterRegistrations(body, data) {
+  const form = body.querySelector("[data-m320-registration-filters]");
+  const target = body.querySelector("[data-m320-registration-list]");
+  if (!form || !target) return;
+  const registrations = Array.isArray(data?.registrations) ? data.registrations : [];
+  const search = String(form.elements.namedItem("search")?.value || "").trim().toLocaleLowerCase("de-DE");
+  const status = form.elements.namedItem("status")?.value || "ALL";
+  const preference = form.elements.namedItem("preference")?.value || "ALL";
+  const bus = form.elements.namedItem("bus")?.value || "ALL";
+  const assignment = form.elements.namedItem("assignment")?.value || "ALL";
+  let visibleCount = 0;
+  registrations.forEach(registration => {
+    const haystack = `${registration.firstName || ""} ${registration.lastName || ""} ${registration.email || ""}`.toLocaleLowerCase("de-DE");
+    const visible = (!search || haystack.includes(search))
+      && (status === "ALL" || registration.status === status)
+      && (preference === "ALL" || registration.busPreference === preference)
+      && (bus !== "UNASSIGNED" || !registration.busId)
+      && (bus === "ALL" || bus === "UNASSIGNED" || registration.busId === bus)
+      && (assignment !== "ASSIGNED" || Boolean(registration.busId))
+      && (assignment !== "UNASSIGNED" || !registration.busId);
+    const card = target.querySelector(`[data-m320-registration-record="${CSS.escape(registration.id)}"]`);
+    if (card) card.hidden = !visible;
+    if (visible) visibleCount += 1;
+  });
+  const noMatches = target.querySelector("[data-m320-filter-empty]");
+  if (noMatches) noMatches.hidden = visibleCount > 0;
+}
+
+function openRegistrationEdit(trip, registration) {
+  const linkedIdentity = Boolean(registration.memberId || registration.portalUserId);
+  const readonly = linkedIdentity ? " disabled" : "";
+  openDialog({
+    title: "Teilnehmer bearbeiten",
+    kicker: trip.displayTitle || "Fanbusfahrt",
+    body: `<form class="form-grid v4-smart-form">
+      <label>Vorname<input name="firstName" maxlength="120" value="${escapeAttr(registration.firstName)}" required${readonly}></label>
+      <label>Nachname<input name="lastName" maxlength="120" value="${escapeAttr(registration.lastName)}" required${readonly}></label>
+      <label class="v4-field-full">E-Mail<input name="email" type="email" maxlength="320" value="${escapeAttr(registration.email || "")}"${readonly}></label>
+      <label class="v4-field-full">Buspräferenz<select name="busPreference" required>${optionList(BUS_PREFERENCES, registration.busPreference)}</select></label>
+      ${linkedIdentity ? `<p class="subtle v4-field-full">Identitätsdaten verknüpfter Portalnutzer oder Mitglieder bleiben unverändert.</p>` : ""}
+    </form>`,
+    submitLabel: "Änderungen speichern",
+    onSubmit: async values => {
+      const next = await call("fanbus_registration_update", {
+        id: registration.id,
+        expectedRevision: Number(registration.revision),
+        firstName: linkedIdentity ? registration.firstName : values.firstName,
+        lastName: linkedIdentity ? registration.lastName : values.lastName,
+        email: linkedIdentity ? registration.email : values.email,
+        busPreference: values.busPreference
+      });
+      showToast("Teilnehmer wurde aktualisiert.", "success", 3800);
+      setTimeout(() => showRegistrationsDialog(trip, next), 0);
+    }
+  });
+}
+
+function bindRegistrationActions(body, data, trip, dialog) {
+  const registrations = Array.isArray(data?.registrations) ? data.registrations : [];
+  body.querySelectorAll("[data-m320-assignment]").forEach(select => {
+    select.onchange = async () => {
+      try {
+        const next = await call("fanbus_bus_assignment_set", {
+          participantId: select.dataset.m320Assignment,
+          busId: select.value || null
+        });
+        renderRegistrationsDialog(dialog, trip, next);
+      } catch (error) {
+        showToast(error?.message || "Buszuordnung konnte nicht gespeichert werden.", "error", 5200);
+      }
+    };
+  });
+  body.querySelectorAll("[data-m320-edit-registration]").forEach(button => {
+    button.onclick = () => {
+      const registration = registrations.find(item => item.id === button.dataset.m320EditRegistration);
+      if (registration) openRegistrationEdit(trip, registration);
+    };
+  });
 }
 
 function renderRegistrationsDialog(dialog, trip, data) {
@@ -706,6 +822,27 @@ function renderRegistrationsDialog(dialog, trip, data) {
 
   body.querySelector("[data-m310-add-registration]")
     ?.addEventListener("click", () => openManualRegistration(trip));
+  body.querySelector("[data-m320-manage-buses]")
+    ?.addEventListener("click", () => openBusManager(trip, data));
+  const filters = body.querySelector("[data-m320-registration-filters]");
+  filters?.addEventListener("input", () => filterRegistrations(body, data));
+  filters?.addEventListener("change", () => filterRegistrations(body, data));
+  bindRegistrationActions(body, data, trip, dialog);
+  body.querySelectorAll("[data-m320-promote]").forEach(button => {
+    button.addEventListener("click", async () => {
+      try {
+        const next = await call("fanbus_waitlist_promote", {
+          id: button.dataset.m320Promote,
+          expectedRevision: Number(button.dataset.revision)
+        });
+        snapshot = await call("fanbus_trips_list");
+        render();
+        renderRegistrationsDialog(dialog, trip, next);
+      } catch (error) {
+        showToast(error?.message || "Promotion ist derzeit nicht möglich.", "error", 5200);
+      }
+    });
+  });
 
   body.querySelector("[data-m310-export-registrations]")
     ?.addEventListener("click", () => {
@@ -726,7 +863,7 @@ function renderRegistrationsDialog(dialog, trip, data) {
       if (!registration) return;
 
       const confirmed = await confirmAction(
-        "Diese aktive Fanbus-Anmeldung wirklich stornieren?",
+        "Diesen bestätigten oder wartenden Teilnehmer wirklich stornieren?",
         { danger: true, title: "Anmeldung stornieren", submitLabel: "Stornieren" }
       );
       if (!confirmed) {
@@ -754,6 +891,92 @@ function renderRegistrationsDialog(dialog, trip, data) {
       } finally {
         if (button.isConnected) button.disabled = false;
       }
+    });
+  });
+}
+
+function busForm(bus = null) {
+  return `<form class="form-grid v4-smart-form">
+    <label class="v4-field-full">Busname
+      <input name="label" maxlength="160" value="${escapeAttr(bus?.label || "")}" required>
+    </label>
+    <label>Kategorie
+      <select name="category" required>
+        <option value="NORMAL"${bus?.category === "NORMAL" || !bus ? " selected" : ""}>Normal</option>
+        <option value="RUHIG"${bus?.category === "RUHIG" ? " selected" : ""}>Ruhig</option>
+        <option value="PARTY"${bus?.category === "PARTY" ? " selected" : ""}>Party</option>
+      </select>
+    </label>
+    <label>Kapazität
+      <input name="capacity" type="number" min="1" step="1" value="${escapeAttr(bus?.capacity || "")}" required>
+    </label>
+    <label class="v4-field-full v4-compact-check">
+      <input name="isActive" type="checkbox"${bus?.isActive === false ? "" : " checked"}>
+      <span>Bus ist aktiv</span>
+    </label>
+  </form>`;
+}
+
+function openBusEditor(trip, data, bus) {
+  openDialog({
+    title: "Bus bearbeiten",
+    kicker: trip.displayTitle || "Fanbusfahrt",
+    body: busForm(bus),
+    submitLabel: "Bus speichern",
+    onSubmit: async values => {
+      await call("fanbus_bus_upsert", {
+        id: bus.id,
+        tripId: trip.id,
+        expectedRevision: Number(bus.revision),
+        label: values.label,
+        category: values.category,
+        capacity: Number(values.capacity),
+        isActive: values.isActive === "on"
+      });
+      const next = await call("fanbus_buses_list", { tripId: trip.id });
+      showToast("Bus wurde aktualisiert.", "success", 3800);
+      setTimeout(() => openBusManager(trip, next), 0);
+    }
+  });
+}
+
+function openBusManager(trip, data) {
+  const buses = Array.isArray(data?.buses) ? data.buses : [];
+  const rows = buses.map(bus => {
+    const occupancy = Number(bus.occupancy ?? bus.occupied ?? 0);
+    return `<article class="v4-m310-registration-record">
+      <strong>${escapeHtml(bus.label)}</strong>
+      <span>${escapeHtml(bus.category)} · ${escapeHtml(occupancy)}/${escapeHtml(bus.capacity)} belegt · ${bus.isActive ? "aktiv" : "inaktiv"}</span>
+      <span>${escapeHtml(Math.max(Number(bus.capacity) - occupancy, 0))} frei</span>
+      <button class="button small secondary" type="button" data-m320-edit-bus="${escapeAttr(bus.id)}">Bearbeiten</button>
+    </article>`;
+  }).join("");
+  const warning = Number(data?.summary?.activeBusCapacity || 0)
+      < Number(data?.summary?.activeCount || 0)
+    ? `<div class="notice warning">Die Kapazität aktiver Busse reicht für die bestätigten Teilnehmer aktuell nicht aus.</div>`
+    : "";
+  const dialog = openDialog({
+    title: "Busse verwalten",
+    kicker: trip.displayTitle || "Fanbusfahrt",
+    body: `${warning}<div class="v4-m310-registration-list">${rows || "<p>Keine Busse angelegt.</p>"}</div><h3>Bus anlegen</h3>${busForm()}`,
+    submitLabel: "Bus anlegen",
+    onSubmit: async values => {
+      await call("fanbus_bus_upsert", {
+        tripId: trip.id,
+        label: values.label,
+        category: values.category,
+        capacity: Number(values.capacity),
+        isActive: values.isActive === "on"
+      });
+      const next = await call("fanbus_buses_list", { tripId: trip.id });
+      showToast("Bus wurde angelegt.", "success", 3800);
+      setTimeout(() => openBusManager(trip, next), 0);
+    }
+  });
+  dialog.querySelectorAll("[data-m320-edit-bus]").forEach(button => {
+    button.addEventListener("click", () => {
+      const bus = buses.find(item => item.id === button.dataset.m320EditBus);
+      if (bus) openBusEditor(trip, data, bus);
     });
   });
 }
@@ -827,6 +1050,7 @@ function syncManualRegistrationMode(dialog) {
 function manualRegistrationError(outcome) {
   return {
     ALREADY_ACTIVE: "Für diese Person besteht bereits eine aktive Anmeldung.",
+    WAITLISTED: "Die Person wurde auf die Warteliste gesetzt.",
     FULL: "Die Fanbusfahrt ist bereits ausgebucht.",
     NOT_STARTED: "Der Anmeldezeitraum hat noch nicht begonnen.",
     CLOSED: "Der Anmeldezeitraum ist beendet.",
@@ -882,7 +1106,7 @@ async function openManualRegistration(trip) {
           ...payload,
           idempotencyKey: manualAttempt.key
         });
-        if (result?.outcome !== "CREATED") {
+        if (!["CREATED", "WAITLISTED"].includes(result?.outcome)) {
           throw new Error(manualRegistrationError(result?.outcome));
         }
 
@@ -892,7 +1116,13 @@ async function openManualRegistration(trip) {
         ]);
         snapshot = nextSnapshot || { trips: [] };
         render();
-        showToast("Mitfahrer wurde angemeldet.", "success", 3800);
+        showToast(
+          result.outcome === "WAITLISTED"
+            ? "Mitfahrer wurde auf die Warteliste gesetzt."
+            : "Mitfahrer wurde angemeldet.",
+          result.outcome === "WAITLISTED" ? "warning" : "success",
+          3800
+        );
         setTimeout(() => showRegistrationsDialog(trip, nextData), 0);
       }
     });
@@ -912,6 +1142,19 @@ function showRegistrationsDialog(trip, data) {
     body: registrationsMarkup(data)
   });
   renderRegistrationsDialog(dialog, trip, data);
+}
+
+async function openBuses(trip, button) {
+  if (!hasCapability("fanbus.manage")) return;
+  button.disabled = true;
+  try {
+    const data = await call("fanbus_buses_list", { tripId: trip.id });
+    openBusManager(trip, data);
+  } catch (error) {
+    showToast(error?.message || "Busse konnten nicht geladen werden.", "error", 5200);
+  } finally {
+    if (button.isConnected) button.disabled = false;
+  }
 }
 
 async function openRegistrations(trip, button) {

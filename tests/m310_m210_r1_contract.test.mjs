@@ -58,7 +58,7 @@ test("M310 mobile card exposes one primary status and one capacity value", () =>
 });
 
 test("M310 registrations use compact operational records without empty cancellation metadata", () => {
-  const start = fanbuses.indexOf("function registrationCard(registration)");
+  const start = fanbuses.indexOf("function registrationCard(registration, buses = [])");
   const end = fanbuses.indexOf("function registrationsMarkup(data)", start);
   assert.notEqual(start, -1);
   assert.notEqual(end, -1);
@@ -72,7 +72,7 @@ test("M310 registrations use compact operational records without empty cancellat
   assert.match(card, /const email = registration\.email[\s\S]+v4-m310-registration-email/);
   assert.match(card, /formatBerlinDateTime\(registration\.registeredAt\)/);
   assert.match(card, /registration\.status === "CANCELLED" && registration\.cancelledAt/);
-  assert.doesNotMatch(card, /"–"/);
+  assert.doesNotMatch(card, /cancelledAt\s*\|\|\s*"–"/);
   assert.match(card, /isActive[\s\S]+data-m310-cancel-registration=[\s\S]+>Stornieren<\/button>/);
 
   const registrationFlowEnd = fanbuses.indexOf("function manualPersonLabel(person)", end);
