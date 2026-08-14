@@ -3,7 +3,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(76);
+select plan(89);
 
 select has_table('app_modules', 'fanbus_bookings', 'Booking-Tabelle existiert');
 select has_table('app_modules', 'fanbus_buses', 'Bus-Tabelle existiert');
@@ -455,6 +455,230 @@ begin
 end
 $m320_unassign$;
 select is((select count(*)::integer from app_modules.fanbus_bus_assignments where trip_id = '00000000-0000-4320-8200-000000000001'), 0, 'Unassign entfernt die Zuordnung');
+
+insert into app_modules.fanbus_bookings (
+  id, trip_id, source, created_by
+) values (
+  '00000000-0000-4320-8400-000000000001',
+  '00000000-0000-4320-8200-000000000003',
+  'MANUAL',
+  '00000000-0000-4320-8000-000000000001'
+);
+insert into app_modules.fanbus_registrations (
+  id, trip_id, booking_id, booking_role, participant_sequence,
+  first_name, last_name, email, bus_preference, source, status,
+  privacy_reference, terms_reference,
+  privacy_accepted_at, terms_accepted_at, created_by, updated_by
+) values (
+  '00000000-0000-4320-8400-000000000002',
+  '00000000-0000-4320-8200-000000000003',
+  '00000000-0000-4320-8400-000000000001',
+  'PRIMARY', 1,
+  'Assignment', 'Audit', 'assignment-audit@example.invalid',
+  'EGAL', 'MANUAL', 'ACTIVE',
+  'privacy-v1', 'terms-v1', now(), now(),
+  '00000000-0000-4320-8000-000000000001',
+  '00000000-0000-4320-8000-000000000001'
+);
+insert into m320_results values (
+  'audit_bus_a', app_private.api_fanbus_bus_upsert(jsonb_build_object(
+    'tripId', '00000000-0000-4320-8200-000000000003',
+    'label', 'Assignment Audit A', 'category', 'NORMAL',
+    'capacity', 2, 'isActive', true
+  ))
+), (
+  'audit_bus_b', app_private.api_fanbus_bus_upsert(jsonb_build_object(
+    'tripId', '00000000-0000-4320-8200-000000000003',
+    'label', 'Assignment Audit B', 'category', 'NORMAL',
+    'capacity', 2, 'isActive', true
+  ))
+);
+
+select is(
+  (select count(*)::integer
+   from app_modules.fanbus_bus_assignments
+   where participant_id = '00000000-0000-4320-8400-000000000002'),
+  0, 'Assignment-Audit-Lifecycle startet ohne Zuordnung'
+);
+
+insert into m320_results values (
+  'audit_assign_a', app_private.api_fanbus_bus_assignment_set(
+    jsonb_build_object(
+      'participantId', '00000000-0000-4320-8400-000000000002',
+      'busId', (select result ->> 'id' from m320_results
+        where name = 'audit_bus_a')
+    )
+  )
+);
+select is(
+  (select bus_id::text
+   from app_modules.fanbus_bus_assignments
+   where participant_id = '00000000-0000-4320-8400-000000000002'),
+  (select result ->> 'id' from m320_results where name = 'audit_bus_a'),
+  'Erste Zuordnung zeigt auf Assignment Audit Bus A'
+);
+select ok(
+  (select count(*) = 1
+      and bool_and(before_data is null)
+      and bool_and(after_data ->> 'busId' = (
+        select result ->> 'id' from m320_results where name = 'audit_bus_a'
+      ))
+   from app_portal.audit_events
+   where entity_type = 'fanbus_registration'
+     and entity_id = '00000000-0000-4320-8400-000000000002'
+     and action = 'FANBUS_BUS_ASSIGNED'),
+  'Erste Zuordnung erzeugt genau ein passendes ASSIGNED-Audit'
+);
+
+insert into m320_results values (
+  'audit_move_b', app_private.api_fanbus_bus_assignment_set(
+    jsonb_build_object(
+      'participantId', '00000000-0000-4320-8400-000000000002',
+      'busId', (select result ->> 'id' from m320_results
+        where name = 'audit_bus_b')
+    )
+  )
+);
+select is(
+  (select bus_id::text
+   from app_modules.fanbus_bus_assignments
+   where participant_id = '00000000-0000-4320-8400-000000000002'),
+  (select result ->> 'id' from m320_results where name = 'audit_bus_b'),
+  'Wechsel ersetzt Bus A durch Assignment Audit Bus B'
+);
+select ok(
+  (select count(*) = 1
+      and bool_and(before_data ->> 'busId' = (
+        select result ->> 'id' from m320_results where name = 'audit_bus_a'
+      ))
+      and bool_and(after_data ->> 'busId' = (
+        select result ->> 'id' from m320_results where name = 'audit_bus_b'
+      ))
+   from app_portal.audit_events
+   where entity_type = 'fanbus_registration'
+     and entity_id = '00000000-0000-4320-8400-000000000002'
+     and action = 'FANBUS_BUS_CHANGED'),
+  'Wechsel auditiert Bus A als before und Bus B als after'
+);
+
+insert into m320_results values (
+  'audit_unassign_b', app_private.api_fanbus_bus_assignment_set(
+    jsonb_build_object(
+      'participantId', '00000000-0000-4320-8400-000000000002',
+      'busId', null
+    )
+  )
+);
+select is(
+  (select count(*)::integer
+   from app_modules.fanbus_bus_assignments
+   where participant_id = '00000000-0000-4320-8400-000000000002'),
+  0, 'Explizites Unassign entfernt die Assignment-Zeile'
+);
+select ok(
+  (select count(*) = 1
+      and bool_and(before_data ->> 'busId' = (
+        select result ->> 'id' from m320_results where name = 'audit_bus_b'
+      ))
+      and bool_and(after_data is null)
+   from app_portal.audit_events
+   where entity_type = 'fanbus_registration'
+     and entity_id = '00000000-0000-4320-8400-000000000002'
+     and action = 'FANBUS_BUS_UNASSIGNED'),
+  'Explizites Unassign auditiert Bus B als before und null als after'
+);
+
+insert into m320_results values (
+  'audit_reassign_a', app_private.api_fanbus_bus_assignment_set(
+    jsonb_build_object(
+      'participantId', '00000000-0000-4320-8400-000000000002',
+      'busId', (select result ->> 'id' from m320_results
+        where name = 'audit_bus_a')
+    )
+  )
+);
+select is(
+  (select bus_id::text
+   from app_modules.fanbus_bus_assignments
+   where participant_id = '00000000-0000-4320-8400-000000000002'),
+  (select result ->> 'id' from m320_results where name = 'audit_bus_a'),
+  'Erneute Zuordnung zeigt wieder auf Assignment Audit Bus A'
+);
+select is(
+  (select count(*)::integer
+   from app_portal.audit_events
+   where entity_type = 'fanbus_registration'
+     and entity_id = '00000000-0000-4320-8400-000000000002'
+     and action = 'FANBUS_BUS_ASSIGNED'),
+  2, 'Erneute Zuordnung erzeugt ein zweites ASSIGNED-Audit'
+);
+select is(
+  (select after_data ->> 'busId'
+   from app_portal.audit_events
+   where entity_type = 'fanbus_registration'
+     and entity_id = '00000000-0000-4320-8400-000000000002'
+     and action = 'FANBUS_BUS_ASSIGNED'
+   order by id desc
+   limit 1),
+  (select result ->> 'id' from m320_results where name = 'audit_bus_a'),
+  'Das zweite ASSIGNED-Audit verweist auf Bus A'
+);
+select is(
+  (select string_agg(action, ' -> ' order by id)
+   from app_portal.audit_events
+   where entity_type = 'fanbus_registration'
+     and entity_id = '00000000-0000-4320-8400-000000000002'
+     and action in (
+       'FANBUS_BUS_ASSIGNED',
+       'FANBUS_BUS_CHANGED',
+       'FANBUS_BUS_UNASSIGNED'
+     )),
+  'FANBUS_BUS_ASSIGNED -> FANBUS_BUS_CHANGED -> FANBUS_BUS_UNASSIGNED -> FANBUS_BUS_ASSIGNED',
+  'Assignment-Auditsequenz ist exakt und vollständig'
+);
+select ok(not exists (
+  select 1
+  from app_portal.audit_events as audit
+  cross join lateral jsonb_object_keys(audit.metadata) as metadata_key(key)
+  where audit.entity_type = 'fanbus_registration'
+    and audit.entity_id = '00000000-0000-4320-8400-000000000002'
+    and audit.action in (
+      'FANBUS_BUS_ASSIGNED',
+      'FANBUS_BUS_CHANGED',
+      'FANBUS_BUS_UNASSIGNED'
+    )
+    and metadata_key.key not in (
+      'tripId', 'bookingId', 'participantId', 'busId'
+    )
+), 'Assignment-Auditmetadaten enthalten ausschließlich technische IDs');
+select ok(not exists (
+  select 1
+  from app_portal.audit_events as audit
+  cross join lateral (
+    select before_keys.key
+    from jsonb_object_keys(
+      coalesce(audit.before_data, '{}'::jsonb)
+    ) as before_keys(key)
+    union all
+    select after_keys.key
+    from jsonb_object_keys(
+      coalesce(audit.after_data, '{}'::jsonb)
+    ) as after_keys(key)
+    union all
+    select metadata_keys.key
+    from jsonb_object_keys(
+      coalesce(audit.metadata, '{}'::jsonb)
+    ) as metadata_keys(key)
+  ) as payload_key
+  where audit.entity_type = 'fanbus_registration'
+    and audit.entity_id = '00000000-0000-4320-8400-000000000002'
+    and audit.action in (
+      'FANBUS_BUS_ASSIGNED',
+      'FANBUS_BUS_CHANGED',
+      'FANBUS_BUS_UNASSIGNED'
+    )
+    and lower(payload_key.key) in ('firstname', 'lastname', 'email')
+), 'Assignment-Auditpayloads enthalten keine Namen oder E-Mail');
 
 select throws_ok(
   format(
