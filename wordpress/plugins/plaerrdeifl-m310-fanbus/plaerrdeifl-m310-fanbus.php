@@ -521,7 +521,7 @@ final class PD_M310_Fanbus_Plugin
             || !is_string($value['registrationStatus'])
             || !in_array(
                 $value['registrationStatus'],
-                array('NOT_STARTED', 'OPEN', 'FULL', 'CLOSED', 'UNAVAILABLE'),
+                array('NOT_STARTED', 'OPEN', 'WAITLIST', 'FULL', 'CLOSED', 'UNAVAILABLE'),
                 true
             )
         ) {
@@ -593,7 +593,7 @@ final class PD_M310_Fanbus_Plugin
     {
         $status = self::status_presentation($trip['registrationStatus']);
         $deep_link = add_query_arg('trip', $trip['tripId'], $portal_url);
-        $button_label = $trip['registrationStatus'] === 'OPEN'
+        $button_label = in_array($trip['registrationStatus'], array('OPEN', 'WAITLIST'), true)
             ? 'Jetzt anmelden'
             : 'Fahrt ansehen';
         ?>
@@ -665,6 +665,7 @@ final class PD_M310_Fanbus_Plugin
             'NOT_STARTED' => array('label' => 'Startet später', 'class' => 'pd-m310-status-upcoming'),
             'OPEN' => array('label' => 'Offen', 'class' => 'pd-m310-status-open'),
             'FULL' => array('label' => 'Ausgebucht', 'class' => 'pd-m310-status-full'),
+            'WAITLIST' => array('label' => 'Warteliste', 'class' => 'pd-m310-status-full'),
             'CLOSED' => array('label' => 'Geschlossen', 'class' => 'pd-m310-status-closed'),
             'UNAVAILABLE' => array('label' => 'Nicht verfügbar', 'class' => 'pd-m310-status-unavailable'),
         )[$status];

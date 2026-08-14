@@ -66,6 +66,7 @@
     .fanbus-public-turnstile{min-height:66px;margin-top:16px;overflow:hidden}
     .fanbus-public-status{margin-top:0}
     .fanbus-public-status[hidden],.fanbus-public-form[hidden],.fanbus-public-google[hidden]{display:none!important}
+    .fanbus-companions{display:grid;gap:12px;margin-top:8px}.fanbus-companion{padding:14px;border:1px solid var(--line,#d8e2ee);border-radius:14px;background:#f8fbff}.fanbus-companion-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.fanbus-companion-head strong{font-size:.95rem}
     @media (max-width:620px){.fanbus-public-form.form-grid{grid-template-columns:1fr}.fanbus-public-form .full{grid-column:auto}.fanbus-public-shell{gap:14px}.card{padding:18px}}
   </style>
   <title>Fanbus-Anmeldung · Plärrdeifl</title>
@@ -119,6 +120,7 @@
             <option value="PARTY">Party</option>
           </select>
         </label>
+        <div class="full"><div class="section-title"><div><h3>Wer fährt mit?</h3><p>Du bist die buchende Person. Begleiter werden gemeinsam angemeldet.</p></div></div><div data-m320-companions="portal" class="fanbus-companions"></div><button data-m320-add-companion="portal" class="button small secondary" type="button">Person hinzufügen</button></div>
         <label class="check-row full fanbus-public-consent">
           <input name="privacyConfirmed" type="checkbox" required>
           <span id="m310PortalPrivacyConsent"></span>
@@ -127,6 +129,7 @@
           <input name="termsConfirmed" type="checkbox" required>
           <span id="m310PortalTermsConsent"></span>
         </label>
+        <div class="readonly full" data-m320-booking-summary="portal" aria-live="polite"></div>
         <div class="fanbus-public-actions full">
           <button class="button primary" type="submit">Verbindlich anmelden</button>
         </div>
@@ -145,6 +148,7 @@
           E-Mail
           <input name="email" type="email" autocomplete="email" maxlength="320" required>
         </label>
+        <div class="full"><div class="section-title"><div><h3>Wer fährt mit?</h3><p>Füge bei Bedarf Begleiter zu dieser gemeinsamen Anmeldung hinzu.</p></div></div><div data-m320-companions="guest" class="fanbus-companions"></div><button data-m320-add-companion="guest" class="button small secondary" type="button">Person hinzufügen</button></div>
         <label class="full">
           Buspräferenz
           <select name="busPreference" required>
@@ -161,6 +165,7 @@
           <input name="termsConfirmed" type="checkbox" required>
           <span id="m310GuestTermsConsent"></span>
         </label>
+        <div class="readonly full" data-m320-booking-summary="guest" aria-live="polite"></div>
         <div id="m310Turnstile" class="fanbus-public-turnstile full"></div>
         <div class="fanbus-public-actions full">
           <button class="button primary" type="submit">Verbindlich als Gast anmelden</button>
