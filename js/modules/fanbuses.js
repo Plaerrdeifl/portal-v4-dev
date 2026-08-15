@@ -108,6 +108,16 @@ function toBerlinInputValue(value) {
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
 }
 
+function toBerlinTimeInputValue(value) {
+  const localValue = toBerlinInputValue(value);
+  return localValue ? localValue.slice(11, 16) : "";
+}
+
+function formatBerlinTime(value) {
+  const localValue = toBerlinTimeInputValue(value);
+  return localValue ? `${localValue} Uhr` : "Zeit noch offen";
+}
+
 function berlinOffsetMilliseconds(instant) {
   const date = new Date(instant);
   const parts = berlinParts(date);
@@ -149,6 +159,25 @@ function berlinLocalToIso(value, label) {
   return iso;
 }
 
+function tripTimeToBerlinIso(trip, value, label) {
+  const eventDate = String(trip?.eventDate || "").trim();
+  const time = String(value || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
+    throw new Error("Das Fahrtdatum ist ungültig.");
+  }
+  if (!/^\d{2}:\d{2}$/.test(time)) {
+    throw new Error(`${label} ist ungültig.`);
+  }
+  return berlinLocalToIso(`${eventDate}T${time}`, label);
+}
+
+function defaultTripStopTime(trip) {
+  const departureTime = toBerlinTimeInputValue(trip?.departureAt);
+  if (departureTime) return departureTime;
+  const eventTime = /^(\d{2}):(\d{2})/.exec(String(trip?.eventTime || ""));
+  return eventTime ? `${eventTime[1]}:${eventTime[2]}` : "";
+}
+
 function formatMoney(cents) {
   return cents !== null && cents !== undefined && cents !== "" && Number.isInteger(Number(cents))
     ? MONEY_FORMAT.format(Number(cents) / 100)
@@ -177,18 +206,6 @@ function euroInputToCents(value) {
   }
 
   return cents;
-}
-
-function capacityValue(value) {
-  const raw = String(value || "").trim();
-  if (!raw) return null;
-  const capacity = Number(raw);
-
-  if (!Number.isInteger(capacity) || capacity <= 0 || capacity > 2147483647) {
-    throw new Error("Die Kapazität muss eine positive ganze Zahl sein.");
-  }
-
-  return capacity;
 }
 
 function registrationStatusLabel(value) {
@@ -265,7 +282,7 @@ function tripActions(trip) {
     && trip.canManageRegistrations !== false;
   const actions = [];
 
-  actions.push(`<button class="button small secondary" type="button" data-m325-companions>Meine Mitfahrer</button>`);
+  actions.push(`<button class="button small secondary" type="button" data-m325-companions="${escapeAttr(trip.id)}">Meine Mitfahrer</button>`);
 
   if (trip.status === "PUBLISHED") {
     const registrationLabel = ["OPEN", "WAITLIST"].includes(trip.registrationStatus)
@@ -304,20 +321,17 @@ function tripActions(trip) {
 }
 
 function tripDetailMarkup(trip) {
-  return `<div>
-    <div class="v4-detail-grid">
-      <div class="full"><span>Fahrt / Spiel</span><strong>${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</strong></div>
-      <div><span>Termin</span><strong>${escapeHtml(formatCalendarDate(trip.eventDate))}</strong></div>
-      <div><span>Spielzeit</span><strong>${escapeHtml(eventTimeLabel(trip.eventTime))}</strong></div>
+  return `<div class="v4-m325-trip-detail">
+    <div class="v4-detail-grid v4-m325-trip-facts">
+      <div class="v4-m325-trip-date"><span>Termin / Spielzeit</span><strong>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeLabel(trip.eventTime))}</strong></div>
       ${trip.opponentName ? `<div><span>Gegner</span><strong>${escapeHtml(trip.opponentName)}</strong></div>` : ""}
       ${trip.venue ? `<div><span>Ziel / Ort</span><strong>${escapeHtml(trip.venue)}</strong></div>` : ""}
-      <div><span>Abfahrt</span><strong>${escapeHtml(formatBerlinDateTime(trip.departureAt))}</strong></div>
+      <div class="v4-m325-trip-departure"><span>Abfahrt</span><strong>${escapeHtml(formatBerlinDateTime(trip.departureAt))}</strong></div>
       <div><span>Fahrtpreis</span><strong>${escapeHtml(formatMoney(trip.priceCents))}</strong></div>
       <div><span>Anmeldungen / Kapazität</span><strong>${escapeHtml(capacityLabel(trip))}</strong></div>
       <div><span>Status</span>${tripBadges(trip)}</div>
-      <div><span>Anmeldung öffnet</span><strong>${escapeHtml(formatBerlinDateTime(trip.registrationOpensAt))}</strong></div>
-      <div><span>Anmeldung schließt</span><strong>${escapeHtml(formatBerlinDateTime(trip.registrationClosesAt))}</strong></div>
-      ${trip.departureInfo ? `<div class="full"><span>Treffpunkt / Abfahrtsort</span><strong class="v4-preserve-lines">${escapeHtml(trip.departureInfo)}</strong></div>` : ""}
+      <div class="full v4-m325-trip-registration-window"><span>Anmeldezeitraum</span><strong>${escapeHtml(formatBerlinDateTime(trip.registrationOpensAt))} – ${escapeHtml(formatBerlinDateTime(trip.registrationClosesAt))}</strong></div>
+      ${trip.departureInfo ? `<div class="full v4-m325-trip-meeting"><span>Treffpunkt / Abfahrtsort</span><strong class="v4-preserve-lines">${escapeHtml(trip.departureInfo)}</strong></div>` : ""}
     </div>
     ${tripActions(trip)}
   </div>`;
@@ -383,13 +397,22 @@ function render() {
 
   const routeQuery = new URLSearchParams(String(window.location.hash || "").split("?")[1] || "");
   if (routeQuery.get("view") === "companions") {
-    void renderCompanionWorkspace(panel, summary);
+    setWorkspaceShell(true);
+    void renderCompanionWorkspace(panel, summary, routeQuery.get("fromTrip"));
     return;
   }
   if (routeQuery.get("view") === "operations" && routeQuery.get("trip")) {
-    void renderOperationsWorkspace(panel, summary, routeQuery.get("trip"));
+    setWorkspaceShell(true);
+    void renderOperationsWorkspace(
+      panel,
+      summary,
+      routeQuery.get("trip"),
+      routeQuery.get("fromTrip")
+    );
     return;
   }
+
+  setWorkspaceShell(false);
 
   const items = trips();
   const canManage = hasCapability("fanbus.manage");
@@ -423,44 +446,71 @@ function render() {
       });
     }
   });
+  const detailTrip = items.find(item => item.id === routeQuery.get("detail"));
+  if (detailTrip) {
+    window.history.replaceState(null, "", "#/fanbuses");
+    openTripDetail(detailTrip);
+  }
   setStatus("Aktuell", "success");
 }
 
-function returnToFanbuses() {
-  window.location.hash = "#/fanbuses";
+function setWorkspaceShell(active) {
+  document.getElementById("m310FanbusPage")?.classList.toggle("v4-m325-workspace-active", active);
 }
 
-async function renderCompanionWorkspace(panel, summary) {
-  if (summary) summary.textContent = "Meine Mitfahrer";
-  panel.innerHTML = loading("Mitfahrerlisten werden geladen …");
+function returnToFanbuses(tripId = "") {
+  window.location.hash = tripId
+    ? `#/fanbuses?detail=${encodeURIComponent(tripId)}`
+    : "#/fanbuses";
+}
+
+function workspaceLoading(title, message, returnTripId = "") {
+  return `<section class="v4-m325-workspace v4-m325-workspace-loading">
+    <header class="v4-m325-workspace-header">
+      <button class="button small secondary" type="button" data-m325-back>Zurück</button>
+      <div><h2>${escapeHtml(title)}</h2><p class="subtle">${escapeHtml(message)}</p></div>
+    </header>
+  </section>`;
+}
+
+async function renderCompanionWorkspace(panel, summary, returnTripId = "") {
+  if (summary) summary.textContent = "";
+  panel.innerHTML = workspaceLoading("Meine Mitfahrer", "Mitfahrerlisten werden geladen …", returnTripId);
+  panel.querySelector("[data-m325-back]")?.addEventListener("click", () => returnToFanbuses(returnTripId));
   try {
-    const data = await call("fanbus_companion_lists_list");
+    const [data, stopData] = await Promise.all([
+      call("fanbus_companion_lists_list"),
+      call("fanbus_boarding_stops_list")
+    ]);
     const lists = Array.isArray(data?.lists) ? data.lists : [];
-    panel.innerHTML = `<section class="v4-m325-workspace">
-      <div class="v4-detail-actions"><button class="button small secondary" type="button" data-m325-back>Zurück</button></div>
-      <div class="section-title"><div><h2>Meine Mitfahrer</h2><p>Gespeicherte Personen sind nur Vorlagen. Änderungen betreffen keine vergangenen Buchungen.</p></div></div>
-      <form class="form-grid v4-smart-form" data-m325-list-form><label class="v4-field-full">Neue Liste<input name="name" maxlength="120" required placeholder="z. B. Auswärtsfahrt"></label><div class="v4-detail-actions v4-field-full"><button class="button primary" type="submit">Liste anlegen</button></div></form>
-      ${lists.length ? `<div class="v4-mobile-records">${lists.map(list => `<article class="v4-compact-record"><strong>${escapeHtml(list.name)}</strong><small>${list.members.length} ${list.members.length === 1 ? "Person" : "Personen"}</small><div class="v4-row-actions"><button class="button small secondary" data-m325-rename-list="${escapeAttr(list.id)}">Umbenennen</button><button class="button small secondary" data-m325-add-member="${escapeAttr(list.id)}">Person hinzufügen</button><button class="button small danger" data-m325-delete-list="${escapeAttr(list.id)}" data-revision="${escapeAttr(list.revision)}">Löschen</button></div>${list.members.map((member,index) => `<div class="v4-m325-member"><strong>${escapeHtml(`${member.firstName} ${member.lastName}`)}</strong><small>${escapeHtml(member.defaultBusPreference)}${member.defaultBoardingStopId ? " · Standard-Zustieg" : ""}${member.operationalNote ? " · Hinweis vorhanden" : ""}</small><div class="v4-row-actions"><button class="button small secondary" data-m325-move-member="${escapeAttr(member.id)}" data-list-id="${escapeAttr(list.id)}" data-direction="-1"${index===0 ? " disabled" : ""}>↑</button><button class="button small secondary" data-m325-move-member="${escapeAttr(member.id)}" data-list-id="${escapeAttr(list.id)}" data-direction="1"${index===list.members.length-1 ? " disabled" : ""}>↓</button><button class="button small secondary" data-m325-edit-member="${escapeAttr(member.id)}" data-list-id="${escapeAttr(list.id)}">Bearbeiten</button><button class="button small danger" data-m325-delete-member="${escapeAttr(member.id)}" data-list-id="${escapeAttr(list.id)}" data-revision="${escapeAttr(member.revision)}">Entfernen</button></div></div>`).join("")}</article>`).join("")}</div>` : empty("Lege eine Liste an, um wiederkehrende Mitfahrer schneller zu buchen.")}
+    const stopLabels = new Map(
+      (stopData?.stops || []).map(stop => [stop.id, stop.label])
+    );
+    panel.innerHTML = `<section class="v4-m325-workspace v4-m325-companion-workspace">
+      <header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m325-back>Zurück</button><div><h2>Meine Mitfahrer</h2><p>Gespeicherte Personen sind nur Vorlagen. Änderungen betreffen keine vergangenen Buchungen.</p></div></header>
+      <section class="v4-m325-workspace-section" aria-labelledby="m325CompanionListsTitle"><h3 id="m325CompanionListsTitle">Vorhandene Listen</h3>
+      ${lists.length ? `<div class="v4-mobile-records v4-m325-companion-lists">${lists.map(list => `<article class="v4-compact-record v4-m325-list-card"><div class="v4-compact-record-copy v4-m325-record-copy"><strong>${escapeHtml(list.name)}</strong><small>${list.members.length} ${list.members.length === 1 ? "Person" : "Personen"}</small></div><div class="v4-row-actions v4-m325-list-actions"><button class="button small secondary" data-m325-rename-list="${escapeAttr(list.id)}">Umbenennen</button><button class="button small secondary" data-m325-add-member="${escapeAttr(list.id)}">Person hinzufügen</button><button class="button small danger" data-m325-delete-list="${escapeAttr(list.id)}" data-revision="${escapeAttr(list.revision)}">Löschen</button></div>${list.members.map((member,index) => `<div class="v4-m325-member"><div class="v4-compact-record-copy v4-m325-record-copy"><strong>${escapeHtml(`${member.firstName} ${member.lastName}`)}</strong><small>Buswunsch: ${escapeHtml(busPreferenceText(member.defaultBusPreference))}${member.defaultBoardingStopId ? ` · Standard-Zustieg: ${escapeHtml(stopLabels.get(member.defaultBoardingStopId) || "Nicht mehr aktiv")}` : " · Kein Standard-Zustieg"}${member.operationalNote ? " · Operativer Hinweis" : ""}</small></div><div class="v4-row-actions v4-m325-member-actions"><button class="button small secondary" data-m325-move-member="${escapeAttr(member.id)}" data-list-id="${escapeAttr(list.id)}" data-direction="-1"${index===0 ? " disabled" : ""}>↑</button><button class="button small secondary" data-m325-move-member="${escapeAttr(member.id)}" data-list-id="${escapeAttr(list.id)}" data-direction="1"${index===list.members.length-1 ? " disabled" : ""}>↓</button><button class="button small secondary" data-m325-edit-member="${escapeAttr(member.id)}" data-list-id="${escapeAttr(list.id)}">Bearbeiten</button><button class="button small danger" data-m325-delete-member="${escapeAttr(member.id)}" data-list-id="${escapeAttr(list.id)}" data-revision="${escapeAttr(member.revision)}">Entfernen</button></div></div>`).join("")}</article>`).join("")}</div>` : empty("Noch keine Mitfahrerlisten vorhanden.")}</section>
+      <section class="v4-m325-workspace-section v4-m325-new-list"><h3>Neue Liste</h3><form class="form-grid v4-smart-form" data-m325-list-form><label class="v4-field-full">Listenname<input name="name" maxlength="120" required placeholder="z. B. Auswärtsfahrt"></label><div class="v4-detail-actions v4-field-full"><button class="button small primary" type="submit">Liste anlegen</button></div></form></section>
     </section>`;
-    panel.querySelector("[data-m325-back]")?.addEventListener("click", returnToFanbuses);
+    panel.querySelector("[data-m325-back]")?.addEventListener("click", () => returnToFanbuses(returnTripId));
     panel.querySelector("[data-m325-list-form]")?.addEventListener("submit", async event => {
       event.preventDefault(); const form = event.currentTarget; if (!form.reportValidity()) return;
       await runWrite(() => call("fanbus_companion_list_upsert", { name: new FormData(form).get("name") }), "Liste angelegt.");
-      await renderCompanionWorkspace(panel, summary);
+      await renderCompanionWorkspace(panel, summary, returnTripId);
     });
     panel.querySelectorAll("[data-m325-delete-list]").forEach(button => button.addEventListener("click", async () => {
       if (!await confirmAction("Liste löschen?", "Die Vorlage wird gelöscht. Bereits gebuchte Teilnehmer bleiben unverändert.")) return;
       await runWrite(() => call("fanbus_companion_list_delete", { id: button.dataset.m325DeleteList, expectedRevision: Number(button.dataset.revision) }), "Liste gelöscht.");
-      await renderCompanionWorkspace(panel, summary);
+      await renderCompanionWorkspace(panel, summary, returnTripId);
     }));
     panel.querySelectorAll("[data-m325-rename-list]").forEach(button => button.addEventListener("click", () => {
       const list = lists.find(item => item.id === button.dataset.m325RenameList);
-      if (list) openCompanionListRename(list, panel, summary);
+      if (list) openCompanionListRename(list, panel, summary, returnTripId);
     }));
-    panel.querySelectorAll("[data-m325-add-member]").forEach(button => button.addEventListener("click", () => { void openCompanionMemberDialog(button.dataset.m325AddMember, panel, summary); }));
+    panel.querySelectorAll("[data-m325-add-member]").forEach(button => button.addEventListener("click", () => { void openCompanionMemberDialog(button.dataset.m325AddMember, panel, summary, null, returnTripId); }));
     panel.querySelectorAll("[data-m325-edit-member]").forEach(button => button.addEventListener("click", () => {
       const list = lists.find(item => item.id === button.dataset.listId);
-      void openCompanionMemberDialog(button.dataset.listId, panel, summary, list?.members.find(item => item.id === button.dataset.m325EditMember));
+      void openCompanionMemberDialog(button.dataset.listId, panel, summary, list?.members.find(item => item.id === button.dataset.m325EditMember), returnTripId);
     }));
     panel.querySelectorAll("[data-m325-move-member]").forEach(button => button.addEventListener("click", async () => {
       const list = lists.find(item => item.id === button.dataset.listId);
@@ -470,26 +520,26 @@ async function renderCompanionWorkspace(panel, summary) {
       const ordered = list.members.map(item => item.id);
       [ordered[index], ordered[targetIndex]] = [ordered[targetIndex], ordered[index]];
       await runWrite(() => call("fanbus_companion_members_reorder", { listId: list.id, memberIds: ordered }), "Reihenfolge aktualisiert.");
-      await renderCompanionWorkspace(panel, summary);
+      await renderCompanionWorkspace(panel, summary, returnTripId);
     }));
     panel.querySelectorAll("[data-m325-delete-member]").forEach(button => button.addEventListener("click", async () => {
       if (!await confirmAction("Mitfahrer entfernen?", "Die Vorlage wird entfernt. Bereits gebuchte Teilnehmer bleiben unverändert.")) return;
       await runWrite(() => call("fanbus_companion_member_delete", { id: button.dataset.m325DeleteMember, expectedRevision: Number(button.dataset.revision) }), "Mitfahrer entfernt.");
-      await renderCompanionWorkspace(panel, summary);
+      await renderCompanionWorkspace(panel, summary, returnTripId);
     }));
   } catch (error) { panel.innerHTML = errorPanel(error, "Mitfahrerlisten konnten nicht geladen werden"); }
 }
 
-function openCompanionListRename(list, panel, summary) {
+function openCompanionListRename(list, panel, summary, returnTripId = "") {
   const dialog = openDialog({ title: "Liste umbenennen", body: `<form class="form-grid v4-smart-form" data-m325-rename-form><label class="v4-field-full">Name<input name="name" maxlength="120" value="${escapeAttr(list.name)}" required></label><div class="dialog-actions v4-detail-actions v4-field-full"><button class="button primary" type="submit">Speichern</button></div></form>` });
   dialog.querySelector("[data-m325-rename-form]")?.addEventListener("submit", async event => {
     event.preventDefault(); const form=event.currentTarget; if(!form.reportValidity()) return;
     await runWrite(()=>call("fanbus_companion_list_upsert",{id:list.id,expectedRevision:list.revision,name:new FormData(form).get("name")}),"Liste umbenannt.");
-    dialog.close(); await renderCompanionWorkspace(panel,summary);
+    dialog.close(); await renderCompanionWorkspace(panel,summary,returnTripId);
   });
 }
 
-async function openCompanionMemberDialog(listId, panel, summary, member = null) {
+async function openCompanionMemberDialog(listId, panel, summary, member = null, returnTripId = "") {
   let masterStops=[];
   try { masterStops=(await call("fanbus_boarding_stops_list"))?.stops?.filter(stop=>stop.isActive)||[]; }
   catch (error) { showToast(error?.message||"Zustiegsorte konnten nicht geladen werden.","error",5200); return; }
@@ -498,20 +548,21 @@ async function openCompanionMemberDialog(listId, panel, summary, member = null) 
     event.preventDefault(); const form = event.currentTarget; if (!form.reportValidity()) return;
     const lists = await call("fanbus_companion_lists_list"); const list = lists.lists.find(item => item.id === listId);
     await runWrite(() => call("fanbus_companion_member_upsert", { listId, ...(member ? { id: member.id, expectedRevision: member.revision } : {}), ...Object.fromEntries(new FormData(form)) }), "Mitfahrer gespeichert.");
-    dialog.close(); await renderCompanionWorkspace(panel, summary);
+    dialog.close(); await renderCompanionWorkspace(panel, summary, returnTripId);
   });
 }
 
-async function renderOperationsWorkspace(panel, summary, tripId) {
+async function renderOperationsWorkspace(panel, summary, tripId, returnTripId = "") {
   if (!hasCapability("fanbus.registrations.manage")) { returnToFanbuses(); return; }
-  if (summary) summary.textContent = "Fahrtbetrieb";
-  panel.innerHTML = loading("Fahrtbetrieb wird geladen …");
+  if (summary) summary.textContent = "";
+  panel.innerHTML = workspaceLoading("Fahrtbetrieb", "Betriebsdaten werden geladen …", returnTripId);
+  panel.querySelector("[data-m325-back]")?.addEventListener("click", () => returnToFanbuses(returnTripId));
   try {
     const data = await call("fanbus_operations_snapshot", { tripId });
     const totals = data.summary || {};
     const trip = trips().find(item => item.id === tripId);
-    panel.innerHTML = `<section class="v4-m325-workspace"><div class="v4-detail-actions"><button class="button small secondary" type="button" data-m325-back>Zurück</button></div><div class="section-title"><div><h2>Fahrtbetrieb</h2><p>${escapeHtml(trip?.displayTitle || "Fanbusfahrt")} · ${escapeHtml(formatCalendarDate(trip?.eventDate))} · Check-in Hinfahrt</p></div></div><div class="v4-m325-counters"><span><strong>${Number(totals.expected || 0)}</strong>Erwartet</span><span><strong>${Number(totals.present || 0)}</strong>Anwesend</span><span><strong>${Number(totals.open || 0)}</strong>Offen</span><span><strong>${Number(totals.noShow || 0)}</strong>No-Show</span></div>${Number(totals.unassignedBusCount || 0) || Number(totals.missingBoardingStopCount || 0) ? `<p class="notice warning">${Number(totals.unassignedBusCount || 0)} ohne Bus · ${Number(totals.missingBoardingStopCount || 0)} ohne Zustiegsort</p>` : ""}<form class="form-grid v4-smart-form" data-m325-operation-filters><label class="v4-field-full">Namenssuche<input name="search" type="search" placeholder="Teilnehmer suchen" value="${escapeAttr(operationsUiState.search)}"></label><label class="v4-field-four">Status<select name="status"><option value="ALL">Alle</option><option value="OPEN">Offen</option><option value="PRESENT">Anwesend</option><option value="NO_SHOW">No-Show</option></select></label><label class="v4-field-four">Bus<select name="bus"><option value="ALL">Alle</option>${(data.buses || []).map(bus => `<option value="${escapeAttr(bus.busId)}">${escapeHtml(bus.label)}</option>`).join("")}</select></label><label class="v4-field-four">Zustiegsort<select name="stop"><option value="ALL">Alle</option>${(data.stops || []).map(stop => `<option value="${escapeAttr(stop.tripBoardingStopId)}">${escapeHtml(stop.label)}</option>`).join("")}</select></label></form><div class="v4-mobile-records" data-m325-operation-list>${operationCards(data.participants || [])}<p class="subtle" data-m325-operation-empty hidden>Keine Teilnehmer entsprechen den Filtern.</p></div></section>`;
-    panel.querySelector("[data-m325-back]")?.addEventListener("click", returnToFanbuses);
+    panel.innerHTML = `<section class="v4-m325-workspace v4-m325-operations-workspace"><header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m325-back>Zurück</button><div><h2>Fahrtbetrieb</h2><p>${escapeHtml(trip?.displayTitle || "Fanbusfahrt")} · ${escapeHtml(formatCalendarDate(trip?.eventDate))} · Check-in Hinfahrt</p></div></header><div class="v4-m325-counters"><span><strong>${Number(totals.expected || 0)}</strong>Erwartet</span><span><strong>${Number(totals.present || 0)}</strong>Anwesend</span><span><strong>${Number(totals.open || 0)}</strong>Offen</span><span><strong>${Number(totals.noShow || 0)}</strong>No-Show</span></div>${Number(totals.unassignedBusCount || 0) || Number(totals.missingBoardingStopCount || 0) ? `<p class="notice warning v4-m325-operation-warning">${Number(totals.unassignedBusCount || 0)} ohne Bus · ${Number(totals.missingBoardingStopCount || 0)} ohne Zustiegsort</p>` : ""}<form class="form-grid v4-smart-form v4-m325-operation-filters" data-m325-operation-filters><label class="v4-field-full">Suche<input name="search" type="search" placeholder="Teilnehmer suchen" value="${escapeAttr(operationsUiState.search)}"></label><label class="v4-field-four">Status<select name="status"><option value="ALL">Alle</option><option value="OPEN">Offen</option><option value="PRESENT">Anwesend</option><option value="NO_SHOW">No-Show</option></select></label><label class="v4-field-four">Bus<select name="bus"><option value="ALL">Alle</option>${(data.buses || []).map(bus => `<option value="${escapeAttr(bus.busId)}">${escapeHtml(bus.label)}</option>`).join("")}</select></label><label class="v4-field-four">Zustiegsort<select name="stop"><option value="ALL">Alle</option>${(data.stops || []).map(stop => `<option value="${escapeAttr(stop.tripBoardingStopId)}">${escapeHtml(stop.label)}</option>`).join("")}</select></label></form><div class="v4-mobile-records v4-m325-operation-list" data-m325-operation-list>${operationCards(data.participants || [])}<p class="subtle" data-m325-operation-empty hidden>Keine Teilnehmer entsprechen den Filtern.</p></div></section>`;
+    panel.querySelector("[data-m325-back]")?.addEventListener("click", () => returnToFanbuses(returnTripId));
     const filters = panel.querySelector("[data-m325-operation-filters]");
     filters.elements.status.value = operationsUiState.status;
     filters.elements.bus.value = operationsUiState.bus;
@@ -519,13 +570,13 @@ async function renderOperationsWorkspace(panel, summary, tripId) {
     filters.addEventListener("input", () => filterOperations(panel));
     filters.addEventListener("change", () => filterOperations(panel));
     filterOperations(panel);
-    bindOperationActions(panel, summary, tripId);
+    bindOperationActions(panel, summary, tripId, returnTripId);
     requestAnimationFrame(() => window.scrollTo({ top: operationsUiState.scrollY, behavior: "auto" }));
   } catch (error) { panel.innerHTML = errorPanel(error, "Fahrtbetrieb konnte nicht geladen werden"); }
 }
 
 function operationCards(participants) {
-  return participants.map(person => `<article class="v4-compact-record" data-m325-participant="${escapeAttr(`${person.firstName} ${person.lastName}`.toLocaleLowerCase("de-DE"))}" data-status="${escapeAttr(person.checkinStatus)}" data-bus="${escapeAttr(person.busId || "")}" data-stop="${escapeAttr(person.tripBoardingStopId || "")}"><strong>${escapeHtml(`${person.firstName} ${person.lastName}`)}</strong><small>${escapeHtml(person.busLabel || "Kein Bus")} · ${escapeHtml(person.boardingStopLabel || "Kein Zustiegsort")}${person.departureAt ? ` · ${escapeHtml(formatBerlinDateTime(person.departureAt))}` : ""}</small><span class="badge ${person.checkinStatus === "PRESENT" ? "success" : person.checkinStatus === "NO_SHOW" ? "danger" : "neutral"}">${escapeHtml({ OPEN: "Offen", PRESENT: "Anwesend", NO_SHOW: "No-Show" }[person.checkinStatus] || "Offen")}</span><div class="v4-row-actions"><button class="button small primary" data-m325-checkin="PRESENT" data-id="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.checkinRevision)}">✓ Anwesend</button><button class="button small secondary" data-m325-checkin="OPEN" data-id="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.checkinRevision)}">↶ Offen</button><button class="button small danger" data-m325-checkin="NO_SHOW" data-id="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.checkinRevision)}">No-Show</button></div></article>`).join("") || empty("Keine aktiven Teilnehmer.");
+  return participants.map(person => `<article class="v4-compact-record v4-m325-operation-card" data-m325-participant="${escapeAttr(`${person.firstName} ${person.lastName}`.toLocaleLowerCase("de-DE"))}" data-status="${escapeAttr(person.checkinStatus)}" data-bus="${escapeAttr(person.busId || "")}" data-stop="${escapeAttr(person.tripBoardingStopId || "")}"><div class="v4-compact-record-copy v4-m325-record-copy"><strong>${escapeHtml(`${person.firstName} ${person.lastName}`)}</strong><small>${escapeHtml(person.busLabel || "Kein Bus")} · ${escapeHtml(person.boardingStopLabel || "Kein Zustiegsort")}${person.departureAt ? ` · ${escapeHtml(formatBerlinTime(person.departureAt))}` : ""}</small></div><span class="badge ${person.checkinStatus === "PRESENT" ? "success" : person.checkinStatus === "NO_SHOW" ? "danger" : "neutral"}">${escapeHtml({ OPEN: "Offen", PRESENT: "Anwesend", NO_SHOW: "No-Show" }[person.checkinStatus] || "Offen")}</span><div class="v4-row-actions v4-m325-checkin-actions"><button class="button small primary" data-m325-checkin="PRESENT" data-id="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.checkinRevision)}">✓ Anwesend</button><button class="button small secondary" data-m325-checkin="OPEN" data-id="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.checkinRevision)}">↶ Offen</button><button class="button small danger" data-m325-checkin="NO_SHOW" data-id="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.checkinRevision)}">No-Show</button></div></article>`).join("") || empty("Keine aktiven Teilnehmer.");
 }
 
 function filterOperations(panel) {
@@ -541,18 +592,37 @@ function filterOperations(panel) {
   const emptyState = panel.querySelector("[data-m325-operation-empty]"); if (emptyState) emptyState.hidden = visible > 0;
 }
 
-function bindOperationActions(panel, summary, tripId) {
+function bindOperationActions(panel, summary, tripId, returnTripId = "") {
   panel.querySelectorAll("[data-m325-checkin]").forEach(button => button.addEventListener("click", async () => {
-    try { operationsUiState.scrollY = window.scrollY; await runWrite(() => call("fanbus_checkin_set", { participantId: button.dataset.id, expectedRevision: Number(button.dataset.revision), status: button.dataset.m325Checkin }), "Check-in aktualisiert."); await renderOperationsWorkspace(panel, summary, tripId); } catch (error) { showToast(error?.message || "Check-in konnte nicht geändert werden.", "error", 5200); }
+    try { operationsUiState.scrollY = window.scrollY; await runWrite(() => call("fanbus_checkin_set", { participantId: button.dataset.id, expectedRevision: Number(button.dataset.revision), status: button.dataset.m325Checkin }), "Check-in aktualisiert."); await renderOperationsWorkspace(panel, summary, tripId, returnTripId); } catch (error) { showToast(error?.message || "Check-in konnte nicht geändert werden.", "error", 5200); }
   }));
+}
+
+function openWorkspaceRoute(source, route) {
+  const parentDialog = source?.closest?.("dialog");
+  if (parentDialog?.open) parentDialog.close();
+  window.location.hash = route;
 }
 
 function bindTripActions(panel, items) {
   panel.querySelectorAll("[data-m325-companions]").forEach(button => {
-    button.addEventListener("click", () => { window.location.hash = "#/fanbuses?view=companions"; });
+    button.addEventListener("click", () => {
+      const tripId = button.dataset.m325Companions;
+      openWorkspaceRoute(
+        button,
+        `#/fanbuses?view=companions&fromTrip=${encodeURIComponent(tripId)}`
+      );
+    });
   });
   panel.querySelectorAll("[data-m325-operations]").forEach(button => {
-    button.addEventListener("click", () => { operationsUiState = { status: "ALL", bus: "ALL", stop: "ALL", search: "", scrollY: 0 }; window.location.hash = `#/fanbuses?view=operations&trip=${encodeURIComponent(button.dataset.m325Operations)}`; });
+    button.addEventListener("click", () => {
+      operationsUiState = { status: "ALL", bus: "ALL", stop: "ALL", search: "", scrollY: 0 };
+      const tripId = button.dataset.m325Operations;
+      openWorkspaceRoute(
+        button,
+        `#/fanbuses?view=operations&trip=${encodeURIComponent(tripId)}&fromTrip=${encodeURIComponent(tripId)}`
+      );
+    });
   });
   panel.querySelectorAll("[data-m310-edit]").forEach(button => {
     button.addEventListener("click", () => {
@@ -621,10 +691,10 @@ async function openBoardingStops(trip) {
     const buses = busMappings?.buses || [];
     const options = stops.filter(stop => stop.isActive).map(stop => `<option value="${escapeAttr(stop.id)}">${escapeHtml(stop.label)}</option>`).join("");
     const masterRecords = stops.length
-      ? `<div class="v4-mobile-records">${stops.map((stop, index) => `<article class="v4-compact-record">
-        <strong>${escapeHtml(stop.label)}</strong>
-        <small>${stop.isActive ? "Aktiv" : "Inaktiv"}${stop.address ? ` · ${escapeHtml(stop.address)}` : ""}</small>
-        <div class="v4-row-actions">
+      ? `<div class="v4-mobile-records v4-m325-stop-records">${stops.map((stop, index) => `<article class="v4-compact-record v4-m325-stop-card">
+        <div class="v4-compact-record-copy v4-m325-record-copy"><strong>${escapeHtml(stop.label)}</strong>
+        <small>${stop.isActive ? "Aktiv" : "Inaktiv"}${stop.address ? ` · ${escapeHtml(stop.address)}` : ""}</small></div>
+        <div class="v4-row-actions v4-m325-stop-actions">
           <button class="button small secondary" type="button" data-m325-master-move="${escapeAttr(stop.id)}" data-direction="-1"${index === 0 ? " disabled" : ""}>↑</button>
           <button class="button small secondary" type="button" data-m325-master-move="${escapeAttr(stop.id)}" data-direction="1"${index === stops.length - 1 ? " disabled" : ""}>↓</button>
           <button class="button small secondary" type="button" data-m325-master-edit="${escapeAttr(stop.id)}">Bearbeiten</button>
@@ -632,10 +702,10 @@ async function openBoardingStops(trip) {
       </article>`).join("")}</div>`
       : "";
     const tripRecords = assigned.length
-      ? `<div class="v4-mobile-records">${assigned.map((stop, index) => `<article class="v4-compact-record">
-        <strong>${escapeHtml(stop.label)}</strong>
-        <small>${stop.isActive ? "Aktiv" : "Inaktiv"} · ${escapeHtml(formatBerlinDateTime(stop.departureAt))}${stop.tripNote ? ` · ${escapeHtml(stop.tripNote)}` : ""}</small>
-        <div class="v4-row-actions">
+      ? `<div class="v4-mobile-records v4-m325-stop-records">${assigned.map((stop, index) => `<article class="v4-compact-record v4-m325-stop-card">
+        <div class="v4-compact-record-copy v4-m325-record-copy"><strong>${escapeHtml(stop.label)}</strong>
+        <small>${escapeHtml(formatBerlinTime(stop.departureAt))} · ${stop.isActive ? "Aktiv" : "Inaktiv"}${stop.tripNote ? ` · ${escapeHtml(stop.tripNote)}` : ""}</small></div>
+        <div class="v4-row-actions v4-m325-stop-actions">
           <button class="button small secondary" type="button" data-m325-trip-move="${escapeAttr(stop.id)}" data-direction="-1"${index === 0 ? " disabled" : ""}>↑</button>
           <button class="button small secondary" type="button" data-m325-trip-move="${escapeAttr(stop.id)}" data-direction="1"${index === assigned.length - 1 ? " disabled" : ""}>↓</button>
           <button class="button small secondary" type="button" data-m325-trip-edit="${escapeAttr(stop.id)}">Bearbeiten</button>
@@ -643,7 +713,7 @@ async function openBoardingStops(trip) {
       </article>`).join("")}</div>`
       : empty("Für diese Fahrt sind noch keine strukturierten Zustiegsorte hinterlegt.");
     const busStopForms = buses.length
-      ? buses.map(bus => `<form class="form-grid v4-smart-form v4-compact-record" data-m325-bus-stops="${escapeAttr(bus.busId)}" data-revision="${escapeAttr(bus.revision)}">
+      ? buses.map(bus => `<form class="form-grid v4-smart-form v4-compact-record v4-m325-bus-stop-card" data-m325-bus-stops="${escapeAttr(bus.busId)}" data-revision="${escapeAttr(bus.revision)}">
         <strong class="v4-field-full">${escapeHtml(bus.label)}</strong>
         <div class="v4-field-full">${assigned.filter(stop => stop.isActive).map(stop => `<label class="check-row"><input type="checkbox" name="stopId" value="${escapeAttr(stop.id)}"${bus.tripBoardingStopIds.includes(stop.id) ? " checked" : ""}><span>${escapeHtml(stop.label)}</span></label>`).join("")}</div>
         <div class="dialog-actions v4-detail-actions v4-field-full"><button class="button small primary" type="submit">Bus-Zustiege speichern</button></div>
@@ -652,34 +722,24 @@ async function openBoardingStops(trip) {
     const dialog = openDialog({
       title: "Zustiegsorte",
       kicker: trip.displayTitle || "Fanbusfahrt",
-      body: `<div class="v4-m325-workspace">
-        <h3>Stammpunkte</h3>
-        ${masterRecords}
-        <form class="form-grid v4-smart-form" data-m325-master-stop>
-          <label class="v4-field-half">Neuer Stammpunkt<input name="label" maxlength="160" required></label>
-          <label class="v4-field-half">Adresse (optional)<input name="address"></label>
-          <label class="v4-field-full">Standardhinweis<input name="defaultNote"></label>
-          <div class="dialog-actions v4-detail-actions v4-field-full"><button class="button small secondary" type="submit">Stammpunkt anlegen</button></div>
-        </form>
-        <h3>Fahrt-Zustiegsorte</h3>
+      body: `<div class="v4-m325-workspace v4-m325-stops-workspace">
+        <section class="v4-m325-dialog-section"><div class="v4-m325-dialog-section-heading"><h3>Stammpunkte</h3><button class="button small secondary" type="button" data-m325-create-master>Stammpunkt anlegen</button></div>
+        ${masterRecords || empty("Noch keine Stammpunkte vorhanden.")}</section>
+        <section class="v4-m325-dialog-section"><h3>Fahrt-Zustiege</h3>
         <form class="form-grid v4-smart-form" data-m325-trip-stop>
           <label class="v4-field-half">Zustiegsort<select name="boardingStopId" required><option value="">Bitte wählen</option>${options}</select></label>
-          <label class="v4-field-half">Abfahrt<input name="departureAt" type="datetime-local" required></label>
+          <label class="v4-field-half">Abfahrtszeit<input name="departureTime" type="time" value="${escapeAttr(defaultTripStopTime(trip))}" required></label>
           <label class="v4-field-full">Fahrthinweis<input name="tripNote"></label>
-          <div class="dialog-actions v4-detail-actions v4-field-full"><button class="button small primary" type="submit">Halt zur Fahrt hinzufügen</button></div>
+          <div class="dialog-actions v4-detail-actions v4-field-full"><button class="button small primary" type="submit">Zustieg hinzufügen</button></div>
         </form>
-        ${tripRecords}
-        <h3>Busse und Zustiege</h3>
-        ${busStopForms}
+        ${tripRecords}</section>
+        <section class="v4-m325-dialog-section"><h3>Busse und Zustiege</h3>${busStopForms}</section>
       </div>`
     });
-    dialog.querySelector("[data-m325-master-stop]")?.addEventListener("submit", async event => {
-      event.preventDefault(); const form = event.currentTarget; if (!form.reportValidity()) return;
-      await runWrite(() => call("fanbus_boarding_stop_upsert", { ...Object.fromEntries(new FormData(form)), position: stops.length + 1, isActive: true }), "Stammpunkt angelegt."); dialog.close(); void openBoardingStops(trip);
-    });
+    dialog.querySelector("[data-m325-create-master]")?.addEventListener("click", () => openMasterStopCreate(trip, stops.length, dialog));
     dialog.querySelector("[data-m325-trip-stop]")?.addEventListener("submit", async event => {
       event.preventDefault(); const form = event.currentTarget; if (!form.reportValidity()) return;
-      const departureAt = berlinLocalToIso(new FormData(form).get("departureAt"), "Abfahrtszeit");
+      const departureAt = tripTimeToBerlinIso(trip, new FormData(form).get("departureTime"), "Abfahrtszeit");
       await runWrite(() => call("fanbus_trip_boarding_stop_upsert", { tripId: trip.id, boardingStopId: new FormData(form).get("boardingStopId"), departureAt, tripNote:new FormData(form).get("tripNote")||null, position: assigned.length + 1, isActive: true }), "Fahrtzustiegsort angelegt."); dialog.close(); void openBoardingStops(trip);
     });
     dialog.querySelectorAll("[data-m325-master-edit]").forEach(button=>button.addEventListener("click",()=>openMasterStopEditor(trip,stops.find(stop=>stop.id===button.dataset.m325MasterEdit),dialog)));
@@ -692,9 +752,37 @@ async function openBoardingStops(trip) {
 
 function bindStopReorder(dialog,selector,items,action,extra,trip){dialog.querySelectorAll(selector).forEach(button=>button.addEventListener("click",async()=>{const id=button.dataset.m325MasterMove||button.dataset.m325TripMove;const index=items.findIndex(item=>item.id===id);const target=index+Number(button.dataset.direction);if(index<0||target<0||target>=items.length)return;const ids=items.map(item=>item.id);[ids[index],ids[target]]=[ids[target],ids[index]];await runWrite(()=>call(action,{...extra,ids}),"Reihenfolge aktualisiert.");dialog.close();void openBoardingStops(trip);}));}
 
+function openMasterStopCreate(trip, position, parent) {
+  const dialog = openDialog({
+    title: "Stammpunkt anlegen",
+    body: `<form class="form-grid v4-smart-form" data-m325-master-stop>
+      <label class="v4-field-half">Name<input name="label" maxlength="160" required></label>
+      <label class="v4-field-half">Adresse (optional)<input name="address"></label>
+      <label class="v4-field-full">Standardhinweis<input name="defaultNote"></label>
+      <div class="dialog-actions v4-detail-actions v4-field-full"><button class="button primary" type="submit">Speichern</button></div>
+    </form>`
+  });
+  dialog.querySelector("[data-m325-master-stop]")?.addEventListener("submit", async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.reportValidity()) return;
+    await runWrite(
+      () => call("fanbus_boarding_stop_upsert", {
+        ...Object.fromEntries(new FormData(form)),
+        position: position + 1,
+        isActive: true
+      }),
+      "Stammpunkt angelegt."
+    );
+    dialog.close();
+    parent?.close();
+    void openBoardingStops(trip);
+  });
+}
+
 function openMasterStopEditor(trip,stop,parent){if(!stop)return;const dialog=openDialog({title:"Stammpunkt bearbeiten",body:`<form class="form-grid v4-smart-form" data-m325-edit-master><label class="v4-field-half">Name<input name="label" maxlength="160" value="${escapeAttr(stop.label)}" required></label><label class="v4-field-half">Adresse<input name="address" value="${escapeAttr(stop.address||"")}"></label><label class="v4-field-full">Standardhinweis<input name="defaultNote" value="${escapeAttr(stop.defaultNote||"")}"></label><label class="check-row v4-compact-check v4-field-full"><input name="isActive" type="checkbox"${stop.isActive?" checked":""}><span>Aktiv</span></label><div class="dialog-actions v4-detail-actions v4-field-full"><button class="button primary">Speichern</button></div></form>`});dialog.querySelector("form").addEventListener("submit",async event=>{event.preventDefault();const values=Object.fromEntries(new FormData(event.currentTarget));await runWrite(()=>call("fanbus_boarding_stop_upsert",{id:stop.id,expectedRevision:stop.revision,label:values.label,address:values.address||null,defaultNote:values.defaultNote||null,position:stop.position,isActive:values.isActive==="on"}),"Stammpunkt aktualisiert.");dialog.close();parent.close();void openBoardingStops(trip);});}
 
-function openTripStopEditor(trip,stop,parent){if(!stop)return;const dialog=openDialog({title:"Fahrt-Zustieg bearbeiten",body:`<form class="form-grid v4-smart-form" data-m325-edit-trip-stop><label class="v4-field-full">Abfahrt<input name="departureAt" type="datetime-local" value="${escapeAttr(toBerlinInputValue(stop.departureAt))}" required></label><label class="v4-field-full">Fahrthinweis<input name="tripNote" value="${escapeAttr(stop.tripNote||"")}"></label><label class="check-row v4-compact-check v4-field-full"><input name="isActive" type="checkbox"${stop.isActive?" checked":""}><span>Aktiv</span></label><div class="dialog-actions v4-detail-actions v4-field-full"><button class="button primary">Speichern</button></div></form>`});dialog.querySelector("form").addEventListener("submit",async event=>{event.preventDefault();const values=Object.fromEntries(new FormData(event.currentTarget));await runWrite(()=>call("fanbus_trip_boarding_stop_upsert",{id:stop.id,tripId:trip.id,boardingStopId:stop.boardingStopId,expectedRevision:stop.revision,departureAt:berlinLocalToIso(values.departureAt,"Abfahrtszeit"),position:stop.position,tripNote:values.tripNote||null,isActive:values.isActive==="on"}),"Fahrt-Zustieg aktualisiert.");dialog.close();parent.close();void openBoardingStops(trip);});}
+function openTripStopEditor(trip,stop,parent){if(!stop)return;const dialog=openDialog({title:"Fahrt-Zustieg bearbeiten",body:`<form class="form-grid v4-smart-form" data-m325-edit-trip-stop><label class="v4-field-full">Abfahrtszeit<input name="departureTime" type="time" value="${escapeAttr(toBerlinTimeInputValue(stop.departureAt))}" required></label><label class="v4-field-full">Fahrthinweis<input name="tripNote" value="${escapeAttr(stop.tripNote||"")}"></label><label class="check-row v4-compact-check v4-field-full"><input name="isActive" type="checkbox"${stop.isActive?" checked":""}><span>Aktiv</span></label><div class="dialog-actions v4-detail-actions v4-field-full"><button class="button primary">Speichern</button></div></form>`});dialog.querySelector("form").addEventListener("submit",async event=>{event.preventDefault();const values=Object.fromEntries(new FormData(event.currentTarget));await runWrite(()=>call("fanbus_trip_boarding_stop_upsert",{id:stop.id,tripId:trip.id,boardingStopId:stop.boardingStopId,expectedRevision:stop.revision,departureAt:tripTimeToBerlinIso(trip,values.departureTime,"Abfahrtszeit"),position:stop.position,tripNote:values.tripNote||null,isActive:values.isActive==="on"}),"Fahrt-Zustieg aktualisiert.");dialog.close();parent.close();void openBoardingStops(trip);});}
 
 function availableEventLabel(event) {
   const visibility = event.visibility === "PUBLIC" ? "Öffentlich" : "Intern";
@@ -752,11 +840,8 @@ function tripForm(trip) {
     || defaultRegistrationClosesInput(trip.departureAt);
 
   return `<form id="m310TripEditorForm" class="form-grid v4-smart-form">
-    <label class="v4-field-seven">Abfahrt
+    <label class="v4-field-full">Abfahrt
       <input name="departureAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(trip.departureAt))}" ${required}>
-    </label>
-    <label class="v4-field-five">Kapazität
-      <input name="capacity" type="number" min="1" step="1" value="${escapeAttr(trip.capacity ?? "")}" ${required}>
     </label>
     <label class="v4-field-full">Treffpunkt / Abfahrtsort
       <textarea name="departureInfo" rows="3" ${required}>${escapeHtml(trip.departureInfo || "")}</textarea>
@@ -778,7 +863,6 @@ function tripUpdatePayload(trip, values) {
     departureInfo: String(values.departureInfo || "").trim() || null,
     registrationClosesAt: berlinLocalToIso(values.registrationClosesAt, "Das Anmeldeende"),
     priceCents: euroInputToCents(values.price),
-    capacity: capacityValue(values.capacity),
     privacyReference: PRIVACY_REFERENCE,
     termsReference: TERMS_REFERENCE
   };
@@ -1150,21 +1234,21 @@ function renderRegistrationsDialog(dialog, trip, data) {
 }
 
 function busForm(bus = null) {
-  return `<form class="form-grid v4-smart-form">
+  return `<form class="form-grid v4-smart-form v4-m325-bus-form" data-m325-bus-form>
     <label class="v4-field-full">Busname
       <input name="label" maxlength="160" value="${escapeAttr(bus?.label || "")}" required>
     </label>
-    <label>Kategorie
+    <label class="v4-field-half">Kategorie
       <select name="category" required>
         <option value="NORMAL"${bus?.category === "NORMAL" || !bus ? " selected" : ""}>Normal</option>
         <option value="RUHIG"${bus?.category === "RUHIG" ? " selected" : ""}>Ruhig</option>
         <option value="PARTY"${bus?.category === "PARTY" ? " selected" : ""}>Party</option>
       </select>
     </label>
-    <label>Kapazität
+    <label class="v4-field-half">Kapazität
       <input name="capacity" type="number" min="1" step="1" value="${escapeAttr(bus?.capacity || "")}" required>
     </label>
-    <label class="v4-field-full v4-compact-check">
+    <label class="check-row v4-field-full v4-compact-check">
       <input name="isActive" type="checkbox"${bus?.isActive === false ? "" : " checked"}>
       <span>Bus ist aktiv</span>
     </label>
@@ -1187,7 +1271,12 @@ function openBusEditor(trip, data, bus) {
         capacity: Number(values.capacity),
         isActive: values.isActive === "on"
       });
-      const next = await call("fanbus_buses_list", { tripId: trip.id });
+      const [next, nextSnapshot] = await Promise.all([
+        call("fanbus_buses_list", { tripId: trip.id }),
+        call("fanbus_trips_list")
+      ]);
+      snapshot = nextSnapshot || { trips: [] };
+      render();
       showToast("Bus wurde aktualisiert.", "success", 3800);
       setTimeout(() => openBusManager(trip, next), 0);
     }
@@ -1222,7 +1311,12 @@ function openBusManager(trip, data) {
         capacity: Number(values.capacity),
         isActive: values.isActive === "on"
       });
-      const next = await call("fanbus_buses_list", { tripId: trip.id });
+      const [next, nextSnapshot] = await Promise.all([
+        call("fanbus_buses_list", { tripId: trip.id }),
+        call("fanbus_trips_list")
+      ]);
+      snapshot = nextSnapshot || { trips: [] };
+      render();
       showToast("Bus wurde angelegt.", "success", 3800);
       setTimeout(() => openBusManager(trip, next), 0);
     }

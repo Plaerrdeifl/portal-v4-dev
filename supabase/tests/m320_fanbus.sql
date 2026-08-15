@@ -95,6 +95,17 @@ insert into app_modules.fanbus_trips (
     2500, 20, 'privacy-v1', 'terms-v1', 'PUBLISHED'
   );
 
+-- M325 F5: Die fachliche Fahrtkapazität kommt ab jetzt ausschließlich aus
+-- aktiven Bussen. Die Basiskapazitäten halten die bestehenden M320-Szenarien
+-- unverändert, während Legacy fanbus_trips.capacity bewusst ohne Wirkung bleibt.
+insert into app_modules.fanbus_buses (
+  id, trip_id, label, category, capacity, is_active
+) values
+  ('00000000-0000-4320-8500-000000000001', '00000000-0000-4320-8200-000000000001', 'M320 Basis 1', 'NORMAL', 4, true),
+  ('00000000-0000-4320-8500-000000000002', '00000000-0000-4320-8200-000000000002', 'M320 Basis 2', 'NORMAL', 3, true),
+  ('00000000-0000-4320-8500-000000000003', '00000000-0000-4320-8200-000000000003', 'M320 Basis 3', 'NORMAL', 20, true),
+  ('00000000-0000-4320-8500-000000000004', '00000000-0000-4320-8200-000000000004', 'M320 Basis 4', 'NORMAL', 20, true);
+
 create temporary table m320_results (
   name text primary key,
   result jsonb
@@ -334,6 +345,9 @@ select is(
 );
 
 update app_modules.fanbus_trips set capacity = 10 where id = '00000000-0000-4320-8200-000000000002';
+update app_modules.fanbus_buses
+set capacity = 10
+where id = '00000000-0000-4320-8500-000000000002';
 insert into m320_results values (
   'fairness', app_private.fanbus_submit_registration(
     '00000000-0000-4320-8200-000000000002', null,

@@ -15,6 +15,9 @@ select ok((select relrowsecurity from pg_class where oid='app_modules.fanbus_com
 select ok((select relrowsecurity from pg_class where oid='app_modules.fanbus_participant_checkins'::regclass), 'Check-ins haben RLS');
 select ok(not has_table_privilege('anon', 'app_modules.fanbus_companion_lists', 'SELECT'), 'Anon kann Listen nicht lesen');
 select ok(not has_table_privilege('authenticated', 'app_modules.fanbus_participant_checkins', 'SELECT'), 'Browser kann Check-ins nicht lesen');
+select has_function('app_private', 'fanbus_effective_capacity', array['uuid'], 'Private effektive Fahrtkapazität existiert');
+select ok(not has_function_privilege('anon', 'app_private.fanbus_effective_capacity(uuid)', 'EXECUTE'), 'Anon kann effektive Kapazität nicht direkt aufrufen');
+select ok(not has_function_privilege('authenticated', 'app_private.fanbus_effective_capacity(uuid)', 'EXECUTE'), 'Browser kann effektive Kapazität nicht direkt aufrufen');
 select has_column('app_modules', 'fanbus_registrations', 'trip_boarding_stop_id', 'Teilnehmerzustiegsort vorhanden');
 select has_column('app_modules', 'fanbus_registrations', 'operational_note', 'Fahrt-Hinweis vorhanden');
 select has_column('app_modules', 'fanbus_registrations', 'companion_list_member_id', 'Template-Herkunft vorhanden');
@@ -112,7 +115,9 @@ insert into m325_results values ('trip3_inactive',app_private.api_fanbus_trip_bo
 
 insert into app_modules.fanbus_buses(id,trip_id,label,category,capacity,is_active,created_by,updated_by) values
   ('00000000-0000-4325-8400-000000000001','00000000-0000-4325-8200-000000000001','Bus Eins','NORMAL',20,true,'00000000-0000-4325-8000-000000000003','00000000-0000-4325-8000-000000000003'),
-  ('00000000-0000-4325-8400-000000000002','00000000-0000-4325-8200-000000000001','Bus Zwei','PARTY',20,true,'00000000-0000-4325-8000-000000000003','00000000-0000-4325-8000-000000000003');
+  ('00000000-0000-4325-8400-000000000002','00000000-0000-4325-8200-000000000001','Bus Zwei','PARTY',20,true,'00000000-0000-4325-8000-000000000003','00000000-0000-4325-8000-000000000003'),
+  ('00000000-0000-4325-8400-000000000003','00000000-0000-4325-8200-000000000002','Bus Fahrt Zwei','NORMAL',5,true,'00000000-0000-4325-8000-000000000003','00000000-0000-4325-8000-000000000003'),
+  ('00000000-0000-4325-8400-000000000006','00000000-0000-4325-8200-000000000003','M325 Basis Fahrt Drei','NORMAL',30,true,'00000000-0000-4325-8000-000000000003','00000000-0000-4325-8000-000000000003');
 insert into m325_results values ('map_bus_1',app_private.api_fanbus_bus_boarding_stops_set(jsonb_build_object(
   'tripId','00000000-0000-4325-8200-000000000001','busId','00000000-0000-4325-8400-000000000001','expectedRevision',1,
   'tripBoardingStopIds',jsonb_build_array((select result->>'id' from m325_results where name='trip_a')))));
@@ -504,6 +509,141 @@ select is((select email from app_modules.fanbus_registrations where booking_id=(
 select is((select companion_list_member_id::text from app_modules.fanbus_registrations where booking_id=(select (result->>'bookingId')::uuid from m325_results where name='mixed_booking') and first_name='Nina'),(select result->>'id' from m325_results where name='foreign_member_after_primary'),'Template-Mitfahrer behält seine Herkunft');
 select is((select companion_list_member_id from app_modules.fanbus_registrations where booking_id=(select (result->>'bookingId')::uuid from m325_results where name='mixed_booking') and first_name='Manuel'),null,'Normaler Mitfahrer erhält keine Template-Herkunft');
 select hasnt_column('app_modules','fanbus_companion_list_members','email','Template speichert weiterhin keine E-Mail');
+
+-- F5 Round 2: aktive Busse sind die einzige fachliche Kapazitätsquelle.
+select set_config('request.jwt.claim.sub','00000000-0000-4325-8000-000000000003',true);
+select set_config('app.m325_registration_context','[]',true);
+insert into app_modules.events(id,event_type,title,event_date,event_time,visibility) values
+  ('00000000-0000-4325-8100-000000000004','OTHER','M325 Kapazität',current_date+13,time '18:00','PUBLIC');
+insert into app_modules.fanbus_trips(
+  id,event_id,departure_at,departure_info,registration_opens_at,
+  registration_closes_at,price_cents,capacity,privacy_reference,terms_reference,status
+) values (
+  '00000000-0000-4325-8200-000000000004','00000000-0000-4325-8100-000000000004',
+  now()+interval '11 days','M325 Kapazitätstest',now()-interval '1 day',
+  now()+interval '10 days',2500,1,'privacy-v1','terms-v1','PUBLISHED'
+);
+insert into app_modules.fanbus_buses(
+  id,trip_id,label,category,capacity,is_active,created_by,updated_by
+) values
+  ('00000000-0000-4325-8400-000000000004','00000000-0000-4325-8200-000000000004','Kapazität 54','NORMAL',54,true,'00000000-0000-4325-8000-000000000003','00000000-0000-4325-8000-000000000003'),
+  ('00000000-0000-4325-8400-000000000005','00000000-0000-4325-8200-000000000004','Kapazität 46','PARTY',46,true,'00000000-0000-4325-8000-000000000003','00000000-0000-4325-8000-000000000003');
+
+select is(
+  app_private.fanbus_effective_capacity('00000000-0000-4325-8200-000000000004'),
+  100,
+  'Aktive Busse 54 plus 46 ergeben effektive Kapazität 100'
+);
+select lives_ok(
+  $$select app_private.api_fanbus_bus_upsert('{"id":"00000000-0000-4325-8400-000000000005","tripId":"00000000-0000-4325-8200-000000000004","expectedRevision":1,"label":"Kapazität 46","category":"PARTY","capacity":46,"isActive":false}'::jsonb)$$,
+  'Zweiter Kapazitätsbus kann ohne Belegung deaktiviert werden'
+);
+select is(
+  app_private.fanbus_effective_capacity('00000000-0000-4325-8200-000000000004'),
+  54,
+  'Inaktiver zweiter Bus zählt nicht zur effektiven Kapazität'
+);
+select lives_ok(
+  $$select app_private.api_fanbus_bus_upsert('{"id":"00000000-0000-4325-8400-000000000005","tripId":"00000000-0000-4325-8200-000000000004","expectedRevision":2,"label":"Kapazität 46","category":"PARTY","capacity":46,"isActive":true}'::jsonb)$$,
+  'Zweiter Kapazitätsbus kann wieder aktiviert werden'
+);
+select is(
+  (public.pd_public_fanbus_trip('00000000-0000-4325-8200-000000000004')->>'capacity')::integer,
+  100,
+  'Public Trip liefert effektive statt Legacy-Kapazität'
+);
+select is(
+  (select (value->>'capacity')::integer
+   from jsonb_array_elements(public.pd_public_fanbus_trips()->'trips') value
+   where value->>'tripId'='00000000-0000-4325-8200-000000000004'),
+  100,
+  'Public Trip-Liste liefert effektive statt Legacy-Kapazität'
+);
+select is(
+  (select (value->>'capacity')::integer
+   from jsonb_array_elements(app_private.api_fanbus_trips_list()->'trips') value
+   where value->>'id'='00000000-0000-4325-8200-000000000004'),
+  100,
+  'Interner Fahrt-Snapshot liefert effektive statt Legacy-Kapazität'
+);
+
+insert into m325_results values ('capacity_core_active',app_private.fanbus_submit_booking_core(
+  '00000000-0000-4325-8200-000000000004','GUEST',null,
+  '{"firstName":"Core","lastName":"Capacity","email":"core-capacity@example.invalid","busPreference":"EGAL"}'::jsonb,
+  '[]'::jsonb,true,true,'00000000-0000-4325-8300-000000000020'
+));
+select is(
+  (select result->>'outcome' from m325_results where name='capacity_core_active'),
+  'CREATED',
+  'Registrierungs-Core ignoriert widersprüchliche Legacy-Kapazität eins'
+);
+select is(
+  (public.pd_public_fanbus_trip('00000000-0000-4325-8200-000000000004')->>'remainingCapacity')::integer,
+  99,
+  'Restkapazität basiert auf effektiver Kapazität'
+);
+
+create temporary table m325_capacity_bookings(seq integer primary key,id uuid not null) on commit drop;
+insert into m325_capacity_bookings(seq,id)
+select value,extensions.gen_random_uuid() from generate_series(1,99) value;
+insert into app_modules.fanbus_bookings(id,trip_id,source)
+select id,'00000000-0000-4325-8200-000000000004','GUEST'
+from m325_capacity_bookings;
+insert into app_modules.fanbus_registrations(
+  trip_id,booking_id,booking_role,participant_sequence,
+  first_name,last_name,email,bus_preference,source,status,
+  privacy_reference,terms_reference,privacy_accepted_at,terms_accepted_at
+)
+select
+  '00000000-0000-4325-8200-000000000004',id,'PRIMARY',1,
+  'Kapazität',seq::text,'capacity-'||seq||'@example.invalid','EGAL','GUEST','ACTIVE',
+  'privacy-v1','terms-v1',now(),now()
+from m325_capacity_bookings;
+
+select is(
+  (public.pd_public_fanbus_trip('00000000-0000-4325-8200-000000000004')->>'registrationStatus'),
+  'WAITLIST',
+  'WAITLIST-Schwelle basiert auf effektiver Kapazität'
+);
+insert into m325_results values ('capacity_group_waitlist',app_private.fanbus_submit_booking_core(
+  '00000000-0000-4325-8200-000000000004','GUEST',null,
+  '{"firstName":"Gruppe","lastName":"Primary","email":"capacity-group-primary@example.invalid","busPreference":"EGAL"}'::jsonb,
+  '[{"firstName":"Gruppe","lastName":"Companion","email":"capacity-group-companion@example.invalid","busPreference":"EGAL"}]'::jsonb,
+  true,true,'00000000-0000-4325-8300-000000000021'
+));
+select is(
+  (select result->>'outcome' from m325_results where name='capacity_group_waitlist'),
+  'WAITLISTED',
+  'Registrierungs-Core setzt die komplette Gruppe an effektiver Grenze auf Warteliste'
+);
+select is(
+  (select count(distinct status)::integer from app_modules.fanbus_registrations
+   where booking_id=(select (result->>'bookingId')::uuid from m325_results where name='capacity_group_waitlist')),
+  1,
+  'Bestehende Ganz-oder-ganz-Wartelisten-Semantik bleibt erhalten'
+);
+
+select lives_ok(
+  $$select app_private.api_fanbus_bus_upsert('{"id":"00000000-0000-4325-8400-000000000005","tripId":"00000000-0000-4325-8200-000000000004","expectedRevision":3,"label":"Kapazität 46","category":"PARTY","capacity":46,"isActive":false}'::jsonb)$$,
+  'Effektive Kapazität darf unter bestehende aktive Teilnehmer sinken'
+);
+select is(
+  (select count(*)::integer from app_modules.fanbus_registrations
+   where trip_id='00000000-0000-4325-8200-000000000004' and status='ACTIVE'),
+  100,
+  'Kapazitätsreduktion demotet oder löscht bestehende ACTIVE Teilnehmer nicht'
+);
+select throws_ok(
+  format(
+    'select app_private.api_fanbus_waitlist_promote(%L::jsonb)',
+    (select jsonb_build_object('id',id,'expectedRevision',revision)::text
+     from app_modules.fanbus_registrations
+     where trip_id='00000000-0000-4325-8200-000000000004' and status='WAITLISTED'
+     order by waitlisted_at,participant_sequence,id limit 1)
+  ),
+  'P3203','FANBUS_TRIP_CAPACITY_EXHAUSTED',
+  'FIFO-Promotion verwendet die reduzierte effektive Kapazität'
+);
 
 select * from finish();
 rollback;

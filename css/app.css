@@ -6109,18 +6109,79 @@ html[data-portal-area="portal"] .v4-toolbar p{
     font-size:1.05rem;
   }
 }
-/* M325 mobile Fahrtbetrieb */
-.v4-m325-workspace { display: grid; gap: 16px; }
-.v4-m325-counters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.v4-m325-counters span { min-height: 64px; padding: 10px; border: 1px solid var(--border, #d7dce3); border-radius: 12px; display: grid; gap: 2px; color: var(--text-muted, #56616f); }
-.v4-m325-counters strong { color: var(--text, #17202a); font-size: 1.35rem; }
-.v4-m325-member { padding-top: 10px; margin-top: 10px; border-top: 1px solid var(--border, #d7dce3); display: grid; gap: 2px; }
-.v4-m325-workspace .button { min-height: 44px; }
+/* M325 Fanbus: kompakte Workspaces, Karten und Dialogformulare */
+#m310FanbusPage.v4-m325-workspace-active .v4-section-heading,
+#m310FanbusPage.v4-m325-workspace-active .v4-subheading-row { display: none; }
+.v4-m325-workspace { display: grid; gap: 14px; min-width: 0; }
+.v4-m325-workspace-header { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.v4-m325-workspace-header > div { min-width: 0; }
+.v4-m325-workspace-header h2 { margin: 0; font-size: 1.28rem; line-height: 1.15; }
+.v4-m325-workspace-header p { margin: 4px 0 0; color: var(--text-muted, #56616f); line-height: 1.4; }
+.v4-m325-workspace-loading { min-height: 0; }
+.v4-m325-workspace-section,
+.v4-m325-dialog-section { display: grid; gap: 9px; min-width: 0; }
+.v4-m325-workspace-section h3,
+.v4-m325-dialog-section h3 { margin: 0; }
+.v4-m325-dialog-section + .v4-m325-dialog-section { padding-top: 13px; border-top: 1px solid var(--border, #d7dce3); }
+.v4-m325-dialog-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.v4-m325-record-copy { display: grid; gap: 3px; min-width: 0; width: 100%; }
+.v4-m325-record-copy strong,
+.v4-m325-record-copy small { min-width: 0; overflow-wrap: anywhere; }
+.v4-m325-list-card,
+.v4-m325-operation-card,
+.v4-m325-stop-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; align-items: start; min-width: 0; }
+.v4-m325-list-card > .v4-m325-record-copy,
+.v4-m325-list-card > .v4-m325-list-actions,
+.v4-m325-list-card > .v4-m325-member,
+.v4-m325-operation-card > .v4-m325-checkin-actions,
+.v4-m325-stop-card > .v4-m325-stop-actions { grid-column: 1 / -1; }
+.v4-m325-member { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding-top: 10px; border-top: 1px solid var(--border, #d7dce3); }
+.v4-m325-workspace .v4-row-actions,
+.v4-m325-stop-card .v4-row-actions { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 7px; min-width: 0; }
+.v4-m325-workspace .v4-row-actions .button,
+.v4-m325-stop-card .v4-row-actions .button { min-height: 40px; min-width: max-content; white-space: nowrap; }
+.v4-m325-new-list { padding: 12px; border: 1px solid var(--border, #d7dce3); border-radius: 13px; background: var(--surface-soft, #f5f7fa); }
+.v4-m325-counters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.v4-m325-counters span { min-height: 56px; padding: 8px 10px; border: 1px solid var(--border, #d7dce3); border-radius: 11px; display: grid; gap: 0; color: var(--text-muted, #56616f); }
+.v4-m325-counters strong { color: var(--text, #17202a); font-size: 1.25rem; line-height: 1.15; }
+.v4-m325-operation-warning { margin: 0; padding: 9px 11px; }
+.v4-m325-operation-filters { gap: 8px; }
+.v4-m325-operation-card > .badge { justify-self: end; align-self: start; }
+.v4-m325-checkin-actions { padding-top: 2px; border-top: 1px solid var(--border, #d7dce3); }
+.v4-m325-bus-stop-card { margin: 0; }
+.v4-m325-bus-stop-card .check-row { margin-bottom: 6px; }
+.v4-m325-trip-detail { display: grid; gap: 10px; }
+.v4-m325-trip-facts { gap: 7px; }
+.v4-m325-trip-facts > div { padding: 8px 10px; }
+.v4-m325-trip-departure { border: 1px solid rgba(24,118,211,.24); background: rgba(24,118,211,.08) !important; }
+.v4-m325-trip-registration-window strong { line-height: 1.4; }
 @media (max-width: 430px) {
+  .v4-m325-workspace { gap: 11px; }
+  .v4-m325-workspace-header { align-items: center; gap: 9px; }
+  .v4-m325-workspace-header .button { min-height: 40px; flex: none; }
+  .v4-m325-list-card,
+  .v4-m325-operation-card,
+  .v4-m325-stop-card { grid-template-columns: minmax(0, 1fr) auto !important; padding: 10px !important; }
+  .v4-m325-list-card > *,
+  .v4-m325-stop-card > * { min-width: 0; }
+  .v4-m325-member-actions .button,
+  .v4-m325-list-actions .button,
+  .v4-m325-checkin-actions .button,
+  .v4-m325-stop-actions .button { flex: 0 1 auto; width: auto !important; padding-inline: 10px; }
+  .v4-m325-trip-facts { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .v4-m325-trip-facts > .full,
+  .v4-m325-trip-facts > .v4-m325-trip-departure { grid-column: 1 / -1 !important; }
   [data-m325-master-stop] > .v4-field-half,
   [data-m325-trip-stop] > .v4-field-half,
   [data-m325-edit-master] > .v4-field-half,
   [data-m325-member-form] > .v4-field-half,
+  [data-m325-bus-form] > .v4-field-half { grid-column: 1 / -1 !important; }
+  [data-m325-operation-filters] > .v4-field-four { grid-column: span 6 !important; }
+  .v4-m325-dialog-section-heading { align-items: flex-start; flex-direction: column; }
+}
+@media (max-width: 350px) {
   [data-m325-operation-filters] > .v4-field-four { grid-column: 1 / -1 !important; }
+  .v4-m325-trip-facts { grid-template-columns: 1fr !important; }
+  .v4-m325-trip-facts > * { grid-column: auto !important; }
 }
 @media (min-width: 720px) { .v4-m325-counters { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
