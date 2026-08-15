@@ -46,13 +46,16 @@ function assertTwoLineMobileTitle(selector) {
   assert.doesNotMatch(rule, /(?:^|;)\s*(?:height|max-height)\s*:/);
 }
 
-test("M310 mobile card exposes one primary status and one capacity value", () => {
+test("M310 mobile card exposes one primary status without internal capacity values", () => {
   assert.match(fanbuses, /function mobileTripStatus\(trip\)/);
   assert.match(fanbuses, /if \(trip\.status === "DRAFT"\) return \{ label: "Entwurf"/);
   assert.match(fanbuses, /NOT_STARTED: \{ label: "Startet später"/);
   assert.match(fanbuses, /v4-m310-mobile-trip-meta[\s\S]+mobileTripStatusBadge\(trip\)/);
   assert.doesNotMatch(fanbuses, /v4-m310-mobile-trip[\s\S]{0,900}tripBadges\(trip\)/);
-  assert.match(fanbuses, /Kapazität offen/);
+  const mobileStart = fanbuses.indexOf("function tripMobileList(items)");
+  const mobileEnd = fanbuses.indexOf("function setStatus", mobileStart);
+  const mobileList = fanbuses.slice(mobileStart, mobileEnd);
+  assert.doesNotMatch(mobileList, /capacityLabel|Anmeldungen|Kapazität|activeRegistrationCount/);
   assertTwoLineMobileTitle("#m310FanbusList .v4-m310-mobile-trip-title");
   assert.match(css, /v4-m310-mobile-trip>\.v4-row-chevron/);
 });
@@ -102,14 +105,14 @@ test("M310 registrations use compact operational records without empty cancellat
   );
 });
 
-test("M310 editor removes the manual start field and defaults the close date in Berlin calendar days", () => {
+test("M310 central editor exposes the existing registration window and keeps the Berlin close default", () => {
   assert.match(fanbuses, /Treffpunkt \/ Abfahrtsort/);
-  assert.doesNotMatch(fanbuses, /name="registrationOpensAt"/);
-  assert.doesNotMatch(fanbuses, />Anmeldung startet/);
+  assert.match(fanbuses, /name="registrationOpensAt"/);
+  assert.match(fanbuses, />Anmeldung beginnt/);
   assert.match(fanbuses, /function defaultRegistrationClosesInput\(departureAt\)/);
   assert.match(fanbuses, /Number\(match\[3\]\) - 3/);
   assert.match(fanbuses, /T20:00/);
-  assert.doesNotMatch(fanbuses, /registrationOpensAt: berlinLocalToIso/);
+  assert.match(fanbuses, /registrationOpensAt: berlinLocalToIso/);
 });
 
 test("M210 and M310 editors use the shared member and finance dialog contract", () => {
@@ -160,7 +163,7 @@ test("cash, M210 and M310 retain their intended responsive smart-form tracks on 
   const tripFormSource = fanbuses.slice(tripFormStart, tripFormEnd);
   assert.match(tripFormSource, /v4-field-full">Abfahrt/);
   assert.doesNotMatch(tripFormSource, /name="capacity"/);
-  assert.match(tripFormSource, /v4-field-seven">Anmeldung endet[\s\S]+v4-field-five">Fahrtpreis/);
+  assert.match(tripFormSource, /v4-field-seven">Anmeldung beginnt[\s\S]+v4-field-seven">Anmeldung endet[\s\S]+v4-field-five">Fahrtpreis/);
 
   assert.doesNotMatch(
     css,

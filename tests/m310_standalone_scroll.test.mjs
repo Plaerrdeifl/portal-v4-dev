@@ -163,10 +163,10 @@ test("M310 portal and WordPress use the same canonical registration deep link", 
     ),
     readFile(resolve(root, "js", "fanbus-registration.js"), "utf8")
   ]);
-  const tripActions = sourceBlock(
+  const tripDetail = sourceBlock(
     fanbuses,
-    "function tripActions(trip)",
-    "function tripDetailMarkup(trip)"
+    "function tripDetailMarkup(trip)",
+    "function openTripDetail(trip)"
   );
   const renderTrip = sourceBlock(
     plugin,
@@ -179,7 +179,7 @@ test("M310 portal and WordPress use the same canonical registration deep link", 
     "elements.portalForm.addEventListener"
   );
 
-  const portalLink = tripActions.match(
+  const portalLink = tripDetail.match(
     /href="(\.\/fanbus-anmeldung)\?trip=\$\{escapeAttr\(trip\.id\)\}"/
   );
   const wordpressLink = plugin.match(
@@ -192,8 +192,8 @@ test("M310 portal and WordPress use the same canonical registration deep link", 
     new URL(portalLink[1], "https://portal.example.de/").pathname,
     wordpressLink[1]
   );
-  assert.doesNotMatch(tripActions, /fanbus-anmeldung\.html/);
-  assert.match(tripActions, /\?trip=\$\{escapeAttr\(trip\.id\)\}/);
+  assert.doesNotMatch(tripDetail, /fanbus-anmeldung\.html/);
+  assert.match(tripDetail, /\?trip=\$\{escapeAttr\(trip\.id\)\}/);
   assert.match(renderTrip, /add_query_arg\('trip', \$trip\['tripId'\], \$portal_url\)/);
   assert.match(renderTrip, /href="<\?php echo esc_url\(\$deep_link\); \?>"/);
   assert.match(
