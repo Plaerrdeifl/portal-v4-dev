@@ -5,6 +5,8 @@ import { escapeAttr, escapeHtml, showToast } from "../ui.js";
 export { escapeAttr, escapeHtml, showToast };
 
 let dialogReturnFocus = null;
+let dialogContextSequence = 0;
+const dialogContexts = [];
 
 export function call(action, payload = {}) {
   return api.call(action, payload);
@@ -96,9 +98,91 @@ function blurDialogFocus(dialog) {
   if (active instanceof HTMLElement && dialog.contains(active)) active.blur();
 }
 
-function closeDialog(dialog) {
+function dialogBody() {
+  return document.getElementById("v4DialogBody");
+}
+
+function dispatchDialogContextClose(dialog, contextId) {
+  dialog.dispatchEvent(new CustomEvent("v4dialogclose", {
+    detail: { contextId }
+  }));
+}
+
+function saveDialogContext(dialog) {
+  const body = dialogBody();
+  if (!body) return;
+
+  const active = document.activeElement;
+  const focus = active instanceof HTMLElement && body.contains(active) ? active : null;
+  const scrollTop = body.scrollTop;
+  const content = document.createDocumentFragment();
+  while (body.firstChild) content.appendChild(body.firstChild);
+
+  dialogContexts.push({
+    contextId: dialog.dataset.v4DialogContext || "",
+    title: document.getElementById("v4DialogTitle")?.textContent || "Dialog",
+    kicker: document.getElementById("v4DialogKicker")?.textContent || "",
+    content,
+    focus,
+    scrollTop
+  });
+}
+
+function restoreDialogContext(dialog) {
+  const previous = dialogContexts.pop();
+  const body = dialogBody();
+  if (!previous || !body) return false;
+
+  document.getElementById("v4DialogTitle").textContent = previous.title;
+  document.getElementById("v4DialogKicker").textContent = previous.kicker;
+  body.replaceChildren(previous.content);
+  dialog.dataset.v4DialogContext = previous.contextId;
+
+  requestAnimationFrame(() => {
+    body.scrollTop = previous.scrollTop;
+    const focusTarget = previous.focus instanceof HTMLElement
+      && previous.focus.isConnected
+      ? previous.focus
+      : body.querySelector("input:not([type=hidden]),select,textarea,button,a[href]");
+    focusTarget?.focus({ preventScroll: true });
+  });
+  return true;
+}
+
+function closeDialog(dialog, returnValue = "", { restoreParent = true } = {}) {
   blurDialogFocus(dialog);
-  if (dialog.open) dialog.close();
+  if (!dialog.open) return;
+
+  const contextId = dialog.dataset.v4DialogContext || "";
+  dispatchDialogContextClose(dialog, contextId);
+  if (!restoreParent && dialogContexts.length) {
+    dialogContexts.length = 0;
+    dialog._v4NativeClose(returnValue);
+    return;
+  }
+  if (restoreDialogContext(dialog)) return;
+
+  dialog._v4NativeClose(returnValue);
+}
+
+export function closeAllDialogs() {
+  const dialog = document.getElementById("v4Dialog");
+  if (!dialog?.open) return;
+  dialogContexts.length = 0;
+  closeDialog(dialog);
+}
+
+export function afterDialogContextClose(dialog, callback) {
+  const contextId = dialog?.dataset?.v4DialogContext;
+  if (!contextId || typeof callback !== "function") return () => {};
+
+  const handleClose = event => {
+    if (event.detail?.contextId !== contextId) return;
+    dialog.removeEventListener("v4dialogclose", handleClose);
+    setTimeout(() => callback(), 0);
+  };
+  dialog.addEventListener("v4dialogclose", handleClose);
+  return () => dialog.removeEventListener("v4dialogclose", handleClose);
 }
 
 function ensureDialog() {
@@ -112,14 +196,26 @@ function ensureDialog() {
   dialog.innerHTML = '<div class="v4-dialog-shell"><header><div><span id="v4DialogKicker" class="subtle"></span><h2 id="v4DialogTitle"></h2></div><button type="button" class="icon-button" data-v4-dialog-close aria-label="Schließen">×</button></header><div id="v4DialogBody"></div></div>';
   document.body.appendChild(dialog);
 
+  dialog._v4NativeClose = dialog.close.bind(dialog);
+  dialog.close = returnValue => closeDialog(dialog, returnValue);
+
   dialog.addEventListener("click", event => {
     if (event.target === dialog || event.target.closest("[data-v4-dialog-close]")) {
       closeDialog(dialog);
     }
   });
 
+  dialog.addEventListener("cancel", event => {
+    event.preventDefault();
+    closeDialog(dialog);
+  });
+
   dialog.addEventListener("close", () => {
     blurDialogFocus(dialog);
+    dialogContexts.length = 0;
+    window.dispatchEvent(new CustomEvent("v4-dialog-modal-state", {
+      detail: { open: false }
+    }));
     const returnTarget = dialogReturnFocus;
     dialogReturnFocus = null;
 
@@ -180,13 +276,21 @@ export function openDialog({
   body,
   submitLabel = "Speichern",
   onSubmit = null,
-  danger = false
+  danger = false,
+  preserveParentOnSubmit = false
 }) {
   const dialog = ensureDialog();
 
-  dialogReturnFocus = document.activeElement instanceof HTMLElement
-    ? document.activeElement
-    : null;
+  if (dialog.open) saveDialogContext(dialog);
+
+  if (!dialog.open) {
+    dialogReturnFocus = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+  }
+
+  const contextId = String(++dialogContextSequence);
+  dialog.dataset.v4DialogContext = contextId;
 
   document.getElementById("v4DialogTitle").textContent = title || "Dialog";
   document.getElementById("v4DialogKicker").textContent = kicker || "";
@@ -212,7 +316,7 @@ export function openDialog({
 
       try {
         await onSubmit(form ? formDataObject(form) : {});
-        closeDialog(dialog);
+        closeDialog(dialog, "", { restoreParent: preserveParentOnSubmit });
       } catch (error) {
         showToast(error?.message || "Aktion fehlgeschlagen.", "error", 5200);
         button.disabled = false;
@@ -221,7 +325,12 @@ export function openDialog({
     });
   }
 
-  if (!dialog.open) dialog.showModal();
+  if (!dialog.open) {
+    dialog.showModal();
+    window.dispatchEvent(new CustomEvent("v4-dialog-modal-state", {
+      detail: { open: true }
+    }));
+  }
 
   requestAnimationFrame(() => {
     bodyNode
@@ -254,6 +363,7 @@ export function confirmAction(message, options = {}) {
       kicker: "Bestätigung",
       danger: destructive,
       submitLabel,
+      preserveParentOnSubmit: true,
       body: `<div class="v4-confirm-copy"><p>${escapeHtml(message)}</p></div>`,
       onSubmit: async () => {
         settled = true;
@@ -261,9 +371,15 @@ export function confirmAction(message, options = {}) {
       }
     });
 
-    dialog.addEventListener("close", () => {
+    const contextId = dialog.dataset.v4DialogContext;
+    const handleClose = event => {
+      if (event.type === "v4dialogclose" && event.detail?.contextId !== contextId) return;
+      dialog.removeEventListener("close", handleClose);
+      dialog.removeEventListener("v4dialogclose", handleClose);
       if (!settled) resolve(false);
-    }, { once: true });
+    };
+    dialog.addEventListener("close", handleClose);
+    dialog.addEventListener("v4dialogclose", handleClose);
   });
 }
 

@@ -52,11 +52,11 @@ test("task workflow R2 supports waiting transfer reads and notification outbox",
   assert.match(tasks, /operation:\s*"ACCEPT"/);
   assert.match(
     tasks,
-    /openTransferResponse\(task,\s*"REJECT"\)/
+    /openTransferResponse\(task,\s*"REJECT",\s*dialog\)/
   );
   assert.match(
     tasks,
-    /openTransferResponse\(task,\s*"CANCEL"\)/
+    /openTransferResponse\(task,\s*"CANCEL",\s*dialog\)/
   );
   assert.match(tasks, /unreadUpdateCount/);
   assert.match(tasks, /Aufgabe übertragen/);

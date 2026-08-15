@@ -1,5 +1,7 @@
 import {
+  afterDialogContextClose,
   call,
+  closeAllDialogs,
   confirmAction,
   empty,
   errorPanel,
@@ -81,6 +83,11 @@ function formatCalendarDate(value) {
 function eventTimeLabel(value) {
   const match = /^(\d{2}):(\d{2})/.exec(String(value || ""));
   return match ? `${match[1]}:${match[2]} Uhr` : "Uhrzeit noch offen";
+}
+
+function eventTimeCompact(value) {
+  const match = /^(\d{2}):(\d{2})/.exec(String(value || ""));
+  return match ? `${match[1]}:${match[2]}` : "Uhrzeit offen";
 }
 
 function formatBerlinDateTime(value) {
@@ -240,10 +247,10 @@ function tripStatusLabel(value) {
 }
 
 function tripBadges(trip) {
-  return `<div class="badge-stack">
-    ${registrationStatusBadge(trip.registrationStatus)}
-    <span class="badge neutral">${escapeHtml(tripStatusLabel(trip.status))}</span>
-  </div>`;
+  if (trip.status === "DRAFT" || trip.status === "CLOSED") {
+    return `<span class="badge neutral">${escapeHtml(tripStatusLabel(trip.status))}</span>`;
+  }
+  return registrationStatusBadge(trip.registrationStatus);
 }
 
 function mobileTripStatus(trip) {
@@ -266,34 +273,9 @@ function mobileTripStatusBadge(trip) {
   return `<span class="badge ${status.type}">${escapeHtml(status.label)}</span>`;
 }
 
-function capacityLabel(trip) {
-  const active = Number(trip.activeRegistrationCount || 0);
-  return trip.capacity !== null
-    && trip.capacity !== undefined
-    && trip.capacity !== ""
-    && Number.isInteger(Number(trip.capacity))
-    ? `${active} / ${Number(trip.capacity)} Anmeldungen`
-    : `${active} Anmeldungen · Kapazität offen`;
-}
-
-function tripActions(trip) {
+function tripManagementActions(trip) {
   const canManage = hasCapability("fanbus.manage") && trip.canManage !== false;
-  const canManageRegistrations = hasCapability("fanbus.registrations.manage")
-    && trip.canManageRegistrations !== false;
   const actions = [];
-
-  actions.push(`<button class="button small secondary" type="button" data-m325-companions="${escapeAttr(trip.id)}">Meine Mitfahrer</button>`);
-
-  if (trip.status === "PUBLISHED") {
-    const registrationLabel = ["OPEN", "WAITLIST"].includes(trip.registrationStatus)
-      ? "Jetzt anmelden"
-      : "Anmeldung ansehen";
-    actions.push(`<a class="button small primary" href="./fanbus-anmeldung?trip=${escapeAttr(trip.id)}">${registrationLabel}</a>`);
-  }
-
-  if (canManage && trip.status !== "CLOSED") {
-    actions.push(`<button class="button small secondary" type="button" data-m310-edit="${escapeAttr(trip.id)}">Bearbeiten</button>`);
-  }
 
   if (canManage && trip.status === "DRAFT") {
     actions.push(`<button class="button small primary" type="button" data-m310-publish="${escapeAttr(trip.id)}">Veröffentlichen</button>`);
@@ -307,55 +289,131 @@ function tripActions(trip) {
   if (canManage && trip.status === "CLOSED") {
     actions.push(`<button class="button small secondary" type="button" data-m310-reopen="${escapeAttr(trip.id)}">Wieder als Entwurf öffnen</button>`);
   }
-
-  if (canManageRegistrations) {
-    actions.push(`<button class="button small secondary" type="button" data-m310-registrations="${escapeAttr(trip.id)}">Teilnehmer</button>`);
-    actions.push(`<button class="button small primary" type="button" data-m325-operations="${escapeAttr(trip.id)}">Fahrtbetrieb</button>`);
-  }
   if (canManage) {
-    actions.push(`<button class="button small secondary" type="button" data-m320-buses="${escapeAttr(trip.id)}">Busse</button>`);
-    actions.push(`<button class="button small secondary" type="button" data-m325-stops="${escapeAttr(trip.id)}">Zustiege</button>`);
+    actions.push(`<button class="button small secondary" type="button" data-m325-stops="${escapeAttr(trip.id)}">Zustiegsstammdaten</button>`);
   }
 
-  return actions.length ? `<div class="v4-detail-actions dialog-actions">${actions.join("")}</div>` : "";
+  return actions.join("");
+}
+
+function registrationWindowText(trip) {
+  if (trip.registrationStatus === "OPEN" || trip.registrationStatus === "WAITLIST") {
+    return `Anmeldung offen bis ${formatBerlinDateTime(trip.registrationClosesAt)}`;
+  }
+  if (trip.registrationStatus === "NOT_STARTED") {
+    return `Anmeldung ab ${formatBerlinDateTime(trip.registrationOpensAt)}`;
+  }
+  if (trip.registrationStatus === "CLOSED") return "Anmeldung geschlossen";
+  if (trip.registrationStatus === "FULL") return "Anmeldung ausgebucht";
+  return "Anmeldung derzeit nicht verfügbar";
+}
+
+function tripNavigation(trip) {
+  const canManage = hasCapability("fanbus.manage") && trip.canManage !== false;
+  const canManageRegistrations = hasCapability("fanbus.registrations.manage")
+    && trip.canManageRegistrations !== false;
+  const canOpenOccupancy = canManage || canManageRegistrations;
+  return `<nav class="v4-m310-trip-nav" aria-label="Bereiche der Fanbusfahrt">
+    <button class="button small primary" type="button" aria-current="page">Übersicht</button>
+    ${canOpenOccupancy ? `<button class="button small secondary" type="button" data-m310-occupancy="${escapeAttr(trip.id)}">Belegung</button>` : ""}
+    ${canManageRegistrations ? `<button class="button small secondary" type="button" data-m325-operations="${escapeAttr(trip.id)}">Fahrtbetrieb</button>` : ""}
+    ${canManage ? `<button class="icon-button v4-m310-trip-settings" type="button" data-m310-trip-settings aria-label="Verwaltung öffnen" aria-controls="m310TripManagement" aria-expanded="false">⚙️</button>` : ""}
+  </nav>
+  ${canManage ? `<div id="m310TripManagement" class="v4-m310-trip-management" data-m310-trip-management hidden>${tripManagementActions(trip) || '<p class="subtle">Keine Verwaltungsaktion verfügbar.</p>'}</div>` : ""}`;
 }
 
 function tripDetailMarkup(trip) {
   return `<div class="v4-m325-trip-detail">
+    <div class="v4-m310-trip-heading"><strong>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeCompact(trip.eventTime))}</strong><span class="v4-m310-trip-status">${tripBadges(trip)}</span></div>
     <div class="v4-detail-grid v4-m325-trip-facts">
-      <div class="v4-m325-trip-date"><span>Termin / Spielzeit</span><strong>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeLabel(trip.eventTime))}</strong></div>
       ${trip.opponentName ? `<div><span>Gegner</span><strong>${escapeHtml(trip.opponentName)}</strong></div>` : ""}
       ${trip.venue ? `<div><span>Ziel / Ort</span><strong>${escapeHtml(trip.venue)}</strong></div>` : ""}
-      <div class="v4-m325-trip-departure"><span>Abfahrt</span><strong>${escapeHtml(formatBerlinDateTime(trip.departureAt))}</strong></div>
-      <div><span>Fahrtpreis</span><strong>${escapeHtml(formatMoney(trip.priceCents))}</strong></div>
-      <div><span>Anmeldungen / Kapazität</span><strong>${escapeHtml(capacityLabel(trip))}</strong></div>
-      <div><span>Status</span>${tripBadges(trip)}</div>
-      <div class="full v4-m325-trip-registration-window"><span>Anmeldezeitraum</span><strong>${escapeHtml(formatBerlinDateTime(trip.registrationOpensAt))} – ${escapeHtml(formatBerlinDateTime(trip.registrationClosesAt))}</strong></div>
+      <div class="full v4-m325-trip-travel"><div><span>Abfahrt</span><strong>${escapeHtml(formatBerlinDateTime(trip.departureAt))}</strong></div><div><span>Fahrtpreis</span><strong>${escapeHtml(formatMoney(trip.priceCents))}</strong></div></div>
+      <div class="full v4-m325-trip-registration-window"><strong>${escapeHtml(registrationWindowText(trip))}</strong></div>
       ${trip.departureInfo ? `<div class="full v4-m325-trip-meeting"><span>Treffpunkt / Abfahrtsort</span><strong class="v4-preserve-lines">${escapeHtml(trip.departureInfo)}</strong></div>` : ""}
     </div>
-    ${tripActions(trip)}
+    ${hasCapability("fanbus.manage") && trip.canManage !== false && trip.status !== "CLOSED" ? `<div class="v4-detail-actions"><button class="button small secondary" type="button" data-m310-edit-mode="${escapeAttr(trip.id)}">Bearbeiten</button></div>` : ""}
+    ${trip.status === "PUBLISHED" ? `<a class="button small primary v4-m310-register-link" href="./fanbus-anmeldung?trip=${escapeAttr(trip.id)}">${["OPEN", "WAITLIST"].includes(trip.registrationStatus) ? "Jetzt anmelden" : "Anmeldung ansehen"}</a>` : ""}
+    ${tripNavigation(trip)}
   </div>`;
 }
 
 function openTripDetail(trip) {
   const dialog = openDialog({
     title: trip.displayTitle || "Fanbusfahrt",
-    kicker: `${formatCalendarDate(trip.eventDate)} · ${eventTimeLabel(trip.eventTime)}`,
+    kicker: `${formatCalendarDate(trip.eventDate)} · ${eventTimeCompact(trip.eventTime)}`,
     body: tripDetailMarkup(trip)
   });
+  bindTripDetail(dialog, trip);
+}
+
+function bindTripDetail(dialog, trip) {
+  const settings = dialog.querySelector("[data-m310-trip-settings]");
+  const management = dialog.querySelector("[data-m310-trip-management]");
+  settings?.addEventListener("click", () => {
+    const open = management?.hidden !== false;
+    if (management) management.hidden = !open;
+    settings.setAttribute("aria-expanded", String(open));
+    settings.setAttribute("aria-label", open ? "Verwaltung schließen" : "Verwaltung öffnen");
+  });
+
+  dialog.querySelector("[data-m310-edit-mode]")?.addEventListener("click", () => {
+    const body = dialog.querySelector("#v4DialogBody");
+    if (!body) return;
+    body.innerHTML = `<div class="v4-m325-trip-detail v4-m310-trip-edit-mode">
+      <div class="v4-m310-trip-heading"><strong>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeCompact(trip.eventTime))}</strong><span>${tripBadges(trip)}</span></div>
+      <p class="subtle">Spieltermin, Gegner und Spielort werden im Terminmodul verwaltet.</p>
+      ${tripForm(trip)}
+      <div class="dialog-actions v4-detail-actions"><button class="button ghost" type="button" data-m310-cancel-edit>Abbrechen</button><button class="button primary" type="submit" form="m310TripEditorForm">Änderungen speichern</button></div>
+    </div>`;
+    bindInlineTripEditor(dialog, trip);
+  });
+
   bindTripActions(dialog, [trip]);
+}
+
+function restoreTripOverview(dialog, trip) {
+  const body = dialog.querySelector("#v4DialogBody");
+  if (!body) return;
+  body.innerHTML = tripDetailMarkup(trip);
+  bindTripDetail(dialog, trip);
+}
+
+function bindInlineTripEditor(dialog, trip) {
+  const form = dialog.querySelector("#m310TripEditorForm");
+  bindTripEditorDateDefaults(form, trip);
+  dialog.querySelector("[data-m310-cancel-edit]")
+    ?.addEventListener("click", () => restoreTripOverview(dialog, trip));
+  form?.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    const button = dialog.querySelector('[type="submit"][form="m310TripEditorForm"]');
+    if (button) button.disabled = true;
+    try {
+      snapshot = await runWrite(
+        () => call("fanbus_trip_update", tripUpdatePayload(trip, Object.fromEntries(new FormData(form)))),
+        "Fanbusfahrt wurde aktualisiert."
+      );
+      render();
+      const updated = trips().find(item => item.id === trip.id);
+      if (updated) restoreTripOverview(dialog, updated);
+      else dialog.close();
+    } catch (error) {
+      showToast(error?.message || "Fanbusfahrt konnte nicht aktualisiert werden.", "error", 5200);
+      if (button?.isConnected) button.disabled = false;
+    }
+  });
 }
 
 function tripTable(items) {
   return `<div class="v4-table-wrap v4-desktop-table">
     <table class="v4-table v4-compact-table">
-      <thead><tr><th>Datum</th><th>Fahrt / Spiel</th><th>Ziel / Gegner</th><th>Status</th><th>Anmeldungen</th><th></th></tr></thead>
+      <thead><tr><th>Datum</th><th>Fahrt / Spiel</th><th>Ziel / Gegner</th><th>Status</th><th></th></tr></thead>
       <tbody>${items.map(trip => `<tr class="v4-interactive-row" tabindex="0" role="button" data-m310-open-trip="${escapeAttr(trip.id)}" aria-label="Details zu ${escapeAttr(trip.displayTitle || "Fanbusfahrt")}">
         <td>${escapeHtml(formatCalendarDate(trip.eventDate))}<small>${escapeHtml(eventTimeLabel(trip.eventTime))}</small></td>
         <td><strong>${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</strong></td>
         <td>${escapeHtml(trip.opponentName || trip.venue || "–")}</td>
         <td>${tripBadges(trip)}</td>
-        <td>${escapeHtml(capacityLabel(trip))}</td>
         <td><span class="v4-row-chevron" aria-hidden="true">›</span></td>
       </tr>`).join("")}</tbody>
     </table>
@@ -372,7 +430,6 @@ function tripMobileList(items) {
       <strong class="v4-m310-mobile-trip-title">${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</strong>
       <span class="v4-m310-mobile-trip-footer">
         <span>${escapeHtml(trip.venue || trip.opponentName || "Ziel noch offen")}</span>
-        <small>${escapeHtml(capacityLabel(trip))}</small>
       </span>
       <span class="v4-row-chevron" aria-hidden="true">›</span>
     </button>`).join("")}
@@ -387,13 +444,58 @@ function setStatus(label, type = "") {
   status.hidden = type === "success";
 }
 
+function setupFanbusActionMenu(canManage) {
+  const root = document.getElementById("m310FanbusManagement");
+  const toggle = document.getElementById("m310FanbusActionToggle");
+  const menu = document.getElementById("m310FanbusActionMenu");
+  const addButton = document.getElementById("m310AddTripButton");
+  const companionButton = document.getElementById("m325CompanionListsButton");
+  if (!root || !toggle || !menu) return;
+
+  const close = ({ restoreFocus = false } = {}) => {
+    menu.hidden = true;
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.setAttribute("aria-label", "Fanbus-Aktionen öffnen");
+    if (restoreFocus) toggle.focus({ preventScroll: true });
+  };
+  const open = () => {
+    menu.hidden = false;
+    toggle.setAttribute("aria-expanded", "true");
+    toggle.setAttribute("aria-label", "Fanbus-Aktionen schließen");
+    menu.querySelector('[role="menuitem"]:not([hidden])')?.focus({ preventScroll: true });
+  };
+
+  if (addButton) {
+    addButton.hidden = !canManage;
+    addButton.onclick = canManage ? () => { close(); void openTripCreate(); } : null;
+  }
+  if (companionButton) {
+    companionButton.onclick = () => {
+      close();
+      window.location.hash = "#/fanbuses?view=companions";
+    };
+  }
+  toggle.onclick = () => menu.hidden ? open() : close({ restoreFocus: true });
+
+  if (root.dataset.actionMenuBound !== "true") {
+    root.dataset.actionMenuBound = "true";
+    document.addEventListener("click", event => {
+      if (!root.contains(event.target)) close();
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && !menu.hidden) {
+        event.preventDefault();
+        event.stopPropagation();
+        close({ restoreFocus: true });
+      }
+    }, true);
+  }
+}
+
 function render() {
   const panel = document.getElementById("m310FanbusList");
   const summary = document.getElementById("m310FanbusSummary");
-  const addButton = document.getElementById("m310AddTripButton");
-  const companionButton = document.getElementById("m325CompanionListsButton");
   if (!panel) return;
-  if (companionButton) companionButton.onclick = () => { window.location.hash = "#/fanbuses?view=companions"; };
 
   const routeQuery = new URLSearchParams(String(window.location.hash || "").split("?")[1] || "");
   if (routeQuery.get("view") === "companions") {
@@ -416,11 +518,7 @@ function render() {
 
   const items = trips();
   const canManage = hasCapability("fanbus.manage");
-
-  if (addButton) {
-    addButton.hidden = !canManage;
-    addButton.onclick = canManage ? openTripCreate : null;
-  }
+  setupFanbusActionMenu(canManage);
 
   if (summary) {
     summary.textContent = items.length === 1
@@ -571,7 +669,8 @@ async function renderOperationsWorkspace(panel, summary, tripId, returnTripId = 
     filters.addEventListener("change", () => filterOperations(panel));
     filterOperations(panel);
     bindOperationActions(panel, summary, tripId, returnTripId);
-    requestAnimationFrame(() => window.scrollTo({ top: operationsUiState.scrollY, behavior: "auto" }));
+    requestAnimationFrame(() => document.getElementById("view")
+      ?.scrollTo({ top: operationsUiState.scrollY, behavior: "auto" }));
   } catch (error) { panel.innerHTML = errorPanel(error, "Fahrtbetrieb konnte nicht geladen werden"); }
 }
 
@@ -594,17 +693,26 @@ function filterOperations(panel) {
 
 function bindOperationActions(panel, summary, tripId, returnTripId = "") {
   panel.querySelectorAll("[data-m325-checkin]").forEach(button => button.addEventListener("click", async () => {
-    try { operationsUiState.scrollY = window.scrollY; await runWrite(() => call("fanbus_checkin_set", { participantId: button.dataset.id, expectedRevision: Number(button.dataset.revision), status: button.dataset.m325Checkin }), "Check-in aktualisiert."); await renderOperationsWorkspace(panel, summary, tripId, returnTripId); } catch (error) { showToast(error?.message || "Check-in konnte nicht geändert werden.", "error", 5200); }
+    try { operationsUiState.scrollY = document.getElementById("view")?.scrollTop || 0; await runWrite(() => call("fanbus_checkin_set", { participantId: button.dataset.id, expectedRevision: Number(button.dataset.revision), status: button.dataset.m325Checkin }), "Check-in aktualisiert."); await renderOperationsWorkspace(panel, summary, tripId, returnTripId); } catch (error) { showToast(error?.message || "Check-in konnte nicht geändert werden.", "error", 5200); }
   }));
 }
 
 function openWorkspaceRoute(source, route) {
-  const parentDialog = source?.closest?.("dialog");
-  if (parentDialog?.open) parentDialog.close();
+  const fromTrip = new URLSearchParams(String(route).split("?")[1] || "").get("fromTrip");
+  if (fromTrip) {
+    window.history.replaceState(null, "", `#/fanbuses?detail=${encodeURIComponent(fromTrip)}`);
+  }
+  closeAllDialogs();
   window.location.hash = route;
 }
 
 function bindTripActions(panel, items) {
+  panel.querySelectorAll("[data-m310-occupancy]").forEach(button => {
+    button.addEventListener("click", () => {
+      const trip = items.find(item => item.id === button.dataset.m310Occupancy);
+      if (trip) void openOccupancy(trip);
+    });
+  });
   panel.querySelectorAll("[data-m325-companions]").forEach(button => {
     button.addEventListener("click", () => {
       const tripId = button.dataset.m325Companions;
@@ -846,6 +954,10 @@ function tripForm(trip) {
     <label class="v4-field-full">Treffpunkt / Abfahrtsort
       <textarea name="departureInfo" rows="3" ${required}>${escapeHtml(trip.departureInfo || "")}</textarea>
     </label>
+    <label class="v4-field-seven">Anmeldung beginnt
+      <input name="registrationOpensAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(trip.registrationOpensAt))}" ${required}${trip.status === "PUBLISHED" ? " readonly" : ""}>
+      ${trip.status === "PUBLISHED" ? "<small>Bei veröffentlichten Fahrten serverseitig festgelegt.</small>" : ""}
+    </label>
     <label class="v4-field-seven">Anmeldung endet
       <input name="registrationClosesAt" type="datetime-local" step="60" value="${escapeAttr(registrationClosesAt)}" ${required}>
     </label>
@@ -861,8 +973,10 @@ function tripUpdatePayload(trip, values) {
     expectedRevision: Number(trip.revision),
     departureAt: berlinLocalToIso(values.departureAt, "Die Abfahrt"),
     departureInfo: String(values.departureInfo || "").trim() || null,
+    registrationOpensAt: berlinLocalToIso(values.registrationOpensAt, "Der Anmeldestart"),
     registrationClosesAt: berlinLocalToIso(values.registrationClosesAt, "Das Anmeldeende"),
     priceCents: euroInputToCents(values.price),
+    capacity: trip.capacity,
     privacyReference: PRIVACY_REFERENCE,
     termsReference: TERMS_REFERENCE
   };
@@ -883,7 +997,10 @@ function openTripEditor(trip) {
     }
   });
 
-  const form = dialog.querySelector("#m310TripEditorForm");
+  bindTripEditorDateDefaults(dialog.querySelector("#m310TripEditorForm"), trip);
+}
+
+function bindTripEditorDateDefaults(form, trip) {
   const departure = form?.elements.namedItem("departureAt");
   const registrationCloses = form?.elements.namedItem("registrationClosesAt");
   let registrationClosesAutoManaged = !trip.registrationClosesAt;
@@ -958,6 +1075,10 @@ async function runTripWrite(button, action, trip, successMessage) {
       successMessage
     );
     render();
+    const dialog = document.getElementById("v4Dialog");
+    const updated = trips().find(item => item.id === trip.id);
+    if (dialog?.open && updated) restoreTripOverview(dialog, updated);
+    if (dialog?.open && !updated) closeAllDialogs();
   } catch (error) {
     const message = error?.code === "40001"
       ? "Die Daten wurden zwischenzeitlich geändert. Bitte Ansicht aktualisieren."
@@ -1020,6 +1141,234 @@ function registrationCard(registration, buses = []) {
   </article>`;
 }
 
+function busCategoryLabel(value) {
+  return { NORMAL: "Standard", RUHIG: "Ruhig", PARTY: "Partybus" }[value] || value || "Bus";
+}
+
+function occupancyAccess(trip) {
+  return {
+    canManageBuses: hasCapability("fanbus.manage") && trip.canManage !== false,
+    canManageRegistrations: hasCapability("fanbus.registrations.manage")
+      && trip.canManageRegistrations !== false
+  };
+}
+
+function occupancyMarkup(data, busMappings, tripStops, access) {
+  const canManageBuses = Boolean(access?.canManageBuses);
+  const canManageRegistrations = Boolean(access?.canManageRegistrations);
+  const registrations = canManageRegistrations && Array.isArray(data?.registrations)
+    ? data.registrations
+    : [];
+  const buses = Array.isArray(data?.buses) ? data.buses : [];
+  const mappings = new Map((busMappings?.buses || []).map(bus => [bus.busId, bus]));
+  const stopLabels = new Map((tripStops?.stops || []).map(stop => [stop.id, stop.label]));
+  const active = registrations.filter(item => item.status === "ACTIVE");
+  const waitlist = registrations.filter(item => item.status === "WAITLISTED");
+  const unassigned = active.filter(item => !item.busId);
+  const participantRow = person => `<div class="v4-m310-occupancy-participant"><span>${escapeHtml(`${person.firstName} ${person.lastName}`)}</span>${person.status === "ACTIVE" ? `<select aria-label="Buszuordnung für ${escapeAttr(`${person.firstName} ${person.lastName}`)}" data-m310-occupancy-assignment="${escapeAttr(person.id)}"><option value="">Ohne Bus</option>${buses.filter(bus => bus.isActive).map(bus => `<option value="${escapeAttr(bus.id)}"${person.busId === bus.id ? " selected" : ""}>${escapeHtml(bus.label)}</option>`).join("")}</select>` : Number(person.waitlistPosition) === 1 ? `<button class="button small primary" type="button" data-m310-occupancy-promote="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.revision)}">Promotion bestätigen</button>` : `<small>Position ${escapeHtml(person.waitlistPosition || "–")}</small>`}</div>`;
+
+  const busCards = buses.map(bus => {
+    const participants = active.filter(item => item.busId === bus.id);
+    const mapping = mappings.get(bus.id);
+    const stops = (mapping?.tripBoardingStopIds || []).map(id => stopLabels.get(id)).filter(Boolean);
+    const stopSummary = canManageBuses
+      ? stops.length ? stops.join(" · ") : "Keine zugeordnet"
+      : "Mit Verwaltungsberechtigung sichtbar";
+    return `<article class="v4-m310-occupancy-bus-card">
+      <div class="v4-m310-occupancy-bus-heading"><div><strong>${escapeHtml(bus.label)}</strong><small>${escapeHtml(busCategoryLabel(bus.category))}${bus.isActive ? "" : " · inaktiv"}</small></div><span>${canManageRegistrations ? `${escapeHtml(participants.length)} / ` : ""}${escapeHtml(bus.capacity)} Plätze</span></div>
+      <p><span>Zustiege</span><strong>${escapeHtml(stopSummary)}</strong></p>
+      ${canManageRegistrations ? `<details><summary>Teilnehmer (${participants.length})</summary>${participants.length ? `<div class="v4-m310-occupancy-participants">${participants.map(participantRow).join("")}</div>` : `<p class="subtle">Noch keine Teilnehmer zugeordnet.</p>`}</details>` : ""}
+      ${canManageBuses ? `<div class="v4-row-actions"><button class="button small secondary" type="button" data-m310-open-bus="${escapeAttr(bus.id)}">Öffnen</button><button class="button small secondary" type="button" data-m320-edit-bus="${escapeAttr(bus.id)}">Bearbeiten</button></div>` : ""}
+    </article>`;
+  }).join("");
+
+  const group = (title, people, note) => `<details class="v4-m310-occupancy-group"${people.length ? " open" : ""}><summary>${escapeHtml(title)} (${people.length})</summary>${people.length ? `<div class="v4-m310-occupancy-participants">${people.map(participantRow).join("")}</div>` : `<p class="subtle">${escapeHtml(note)}</p>`}</details>`;
+
+  return `<div class="v4-m310-occupancy">
+    ${canManageRegistrations ? `<div class="v4-m325-counters v4-m310-occupancy-counters"><span><strong>${Number(data?.summary?.activeCount || 0)}</strong>Teilnehmer</span><span><strong>${Number(data?.summary?.activeBusCapacity || 0)}</strong>Gesamtplätze</span><span><strong>${Number(data?.summary?.waitlistedCount || 0)}</strong>Warteliste</span><span><strong>${Number(data?.summary?.unassignedActiveCount || 0)}</strong>Ohne Bus</span></div>` : ""}
+    <div class="v4-m310-occupancy-actions">${canManageRegistrations ? '<button class="button small secondary" type="button" data-m310-manage-participants>Teilnehmer verwalten</button>' : ""}${canManageBuses ? `<button class="button small primary" type="button" data-m310-create-bus>Bus anlegen</button>` : ""}</div>
+    <section class="v4-m310-occupancy-buses" aria-label="Busse">${busCards || empty("Für diese Fahrt sind noch keine Busse angelegt.")}</section>
+    ${canManageRegistrations ? `<section class="v4-m310-occupancy-groups">${group("Ohne Bus", unassigned, "Alle bestätigten Teilnehmer sind einem Bus zugeordnet.")}${group("Warteliste", waitlist, "Die Warteliste ist leer.")}</section>` : ""}
+  </div>`;
+}
+
+async function occupancyData(trip) {
+  const access = occupancyAccess(trip);
+  const [data, busMappings, tripStops] = await Promise.all([
+    access.canManageRegistrations
+      ? call("fanbus_registrations_list", { tripId: trip.id })
+      : access.canManageBuses
+        ? call("fanbus_buses_list", { tripId: trip.id })
+        : Promise.resolve({ buses: [] }),
+    access.canManageBuses
+      ? call("fanbus_bus_boarding_stops_list", { tripId: trip.id })
+      : Promise.resolve({ buses: [] }),
+    access.canManageBuses
+      ? call("fanbus_trip_boarding_stops_list", { tripId: trip.id })
+      : Promise.resolve({ stops: [] })
+  ]);
+  return { data, busMappings, tripStops, access };
+}
+
+async function loadOccupancyInto(dialog, trip) {
+  const body = dialog.querySelector("#v4DialogBody");
+  if (!body) return;
+  const contextId = dialog.dataset.v4DialogContext;
+  body.innerHTML = loading("Belegung wird geladen …");
+  try {
+    const { data, busMappings, tripStops, access } = await occupancyData(trip);
+    if (!dialog.open || dialog.dataset.v4DialogContext !== contextId) return;
+    body.innerHTML = occupancyMarkup(data, busMappings, tripStops, access);
+    bindOccupancyActions(dialog, trip, data, busMappings, tripStops, access);
+  } catch (error) {
+    if (!dialog.open || dialog.dataset.v4DialogContext !== contextId) return;
+    body.innerHTML = errorPanel(error, "Belegung konnte nicht geladen werden");
+  }
+}
+
+async function openOccupancy(trip) {
+  const access = occupancyAccess(trip);
+  if (!access.canManageBuses && !access.canManageRegistrations) return;
+  const dialog = openDialog({
+    title: "Belegung",
+    kicker: trip.displayTitle || "Fanbusfahrt",
+    body: loading("Belegung wird geladen …")
+  });
+  afterDialogContextClose(dialog, () => refreshTripParent(dialog, trip.id));
+  await loadOccupancyInto(dialog, trip);
+}
+
+async function refreshTripParent(dialog, tripId) {
+  if (!dialog?.open) return;
+  const contextId = dialog.dataset.v4DialogContext;
+  try {
+    const nextSnapshot = await call("fanbus_trips_list");
+    if (!dialog.open || dialog.dataset.v4DialogContext !== contextId) return;
+    snapshot = nextSnapshot || { trips: [] };
+    render();
+    const updated = trips().find(item => item.id === tripId);
+    if (updated) restoreTripOverview(dialog, updated);
+    else dialog.close();
+  } catch (error) {
+    showToast(error?.message || "Fanbusfahrt konnte nicht aktualisiert werden.", "error", 5200);
+  }
+}
+
+function bindOccupancyActions(dialog, trip, data, busMappings, tripStops, access) {
+  const buses = Array.isArray(data?.buses) ? data.buses : [];
+  if (access?.canManageRegistrations) {
+    dialog.querySelector("[data-m310-manage-participants]")
+      ?.addEventListener("click", () => showRegistrationsDialog(trip, data, dialog));
+    dialog.querySelectorAll("[data-m310-occupancy-assignment]").forEach(select => {
+      select.addEventListener("change", async () => {
+        select.disabled = true;
+        try {
+          await runWrite(() => call("fanbus_bus_assignment_set", {
+            participantId: select.dataset.m310OccupancyAssignment,
+            busId: select.value || null
+          }), "Buszuordnung gespeichert.");
+          await loadOccupancyInto(dialog, trip);
+        } catch (error) {
+          showToast(error?.message || "Buszuordnung konnte nicht gespeichert werden.", "error", 5200);
+          if (select.isConnected) select.disabled = false;
+        }
+      });
+    });
+    dialog.querySelectorAll("[data-m310-occupancy-promote]").forEach(button => {
+      button.addEventListener("click", async () => {
+        button.disabled = true;
+        try {
+          await runWrite(() => call("fanbus_waitlist_promote", {
+            id: button.dataset.m310OccupancyPromote,
+            expectedRevision: Number(button.dataset.revision)
+          }), "Teilnehmer wurde von der Warteliste übernommen.");
+          snapshot = await call("fanbus_trips_list");
+          render();
+          await loadOccupancyInto(dialog, trip);
+        } catch (error) {
+          showToast(error?.message || "Promotion ist derzeit nicht möglich.", "error", 5200);
+          if (button.isConnected) button.disabled = false;
+        }
+      });
+    });
+  }
+  if (access?.canManageBuses) {
+    dialog.querySelector("[data-m310-create-bus]")
+      ?.addEventListener("click", () => openBusCreator(trip, dialog));
+    dialog.querySelectorAll("[data-m320-edit-bus]").forEach(button => {
+      button.addEventListener("click", () => {
+        const bus = buses.find(item => item.id === button.dataset.m320EditBus);
+        if (bus) openBusEditor(trip, data, bus, dialog);
+      });
+    });
+    dialog.querySelectorAll("[data-m310-open-bus]").forEach(button => {
+      button.addEventListener("click", () => {
+        const bus = buses.find(item => item.id === button.dataset.m310OpenBus);
+        const mapping = (busMappings?.buses || []).find(item => item.busId === bus?.id);
+        if (bus && mapping) openBusStops(trip, bus, mapping, tripStops?.stops || [], dialog);
+      });
+    });
+  }
+}
+
+function reloadOccupancyAfterChild(parentDialog, trip, parentContextId) {
+  setTimeout(() => {
+    if (parentDialog?.open
+        && parentDialog.dataset.v4DialogContext === parentContextId) {
+      void loadOccupancyInto(parentDialog, trip);
+    }
+  }, 0);
+}
+
+function openBusCreator(trip, parentDialog) {
+  const parentContextId = parentDialog?.dataset.v4DialogContext || "";
+  openDialog({
+    title: "Bus anlegen",
+    kicker: trip.displayTitle || "Fanbusfahrt",
+    body: busForm(),
+    submitLabel: "Bus anlegen",
+    preserveParentOnSubmit: true,
+    onSubmit: async values => {
+      await runWrite(() => call("fanbus_bus_upsert", {
+        tripId: trip.id,
+        label: values.label,
+        category: values.category,
+        capacity: Number(values.capacity),
+        isActive: values.isActive === "on"
+      }), "Bus wurde angelegt.");
+      snapshot = await call("fanbus_trips_list");
+      render();
+      reloadOccupancyAfterChild(parentDialog, trip, parentContextId);
+    }
+  });
+}
+
+function openBusStops(trip, bus, mapping, tripStops, parentDialog) {
+  const activeStops = tripStops.filter(stop => stop.isActive);
+  const parentContextId = parentDialog?.dataset.v4DialogContext || "";
+  openDialog({
+    title: `${bus.label} · Zustiege`,
+    kicker: trip.displayTitle || "Fanbusfahrt",
+    body: `<form class="form-grid v4-smart-form" data-m310-bus-stops>
+      <p class="subtle v4-field-full">Die Auswahl gilt ausschließlich für diesen Bus.</p>
+      <div class="v4-field-full">${activeStops.map(stop => `<label class="check-row"><input type="checkbox" name="stopId" value="${escapeAttr(stop.id)}"${mapping.tripBoardingStopIds.includes(stop.id) ? " checked" : ""}><span>${escapeHtml(stop.label)} · ${escapeHtml(formatBerlinTime(stop.departureAt))}</span></label>`).join("") || empty("Für diese Fahrt sind noch keine Zustiege hinterlegt.")}</div>
+    </form>`,
+    submitLabel: "Bus-Zustiege speichern",
+    preserveParentOnSubmit: true,
+    onSubmit: async values => {
+      const form = document.querySelector("[data-m310-bus-stops]");
+      const ids = form ? new FormData(form).getAll("stopId") : [];
+      await runWrite(() => call("fanbus_bus_boarding_stops_set", {
+        tripId: trip.id,
+        busId: bus.id,
+        expectedRevision: Number(mapping.revision),
+        tripBoardingStopIds: ids
+      }), "Bus-Zustiege gespeichert.");
+      reloadOccupancyAfterChild(parentDialog, trip, parentContextId);
+    }
+  });
+}
+
 function registrationsMarkup(data) {
   const registrations = Array.isArray(data?.registrations) ? data.registrations : [];
   const buses = Array.isArray(data?.buses) ? data.buses : [];
@@ -1029,7 +1378,6 @@ function registrationsMarkup(data) {
       <div class="v4-m310-registration-toolbar-actions">
         <button class="button small primary" type="button" data-m310-export-registrations>Excel exportieren</button>
         <button class="button small secondary" type="button" data-m310-add-registration>Mitfahrer hinzufügen</button>
-        ${hasCapability("fanbus.manage") ? `<button class="button small secondary" type="button" data-m320-manage-buses>Busse (${buses.length})</button>` : ""}
       </div>
     </div>`
     : "";
@@ -1085,7 +1433,8 @@ function filterRegistrations(body, data) {
   if (noMatches) noMatches.hidden = visibleCount > 0;
 }
 
-async function openRegistrationEdit(trip, registration) {
+async function openRegistrationEdit(trip, registration, registrationsDialog) {
+  const parentContextId = registrationsDialog?.dataset.v4DialogContext;
   const linkedIdentity = Boolean(registration.memberId || registration.portalUserId);
   const readonly = linkedIdentity ? " disabled" : "";
   let operational;
@@ -1099,6 +1448,8 @@ async function openRegistrationEdit(trip, registration) {
     showToast(error?.message || "Betriebsdaten konnten nicht geladen werden.", "error", 5200);
     return;
   }
+  if (!registrationsDialog?.open
+      || registrationsDialog.dataset.v4DialogContext !== parentContextId) return;
   const tripStops = Array.isArray(stopData?.stops) ? stopData.stops : [];
   openDialog({
     title: "Teilnehmer bearbeiten",
@@ -1113,6 +1464,7 @@ async function openRegistrationEdit(trip, registration) {
       ${linkedIdentity ? `<p class="subtle v4-field-full">Identitätsdaten verknüpfter Portalnutzer oder Mitglieder bleiben unverändert.</p>` : ""}
     </form>`,
     submitLabel: "Änderungen speichern",
+    preserveParentOnSubmit: true,
     onSubmit: async values => {
       const next = await call("fanbus_registration_update_m325", {
         id: registration.id,
@@ -1124,8 +1476,15 @@ async function openRegistrationEdit(trip, registration) {
         tripBoardingStopId: values.tripBoardingStopId || null,
         operationalNote: values.operationalNote || null
       });
+      snapshot = await call("fanbus_trips_list");
+      render();
       showToast("Teilnehmer wurde aktualisiert.", "success", 3800);
-      setTimeout(() => showRegistrationsDialog(trip, next), 0);
+      setTimeout(() => {
+        if (registrationsDialog?.open
+            && registrationsDialog.dataset.v4DialogContext === parentContextId) {
+          renderRegistrationsDialog(registrationsDialog, trip, next);
+        }
+      }, 0);
     }
   });
 }
@@ -1148,7 +1507,7 @@ function bindRegistrationActions(body, data, trip, dialog) {
   body.querySelectorAll("[data-m320-edit-registration]").forEach(button => {
     button.onclick = () => {
       const registration = registrations.find(item => item.id === button.dataset.m320EditRegistration);
-      if (registration) void openRegistrationEdit(trip, registration);
+      if (registration) void openRegistrationEdit(trip, registration, dialog);
     };
   });
 }
@@ -1159,9 +1518,7 @@ function renderRegistrationsDialog(dialog, trip, data) {
   body.innerHTML = registrationsMarkup(data);
 
   body.querySelector("[data-m310-add-registration]")
-    ?.addEventListener("click", () => openManualRegistration(trip));
-  body.querySelector("[data-m320-manage-buses]")
-    ?.addEventListener("click", () => openBusManager(trip, data));
+    ?.addEventListener("click", () => openManualRegistration(trip, dialog));
   const filters = body.querySelector("[data-m320-registration-filters]");
   filters?.addEventListener("input", () => filterRegistrations(body, data));
   filters?.addEventListener("change", () => filterRegistrations(body, data));
@@ -1205,7 +1562,6 @@ function renderRegistrationsDialog(dialog, trip, data) {
         { danger: true, title: "Anmeldung stornieren", submitLabel: "Stornieren" }
       );
       if (!confirmed) {
-        showRegistrationsDialog(trip, data);
         return;
       }
 
@@ -1220,7 +1576,7 @@ function renderRegistrationsDialog(dialog, trip, data) {
         );
         snapshot = await call("fanbus_trips_list");
         render();
-        showRegistrationsDialog(trip, nextData);
+        renderRegistrationsDialog(dialog, trip, nextData);
       } catch (error) {
         const message = error?.code === "40001"
           ? "Die Anmeldung wurde zwischenzeitlich geändert. Bitte Teilnehmerliste neu öffnen."
@@ -1255,12 +1611,14 @@ function busForm(bus = null) {
   </form>`;
 }
 
-function openBusEditor(trip, data, bus) {
+function openBusEditor(trip, data, bus, occupancyParent = null) {
+  const parentContextId = occupancyParent?.dataset.v4DialogContext || "";
   openDialog({
     title: "Bus bearbeiten",
     kicker: trip.displayTitle || "Fanbusfahrt",
     body: busForm(bus),
     submitLabel: "Bus speichern",
+    preserveParentOnSubmit: Boolean(occupancyParent),
     onSubmit: async values => {
       await call("fanbus_bus_upsert", {
         id: bus.id,
@@ -1278,7 +1636,10 @@ function openBusEditor(trip, data, bus) {
       snapshot = nextSnapshot || { trips: [] };
       render();
       showToast("Bus wurde aktualisiert.", "success", 3800);
-      setTimeout(() => openBusManager(trip, next), 0);
+      if (occupancyParent) {
+        reloadOccupancyAfterChild(occupancyParent, trip, parentContextId);
+      }
+      else setTimeout(() => openBusManager(trip, next), 0);
     }
   });
 }
@@ -1419,8 +1780,9 @@ function manualAttemptFor(currentAttempt, fingerprint) {
     : { fingerprint, key: crypto.randomUUID() };
 }
 
-async function openManualRegistration(trip) {
+async function openManualRegistration(trip, registrationsDialog) {
   if (!hasCapability("fanbus.registrations.manage")) return;
+  const parentContextId = registrationsDialog?.dataset.v4DialogContext;
 
   try {
     const [lookup, stopData] = await Promise.all([
@@ -1429,12 +1791,15 @@ async function openManualRegistration(trip) {
     ]);
     const people = Array.isArray(lookup?.people) ? lookup.people : [];
     const tripStops = Array.isArray(stopData?.stops) ? stopData.stops : [];
+    if (!registrationsDialog?.open
+        || registrationsDialog.dataset.v4DialogContext !== parentContextId) return;
     let manualAttempt = null;
     const dialog = openDialog({
       title: "Mitfahrer hinzufügen",
       kicker: trip.displayTitle || "Fanbusfahrt",
       body: manualRegistrationForm(people, tripStops),
       submitLabel: "Mitfahrer anmelden",
+      preserveParentOnSubmit: true,
       onSubmit: async values => {
         const payload = {
           tripId: trip.id,
@@ -1484,7 +1849,12 @@ async function openManualRegistration(trip) {
           result.outcome === "WAITLISTED" ? "warning" : "success",
           3800
         );
-        setTimeout(() => showRegistrationsDialog(trip, nextData), 0);
+        setTimeout(() => {
+          if (registrationsDialog?.open
+              && registrationsDialog.dataset.v4DialogContext === parentContextId) {
+            renderRegistrationsDialog(registrationsDialog, trip, nextData);
+          }
+        }, 0);
       }
     });
 
@@ -1496,12 +1866,21 @@ async function openManualRegistration(trip) {
   }
 }
 
-function showRegistrationsDialog(trip, data) {
+function showRegistrationsDialog(trip, data, occupancyParent = null) {
+  const occupancyContextId = occupancyParent?.dataset.v4DialogContext || "";
   const dialog = openDialog({
     title: "Teilnehmer und Anmeldungen",
     kicker: trip.displayTitle || "Fanbusfahrt",
     body: registrationsMarkup(data)
   });
+  if (occupancyParent) {
+    afterDialogContextClose(dialog, () => {
+      if (occupancyParent.open
+          && occupancyParent.dataset.v4DialogContext === occupancyContextId) {
+        void loadOccupancyInto(occupancyParent, trip);
+      }
+    });
+  }
   renderRegistrationsDialog(dialog, trip, data);
 }
 

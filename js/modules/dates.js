@@ -52,6 +52,7 @@ const DATE_FORMAT = new Intl.DateTimeFormat("de-DE", {
 });
 
 let snapshot = { events: [] };
+let fanbusTrips = [];
 let searchQuery = "";
 let typeFilter = "ALL";
 let visibilityFilter = "ALL";
@@ -135,6 +136,17 @@ function visibleEvents() {
   });
 }
 
+function publishedFanbusForEvent(eventId) {
+  return fanbusTrips.find(trip => trip.eventId === eventId && trip.status === "PUBLISHED");
+}
+
+function fanbusLink(event, className = "") {
+  const trip = publishedFanbusForEvent(event.id);
+  return trip
+    ? `<a class="badge success v4-m210-fanbus-link${className ? ` ${className}` : ""}" href="#/fanbuses?detail=${escapeAttr(trip.id)}" aria-label="Fanbusfahrt zu diesem Termin öffnen">🚌 Fanbus</a>`
+    : "";
+}
+
 function eventDetailActions(event, canManage) {
   if (!canManage || event.canManage === false) return "";
 
@@ -164,18 +176,29 @@ function eventDetailMarkup(event, canManage) {
 }
 
 function openEventDetail(event) {
-  const canManage = hasCapability("events.manage") && event.canManage !== false;
   const dialog = openDialog({
     title: event.displayTitle || event.title || "Termin",
     kicker: `${formatCalendarDate(event.eventDate)} · ${timeLabel(event.eventTime)}`,
-    body: eventDetailMarkup(event, canManage)
+    body: eventDetailMarkup(
+      event,
+      hasCapability("events.manage") && event.canManage !== false
+    )
   });
+  renderEventDetailDialog(dialog, event);
+}
 
+function renderEventDetailDialog(dialog, event) {
+  const canManage = hasCapability("events.manage") && event.canManage !== false;
+  document.getElementById("v4DialogTitle").textContent = event.displayTitle || event.title || "Termin";
+  document.getElementById("v4DialogKicker").textContent = `${formatCalendarDate(event.eventDate)} · ${timeLabel(event.eventTime)}`;
+  const body = dialog.querySelector("#v4DialogBody");
+  if (!body) return;
+  body.innerHTML = eventDetailMarkup(event, canManage);
   dialog.querySelector("[data-m210-edit-event]")?.addEventListener("click", () => {
-    openEventEditor(event);
+    openEventEditor(event, dialog);
   });
   dialog.querySelector("[data-m210-delete-event]")?.addEventListener("click", async clickEvent => {
-    await deleteEvent(event, clickEvent.currentTarget);
+    await deleteEvent(event, clickEvent.currentTarget, dialog);
   });
 }
 
@@ -186,7 +209,7 @@ function eventTable(items) {
       <tbody>${items.map(event => `<tr class="v4-interactive-row" tabindex="0" role="button" data-m210-open-event="${escapeAttr(event.id)}" aria-label="Details zu ${escapeAttr(event.displayTitle || event.title || "Termin")}">
         <td>${escapeHtml(formatCalendarDate(event.eventDate))}</td>
         <td>${escapeHtml(timeLabel(event.eventTime))}</td>
-        <td><strong>${escapeHtml(event.displayTitle || event.title || "Termin")}</strong>${event.venue ? `<small>${escapeHtml(event.venue)}</small>` : ""}</td>
+        <td><strong>${escapeHtml(event.displayTitle || event.title || "Termin")}</strong>${event.venue ? `<small>${escapeHtml(event.venue)}</small>` : ""}${fanbusLink(event)}</td>
         <td><span class="badge neutral">${escapeHtml(typeLabel(event.eventType))}</span></td>
         <td>${escapeHtml(event.eventType === "GAME" ? event.opponentName || "–" : "–")}</td>
         <td>${escapeHtml(event.eventType === "GAME" ? homeAwayLabel(event.homeAway) || "–" : "–")}</td>
@@ -199,15 +222,18 @@ function eventTable(items) {
 
 function eventMobileList(items) {
   return `<div class="v4-mobile-records v4-compact-record-list" aria-label="Termine">
-    ${items.map(event => `<button class="v4-compact-record v4-m210-mobile-event" type="button" data-m210-open-event="${escapeAttr(event.id)}">
-      <span class="v4-m210-mobile-event-meta">
-        <small>${escapeHtml(formatCalendarDate(event.eventDate))} · ${escapeHtml(timeLabel(event.eventTime))}</small>
-        <span>${escapeHtml(event.eventType === "GAME" ? homeAwayLabel(event.homeAway) : typeLabel(event.eventType))}</span>
-        <span class="badge ${event.visibility === "PUBLIC" ? "success" : "neutral"}">${escapeHtml(visibilityLabel(event.visibility))}</span>
-      </span>
-      <strong class="v4-m210-mobile-event-title">${escapeHtml(event.displayTitle || event.title || "Termin")}</strong>
-      <span class="v4-row-chevron" aria-hidden="true">›</span>
-    </button>`).join("")}
+    ${items.map(event => `<article class="v4-compact-record v4-m210-mobile-event">
+      <button class="v4-m210-mobile-event-open" type="button" data-m210-open-event="${escapeAttr(event.id)}">
+        <span class="v4-m210-mobile-event-meta">
+          <small>${escapeHtml(formatCalendarDate(event.eventDate))} · ${escapeHtml(timeLabel(event.eventTime))}</small>
+          <span>${escapeHtml(event.eventType === "GAME" ? homeAwayLabel(event.homeAway) : typeLabel(event.eventType))}</span>
+          <span class="badge ${event.visibility === "PUBLIC" ? "success" : "neutral"}">${escapeHtml(visibilityLabel(event.visibility))}</span>
+        </span>
+        <strong class="v4-m210-mobile-event-title">${escapeHtml(event.displayTitle || event.title || "Termin")}</strong>
+        <span class="v4-row-chevron" aria-hidden="true">›</span>
+      </button>
+      ${fanbusLink(event, "v4-m210-mobile-fanbus-link")}
+    </article>`).join("")}
   </div>`;
 }
 
@@ -298,14 +324,25 @@ function render() {
       const event = allItems.find(item => item.id === record.dataset.m210OpenEvent);
       if (event) openEventDetail(event);
     };
-    record.addEventListener("click", open);
+    record.addEventListener("click", clickEvent => {
+      if (clickEvent.target.closest(".v4-m210-fanbus-link")) return;
+      open();
+    });
     if (record.matches("tr")) {
       record.addEventListener("keydown", keyEvent => {
+        if (keyEvent.target !== record) return;
         if (keyEvent.key !== "Enter" && keyEvent.key !== " ") return;
         keyEvent.preventDefault();
         open();
       });
     }
+  });
+  panel.querySelectorAll(".v4-m210-fanbus-link").forEach(link => {
+    link.addEventListener("keydown", keyEvent => {
+      if (keyEvent.key !== " ") return;
+      keyEvent.preventDefault();
+      link.click();
+    });
   });
 
   setStatus("Aktuell", "success");
@@ -398,13 +435,15 @@ function eventPayload(values) {
   };
 }
 
-function openEventEditor(event = null) {
+function openEventEditor(event = null, parentDialog = null) {
   const editing = Boolean(event?.id);
+  const parentContextId = parentDialog?.dataset.v4DialogContext || "";
   const dialog = openDialog({
     title: editing ? "Termin bearbeiten" : "Termin hinzufügen",
     kicker: editing ? event.displayTitle || "Termin" : "Termine und Spieltage",
     body: eventForm(event || {}),
     submitLabel: editing ? "Änderungen speichern" : "Termin erstellen",
+    preserveParentOnSubmit: editing && Boolean(parentDialog),
     onSubmit: async values => {
       const payload = eventPayload(values);
 
@@ -422,6 +461,17 @@ function openEventEditor(event = null) {
         );
       }
       render();
+      if (editing && parentDialog) {
+        const updated = events().find(item => item.id === event.id);
+        if (updated) {
+          setTimeout(() => {
+            if (parentDialog.open
+                && parentDialog.dataset.v4DialogContext === parentContextId) {
+              renderEventDetailDialog(parentDialog, updated);
+            }
+          }, 0);
+        }
+      }
     }
   });
 
@@ -594,7 +644,7 @@ function openIcsImport() {
   });
 }
 
-async function deleteEvent(event, button) {
+async function deleteEvent(event, button, detailDialog = null) {
   const confirmed = await confirmAction(
     `Termin „${event.displayTitle || "Termin"}“ endgültig löschen?`,
     {
@@ -616,6 +666,7 @@ async function deleteEvent(event, button) {
       "Termin wurde gelöscht."
     );
     render();
+    if (detailDialog?.open) detailDialog.close();
   } catch (error) {
     showToast(error?.message || "Termin konnte nicht gelöscht werden.", "error", 5200);
   } finally {
@@ -633,9 +684,13 @@ export async function hydrateDates(context = {}) {
   setStatus("Lädt");
 
   try {
-    const nextSnapshot = await call("events_list");
+    const [nextSnapshot, fanbusSnapshot] = await Promise.all([
+      call("events_list"),
+      call("fanbus_trips_list").catch(() => ({ trips: [] }))
+    ]);
     if (context.isCurrent && !context.isCurrent()) return;
     snapshot = nextSnapshot || { events: [] };
+    fanbusTrips = Array.isArray(fanbusSnapshot?.trips) ? fanbusSnapshot.trips : [];
     render();
   } catch (error) {
     if (context.isCurrent && !context.isCurrent()) return;

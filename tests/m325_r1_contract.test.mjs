@@ -235,22 +235,34 @@ test("M325 F5 Round 2 keeps workspace navigation, mobile cards and dialog forms 
     read("css/app.css")
   ]);
 
-  const navigation = sourceBetween(ui, "function openWorkspaceRoute", "async function openBoardingStops");
-  assert.match(navigation, /parentDialog\?\.open\) parentDialog\.close\(\)/);
-  assert.ok(navigation.indexOf("parentDialog.close()") < navigation.indexOf("window.location.hash = route"));
-  assert.match(navigation, /fromTrip=/);
-  assert.match(ui, /window\.history\.replaceState\(null, "", "#\/fanbuses"\)/);
+  const navigation = sourceBetween(ui, "function openWorkspaceRoute", "function bindTripActions");
+  assert.match(navigation, /\.get\("fromTrip"\)/);
+  assert.match(navigation, /history\.replaceState\(null, "", `#\/fanbuses\?detail=\$\{encodeURIComponent\(fromTrip\)\}`\)/);
+  assert.match(navigation, /closeAllDialogs\(\)/);
+  assert.match(navigation, /window\.location\.hash = route/);
+  assert.ok(navigation.indexOf("history.replaceState") < navigation.indexOf("closeAllDialogs()"));
+  assert.ok(navigation.indexOf("closeAllDialogs()") < navigation.indexOf("window.location.hash = route"));
+  assert.match(ui, /fromTrip=/);
 
   const detail = sourceBetween(ui, "function tripDetailMarkup", "function openTripDetail");
   assert.match(detail, /v4-m325-trip-detail/);
-  assert.match(detail, /Termin \/ Spielzeit/);
-  assert.match(detail, /Anmeldezeitraum/);
+  assert.match(detail, /eventTimeCompact\(trip\.eventTime\)/);
+  assert.match(detail, /registrationWindowText\(trip\)/);
+  assert.match(detail, /v4-m325-trip-travel/);
+  assert.match(detail, /<span>Abfahrt<\/span>/);
+  assert.match(detail, /<span>Fahrtpreis<\/span>/);
+  assert.match(detail, /\$\{tripNavigation\(trip\)\}/);
   assert.doesNotMatch(detail, /<span>Fahrt \/ Spiel<\/span>/);
-  const capacity = sourceBetween(ui, "function capacityLabel", "function tripActions");
-  assert.match(capacity, /trip\.capacity/);
-  assert.doesNotMatch(capacity, /fanbus_buses|reduce\(|sum/i);
+  assert.doesNotMatch(detail, /capacityLabel|Anmeldungen \/ Kapazität/);
   const tripEditor = sourceBetween(ui, "function tripForm", "function openTripEditor");
   assert.doesNotMatch(tripEditor, /name="capacity"/);
+  const occupancy = sourceBetween(ui, "function occupancyMarkup", "async function occupancyData");
+  assert.match(occupancy, /canManageBuses/);
+  assert.match(occupancy, /canManageRegistrations/);
+  assert.match(occupancy, /data-m310-create-bus/);
+  assert.match(occupancy, /data-m310-manage-participants/);
+  assert.match(occupancy, /v4-m310-occupancy-counters/);
+  assert.match(occupancy, /data-m310-occupancy-assignment/);
 
   const busForm = formContaining(ui, "data-m325-bus-form");
   assert.match(busForm, /class="v4-field-full">Busname/);

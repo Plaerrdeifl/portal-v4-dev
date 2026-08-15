@@ -1,5 +1,6 @@
 import { auth } from "../auth.js";
 import {
+  afterDialogContextClose,
   call,
   confirmAction,
   empty,
@@ -323,19 +324,44 @@ function memberDetailMarkup(member) {
   </div>`;
 }
 
-function openMemberEditor(member = null) {
+function restoreFanclubDialog(dialog, contextId, renderDialog) {
+  window.setTimeout(() => {
+    if (!dialog?.open || dialog.dataset.v4DialogContext !== contextId) return;
+    renderDialog();
+  }, 0);
+}
+
+function renderMemberDetailDialog(dialog, member) {
+  document.getElementById("v4DialogTitle").textContent = memberName(member);
+  document.getElementById("v4DialogKicker").textContent = "Mitgliedsdaten";
+  const body = dialog.querySelector("#v4DialogBody");
+  if (!body) return;
+  body.innerHTML = memberDetailMarkup(member);
+  body.querySelector("[data-edit-member-detail]")
+    ?.addEventListener("click", () => openMemberEditor(member, dialog));
+}
+
+function openMemberEditor(member = null, parentDialog = null) {
   const existing = Boolean(member?.id);
+  const parentContextId = parentDialog?.dataset.v4DialogContext || "";
   openDialog({
     title: existing ? `${memberName(member)} bearbeiten` : "Mitglied anlegen",
     kicker: "Fanclub",
     body: memberForm(member || {}),
     submitLabel: "Speichern",
+    preserveParentOnSubmit: existing && Boolean(parentDialog),
     onSubmit: async values => {
       snapshot = await runWrite(
         () => call("save_member", values),
         existing ? "Mitglied wurde aktualisiert." : "Mitglied wurde angelegt."
       );
       renderAll();
+      if (existing && parentDialog) {
+        const detail = await call("member_detail", { id: member.id });
+        restoreFanclubDialog(parentDialog, parentContextId, () => {
+          renderMemberDetailDialog(parentDialog, detail);
+        });
+      }
     }
   });
 }
@@ -347,9 +373,7 @@ async function openMemberDetail(member) {
     kicker: "Mitgliedsdaten",
     body: memberDetailMarkup(detail)
   });
-
-  dialog.querySelector("[data-edit-member-detail]")
-    ?.addEventListener("click", () => openMemberEditor(detail));
+  renderMemberDetailDialog(dialog, detail);
 }
 
 function renderMembers(panel) {
@@ -594,12 +618,14 @@ function seasonForm(season = {}) {
   </form>`;
 }
 
-function openSeason(season = null) {
+function openSeason(season = null, parentDialog = null) {
+  const parentContextId = parentDialog?.dataset.v4DialogContext || "";
   openDialog({
     title: season ? "Beitragsjahr bearbeiten" : "Beitragsjahr anlegen",
     kicker: "Beiträge",
     body: seasonForm(season || {}),
     submitLabel: season ? "Änderung speichern" : "Beitragsjahr anlegen",
+    preserveParentOnSubmit: Boolean(parentDialog),
     onSubmit: async values => {
       snapshot = await runWrite(
         () => call("save_contribution_season", values),
@@ -609,6 +635,11 @@ function openSeason(season = null) {
       );
       ensureContributionSeason();
       renderAll();
+      if (parentDialog) {
+        restoreFanclubDialog(parentDialog, parentContextId, () => {
+          renderContributionManagementDialog(parentDialog, selectedSeason());
+        });
+      }
     }
   });
 }
@@ -741,8 +772,9 @@ function assignmentForm(member, contribution = {}) {
   </form>`;
 }
 
-function openAssignment(member) {
+function openAssignment(member, parentDialog = null) {
   const contribution = contributionFor(member.id);
+  const parentContextId = parentDialog?.dataset.v4DialogContext || "";
 
   openDialog({
     title: contribution
@@ -751,6 +783,7 @@ function openAssignment(member) {
     kicker: selectedSeason()?.name || "Beiträge",
     body: assignmentForm(member, contribution || {}),
     submitLabel: contribution ? "Änderung speichern" : "Beitrag zuordnen",
+    preserveParentOnSubmit: Boolean(parentDialog),
     onSubmit: async values => {
       if (contribution && !values.contributionClassId) {
         snapshot = await runWrite(
@@ -769,6 +802,11 @@ function openAssignment(member) {
         );
       }
       renderAll();
+      if (parentDialog) {
+        restoreFanclubDialog(parentDialog, parentContextId, () => {
+          renderContributionDetailDialog(parentDialog, member);
+        });
+      }
     }
   });
 }
@@ -820,17 +858,24 @@ function paymentForm(contribution) {
   </form>`;
 }
 
-function openPaymentReport(contribution) {
+function openPaymentReport(contribution, parentDialog = null, member = null) {
+  const parentContextId = parentDialog?.dataset.v4DialogContext || "";
   openDialog({
     title: "Beitragszahlung melden",
     kicker: selectedSeason()?.name || "Beiträge",
     body: paymentForm(contribution),
+    preserveParentOnSubmit: Boolean(parentDialog),
     onSubmit: async values => {
       snapshot = await runWrite(
         () => call("report_contribution_payment", values),
         "Beitragszahlung wurde zur Prüfung gemeldet."
       );
       renderAll();
+      if (parentDialog && member) {
+        restoreFanclubDialog(parentDialog, parentContextId, () => {
+          renderContributionDetailDialog(parentDialog, member);
+        });
+      }
     }
   });
 }
@@ -839,7 +884,7 @@ async function confirmPayment(report) {
   const confirmed = await confirmAction(
     `${money(report.amount)} für ${report.memberName} als bezahlt bestätigen?`
   );
-  if (!confirmed) return;
+  if (!confirmed) return false;
 
   snapshot = await runWrite(
     () => call("review_contribution_payment", {
@@ -851,6 +896,7 @@ async function confirmPayment(report) {
     "Beitragszahlung wurde bestätigt und gebucht."
   );
   renderAll();
+  return true;
 }
 
 function rejectPaymentForm(report) {
@@ -863,11 +909,13 @@ function rejectPaymentForm(report) {
   </form>`;
 }
 
-function openRejectPayment(report) {
+function openRejectPayment(report, parentDialog = null) {
+  const parentContextId = parentDialog?.dataset.v4DialogContext || "";
   openDialog({
     title: "Beitragszahlung ablehnen",
     kicker: `${report.memberName} · ${money(report.amount)}`,
     body: rejectPaymentForm(report),
+    preserveParentOnSubmit: Boolean(parentDialog),
     onSubmit: async values => {
       snapshot = await runWrite(
         () => call("review_contribution_payment", {
@@ -879,6 +927,14 @@ function openRejectPayment(report) {
         "Beitragszahlung wurde abgelehnt."
       );
       renderAll();
+      if (parentDialog) {
+        const updated = (snapshot?.contributionPaymentReports || [])
+          .find(item => item.id === report.id);
+        restoreFanclubDialog(parentDialog, parentContextId, () => {
+          if (updated) renderPaymentReportDetailDialog(parentDialog, updated);
+          else parentDialog.close();
+        });
+      }
     }
   });
 }
@@ -953,21 +1009,30 @@ function contributionDetailMarkup(member, contribution) {
   </div>`;
 }
 
-function openContributionDetails(member) {
+function renderContributionDetailDialog(dialog, member) {
   const contribution = contributionFor(member.id);
+  document.getElementById("v4DialogTitle").textContent = memberName(member);
+  document.getElementById("v4DialogKicker").textContent = "Mitgliedsbeitrag";
+  const body = dialog.querySelector("#v4DialogBody");
+  if (!body) return;
+  body.innerHTML = contributionDetailMarkup(member, contribution);
+
+  body.querySelector("[data-dialog-assign-contribution]")
+    ?.addEventListener("click", () => openAssignment(member, dialog));
+
+  body.querySelector("[data-dialog-report-contribution]")
+    ?.addEventListener("click", () => {
+      if (contribution) openPaymentReport(contribution, dialog, member);
+    });
+}
+
+function openContributionDetails(member) {
   const dialog = openDialog({
     title: memberName(member),
     kicker: "Mitgliedsbeitrag",
-    body: contributionDetailMarkup(member, contribution)
+    body: contributionDetailMarkup(member, contributionFor(member.id))
   });
-
-  dialog.querySelector("[data-dialog-assign-contribution]")
-    ?.addEventListener("click", () => openAssignment(member));
-
-  dialog.querySelector("[data-dialog-report-contribution]")
-    ?.addEventListener("click", () => {
-      if (contribution) openPaymentReport(contribution);
-    });
+  renderContributionDetailDialog(dialog, member);
 }
 
 function paymentReportDetailMarkup(report) {
@@ -989,21 +1054,33 @@ function paymentReportDetailMarkup(report) {
   </div>` : ""}`;
 }
 
+function renderPaymentReportDetailDialog(dialog, report) {
+  document.getElementById("v4DialogTitle").textContent = "Zahlungsmeldung";
+  document.getElementById("v4DialogKicker").textContent = selectedSeason()?.name || "Beiträge";
+  const body = dialog.querySelector("#v4DialogBody");
+  if (!body) return;
+  body.innerHTML = paymentReportDetailMarkup(report);
+
+  body.querySelector("[data-dialog-confirm-payment]")
+    ?.addEventListener("click", async () => {
+      if (!await confirmPayment(report)) return;
+      const updated = (snapshot?.contributionPaymentReports || [])
+        .find(item => item.id === report.id);
+      if (updated) renderPaymentReportDetailDialog(dialog, updated);
+      else dialog.close();
+    });
+
+  body.querySelector("[data-dialog-reject-payment]")
+    ?.addEventListener("click", () => openRejectPayment(report, dialog));
+}
+
 function openPaymentReportDetails(report) {
   const dialog = openDialog({
     title: "Zahlungsmeldung",
     kicker: selectedSeason()?.name || "Beiträge",
     body: paymentReportDetailMarkup(report)
   });
-
-  dialog.querySelector("[data-dialog-confirm-payment]")
-    ?.addEventListener("click", async () => {
-      await confirmPayment(report);
-      dialog.close();
-    });
-
-  dialog.querySelector("[data-dialog-reject-payment]")
-    ?.addEventListener("click", () => openRejectPayment(report));
+  renderPaymentReportDetailDialog(dialog, report);
 }
 
 function renderPaymentReports(reports) {
@@ -1034,27 +1111,27 @@ function renderPaymentReports(reports) {
   </button>`).join("")}</div>`;
 }
 
-function openContributionManagement(season) {
-  const dialog = openDialog({
-    title: "Beitragsjahr verwalten",
-    kicker: "Beiträge",
-    body: `<div class="v4-management-grid v4-contribution-management-grid">
+function renderContributionManagementDialog(dialog, season) {
+  document.getElementById("v4DialogTitle").textContent = "Beitragsjahr verwalten";
+  document.getElementById("v4DialogKicker").textContent = "Beiträge";
+  const body = dialog.querySelector("#v4DialogBody");
+  if (!body) return;
+  body.innerHTML = `<div class="v4-management-grid v4-contribution-management-grid">
       <button class="button secondary" type="button" data-contribution-management="create">Neues Beitragsjahr</button>
       <button class="button secondary" type="button" data-contribution-management="edit" ${season ? "" : "disabled"}>Beitragsjahr bearbeiten</button>
       <button class="button danger" type="button" data-contribution-management="delete" ${season?.canDelete ? "" : "disabled"}>Beitragsjahr löschen</button>
     </div>
     ${season && !season.canDelete
       ? '<p class="v4-management-note">Löschen ist erst möglich, nachdem alle Beitragszuordnungen entfernt wurden. Offene Meldungen müssen abgelehnt, bestätigte Zahlungen zuerst storniert werden.</p>'
-      : ""}`
-  });
+      : ""}`;
 
-  dialog.querySelector('[data-contribution-management="create"]')
-    ?.addEventListener("click", () => openSeason());
-  dialog.querySelector('[data-contribution-management="edit"]')
+  body.querySelector('[data-contribution-management="create"]')
+    ?.addEventListener("click", () => openSeason(null, dialog));
+  body.querySelector('[data-contribution-management="edit"]')
     ?.addEventListener("click", () => {
-      if (season) openSeason(season);
+      if (season) openSeason(season, dialog);
     });
-  dialog.querySelector('[data-contribution-management="delete"]')
+  body.querySelector('[data-contribution-management="delete"]')
     ?.addEventListener("click", async event => {
       if (!season) return;
       const button = event.currentTarget;
@@ -1070,6 +1147,15 @@ function openContributionManagement(season) {
         );
       }
     });
+}
+
+function openContributionManagement(season) {
+  const dialog = openDialog({
+    title: "Beitragsjahr verwalten",
+    kicker: "Beiträge",
+    body: ""
+  });
+  renderContributionManagementDialog(dialog, season);
 }
 
 function renderContributions(panel) {
@@ -1211,11 +1297,13 @@ function accountForm(account = {}) {
   </form>`;
 }
 
-function openFinanceAccount(account = null) {
+function openFinanceAccount(account = null, parentDialog = null) {
+  const parentContextId = parentDialog?.dataset.v4DialogContext || "";
   openDialog({
     title: account ? "Konto bearbeiten" : "Konto anlegen",
     kicker: "Kasse",
     body: accountForm(account || {}),
+    preserveParentOnSubmit: Boolean(parentDialog),
     onSubmit: async values => {
       snapshot = await runWrite(
         () => call("save_finance_account", values),
@@ -1223,6 +1311,17 @@ function openFinanceAccount(account = null) {
       );
       ensureFinanceAccountFilter();
       renderAll();
+      if (parentDialog) {
+        restoreFanclubDialog(parentDialog, parentContextId, () => {
+          if (account) {
+            const updated = financeAccounts().find(item => item.id === account.id);
+            if (updated) renderFinanceAccountDetailDialog(parentDialog, updated);
+            else parentDialog.close();
+          } else {
+            renderFinanceManagementDialog(parentDialog);
+          }
+        });
+      }
     }
   });
 }
@@ -1231,7 +1330,7 @@ async function deleteFinanceAccount(account) {
   const confirmed = await confirmAction(
     `Inaktives Nullsaldo-Konto „${account.name}“ aus der Kontoverwaltung entfernen? Buchungen und Audit-Historie bleiben erhalten.`
   );
-  if (!confirmed) return;
+  if (!confirmed) return false;
 
   snapshot = await runWrite(
     () => call("delete_finance_account", {
@@ -1242,6 +1341,7 @@ async function deleteFinanceAccount(account) {
   );
   ensureFinanceAccountFilter();
   renderAll();
+  return true;
 }
 
 function financeEntryForm(entryType) {
@@ -1256,11 +1356,13 @@ function financeEntryForm(entryType) {
   </form>`;
 }
 
-function openFinanceEntry(entryType) {
+function openFinanceEntry(entryType, parentDialog = null) {
+  const parentContextId = parentDialog?.dataset.v4DialogContext || "";
   openDialog({
     title: entryType === "INCOME" ? "Einnahme buchen" : "Ausgabe buchen",
     kicker: "Kasse",
     body: financeEntryForm(entryType),
+    preserveParentOnSubmit: Boolean(parentDialog),
     onSubmit: async values => {
       snapshot = await runWrite(
         () => call("create_finance_entry", values),
@@ -1269,6 +1371,11 @@ function openFinanceEntry(entryType) {
           : "Ausgabe wurde gebucht."
       );
       renderAll();
+      if (parentDialog) {
+        restoreFanclubDialog(parentDialog, parentContextId, () => {
+          renderFinanceManagementDialog(parentDialog);
+        });
+      }
     }
   });
 }
@@ -1313,17 +1420,24 @@ function transferForm() {
   </form>`;
 }
 
-function openFinanceTransfer() {
+function openFinanceTransfer(parentDialog = null) {
+  const parentContextId = parentDialog?.dataset.v4DialogContext || "";
   openDialog({
     title: "Umbuchung",
     kicker: "Kasse",
     body: transferForm(),
+    preserveParentOnSubmit: Boolean(parentDialog),
     onSubmit: async values => {
       snapshot = await runWrite(
         () => call("transfer_finance", values),
         "Umbuchung wurde gebucht."
       );
       renderAll();
+      if (parentDialog) {
+        restoreFanclubDialog(parentDialog, parentContextId, () => {
+          renderFinanceManagementDialog(parentDialog);
+        });
+      }
     }
   });
 }
@@ -1343,13 +1457,15 @@ function reversalForm(entry) {
   </form>`;
 }
 
-function openFinanceReversal(entry) {
+function openFinanceReversal(entry, parentDialog = null) {
+  const parentContextId = parentDialog?.dataset.v4DialogContext || "";
   openDialog({
     title: entry.sourceType.startsWith("TRANSFER")
       ? "Umbuchung stornieren"
       : "Buchung stornieren",
     kicker: "Kasse",
     body: reversalForm(entry),
+    preserveParentOnSubmit: Boolean(parentDialog),
     onSubmit: async values => {
       snapshot = await runWrite(
         () => call("reverse_finance_entry", values),
@@ -1358,6 +1474,13 @@ function openFinanceReversal(entry) {
           : "Buchung wurde storniert."
       );
       renderAll();
+      if (parentDialog) {
+        const updated = financeEntries().find(item => item.id === entry.id);
+        restoreFanclubDialog(parentDialog, parentContextId, () => {
+          if (updated) renderFinanceEntryDetailDialog(parentDialog, updated);
+          else parentDialog.close();
+        });
+      }
     }
   });
 }
@@ -1389,22 +1512,38 @@ function financeEntryDetailMarkup(entry) {
   return `<div class="v4-detail-grid v4-finance-detail-grid"><div class="v4-detail-wide"><span>Beschreibung</span><strong>${escapeHtml(entry.description)}</strong></div><div><span>Konto</span><strong>${escapeHtml(entry.accountName)}</strong></div><div><span>Betrag</span><strong class="${entry.entryType==="INCOME"?"is-positive":"is-negative"}">${escapeHtml(signedMoney(entry))}</strong></div><div><span>Buchungsart</span><strong>${escapeHtml(entryTypeLabel(entry.entryType))}</strong></div><div><span>Herkunft</span><strong>${escapeHtml(sourceTypeLabel(entry.sourceType))}</strong></div><div><span>Zahlungsart</span><strong>${escapeHtml(entry.paymentMethodLabel||"–")}</strong></div><div><span>Gegenkonto</span><strong>${escapeHtml(entry.counterAccountName||"–")}</strong></div><div><span>Buchungsnummer</span><strong>#${escapeHtml(entry.entryNo)}</strong></div><div><span>Datum</span><strong>${escapeHtml(fmtDate(entry.bookedOn))}</strong></div>${entry.runningBalance!==undefined?`<div><span>Saldo danach</span><strong>${escapeHtml(money(entry.runningBalance))}</strong></div>`:""}<div><span>Erfasst von</span><strong>${escapeHtml(entry.createdByName||"–")}</strong></div><div><span>Erfasst am</span><strong>${escapeHtml(fmtDateTime(entry.createdAt))}</strong></div>${entry.isReversed?`<div class="v4-detail-wide"><span>Storniert</span><strong>${escapeHtml(entry.reversalReason||"Ja")}</strong></div>`:""}${entry.reversesEntryId?'<div class="v4-detail-wide"><span>Hinweis</span><strong>Diese Buchung ist eine Stornobuchung.</strong></div>':""}</div>${entry.canReverse?`<div class="dialog-actions v4-detail-actions"><button class="button danger" type="button" data-dialog-reverse-entry="${escapeAttr(entry.id)}">Stornieren</button></div>`:""}`;
 }
 
-function openFinanceEntryDetails(entry) {
+function renderFinanceEntryDetailDialog(dialog, entry) {
+  document.getElementById("v4DialogTitle").textContent = `Buchung #${entry.entryNo}`;
+  document.getElementById("v4DialogKicker").textContent = "Kasse";
+  const body = dialog.querySelector("#v4DialogBody");
+  if (!body) return;
+  body.innerHTML = financeEntryDetailMarkup(entry);
+
+  body.querySelector("[data-dialog-reverse-entry]")
+    ?.addEventListener("click", () => openFinanceReversal(entry, dialog));
+}
+
+function openFinanceEntryDetails(entry, parentDialog = null) {
   const dialog = openDialog({
     title: `Buchung #${entry.entryNo}`,
     kicker: "Kasse",
     body: financeEntryDetailMarkup(entry)
   });
-
-  dialog.querySelector("[data-dialog-reverse-entry]")
-    ?.addEventListener("click", () => openFinanceReversal(entry));
+  renderFinanceEntryDetailDialog(dialog, entry);
+  if (parentDialog) {
+    afterDialogContextClose(dialog, () => {
+      const updatedAccount = financeAccounts().find(item => item.id === entry.accountId);
+      if (updatedAccount) renderFinanceAccountDetailDialog(parentDialog, updatedAccount);
+      else parentDialog.close();
+    });
+  }
 }
 
-function bindCompactFinanceEntries(scope, entries) {
+function bindCompactFinanceEntries(scope, entries, parentDialog = null) {
   scope.querySelectorAll("[data-open-finance-entry]").forEach(button => {
     button.addEventListener("click", () => {
       const entry = entries.find(item => item.id === button.dataset.openFinanceEntry);
-      if (entry) openFinanceEntryDetails(entry);
+      if (entry) openFinanceEntryDetails(entry, parentDialog);
     });
   });
 }
@@ -1413,54 +1552,71 @@ function financeAccountDetailMarkup(account, entries) {
   return `<div class="v4-account-detail-summary"><div><strong>${escapeHtml(account.name)}</strong><small>${escapeHtml(accountTypeLabel(account.accountType))} · ${account.active?"Aktiv":"Inaktiv"} · ${entries.length} Buchungen</small></div><strong class="v4-account-detail-balance">${escapeHtml(money(account.balance))}</strong></div>${snapshot.canManageFinance?`<div class="dialog-actions v4-detail-actions"><button class="button secondary" type="button" data-dialog-edit-account="${escapeAttr(account.id)}">Bearbeiten</button>${account.canDelete?`<button class="button danger" type="button" data-dialog-delete-account="${escapeAttr(account.id)}">Löschen</button>`:""}</div>`:""}<section class="v4-dialog-ledger"><div class="v4-dialog-section-title"><h3>Kontoauszug</h3><span>${entries.length} Buchungen</span></div>${compactFinanceEntries(entries,{showAccount:false,showBalance:true})}</section>`;
 }
 
-function openFinanceAccountDetails(account) {
+function renderFinanceAccountDetailDialog(dialog, account) {
   const entries = accountStatementEntries(account.id);
-  const dialog = openDialog({
-    title: account.name,
-    kicker: "Konto",
-    body: financeAccountDetailMarkup(account, entries)
-  });
+  document.getElementById("v4DialogTitle").textContent = account.name;
+  document.getElementById("v4DialogKicker").textContent = "Konto";
+  const body = dialog.querySelector("#v4DialogBody");
+  if (!body) return;
+  body.innerHTML = financeAccountDetailMarkup(account, entries);
 
-  dialog.querySelector("[data-dialog-edit-account]")
-    ?.addEventListener("click", () => openFinanceAccount(account));
+  body.querySelector("[data-dialog-edit-account]")
+    ?.addEventListener("click", () => openFinanceAccount(account, dialog));
 
-  dialog.querySelector("[data-dialog-delete-account]")
+  body.querySelector("[data-dialog-delete-account]")
     ?.addEventListener("click", async buttonEvent => {
       const button = buttonEvent.currentTarget;
       button.disabled = true;
       try {
-        await deleteFinanceAccount(account);
-        dialog.close();
+        if (await deleteFinanceAccount(account)) dialog.close();
       } catch (error) {
         button.disabled = false;
         showToast(error?.message || "Konto konnte nicht gelöscht werden.", "error", 6500);
       }
     });
 
-  bindCompactFinanceEntries(dialog, entries);
+  bindCompactFinanceEntries(dialog, entries, dialog);
 }
 
-function openFinanceManagement() {
-  const canTransfer = financeAccounts().filter(account => account.active).length >= 2;
+function openFinanceAccountDetails(account) {
   const dialog = openDialog({
-    title: "Verwaltung",
-    kicker: "Kasse",
-    body: `<div class="v4-management-grid">
+    title: account.name,
+    kicker: "Konto",
+    body: financeAccountDetailMarkup(account, accountStatementEntries(account.id))
+  });
+  renderFinanceAccountDetailDialog(dialog, account);
+}
+
+function renderFinanceManagementDialog(dialog) {
+  const canTransfer = financeAccounts().filter(account => account.active).length >= 2;
+  document.getElementById("v4DialogTitle").textContent = "Verwaltung";
+  document.getElementById("v4DialogKicker").textContent = "Kasse";
+  const body = dialog.querySelector("#v4DialogBody");
+  if (!body) return;
+  body.innerHTML = `<div class="v4-management-grid">
       <button class="button secondary" type="button" data-finance-management="income">Einnahme</button>
       <button class="button secondary" type="button" data-finance-management="expense">Ausgabe</button>
       <button class="button secondary" type="button" data-finance-management="transfer" ${canTransfer ? "" : "disabled"}>Umbuchung</button>
       <button class="button secondary" type="button" data-finance-management="account">Konto anlegen</button>
-    </div>`
-  });
+    </div>`;
 
-  dialog.querySelector('[data-finance-management="income"]')
-    ?.addEventListener("click", () => openFinanceEntry("INCOME"));
-  dialog.querySelector('[data-finance-management="expense"]')
-    ?.addEventListener("click", () => openFinanceEntry("EXPENSE"));
-  dialog.querySelector('[data-finance-management="transfer"]')
-    ?.addEventListener("click", () => openFinanceTransfer());
-  dialog.querySelector('[data-finance-management="account"]')
-    ?.addEventListener("click", () => openFinanceAccount());
+  body.querySelector('[data-finance-management="income"]')
+    ?.addEventListener("click", () => openFinanceEntry("INCOME", dialog));
+  body.querySelector('[data-finance-management="expense"]')
+    ?.addEventListener("click", () => openFinanceEntry("EXPENSE", dialog));
+  body.querySelector('[data-finance-management="transfer"]')
+    ?.addEventListener("click", () => openFinanceTransfer(dialog));
+  body.querySelector('[data-finance-management="account"]')
+    ?.addEventListener("click", () => openFinanceAccount(null, dialog));
+}
+
+function openFinanceManagement() {
+  const dialog = openDialog({
+    title: "Verwaltung",
+    kicker: "Kasse",
+    body: ""
+  });
+  renderFinanceManagementDialog(dialog);
 }
 
 function renderCashbookEntries(entries) {

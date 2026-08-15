@@ -1,4 +1,5 @@
 import {
+  afterDialogContextClose,
   call,
   confirmAction,
   currentUser,
@@ -18,6 +19,19 @@ import { navigate, routeParams } from "../router.js";
 let snapshot = null;
 let activeFilter = "mine";
 let activeArchiveTeamId = "";
+
+function taskById(taskId) {
+  return (snapshot?.tasks || []).find(task => task.id === taskId) || null;
+}
+
+function restoreTaskDetail(dialog, contextId, taskId) {
+  window.setTimeout(() => {
+    if (!dialog?.open || dialog.dataset.v4DialogContext !== contextId) return;
+    const updated = taskById(taskId);
+    if (updated) renderTaskDetailDialog(dialog, updated);
+    else dialog.close();
+  }, 0);
+}
 
 const PRIORITIES = [
   { value: "URGENT", label: "Eilt" },
@@ -200,29 +214,35 @@ function syncTaskForm(task = {}) {
   syncAssignment();
 }
 
-function openTask(task = null) {
+function openTask(task = null, parentDialog = null) {
+  const parentContextId = parentDialog?.dataset.v4DialogContext || "";
   openDialog({
     title: task ? "Aufgabe bearbeiten" : "Aufgabe erstellen",
     kicker: "Aufgaben",
     body: taskForm(task || {}),
+    preserveParentOnSubmit: Boolean(task && parentDialog),
     onSubmit: async values => {
       snapshot = await runWrite(
         () => call("save_task", values),
         task ? "Aufgabe wurde aktualisiert." : "Aufgabe wurde erstellt."
       );
       renderAll();
+      if (task && parentDialog) {
+        restoreTaskDetail(parentDialog, parentContextId, task.id);
+      }
     }
   });
 
   syncTaskForm(task || {});
 }
 
-async function openNote(task) {
+async function openNote(task, parentDialog = null) {
   const dialogId = "taskHistoryDialog";
   const bodyId = "taskHistoryBody";
   const addFormId = "taskHistoryAddForm";
 
-  openDialog({
+  const parentContextId = parentDialog?.dataset.v4DialogContext || "";
+  const historyDialog = openDialog({
     title: "Aufgabenverlauf",
     kicker: escapeHtml(task.title || "Aufgabe"),
     wide: true,
@@ -234,6 +254,22 @@ async function openNote(task) {
       </div>
     `
   });
+
+  if (parentDialog) {
+    afterDialogContextClose(historyDialog, async () => {
+      try {
+        snapshot = await call("tasks_snapshot");
+        renderAll();
+        if (parentDialog.dataset.v4DialogContext === parentContextId) {
+          const updated = taskById(task.id);
+          if (updated) renderTaskDetailDialog(parentDialog, updated);
+          else parentDialog.close();
+        }
+      } catch (error) {
+        showToast(error?.message || "Aufgabe konnte nicht aktualisiert werden.", "error", 5200);
+      }
+    });
+  }
 
   const host = document.getElementById(bodyId);
   if (!host) return;
@@ -622,10 +658,11 @@ function transferCandidates(task) {
   });
 }
 
-function openWaitingStatus(task, edit = false) {
+function openWaitingStatus(task, edit = false, parentDialog = null) {
   const deadlineValue = task.waitingDeadline
     ? new Date(task.waitingDeadline).toISOString().slice(0, 16)
     : "";
+  const parentContextId = parentDialog?.dataset.v4DialogContext || "";
 
   openDialog({
     title: edit ? "Warteangaben bearbeiten" : "Auf Wartet setzen",
@@ -639,6 +676,7 @@ function openWaitingStatus(task, edit = false) {
         <input type="datetime-local" name="waitingDeadline" value="${escapeAttr(deadlineValue)}">
       </label>
     </form>`,
+    preserveParentOnSubmit: Boolean(parentDialog),
     onSubmit: async values => {
       snapshot = await runWrite(
         () => call("set_task_status", {
@@ -651,17 +689,19 @@ function openWaitingStatus(task, edit = false) {
         edit ? "Warteangaben wurden aktualisiert." : "Aufgabe wartet jetzt auf Rückmeldung."
       );
       renderAll();
+      if (parentDialog) restoreTaskDetail(parentDialog, parentContextId, task.id);
     }
   });
 }
 
-function openTransfer(task, immediate = false) {
+function openTransfer(task, immediate = false, parentDialog = null) {
   const candidates = transferCandidates(task);
 
   if (!candidates.length) {
     showToast("Für diese Aufgabe ist keine zulässige Zielperson verfügbar.", "error");
     return;
   }
+  const parentContextId = parentDialog?.dataset.v4DialogContext || "";
 
   openDialog({
     title: immediate ? "Aufgabe sofort übertragen" : "Aufgabe übertragen",
@@ -688,6 +728,7 @@ function openTransfer(task, immediate = false) {
         <input type="datetime-local" name="expiresAt">
       </label>`}
     </form>`,
+    preserveParentOnSubmit: Boolean(parentDialog),
     onSubmit: async values => {
       snapshot = await runWrite(
         () => call("task_transfer", {
@@ -704,6 +745,7 @@ function openTransfer(task, immediate = false) {
           : "Übertragung wurde angefragt."
       );
       renderAll();
+      if (parentDialog) restoreTaskDetail(parentDialog, parentContextId, task.id);
     }
   });
 }
@@ -723,10 +765,11 @@ async function acceptTransfer(task) {
   renderAll();
 }
 
-function openTransferResponse(task, operation) {
+function openTransferResponse(task, operation, parentDialog = null) {
   const transfer = task.pendingTransfer;
   if (!transfer) return;
   const rejecting = operation === "REJECT";
+  const parentContextId = parentDialog?.dataset.v4DialogContext || "";
 
   openDialog({
     title: rejecting ? "Übertragung ablehnen" : "Übertragung zurückziehen",
@@ -738,6 +781,7 @@ function openTransferResponse(task, operation) {
         <textarea name="responseReason" rows="3" maxlength="1000" required></textarea>
       </label>
     </form>`,
+    preserveParentOnSubmit: Boolean(parentDialog),
     onSubmit: async values => {
       snapshot = await runWrite(
         () => call("task_transfer", {
@@ -751,6 +795,7 @@ function openTransferResponse(task, operation) {
           : "Übertragung wurde zurückgezogen."
       );
       renderAll();
+      if (parentDialog) restoreTaskDetail(parentDialog, parentContextId, task.id);
     }
   });
 }
@@ -1169,48 +1214,52 @@ function taskDetailMarkup(task) {
   </div>`;
 }
 
-function openTaskDetails(task) {
-  const dialog = openDialog({
-    title: task.title,
-    kicker: "Aufgabe",
-    body: taskDetailMarkup(task)
-  });
+function renderTaskDetailDialog(dialog, task) {
+  document.getElementById("v4DialogTitle").textContent = task.title;
+  document.getElementById("v4DialogKicker").textContent = "Aufgabe";
+  const body = dialog.querySelector("#v4DialogBody");
+  if (!body) return;
+  body.innerHTML = taskDetailMarkup(task);
 
-  dialog.querySelector("[data-edit-task]")
-    ?.addEventListener("click", () => openTask(task));
-  dialog.querySelector("[data-task-note]")
-    ?.addEventListener("click", () => openNote(task));
-  dialog.querySelector("[data-edit-waiting]")
-    ?.addEventListener("click", () => openWaitingStatus(task, true));
-  dialog.querySelector("[data-request-transfer]")
-    ?.addEventListener("click", () => openTransfer(task, false));
-  dialog.querySelector("[data-immediate-transfer]")
-    ?.addEventListener("click", () => openTransfer(task, true));
-  dialog.querySelector("[data-accept-transfer]")
+  body.querySelector("[data-edit-task]")
+    ?.addEventListener("click", () => openTask(task, dialog));
+  body.querySelector("[data-task-note]")
+    ?.addEventListener("click", () => openNote(task, dialog));
+  body.querySelector("[data-edit-waiting]")
+    ?.addEventListener("click", () => openWaitingStatus(task, true, dialog));
+  body.querySelector("[data-request-transfer]")
+    ?.addEventListener("click", () => openTransfer(task, false, dialog));
+  body.querySelector("[data-immediate-transfer]")
+    ?.addEventListener("click", () => openTransfer(task, true, dialog));
+  body.querySelector("[data-accept-transfer]")
     ?.addEventListener("click", async () => {
       await acceptTransfer(task);
-      dialog.close();
+      const updated = taskById(task.id);
+      if (updated) renderTaskDetailDialog(dialog, updated);
+      else dialog.close();
     });
-  dialog.querySelector("[data-reject-transfer]")
-    ?.addEventListener("click", () => openTransferResponse(task, "REJECT"));
-  dialog.querySelector("[data-cancel-transfer]")
-    ?.addEventListener("click", () => openTransferResponse(task, "CANCEL"));
+  body.querySelector("[data-reject-transfer]")
+    ?.addEventListener("click", () => openTransferResponse(task, "REJECT", dialog));
+  body.querySelector("[data-cancel-transfer]")
+    ?.addEventListener("click", () => openTransferResponse(task, "CANCEL", dialog));
 
-  dialog.querySelector("[data-task-status]")
+  body.querySelector("[data-task-status]")
     ?.addEventListener("change", async event => {
       const select = event.currentTarget;
       const previous = task.status;
       if (select.value === previous) return;
 
       if (select.value === "WAITING") {
-        openWaitingStatus(task, false);
+        openWaitingStatus(task, false, dialog);
         return;
       }
 
       select.disabled = true;
       try {
         await setStatus(task, select.value);
-        dialog.close();
+        const updated = taskById(task.id);
+        if (updated) renderTaskDetailDialog(dialog, updated);
+        else dialog.close();
       } catch (error) {
         select.value = previous;
         select.disabled = false;
@@ -1218,20 +1267,33 @@ function openTaskDetails(task) {
       }
     });
 
-  dialog.querySelector("[data-archive-task]")
+  body.querySelector("[data-archive-task]")
     ?.addEventListener("click", async event => {
       event.currentTarget.disabled = true;
       await archiveTask(task);
-      dialog.close();
+      const updated = taskById(task.id);
+      if (updated) renderTaskDetailDialog(dialog, updated);
+      else dialog.close();
     });
-  dialog.querySelector("[data-restore-task]")
+  body.querySelector("[data-restore-task]")
     ?.addEventListener("click", async event => {
       event.currentTarget.disabled = true;
       await restoreTask(task);
-      dialog.close();
+      const updated = taskById(task.id);
+      if (updated) renderTaskDetailDialog(dialog, updated);
+      else dialog.close();
     });
-  dialog.querySelector("[data-delete-archived-task]")
+  body.querySelector("[data-delete-archived-task]")
     ?.addEventListener("click", () => openPermanentDelete(task));
+}
+
+function openTaskDetails(task) {
+  const dialog = openDialog({
+    title: task.title,
+    kicker: "Aufgabe",
+    body: taskDetailMarkup(task)
+  });
+  renderTaskDetailDialog(dialog, task);
 }
 
 function filterCount(key) {
