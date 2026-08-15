@@ -148,6 +148,11 @@ function renderTrip() {
     </div>
     <p><strong>Abfahrtsinfo:</strong> ${escapeHtml(trip.departureInfo)}</p>`;
 
+  if (registrationComplete) {
+    elements.panel.hidden = false;
+    return;
+  }
+
   if (!["OPEN", "WAITLIST"].includes(trip.registrationStatus)) {
     elements.panel.hidden = false;
     elements.title.textContent = registrationStatusLabel(trip.registrationStatus);
@@ -503,6 +508,7 @@ async function submitPortal(event) {
     const result = await api.call(action, request);
     if (["CREATED", "WAITLISTED", "ALREADY_ACTIVE"].includes(result?.outcome)) {
       finishRegistration(result.outcome);
+      void refreshTripAfterSuccess();
       return;
     }
     setStatus(safeOutcomeMessage(result?.outcome), "warning");
@@ -567,6 +573,7 @@ async function submitGuest(event) {
     if (response.ok && result?.ok === true && result?.code === "ACCEPTED") {
       succeeded = true;
       finishRegistration(result?.outcome === "WAITLISTED" ? "WAITLISTED" : "CREATED");
+      void refreshTripAfterSuccess();
       return;
     }
 
@@ -661,6 +668,19 @@ async function loadTrip(tripId) {
     return error ? null : { ...data, boardingStops: stopError ? [] : (stopData?.stops || []) };
   } catch {
     return null;
+  }
+}
+
+async function refreshTripAfterSuccess() {
+  const tripId = trip?.tripId;
+  if (!tripId) return;
+  try {
+    const refreshedTrip = await loadTrip(tripId);
+    if (!refreshedTrip?.available) return;
+    trip = refreshedTrip;
+    renderTrip();
+  } catch {
+    // The accepted registration remains authoritative even when its display refresh fails.
   }
 }
 
