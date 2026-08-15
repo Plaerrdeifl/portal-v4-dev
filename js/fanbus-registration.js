@@ -145,8 +145,7 @@ function renderTrip() {
       <div class="meta-item"><small>Fahrtpreis</small><strong>${escapeHtml(formatMoney(trip.priceCents))}</strong></div>
       <div class="meta-item"><small>Freie Plätze</small><strong>${escapeHtml(remaining)}</strong></div>
       <div class="meta-item"><small>Anmeldezeitraum</small><strong>${escapeHtml(`${formatBerlinDateTime(trip.registrationOpensAt)} bis ${formatBerlinDateTime(trip.registrationClosesAt)}`)}</strong></div>
-    </div>
-    <p><strong>Abfahrtsinfo:</strong> ${escapeHtml(trip.departureInfo)}</p>`;
+    </div>`;
 
   if (registrationComplete) {
     elements.panel.hidden = false;

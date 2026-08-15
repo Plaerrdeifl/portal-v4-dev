@@ -45,7 +45,7 @@ test("fanbus page exposes one accessible compact global action menu", () => {
   assert.match(fanbuses, /!root\.contains\(event\.target\)/);
 });
 
-test("trip detail is compact and has Overview, occupancy, operations and management access", () => {
+test("trip detail is compact and exposes capability-gated occupancy, operations and management access", () => {
   const detailStart = fanbuses.indexOf("function tripDetailMarkup(trip, tripStops = [])");
   const detailEnd = fanbuses.indexOf("function tripTable", detailStart);
   const detailSource = fanbuses.slice(detailStart, detailEnd);

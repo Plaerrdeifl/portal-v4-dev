@@ -29,12 +29,12 @@ test("dialog confirmation cancel restores one existing parent context", () => {
 
   const cancellation = section(
     fanbuses,
-    "function renderRegistrationsDialog",
-    "function busForm"
+    "async function cancelRegistrationFromActions",
+    "function openRegistrationActions"
   );
-  assert.match(cancellation, /if \(!confirmed\) \{\s*return;\s*\}/);
-  assert.doesNotMatch(cancellation, /if \(!confirmed\)[\s\S]{0,180}showRegistrationsDialog/);
-  assert.doesNotMatch(cancellation, /renderRegistrationsDialog\(dialog, trip, data\)[\s\S]{0,180}if \(!confirmed\)/);
+  assert.match(cancellation, /if \(!confirmed\) return;/);
+  assert.doesNotMatch(cancellation, /showRegistrationsDialog\(/);
+  assert.match(cancellation, /renderRegistrationsDialog\(registrationsDialog, trip, nextData\)/);
 });
 
 test("event edit restores authoritative updated detail and delete discards invalid detail", () => {
@@ -75,11 +75,15 @@ test("participant edit and add preserve Fahrt to Belegung to Teilnehmer with fre
 });
 
 test("confirmed participant cancellation updates in place without a duplicate dialog", () => {
-  const registrations = section(fanbuses, "function renderRegistrationsDialog", "function busForm");
-  assert.match(registrations, /const nextData = await runWrite\([\s\S]*fanbus_registration_cancel/);
-  assert.match(registrations, /snapshot = await call\("fanbus_trips_list"\)/);
-  assert.match(registrations, /renderRegistrationsDialog\(dialog, trip, nextData\)/);
-  assert.doesNotMatch(registrations, /showRegistrationsDialog\(/);
+  const cancellation = section(
+    fanbuses,
+    "async function cancelRegistrationFromActions",
+    "function openRegistrationActions"
+  );
+  assert.match(cancellation, /const nextData = await runWrite\([\s\S]*fanbus_registration_cancel/);
+  assert.match(cancellation, /snapshot = await call\("fanbus_trips_list"\)/);
+  assert.match(cancellation, /renderRegistrationsDialog\(registrationsDialog, trip, nextData\)/);
+  assert.doesNotMatch(cancellation, /showRegistrationsDialog\(/);
 });
 
 test("bus writes refresh occupancy and the stored trip parent from server snapshots", () => {

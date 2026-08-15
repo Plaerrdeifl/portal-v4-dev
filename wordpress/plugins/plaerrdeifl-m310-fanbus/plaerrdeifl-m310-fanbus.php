@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plärrdeifl M310 Fanbusfahrten
  * Description: Öffentliche Anzeige der Fanbusfahrten mit Verlinkung zur zentralen Anmeldung.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Requires PHP: 8.3
  */
 
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 
 final class PD_M310_Fanbus_Plugin
 {
-    private const VERSION = '1.0.1';
+    private const VERSION = '1.0.2';
     private const OPTION_NAME = 'plaerrdeifl_m310_fanbus_settings';
     private const SETTINGS_GROUP = 'plaerrdeifl_m310_fanbus_settings_group';
     private const ADMIN_SLUG = 'plaerrdeifl-m310-fanbus';
@@ -502,7 +502,7 @@ final class PD_M310_Fanbus_Plugin
             || !self::valid_event_time($value['eventTime'])
             || !self::valid_optional_text($value['venue'], 500)
             || !self::valid_timestamp($value['departureAt'])
-            || !self::valid_text($value['departureInfo'], 4000)
+            || !self::valid_optional_text($value['departureInfo'], 4000)
             || !self::valid_timestamp($value['registrationOpensAt'])
             || !self::valid_timestamp($value['registrationClosesAt'])
             || !is_int($value['priceCents'])
@@ -642,11 +642,6 @@ final class PD_M310_Fanbus_Plugin
                     )); ?></dd>
                 </div>
             </dl>
-
-            <div class="pd-m310-departure-info">
-                <strong>Abfahrtsinfo</strong>
-                <p><?php echo nl2br(esc_html($trip['departureInfo']), false); ?></p>
-            </div>
 
             <?php if ($trip['registrationStatus'] !== 'UNAVAILABLE') : ?>
                 <a
