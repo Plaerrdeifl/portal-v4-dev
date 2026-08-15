@@ -720,6 +720,16 @@ async function openCompanionMemberDialog(listId, panel, summary, member = null, 
   });
 }
 
+function operationEventLabel(trip) {
+  const title = String(trip?.displayTitle || "").trim();
+  if (!title) return "Fanbusfahrt";
+
+  return title
+    .replace(/^Mighty Dogs Schweinfurt\\s+[–-]\\s+/u, "")
+    .replace(/\\s+[–-]\\s+Mighty Dogs Schweinfurt$/u, "")
+    || title;
+}
+
 async function renderOperationsWorkspace(panel, summary, tripId, returnTripId = "") {
   if (!hasCapability("fanbus.registrations.manage")) { returnToFanbuses(); return; }
   if (summary) summary.textContent = "";
@@ -728,10 +738,15 @@ async function renderOperationsWorkspace(panel, summary, tripId, returnTripId = 
   try {
     const data = await call("fanbus_operations_snapshot", { tripId });
     const totals = data.summary || {};
+    const participants = Array.isArray(data.participants) ? data.participants : [];
+    const paidCount = participants.filter(person => person.isPaid === true).length;
     const trip = trips().find(item => item.id === tripId);
-    panel.innerHTML = `<section class="v4-m325-workspace v4-m325-operations-workspace"><header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m325-back>Zurück</button><div><h2>Fahrtbetrieb</h2><p>${escapeHtml(trip?.displayTitle || "Fanbusfahrt")} · ${escapeHtml(formatCalendarDate(trip?.eventDate))} · Check-in Hinfahrt</p></div></header><div class="v4-m325-counters"><span><strong>${Number(totals.expected || 0)}</strong>Erwartet</span><span><strong>${Number(totals.present || 0)}</strong>Anwesend</span><span><strong>${Number(totals.open || 0)}</strong>Offen</span><span><strong>${Number(totals.noShow || 0)}</strong>No-Show</span></div>${Number(totals.unassignedBusCount || 0) || Number(totals.missingBoardingStopCount || 0) ? `<p class="notice warning v4-m325-operation-warning">${Number(totals.unassignedBusCount || 0)} ohne Bus · ${Number(totals.missingBoardingStopCount || 0)} ohne Zustiegsort</p>` : ""}<form class="form-grid v4-smart-form v4-m325-operation-filters" data-m325-operation-filters><label class="v4-field-full">Suche<input name="search" type="search" placeholder="Teilnehmer suchen" value="${escapeAttr(operationsUiState.search)}"></label><label class="v4-field-four">Status<select name="status"><option value="ALL">Alle</option><option value="OPEN">Offen</option><option value="PRESENT">Anwesend</option><option value="NO_SHOW">No-Show</option></select></label><label class="v4-field-four">Bus<select name="bus"><option value="ALL">Alle</option>${(data.buses || []).map(bus => `<option value="${escapeAttr(bus.busId)}">${escapeHtml(bus.label)}</option>`).join("")}</select></label><label class="v4-field-four">Zustiegsort<select name="stop"><option value="ALL">Alle</option>${(data.stops || []).map(stop => `<option value="${escapeAttr(stop.tripBoardingStopId)}">${escapeHtml(stop.label)}</option>`).join("")}</select></label></form><div class="v4-mobile-records v4-m325-operation-list" data-m325-operation-list>${operationCards(data.participants || [])}<p class="subtle" data-m325-operation-empty hidden>Keine Teilnehmer entsprechen den Filtern.</p></div></section>`;
+    panel.innerHTML = `<section class="v4-m325-workspace v4-m325-operations-workspace"><header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m325-back>← Zurück</button><div><h2>Fahrtbetrieb</h2><p>${escapeHtml(formatCalendarDate(trip?.eventDate))} · ${escapeHtml(operationEventLabel(trip))} · Check-in</p></div></header><div class="v4-m325-counters"><span><strong>${Number(totals.expected || 0)}</strong>Angemeldet</span><span><strong>${Number(totals.present || 0)}</strong>Anwesend</span><span><strong>${paidCount}</strong>Bezahlt</span><span><strong>${Number(totals.noShow || 0)}</strong>Fehlt</span></div>${Number(totals.unassignedBusCount || 0) || Number(totals.missingBoardingStopCount || 0) ? `<p class="notice warning v4-m325-operation-warning">${Number(totals.unassignedBusCount || 0)} ohne Bus · ${Number(totals.missingBoardingStopCount || 0)} ohne Zustiegsort</p>` : ""}<form class="form-grid v4-smart-form v4-m325-operation-filters" data-m325-operation-filters><label class="v4-field-full">Suche<input name="search" type="search" placeholder="Teilnehmer suchen" value="${escapeAttr(operationsUiState.search)}"></label><label class="v4-field-four">Status<select name="status"><option value="ALL">Alle</option><option value="PRESENT">Anwesend</option><option value="NO_SHOW">Fehlt</option></select></label><label class="v4-field-four">Bus<select name="bus"><option value="ALL">Alle</option>${(data.buses || []).map(bus => `<option value="${escapeAttr(bus.busId)}">${escapeHtml(bus.label)}</option>`).join("")}</select></label><label class="v4-field-four">Zustiegsort<select name="stop"><option value="ALL">Alle</option>${(data.stops || []).map(stop => `<option value="${escapeAttr(stop.tripBoardingStopId)}">${escapeHtml(stop.label)}</option>`).join("")}</select></label></form><div class="v4-mobile-records v4-m325-operation-list" data-m325-operation-list>${operationCards(participants)}<p class="subtle" data-m325-operation-empty hidden>Keine Teilnehmer entsprechen den Filtern.</p></div></section>`;
     panel.querySelector("[data-m325-back]")?.addEventListener("click", () => returnToFanbuses(returnTripId));
     const filters = panel.querySelector("[data-m325-operation-filters]");
+    if (!["ALL", "PRESENT", "NO_SHOW"].includes(operationsUiState.status)) {
+      operationsUiState.status = "ALL";
+    }
     filters.elements.status.value = operationsUiState.status;
     filters.elements.bus.value = operationsUiState.bus;
     filters.elements.stop.value = operationsUiState.stop;
@@ -745,7 +760,18 @@ async function renderOperationsWorkspace(panel, summary, tripId, returnTripId = 
 }
 
 function operationCards(participants) {
-  return participants.map(person => `<article class="v4-compact-record v4-m325-operation-card" data-m325-participant="${escapeAttr(`${person.firstName} ${person.lastName}`.toLocaleLowerCase("de-DE"))}" data-status="${escapeAttr(person.checkinStatus)}" data-bus="${escapeAttr(person.busId || "")}" data-stop="${escapeAttr(person.tripBoardingStopId || "")}"><div class="v4-compact-record-copy v4-m325-record-copy"><strong>${escapeHtml(`${person.firstName} ${person.lastName}`)}</strong><small>${escapeHtml(person.busLabel || "Kein Bus")} · ${escapeHtml(person.boardingStopLabel || "Kein Zustiegsort")}${person.departureAt ? ` · ${escapeHtml(formatBerlinTime(person.departureAt))}` : ""}</small></div><span class="badge ${person.checkinStatus === "PRESENT" ? "success" : person.checkinStatus === "NO_SHOW" ? "danger" : "neutral"}">${escapeHtml({ OPEN: "Offen", PRESENT: "Anwesend", NO_SHOW: "No-Show" }[person.checkinStatus] || "Offen")}</span><div class="v4-row-actions v4-m325-checkin-actions"><button class="button small primary" data-m325-checkin="PRESENT" data-id="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.checkinRevision)}">✓ Anwesend</button><button class="button small ${person.isPaid ? "primary" : "secondary"} v4-m325-paid-toggle" type="button" aria-pressed="${person.isPaid ? "true" : "false"}" data-m325-paid="${person.isPaid ? "false" : "true"}" data-id="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.checkinRevision)}">${person.isPaid ? "✓ Bezahlt" : "Bezahlt"}</button><button class="button small secondary" data-m325-checkin="OPEN" data-id="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.checkinRevision)}">↶ Offen</button><button class="button small danger" data-m325-checkin="NO_SHOW" data-id="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.checkinRevision)}">No-Show</button></div></article>`).join("") || empty("Keine aktiven Teilnehmer.");
+  return participants.map(person => {
+    const isPresent = person.checkinStatus === "PRESENT";
+    const isMissing = person.checkinStatus === "NO_SHOW";
+
+    const statusBadge = isPresent
+      ? '<span class="badge success">Anwesend</span>'
+      : isMissing
+        ? '<span class="badge danger">Fehlt</span>'
+        : "";
+
+    return `<article class="v4-compact-record v4-m325-operation-card" data-m325-participant="${escapeAttr(`${person.firstName} ${person.lastName}`.toLocaleLowerCase("de-DE"))}" data-status="${escapeAttr(person.checkinStatus)}" data-bus="${escapeAttr(person.busId || "")}" data-stop="${escapeAttr(person.tripBoardingStopId || "")}"><div class="v4-compact-record-copy v4-m325-record-copy"><strong>${escapeHtml(`${person.firstName} ${person.lastName}`)}</strong><small>${escapeHtml(person.busLabel || "Kein Bus")} · ${escapeHtml(person.boardingStopLabel || "Kein Zustiegsort")}${person.departureAt ? ` · ${escapeHtml(formatBerlinTime(person.departureAt))}` : ""}</small></div>${statusBadge}<div class="v4-row-actions v4-m325-checkin-actions"><button class="button small ${isPresent ? "primary" : "secondary"} v4-m325-checkin-toggle" type="button" aria-pressed="${isPresent ? "true" : "false"}" data-m325-checkin="PRESENT" data-current-status="${escapeAttr(person.checkinStatus || "OPEN")}" data-id="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.checkinRevision)}">${isPresent ? "✓ Anwesend" : "Anwesend"}</button><button class="button small ${person.isPaid ? "primary" : "secondary"} v4-m325-paid-toggle" type="button" aria-pressed="${person.isPaid ? "true" : "false"}" data-m325-paid="${person.isPaid ? "false" : "true"}" data-id="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.checkinRevision)}">${person.isPaid ? "✓ Bezahlt" : "Bezahlt"}</button><button class="button small ${isMissing ? "danger" : "secondary"} v4-m325-checkin-toggle" type="button" aria-pressed="${isMissing ? "true" : "false"}" data-m325-checkin="NO_SHOW" data-current-status="${escapeAttr(person.checkinStatus || "OPEN")}" data-id="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.checkinRevision)}">${isMissing ? "✓ Fehlt" : "Fehlt"}</button></div></article>`;
+  }).join("") || empty("Keine aktiven Teilnehmer.");
 }
 
 function filterOperations(panel) {
@@ -765,10 +791,15 @@ function bindOperationActions(panel, summary, tripId, returnTripId = "") {
   panel.querySelectorAll("[data-m325-checkin]").forEach(button => button.addEventListener("click", async () => {
     try {
       operationsUiState.scrollY = document.getElementById("view")?.scrollTop || 0;
+      const requestedStatus = button.dataset.m325Checkin;
+      const nextStatus = button.dataset.currentStatus === requestedStatus
+        ? "OPEN"
+        : requestedStatus;
+
       await runWrite(() => call("fanbus_checkin_set", {
         participantId: button.dataset.id,
         expectedRevision: Number(button.dataset.revision),
-        status: button.dataset.m325Checkin
+        status: nextStatus
       }), "Check-in aktualisiert.");
       await renderOperationsWorkspace(panel, summary, tripId, returnTripId);
     } catch (error) {
