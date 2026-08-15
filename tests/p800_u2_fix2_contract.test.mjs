@@ -32,8 +32,14 @@ test("fanbus.manage independently retains occupancy bus and stop management", ()
   const actions = section("function bindOccupancyActions", "function reloadOccupancyAfterChild");
   assert.match(actions, /if \(access\?\.canManageBuses\)/);
   assert.match(actions, /openBusCreator\(trip, dialog\)/);
-  assert.match(actions, /openBusEditor\(trip, data, bus, dialog\)/);
-  assert.match(actions, /openBusStops\(trip, bus, mapping, tripStops\?\.stops \|\| \[\], dialog\)/);
+  assert.match(actions, /openBusActions\(trip, data, bus, busMappings, tripStops, dialog\)/);
+
+  const busActions = section("function openBusActions", "async function occupancyData");
+  assert.match(busActions, /openBusEditor\(trip, data, bus, parentDialog\)/);
+  assert.match(
+    busActions,
+    /openBusStops\(trip, bus, mapping, tripStops\?\.stops \|\| \[\], parentDialog\)/
+  );
 });
 
 test("participant reads metrics and actions remain registration-management only", () => {

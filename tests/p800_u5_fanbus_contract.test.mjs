@@ -18,10 +18,11 @@ function section(source, start, end) {
   return source.slice(from, to);
 }
 
-test("P800 U5 removes redundant detail status and overview navigation", () => {
+test("P800 U5 removes registration status from detail and overview navigation", () => {
   const detail = section(fanbuses, "function tripDetailMarkup", "function openTripDetail");
   const nav = section(fanbuses, "function tripNavigation", "function normalizedTripDetailStops");
   assert.doesNotMatch(detail, /tripBadges\(trip\)|v4-m310-trip-status|Treffpunkt \/ Abfahrtsort/);
+  assert.match(detail, /tripLifecycleBadge\(trip\)/);
   assert.doesNotMatch(nav, />Übersicht</);
   assert.match(nav, />Belegung</);
   assert.match(nav, />Fahrtbetrieb</);

@@ -67,7 +67,7 @@ test("M310 registrations use compact operational records without empty cancellat
   assert.notEqual(end, -1);
   const card = fanbuses.slice(start, end);
 
-  assert.match(card, /class="v4-m310-registration-record"/);
+  assert.match(card, /class="v4-m310-registration-record v4-interactive-card"/);
   assert.doesNotMatch(card, /card entity-card|entity-head|meta-grid|meta-item|v4-card-actions/);
   assert.match(card, /class="badge \$\{registration\.status === "ACTIVE" \? "success" : "neutral"\}"/);
   assert.match(card, /sourceText\(registration\.source\)/);
@@ -76,16 +76,21 @@ test("M310 registrations use compact operational records without empty cancellat
   assert.match(card, /formatBerlinDateTime\(registration\.registeredAt\)/);
   assert.match(card, /registration\.status === "CANCELLED" && registration\.cancelledAt/);
   assert.doesNotMatch(card, /cancelledAt\s*\|\|\s*"–"/);
-  assert.match(card, /isActive[\s\S]+data-m310-cancel-registration=[\s\S]+>Stornieren<\/button>/);
+  assert.match(card, /data-m320-open-registration/);
+  assert.doesNotMatch(card, /data-m320-edit-registration|data-m310-cancel-registration/);
+
+  const cancellationStart = fanbuses.indexOf("async function cancelRegistrationFromActions");
+  const cancellationEnd = fanbuses.indexOf("function busCategoryLabel", cancellationStart);
+  const cancellation = fanbuses.slice(cancellationStart, cancellationEnd);
+  assert.notEqual(cancellationStart, -1);
+  assert.notEqual(cancellationEnd, -1);
+  assert.match(cancellation, /call\("fanbus_registration_cancel", \{[\s\S]+id: registration\.id,[\s\S]+expectedRevision: Number\(registration\.revision\)/);
+  assert.match(cancellation, /renderRegistrationsDialog\(registrationsDialog, trip, nextData\)/);
+  assert.doesNotMatch(cancellation, /showRegistrationsDialog\(/);
 
   const registrationFlowEnd = fanbuses.indexOf("function manualPersonLabel(person)", end);
   const registrationFlow = fanbuses.slice(end, registrationFlowEnd);
   assert.match(registrationFlow, /hasCapability\("fanbus\.registrations\.manage"\)/);
-  assert.match(registrationFlow, /querySelectorAll\("\[data-m310-cancel-registration\]"\)/);
-  assert.match(
-    registrationFlow,
-    /call\("fanbus_registration_cancel", \{[\s\S]+id: registration\.id,[\s\S]+expectedRevision: Number\(registration\.revision\)/
-  );
 
   const listRule = cssRule(".v4-m310-registration-list");
   const recordRule = cssRule(".v4-m310-registration-record");
@@ -105,8 +110,13 @@ test("M310 registrations use compact operational records without empty cancellat
   );
 });
 
-test("M310 central editor exposes the existing registration window and keeps the Berlin close default", () => {
-  assert.match(fanbuses, /Treffpunkt \/ Abfahrtsort/);
+test("M310 central editor keeps the registration window without the legacy meeting field", () => {
+  const tripFormStart = fanbuses.indexOf("function tripForm(trip)");
+  const tripFormEnd = fanbuses.indexOf("function tripUpdatePayload", tripFormStart);
+  const tripForm = fanbuses.slice(tripFormStart, tripFormEnd);
+  assert.notEqual(tripFormStart, -1);
+  assert.notEqual(tripFormEnd, -1);
+  assert.doesNotMatch(tripForm, /Treffpunkt \/ Abfahrtsort|name="departureInfo"/);
   assert.match(fanbuses, /name="registrationOpensAt"/);
   assert.match(fanbuses, />Anmeldung beginnt/);
   assert.match(fanbuses, /function defaultRegistrationClosesInput\(departureAt\)/);

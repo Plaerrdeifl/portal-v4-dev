@@ -61,10 +61,13 @@ test("M320 mobile forms keep guest preference, edit fields and filters in respon
   const filters = fanbuses.slice(filtersStart, filtersEnd);
   assert.match(filters, /class="v4-field-full">Suche/);
   for (const field of ["status", "preference", "bus", "assignment"]) {
-    assert.match(filters, new RegExp(`class="v4-field-three"[^>]*>[^<]*<select name="${field}"`));
+    assert.match(filters, new RegExp(`class="v4-m320-filter-half"[^>]*>[^<]*<select name="${field}"`));
   }
-  assert.match(css, /max-width:860px[^}]*data-m320-registration-filters[^}]*span 6/);
-  assert.match(css, /max-width:430px[^}]*data-m320-registration-filters[^}]*grid-column:1\/-1/);
+  assert.equal((filters.match(/class="v4-m320-filter-half"/g) || []).length, 4);
+  assert.match(
+    css,
+    /\[data-m320-registration-filters\]\s*>\s*\.v4-m320-filter-half\s*\{[^}]*grid-column:\s*span 6/
+  );
   assert.match(css, /data-m320-registration-edit[^}]*v4-field-half[^}]*grid-column:1\/-1/);
 });
 
