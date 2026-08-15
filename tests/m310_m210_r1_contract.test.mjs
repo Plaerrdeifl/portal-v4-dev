@@ -140,7 +140,7 @@ test("M210 and M310 editors use the shared member and finance dialog contract", 
   assert.match(css, /@media\(max-width:350px\)\{\.v4-smart-form>\*\{grid-column:1\/-1!important\}/);
 });
 
-test("cash, M210 and M310 retain semantic two-column tracks on iPhone", () => {
+test("cash, M210 and M310 retain their intended responsive smart-form tracks on iPhone", () => {
   assert.match(finance, /v4-field-seven">Konto<select[\s\S]+v4-field-five">Betrag/);
   assert.match(finance, /v4-field-five">Buchungsdatum[\s\S]+v4-field-seven">Zahlungsart/);
 
@@ -153,8 +153,14 @@ test("cash, M210 and M310 retain semantic two-column tracks on iPhone", () => {
   );
   assert.doesNotMatch(dates, /id="m210DateGameFields"|class="v4-field-full v4-form-pair"/);
 
-  assert.match(fanbuses, /v4-field-seven">Abfahrt[\s\S]+v4-field-five">Kapazität/);
-  assert.match(fanbuses, /v4-field-seven">Anmeldung endet[\s\S]+v4-field-five">Fahrtpreis/);
+  const tripFormStart = fanbuses.indexOf("function tripForm");
+  const tripFormEnd = fanbuses.indexOf("function openTripEditor", tripFormStart);
+  assert.notEqual(tripFormStart, -1, "Fahrteditor-Formular fehlt");
+  assert.notEqual(tripFormEnd, -1, "Ende des Fahrteditor-Formulars fehlt");
+  const tripFormSource = fanbuses.slice(tripFormStart, tripFormEnd);
+  assert.match(tripFormSource, /v4-field-full">Abfahrt/);
+  assert.doesNotMatch(tripFormSource, /name="capacity"/);
+  assert.match(tripFormSource, /v4-field-seven">Anmeldung endet[\s\S]+v4-field-five">Fahrtpreis/);
 
   assert.doesNotMatch(
     css,
