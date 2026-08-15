@@ -46,12 +46,12 @@ test("fanbus page exposes one accessible compact global action menu", () => {
 });
 
 test("trip detail is compact and has Overview, occupancy, operations and management access", () => {
-  const detailStart = fanbuses.indexOf("function tripDetailMarkup(trip)");
+  const detailStart = fanbuses.indexOf("function tripDetailMarkup(trip, tripStops = [])");
   const detailEnd = fanbuses.indexOf("function tripTable", detailStart);
   const detailSource = fanbuses.slice(detailStart, detailEnd);
   const navigationStart = fanbuses.indexOf("function tripNavigation(trip)");
   const navigationEnd = fanbuses.indexOf(
-    "function tripDetailMarkup(trip)",
+    "function tripDetailMarkup(trip, tripStops = [])",
     navigationStart
   );
   const navigationSource = fanbuses.slice(navigationStart, navigationEnd);
@@ -61,7 +61,7 @@ test("trip detail is compact and has Overview, occupancy, operations and managem
   assert.notEqual(navigationStart, -1);
   assert.notEqual(navigationEnd, -1);
   assert.match(detailSource, /eventTimeCompact\(trip\.eventTime\)/);
-  assert.match(detailSource, /v4-m310-trip-status/);
+  assert.doesNotMatch(detailSource, /v4-m310-trip-status|tripBadges\\(trip\\)/);
   assert.match(detailSource, /v4-m325-trip-travel/);
   assert.match(detailSource, /registrationWindowText\(trip\)/);
   assert.match(detailSource, /\$\{tripNavigation\(trip\)\}/);
@@ -72,7 +72,7 @@ test("trip detail is compact and has Overview, occupancy, operations and managem
   assert.match(detailSource, />Abbrechen</);
   assert.match(detailSource, />Änderungen speichern</);
 
-  assert.match(navigationSource, />Übersicht</);
+  assert.doesNotMatch(navigationSource, />Übersicht</);
   assert.match(navigationSource, />Belegung</);
   assert.match(navigationSource, />Fahrtbetrieb</);
   assert.match(navigationSource, /data-m310-trip-settings/);

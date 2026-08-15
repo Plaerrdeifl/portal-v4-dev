@@ -6385,3 +6385,77 @@ html[data-portal-area="portal"] .v4-toolbar p{
   .v4-m310-trip-settings { width: 100% !important; }
   .v4-m310-occupancy-bus-heading { display: grid; }
 }
+
+
+/* P800 U5: Fanbus Visual + Paid Marker */
+#m310FanbusManagement {
+  margin-left: auto;
+  align-self: flex-start;
+}
+.v4-action-menu-panel {
+  right: 0;
+  left: auto;
+  max-width: min(280px, calc(100vw - 24px));
+}
+.v4-m325-trip-stops {
+  display: grid !important;
+  gap: 6px;
+}
+.v4-m325-trip-stop-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.v4-m325-trip-stop {
+  display: inline-grid;
+  gap: 1px;
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid var(--border, #d7dce3);
+  border-radius: 9px;
+  background: var(--surface-soft, #f3f6fa);
+}
+.v4-m325-trip-stop small { color: var(--text-muted, #56616f); }
+.v4-m325-paid-toggle { white-space: nowrap; }
+
+@media (max-width: 430px) {
+  #m310FanbusManagement {
+    margin-left: auto !important;
+    align-self: flex-start;
+  }
+  .v4-action-menu-panel {
+    right: 0 !important;
+    left: auto !important;
+    width: min(260px, calc(100vw - 24px));
+    min-width: 0;
+  }
+  .v4-m310-trip-nav {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 6px;
+  }
+  .v4-m310-trip-nav .button {
+    min-width: 0;
+    flex: 1 1 auto;
+    white-space: nowrap;
+    padding-inline: 8px;
+    font-size: .78rem;
+  }
+  .v4-m310-trip-settings {
+    flex: 0 0 40px;
+    width: 40px !important;
+    margin-left: 0 !important;
+  }
+  .v4-m325-checkin-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+@media (max-width: 350px) {
+  .v4-m310-trip-nav {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+  }
+  .v4-m310-trip-settings { width: 40px !important; }
+}
