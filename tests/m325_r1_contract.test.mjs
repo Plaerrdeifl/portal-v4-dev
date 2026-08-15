@@ -84,6 +84,30 @@ test("M325 extends public guest and portal registration only with bounded stop/n
   assert.match(standalone, /data-m325-duplicate-preview/);
 });
 
+test("M325 refreshes the public trip after accepted registration without invalidating success", async () => {
+  const registration = await read("js/fanbus-registration.js");
+  const refresh = sourceBetween(
+    registration,
+    "async function refreshTripAfterSuccess",
+    "async function initialize"
+  );
+  assert.match(refresh, /const tripId = trip\?\.tripId/);
+  assert.match(refresh, /const refreshedTrip = await loadTrip\(tripId\)/);
+  assert.match(refresh, /if \(!refreshedTrip\?\.available\) return/);
+  assert.ok(refresh.indexOf("trip = refreshedTrip") < refresh.indexOf("renderTrip()"));
+  assert.doesNotMatch(refresh, /setStatus|registrationComplete\s*=|remainingCapacity\s*[-+]/);
+
+  const renderTrip = sourceBetween(registration, "function renderTrip", "function appendReferenceConsent");
+  assert.match(renderTrip, /if \(registrationComplete\) \{[\s\S]*?elements\.panel\.hidden = false;[\s\S]*?return;/);
+
+  const portalSubmit = sourceBetween(registration, "async function submitPortal", "async function submitGuest");
+  const guestSubmit = sourceBetween(registration, "async function submitGuest", "async function renderMode");
+  for (const submit of [portalSubmit, guestSubmit]) {
+    assert.match(submit, /finishRegistration\([\s\S]*?void refreshTripAfterSuccess\(\)/);
+    assert.ok(submit.indexOf("finishRegistration(") < submit.indexOf("void refreshTripAfterSuccess()"));
+  }
+});
+
 test("M325 provides integrated, mobile-first companion and operations screens", async () => {
   const [ui, css, page] = await Promise.all([
     read("js/modules/fanbuses.js"), read("css/app.css"), read("pages/fanbuses.html")
