@@ -165,7 +165,7 @@ test("M310 portal and WordPress use the same canonical registration deep link", 
   ]);
   const tripDetail = sourceBlock(
     fanbuses,
-    "function tripDetailMarkup(trip)",
+    "function tripDetailMarkup(trip, tripStops = [])",
     "function openTripDetail(trip)"
   );
   const renderTrip = sourceBlock(
