@@ -115,7 +115,7 @@ test("M325 provides integrated, mobile-first companion and operations screens", 
   assert.match(ui, /view=companions/);
   assert.match(ui, /view=operations/);
   assert.match(ui, /✓ Anwesend/);
-  assert.match(ui, /No-Show/);
+  assert.match(ui, /Fehlt/);
   assert.match(ui, /data-m325-operation-filters/);
   assert.match(ui, /name="status"/);
   assert.match(ui, /name="bus"/);
