@@ -6116,4 +6116,11 @@ html[data-portal-area="portal"] .v4-toolbar p{
 .v4-m325-counters strong { color: var(--text, #17202a); font-size: 1.35rem; }
 .v4-m325-member { padding-top: 10px; margin-top: 10px; border-top: 1px solid var(--border, #d7dce3); display: grid; gap: 2px; }
 .v4-m325-workspace .button { min-height: 44px; }
+@media (max-width: 430px) {
+  [data-m325-master-stop] > .v4-field-half,
+  [data-m325-trip-stop] > .v4-field-half,
+  [data-m325-edit-master] > .v4-field-half,
+  [data-m325-member-form] > .v4-field-half,
+  [data-m325-operation-filters] > .v4-field-four { grid-column: 1 / -1 !important; }
+}
 @media (min-width: 720px) { .v4-m325-counters { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
