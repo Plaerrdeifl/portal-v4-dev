@@ -120,6 +120,15 @@
             <option value="PARTY">Party</option>
           </select>
         </label>
+        <label class="full" data-m325-primary-stop="portal" hidden>
+          Zustiegsort
+          <select name="boardingStopId"></select>
+        </label>
+        <div class="full" data-m325-companion-list hidden>
+          <div class="section-title"><div><h3>Mitfahrerliste verwenden</h3><p>Die ausgewählten Vorlagen werden nur für diese Fahrt übernommen.</p></div></div>
+          <div class="form-grid"><label>Liste<select data-m325-companion-list-select></select></label><div class="form-actions"><button class="button small secondary" type="button" data-m325-apply-companion-list>Liste übernehmen</button></div></div>
+          <div class="fanbus-companions" data-m325-companion-list-members></div>
+        </div>
         <div class="full"><div class="section-title"><div><h3>Wer fährt mit?</h3><p>Du bist die buchende Person. Begleiter werden gemeinsam angemeldet.</p></div></div><div data-m320-companions="portal" class="fanbus-companions"></div><button data-m320-add-companion="portal" class="button small secondary" type="button">Person hinzufügen</button></div>
         <label class="check-row full fanbus-public-consent">
           <input name="privacyConfirmed" type="checkbox" required>
@@ -130,6 +139,7 @@
           <span id="m310PortalTermsConsent"></span>
         </label>
         <div class="readonly full" data-m320-booking-summary="portal" aria-live="polite"></div>
+        <div class="notice full" data-m325-duplicate-preview aria-live="polite" hidden></div>
         <div class="fanbus-public-actions full">
           <button class="button primary" type="submit">Verbindlich anmelden</button>
         </div>
@@ -155,6 +165,10 @@
             <option value="RUHIG">Ruhig</option>
             <option value="PARTY">Party</option>
           </select>
+        </label>
+        <label class="full" data-m325-primary-stop="guest" hidden>
+          Zustiegsort
+          <select name="boardingStopId"></select>
         </label>
         <div class="full"><div class="section-title"><div><h3>Wer fährt mit?</h3><p>Füge bei Bedarf Begleiter zu dieser gemeinsamen Anmeldung hinzu.</p></div></div><div data-m320-companions="guest" class="fanbus-companions"></div><button data-m320-add-companion="guest" class="button small secondary" type="button">Person hinzufügen</button></div>
         <label class="check-row full fanbus-public-consent">
