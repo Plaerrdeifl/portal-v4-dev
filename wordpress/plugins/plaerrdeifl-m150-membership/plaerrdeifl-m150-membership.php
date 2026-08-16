@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plärrdeifl M150 Mitglied werden
  * Description: Öffentlicher Mitgliedsantrag mit Dokumentverwaltung und sicherem Servertransport.
- * Version: 1.0.3
+ * Version: 1.0.4
  * Requires PHP: 8.3
  */
 
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 
 final class PD_M150_Membership_Plugin
 {
-    private const VERSION = '1.0.3';
+    private const VERSION = '1.0.4';
     private const OPTION_NAME = 'plaerrdeifl_m150_settings';
     private const SETTINGS_GROUP = 'plaerrdeifl_m150_settings_group';
     private const ADMIN_SLUG = 'plaerrdeifl-m150-membership';
@@ -498,6 +498,13 @@ final class PD_M150_Membership_Plugin
             11 => 'November',
             12 => 'Dezember',
         );
+
+        $current_year = (int) (
+            new DateTimeImmutable(
+                'now',
+                new DateTimeZone('Europe/Berlin')
+            )
+        )->format('Y');
         ?>
         <div class="pd-m150-field pd-m150-birthdate-field">
             <span>Geburtsdatum</span>
@@ -541,17 +548,23 @@ final class PD_M150_Membership_Plugin
 
                 <label class="pd-m150-birthdate-part">
                     <span>Jahr</span>
-                    <input
-                        type="text"
-                        inputmode="numeric"
-                        pattern="[0-9]{4}"
-                        maxlength="4"
-                        placeholder="JJJJ"
+                    <select
                         autocomplete="bday-year"
                         data-pd-m150-birth-year
                         aria-describedby="pd-m150-birthdate-error"
                         required
                     >
+                        <option value="">Jahr</option>
+                        <?php for (
+                            $year = $current_year;
+                            $year >= 1900;
+                            $year--
+                        ) : ?>
+                            <option value="<?php echo esc_attr((string) $year); ?>">
+                                <?php echo esc_html((string) $year); ?>
+                            </option>
+                        <?php endfor; ?>
+                    </select>
                 </label>
             </div>
 

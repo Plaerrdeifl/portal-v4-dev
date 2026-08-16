@@ -190,7 +190,7 @@
         if (
             !(day instanceof HTMLSelectElement)
             || !(month instanceof HTMLSelectElement)
-            || !(year instanceof HTMLInputElement)
+            || !(year instanceof HTMLSelectElement)
             || !(hidden instanceof HTMLInputElement)
             || !(error instanceof HTMLElement)
         ) {
