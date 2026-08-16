@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plärrdeifl M150 Mitglied werden
  * Description: Öffentlicher Mitgliedsantrag mit Dokumentverwaltung und sicherem Servertransport.
- * Version: 1.0.2
+ * Version: 1.0.3
  * Requires PHP: 8.3
  */
 
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 
 final class PD_M150_Membership_Plugin
 {
-    private const VERSION = '1.0.2';
+    private const VERSION = '1.0.3';
     private const OPTION_NAME = 'plaerrdeifl_m150_settings';
     private const SETTINGS_GROUP = 'plaerrdeifl_m150_settings_group';
     private const ADMIN_SLUG = 'plaerrdeifl-m150-membership';
@@ -449,7 +449,7 @@ final class PD_M150_Membership_Plugin
                 <div class="pd-m150-grid">
                     <?php self::render_public_input('firstName', 'Vorname', 'text', 160, 'given-name'); ?>
                     <?php self::render_public_input('lastName', 'Nachname', 'text', 160, 'family-name'); ?>
-                    <?php self::render_public_input('birthDate', 'Geburtsdatum', 'date', null, 'bday'); ?>
+                    <?php self::render_public_birth_date(); ?>
                     <?php self::render_public_input('email', 'E-Mail', 'email', 320, 'email'); ?>
                     <?php self::render_public_input('phone', 'Telefon', 'tel', 80, 'tel'); ?>
                     <?php self::render_public_input('street', 'Straße', 'text', 160, 'address-line1'); ?>
@@ -480,6 +480,98 @@ final class PD_M150_Membership_Plugin
         </section>
         <?php
         return (string) ob_get_clean();
+    }
+
+    private static function render_public_birth_date(): void
+    {
+        $months = array(
+            1 => 'Januar',
+            2 => 'Februar',
+            3 => 'März',
+            4 => 'April',
+            5 => 'Mai',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'August',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Dezember',
+        );
+        ?>
+        <div class="pd-m150-field pd-m150-birthdate-field">
+            <span>Geburtsdatum</span>
+
+            <div
+                class="pd-m150-birthdate-inputs"
+                role="group"
+                aria-label="Geburtsdatum"
+            >
+                <label class="pd-m150-birthdate-part">
+                    <span>Tag</span>
+                    <select
+                        data-pd-m150-birth-day
+                        aria-describedby="pd-m150-birthdate-error"
+                        required
+                    >
+                        <option value="">Tag</option>
+                        <?php for ($day = 1; $day <= 31; $day++) : ?>
+                            <option value="<?php echo esc_attr(sprintf('%02d', $day)); ?>">
+                                <?php echo esc_html((string) $day); ?>
+                            </option>
+                        <?php endfor; ?>
+                    </select>
+                </label>
+
+                <label class="pd-m150-birthdate-part">
+                    <span>Monat</span>
+                    <select
+                        data-pd-m150-birth-month
+                        aria-describedby="pd-m150-birthdate-error"
+                        required
+                    >
+                        <option value="">Monat</option>
+                        <?php foreach ($months as $month => $month_label) : ?>
+                            <option value="<?php echo esc_attr(sprintf('%02d', $month)); ?>">
+                                <?php echo esc_html($month_label); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+
+                <label class="pd-m150-birthdate-part">
+                    <span>Jahr</span>
+                    <input
+                        type="text"
+                        inputmode="numeric"
+                        pattern="[0-9]{4}"
+                        maxlength="4"
+                        placeholder="JJJJ"
+                        autocomplete="bday-year"
+                        data-pd-m150-birth-year
+                        aria-describedby="pd-m150-birthdate-error"
+                        required
+                    >
+                </label>
+            </div>
+
+            <input
+                type="hidden"
+                name="birthDate"
+                data-pd-m150-birth-date
+                value=""
+            >
+
+            <span
+                class="pd-m150-field-error"
+                id="pd-m150-birthdate-error"
+                data-pd-m150-birth-error
+                role="alert"
+                aria-live="polite"
+                hidden
+            ></span>
+        </div>
+        <?php
     }
 
     private static function render_public_input(
