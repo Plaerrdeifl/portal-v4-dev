@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plärrdeifl M310 Fanbusfahrten
  * Description: Öffentliche Anzeige der Fanbusfahrten mit Verlinkung zur zentralen Anmeldung.
- * Version: 1.0.2
+ * Version: 1.0.3
  * Requires PHP: 8.3
  */
 
@@ -14,11 +14,12 @@ if (!defined('ABSPATH')) {
 
 final class PD_M310_Fanbus_Plugin
 {
-    private const VERSION = '1.0.2';
+    private const VERSION = '1.0.3';
     private const OPTION_NAME = 'plaerrdeifl_m310_fanbus_settings';
     private const SETTINGS_GROUP = 'plaerrdeifl_m310_fanbus_settings_group';
     private const ADMIN_SLUG = 'plaerrdeifl-m310-fanbus';
     private const RPC_PATH = '/rest/v1/rpc/pd_public_fanbus_trips';
+    private const STOPS_RPC_PATH = '/rest/v1/rpc/pd_public_fanbus_trip_boarding_stops';
     private const REQUEST_TIMEOUT = 8;
     private const MAX_RESPONSE_BYTES = 262144;
     private const MAX_URL_LENGTH = 2048;
@@ -369,9 +370,20 @@ final class PD_M310_Fanbus_Plugin
                 <p class="pd-m310-eyebrow">Gemeinsam zum Spiel</p>
                 <h2 id="<?php echo esc_attr($heading_id); ?>" class="pd-m310-heading">Fanbusfahrten</h2>
             </header>
+
             <div class="pd-m310-grid">
                 <?php foreach ($trips as $trip) : ?>
-                    <?php self::render_trip($trip, $config['portal_registration_url']); ?>
+                    <?php
+                    $stops = self::load_public_trip_stops(
+                        $config,
+                        $trip['tripId']
+                    );
+                    self::render_trip(
+                        $trip,
+                        $config['portal_registration_url'],
+                        $stops
+                    );
+                    ?>
                 <?php endforeach; ?>
             </div>
         </section>
@@ -463,6 +475,133 @@ final class PD_M310_Fanbus_Plugin
         return $trips;
     }
 
+    private static function load_public_trip_stops(
+        array $config,
+        string $trip_id
+    ): ?array {
+        if (!self::valid_uuid($trip_id)) {
+            return null;
+        }
+
+        $body = wp_json_encode(array(
+            'p_trip_id' => $trip_id,
+        ));
+
+        if (!is_string($body) || $body === '') {
+            return null;
+        }
+
+        $response = wp_remote_post(
+            $config['supabase_url'] . self::STOPS_RPC_PATH,
+            array(
+                'timeout' => self::REQUEST_TIMEOUT,
+                'redirection' => 0,
+                'reject_unsafe_urls' => true,
+                'limit_response_size' => self::MAX_RESPONSE_BYTES,
+                'headers' => array(
+                    'apikey' => $config['publishable_key'],
+                    'Content-Type' => 'application/json',
+                ),
+                'body' => $body,
+            )
+        );
+
+        if (is_wp_error($response)) {
+            return null;
+        }
+
+        $status = wp_remote_retrieve_response_code($response);
+        if ($status < 200 || $status >= 300) {
+            return null;
+        }
+
+        try {
+            $data = json_decode(
+                wp_remote_retrieve_body($response),
+                true,
+                64,
+                JSON_THROW_ON_ERROR
+            );
+        } catch (JsonException) {
+            return null;
+        }
+
+        if (
+            !is_array($data)
+            || array_is_list($data)
+            || array_keys($data) !== array('stops')
+            || !is_array($data['stops'])
+            || !array_is_list($data['stops'])
+        ) {
+            return null;
+        }
+
+        $stops = array();
+        foreach ($data['stops'] as $raw_stop) {
+            $stop = self::validated_stop($raw_stop);
+            if ($stop === null) {
+                return null;
+            }
+            $stops[] = $stop;
+        }
+
+        usort(
+            $stops,
+            static fn (array $left, array $right): int =>
+                $left['position'] <=> $right['position']
+        );
+
+        return $stops;
+    }
+
+    private static function validated_stop(mixed $value): ?array
+    {
+        if (!is_array($value) || array_is_list($value)) {
+            return null;
+        }
+
+        $required_keys = array(
+            'tripBoardingStopId',
+            'boardingStopId',
+            'label',
+            'address',
+            'departureAt',
+            'position',
+            'tripNote',
+        );
+
+        if (array_diff($required_keys, array_keys($value)) !== array()) {
+            return null;
+        }
+
+        if (
+            !self::valid_uuid($value['tripBoardingStopId'])
+            || !self::valid_uuid($value['boardingStopId'])
+            || !self::valid_text($value['label'], 160)
+            || !self::valid_optional_text($value['address'], 2000)
+            || !self::valid_timestamp($value['departureAt'])
+            || !is_int($value['position'])
+            || $value['position'] <= 0
+            || !self::valid_optional_text($value['tripNote'], 4000)
+        ) {
+            return null;
+        }
+
+        return array(
+            'tripBoardingStopId' => $value['tripBoardingStopId'],
+            'boardingStopId' => $value['boardingStopId'],
+            'label' => trim($value['label']),
+            'address' => is_string($value['address'])
+                ? trim($value['address'])
+                : null,
+            'departureAt' => $value['departureAt'],
+            'position' => $value['position'],
+            'tripNote' => is_string($value['tripNote'])
+                ? trim($value['tripNote'])
+                : null,
+        );
+    }
+
     private static function validated_trip(mixed $value): ?array
     {
         if (!is_array($value) || array_is_list($value)) {
@@ -481,21 +620,15 @@ final class PD_M310_Fanbus_Plugin
             'registrationOpensAt',
             'registrationClosesAt',
             'priceCents',
-            'capacity',
-            'activeRegistrationCount',
-            'remainingCapacity',
             'registrationStatus',
         );
+
         if (array_diff($required_keys, array_keys($value)) !== array()) {
             return null;
         }
 
         if (
-            !is_string($value['tripId'])
-            || preg_match(
-                '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i',
-                $value['tripId']
-            ) !== 1
+            !self::valid_uuid($value['tripId'])
             || !self::valid_text($value['eventType'], 80)
             || !self::valid_text($value['displayTitle'], 500)
             || !self::valid_calendar_date($value['eventDate'])
@@ -507,28 +640,47 @@ final class PD_M310_Fanbus_Plugin
             || !self::valid_timestamp($value['registrationClosesAt'])
             || !is_int($value['priceCents'])
             || $value['priceCents'] < 0
-            || !is_int($value['capacity'])
-            || $value['capacity'] <= 0
-            || !is_int($value['activeRegistrationCount'])
-            || $value['activeRegistrationCount'] < 0
-            || !is_int($value['remainingCapacity'])
-            || $value['remainingCapacity'] < 0
-            || $value['remainingCapacity'] > $value['capacity']
-            || $value['remainingCapacity'] !== max(
-                $value['capacity'] - $value['activeRegistrationCount'],
-                0
-            )
             || !is_string($value['registrationStatus'])
             || !in_array(
                 $value['registrationStatus'],
-                array('NOT_STARTED', 'OPEN', 'WAITLIST', 'FULL', 'CLOSED', 'UNAVAILABLE'),
+                array(
+                    'NOT_STARTED',
+                    'OPEN',
+                    'WAITLIST',
+                    'FULL',
+                    'CLOSED',
+                    'UNAVAILABLE',
+                ),
                 true
             )
         ) {
             return null;
         }
 
-        return $value;
+        return array(
+            'tripId' => $value['tripId'],
+            'eventType' => $value['eventType'],
+            'displayTitle' => trim($value['displayTitle']),
+            'eventDate' => $value['eventDate'],
+            'eventTime' => $value['eventTime'],
+            'venue' => is_string($value['venue'])
+                ? trim($value['venue'])
+                : null,
+            'departureAt' => $value['departureAt'],
+            'registrationOpensAt' => $value['registrationOpensAt'],
+            'registrationClosesAt' => $value['registrationClosesAt'],
+            'priceCents' => $value['priceCents'],
+            'registrationStatus' => $value['registrationStatus'],
+        );
+    }
+
+    private static function valid_uuid(mixed $value): bool
+    {
+        return is_string($value)
+            && preg_match(
+                '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i',
+                $value
+            ) === 1;
     }
 
     private static function valid_text(mixed $value, int $maxlength): bool
@@ -589,68 +741,131 @@ final class PD_M310_Fanbus_Plugin
             : strlen($value);
     }
 
-    private static function render_trip(array $trip, string $portal_url): void
-    {
+    private static function render_trip(
+        array $trip,
+        string $portal_url,
+        ?array $stops
+    ): void {
         $status = self::status_presentation($trip['registrationStatus']);
         $deep_link = add_query_arg('trip', $trip['tripId'], $portal_url);
-        $button_label = in_array($trip['registrationStatus'], array('OPEN', 'WAITLIST'), true)
+        $button_label = in_array(
+            $trip['registrationStatus'],
+            array('OPEN', 'WAITLIST'),
+            true
+        )
             ? 'Jetzt anmelden'
-            : 'Fahrt ansehen';
+            : 'Anmeldung ansehen';
+
+        $has_event_time = is_string($trip['eventTime'])
+            && trim($trip['eventTime']) !== '';
         ?>
-        <article class="pd-m310-card">
-            <div class="pd-m310-card-head">
-                <div>
-                    <p class="pd-m310-date">
+        <details class="pd-m310-trip">
+            <summary class="pd-m310-summary">
+                <span class="pd-m310-summary-copy">
+                    <span class="pd-m310-date">
                         <?php echo esc_html(self::format_event_date($trip['eventDate'])); ?>
-                        <span aria-hidden="true"> · </span>
-                        <?php echo esc_html(self::format_event_time($trip['eventTime'])); ?>
-                    </p>
-                    <h3 class="pd-m310-title"><?php echo esc_html($trip['displayTitle']); ?></h3>
-                </div>
+                        <?php if ($has_event_time) : ?>
+                            <span aria-hidden="true"> · </span>
+                            <?php echo esc_html(self::format_event_time($trip['eventTime'])); ?>
+                        <?php endif; ?>
+                    </span>
+
+                    <span class="pd-m310-title">
+                        <?php echo esc_html($trip['displayTitle']); ?>
+                    </span>
+
+                    <?php if (is_string($trip['venue']) && $trip['venue'] !== '') : ?>
+                        <span class="pd-m310-venue">
+                            <?php echo esc_html($trip['venue']); ?>
+                        </span>
+                    <?php endif; ?>
+                </span>
+
                 <span class="pd-m310-status <?php echo esc_attr($status['class']); ?>">
                     <?php echo esc_html($status['label']); ?>
                 </span>
+
+                <span class="pd-m310-chevron" aria-hidden="true">›</span>
+            </summary>
+
+            <div class="pd-m310-detail">
+                <dl class="pd-m310-meta">
+                    <div class="pd-m310-meta-item">
+                        <dt>Termin</dt>
+                        <dd>
+                            <?php echo esc_html(self::format_event_date($trip['eventDate'])); ?>
+                            <?php if ($has_event_time) : ?>
+                                <span aria-hidden="true"> · </span>
+                                <?php echo esc_html(self::format_event_time($trip['eventTime'])); ?>
+                            <?php endif; ?>
+                        </dd>
+                    </div>
+
+                    <?php if (is_string($trip['venue']) && $trip['venue'] !== '') : ?>
+                        <div class="pd-m310-meta-item">
+                            <dt>Ort / Ziel</dt>
+                            <dd><?php echo esc_html($trip['venue']); ?></dd>
+                        </div>
+                    <?php endif; ?>
+
+                    <div class="pd-m310-meta-item">
+                        <dt>Fanbus-Abfahrt</dt>
+                        <dd><?php echo esc_html(self::format_timestamp($trip['departureAt'])); ?></dd>
+                    </div>
+
+                    <div class="pd-m310-meta-item">
+                        <dt>Fahrtpreis</dt>
+                        <dd><?php echo esc_html(self::format_price($trip['priceCents'])); ?></dd>
+                    </div>
+
+                </dl>
+
+                <p class="pd-m310-registration-window">
+                    <strong><?php echo esc_html(self::registration_window_text($trip)); ?></strong>
+                </p>
+
+                <section class="pd-m310-stops" aria-label="Zustiegsorte">
+                    <h3 class="pd-m310-stops-heading">Zustiegsorte</h3>
+
+                    <?php if ($stops === null) : ?>
+                        <p class="pd-m310-stops-note">
+                            Die Zustiegsorte können aktuell nicht geladen werden.
+                        </p>
+                    <?php elseif ($stops === array()) : ?>
+                        <p class="pd-m310-stops-note">
+                            Für diese Fahrt sind aktuell keine Zustiegsorte veröffentlicht.
+                        </p>
+                    <?php else : ?>
+                        <ul class="pd-m310-stops-list">
+                            <?php foreach ($stops as $stop) : ?>
+                                <li class="pd-m310-stop">
+                                    <div class="pd-m310-stop-head">
+                                        <strong><?php echo esc_html($stop['label']); ?></strong>
+                                        <span><?php echo esc_html(self::format_time($stop['departureAt'])); ?></span>
+                                    </div>
+
+                                    <?php if (is_string($stop['address']) && $stop['address'] !== '') : ?>
+                                        <p><?php echo esc_html($stop['address']); ?></p>
+                                    <?php endif; ?>
+
+                                    <?php if (is_string($stop['tripNote']) && $stop['tripNote'] !== '') : ?>
+                                        <p><?php echo esc_html($stop['tripNote']); ?></p>
+                                    <?php endif; ?>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+                </section>
+
+                <?php if ($trip['registrationStatus'] !== 'UNAVAILABLE') : ?>
+                    <a
+                        class="pd-m310-link"
+                        href="<?php echo esc_url($deep_link); ?>"
+                        aria-label="<?php echo esc_attr($button_label . ': ' . $trip['displayTitle']); ?>"
+                    ><?php echo esc_html($button_label); ?></a>
+                <?php endif; ?>
             </div>
-
-            <?php if (is_string($trip['venue']) && trim($trip['venue']) !== '') : ?>
-                <p class="pd-m310-venue"><?php echo esc_html($trip['venue']); ?></p>
-            <?php endif; ?>
-
-            <dl class="pd-m310-meta">
-                <div class="pd-m310-meta-item">
-                    <dt>Fanbus-Abfahrt</dt>
-                    <dd><?php echo esc_html(self::format_timestamp($trip['departureAt'])); ?></dd>
-                </div>
-                <div class="pd-m310-meta-item">
-                    <dt>Fahrtpreis</dt>
-                    <dd><?php echo esc_html(self::format_price($trip['priceCents'])); ?></dd>
-                </div>
-                <div class="pd-m310-meta-item">
-                    <dt>Freie Plätze</dt>
-                    <dd><?php echo esc_html(sprintf(
-                        '%d freie Plätze von %d',
-                        $trip['remainingCapacity'],
-                        $trip['capacity']
-                    )); ?></dd>
-                </div>
-                <div class="pd-m310-meta-item">
-                    <dt>Anmeldezeitraum</dt>
-                    <dd><?php echo esc_html(sprintf(
-                        '%s bis %s',
-                        self::format_timestamp($trip['registrationOpensAt']),
-                        self::format_timestamp($trip['registrationClosesAt'])
-                    )); ?></dd>
-                </div>
-            </dl>
-
-            <?php if ($trip['registrationStatus'] !== 'UNAVAILABLE') : ?>
-                <a
-                    class="pd-m310-link"
-                    href="<?php echo esc_url($deep_link); ?>"
-                    aria-label="<?php echo esc_attr($button_label . ': ' . $trip['displayTitle']); ?>"
-                ><?php echo esc_html($button_label); ?></a>
-            <?php endif; ?>
-        </article>
+        </details>
         <?php
     }
 
@@ -664,6 +879,29 @@ final class PD_M310_Fanbus_Plugin
             'CLOSED' => array('label' => 'Geschlossen', 'class' => 'pd-m310-status-closed'),
             'UNAVAILABLE' => array('label' => 'Nicht verfügbar', 'class' => 'pd-m310-status-unavailable'),
         )[$status];
+    }
+
+    private static function registration_window_text(array $trip): string
+    {
+        if (in_array($trip['registrationStatus'], array('OPEN', 'WAITLIST'), true)) {
+            return 'Anmeldeschluss: '
+                . self::format_timestamp($trip['registrationClosesAt']);
+        }
+
+        if ($trip['registrationStatus'] === 'NOT_STARTED') {
+            return 'Anmeldung ab '
+                . self::format_timestamp($trip['registrationOpensAt']);
+        }
+
+        if ($trip['registrationStatus'] === 'CLOSED') {
+            return 'Anmeldung geschlossen';
+        }
+
+        if ($trip['registrationStatus'] === 'FULL') {
+            return 'Anmeldung ausgebucht';
+        }
+
+        return 'Anmeldung derzeit nicht verfügbar';
     }
 
     private static function format_event_date(string $value): string
@@ -689,6 +927,17 @@ final class PD_M310_Fanbus_Plugin
             return (new DateTimeImmutable($value))
                 ->setTimezone(new DateTimeZone('Europe/Berlin'))
                 ->format('d.m.Y, H:i \U\h\r');
+        } catch (Exception) {
+            return '';
+        }
+    }
+
+    private static function format_time(string $value): string
+    {
+        try {
+            return (new DateTimeImmutable($value))
+                ->setTimezone(new DateTimeZone('Europe/Berlin'))
+                ->format('H:i \U\h\r');
         } catch (Exception) {
             return '';
         }
