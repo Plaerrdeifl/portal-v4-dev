@@ -16,11 +16,34 @@
         status.dataset.kind = kind || '';
     }
 
+    function turnstileForm(container) {
+        const form = container.closest('[data-pd-m150-form]');
+        return form instanceof HTMLFormElement ? form : null;
+    }
+
+    function setTurnstileError(container, message) {
+        const form = turnstileForm(container);
+        if (form) {
+            setStatus(form, message, 'error');
+        }
+    }
+
     function resetTurnstile(form) {
         const container = form.querySelector('[data-pd-m150-turnstile]');
         const widgetId = container ? widgetIds.get(container) : undefined;
-        if (typeof window.turnstile !== 'undefined' && widgetId !== undefined) {
+
+        if (
+            typeof window.turnstile === 'undefined'
+            || widgetId === undefined
+        ) {
+            return;
+        }
+
+        try {
             window.turnstile.reset(widgetId);
+        } catch (_error) {
+            // The submission result must remain visible even if
+            // Turnstile itself is already in a failed browser state.
         }
     }
 
@@ -33,13 +56,52 @@
             return;
         }
 
-        const widgetId = window.turnstile.render(container, {
-            sitekey: container.dataset.sitekey,
-            action: 'm150_membership_application',
-            'response-field': true,
-            'response-field-name': 'cf-turnstile-response',
-        });
-        widgetIds.set(container, widgetId);
+        try {
+            const widgetId = window.turnstile.render(container, {
+                sitekey: container.dataset.sitekey,
+                action: 'm150_membership_application',
+                'response-field': true,
+                'response-field-name': 'cf-turnstile-response',
+                'error-callback': function () {
+                    setTurnstileError(
+                        container,
+                        'Die Sicherheitsprüfung konnte nicht geladen werden. '
+                            + 'Bitte versuche es erneut.'
+                    );
+                    return true;
+                },
+                'expired-callback': function () {
+                    setTurnstileError(
+                        container,
+                        'Die Sicherheitsprüfung ist abgelaufen. '
+                            + 'Bitte führe sie erneut durch.'
+                    );
+                },
+                'timeout-callback': function () {
+                    setTurnstileError(
+                        container,
+                        'Die Sicherheitsprüfung hat zu lange gedauert. '
+                            + 'Bitte führe sie erneut durch.'
+                    );
+                },
+                'unsupported-callback': function () {
+                    setTurnstileError(
+                        container,
+                        'Die Sicherheitsprüfung wird von diesem Browser '
+                            + 'nicht unterstützt. Bitte verwende einen '
+                            + 'aktuellen Browser.'
+                    );
+                },
+            });
+
+            widgetIds.set(container, widgetId);
+        } catch (_error) {
+            setTurnstileError(
+                container,
+                'Die Sicherheitsprüfung konnte nicht geladen werden. '
+                    + 'Bitte lade die Seite neu und versuche es erneut.'
+            );
+        }
     }
 
     function renderAllTurnstileWidgets() {
@@ -98,13 +160,24 @@
         }
     }
 
+    function turnstileToken(form) {
+        const responseField = form.querySelector(
+            '[name="cf-turnstile-response"]'
+        );
+
+        if (
+            responseField instanceof HTMLInputElement
+            || responseField instanceof HTMLTextAreaElement
+        ) {
+            return responseField.value.trim();
+        }
+
+        return '';
+    }
+
     function formPayload(form) {
         const data = new FormData(form);
-        const container = form.querySelector('[data-pd-m150-turnstile]');
-        const widgetId = container ? widgetIds.get(container) : undefined;
-        const token = (
-            typeof window.turnstile !== 'undefined' && widgetId !== undefined
-        ) ? window.turnstile.getResponse(widgetId) : '';
+        const token = turnstileToken(form);
 
         return {
             firstName: String(data.get('firstName') || ''),
