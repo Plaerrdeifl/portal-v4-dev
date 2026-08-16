@@ -110,11 +110,15 @@
 
     window.pdM150TurnstileReady = renderAllTurnstileWidgets;
 
-    const BIRTH_DATE_MIN = '1900-01-01';
+    const BIRTH_DATE_MIN_YEAR = 1900;
     const BIRTH_DATE_REQUIRED_MESSAGE =
         'Bitte gib dein Geburtsdatum vollständig ein.';
     const BIRTH_DATE_INVALID_MESSAGE =
-        'Bitte gib ein gültiges Geburtsdatum ein.';
+        'Dieses Geburtsdatum ist ungültig.';
+    const BIRTH_DATE_FUTURE_MESSAGE =
+        'Das Geburtsdatum darf nicht in der Zukunft liegen.';
+    const BIRTH_DATE_YEAR_MESSAGE =
+        'Bitte prüfe das angegebene Geburtsjahr.';
 
     function berlinTodayValue() {
         const parts = new Intl.DateTimeFormat('en-CA', {
@@ -149,7 +153,7 @@
         const day = parts[2];
 
         if (
-            year < 1900
+            year < 1
             || year > 9999
             || month < 1
             || month > 12
@@ -176,24 +180,179 @@
         };
     }
 
-    function birthDateValidationMessage(value) {
-        if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-            return BIRTH_DATE_REQUIRED_MESSAGE;
-        }
-
-        const parsed = parseBirthDateValue(value);
-        if (!parsed) {
-            return BIRTH_DATE_INVALID_MESSAGE;
-        }
+    function birthDateElements(form) {
+        const day = form.querySelector('[data-pd-m150-birth-day]');
+        const month = form.querySelector('[data-pd-m150-birth-month]');
+        const year = form.querySelector('[data-pd-m150-birth-year]');
+        const hidden = form.elements.namedItem('birthDate');
+        const error = form.querySelector('[data-pd-m150-birth-error]');
 
         if (
-            value < BIRTH_DATE_MIN
-            || value > berlinTodayValue()
+            !(day instanceof HTMLSelectElement)
+            || !(month instanceof HTMLSelectElement)
+            || !(year instanceof HTMLInputElement)
+            || !(hidden instanceof HTMLInputElement)
+            || !(error instanceof HTMLElement)
         ) {
-            return BIRTH_DATE_INVALID_MESSAGE;
+            return null;
         }
 
-        return '';
+        return {
+            day: day,
+            month: month,
+            year: year,
+            hidden: hidden,
+            error: error,
+        };
+    }
+
+    function birthDateResult(form) {
+        const elements = birthDateElements(form);
+        if (!elements) {
+            return null;
+        }
+
+        const day = elements.day.value.trim();
+        const month = elements.month.value.trim();
+        const year = elements.year.value.trim();
+
+        if (
+            !day
+            || !month
+            || !/^\d{4}$/.test(year)
+        ) {
+            let control = elements.day;
+            if (day && !month) {
+                control = elements.month;
+            } else if (day && month) {
+                control = elements.year;
+            }
+
+            return {
+                valid: false,
+                complete: false,
+                value: '',
+                message: BIRTH_DATE_REQUIRED_MESSAGE,
+                control: control,
+                elements: elements,
+            };
+        }
+
+        const yearNumber = Number(year);
+
+        if (yearNumber < BIRTH_DATE_MIN_YEAR) {
+            return {
+                valid: false,
+                complete: true,
+                value: '',
+                message: BIRTH_DATE_YEAR_MESSAGE,
+                control: elements.year,
+                elements: elements,
+            };
+        }
+
+        const value = year + '-' + month + '-' + day;
+        const parsed = parseBirthDateValue(value);
+
+        if (!parsed) {
+            return {
+                valid: false,
+                complete: true,
+                value: '',
+                message: BIRTH_DATE_INVALID_MESSAGE,
+                control: elements.day,
+                elements: elements,
+            };
+        }
+
+        if (value > berlinTodayValue()) {
+            return {
+                valid: false,
+                complete: true,
+                value: '',
+                message: BIRTH_DATE_FUTURE_MESSAGE,
+                control: elements.year,
+                elements: elements,
+            };
+        }
+
+        return {
+            valid: true,
+            complete: true,
+            value: value,
+            message: '',
+            control: null,
+            elements: elements,
+        };
+    }
+
+    function setBirthDateError(elements, message) {
+        elements.error.textContent = message;
+        elements.error.hidden = message === '';
+
+        [
+            elements.day,
+            elements.month,
+            elements.year,
+        ].forEach(function (control) {
+            if (message) {
+                control.setAttribute('aria-invalid', 'true');
+            } else {
+                control.removeAttribute('aria-invalid');
+            }
+        });
+    }
+
+    function clearBirthDateNotice(form) {
+        const status = statusElement(form);
+
+        if (
+            status
+            && status.dataset.kind === 'notice'
+        ) {
+            setStatus(form, '', '');
+        }
+    }
+
+    function validateBirthDate(
+        form,
+        showIncomplete,
+        focusInvalid
+    ) {
+        const result = birthDateResult(form);
+
+        if (!result) {
+            setStatus(
+                form,
+                'Der Mitgliedsantrag ist derzeit technisch nicht möglich.',
+                'error'
+            );
+            return false;
+        }
+
+        result.elements.hidden.value = result.valid
+            ? result.value
+            : '';
+
+        const showError = Boolean(
+            result.message
+            && (showIncomplete || result.complete)
+        );
+
+        setBirthDateError(
+            result.elements,
+            showError ? result.message : ''
+        );
+
+        if (
+            showError
+            && focusInvalid
+            && result.control
+        ) {
+            result.control.focus();
+        }
+
+        return result.valid;
     }
 
     function isUnderEighteen(birthDateValue) {
@@ -217,46 +376,6 @@
         }
 
         return age < 18;
-    }
-
-    function clearBirthDateStatus(form) {
-        const status = statusElement(form);
-        if (!status) {
-            return;
-        }
-
-        if (
-            status.dataset.kind === 'notice'
-            || status.textContent === BIRTH_DATE_REQUIRED_MESSAGE
-            || status.textContent === BIRTH_DATE_INVALID_MESSAGE
-        ) {
-            setStatus(form, '', '');
-        }
-    }
-
-    function validateBirthDate(form) {
-        const birthDate = form.elements.namedItem('birthDate');
-
-        if (!(birthDate instanceof HTMLInputElement)) {
-            setStatus(
-                form,
-                'Der Mitgliedsantrag ist derzeit technisch nicht möglich.',
-                'error'
-            );
-            return false;
-        }
-
-        const message = birthDateValidationMessage(birthDate.value);
-        birthDate.setCustomValidity(message);
-
-        if (message) {
-            setStatus(form, message, 'error');
-            birthDate.reportValidity();
-            return false;
-        }
-
-        birthDate.setCustomValidity('');
-        return true;
     }
 
     function showMinorPath(form) {
@@ -329,7 +448,7 @@
             return;
         }
 
-        if (!validateBirthDate(form)) {
+        if (!validateBirthDate(form, true, true)) {
             return;
         }
 
@@ -411,27 +530,43 @@
     function initializeForms() {
         document.querySelectorAll('[data-pd-m150-form]').forEach(function (form) {
             form.addEventListener('submit', submitForm);
-            const birthDate = form.elements.namedItem('birthDate');
-            if (birthDate instanceof HTMLInputElement) {
-                birthDate.min = BIRTH_DATE_MIN;
-                birthDate.max = berlinTodayValue();
+            const birthElements = birthDateElements(form);
 
-                birthDate.addEventListener('input', function () {
-                    birthDate.setCustomValidity('');
-                    clearBirthDateStatus(form);
+            if (birthElements) {
+                const controls = [
+                    birthElements.day,
+                    birthElements.month,
+                    birthElements.year,
+                ];
+
+                controls.forEach(function (control) {
+                    control.addEventListener('input', function () {
+                        birthElements.hidden.value = '';
+                        setBirthDateError(birthElements, '');
+                        clearBirthDateNotice(form);
+                    });
+
+                    control.addEventListener('change', function () {
+                        clearBirthDateNotice(form);
+
+                        const valid = validateBirthDate(
+                            form,
+                            false,
+                            false
+                        );
+
+                        if (
+                            valid
+                            && isUnderEighteen(
+                                birthElements.hidden.value
+                            )
+                        ) {
+                            showMinorPath(form);
+                        }
+                    });
                 });
 
-                birthDate.addEventListener('change', function () {
-                    birthDate.setCustomValidity('');
-                    clearBirthDateStatus(form);
-
-                    if (
-                        birthDateValidationMessage(birthDate.value) === ''
-                        && isUnderEighteen(birthDate.value)
-                    ) {
-                        showMinorPath(form);
-                    }
-                });
+                validateBirthDate(form, false, false);
             }
         });
         renderAllTurnstileWidgets();
