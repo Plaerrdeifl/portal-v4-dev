@@ -178,30 +178,6 @@
     overflow-wrap: anywhere;
 }
 
-.pd-m310-fanbus .pd-m310-departure-info {
-    min-width: 0;
-    padding: 0.65rem 0.7rem;
-    border-inline-start: 0.22rem solid var(--pd-m310-blue);
-    border-radius: 0.7rem;
-    background: #eef6ff;
-    color: var(--pd-m310-ink);
-}
-
-.pd-m310-fanbus .pd-m310-departure-info strong {
-    display: block;
-    color: var(--pd-m310-ink);
-    font-size: 0.72rem;
-    font-weight: 900;
-}
-
-.pd-m310-fanbus .pd-m310-departure-info p {
-    margin: 0.2rem 0 0;
-    color: #40526a;
-    font-size: 0.82rem;
-    line-height: 1.45;
-    overflow-wrap: anywhere;
-}
-
 .pd-m310-fanbus .pd-m310-link,
 .pd-m310-fanbus .pd-m310-link:link,
 .pd-m310-fanbus .pd-m310-link:visited {

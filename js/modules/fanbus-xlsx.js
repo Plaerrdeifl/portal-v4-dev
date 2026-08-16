@@ -18,6 +18,7 @@ const EXPORT_DATE_TIME_FORMAT = new Intl.DateTimeFormat("de-DE", {
 
 const STATUS_LABELS = {
   ACTIVE: "Aktiv",
+  WAITLISTED: "Warteliste",
   CANCELLED: "Storniert"
 };
 

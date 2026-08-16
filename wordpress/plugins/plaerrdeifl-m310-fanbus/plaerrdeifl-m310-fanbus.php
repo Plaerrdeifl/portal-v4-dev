@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plärrdeifl M310 Fanbusfahrten
  * Description: Öffentliche Anzeige der Fanbusfahrten mit Verlinkung zur zentralen Anmeldung.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Requires PHP: 8.3
  */
 
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 
 final class PD_M310_Fanbus_Plugin
 {
-    private const VERSION = '1.0.1';
+    private const VERSION = '1.0.2';
     private const OPTION_NAME = 'plaerrdeifl_m310_fanbus_settings';
     private const SETTINGS_GROUP = 'plaerrdeifl_m310_fanbus_settings_group';
     private const ADMIN_SLUG = 'plaerrdeifl-m310-fanbus';
@@ -502,7 +502,7 @@ final class PD_M310_Fanbus_Plugin
             || !self::valid_event_time($value['eventTime'])
             || !self::valid_optional_text($value['venue'], 500)
             || !self::valid_timestamp($value['departureAt'])
-            || !self::valid_text($value['departureInfo'], 4000)
+            || !self::valid_optional_text($value['departureInfo'], 4000)
             || !self::valid_timestamp($value['registrationOpensAt'])
             || !self::valid_timestamp($value['registrationClosesAt'])
             || !is_int($value['priceCents'])
@@ -521,7 +521,7 @@ final class PD_M310_Fanbus_Plugin
             || !is_string($value['registrationStatus'])
             || !in_array(
                 $value['registrationStatus'],
-                array('NOT_STARTED', 'OPEN', 'FULL', 'CLOSED', 'UNAVAILABLE'),
+                array('NOT_STARTED', 'OPEN', 'WAITLIST', 'FULL', 'CLOSED', 'UNAVAILABLE'),
                 true
             )
         ) {
@@ -593,7 +593,7 @@ final class PD_M310_Fanbus_Plugin
     {
         $status = self::status_presentation($trip['registrationStatus']);
         $deep_link = add_query_arg('trip', $trip['tripId'], $portal_url);
-        $button_label = $trip['registrationStatus'] === 'OPEN'
+        $button_label = in_array($trip['registrationStatus'], array('OPEN', 'WAITLIST'), true)
             ? 'Jetzt anmelden'
             : 'Fahrt ansehen';
         ?>
@@ -643,11 +643,6 @@ final class PD_M310_Fanbus_Plugin
                 </div>
             </dl>
 
-            <div class="pd-m310-departure-info">
-                <strong>Abfahrtsinfo</strong>
-                <p><?php echo nl2br(esc_html($trip['departureInfo']), false); ?></p>
-            </div>
-
             <?php if ($trip['registrationStatus'] !== 'UNAVAILABLE') : ?>
                 <a
                     class="pd-m310-link"
@@ -665,6 +660,7 @@ final class PD_M310_Fanbus_Plugin
             'NOT_STARTED' => array('label' => 'Startet später', 'class' => 'pd-m310-status-upcoming'),
             'OPEN' => array('label' => 'Offen', 'class' => 'pd-m310-status-open'),
             'FULL' => array('label' => 'Ausgebucht', 'class' => 'pd-m310-status-full'),
+            'WAITLIST' => array('label' => 'Warteliste', 'class' => 'pd-m310-status-full'),
             'CLOSED' => array('label' => 'Geschlossen', 'class' => 'pd-m310-status-closed'),
             'UNAVAILABLE' => array('label' => 'Nicht verfügbar', 'class' => 'pd-m310-status-unavailable'),
         )[$status];

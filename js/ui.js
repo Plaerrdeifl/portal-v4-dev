@@ -839,6 +839,22 @@ export function showToast(message, type = "info", duration = 3200) {
   const region = document.getElementById("toastRegion");
   if (!region) return;
 
+  if (!region._v4ModalSafetyBound) {
+    region._v4ModalSafetyBound = true;
+    region._v4Home = document.createComment("toast-region-home");
+    region.parentNode?.insertBefore(region._v4Home, region);
+    window.addEventListener("v4-dialog-modal-state", event => {
+      if (event.detail?.open) {
+        document.getElementById("v4Dialog")?.appendChild(region);
+        return;
+      }
+      region._v4Home?.parentNode?.insertBefore(region, region._v4Home.nextSibling);
+    });
+  }
+
+  const modal = document.getElementById("v4Dialog");
+  if (modal?.open) modal.appendChild(region);
+
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
   toast.textContent = message;

@@ -163,10 +163,10 @@ test("M310 portal and WordPress use the same canonical registration deep link", 
     ),
     readFile(resolve(root, "js", "fanbus-registration.js"), "utf8")
   ]);
-  const tripActions = sourceBlock(
+  const tripDetail = sourceBlock(
     fanbuses,
-    "function tripActions(trip)",
-    "function tripDetailMarkup(trip)"
+    "function tripDetailMarkup(trip, tripStops = [])",
+    "function openTripDetail(trip)"
   );
   const renderTrip = sourceBlock(
     plugin,
@@ -179,7 +179,7 @@ test("M310 portal and WordPress use the same canonical registration deep link", 
     "elements.portalForm.addEventListener"
   );
 
-  const portalLink = tripActions.match(
+  const portalLink = tripDetail.match(
     /href="(\.\/fanbus-anmeldung)\?trip=\$\{escapeAttr\(trip\.id\)\}"/
   );
   const wordpressLink = plugin.match(
@@ -192,8 +192,8 @@ test("M310 portal and WordPress use the same canonical registration deep link", 
     new URL(portalLink[1], "https://portal.example.de/").pathname,
     wordpressLink[1]
   );
-  assert.doesNotMatch(tripActions, /fanbus-anmeldung\.html/);
-  assert.match(tripActions, /\?trip=\$\{escapeAttr\(trip\.id\)\}/);
+  assert.doesNotMatch(tripDetail, /fanbus-anmeldung\.html/);
+  assert.match(tripDetail, /\?trip=\$\{escapeAttr\(trip\.id\)\}/);
   assert.match(renderTrip, /add_query_arg\('trip', \$trip\['tripId'\], \$portal_url\)/);
   assert.match(renderTrip, /href="<\?php echo esc_url\(\$deep_link\); \?>"/);
   assert.match(
@@ -240,12 +240,14 @@ test("M310 WordPress presentation is portal-scoped, readable and mobile-safe", a
     readFile(resolve(pluginRoot, "assets", "m310-fanbus.css"), "utf8")
   ]);
 
-  assert.match(plugin, /^ \* Version: 1\.0\.1$/m);
-  assert.match(plugin, /private const VERSION = '1\.0\.1'/);
+  assert.match(plugin, /^ \* Version: 1\.0\.2$/m);
+  assert.match(plugin, /private const VERSION = '1\.0\.2'/);
   assert.match(style, /\.pd-m310-fanbus\s*\{[\s\S]+color:\s*var\(--pd-m310-ink\)/);
   assert.match(style, /\.pd-m310-fanbus \.pd-m310-title\s*\{[\s\S]+color:\s*var\(--pd-m310-ink\)[\s\S]+white-space:\s*normal/);
   assert.match(style, /\.pd-m310-fanbus \.pd-m310-meta-item dd\s*\{[\s\S]+color:\s*var\(--pd-m310-ink\)/);
-  assert.match(style, /\.pd-m310-fanbus \.pd-m310-departure-info p\s*\{[\s\S]+color:\s*#40526a/);
+  assert.doesNotMatch(style, /pd-m310-departure-info/);
+  assert.doesNotMatch(plugin, /<strong>Abfahrtsinfo<\/strong>/);
+
   assert.match(style, /\.pd-m310-fanbus \.pd-m310-status-open\s*\{[\s\S]+background:\s*#e7f8ef[\s\S]+color:\s*#0f6940/);
   assert.match(style, /\.pd-m310-fanbus \.pd-m310-link:visited[\s\S]+background:\s*var\(--pd-m310-blue\)[\s\S]+color:\s*#ffffff/);
   assert.match(style, /@media \(max-width: 36rem\)[\s\S]+overflow-x:\s*hidden[\s\S]+\.pd-m310-fanbus \.pd-m310-link\s*\{[\s\S]+width:\s*100%/);

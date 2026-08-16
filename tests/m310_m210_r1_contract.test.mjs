@@ -46,25 +46,28 @@ function assertTwoLineMobileTitle(selector) {
   assert.doesNotMatch(rule, /(?:^|;)\s*(?:height|max-height)\s*:/);
 }
 
-test("M310 mobile card exposes one primary status and one capacity value", () => {
+test("M310 mobile card exposes one primary status without internal capacity values", () => {
   assert.match(fanbuses, /function mobileTripStatus\(trip\)/);
   assert.match(fanbuses, /if \(trip\.status === "DRAFT"\) return \{ label: "Entwurf"/);
   assert.match(fanbuses, /NOT_STARTED: \{ label: "Startet später"/);
   assert.match(fanbuses, /v4-m310-mobile-trip-meta[\s\S]+mobileTripStatusBadge\(trip\)/);
   assert.doesNotMatch(fanbuses, /v4-m310-mobile-trip[\s\S]{0,900}tripBadges\(trip\)/);
-  assert.match(fanbuses, /Kapazität offen/);
+  const mobileStart = fanbuses.indexOf("function tripMobileList(items)");
+  const mobileEnd = fanbuses.indexOf("function setStatus", mobileStart);
+  const mobileList = fanbuses.slice(mobileStart, mobileEnd);
+  assert.doesNotMatch(mobileList, /capacityLabel|Anmeldungen|Kapazität|activeRegistrationCount/);
   assertTwoLineMobileTitle("#m310FanbusList .v4-m310-mobile-trip-title");
   assert.match(css, /v4-m310-mobile-trip>\.v4-row-chevron/);
 });
 
 test("M310 registrations use compact operational records without empty cancellation metadata", () => {
-  const start = fanbuses.indexOf("function registrationCard(registration)");
+  const start = fanbuses.indexOf("function registrationCard(registration, buses = [])");
   const end = fanbuses.indexOf("function registrationsMarkup(data)", start);
   assert.notEqual(start, -1);
   assert.notEqual(end, -1);
   const card = fanbuses.slice(start, end);
 
-  assert.match(card, /class="v4-m310-registration-record"/);
+  assert.match(card, /class="v4-m310-registration-record v4-interactive-card"/);
   assert.doesNotMatch(card, /card entity-card|entity-head|meta-grid|meta-item|v4-card-actions/);
   assert.match(card, /class="badge \$\{registration\.status === "ACTIVE" \? "success" : "neutral"\}"/);
   assert.match(card, /sourceText\(registration\.source\)/);
@@ -72,17 +75,22 @@ test("M310 registrations use compact operational records without empty cancellat
   assert.match(card, /const email = registration\.email[\s\S]+v4-m310-registration-email/);
   assert.match(card, /formatBerlinDateTime\(registration\.registeredAt\)/);
   assert.match(card, /registration\.status === "CANCELLED" && registration\.cancelledAt/);
-  assert.doesNotMatch(card, /"–"/);
-  assert.match(card, /isActive[\s\S]+data-m310-cancel-registration=[\s\S]+>Stornieren<\/button>/);
+  assert.doesNotMatch(card, /cancelledAt\s*\|\|\s*"–"/);
+  assert.match(card, /data-m320-open-registration/);
+  assert.doesNotMatch(card, /data-m320-edit-registration|data-m310-cancel-registration/);
+
+  const cancellationStart = fanbuses.indexOf("async function cancelRegistrationFromActions");
+  const cancellationEnd = fanbuses.indexOf("function busCategoryLabel", cancellationStart);
+  const cancellation = fanbuses.slice(cancellationStart, cancellationEnd);
+  assert.notEqual(cancellationStart, -1);
+  assert.notEqual(cancellationEnd, -1);
+  assert.match(cancellation, /call\("fanbus_registration_cancel", \{[\s\S]+id: registration\.id,[\s\S]+expectedRevision: Number\(registration\.revision\)/);
+  assert.match(cancellation, /renderRegistrationsDialog\(registrationsDialog, trip, nextData\)/);
+  assert.doesNotMatch(cancellation, /showRegistrationsDialog\(/);
 
   const registrationFlowEnd = fanbuses.indexOf("function manualPersonLabel(person)", end);
   const registrationFlow = fanbuses.slice(end, registrationFlowEnd);
   assert.match(registrationFlow, /hasCapability\("fanbus\.registrations\.manage"\)/);
-  assert.match(registrationFlow, /querySelectorAll\("\[data-m310-cancel-registration\]"\)/);
-  assert.match(
-    registrationFlow,
-    /call\("fanbus_registration_cancel", \{[\s\S]+id: registration\.id,[\s\S]+expectedRevision: Number\(registration\.revision\)/
-  );
 
   const listRule = cssRule(".v4-m310-registration-list");
   const recordRule = cssRule(".v4-m310-registration-record");
@@ -102,14 +110,19 @@ test("M310 registrations use compact operational records without empty cancellat
   );
 });
 
-test("M310 editor removes the manual start field and defaults the close date in Berlin calendar days", () => {
-  assert.match(fanbuses, /Treffpunkt \/ Abfahrtsort/);
-  assert.doesNotMatch(fanbuses, /name="registrationOpensAt"/);
-  assert.doesNotMatch(fanbuses, />Anmeldung startet/);
+test("M310 central editor keeps the registration window without the legacy meeting field", () => {
+  const tripFormStart = fanbuses.indexOf("function tripForm(trip)");
+  const tripFormEnd = fanbuses.indexOf("function tripUpdatePayload", tripFormStart);
+  const tripForm = fanbuses.slice(tripFormStart, tripFormEnd);
+  assert.notEqual(tripFormStart, -1);
+  assert.notEqual(tripFormEnd, -1);
+  assert.doesNotMatch(tripForm, /Treffpunkt \/ Abfahrtsort|name="departureInfo"/);
+  assert.match(fanbuses, /name="registrationOpensAt"/);
+  assert.match(fanbuses, />Anmeldung beginnt/);
   assert.match(fanbuses, /function defaultRegistrationClosesInput\(departureAt\)/);
   assert.match(fanbuses, /Number\(match\[3\]\) - 3/);
   assert.match(fanbuses, /T20:00/);
-  assert.doesNotMatch(fanbuses, /registrationOpensAt: berlinLocalToIso/);
+  assert.match(fanbuses, /registrationOpensAt: berlinLocalToIso/);
 });
 
 test("M210 and M310 editors use the shared member and finance dialog contract", () => {
@@ -140,7 +153,7 @@ test("M210 and M310 editors use the shared member and finance dialog contract", 
   assert.match(css, /@media\(max-width:350px\)\{\.v4-smart-form>\*\{grid-column:1\/-1!important\}/);
 });
 
-test("cash, M210 and M310 retain semantic two-column tracks on iPhone", () => {
+test("cash, M210 and M310 retain their intended responsive smart-form tracks on iPhone", () => {
   assert.match(finance, /v4-field-seven">Konto<select[\s\S]+v4-field-five">Betrag/);
   assert.match(finance, /v4-field-five">Buchungsdatum[\s\S]+v4-field-seven">Zahlungsart/);
 
@@ -153,8 +166,14 @@ test("cash, M210 and M310 retain semantic two-column tracks on iPhone", () => {
   );
   assert.doesNotMatch(dates, /id="m210DateGameFields"|class="v4-field-full v4-form-pair"/);
 
-  assert.match(fanbuses, /v4-field-seven">Abfahrt[\s\S]+v4-field-five">Kapazität/);
-  assert.match(fanbuses, /v4-field-seven">Anmeldung endet[\s\S]+v4-field-five">Fahrtpreis/);
+  const tripFormStart = fanbuses.indexOf("function tripForm");
+  const tripFormEnd = fanbuses.indexOf("function openTripEditor", tripFormStart);
+  assert.notEqual(tripFormStart, -1, "Fahrteditor-Formular fehlt");
+  assert.notEqual(tripFormEnd, -1, "Ende des Fahrteditor-Formulars fehlt");
+  const tripFormSource = fanbuses.slice(tripFormStart, tripFormEnd);
+  assert.match(tripFormSource, /v4-field-full">Abfahrt/);
+  assert.doesNotMatch(tripFormSource, /name="capacity"/);
+  assert.match(tripFormSource, /v4-field-seven">Anmeldung beginnt[\s\S]+v4-field-seven">Anmeldung endet[\s\S]+v4-field-five">Fahrtpreis/);
 
   assert.doesNotMatch(
     css,

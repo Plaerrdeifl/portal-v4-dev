@@ -20,6 +20,16 @@ type GuestRequest = {
   lastName: string;
   email: string;
   busPreference: "RUHIG" | "PARTY" | "EGAL";
+  boardingStopId?: string;
+  operationalNote?: string;
+  companions: Array<{
+    firstName: string;
+    lastName: string;
+    email?: string;
+    busPreference: "RUHIG" | "PARTY" | "EGAL";
+    boardingStopId?: string;
+    operationalNote?: string;
+  }>;
   privacyConfirmed: true;
   termsConfirmed: true;
   idempotencyKey: string;
@@ -33,7 +43,7 @@ type BodyReadResult =
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SOURCE_HASH_PATTERN = /^[0-9a-f]{64}$/;
-const BODY_KEYS = Object.freeze([
+const REQUIRED_BODY_KEYS = Object.freeze([
   "tripId",
   "firstName",
   "lastName",
@@ -43,6 +53,9 @@ const BODY_KEYS = Object.freeze([
   "termsConfirmed",
   "idempotencyKey",
   "turnstileToken"
+]);
+const ALLOWED_BODY_KEYS = new Set([
+  ...REQUIRED_BODY_KEYS, "companions", "boardingStopId", "operationalNote"
 ]);
 
 function loadConfig(): RuntimeConfig | null {
@@ -208,14 +221,15 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function parseGuestRequest(value: unknown): GuestRequest | null {
   if (!isPlainObject(value)) return null;
-  const keys = Object.keys(value).sort();
-  const expectedKeys = [...BODY_KEYS].sort();
+  const keys = Object.keys(value);
   if (
-    keys.length !== expectedKeys.length
-    || keys.some((key, index) => key !== expectedKeys[index])
+    REQUIRED_BODY_KEYS.some(key => !Object.hasOwn(value, key))
+    || keys.some(key => !ALLOWED_BODY_KEYS.has(key))
   ) {
     return null;
   }
+
+  const companions = value.companions === undefined ? [] : value.companions;
 
   if (
     typeof value.tripId !== "string"
@@ -232,6 +246,18 @@ function parseGuestRequest(value: unknown): GuestRequest | null {
     || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email.trim())
     || typeof value.busPreference !== "string"
     || !["RUHIG", "PARTY", "EGAL"].includes(value.busPreference)
+    || (value.boardingStopId !== undefined && (typeof value.boardingStopId !== "string" || !UUID_PATTERN.test(value.boardingStopId)))
+    || (value.operationalNote !== undefined && (typeof value.operationalNote !== "string" || value.operationalNote.trim().length > 240))
+    || !Array.isArray(companions)
+    || companions.length > 19
+    || !companions.every(companion => isPlainObject(companion)
+      && Object.keys(companion).every(key => ["firstName", "lastName", "email", "busPreference", "boardingStopId", "operationalNote"].includes(key))
+      && typeof companion.firstName === "string" && companion.firstName.trim().length >= 1 && companion.firstName.trim().length <= 120
+      && typeof companion.lastName === "string" && companion.lastName.trim().length >= 1 && companion.lastName.trim().length <= 120
+      && (companion.email === undefined || (typeof companion.email === "string" && (!companion.email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(companion.email.trim()))))
+      && typeof companion.busPreference === "string" && ["RUHIG", "PARTY", "EGAL"].includes(companion.busPreference)
+      && (companion.boardingStopId === undefined || (typeof companion.boardingStopId === "string" && UUID_PATTERN.test(companion.boardingStopId)))
+      && (companion.operationalNote === undefined || (typeof companion.operationalNote === "string" && companion.operationalNote.trim().length <= 240)))
     || value.privacyConfirmed !== true
     || value.termsConfirmed !== true
     || typeof value.idempotencyKey !== "string"
@@ -249,6 +275,15 @@ function parseGuestRequest(value: unknown): GuestRequest | null {
     lastName: value.lastName.trim(),
     email: value.email.trim(),
     busPreference: value.busPreference as GuestRequest["busPreference"],
+    ...(typeof value.boardingStopId === "string" ? { boardingStopId: value.boardingStopId } : {}),
+    ...(typeof value.operationalNote === "string" && value.operationalNote.trim() ? { operationalNote: value.operationalNote.trim() } : {}),
+    companions: companions.map(companion => ({
+      firstName: String(companion.firstName).trim(), lastName: String(companion.lastName).trim(),
+      ...(typeof companion.email === "string" && companion.email.trim() ? { email: companion.email.trim() } : {}),
+      busPreference: companion.busPreference as GuestRequest["busPreference"],
+      ...(typeof companion.boardingStopId === "string" ? { boardingStopId: companion.boardingStopId } : {}),
+      ...(typeof companion.operationalNote === "string" && companion.operationalNote.trim() ? { operationalNote: companion.operationalNote.trim() } : {})
+    })),
     privacyConfirmed: true,
     termsConfirmed: true,
     idempotencyKey: value.idempotencyKey,
@@ -341,16 +376,26 @@ async function verifyTurnstile(
 }
 
 function outcomeResponse(outcome: string, origin: string) {
-  if (outcome === "CREATED" || outcome === "ALREADY_ACTIVE") {
+  if (outcome === "CREATED" || outcome === "WAITLISTED" || outcome === "ALREADY_ACTIVE") {
     return jsonResponse(200, {
       ok: true,
       code: "ACCEPTED",
-      message: "Die Fanbus-Anmeldung wurde entgegengenommen."
+      outcome,
+      message: outcome === "WAITLISTED" ? "Die gesamte Anmeldung wurde auf die Warteliste gesetzt." : "Die Fanbus-Anmeldung wurde entgegengenommen."
     }, origin);
   }
 
   if (outcome === "INVALID_REQUEST") {
     return errorResponse(400, "INVALID_REQUEST", "Die Eingaben sind ungültig.", origin);
+  }
+
+  if (outcome === "DUPLICATE") {
+    return errorResponse(
+      409,
+      "CONFLICT",
+      "Die Anmeldung konnte in dieser Zusammenstellung nicht gespeichert werden.",
+      origin
+    );
   }
 
   if (outcome === "INTERNAL_ERROR") {
@@ -455,6 +500,9 @@ Deno.serve(async request => {
             lastName: guestRequest.lastName,
             email: guestRequest.email,
             busPreference: guestRequest.busPreference,
+            ...(guestRequest.boardingStopId ? { boardingStopId: guestRequest.boardingStopId } : {}),
+            ...(guestRequest.operationalNote ? { operationalNote: guestRequest.operationalNote } : {}),
+            companions: guestRequest.companions,
             privacyConfirmed: guestRequest.privacyConfirmed,
             termsConfirmed: guestRequest.termsConfirmed
           },

@@ -76,6 +76,7 @@ let memberSnapshot = [];
 let refreshFanclubMembers = null;
 let panelNode = null;
 let activeDetailId = "";
+let activeDetailDialog = null;
 let loadSequence = 0;
 
 function applicationName(application) {
@@ -434,11 +435,18 @@ function bindDetailActions(dialog, detail) {
 
 function showApplicationDetail(detail) {
   activeDetailId = detail.id;
-  const dialog = openDialog({
-    title: applicationName(detail),
-    kicker: "Mitgliedsantrag",
-    body: applicationDetailMarkup(detail)
-  });
+  const dialog = activeDetailDialog?.open
+    ? activeDetailDialog
+    : openDialog({
+        title: applicationName(detail),
+        kicker: "Mitgliedsantrag",
+        body: applicationDetailMarkup(detail)
+      });
+  activeDetailDialog = dialog;
+  document.getElementById("v4DialogTitle").textContent = applicationName(detail);
+  document.getElementById("v4DialogKicker").textContent = "Mitgliedsantrag";
+  const body = dialog.querySelector("#v4DialogBody");
+  if (body) body.innerHTML = applicationDetailMarkup(detail);
   bindDetailActions(dialog, detail);
 }
 
@@ -460,6 +468,10 @@ async function refreshListAndDetail(id, reopenDetail) {
   applications = nextApplications;
   renderApplicationList();
   if (reopenDetail && activeDetailId === id) showApplicationDetail(detail);
+  if (!reopenDetail && activeDetailId === id && activeDetailDialog?.open) {
+    activeDetailDialog.close();
+    activeDetailId = "";
+  }
   return detail;
 }
 
