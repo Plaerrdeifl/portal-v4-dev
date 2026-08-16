@@ -240,13 +240,38 @@ test("M310 WordPress presentation is portal-scoped, readable and mobile-safe", a
     readFile(resolve(pluginRoot, "assets", "m310-fanbus.css"), "utf8")
   ]);
 
-  assert.match(plugin, /^ \* Version: 1\.0\.2$/m);
-  assert.match(plugin, /private const VERSION = '1\.0\.2'/);
+  assert.match(plugin, /^ \* Version: 1\.0\.3$/m);
+  assert.match(plugin, /private const VERSION = '1\.0\.3'/);
   assert.match(style, /\.pd-m310-fanbus\s*\{[\s\S]+color:\s*var\(--pd-m310-ink\)/);
   assert.match(style, /\.pd-m310-fanbus \.pd-m310-title\s*\{[\s\S]+color:\s*var\(--pd-m310-ink\)[\s\S]+white-space:\s*normal/);
   assert.match(style, /\.pd-m310-fanbus \.pd-m310-meta-item dd\s*\{[\s\S]+color:\s*var\(--pd-m310-ink\)/);
   assert.doesNotMatch(style, /pd-m310-departure-info/);
   assert.doesNotMatch(plugin, /<strong>Abfahrtsinfo<\/strong>/);
+  assert.doesNotMatch(
+    plugin,
+    /Freie Plätze|remainingCapacity|activeRegistrationCount/
+  );
+
+  const wordpressPublicTripRender = sourceBlock(
+    plugin,
+    "private static function render_trip",
+    "private static function status_presentation"
+  );
+
+  assert.doesNotMatch(
+    wordpressPublicTripRender,
+    /departureInfo|Freie Plätze|remainingCapacity|activeRegistrationCount/
+  );
+  assert.match(plugin, /<details class="pd-m310-trip">/);
+  assert.match(plugin, /private static function registration_window_text/);
+  assert.match(plugin, /'Anmeldeschluss: '/);
+  assert.match(plugin, /'Anmeldung ansehen'/);
+  assert.match(plugin, /<summary class="pd-m310-summary">/);
+  assert.match(plugin, /class="pd-m310-chevron"/);
+  assert.match(
+    style,
+    /\.pd-m310-fanbus \.pd-m310-grid\s*\{[\s\S]+grid-template-columns:\s*1fr/
+  );
 
   assert.match(style, /\.pd-m310-fanbus \.pd-m310-status-open\s*\{[\s\S]+background:\s*#e7f8ef[\s\S]+color:\s*#0f6940/);
   assert.match(style, /\.pd-m310-fanbus \.pd-m310-link:visited[\s\S]+background:\s*var\(--pd-m310-blue\)[\s\S]+color:\s*#ffffff/);
@@ -256,7 +281,20 @@ test("M310 WordPress presentation is portal-scoped, readable and mobile-safe", a
   assert.doesNotMatch(style, /(?:^|})\s*(?:html|body|a|button|h[1-6]|p|dl|dt|dd|\*)\s*(?:,|\{)/m);
 
   assert.match(plugin, /private const RPC_PATH = '\/rest\/v1\/rpc\/pd_public_fanbus_trips'/);
-  assert.equal((plugin.match(/\/rest\/v1\/rpc\/[a-z0-9_]+/g) || []).length, 1);
+  assert.match(
+    plugin,
+    /private const STOPS_RPC_PATH = '\/rest\/v1\/rpc\/pd_public_fanbus_trip_boarding_stops'/
+  );
+  assert.equal(
+    (plugin.match(/\/rest\/v1\/rpc\/[a-z0-9_]+/g) || []).length,
+    2
+  );
+  assert.match(plugin, /private static function load_public_trip_stops/);
+  assert.match(plugin, /private static function validated_stop/);
+  assert.match(
+    plugin,
+    /Die Zustiegsorte können aktuell nicht geladen werden\./
+  );
   assert.match(plugin, /'OPEN' => array\('label' => 'Offen', 'class' => 'pd-m310-status-open'\)/);
   assert.match(plugin, /add_query_arg\('trip', \$trip\['tripId'\], \$portal_url\)/);
 });
