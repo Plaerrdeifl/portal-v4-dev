@@ -327,11 +327,11 @@ test('CSS and documentation preserve the F1.5A boundaries', () => {
 test('M150 Turnstile browser failures are visible and token reads are fail-safe', () => {
   assert.match(
     pluginSource,
-    /Version:\s*1\.0\.2/,
+    /Version:\s*1\.0\.3/,
   );
   assert.match(
     pluginSource,
-    /private const VERSION\s*=\s*'1\.0\.2'/,
+    /private const VERSION\s*=\s*'1\.0\.3'/,
   );
 
   assert.match(
@@ -394,15 +394,76 @@ test('M150 Turnstile browser failures are visible and token reads are fail-safe'
 });
 
 
-test('M150 birth date validation is deterministic and always visible', () => {
+
+test('M150 birth date UI is browser-independent and keeps one server value', () => {
   assert.match(
     pluginSource,
-    /Version:\s*1\.0\.2/,
+    /Version:\s*1\.0\.3/,
+  );
+
+  assert.match(
+    pluginSource,
+    /private const VERSION\s*=\s*'1\.0\.3'/,
+  );
+
+  assert.match(
+    pluginSource,
+    /render_public_birth_date\(\)/,
+  );
+
+  assert.doesNotMatch(
+    pluginSource,
+    /render_public_input\('birthDate'[\s\S]*?'date'/,
+  );
+
+  assert.match(
+    pluginSource,
+    /data-pd-m150-birth-day/,
+  );
+
+  assert.match(
+    pluginSource,
+    /data-pd-m150-birth-month/,
+  );
+
+  assert.match(
+    pluginSource,
+    /data-pd-m150-birth-year/,
+  );
+
+  assert.match(
+    pluginSource,
+    /type="hidden"[\s\S]*?name="birthDate"[\s\S]*?data-pd-m150-birth-date/,
+  );
+
+  assert.match(
+    pluginSource,
+    /inputmode="numeric"[\s\S]*?pattern="\[0-9\]\{4\}"[\s\S]*?maxlength="4"/,
+  );
+
+  assert.match(
+    pluginSource,
+    />Tag</,
+  );
+
+  assert.match(
+    pluginSource,
+    />Monat</,
+  );
+
+  assert.match(
+    pluginSource,
+    />Jahr</,
+  );
+
+  assert.match(
+    pluginSource,
+    /Januar[\s\S]*?Februar[\s\S]*?März[\s\S]*?Dezember/,
   );
 
   assert.match(
     publicScript,
-    /const BIRTH_DATE_MIN\s*=\s*'1900-01-01'/,
+    /const BIRTH_DATE_MIN_YEAR\s*=\s*1900/,
   );
 
   assert.match(
@@ -412,12 +473,17 @@ test('M150 birth date validation is deterministic and always visible', () => {
 
   assert.match(
     publicScript,
-    /function parseBirthDateValue\(/,
+    /function birthDateElements\(/,
   );
 
   assert.match(
     publicScript,
-    /function birthDateValidationMessage\(/,
+    /function birthDateResult\(/,
+  );
+
+  assert.match(
+    publicScript,
+    /function validateBirthDate\(/,
   );
 
   assert.match(
@@ -427,7 +493,7 @@ test('M150 birth date validation is deterministic and always visible', () => {
 
   assert.match(
     publicScript,
-    /value > berlinTodayValue\(\)/,
+    /result\.elements\.hidden\.value\s*=\s*result\.valid/,
   );
 
   assert.match(
@@ -437,41 +503,56 @@ test('M150 birth date validation is deterministic and always visible', () => {
 
   assert.match(
     publicScript,
-    /Bitte gib ein gültiges Geburtsdatum ein\./,
+    /Dieses Geburtsdatum ist ungültig\./,
   );
 
   assert.match(
     publicScript,
-    /birthDate\.setCustomValidity\(/,
+    /Das Geburtsdatum darf nicht in der Zukunft liegen\./,
   );
 
   assert.match(
     publicScript,
-    /birthDate\.reportValidity\(\)/,
+    /Bitte prüfe das angegebene Geburtsjahr\./,
   );
 
   assert.match(
     publicScript,
-    /Bitte prüfe die markierten Pflichtfelder\./,
+    /setAttribute\('aria-invalid', 'true'\)/,
   );
 
   assert.match(
     publicScript,
-    /birthDate\.min\s*=\s*BIRTH_DATE_MIN/,
+    /clearBirthDateNotice\(form\)/,
   );
 
   assert.match(
     publicScript,
-    /birthDate\.max\s*=\s*berlinTodayValue\(\)/,
+    /validateBirthDate\(form, true, true\)/,
+  );
+
+  assert.doesNotMatch(
+    publicScript,
+    /birthDate\.min\s*=/,
+  );
+
+  assert.doesNotMatch(
+    publicScript,
+    /birthDate\.max\s*=/,
   );
 
   assert.match(
-    publicScript,
-    /status\.dataset\.kind\s*===\s*'notice'/,
+    stylesheet,
+    /\.pd-m150-membership \.pd-m150-birthdate-inputs/,
   );
 
   assert.match(
-    publicScript,
-    /clearBirthDateStatus\(form\)/,
+    stylesheet,
+    /grid-template-columns:\s*0\.7fr 1\.3fr 0\.9fr/,
+  );
+
+  assert.match(
+    stylesheet,
+    /\.pd-m150-membership \.pd-m150-field-error/,
   );
 });

@@ -35,6 +35,7 @@
 }
 
 .pd-m150-membership .pd-m150-field input,
+.pd-m150-membership .pd-m150-field select,
 .pd-m150-membership .pd-m150-field-wide textarea {
     box-sizing: border-box;
     width: 100%;
@@ -42,6 +43,39 @@
     border: 1px solid var(--pd-m150-border);
     border-radius: 0.25rem;
     font: inherit;
+}
+
+.pd-m150-membership .pd-m150-birthdate-inputs {
+    display: grid;
+    grid-template-columns: 0.7fr 1.3fr 0.9fr;
+    gap: 0.5rem;
+    align-items: end;
+}
+
+.pd-m150-membership .pd-m150-birthdate-part {
+    display: grid;
+    min-width: 0;
+    gap: 0.25rem;
+}
+
+.pd-m150-membership .pd-m150-birthdate-part > span {
+    font-size: 0.85em;
+}
+
+.pd-m150-membership .pd-m150-birthdate-part input,
+.pd-m150-membership .pd-m150-birthdate-part select {
+    min-width: 0;
+    width: 100%;
+}
+
+.pd-m150-membership .pd-m150-field-error {
+    color: var(--pd-m150-error);
+    font-size: 0.875em;
+    line-height: 1.35;
+}
+
+.pd-m150-membership .pd-m150-field-error[hidden] {
+    display: none;
 }
 
 .pd-m150-membership .pd-m150-confirmation {
