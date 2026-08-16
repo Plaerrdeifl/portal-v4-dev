@@ -322,3 +322,73 @@ test('CSS and documentation preserve the F1.5A boundaries', () => {
     /\b(?:finance|sepa|payment|portal access)\b/i,
   );
 });
+
+
+test('M150 Turnstile browser failures are visible and token reads are fail-safe', () => {
+  assert.match(
+    pluginSource,
+    /Version:\s*1\.0\.1/,
+  );
+  assert.match(
+    pluginSource,
+    /private const VERSION\s*=\s*'1\.0\.1'/,
+  );
+
+  assert.match(
+    publicScript,
+    /'response-field':\s*true/,
+  );
+  assert.match(
+    publicScript,
+    /'response-field-name':\s*'cf-turnstile-response'/,
+  );
+
+  assert.match(
+    publicScript,
+    /'error-callback':\s*function/,
+  );
+  assert.match(
+    publicScript,
+    /'expired-callback':\s*function/,
+  );
+  assert.match(
+    publicScript,
+    /'timeout-callback':\s*function/,
+  );
+  assert.match(
+    publicScript,
+    /'unsupported-callback':\s*function/,
+  );
+
+  assert.match(
+    publicScript,
+    /\[name="cf-turnstile-response"\]/,
+  );
+
+  assert.doesNotMatch(
+    publicScript,
+    /turnstile\.getResponse\s*\(/,
+  );
+
+  assert.match(
+    publicScript,
+    /Die Sicherheitsprüfung konnte nicht geladen werden/,
+  );
+  assert.match(
+    publicScript,
+    /Die Sicherheitsprüfung ist abgelaufen/,
+  );
+  assert.match(
+    publicScript,
+    /Die Sicherheitsprüfung hat zu lange gedauert/,
+  );
+  assert.match(
+    publicScript,
+    /nicht unterstützt/,
+  );
+
+  assert.match(
+    publicScript,
+    /try\s*\{[\s\S]*?window\.turnstile\.reset\(widgetId\)[\s\S]*?\}\s*catch/,
+  );
+});
