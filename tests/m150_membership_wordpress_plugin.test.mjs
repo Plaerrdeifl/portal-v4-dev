@@ -327,11 +327,11 @@ test('CSS and documentation preserve the F1.5A boundaries', () => {
 test('M150 Turnstile browser failures are visible and token reads are fail-safe', () => {
   assert.match(
     pluginSource,
-    /Version:\s*1\.0\.1/,
+    /Version:\s*1\.0\.2/,
   );
   assert.match(
     pluginSource,
-    /private const VERSION\s*=\s*'1\.0\.1'/,
+    /private const VERSION\s*=\s*'1\.0\.2'/,
   );
 
   assert.match(
@@ -390,5 +390,88 @@ test('M150 Turnstile browser failures are visible and token reads are fail-safe'
   assert.match(
     publicScript,
     /try\s*\{[\s\S]*?window\.turnstile\.reset\(widgetId\)[\s\S]*?\}\s*catch/,
+  );
+});
+
+
+test('M150 birth date validation is deterministic and always visible', () => {
+  assert.match(
+    pluginSource,
+    /Version:\s*1\.0\.2/,
+  );
+
+  assert.match(
+    publicScript,
+    /const BIRTH_DATE_MIN\s*=\s*'1900-01-01'/,
+  );
+
+  assert.match(
+    publicScript,
+    /timeZone:\s*'Europe\/Berlin'/,
+  );
+
+  assert.match(
+    publicScript,
+    /function parseBirthDateValue\(/,
+  );
+
+  assert.match(
+    publicScript,
+    /function birthDateValidationMessage\(/,
+  );
+
+  assert.match(
+    publicScript,
+    /Date\.UTC\(/,
+  );
+
+  assert.match(
+    publicScript,
+    /value > berlinTodayValue\(\)/,
+  );
+
+  assert.match(
+    publicScript,
+    /Bitte gib dein Geburtsdatum vollständig ein\./,
+  );
+
+  assert.match(
+    publicScript,
+    /Bitte gib ein gültiges Geburtsdatum ein\./,
+  );
+
+  assert.match(
+    publicScript,
+    /birthDate\.setCustomValidity\(/,
+  );
+
+  assert.match(
+    publicScript,
+    /birthDate\.reportValidity\(\)/,
+  );
+
+  assert.match(
+    publicScript,
+    /Bitte prüfe die markierten Pflichtfelder\./,
+  );
+
+  assert.match(
+    publicScript,
+    /birthDate\.min\s*=\s*BIRTH_DATE_MIN/,
+  );
+
+  assert.match(
+    publicScript,
+    /birthDate\.max\s*=\s*berlinTodayValue\(\)/,
+  );
+
+  assert.match(
+    publicScript,
+    /status\.dataset\.kind\s*===\s*'notice'/,
+  );
+
+  assert.match(
+    publicScript,
+    /clearBirthDateStatus\(form\)/,
   );
 });
