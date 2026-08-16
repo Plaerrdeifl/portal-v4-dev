@@ -110,28 +110,153 @@
 
     window.pdM150TurnstileReady = renderAllTurnstileWidgets;
 
-    function isUnderEighteen(birthDateValue) {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDateValue)) {
-            return false;
+    const BIRTH_DATE_MIN = '1900-01-01';
+    const BIRTH_DATE_REQUIRED_MESSAGE =
+        'Bitte gib dein Geburtsdatum vollständig ein.';
+    const BIRTH_DATE_INVALID_MESSAGE =
+        'Bitte gib ein gültiges Geburtsdatum ein.';
+
+    function berlinTodayValue() {
+        const parts = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Europe/Berlin',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).formatToParts(new Date());
+
+        const values = {};
+        parts.forEach(function (part) {
+            if (
+                part.type === 'year'
+                || part.type === 'month'
+                || part.type === 'day'
+            ) {
+                values[part.type] = part.value;
+            }
+        });
+
+        return values.year + '-' + values.month + '-' + values.day;
+    }
+
+    function parseBirthDateValue(value) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+            return null;
         }
 
-        const parts = birthDateValue.split('-').map(Number);
-        const birthDate = new Date(parts[0], parts[1] - 1, parts[2]);
+        const parts = value.split('-').map(Number);
+        const year = parts[0];
+        const month = parts[1];
+        const day = parts[2];
+
         if (
-            birthDate.getFullYear() !== parts[0]
-            || birthDate.getMonth() !== parts[1] - 1
-            || birthDate.getDate() !== parts[2]
+            year < 1900
+            || year > 9999
+            || month < 1
+            || month > 12
+            || day < 1
+            || day > 31
         ) {
+            return null;
+        }
+
+        const date = new Date(Date.UTC(year, month - 1, day));
+
+        if (
+            date.getUTCFullYear() !== year
+            || date.getUTCMonth() !== month - 1
+            || date.getUTCDate() !== day
+        ) {
+            return null;
+        }
+
+        return {
+            year: year,
+            month: month,
+            day: day,
+        };
+    }
+
+    function birthDateValidationMessage(value) {
+        if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+            return BIRTH_DATE_REQUIRED_MESSAGE;
+        }
+
+        const parsed = parseBirthDateValue(value);
+        if (!parsed) {
+            return BIRTH_DATE_INVALID_MESSAGE;
+        }
+
+        if (
+            value < BIRTH_DATE_MIN
+            || value > berlinTodayValue()
+        ) {
+            return BIRTH_DATE_INVALID_MESSAGE;
+        }
+
+        return '';
+    }
+
+    function isUnderEighteen(birthDateValue) {
+        const birth = parseBirthDateValue(birthDateValue);
+        const today = parseBirthDateValue(berlinTodayValue());
+
+        if (!birth || !today) {
             return false;
         }
 
-        const today = new Date();
-        const eighteenthBirthday = new Date(parts[0] + 18, parts[1] - 1, parts[2]);
-        return eighteenthBirthday > new Date(
-            today.getFullYear(),
-            today.getMonth(),
-            today.getDate()
-        );
+        let age = today.year - birth.year;
+
+        if (
+            today.month < birth.month
+            || (
+                today.month === birth.month
+                && today.day < birth.day
+            )
+        ) {
+            age -= 1;
+        }
+
+        return age < 18;
+    }
+
+    function clearBirthDateStatus(form) {
+        const status = statusElement(form);
+        if (!status) {
+            return;
+        }
+
+        if (
+            status.dataset.kind === 'notice'
+            || status.textContent === BIRTH_DATE_REQUIRED_MESSAGE
+            || status.textContent === BIRTH_DATE_INVALID_MESSAGE
+        ) {
+            setStatus(form, '', '');
+        }
+    }
+
+    function validateBirthDate(form) {
+        const birthDate = form.elements.namedItem('birthDate');
+
+        if (!(birthDate instanceof HTMLInputElement)) {
+            setStatus(
+                form,
+                'Der Mitgliedsantrag ist derzeit technisch nicht möglich.',
+                'error'
+            );
+            return false;
+        }
+
+        const message = birthDateValidationMessage(birthDate.value);
+        birthDate.setCustomValidity(message);
+
+        if (message) {
+            setStatus(form, message, 'error');
+            birthDate.reportValidity();
+            return false;
+        }
+
+        birthDate.setCustomValidity('');
+        return true;
     }
 
     function showMinorPath(form) {
@@ -199,7 +324,21 @@
     async function submitForm(event) {
         event.preventDefault();
         const form = event.currentTarget;
-        if (!(form instanceof HTMLFormElement) || !form.reportValidity()) {
+
+        if (!(form instanceof HTMLFormElement)) {
+            return;
+        }
+
+        if (!validateBirthDate(form)) {
+            return;
+        }
+
+        if (!form.reportValidity()) {
+            setStatus(
+                form,
+                'Bitte prüfe die markierten Pflichtfelder.',
+                'error'
+            );
             return;
         }
 
@@ -274,8 +413,22 @@
             form.addEventListener('submit', submitForm);
             const birthDate = form.elements.namedItem('birthDate');
             if (birthDate instanceof HTMLInputElement) {
+                birthDate.min = BIRTH_DATE_MIN;
+                birthDate.max = berlinTodayValue();
+
+                birthDate.addEventListener('input', function () {
+                    birthDate.setCustomValidity('');
+                    clearBirthDateStatus(form);
+                });
+
                 birthDate.addEventListener('change', function () {
-                    if (isUnderEighteen(birthDate.value)) {
+                    birthDate.setCustomValidity('');
+                    clearBirthDateStatus(form);
+
+                    if (
+                        birthDateValidationMessage(birthDate.value) === ''
+                        && isUnderEighteen(birthDate.value)
+                    ) {
                         showMinorPath(form);
                     }
                 });
