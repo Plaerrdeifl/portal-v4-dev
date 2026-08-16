@@ -327,11 +327,11 @@ test('CSS and documentation preserve the F1.5A boundaries', () => {
 test('M150 Turnstile browser failures are visible and token reads are fail-safe', () => {
   assert.match(
     pluginSource,
-    /Version:\s*1\.0\.3/,
+    /Version:\s*1\.0\.4/,
   );
   assert.match(
     pluginSource,
-    /private const VERSION\s*=\s*'1\.0\.3'/,
+    /private const VERSION\s*=\s*'1\.0\.4'/,
   );
 
   assert.match(
@@ -398,12 +398,12 @@ test('M150 Turnstile browser failures are visible and token reads are fail-safe'
 test('M150 birth date UI is browser-independent and keeps one server value', () => {
   assert.match(
     pluginSource,
-    /Version:\s*1\.0\.3/,
+    /Version:\s*1\.0\.4/,
   );
 
   assert.match(
     pluginSource,
-    /private const VERSION\s*=\s*'1\.0\.3'/,
+    /private const VERSION\s*=\s*'1\.0\.4'/,
   );
 
   assert.match(
@@ -438,7 +438,17 @@ test('M150 birth date UI is browser-independent and keeps one server value', () 
 
   assert.match(
     pluginSource,
-    /inputmode="numeric"[\s\S]*?pattern="\[0-9\]\{4\}"[\s\S]*?maxlength="4"/,
+    /<select[\s\S]*?data-pd-m150-birth-year[\s\S]*?required/,
+  );
+
+  assert.match(
+    pluginSource,
+    /\$current_year[\s\S]*?\$year\s*=\s*\$current_year[\s\S]*?\$year\s*>=\s*1900[\s\S]*?\$year--/,
+  );
+
+  assert.doesNotMatch(
+    pluginSource,
+    /data-pd-m150-birth-year[\s\S]*?inputmode="numeric"/,
   );
 
   assert.match(
@@ -474,6 +484,11 @@ test('M150 birth date UI is browser-independent and keeps one server value', () 
   assert.match(
     publicScript,
     /function birthDateElements\(/,
+  );
+
+  assert.match(
+    publicScript,
+    /\!\(year instanceof HTMLSelectElement\)/,
   );
 
   assert.match(
@@ -548,7 +563,22 @@ test('M150 birth date UI is browser-independent and keeps one server value', () 
 
   assert.match(
     stylesheet,
-    /grid-template-columns:\s*0\.7fr 1\.3fr 0\.9fr/,
+    /\.pd-m150-membership \.pd-m150-birthdate-field[\s\S]*?grid-column:\s*1\s*\/\s*-1/,
+  );
+
+  assert.match(
+    stylesheet,
+    /grid-template-columns:\s*6rem 12rem 8rem/,
+  );
+
+  assert.match(
+    stylesheet,
+    /max-width:\s*27\.5rem/,
+  );
+
+  assert.match(
+    stylesheet,
+    /@media \(max-width:\s*42rem\)[\s\S]*?grid-template-columns:\s*0\.8fr 1\.4fr 1fr/,
   );
 
   assert.match(
