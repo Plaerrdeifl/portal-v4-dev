@@ -16,6 +16,11 @@ import {
 let snapshot = null;
 let activeTab = "requests";
 
+function requestedAccessRequestId() {
+  const query = String(location.hash || "").split("?")[1] || "";
+  return new URLSearchParams(query).get("accessRequest") || "";
+}
+
 function activeRoles() {
   return (snapshot?.roles || []).filter(role => role.active);
 }
@@ -841,7 +846,15 @@ export async function hydrateAdmin(context = {}) {
   try {
     snapshot = await call("admin_snapshot");
     if (context.isCurrent && !context.isCurrent()) return;
+    const requestedId = requestedAccessRequestId();
+    if (requestedId && snapshot?.canManageUsers) activeTab = "requests";
     render();
+    if (requestedId && snapshot?.canManageUsers) {
+      const action = panel.querySelector(`[data-approve-request="${CSS.escape(requestedId)}"]`);
+      const target = action?.closest("article");
+      target?.scrollIntoView({ block: "center", behavior: "smooth" });
+      target?.focus?.({ preventScroll: true });
+    }
   } catch (error) {
     panel.innerHTML = errorPanel(error, "Administration konnte nicht geladen werden");
     const status = document.getElementById("adminStatus");

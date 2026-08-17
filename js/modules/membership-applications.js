@@ -79,6 +79,11 @@ let activeDetailId = "";
 let activeDetailDialog = null;
 let loadSequence = 0;
 
+function requestedApplicationId() {
+  const query = String(location.hash || "").split("?")[1] || "";
+  return new URLSearchParams(query).get("applicationId") || "";
+}
+
 function applicationName(application) {
   return String(
     application?.name
@@ -793,6 +798,14 @@ export async function renderMembershipApplications(panel, context = {}) {
     if (sequence !== loadSequence || panelNode !== panel) return;
     applications = nextApplications;
     renderApplicationList();
+    const requestedId = requestedApplicationId();
+    if (requestedId && activeDetailId !== requestedId) {
+      try {
+        await openApplicationDetail(requestedId);
+      } catch (error) {
+        showToast(error?.message || "Der verlinkte Mitgliedsantrag konnte nicht geladen werden.", "error", 6500);
+      }
+    }
   } catch (error) {
     if (sequence !== loadSequence || panelNode !== panel) return;
     panelNode.innerHTML = `${errorPanel(error, "Mitgliedsanträge konnten nicht geladen werden")}
