@@ -16,12 +16,10 @@ function escapeHtml(value) {
 
 function notify(message, type = "info") {
   const region = document.getElementById("toastRegion");
-
   if (!region) {
     window.alert(message);
     return;
   }
-
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
   toast.textContent = message;
@@ -40,10 +38,7 @@ function supported() {
 
 function isIos() {
   return /iPad|iPhone|iPod/.test(navigator.userAgent)
-    || (
-      navigator.platform === "MacIntel"
-      && navigator.maxTouchPoints > 1
-    );
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 }
 
 function isStandalone() {
@@ -53,16 +48,13 @@ function isStandalone() {
 
 function urlBase64ToUint8Array(value) {
   const padding = "=".repeat((4 - value.length % 4) % 4);
-  const base64 = (value + padding)
-    .replaceAll("-", "+")
-    .replaceAll("_", "/");
+  const base64 = (value + padding).replaceAll("-", "+").replaceAll("_", "/");
   const raw = window.atob(base64);
   return Uint8Array.from([...raw].map(character => character.charCodeAt(0)));
 }
 
 function deviceLabel() {
   const agent = navigator.userAgent;
-
   if (/iPhone/i.test(agent)) return "iPhone";
   if (/iPad/i.test(agent)) return "iPad";
   if (/Android/i.test(agent)) return "Android-Gerät";
@@ -79,56 +71,40 @@ async function currentSubscription() {
 
 async function updateBadge(count = null) {
   if (!("setAppBadge" in navigator) || !auth.current().authenticated) return;
-
   try {
     let next = count;
-
     if (next === null) {
       const current = await api.call("push_snapshot");
       next = Number(current?.unreadNotificationCount || 0);
     }
-
     if (next > 0) await navigator.setAppBadge(next);
     else if ("clearAppBadge" in navigator) await navigator.clearAppBadge();
   } catch {
-    // Das Badge ist eine Ergänzung und darf den Portalbetrieb nicht stören.
+    // Das Badge ist rein ergänzend und darf den Portalbetrieb nicht stören.
   }
 }
 
 function ensureDialog() {
   if (dialog) return dialog;
-
   dialog = document.createElement("dialog");
   dialog.id = "pushSettingsDialog";
   dialog.className = "v4-dialog v4-push-dialog";
   dialog.innerHTML = `
     <div class="v4-dialog-shell">
       <header>
-        <div class="v4-push-dialog-heading">
-          <h2>Benachrichtigungen</h2>
-        </div>
-        <button
-          class="icon-button"
-          type="button"
-          data-close-push-settings
-          aria-label="Benachrichtigungseinstellungen schließen"
-        >×</button>
+        <div class="v4-push-dialog-heading"><h2>Benachrichtigungen</h2></div>
+        <button class="icon-button" type="button" data-close-push-settings
+          aria-label="Benachrichtigungseinstellungen schließen">×</button>
       </header>
       <div id="pushSettingsBody" class="v4-push-scroll-region"></div>
     </div>
   `;
-
   document.body.appendChild(dialog);
-
   dialog.addEventListener("click", event => {
-    if (
-      event.target === dialog
-      || event.target.closest("[data-close-push-settings]")
-    ) {
+    if (event.target === dialog || event.target.closest("[data-close-push-settings]")) {
       dialog.close();
     }
   });
-
   return dialog;
 }
 
@@ -136,6 +112,58 @@ function permissionLabel(permission) {
   if (permission === "granted") return "Erlaubt";
   if (permission === "denied") return "Blockiert";
   return "Noch nicht entschieden";
+}
+
+function categoryRow({
+  title,
+  description,
+  emailName,
+  pushName,
+  emailChecked,
+  pushChecked,
+  disabled = false
+}) {
+  return `
+    <div class="v4-notification-category">
+      <div class="v4-notification-category-copy">
+        <strong>${escapeHtml(title)}</strong>
+        <small>${escapeHtml(description)}</small>
+      </div>
+      <label class="v4-switch-row v4-notification-channel">
+        <span><strong>E-Mail</strong><small>Optionale E-Mails</small></span>
+        <input type="checkbox" name="${escapeHtml(emailName)}"
+          ${emailChecked ? "checked" : ""} ${disabled ? "disabled" : ""}>
+      </label>
+      <label class="v4-switch-row v4-notification-channel">
+        <span><strong>Push</strong><small>Auf registrierten Geräten</small></span>
+        <input type="checkbox" name="${escapeHtml(pushName)}"
+          ${pushChecked ? "checked" : ""} ${disabled ? "disabled" : ""}>
+      </label>
+    </div>
+  `;
+}
+
+function deviceMarkup(devices) {
+  if (!devices.length) {
+    return '<p class="subtle">Noch kein aktives Push-Gerät gespeichert.</p>';
+  }
+
+  return `<div class="v4-notification-devices">
+    ${devices.map(device => `
+      <div class="v4-switch-row">
+        <span>
+          <strong>${escapeHtml(device.deviceLabel || "Webgerät")}</strong>
+          <small>Zuletzt gesehen: ${escapeHtml(
+            device.lastSeenAt ? new Date(device.lastSeenAt).toLocaleString("de-DE") : "–"
+          )}</small>
+        </span>
+        <button class="button small danger" type="button"
+          data-remove-push-device="${escapeHtml(device.id)}" ${busy ? "disabled" : ""}>
+          Entfernen
+        </button>
+      </div>
+    `).join("")}
+  </div>`;
 }
 
 function render() {
@@ -146,222 +174,178 @@ function render() {
   const permission = supported() ? Notification.permission : "unsupported";
   const iosInstallRequired = isIos() && !isStandalone();
   const devices = Number(snapshot?.activeDeviceCount || 0);
-  const enabled =
-    permission === "granted"
+  const deviceList = Array.isArray(snapshot?.devices) ? snapshot.devices : [];
+  const enabled = permission === "granted"
     && devices > 0
     && preferences.pushEnabled !== false;
   const quietHoursEnabled = Boolean(preferences.quietHoursEnabled);
 
   host.innerHTML = `
+    <div class="notice">
+      <strong>Pflichtnachrichten bleiben aktiv</strong>
+      <p>
+        Fachlich notwendige E-Mails – zum Beispiel zu Mitgliedsantrag, Portalzugang
+        oder deiner Fanbus-Buchung – werden unabhängig von diesen optionalen
+        Einstellungen versendet. Push bleibt immer freiwillig und benötigt deine
+        Gerätefreigabe.
+      </p>
+    </div>
+
     <div class="v4-push-summary">
-      <div>
-        <span>Status</span>
-        <strong>${enabled ? "Push aktiv" : "Push nicht aktiv"}</strong>
-      </div>
+      <div><span>Status</span><strong>${enabled ? "Push aktiv" : "Push nicht aktiv"}</strong></div>
       <div>
         <span>Berechtigung</span>
         <strong>${escapeHtml(
-          permission === "unsupported"
-            ? "Nicht unterstützt"
-            : permissionLabel(permission)
+          permission === "unsupported" ? "Nicht unterstützt" : permissionLabel(permission)
         )}</strong>
       </div>
-      <div>
-        <span>Registrierte Geräte</span>
-        <strong>${devices}</strong>
-      </div>
+      <div><span>Registrierte Geräte</span><strong>${devices}</strong></div>
     </div>
 
     ${iosInstallRequired ? `
       <div class="notice warning">
         <strong>Auf dem iPhone zuerst als App installieren</strong>
-        <p>
-          Öffne das Teilen-Menü in Safari, wähle „Zum Home-Bildschirm“
-          und starte anschließend die installierte Plärrdeifl-App.
-        </p>
+        <p>Öffne in Safari das Teilen-Menü, wähle „Zum Home-Bildschirm“ und starte
+        anschließend die installierte Plärrdeifl-App.</p>
       </div>
     ` : ""}
 
     ${permission === "denied" ? `
       <div class="notice error">
         <strong>Benachrichtigungen sind blockiert</strong>
-        <p>
-          Erlaube sie in den Geräte- beziehungsweise Browser-Einstellungen
-          für die Plärrdeifl-App.
-        </p>
+        <p>Erlaube sie in den Geräte- beziehungsweise Browser-Einstellungen
+        für die Plärrdeifl-App.</p>
       </div>
     ` : ""}
 
     <div class="v4-push-actions">
-      <button
-        class="button primary"
-        type="button"
-        data-enable-push
-        ${busy || !supported() || iosInstallRequired || permission === "denied"
-          ? "disabled"
-          : ""}
-      >
+      <button class="button primary" type="button" data-enable-push
+        ${busy || !supported() || iosInstallRequired || permission === "denied" ? "disabled" : ""}>
         ${enabled ? "Dieses Gerät aktualisieren" : "Push aktivieren"}
       </button>
-      <button
-        class="button secondary"
-        type="button"
-        data-send-push-test
-        ${busy || !enabled ? "disabled" : ""}
-      >
-        Testmeldung senden
-      </button>
-      <button
-        class="button danger"
-        type="button"
-        data-disable-push
-        ${busy || !enabled ? "disabled" : ""}
-      >
-        Auf diesem Gerät deaktivieren
-      </button>
+      <button class="button secondary" type="button" data-send-push-test
+        ${busy || !enabled ? "disabled" : ""}>Testmeldung senden</button>
+      <button class="button danger" type="button" data-disable-push
+        ${busy || !enabled ? "disabled" : ""}>Auf diesem Gerät deaktivieren</button>
     </div>
 
     <form id="pushPreferencesForm" class="v4-push-preferences">
-      <input
-        type="hidden"
-        name="revision"
-        value="${escapeHtml(preferences.revision || 1)}"
-      >
+      <input type="hidden" name="revision" value="${escapeHtml(preferences.revision || 1)}">
 
-      <h3>Welche Meldungen möchtest du erhalten?</h3>
+      <h3>Optionale Meldungen nach Bereich</h3>
+      ${categoryRow({
+        title: "Konto & Mitgliedschaft",
+        description: "Interne oder zusätzliche Meldungen zu Konto und Mitgliedschaft",
+        emailName: "emailAccountMembership",
+        pushName: "pushAccountMembership",
+        emailChecked: preferences.emailAccountMembership === true,
+        pushChecked: preferences.pushAccountMembership === true
+      })}
+      ${categoryRow({
+        title: "Fanbus",
+        description: "Zusätzliche interne Fanbus-Meldungen; Buchungsstatus bleibt Pflicht-E-Mail",
+        emailName: "emailFanbus",
+        pushName: "pushFanbus",
+        emailChecked: preferences.emailFanbus === true,
+        pushChecked: preferences.pushFanbus === true
+      })}
+      ${categoryRow({
+        title: "Termine",
+        description: "Allgemeine Terminmeldungen sind in M020 R1 noch nicht aktiv",
+        emailName: "emailDates",
+        pushName: "pushDates",
+        emailChecked: false,
+        pushChecked: false,
+        disabled: true
+      })}
+      ${categoryRow({
+        title: "Aufgaben",
+        description: "Meldungen zu Aufgaben, für die du tatsächlich verantwortlich oder beteiligt bist",
+        emailName: "emailTasks",
+        pushName: "pushTasks",
+        emailChecked: preferences.emailTasks === true,
+        pushChecked: preferences.pushTasks !== false
+      })}
+
+      <details class="v4-history">
+        <summary>Aufgaben-Push genauer einstellen</summary>
+        <label class="v4-switch-row">
+          <span><strong>Neue Aufgaben</strong><small>Dir neu zugewiesene Aufgaben</small></span>
+          <input type="checkbox" name="newTasks"
+            ${preferences.newTasks !== false ? "checked" : ""}>
+        </label>
+        <label class="v4-switch-row">
+          <span><strong>Neue Aufgaben-Updates</strong><small>Relevante Verlaufs- und Fortschrittseinträge</small></span>
+          <input type="checkbox" name="taskUpdates"
+            ${preferences.taskUpdates !== false ? "checked" : ""}>
+        </label>
+        <label class="v4-switch-row">
+          <span><strong>Statusänderungen</strong><small>Relevante Änderungen am Aufgabenstatus</small></span>
+          <input type="checkbox" name="taskStatus"
+            ${preferences.taskStatus !== false ? "checked" : ""}>
+        </label>
+        <label class="v4-switch-row">
+          <span><strong>Aufgabenübertragungen</strong><small>Relevante Übertragungsereignisse</small></span>
+          <input type="checkbox" name="taskTransfers"
+            ${preferences.taskTransfers !== false ? "checked" : ""}>
+        </label>
+        <label class="v4-switch-row">
+          <span><strong>Wartefristen</strong><small>Bevorstehende oder überschrittene Wartefristen</small></span>
+          <input type="checkbox" name="waitingDeadlines"
+            ${preferences.waitingDeadlines !== false ? "checked" : ""}>
+        </label>
+      </details>
 
       <label class="v4-switch-row">
-        <span>
-          <strong>Neue Aufgaben</strong>
-          <small>Neu erstellte Aufgaben, die für dich sichtbar sind</small>
-        </span>
-        <input
-          type="checkbox"
-          name="newTasks"
-          ${preferences.newTasks !== false ? "checked" : ""}
-        >
+        <span><strong>Zahl am App-Symbol</strong><small>Anzahl ungelesener Portal-Meldungen</small></span>
+        <input type="checkbox" name="badgeEnabled"
+          ${preferences.badgeEnabled !== false ? "checked" : ""}>
       </label>
 
       <label class="v4-switch-row">
-        <span>
-          <strong>Neue Aufgaben-Updates</strong>
-          <small>Neue Verlaufs- und Fortschrittseinträge</small>
-        </span>
-        <input
-          type="checkbox"
-          name="taskUpdates"
-          ${preferences.taskUpdates !== false ? "checked" : ""}
-        >
-      </label>
-
-      <label class="v4-switch-row">
-        <span>
-          <strong>Statusänderungen</strong>
-          <small>Offen, in Bearbeitung, wartet oder erledigt</small>
-        </span>
-        <input
-          type="checkbox"
-          name="taskStatus"
-          ${preferences.taskStatus !== false ? "checked" : ""}
-        >
-      </label>
-
-      <label class="v4-switch-row">
-        <span>
-          <strong>Aufgabenübertragungen</strong>
-          <small>Anfrage, Annahme, Ablehnung und Rücknahme</small>
-        </span>
-        <input
-          type="checkbox"
-          name="taskTransfers"
-          ${preferences.taskTransfers !== false ? "checked" : ""}
-        >
-      </label>
-
-      <label class="v4-switch-row">
-        <span>
-          <strong>Wartefristen</strong>
-          <small>Läuft innerhalb von 24 Stunden ab oder ist überschritten</small>
-        </span>
-        <input
-          type="checkbox"
-          name="waitingDeadlines"
-          ${preferences.waitingDeadlines !== false ? "checked" : ""}
-        >
-      </label>
-
-      <label class="v4-switch-row">
-        <span>
-          <strong>Zahl am App-Symbol</strong>
-          <small>Anzahl ungelesener Portal-Meldungen</small>
-        </span>
-        <input
-          type="checkbox"
-          name="badgeEnabled"
-          ${preferences.badgeEnabled !== false ? "checked" : ""}
-        >
-      </label>
-
-      <label class="v4-switch-row">
-        <span>
-          <strong>Ruhezeit</strong>
-          <small>Push wird nach Ende der Ruhezeit zugestellt</small>
-        </span>
-        <input
-          type="checkbox"
-          name="quietHoursEnabled"
-          ${preferences.quietHoursEnabled ? "checked" : ""}
-        >
+        <span><strong>Ruhezeit</strong><small>Optionale Push-Meldungen werden bis zum Ende der Ruhezeit zurückgestellt</small></span>
+        <input type="checkbox" name="quietHoursEnabled"
+          ${preferences.quietHoursEnabled ? "checked" : ""}>
       </label>
 
       <div class="v4-push-quiet-grid ${quietHoursEnabled ? "is-enabled" : "is-disabled"}">
         <label>Von
-          <input
-            type="time"
-            name="quietStart"
-            value="${escapeHtml(preferences.quietStart || "22:00")}"
-          >
+          <input type="time" name="quietStart"
+            value="${escapeHtml(preferences.quietStart || "22:00")}">
         </label>
         <label>Bis
-          <input
-            type="time"
-            name="quietEnd"
-            value="${escapeHtml(preferences.quietEnd || "07:00")}"
-          >
+          <input type="time" name="quietEnd"
+            value="${escapeHtml(preferences.quietEnd || "07:00")}">
         </label>
-        <input
-          type="hidden"
-          name="timeZone"
-          value="${escapeHtml(
-            Intl.DateTimeFormat().resolvedOptions().timeZone
-            || "Europe/Berlin"
-          )}"
-        >
+        <input type="hidden" name="timeZone" value="${escapeHtml(
+          Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Berlin"
+        )}">
       </div>
 
-      <button
-        class="button secondary"
-        type="submit"
-        ${busy ? "disabled" : ""}
-      >
+      <button class="button secondary" type="submit" ${busy ? "disabled" : ""}>
         Einstellungen speichern
       </button>
     </form>
+
+    <section class="v4-push-preferences">
+      <h3>Aktive Push-Geräte</h3>
+      <p class="subtle">Es werden nur Gerätebezeichnung und Zeitpunkte angezeigt – keine Push-Schlüssel oder Endpunkte.</p>
+      ${deviceMarkup(deviceList)}
+    </section>
   `;
 
-  host.querySelector("[data-enable-push]")
-    ?.addEventListener("click", enablePush);
-  host.querySelector("[data-disable-push]")
-    ?.addEventListener("click", disablePush);
-  host.querySelector("[data-send-push-test]")
-    ?.addEventListener("click", sendTest);
-  host.querySelector("#pushPreferencesForm")
-    ?.addEventListener("submit", savePreferences);
+  host.querySelector("[data-enable-push]")?.addEventListener("click", enablePush);
+  host.querySelector("[data-disable-push]")?.addEventListener("click", disablePush);
+  host.querySelector("[data-send-push-test]")?.addEventListener("click", sendTest);
+  host.querySelector("#pushPreferencesForm")?.addEventListener("submit", savePreferences);
+  host.querySelectorAll("[data-remove-push-device]").forEach(button => {
+    button.addEventListener("click", () => removeDevice(button.dataset.removePushDevice));
+  });
 
   const quietToggle = host.querySelector('input[name="quietHoursEnabled"]');
   const quietStart = host.querySelector('input[name="quietStart"]');
   const quietEnd = host.querySelector('input[name="quietEnd"]');
-  const quietGrid = host.querySelector('.v4-push-quiet-grid');
+  const quietGrid = host.querySelector(".v4-push-quiet-grid");
   const syncQuietHoursInputs = () => {
     const active = Boolean(quietToggle?.checked);
     if (quietStart) {
@@ -374,8 +358,8 @@ function render() {
       quietEnd.setAttribute('aria-disabled', String(!active));
       quietEnd.tabIndex = active ? 0 : -1;
     }
-    quietGrid?.classList.toggle('is-enabled', active);
-    quietGrid?.classList.toggle('is-disabled', !active);
+    quietGrid?.classList.toggle("is-enabled", active);
+    quietGrid?.classList.toggle("is-disabled", !active);
   };
   quietToggle?.addEventListener("change", syncQuietHoursInputs);
   syncQuietHoursInputs();
@@ -394,24 +378,17 @@ async function enablePush() {
 
   try {
     if (isIos() && !isStandalone()) {
-      throw new Error(
-        "Auf dem iPhone muss das Portal zuerst zum Home-Bildschirm hinzugefügt werden."
-      );
+      throw new Error("Auf dem iPhone muss das Portal zuerst zum Home-Bildschirm hinzugefügt werden.");
     }
 
     const permission = await Notification.requestPermission();
-
     if (permission !== "granted") {
       throw new Error("Benachrichtigungen wurden nicht erlaubt.");
     }
-
-    if (!snapshot?.publicKey) {
-      throw new Error("Öffentlicher Push-Schlüssel fehlt.");
-    }
+    if (!snapshot?.publicKey) throw new Error("Öffentlicher Push-Schlüssel fehlt.");
 
     const registration = await navigator.serviceWorker.ready;
     let subscription = await registration.pushManager.getSubscription();
-
     if (!subscription) {
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
@@ -420,7 +397,6 @@ async function enablePush() {
     }
 
     const serialized = subscription.toJSON();
-
     snapshot = await api.call("save_push_subscription", {
       endpoint: serialized.endpoint,
       p256dh: serialized.keys?.p256dh || "",
@@ -446,23 +422,32 @@ async function disablePush() {
 
   try {
     const subscription = await currentSubscription();
-
     if (subscription) {
-      await api.call("remove_push_subscription", {
-        endpoint: subscription.endpoint
-      });
+      await api.call("remove_push_subscription", { endpoint: subscription.endpoint });
       await subscription.unsubscribe();
     }
 
     snapshot = await api.call("push_snapshot");
-
-    if ("clearAppBadge" in navigator) {
-      await navigator.clearAppBadge();
-    }
-
+    if ("clearAppBadge" in navigator) await navigator.clearAppBadge();
     notify("Push wurde auf diesem Gerät deaktiviert.", "success");
   } catch (error) {
     notify(error?.message || "Push konnte nicht deaktiviert werden.", "error");
+  } finally {
+    busy = false;
+    render();
+  }
+}
+
+async function removeDevice(id) {
+  if (busy || !id) return;
+  busy = true;
+  render();
+
+  try {
+    snapshot = await api.call("remove_push_subscription", { id });
+    notify("Das Push-Gerät wurde deaktiviert.", "success");
+  } catch (error) {
+    notify(error?.message || "Das Gerät konnte nicht deaktiviert werden.", "error");
   } finally {
     busy = false;
     render();
@@ -476,10 +461,7 @@ async function sendTest() {
 
   try {
     await api.call("create_push_test");
-    notify(
-      "Testmeldung wurde ausgelöst. Die Zustellung kann einige Sekunden dauern.",
-      "success"
-    );
+    notify("Testmeldung wurde ausgelöst. Die Zustellung kann einige Sekunden dauern.", "success");
   } catch (error) {
     notify(error?.message || "Testmeldung konnte nicht gesendet werden.", "error");
   } finally {
@@ -502,6 +484,14 @@ async function savePreferences(event) {
     snapshot = await api.call("save_notification_preferences", {
       revision: values.revision,
       pushEnabled: Number(snapshot?.activeDeviceCount || 0) > 0,
+      emailAccountMembership: form.elements.emailAccountMembership.checked,
+      pushAccountMembership: form.elements.pushAccountMembership.checked,
+      emailFanbus: form.elements.emailFanbus.checked,
+      pushFanbus: form.elements.pushFanbus.checked,
+      emailDates: false,
+      pushDates: false,
+      emailTasks: form.elements.emailTasks.checked,
+      pushTasks: form.elements.pushTasks.checked,
       newTasks: form.elements.newTasks.checked,
       taskUpdates: form.elements.taskUpdates.checked,
       taskStatus: form.elements.taskStatus.checked,
@@ -536,10 +526,8 @@ async function openSettings() {
 
   const currentDialog = ensureDialog();
   const host = document.getElementById("pushSettingsBody");
-
   if (host) {
-    host.innerHTML =
-      '<article class="card loading-card"><h3>Benachrichtigungen werden geladen …</h3></article>';
+    host.innerHTML = '<article class="card loading-card"><h3>Benachrichtigungen werden geladen …</h3></article>';
   }
 
   if (!currentDialog.open) currentDialog.showModal();
@@ -564,6 +552,7 @@ window.plaerrdeiflPush = Object.freeze({
 });
 
 const __V4_PUSH_BADGE_QUIETTIME_FIX3_APPLIED__ = true;
+const __M020_R1_NOTIFICATION_PREFERENCES__ = true;
 
 window.setTimeout(() => {
   if (auth.current().authenticated) updateBadge();
@@ -588,10 +577,7 @@ navigator.serviceWorker?.addEventListener("message", event => {
 const __V4_TASK_PUSH_DEEPLINK_WINDOWCLIENT_R1__ = true;
 
 window.setInterval(() => {
-  if (
-    document.visibilityState === "visible"
-    && auth.current().authenticated
-  ) {
+  if (document.visibilityState === "visible" && auth.current().authenticated) {
     updateBadge();
   }
 }, 60000);

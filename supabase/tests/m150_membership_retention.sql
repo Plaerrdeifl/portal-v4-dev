@@ -191,6 +191,16 @@ begin
     v_rejected_old, 'VORSTAND_1', v_actor, v_member
   ) on conflict (application_id, office_code) do nothing;
 
+  -- Keep two explicit legacy rows to verify that terminal pre-M020 history still
+  -- cascades with the business record. New M150 traffic itself stays central-only.
+  insert into app_private.membership_application_email_outbox (
+    application_id,
+    email_type
+  ) values
+    (v_rejected_old, 'REJECTION'),
+    (v_withdrawn_old, 'RECEIPT')
+  on conflict (application_id, email_type) do nothing;
+
   update app_private.membership_application_email_outbox
   set status = 'SENT',
       attempts = 1,
@@ -204,14 +214,33 @@ begin
       last_error_code = 'RETENTION_TEST'
   where application_id = v_withdrawn_old;
 
-  update app_private.membership_application_email_outbox
-  set status = 'SENDING',
-      attempts = 1,
-      claim_token = '17000000-0000-4003-8000-000000000001',
-      claimed_at = clock_timestamp(),
-      claim_expires_at = clock_timestamp() + interval '10 minutes'
-  where application_id = v_sending_blocked
-    and email_type = 'RECEIPT';
+  -- All central M020 events are terminal except one active receipt for the
+  -- dedicated retention blocker. This proves that central delivery state, not a
+  -- synthetic legacy SENDING row, protects the source application.
+  update app_private.notification_events as event
+  set status = 'COMPLETED',
+      updated_at = clock_timestamp()
+  where event.source_module = 'M150'
+    and event.entity_type = 'membership_application'
+    and event.entity_id in (
+      v_pending_old::text,
+      v_pending_fresh::text,
+      v_rejected_old::text,
+      v_rejected_fresh::text,
+      v_withdrawn_old::text,
+      v_withdrawn_fresh::text,
+      v_approved_old::text,
+      v_converted_approved::text,
+      v_sending_blocked::text
+    );
+
+  update app_private.notification_events as event
+  set status = 'PROCESSING',
+      updated_at = clock_timestamp()
+  where event.notification_type = 'MEMBERSHIP_APPLICATION_RECEIVED'
+    and event.source_module = 'M150'
+    and event.entity_type = 'membership_application'
+    and event.entity_id = v_sending_blocked::text;
 
   select updated_at
   into v_converted_updated_at
@@ -330,11 +359,14 @@ begin
 
   if not exists (
     select 1
-    from app_private.membership_application_email_outbox
-    where application_id = v_sending_blocked
-      and status = 'SENDING'
+    from app_private.notification_events as event
+    where event.notification_type = 'MEMBERSHIP_APPLICATION_RECEIVED'
+      and event.source_module = 'M150'
+      and event.entity_type = 'membership_application'
+      and event.entity_id = v_sending_blocked::text
+      and event.status = 'PROCESSING'
   ) then
-    raise exception 'SENDING-Outbox oder zugehörige Application wurde nicht übersprungen.';
+    raise exception 'Aktives zentrales M020-Event oder zugehörige Application wurde nicht übersprungen.';
   end if;
 
   if (select count(*)

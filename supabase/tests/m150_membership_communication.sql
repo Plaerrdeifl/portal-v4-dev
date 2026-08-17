@@ -246,10 +246,17 @@ begin
 
   if not coalesce((v_response ->> 'created')::boolean, false)
      or (select count(*)
-         from app_private.membership_application_email_outbox
-         where application_id = v_public_application_id
-           and email_type = 'RECEIPT') <> 1 then
-    raise exception 'Echte Neuanlage erzeugte nicht genau ein RECEIPT.';
+         from app_private.notification_events
+         where notification_type = 'MEMBERSHIP_APPLICATION_RECEIVED'
+           and source_module = 'M150'
+           and entity_type = 'membership_application'
+           and entity_id = v_public_application_id::text) <> 1
+     or exists (
+       select 1
+       from app_private.membership_application_email_outbox
+       where application_id = v_public_application_id
+     ) then
+    raise exception 'Echte Neuanlage erzeugte nicht genau ein zentrales RECEIPT-Event oder schrieb noch in die Legacy-Outbox.';
   end if;
 
   perform public.m150_submit_membership_application(
@@ -263,10 +270,17 @@ begin
   perform app_private.m150_enqueue_membership_email(v_public_application_id, 'RECEIPT');
 
   if (select count(*)
-      from app_private.membership_application_email_outbox
-      where application_id = v_public_application_id
-        and email_type = 'RECEIPT') <> 1 then
-    raise exception 'Idempotency-Retry, PENDING-Dublette oder Enqueue-Retry erzeugte doppeltes RECEIPT.';
+      from app_private.notification_events
+      where notification_type = 'MEMBERSHIP_APPLICATION_RECEIVED'
+        and source_module = 'M150'
+        and entity_type = 'membership_application'
+        and entity_id = v_public_application_id::text) <> 1
+     or exists (
+       select 1
+       from app_private.membership_application_email_outbox
+       where application_id = v_public_application_id
+     ) then
+    raise exception 'Idempotency-Retry, PENDING-Dublette oder Enqueue-Retry erzeugte doppeltes RECEIPT oder einen Legacy-Dual-Write.';
   end if;
 
   insert into app_fanclub.membership_applications (
@@ -320,9 +334,11 @@ begin
      or v_response #>> '{data,applicantNotice}' is not null
      or exists (
        select 1
-       from app_private.membership_application_email_outbox
-       where application_id = v_vote_app
-         and email_type = 'REJECTION'
+       from app_private.notification_events
+       where notification_type = 'MEMBERSHIP_APPLICATION_REJECTED'
+         and source_module = 'M150'
+         and entity_type = 'membership_application'
+         and entity_id = v_vote_app::text
      ) then
     raise exception 'Erste NO-Stimme speicherte Notice oder REJECTION-Event: %', v_response;
   end if;
@@ -347,9 +363,11 @@ begin
      or v_response #>> '{data,applicantNotice}' is not null
      or exists (
        select 1
-       from app_private.membership_application_email_outbox
-       where application_id = v_vote_app
-         and email_type = 'REJECTION'
+       from app_private.notification_events
+       where notification_type = 'MEMBERSHIP_APPLICATION_REJECTED'
+         and source_module = 'M150'
+         and entity_type = 'membership_application'
+         and entity_id = v_vote_app::text
      ) then
     raise exception 'Zweite NO-Stimme speicherte Notice oder REJECTION-Event: %', v_response;
   end if;
@@ -390,18 +408,22 @@ begin
      or v_response #>> '{data,decisionReasonInternal}' <> 'INTERNER GRUND DARF NICHT IN CLAIM'
      or v_response #>> '{data,applicantNotice}' <> 'Bitte beachte unsere separate Rückmeldung.'
      or (select count(*)
-         from app_private.membership_application_email_outbox
-         where application_id = v_vote_app
-           and email_type = 'REJECTION') <> 1 then
-    raise exception 'Echte REJECTED-Transition speicherte Texte/Event nicht korrekt: %', v_response;
+         from app_private.notification_events
+         where notification_type = 'MEMBERSHIP_APPLICATION_REJECTED'
+           and source_module = 'M150'
+           and entity_type = 'membership_application'
+           and entity_id = v_vote_app::text) <> 1 then
+    raise exception 'Echte REJECTED-Transition speicherte Texte/zentrales Event nicht korrekt: %', v_response;
   end if;
 
   perform app_private.m150_enqueue_membership_email(v_vote_app, 'REJECTION');
   if (select count(*)
-      from app_private.membership_application_email_outbox
-      where application_id = v_vote_app
-        and email_type = 'REJECTION') <> 1 then
-    raise exception 'Unique Application+Type verhinderte doppeltes REJECTION nicht.';
+      from app_private.notification_events
+      where notification_type = 'MEMBERSHIP_APPLICATION_REJECTED'
+        and source_module = 'M150'
+        and entity_type = 'membership_application'
+        and entity_id = v_vote_app::text) <> 1 then
+    raise exception 'Zentrale Event-Idempotenz verhinderte doppeltes REJECTION nicht.';
   end if;
 
   begin
@@ -449,10 +471,12 @@ begin
      or v_response #>> '{data,status}' <> 'REJECTED'
      or v_response #>> '{data,applicantNotice}' <> 'Manuelle externe Mitteilung'
      or (select count(*)
-         from app_private.membership_application_email_outbox
-         where application_id = v_manual_app
-           and email_type = 'REJECTION') <> 1 then
-    raise exception 'Manuelle REJECTED-Transition erzeugte Notice/Event nicht korrekt: %', v_response;
+         from app_private.notification_events
+         where notification_type = 'MEMBERSHIP_APPLICATION_REJECTED'
+           and source_module = 'M150'
+           and entity_type = 'membership_application'
+           and entity_id = v_manual_app::text) <> 1 then
+    raise exception 'Manuelle REJECTED-Transition erzeugte Notice/zentrales Event nicht korrekt: %', v_response;
   end if;
 
   v_response := public.pd_api(
@@ -471,9 +495,11 @@ begin
      or v_response #>> '{data,applicantNotice}' is not null
      or exists (
        select 1
-       from app_private.membership_application_email_outbox
-       where application_id = v_approval_app
-         and email_type = 'ADMISSION'
+       from app_private.notification_events
+       where notification_type = 'MEMBERSHIP_ADMISSION_COMPLETED'
+         and source_module = 'M150'
+         and entity_type = 'membership_application'
+         and entity_id = v_approval_app::text
      ) then
     raise exception 'APPROVED übernahm Applicant Notice oder erzeugte ADMISSION: %', v_response;
   end if;
@@ -535,10 +561,12 @@ begin
   end loop;
 
   if (select count(*)
-      from app_private.membership_application_email_outbox
-      where application_id in (v_new_app, v_reactivate_app, v_resolve_app)
-        and email_type = 'ADMISSION') <> 3 then
-    raise exception 'Die drei erfolgreichen Conversion-Modi erzeugten nicht je ein ADMISSION.';
+      from app_private.notification_events
+      where notification_type = 'MEMBERSHIP_ADMISSION_COMPLETED'
+        and source_module = 'M150'
+        and entity_type = 'membership_application'
+        and entity_id in (v_new_app::text, v_reactivate_app::text, v_resolve_app::text)) <> 3 then
+    raise exception 'Die drei erfolgreichen Conversion-Modi erzeugten nicht je ein zentrales ADMISSION-Event.';
   end if;
 
   v_response := public.pd_api(
@@ -548,20 +576,27 @@ begin
   if coalesce((v_response ->> 'ok')::boolean, false)
      or exists (
        select 1
-       from app_private.membership_application_email_outbox
-       where application_id = v_failed_app
-         and email_type = 'ADMISSION'
+       from app_private.notification_events
+       where notification_type = 'MEMBERSHIP_ADMISSION_COMPLETED'
+         and source_module = 'M150'
+         and entity_type = 'membership_application'
+         and entity_id = v_failed_app::text
      ) then
     raise exception 'Fehlgeschlagene Conversion erzeugte ADMISSION: %', v_response;
   end if;
 
   if exists (
     select 1
-    from app_private.membership_application_email_outbox
-    where application_id = v_withdrawn_app
-      and email_type <> 'RECEIPT'
+    from app_private.notification_events
+    where source_module = 'M150'
+      and entity_type = 'membership_application'
+      and entity_id = v_withdrawn_app::text
+      and notification_type in (
+        'MEMBERSHIP_APPLICATION_REJECTED',
+        'MEMBERSHIP_ADMISSION_COMPLETED'
+      )
   ) then
-    raise exception 'WITHDRAWN erzeugte ein verpflichtendes Kommunikationsereignis.';
+    raise exception 'WITHDRAWN erzeugte ein unzulässiges zentrales Entscheidungs-/Aufnahmeereignis.';
   end if;
 
   if exists (
@@ -576,6 +611,16 @@ begin
   ) then
     raise exception 'Applicant Notice wurde als Klartext ins Audit kopiert.';
   end if;
+
+  -- Legacy-Drain-Fixture: M020 erzeugt keine neuen Rows mehr in dieser Outbox.
+  -- Die alten Claim-/Complete-RPCs bleiben jedoch für vor M020 vorhandene Rows funktionsfähig.
+  insert into app_private.membership_application_email_outbox (
+    application_id,
+    email_type
+  ) values
+    (v_vote_app, 'REJECTION'),
+    (v_manual_app, 'RECEIPT')
+  on conflict (application_id, email_type) do nothing;
 
   update app_private.membership_application_email_outbox
   set available_at = now() + interval '1 day'

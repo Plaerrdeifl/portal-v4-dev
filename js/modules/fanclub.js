@@ -31,6 +31,11 @@ let financeEntrySearchQuery = "";
 let visibleCashbookEntries = 12;
 const CASHBOOK_PAGE_SIZE = 12;
 
+function requestedMembershipApplicationId() {
+  const query = String(location.hash || "").split("?")[1] || "";
+  return new URLSearchParams(query).get("applicationId") || "";
+}
+
 const MONEY = new Intl.NumberFormat("de-DE", {
   style: "currency",
   currency: "EUR"
@@ -1787,6 +1792,9 @@ export async function hydrateFanclub(context = {}) {
   try {
     snapshot = await call("fanclub_snapshot");
     if (context.isCurrent && !context.isCurrent()) return;
+    if (requestedMembershipApplicationId() && canViewMembershipApplications()) {
+      activeTab = "membership-applications";
+    }
     renderAll();
   } catch (error) {
     panel.innerHTML = errorPanel(error);
