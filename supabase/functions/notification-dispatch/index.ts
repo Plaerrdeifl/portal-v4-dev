@@ -583,6 +583,23 @@ function buildEmail(config: RuntimeConfig, claim: Claim): EmailContent {
       return { ...base, subject: `Fanbus – Stornierung: ${tripTitle}` };
     }
 
+    case "fanbus.trip_price_changed": {
+      const oldPriceCents = Number(data.oldPriceCents);
+      const newPriceCents = Number(data.newPriceCents);
+      const formatPrice = (value: number) =>
+        Number.isFinite(value)
+          ? `${(value / 100).toFixed(2).replace(".", ",")} €`
+          : "–";
+      const oldPrice = formatPrice(oldPriceCents);
+      const newPrice = formatPrice(newPriceCents);
+      const base = emailShell(
+        `${greetingText}\n\nder Fahrtpreis für ${tripTitle} wurde von ${oldPrice} auf ${newPrice} geändert.\n\n${closingText}`,
+        `${greetingHtml}<p>Der Fahrtpreis für <strong>${escapeHtml(tripTitle)}</strong> wurde von <strong>${escapeHtml(oldPrice)}</strong> auf <strong>${escapeHtml(newPrice)}</strong> geändert.</p>${closingHtml}`,
+        link
+      );
+      return { ...base, subject: `Fanbus – Preis geändert: ${tripTitle}` };
+    }
+
     case "fanbus.trip_departure_changed": {
       const base = emailShell(
         `${greetingText}\n\ndie Abfahrtszeit für ${tripTitle} wurde geändert. Bitte prüfe die aktuellen Fahrtdaten.\n\n${closingText}`,

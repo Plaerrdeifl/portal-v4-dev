@@ -121,7 +121,9 @@ function categoryRow({
   pushName,
   emailChecked,
   pushChecked,
-  disabled = false
+  disabled = false,
+  emailDisabled = disabled,
+  pushDisabled = disabled
 }) {
   return `
     <div class="v4-notification-category">
@@ -132,12 +134,12 @@ function categoryRow({
       <label class="v4-switch-row v4-notification-channel">
         <span><strong>E-Mail</strong><small>Optionale E-Mails</small></span>
         <input type="checkbox" name="${escapeHtml(emailName)}"
-          ${emailChecked ? "checked" : ""} ${disabled ? "disabled" : ""}>
+          ${emailChecked ? "checked" : ""} ${emailDisabled ? "disabled" : ""}>
       </label>
       <label class="v4-switch-row v4-notification-channel">
         <span><strong>Push</strong><small>Auf registrierten Geräten</small></span>
         <input type="checkbox" name="${escapeHtml(pushName)}"
-          ${pushChecked ? "checked" : ""} ${disabled ? "disabled" : ""}>
+          ${pushChecked ? "checked" : ""} ${pushDisabled ? "disabled" : ""}>
       </label>
     </div>
   `;
@@ -241,6 +243,24 @@ function render() {
         emailChecked: preferences.emailAccountMembership === true,
         pushChecked: preferences.pushAccountMembership === true
       })}
+      <details class="v4-history">
+        <summary>Konto-Push genauer einstellen</summary>
+        <label class="v4-switch-row">
+          <span><strong>Neue Mitgliedsanträge</strong><small>Neue Anträge für zuständige Entscheider</small></span>
+          <input type="checkbox" name="pushMembershipApplications"
+            ${preferences.pushMembershipApplications !== false ? "checked" : ""}>
+        </label>
+        <label class="v4-switch-row">
+          <span><strong>Neue Portal-Freischaltungen</strong><small>Neue Zugangsprüfungen für zuständige Prüfer</small></span>
+          <input type="checkbox" name="pushAccessRequests"
+            ${preferences.pushAccessRequests !== false ? "checked" : ""}>
+        </label>
+        <label class="v4-switch-row">
+          <span><strong>Eigener Aufnahme-Status</strong><small>Zusätzlicher Push bei abgeschlossener Aufnahme</small></span>
+          <input type="checkbox" name="pushOwnAccountStatus"
+            ${preferences.pushOwnAccountStatus !== false ? "checked" : ""}>
+        </label>
+      </details>
       ${categoryRow({
         title: "Fanbus",
         description: "Zusätzliche interne Fanbus-Meldungen; Buchungsstatus bleibt Pflicht-E-Mail",
@@ -249,15 +269,86 @@ function render() {
         emailChecked: preferences.emailFanbus === true,
         pushChecked: preferences.pushFanbus === true
       })}
+      <details class="v4-history">
+        <summary>Fanbus-Push genauer einstellen</summary>
+        <label class="v4-switch-row">
+          <span><strong>Neue Auswärtsfahrten</strong><small>Wenn eine neue Fanbusfahrt veröffentlicht wird</small></span>
+          <input type="checkbox" name="pushFanbusNewTrips"
+            ${preferences.pushFanbusNewTrips !== false ? "checked" : ""}>
+        </label>
+        <label class="v4-switch-row">
+          <span><strong>Eigene Buchungen</strong><small>Bestätigte eigene Fanbusbuchungen</small></span>
+          <input type="checkbox" name="pushFanbusOwnBookings"
+            ${preferences.pushFanbusOwnBookings !== false ? "checked" : ""}>
+        </label>
+        <label class="v4-switch-row">
+          <span><strong>Warteliste / Aufrückung</strong><small>Wartelistenstatus und frei gewordene Plätze</small></span>
+          <input type="checkbox" name="pushFanbusWaitlist"
+            ${preferences.pushFanbusWaitlist !== false ? "checked" : ""}>
+        </label>
+        <label class="v4-switch-row">
+          <span><strong>Eigene Stornierungen</strong><small>Stornierungen der eigenen Buchung</small></span>
+          <input type="checkbox" name="pushFanbusCancellations"
+            ${preferences.pushFanbusCancellations !== false ? "checked" : ""}>
+        </label>
+        <label class="v4-switch-row">
+          <span><strong>Abfahrt & Zustiegszeiten</strong><small>Änderungen an Abfahrts- oder Zustiegszeiten</small></span>
+          <input type="checkbox" name="pushFanbusTimes"
+            ${preferences.pushFanbusTimes !== false ? "checked" : ""}>
+        </label>
+        <label class="v4-switch-row">
+          <span><strong>Zustiegsort</strong><small>Änderungen am eigenen hinterlegten Zustieg</small></span>
+          <input type="checkbox" name="pushFanbusBoarding"
+            ${preferences.pushFanbusBoarding !== false ? "checked" : ""}>
+        </label>
+        <label class="v4-switch-row">
+          <span><strong>Buszuordnung</strong><small>Wenn sich der zugewiesene Bus ändert</small></span>
+          <input type="checkbox" name="pushFanbusBusAssignment"
+            ${preferences.pushFanbusBusAssignment !== false ? "checked" : ""}>
+        </label>
+        <label class="v4-switch-row">
+          <span><strong>Preisänderungen</strong><small>Zusätzlicher Push bei geändertem Fahrtpreis</small></span>
+          <input type="checkbox" name="pushFanbusPriceChanges"
+            ${preferences.pushFanbusPriceChanges !== false ? "checked" : ""}>
+        </label>
+        <label class="v4-switch-row">
+          <span><strong>Neue Buchungen für BUS_ORGA</strong><small>Interne Meldung über neue Fanbusbuchungen</small></span>
+          <input type="checkbox" name="pushFanbusOrgBookings"
+            ${preferences.pushFanbusOrgBookings !== false ? "checked" : ""}>
+        </label>
+        <label class="v4-switch-row">
+          <span><strong>Stornierungen für BUS_ORGA</strong><small>Interne Meldung über Stornierungen</small></span>
+          <input type="checkbox" name="pushFanbusOrgCancellations"
+            ${preferences.pushFanbusOrgCancellations !== false ? "checked" : ""}>
+        </label>
+      </details>
       ${categoryRow({
         title: "Termine",
-        description: "Allgemeine Terminmeldungen sind in M020 R1 noch nicht aktiv",
+        description: "Optionale Push-Meldungen zu neuen oder geänderten Terminen",
         emailName: "emailDates",
         pushName: "pushDates",
         emailChecked: false,
-        pushChecked: false,
-        disabled: true
+        pushChecked: preferences.pushDates === true,
+        emailDisabled: true
       })}
+      <details class="v4-history">
+        <summary>Termine-Push genauer einstellen</summary>
+        <label class="v4-switch-row">
+          <span><strong>Neue Termine</strong><small>Neue manuelle Termine oder neue Einträge aus dem Spielplanimport</small></span>
+          <input type="checkbox" name="pushDatesNew"
+            ${preferences.pushDatesNew !== false ? "checked" : ""}>
+        </label>
+        <label class="v4-switch-row">
+          <span><strong>Terminänderungen</strong><small>Relevante Änderungen; reine Beschreibungskorrekturen bleiben still</small></span>
+          <input type="checkbox" name="pushDatesChanges"
+            ${preferences.pushDatesChanges !== false ? "checked" : ""}>
+        </label>
+        <label class="v4-switch-row">
+          <span><strong>Entfernte Termine</strong><small>Wenn ein Termin aus dem Kalender entfernt wird</small></span>
+          <input type="checkbox" name="pushDatesDeleted"
+            ${preferences.pushDatesDeleted !== false ? "checked" : ""}>
+        </label>
+      </details>
       ${categoryRow({
         title: "Aufgaben",
         description: "Meldungen zu Aufgaben, für die du tatsächlich verantwortlich oder beteiligt bist",
@@ -486,10 +577,26 @@ async function savePreferences(event) {
       pushEnabled: Number(snapshot?.activeDeviceCount || 0) > 0,
       emailAccountMembership: form.elements.emailAccountMembership.checked,
       pushAccountMembership: form.elements.pushAccountMembership.checked,
+      pushMembershipApplications: form.elements.pushMembershipApplications.checked,
+      pushAccessRequests: form.elements.pushAccessRequests.checked,
+      pushOwnAccountStatus: form.elements.pushOwnAccountStatus.checked,
       emailFanbus: form.elements.emailFanbus.checked,
       pushFanbus: form.elements.pushFanbus.checked,
+      pushFanbusNewTrips: form.elements.pushFanbusNewTrips.checked,
+      pushFanbusOwnBookings: form.elements.pushFanbusOwnBookings.checked,
+      pushFanbusWaitlist: form.elements.pushFanbusWaitlist.checked,
+      pushFanbusCancellations: form.elements.pushFanbusCancellations.checked,
+      pushFanbusTimes: form.elements.pushFanbusTimes.checked,
+      pushFanbusBoarding: form.elements.pushFanbusBoarding.checked,
+      pushFanbusBusAssignment: form.elements.pushFanbusBusAssignment.checked,
+      pushFanbusPriceChanges: form.elements.pushFanbusPriceChanges.checked,
+      pushFanbusOrgBookings: form.elements.pushFanbusOrgBookings.checked,
+      pushFanbusOrgCancellations: form.elements.pushFanbusOrgCancellations.checked,
       emailDates: false,
-      pushDates: false,
+      pushDates: form.elements.pushDates.checked,
+      pushDatesNew: form.elements.pushDatesNew.checked,
+      pushDatesChanges: form.elements.pushDatesChanges.checked,
+      pushDatesDeleted: form.elements.pushDatesDeleted.checked,
       emailTasks: form.elements.emailTasks.checked,
       pushTasks: form.elements.pushTasks.checked,
       newTasks: form.elements.newTasks.checked,
@@ -553,6 +660,7 @@ window.plaerrdeiflPush = Object.freeze({
 
 const __V4_PUSH_BADGE_QUIETTIME_FIX3_APPLIED__ = true;
 const __M020_R1_NOTIFICATION_PREFERENCES__ = true;
+const __M020_R2_GRANULAR_NOTIFICATION_PREFERENCES__ = true;
 
 window.setTimeout(() => {
   if (auth.current().authenticated) updateBadge();
