@@ -574,6 +574,21 @@ function buildEmail(config: RuntimeConfig, claim: Claim): EmailContent {
       return { ...base, subject: `Fanbus – Stornierung: ${tripTitle}` };
     }
 
+    case "fanbus.trip_cancelled": {
+      const cancellationReason = asString(data.cancellationReason, 240).trim();
+      const eventDateRaw = asString(data.eventDate, 10);
+      const eventDate = /^\d{4}-\d{2}-\d{2}$/.test(eventDateRaw)
+        ? `${eventDateRaw.slice(8, 10)}.${eventDateRaw.slice(5, 7)}.${eventDateRaw.slice(0, 4)}`
+        : eventDateRaw || "–";
+      const bookingContext = "Deine Fanbusbuchung ist von dieser Absage betroffen.";
+      const base = emailShell(
+        `${greetingText}\n\nFahrt abgesagt\nFahrt: ${tripTitle}\nDatum: ${eventDate}\nGrund: ${cancellationReason}\n\n${bookingContext}\n\n${closingText}`,
+        `${greetingHtml}<h2>Fahrt abgesagt</h2><p><strong>Fahrt:</strong> ${escapeHtml(tripTitle)}<br><strong>Datum:</strong> ${escapeHtml(eventDate)}<br><strong>Grund:</strong> ${escapeHtml(cancellationReason)}</p><p>${escapeHtml(bookingContext)}</p>${closingHtml}`,
+        link
+      );
+      return { ...base, subject: `Fanbusfahrt abgesagt – ${tripTitle}` };
+    }
+
     case "fanbus.internal_cancelled": {
       const base = emailShell(
         `${affectedName} wurde bei ${tripTitle} storniert.`,
@@ -598,6 +613,23 @@ function buildEmail(config: RuntimeConfig, claim: Claim): EmailContent {
         link
       );
       return { ...base, subject: `Fanbus – Preis geändert: ${tripTitle}` };
+    }
+
+    case "fanbus.linked_event_changed": {
+      const eventDateRaw = asString(data.eventDate, 10);
+      const eventDate = /^\d{4}-\d{2}-\d{2}$/.test(eventDateRaw)
+        ? `${eventDateRaw.slice(8, 10)}.${eventDateRaw.slice(5, 7)}.${eventDateRaw.slice(0, 4)}`
+        : "";
+      const dateText = eventDate ? `\nDatum: ${eventDate}` : "";
+      const dateHtml = eventDate
+        ? `<br><strong>Datum:</strong> ${escapeHtml(eventDate)}`
+        : "";
+      const base = emailShell(
+        `${greetingText}\n\ndie Termin- oder Spieldaten für deine Fanbusfahrt wurden geändert.\nFahrt: ${tripTitle}${dateText}\nBitte prüfe die aktuellen Fahrtdaten.\n\n${closingText}`,
+        `${greetingHtml}<p>Die Termin- oder Spieldaten für deine Fanbusfahrt wurden geändert.</p><p><strong>Fahrt:</strong> ${escapeHtml(tripTitle)}${dateHtml}</p><p>Bitte prüfe die aktuellen Fahrtdaten.</p>${closingHtml}`,
+        link
+      );
+      return { ...base, subject: `Fanbus – Termin geändert: ${tripTitle}` };
     }
 
     case "fanbus.trip_departure_changed": {

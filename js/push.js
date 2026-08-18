@@ -292,6 +292,11 @@ function render() {
             ${preferences.pushFanbusCancellations !== false ? "checked" : ""}>
         </label>
         <label class="v4-switch-row">
+          <span><strong>Fahrt abgesagt</strong><small>Wenn eine Fanbusfahrt vollständig abgesagt wird</small></span>
+          <input type="checkbox" name="pushFanbusTripCancellations"
+            ${preferences.pushFanbusTripCancellations !== false ? "checked" : ""}>
+        </label>
+        <label class="v4-switch-row">
           <span><strong>Abfahrt & Zustiegszeiten</strong><small>Änderungen an Abfahrts- oder Zustiegszeiten</small></span>
           <input type="checkbox" name="pushFanbusTimes"
             ${preferences.pushFanbusTimes !== false ? "checked" : ""}>
@@ -586,6 +591,7 @@ async function savePreferences(event) {
       pushFanbusOwnBookings: form.elements.pushFanbusOwnBookings.checked,
       pushFanbusWaitlist: form.elements.pushFanbusWaitlist.checked,
       pushFanbusCancellations: form.elements.pushFanbusCancellations.checked,
+      pushFanbusTripCancellations: form.elements.pushFanbusTripCancellations.checked,
       pushFanbusTimes: form.elements.pushFanbusTimes.checked,
       pushFanbusBoarding: form.elements.pushFanbusBoarding.checked,
       pushFanbusBusAssignment: form.elements.pushFanbusBusAssignment.checked,
