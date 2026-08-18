@@ -272,8 +272,7 @@ export function updateActiveNavigation() {
     const highlighted = isExtra || menuOpen;
 
     more.classList.toggle("active", highlighted);
-    more.classList.toggle("more-active", isExtra);
-    more.setAttribute("aria-expanded", menuOpen ? "true" : "false");
+      more.setAttribute("aria-expanded", menuOpen ? "true" : "false");
     more.setAttribute(
       "aria-label",
       menuOpen ? "Vollständige Navigation schließen" : "Vollständige Navigation öffnen"

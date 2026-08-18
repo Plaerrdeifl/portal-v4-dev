@@ -1791,17 +1791,6 @@ body.overlay-open .view{overflow:hidden!important;touch-action:none}
     background:rgba(22,137,255,.16);
   }
 
-  .mobile-nav-button.more-active::after{
-    content:"";
-    position:absolute;
-    top:7px;
-    right:14px;
-    width:7px;
-    height:7px;
-    border-radius:50%;
-    background:#ff3948;
-  }
-
   .toast-region{
     bottom:calc(var(--mobile-nav-height) + var(--mobile-safe-bottom) + 12px);
   }
