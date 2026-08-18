@@ -90,6 +90,7 @@ function registrationStatusLabel(value) {
     OPEN: "Anmeldung offen",
     WAITLIST: "Warteliste möglich",
     CLOSED: "Anmeldung geschlossen",
+    CANCELLED: "Fahrt abgesagt",
     UNAVAILABLE: "Nicht verfügbar"
   }[value] || "Nicht verfügbar";
 }
@@ -97,6 +98,7 @@ function registrationStatusLabel(value) {
 function registrationStatusClass(value) {
   if (value === "OPEN") return "success";
   if (value === "NOT_STARTED" || value === "WAITLIST") return "warning";
+  if (value === "CANCELLED") return "error";
   return "";
 }
 
@@ -126,6 +128,7 @@ function renderTrip() {
   }
 
   const statusClass = registrationStatusClass(trip.registrationStatus);
+  const tripCancelled = trip.tripStatus === "CANCELLED";
   const remaining = Number.isInteger(trip.remainingCapacity)
     ? `${trip.remainingCapacity} von ${trip.capacity} Plätzen frei`
     : "Kapazität nicht verfügbar";
@@ -140,6 +143,13 @@ function renderTrip() {
       <span class="status-pill${statusClass ? ` ${statusClass}` : ""}">${escapeHtml(registrationStatusLabel(trip.registrationStatus))}</span>
     </div>
     ${trip.venue ? `<p class="subtle">${escapeHtml(trip.venue)}</p>` : ""}
+    ${tripCancelled ? `
+      <div class="notice error fanbus-trip-cancellation" role="status">
+        <strong>Fahrt abgesagt</strong>
+        <p>${escapeHtml(trip.cancellationReason || "Diese Fanbusfahrt findet nicht statt.")}</p>
+        ${trip.cancelledAt ? `<small>Abgesagt am ${escapeHtml(formatBerlinDateTime(trip.cancelledAt))}</small>` : ""}
+      </div>
+    ` : ""}
     <div class="meta-grid">
       <div class="meta-item"><small>Abfahrt</small><strong>${escapeHtml(formatBerlinDateTime(trip.departureAt))}</strong></div>
       <div class="meta-item"><small>Fahrtpreis</small><strong>${escapeHtml(formatMoney(trip.priceCents))}</strong></div>
@@ -155,7 +165,9 @@ function renderTrip() {
   if (!["OPEN", "WAITLIST"].includes(trip.registrationStatus)) {
     elements.panel.hidden = false;
     elements.title.textContent = registrationStatusLabel(trip.registrationStatus);
-    elements.intro.textContent = "Für diese Fahrt ist aktuell keine Anmeldung möglich.";
+    elements.intro.textContent = tripCancelled
+      ? "Diese Fanbusfahrt wurde abgesagt. Eine Anmeldung ist nicht möglich."
+      : "Für diese Fahrt ist aktuell keine Anmeldung möglich.";
     elements.portalForm.hidden = true;
     elements.guestForm.hidden = true;
     elements.google.hidden = true;
@@ -311,6 +323,8 @@ function safeOutcomeMessage(outcome) {
     WAITLISTED: "Die gesamte Anmeldung wurde auf die Warteliste gesetzt.",
     NOT_STARTED: "Die Anmeldung hat noch nicht begonnen.",
     CLOSED: "Die Anmeldung ist geschlossen.",
+    CANCELLED: "Diese Fanbusfahrt wurde abgesagt.",
+    FANBUS_TRIP_CANCELLED: "Diese Fanbusfahrt wurde abgesagt.",
     UNAVAILABLE: "Diese Fanbusfahrt ist aktuell nicht verfügbar."
   }[outcome] || "Die Anmeldung konnte nicht verarbeitet werden.";
 }
@@ -580,7 +594,7 @@ async function submitGuest(event) {
       setStatus("Zu viele Versuche. Bitte versuche es später erneut.", "warning");
     } else if (response.status === 403 && result?.code === "TURNSTILE_REJECTED") {
       setStatus("Die Sicherheitsprüfung ist fehlgeschlagen. Bitte versuche es erneut.", "warning");
-    } else if (["FULL", "NOT_STARTED", "CLOSED", "UNAVAILABLE"].includes(result?.code)) {
+    } else if (["FULL", "NOT_STARTED", "CLOSED", "FANBUS_TRIP_CANCELLED", "UNAVAILABLE"].includes(result?.code)) {
       setStatus(safeOutcomeMessage(result.code), "warning");
     } else if (response.status >= 500) {
       setStatus("Die Anmeldung konnte gerade nicht verarbeitet werden. Bitte versuche es erneut.", "error");

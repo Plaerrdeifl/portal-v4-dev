@@ -162,6 +162,11 @@
     color: #40526a;
 }
 
+.pd-m310-fanbus .pd-m310-status-cancelled {
+    background: #fff0f1;
+    color: #7b1721;
+}
+
 .pd-m310-fanbus .pd-m310-chevron {
     display: inline-flex;
     align-items: center;
@@ -243,6 +248,23 @@
     color: var(--pd-m310-ink);
     font-size: 0.8rem;
     line-height: 1.35;
+}
+
+.pd-m310-fanbus .pd-m310-cancellation {
+    padding: 0.85rem 0.95rem;
+    border: 1px solid #f2c5ca;
+    border-radius: 0.75rem;
+    background: #fff0f1;
+    color: #7b1721;
+}
+
+.pd-m310-fanbus .pd-m310-cancellation p {
+    margin: 0.3rem 0;
+    white-space: pre-wrap;
+}
+
+.pd-m310-fanbus .pd-m310-cancellation small {
+    color: #8c3b44;
 }
 
 .pd-m310-fanbus .pd-m310-stops {

@@ -406,11 +406,17 @@ function outcomeResponse(outcome: string, origin: string) {
     FULL: "Die Fanbusfahrt ist ausgebucht.",
     NOT_STARTED: "Die Anmeldung hat noch nicht begonnen.",
     CLOSED: "Die Anmeldung ist geschlossen.",
+    CANCELLED: "Diese Fanbusfahrt wurde abgesagt.",
     UNAVAILABLE: "Diese Fanbusfahrt ist aktuell nicht verfügbar."
   };
   const message = safeOutcomes[outcome];
   return message
-    ? errorResponse(409, outcome, message, origin)
+    ? errorResponse(
+      409,
+      outcome === "CANCELLED" ? "FANBUS_TRIP_CANCELLED" : outcome,
+      message,
+      origin
+    )
     : errorResponse(500, "INTERNAL_ERROR", "Die Anfrage konnte nicht verarbeitet werden.", origin);
 }
 
