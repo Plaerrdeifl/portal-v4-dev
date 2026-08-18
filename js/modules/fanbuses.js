@@ -1197,9 +1197,9 @@ function openTripCancellation(trip) {
         <p>Die Fahrt bleibt historisch sichtbar, kann aber nicht reaktiviert werden.</p>
       </div>
       <div class="v4-m325-counters v4-m330-impact-preview" aria-label="Auswirkungen der Fahrtabsage">
-        <span><strong>${escapeHtml(bookingCount)}</strong>Buchungen</span>
-        <span><strong>${escapeHtml(activeCount)}</strong>Bestätigt</span>
-        <span><strong>${escapeHtml(waitlistedCount)}</strong>Warteliste</span>
+        <span><strong>${escapeHtml(String(bookingCount))}</strong>Buchungen</span>
+        <span><strong>${escapeHtml(String(activeCount))}</strong>Bestätigt</span>
+        <span><strong>${escapeHtml(String(waitlistedCount))}</strong>Warteliste</span>
       </div>
       <p class="notice">${escapeHtml(trip.cancellationNotificationNotice || "Buchungskontakte erhalten eine Pflicht-E-Mail; Portalnutzer optional Push.")}</p>
       <form class="form-grid v4-smart-form" data-m330-cancellation-form>

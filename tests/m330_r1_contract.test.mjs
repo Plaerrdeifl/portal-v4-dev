@@ -150,6 +150,9 @@ test("public Edge, portal UI and WordPress render cancellation safely without bo
   assert.match(portal, /Öffentlicher Stornierungsgrund/);
   assert.match(portal, /maxlength="240"/);
   assert.match(portal, /affectedBookingCount/);
+  assert.match(portal, /escapeHtml\(String\(bookingCount\)\)/);
+  assert.match(portal, /escapeHtml\(String\(activeCount\)\)/);
+  assert.match(portal, /escapeHtml\(String\(waitlistedCount\)\)/);
   assert.match(portal, /Fahrt absagen/);
   assert.match(portal, /Betriebsdaten bleiben historisch lesbar/);
   assert.match(wordpress, /'CANCELLED'/);
