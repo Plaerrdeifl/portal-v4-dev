@@ -94,7 +94,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260816170000_add_central_notifications_m020_r1.sql",
     "20260817183000_add_notification_preferences_m020_r2.sql",
     "20260818194500_add_fanbus_trip_cancellation_m330_r1.sql",
-    "20260818194600_add_fanbus_change_notifications_m330_r1.sql"
+    "20260818194600_add_fanbus_change_notifications_m330_r1.sql",
+    "20260819151000_add_membership_portal_identity_m150_r2.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
@@ -221,13 +222,16 @@ test("member email match migration is safe and confirmable", async () => {
     admin.includes('call("member_match"')
   );
   assert.ok(
-    admin.includes("Mitglied automatisch erkannt")
+    admin.includes("Mögliche Mitgliedszuordnung gefunden")
   );
   assert.ok(
-    admin.includes("Bitte prüfen und bestätigen")
+    admin.includes("Bitte Identität prüfen")
   );
   assert.ok(
     admin.includes("AMBIGUOUS")
+  );
+  assert.ok(
+    !admin.includes("Mitglied automatisch erkannt")
   );
 });
 
@@ -587,7 +591,12 @@ test("portal profile privacy and account creation contracts remain intact", asyn
   assert.match(ui, /data-user-logout/);
   assert.match(ui, /body\.classList\.toggle\(\s*"overlay-open"/);
   assert.doesNotMatch(ui, /profileField\("Portal-ID"/);
-  assert.doesNotMatch(ui, /member\.memberCode/);
+  assert.match(ui, /member\.memberCode/);
+  assert.match(ui, /memberStatusLabel\(member\.status\)/);
+  assert.match(
+    ui,
+    /Keine Mitgliedschaft mit diesem Portalaccount verknüpft/
+  );
 
   assert.match(admin, /\["profileChanges", "Datenänderungen"\]/);
   assert.match(admin, /review_profile_change_request/);

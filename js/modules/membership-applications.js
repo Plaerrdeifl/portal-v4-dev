@@ -106,6 +106,16 @@ function applicationStatusBadge(status) {
   return `<span class="badge ${meta.type}">${escapeHtml(meta.label)}</span>`;
 }
 
+function applicationListBadges(application) {
+  const badges = [applicationStatusBadge(application.status)];
+
+  if (application.transferPending === true) {
+    badges.push('<span class="badge warning">Übernahme offen</span>');
+  }
+
+  return badges.join(" ");
+}
+
 function voteBadge(vote) {
   if (vote === "YES") return '<span class="badge success">Ja</span>';
   if (vote === "NO") return '<span class="badge danger">Nein</span>';
@@ -130,7 +140,10 @@ function voteSummary(application) {
 function filteredApplications() {
   const query = nameSearch.trim().toLocaleLowerCase("de-DE");
   return applications.filter(application => {
-    const matchesStatus = statusFilter === "ALL" || application.status === statusFilter;
+    const matchesStatus = statusFilter === "ALL"
+      || (statusFilter === "TRANSFER_PENDING"
+        ? application.transferPending === true
+        : application.status === statusFilter);
     const matchesName = !query
       || applicationName(application).toLocaleLowerCase("de-DE").includes(query);
     return matchesStatus && matchesName;
@@ -157,6 +170,7 @@ function renderApplicationList() {
         <select id="membershipApplicationStatusFilter">
           <option value="PENDING" ${statusFilter === "PENDING" ? "selected" : ""}>Offen</option>
           <option value="APPROVED" ${statusFilter === "APPROVED" ? "selected" : ""}>Angenommen</option>
+          <option value="TRANSFER_PENDING" ${statusFilter === "TRANSFER_PENDING" ? "selected" : ""}>Übernahme offen</option>
           <option value="REJECTED" ${statusFilter === "REJECTED" ? "selected" : ""}>Abgelehnt</option>
           <option value="WITHDRAWN" ${statusFilter === "WITHDRAWN" ? "selected" : ""}>Zurückgezogen</option>
           <option value="ALL" ${statusFilter === "ALL" ? "selected" : ""}>Alle</option>
@@ -171,7 +185,7 @@ function renderApplicationList() {
             <td><strong>${escapeHtml(applicationName(application))}</strong></td>
             <td>${escapeHtml(fmtDateTime(application.submittedAt))}</td>
             <td>${voteSummary(application) || "–"}</td>
-            <td>${applicationStatusBadge(application.status)}</td>
+            <td>${applicationListBadges(application)}</td>
             <td><button class="button small secondary v4-row-action" type="button" data-membership-application-id="${escapeAttr(application.id)}">Details <span aria-hidden="true">›</span></button></td>
           </tr>`).join("")}</tbody>
         </table>
@@ -183,7 +197,7 @@ function renderApplicationList() {
             <strong>${escapeHtml(applicationName(application))}</strong>
             ${voteSummary(application)}
           </span>
-          <span class="v4-compact-record-end">${applicationStatusBadge(application.status)}</span>
+          <span class="v4-compact-record-end">${applicationListBadges(application)}</span>
           <span class="v4-row-chevron" aria-hidden="true">›</span>
         </button>`).join("")}
       </div>

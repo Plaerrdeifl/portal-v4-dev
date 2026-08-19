@@ -325,11 +325,38 @@ function profileField(label, value) {
   </div>`;
 }
 
+function portalStatusLabel(status) {
+  const labels = {
+    ACTIVE: "Aktiv",
+    INACTIVE: "Inaktiv",
+    BLOCKED: "Gesperrt"
+  };
+
+  return labels[String(status || "").toUpperCase()]
+    || String(status || "Unbekannt");
+}
+
+function memberStatusLabel(status) {
+  const labels = {
+    ACTIVE: "Aktiv",
+    INACTIVE: "Inaktiv"
+  };
+
+  return labels[String(status || "").toUpperCase()]
+    || String(status || "Unbekannt");
+}
+
+function formatProfileDate(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return "–";
+  return `${match[3]}.${match[2]}.${match[1]}`;
+}
+
 function memberRequestForm(member, pending) {
   if (!member) {
     return `<div class="notice">
-      <strong>Keine Mitgliedsverknüpfung</strong>
-      <p>Für dieses Portalprofil sind derzeit keine geschützten Fanclubdaten hinterlegt.</p>
+      <strong>Keine Mitgliedschaft mit diesem Portalaccount verknüpft</strong>
+      <p>Das bedeutet nicht automatisch, dass keine Mitgliedschaft besteht. Eine bestehende Mitgliedschaft kann durch die Administration mit diesem Portalaccount verknüpft werden.</p>
     </div>`;
   }
 
@@ -422,8 +449,9 @@ function renderProfileDetails() {
     <div class="user-profile-dialog-body">
       <section class="user-menu-section">
         <h3>Portalprofil</h3>
-        <div class="user-profile-grid user-profile-grid-single">
+        <div class="user-profile-grid">
           ${profileField("Login-E-Mail", portal.email || current.session?.user?.email)}
+          ${profileField("Portalzugang", portalStatusLabel(portal.status || current.status))}
         </div>
         ${current.user ? `<form id="directProfileForm" class="form-grid user-profile-form v4-smart-form">
           <label class="v4-field-half">Vorname
@@ -451,6 +479,11 @@ function renderProfileDetails() {
           </div>
           ${pending ? '<span class="badge warning">Anfrage offen</span>' : ""}
         </div>
+        ${member ? `<div class="user-profile-grid">
+          ${profileField("Mitgliedschaft", memberStatusLabel(member.status))}
+          ${member.memberCode ? profileField("Mitgliedsnummer", member.memberCode) : ""}
+          ${member.joinedOn ? profileField("Mitglied seit", formatProfileDate(member.joinedOn)) : ""}
+        </div>` : ""}
         ${memberRequestForm(member, pending)}
       </section>
     </div>
@@ -569,7 +602,13 @@ function renderUserMenu() {
   <div class="user-menu-content">
     <div class="user-profile-grid">
       ${profileField("Login-E-Mail", portal.email || current.session?.user?.email)}
-      ${member ? profileField("Mitgliedschaft", "Verknüpft") : ""}
+      ${profileField("Portalzugang", portalStatusLabel(portal.status || current.status))}
+      ${profileField(
+        "Mitgliedschaft",
+        member ? memberStatusLabel(member.status) : "Nicht verknüpft"
+      )}
+      ${member?.memberCode ? profileField("Mitgliedsnummer", member.memberCode) : ""}
+      ${member?.joinedOn ? profileField("Mitglied seit", formatProfileDate(member.joinedOn)) : ""}
     </div>
     ${pending ? `<div class="notice warning">
       <strong>Datenänderung in Prüfung</strong>

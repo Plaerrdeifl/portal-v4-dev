@@ -40,7 +40,7 @@ async function loadMemberMatch(email, userId = "") {
       status: "ERROR",
       count: 0,
       member: null,
-      message: error?.message || "Automatische Erkennung nicht verfügbar."
+      message: error?.message || "Mitgliedsvorschlag nicht verfügbar."
     };
   }
 }
@@ -50,14 +50,14 @@ function memberMatchNotice(match) {
 
   if (match.status === "MATCH" && match.member) {
     const label = `${match.member.memberCode} · ${match.member.firstName} ${match.member.lastName}`;
-    return `<div class="v4-member-match success"><strong>Mitglied automatisch erkannt</strong><span>${escapeHtml(label)} wurde anhand der E-Mail-Adresse vorausgewählt. Bitte prüfen und bestätigen.</span></div>`;
+    return `<div class="v4-member-match success"><strong>Mögliche Mitgliedszuordnung gefunden</strong><span>${escapeHtml(label)} stimmt bei der E-Mail-Adresse überein. Bitte Identität prüfen und die Verknüpfung ausdrücklich bestätigen.</span></div>`;
   }
 
   if (match.status === "AMBIGUOUS") {
-    return `<div class="v4-member-match warning"><strong>Keine automatische Zuordnung</strong><span>${escapeHtml(String(match.count))} aktive Mitglieder verwenden diese E-Mail-Adresse. Bitte manuell auswählen.</span></div>`;
+    return `<div class="v4-member-match warning"><strong>Mehrdeutiger Mitgliedsvorschlag</strong><span>${escapeHtml(String(match.count))} aktive Mitglieder verwenden diese E-Mail-Adresse. Bitte Identität prüfen und manuell auswählen.</span></div>`;
   }
 
-  return `<div class="v4-member-match warning"><strong>Automatische Erkennung nicht verfügbar</strong><span>${escapeHtml(match.message || "Bitte Mitglied manuell auswählen.")}</span></div>`;
+  return `<div class="v4-member-match warning"><strong>Mitgliedsvorschlag nicht verfügbar</strong><span>${escapeHtml(match.message || "Bitte Mitglied manuell auswählen.")}</span></div>`;
 }
 
 function tabs() {
@@ -97,7 +97,14 @@ async function approveRequest(request) {
     </form>`,
     submitLabel: "Freischalten",
     onSubmit: async values => {
-      snapshot = await runWrite(() => call("approve_request", { id: request.id, ...values }), "Portalzugang wurde freigeschaltet.");
+      snapshot = await runWrite(
+        () => call("approve_request", {
+          id: request.id,
+          expectedRevision: request.revision,
+          ...values
+        }),
+        "Portalzugang wurde freigeschaltet."
+      );
       render();
     }
   });
@@ -111,7 +118,14 @@ function rejectRequest(request) {
     submitLabel: "Ablehnen",
     danger: true,
     onSubmit: async values => {
-      snapshot = await runWrite(() => call("reject_request", { id: request.id, reason: values.reason || "" }), "Antrag wurde abgelehnt.");
+      snapshot = await runWrite(
+        () => call("reject_request", {
+          id: request.id,
+          expectedRevision: request.revision,
+          reason: values.reason || ""
+        }),
+        "Antrag wurde abgelehnt."
+      );
       render();
     }
   });
@@ -508,25 +522,132 @@ function editTaskAccess(user) {
     });
 }
 
-async function editUser(user) {
-  const match = user.memberId ? null : await loadMemberMatch(user.email, user.id);
-  const selectedMemberId = user.memberId || (match?.status === "MATCH" ? match.member?.id || "" : "");
-
+function editUser(user) {
   openDialog({
     title: "Portalbenutzer bearbeiten",
     kicker: `${user.userCode} · ${user.firstName} ${user.lastName}`,
-    body: `${memberMatchNotice(match)}<form class="form-grid">
-      <input type="hidden" name="id" value="${escapeAttr(user.id)}">
+    body: `<form class="form-grid">
       <label class="full">Portalrolle<select name="roleId" required>${optionList(activeRoles().map(role => ({ value: role.id, label: role.name })), user.roleId)}</select></label>
-      <label>Status<select name="status">${optionList([
+      <label class="full">Status<select name="status">${optionList([
         { value: "ACTIVE", label: "Aktiv" },
         { value: "INACTIVE", label: "Inaktiv" },
         { value: "BLOCKED", label: "Gesperrt" }
       ], user.status)}</select></label>
-      <label>Mitgliedsverknüpfung<select name="memberId">${optionList(memberOptions(), selectedMemberId, "Keine Verknüpfung")}</select></label>
+      <div class="full notice neutral">
+        <strong>Mitgliedsverknüpfung getrennt verwaltet</strong>
+        <p>Die Zuordnung zu einem Fanclub-Mitglied wird über eine eigene Aktion geändert und nicht zusammen mit Rolle oder Portalstatus gespeichert.</p>
+      </div>
     </form>`,
     onSubmit: async values => {
-      snapshot = await runWrite(() => call("save_user", values), "Benutzer wurde aktualisiert.");
+      snapshot = await runWrite(
+        () => call("save_user", {
+          id: user.id,
+          roleId: values.roleId,
+          status: values.status,
+          expectedRevision: user.revision
+        }),
+        "Benutzer wurde aktualisiert."
+      );
+      render();
+    }
+  });
+}
+
+async function editMemberLink(user) {
+  const match = user.memberId
+    ? null
+    : await loadMemberMatch(user.email, user.id);
+
+  const suggestedMemberId = user.memberId
+    || (match?.status === "MATCH" ? match.member?.id || "" : "");
+
+  const isRelink = Boolean(user.memberId);
+
+  openDialog({
+    title: isRelink
+      ? "Mitgliedsverknüpfung ändern"
+      : "Mitglied verknüpfen",
+    kicker: `${user.userCode} · ${user.firstName} ${user.lastName}`,
+    body: `${memberMatchNotice(match)}<form class="form-grid">
+      <label class="full">
+        Mitglied
+        <select name="memberId" required>
+          ${optionList(
+            memberOptions(),
+            suggestedMemberId,
+            "Mitglied auswählen"
+          )}
+        </select>
+      </label>
+      ${isRelink ? `
+        <label class="full">
+          Begründung
+          <textarea
+            name="reason"
+            maxlength="500"
+            rows="4"
+            required
+            placeholder="Warum wird die bestehende Verknüpfung korrigiert?"
+          ></textarea>
+        </label>
+      ` : `
+        <div class="full notice neutral">
+          <strong>Identität bitte prüfen</strong>
+          <p>E-Mail-Adresse oder Namensähnlichkeit sind nur Hinweise. Die ausgewählte Person wird erst durch diese ausdrückliche Bestätigung verknüpft.</p>
+        </div>
+      `}
+    </form>`,
+    submitLabel: isRelink ? "Verknüpfung ändern" : "Verknüpfen",
+    onSubmit: async values => {
+      snapshot = await runWrite(
+        () => call("member_portal_link", {
+          userId: user.id,
+          memberId: values.memberId,
+          expectedUserRevision: user.revision,
+          expectedMemberId: user.memberId || "",
+          reason: values.reason || ""
+        }),
+        isRelink
+          ? "Mitgliedsverknüpfung wurde geändert."
+          : "Mitglied wurde mit dem Portalbenutzer verknüpft."
+      );
+      render();
+    }
+  });
+}
+
+function unlinkMember(user) {
+  openDialog({
+    title: "Mitgliedsverknüpfung aufheben",
+    kicker: `${user.userCode} · ${user.firstName} ${user.lastName}`,
+    body: `<form class="form-grid">
+      <div class="full notice warning">
+        <strong>Nur die Verknüpfung wird aufgehoben</strong>
+        <p>Portalbenutzer, Mitglied, Rolle und Portalstatus bleiben bestehen.</p>
+      </div>
+      <label class="full">
+        Begründung
+        <textarea
+          name="reason"
+          maxlength="500"
+          rows="4"
+          required
+          placeholder="Warum wird die Verknüpfung aufgehoben?"
+        ></textarea>
+      </label>
+    </form>`,
+    submitLabel: "Verknüpfung aufheben",
+    danger: true,
+    onSubmit: async values => {
+      snapshot = await runWrite(
+        () => call("member_portal_unlink", {
+          userId: user.id,
+          expectedUserRevision: user.revision,
+          expectedMemberId: user.memberId,
+          reason: values.reason || ""
+        }),
+        "Mitgliedsverknüpfung wurde aufgehoben."
+      );
       render();
     }
   });
@@ -585,6 +706,16 @@ function renderUsers(panel) {
               >Aufgabenregeln</button>` : ""}
               <button
                 class="button small secondary"
+                data-edit-member-link="${escapeAttr(user.id)}"
+                type="button"
+              >${user.memberId ? "Mitglied ändern" : "Mitglied verknüpfen"}</button>
+              ${user.memberId ? `<button
+                class="button small danger"
+                data-unlink-member="${escapeAttr(user.id)}"
+                type="button"
+              >Verknüpfung lösen</button>` : ""}
+              <button
+                class="button small secondary"
                 data-edit-user="${escapeAttr(user.id)}"
                 type="button"
               >Bearbeiten</button>
@@ -602,6 +733,26 @@ function renderUsers(panel) {
       );
 
       if (user) await editUser(user);
+    });
+  });
+
+  panel.querySelectorAll("[data-edit-member-link]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const user = users.find(
+        item => item.id === button.dataset.editMemberLink
+      );
+
+      if (user) await editMemberLink(user);
+    });
+  });
+
+  panel.querySelectorAll("[data-unlink-member]").forEach(button => {
+    button.addEventListener("click", () => {
+      const user = users.find(
+        item => item.id === button.dataset.unlinkMember
+      );
+
+      if (user) unlinkMember(user);
     });
   });
 
