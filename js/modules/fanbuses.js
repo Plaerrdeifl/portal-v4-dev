@@ -337,14 +337,45 @@ function registrationWindowText(trip) {
   return "Anmeldung derzeit nicht verfügbar";
 }
 
-function tripNavigation(trip) {
-  const canManage = hasCapability("fanbus.manage") && trip.canManage !== false;
-  const canManageRegistrations = hasCapability("fanbus.registrations.manage")
+function fanbusOperationsAccess(trip = {}) {
+  const canManageRegistrations =
+    hasCapability("fanbus.registrations.manage")
     && trip.canManageRegistrations !== false;
-  const canOpenOccupancy = canManage || canManageRegistrations;
+
+  const canManageOperations =
+    hasCapability("fanbus.operations.manage")
+    && trip.canManageOperations !== false;
+
+  const canManagePaymentMarker =
+    hasCapability("fanbus.payment_marker.manage")
+    && trip.canManagePaymentMarker !== false;
+
+  return {
+    canManageRegistrations,
+    canManageOperations,
+    canManagePaymentMarker,
+    canRead:
+      canManageRegistrations
+      || canManageOperations
+      || canManagePaymentMarker
+  };
+}
+
+function tripNavigation(trip) {
+  const canManage =
+    hasCapability("fanbus.manage")
+    && trip.canManage !== false;
+
+  const operationsAccess =
+    fanbusOperationsAccess(trip);
+
+  const canOpenOccupancy =
+    canManage
+    || operationsAccess.canManageRegistrations;
+
   return `<nav class="v4-m310-trip-nav" aria-label="Bereiche der Fanbusfahrt">
     ${canOpenOccupancy ? `<button class="button small secondary" type="button" data-m310-occupancy="${escapeAttr(trip.id)}">Belegung</button>` : ""}
-    ${canManageRegistrations ? `<button class="button small secondary" type="button" data-m325-operations="${escapeAttr(trip.id)}">Fahrtbetrieb</button>` : ""}
+    ${operationsAccess.canRead ? `<button class="button small secondary" type="button" data-m325-operations="${escapeAttr(trip.id)}">Fahrtbetrieb</button>` : ""}
     ${canManage && trip.status !== "CANCELLED" ? `<button class="icon-button v4-m310-trip-settings" type="button" data-m310-trip-settings aria-label="Verwaltung öffnen" aria-controls="m310TripManagement" aria-expanded="false">⚙️</button>` : ""}
   </nav>
   ${canManage && trip.status !== "CANCELLED" ? `<div id="m310TripManagement" class="v4-m310-trip-management" data-m310-trip-management hidden>${tripManagementActions(trip) || '<p class="subtle">Keine Verwaltungsaktion verfügbar.</p>'}</div>` : ""}`;
@@ -747,18 +778,53 @@ function operationEventLabel(trip) {
 }
 
 async function renderOperationsWorkspace(panel, summary, tripId, returnTripId = "") {
-  if (!hasCapability("fanbus.registrations.manage")) { returnToFanbuses(); return; }
+  const trip = trips().find(item => item.id === tripId);
+  const access = fanbusOperationsAccess(trip || {});
+
+  if (!access.canRead) {
+    returnToFanbuses();
+    return;
+  }
+
   if (summary) summary.textContent = "";
-  panel.innerHTML = workspaceLoading("Fahrtbetrieb", "Betriebsdaten werden geladen …", returnTripId);
-  panel.querySelector("[data-m325-back]")?.addEventListener("click", () => returnToFanbuses(returnTripId));
+
+  panel.innerHTML = workspaceLoading(
+    "Fahrtbetrieb",
+    "Betriebsdaten werden geladen …",
+    returnTripId
+  );
+
+  panel.querySelector("[data-m325-back]")
+    ?.addEventListener(
+      "click",
+      () => returnToFanbuses(returnTripId)
+    );
+
   try {
-    const data = await call("fanbus_operations_snapshot", { tripId });
+    const data = await call(
+      "fanbus_operations_snapshot",
+      { tripId }
+    );
+
     const totals = data.summary || {};
-    const participants = Array.isArray(data.participants) ? data.participants : [];
-    const paidCount = participants.filter(person => person.isPaid === true).length;
-    const trip = trips().find(item => item.id === tripId);
-    const readOnly = trip?.status === "CANCELLED";
-    panel.innerHTML = `<section class="v4-m325-workspace v4-m325-operations-workspace"><header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m325-back>← Zurück</button><div><h2>Fahrtbetrieb</h2><p>${escapeHtml(formatCalendarDate(trip?.eventDate))} · ${escapeHtml(operationEventLabel(trip))} · Check-in</p></div></header>${readOnly ? '<p class="notice error">Die Fahrt ist abgesagt. Betriebsdaten bleiben historisch lesbar und können nicht mehr geändert werden.</p>' : ""}<div class="v4-m325-counters"><span><strong>${Number(totals.expected || 0)}</strong>Angemeldet</span><span><strong>${Number(totals.present || 0)}</strong>Anwesend</span><span><strong>${paidCount}</strong>Bezahlt</span><span><strong>${Number(totals.noShow || 0)}</strong>Fehlt</span></div>${Number(totals.unassignedBusCount || 0) || Number(totals.missingBoardingStopCount || 0) ? `<p class="notice warning v4-m325-operation-warning">${Number(totals.unassignedBusCount || 0)} ohne Bus · ${Number(totals.missingBoardingStopCount || 0)} ohne Zustiegsort</p>` : ""}<form class="form-grid v4-smart-form v4-m325-operation-filters" data-m325-operation-filters><label class="v4-field-full">Suche<input name="search" type="search" placeholder="Teilnehmer suchen" value="${escapeAttr(operationsUiState.search)}"></label><label class="v4-field-four">Status<select name="status"><option value="ALL">Alle</option><option value="PRESENT">Anwesend</option><option value="NO_SHOW">Fehlt</option></select></label><label class="v4-field-four">Bus<select name="bus"><option value="ALL">Alle</option>${(data.buses || []).map(bus => `<option value="${escapeAttr(bus.busId)}">${escapeHtml(bus.label)}</option>`).join("")}</select></label><label class="v4-field-four">Zustiegsort<select name="stop"><option value="ALL">Alle</option>${(data.stops || []).map(stop => `<option value="${escapeAttr(stop.tripBoardingStopId)}">${escapeHtml(stop.label)}</option>`).join("")}</select></label></form><div class="v4-mobile-records v4-m325-operation-list" data-m325-operation-list>${operationCards(participants, readOnly)}<p class="subtle" data-m325-operation-empty hidden>Keine Teilnehmer entsprechen den Filtern.</p></div></section>`;
+
+    const participants =
+      Array.isArray(data.participants)
+        ? data.participants
+        : [];
+
+    const paidCount =
+      participants.filter(
+        person => person.isPaid === true
+      ).length;
+
+    const readOnly =
+      trip?.status === "CANCELLED";
+    panel.innerHTML = `<section class="v4-m325-workspace v4-m325-operations-workspace"><header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m325-back>← Zurück</button><div><h2>Fahrtbetrieb</h2><p>${escapeHtml(formatCalendarDate(trip?.eventDate))} · ${escapeHtml(operationEventLabel(trip))} · Check-in</p></div></header>${readOnly ? '<p class="notice error">Die Fahrt ist abgesagt. Betriebsdaten bleiben historisch lesbar und können nicht mehr geändert werden.</p>' : ""}<div class="v4-m325-counters"><span><strong>${Number(totals.expected || 0)}</strong>Angemeldet</span><span><strong>${Number(totals.present || 0)}</strong>Anwesend</span><span><strong>${paidCount}</strong>Bezahlt</span><span><strong>${Number(totals.noShow || 0)}</strong>Fehlt</span></div>${Number(totals.unassignedBusCount || 0) || Number(totals.missingBoardingStopCount || 0) ? `<p class="notice warning v4-m325-operation-warning">${Number(totals.unassignedBusCount || 0)} ohne Bus · ${Number(totals.missingBoardingStopCount || 0)} ohne Zustiegsort</p>` : ""}<form class="form-grid v4-smart-form v4-m325-operation-filters" data-m325-operation-filters><label class="v4-field-full">Suche<input name="search" type="search" placeholder="Teilnehmer suchen" value="${escapeAttr(operationsUiState.search)}"></label><label class="v4-field-four">Status<select name="status"><option value="ALL">Alle</option><option value="PRESENT">Anwesend</option><option value="NO_SHOW">Fehlt</option></select></label><label class="v4-field-four">Bus<select name="bus"><option value="ALL">Alle</option>${(data.buses || []).map(bus => `<option value="${escapeAttr(bus.busId)}">${escapeHtml(bus.label)}</option>`).join("")}</select></label><label class="v4-field-four">Zustiegsort<select name="stop"><option value="ALL">Alle</option>${(data.stops || []).map(stop => `<option value="${escapeAttr(stop.tripBoardingStopId)}">${escapeHtml(stop.label)}</option>`).join("")}</select></label></form><div class="v4-mobile-records v4-m325-operation-list" data-m325-operation-list>${operationCards(participants, {
+      readOnly,
+      canManageOperations: access.canManageOperations,
+      canManagePaymentMarker: access.canManagePaymentMarker
+    })}<p class="subtle" data-m325-operation-empty hidden>Keine Teilnehmer entsprechen den Filtern.</p></div></section>`;
     panel.querySelector("[data-m325-back]")?.addEventListener("click", () => returnToFanbuses(returnTripId));
     const filters = panel.querySelector("[data-m325-operation-filters]");
     if (!["ALL", "PRESENT", "NO_SHOW"].includes(operationsUiState.status)) {
@@ -770,16 +836,42 @@ async function renderOperationsWorkspace(panel, summary, tripId, returnTripId = 
     filters.addEventListener("input", () => filterOperations(panel));
     filters.addEventListener("change", () => filterOperations(panel));
     filterOperations(panel);
-    if (!readOnly) bindOperationActions(panel, summary, tripId, returnTripId);
+    if (
+      !readOnly
+      && (
+        access.canManageOperations
+        || access.canManagePaymentMarker
+      )
+    ) {
+      bindOperationActions(
+        panel,
+        summary,
+        tripId,
+        returnTripId
+      );
+    }
     requestAnimationFrame(() => document.getElementById("view")
       ?.scrollTo({ top: operationsUiState.scrollY, behavior: "auto" }));
   } catch (error) { panel.innerHTML = errorPanel(error, "Fahrtbetrieb konnte nicht geladen werden"); }
 }
 
-function operationCards(participants, readOnly = false) {
+function operationCards(participants, access = {}) {
+  const readOnly = Boolean(access.readOnly);
+
+  const canManageOperations =
+    !readOnly
+    && Boolean(access.canManageOperations);
+
+  const canManagePaymentMarker =
+    !readOnly
+    && Boolean(access.canManagePaymentMarker);
+
   return participants.map(person => {
-    const isPresent = person.checkinStatus === "PRESENT";
-    const isMissing = person.checkinStatus === "NO_SHOW";
+    const isPresent =
+      person.checkinStatus === "PRESENT";
+
+    const isMissing =
+      person.checkinStatus === "NO_SHOW";
 
     const statusBadge = isPresent
       ? '<span class="badge success">Anwesend</span>'
@@ -787,10 +879,90 @@ function operationCards(participants, readOnly = false) {
         ? '<span class="badge danger">Fehlt</span>'
         : "";
 
-    const controls = readOnly
-      ? `<small>${person.isPaid ? "Bezahlt" : "Nicht als bezahlt markiert"}</small>`
-      : `<div class="v4-row-actions v4-m325-checkin-actions"><button class="button small ${isPresent ? "primary" : "secondary"} v4-m325-checkin-toggle" type="button" aria-pressed="${isPresent ? "true" : "false"}" data-m325-checkin="PRESENT" data-current-status="${escapeAttr(person.checkinStatus || "OPEN")}" data-id="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.checkinRevision)}">${isPresent ? "✓ Anwesend" : "Anwesend"}</button><button class="button small ${person.isPaid ? "primary" : "secondary"} v4-m325-paid-toggle" type="button" aria-pressed="${person.isPaid ? "true" : "false"}" data-m325-paid="${person.isPaid ? "false" : "true"}" data-id="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.checkinRevision)}">${person.isPaid ? "✓ Bezahlt" : "Bezahlt"}</button><button class="button small ${isMissing ? "danger" : "secondary"} v4-m325-checkin-toggle" type="button" aria-pressed="${isMissing ? "true" : "false"}" data-m325-checkin="NO_SHOW" data-current-status="${escapeAttr(person.checkinStatus || "OPEN")}" data-id="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.checkinRevision)}">${isMissing ? "✓ Fehlt" : "Fehlt"}</button></div>`;
-    return `<article class="v4-compact-record v4-m325-operation-card" data-m325-participant="${escapeAttr(`${person.firstName} ${person.lastName}`.toLocaleLowerCase("de-DE"))}" data-status="${escapeAttr(person.checkinStatus)}" data-bus="${escapeAttr(person.busId || "")}" data-stop="${escapeAttr(person.tripBoardingStopId || "")}"><div class="v4-compact-record-copy v4-m325-record-copy"><strong>${escapeHtml(`${person.firstName} ${person.lastName}`)}</strong><small>${escapeHtml(person.busLabel || "Kein Bus")} · ${escapeHtml(person.boardingStopLabel || "Kein Zustiegsort")}${person.departureAt ? ` · ${escapeHtml(formatBerlinTime(person.departureAt))}` : ""}</small></div>${statusBadge}${controls}</article>`;
+    const actions = [];
+
+    if (canManageOperations) {
+      actions.push(
+        `<button
+          class="button small ${isPresent ? "primary" : "secondary"} v4-m325-checkin-toggle"
+          type="button"
+          aria-pressed="${isPresent ? "true" : "false"}"
+          data-m325-checkin="PRESENT"
+          data-current-status="${escapeAttr(person.checkinStatus || "OPEN")}"
+          data-id="${escapeAttr(person.id)}"
+          data-revision="${escapeAttr(person.checkinRevision)}"
+        >${isPresent ? "✓ Anwesend" : "Anwesend"}</button>`
+      );
+    }
+
+    if (canManagePaymentMarker) {
+      actions.push(
+        `<button
+          class="button small ${person.isPaid ? "primary" : "secondary"} v4-m325-paid-toggle"
+          type="button"
+          aria-pressed="${person.isPaid ? "true" : "false"}"
+          data-m325-paid="${person.isPaid ? "false" : "true"}"
+          data-id="${escapeAttr(person.id)}"
+          data-revision="${escapeAttr(person.checkinRevision)}"
+        >${person.isPaid ? "✓ Bezahlt" : "Bezahlt"}</button>`
+      );
+    }
+
+    if (canManageOperations) {
+      actions.push(
+        `<button
+          class="button small ${isMissing ? "danger" : "secondary"} v4-m325-checkin-toggle"
+          type="button"
+          aria-pressed="${isMissing ? "true" : "false"}"
+          data-m325-checkin="NO_SHOW"
+          data-current-status="${escapeAttr(person.checkinStatus || "OPEN")}"
+          data-id="${escapeAttr(person.id)}"
+          data-revision="${escapeAttr(person.checkinRevision)}"
+        >${isMissing ? "✓ Fehlt" : "Fehlt"}</button>`
+      );
+    }
+
+    const paymentStatus =
+      `<small>${person.isPaid
+        ? "Bezahlt"
+        : "Nicht als bezahlt markiert"
+      }</small>`;
+
+    const controls = actions.length
+      ? `<div class="v4-row-actions v4-m325-checkin-actions">${actions.join("")}</div>${canManagePaymentMarker ? "" : paymentStatus}`
+      : paymentStatus;
+
+    return `<article
+      class="v4-compact-record v4-m325-operation-card"
+      data-m325-participant="${escapeAttr(
+        `${person.firstName} ${person.lastName}`
+          .toLocaleLowerCase("de-DE")
+      )}"
+      data-status="${escapeAttr(person.checkinStatus)}"
+      data-bus="${escapeAttr(person.busId || "")}"
+      data-stop="${escapeAttr(person.tripBoardingStopId || "")}"
+    >
+      <div class="v4-compact-record-copy v4-m325-record-copy">
+        <strong>${escapeHtml(
+          `${person.firstName} ${person.lastName}`
+        )}</strong>
+        <small>
+          ${escapeHtml(person.busLabel || "Kein Bus")}
+          ·
+          ${escapeHtml(
+            person.boardingStopLabel || "Kein Zustiegsort"
+          )}
+          ${person.departureAt
+            ? ` · ${escapeHtml(
+                formatBerlinTime(person.departureAt)
+              )}`
+            : ""
+          }
+        </small>
+      </div>
+      ${statusBadge}
+      ${controls}
+    </article>`;
   }).join("") || empty("Keine aktiven Teilnehmer.");
 }
 

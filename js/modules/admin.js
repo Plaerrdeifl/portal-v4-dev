@@ -183,6 +183,16 @@ function capabilitySourceLabel(source) {
     return `Amt: ${detail.officeLabel || detail.officeCode || "Amt"}`;
   }
 
+  if (source.source === "TEAM_FUNCTION") {
+    const functionLabel =
+      detail.functionName || detail.functionCode || "Teamfunktion";
+
+    const teamLabel =
+      detail.teamName || detail.teamCode || "Team";
+
+    return `Teamfunktion: ${functionLabel} · ${teamLabel}`;
+  }
+
   if (source.source === "PERSONAL") return "Persönlich";
   if (source.source === "ADMIN_OVERRIDE") return "Admin-Override";
   return source.source || "Unbekannte Quelle";
@@ -212,7 +222,7 @@ function editPersonalCapabilities(user) {
     body: `<form>
       <div class="notice">
         <strong>Additive persönliche Rechte</strong>
-        <p>Nur der persönliche Anteil ist editierbar. Rechte aus Rolle, Amt oder Admin-Override bleiben beim Entfernen eines persönlichen Hakens wirksam.</p>
+        <p>Nur der persönliche Anteil ist editierbar. Rechte aus Rolle, Amt, Teamfunktion oder Admin-Override bleiben beim Entfernen eines persönlichen Hakens wirksam.</p>
       </div>
       <div class="v4-capability-groups v4-personal-capability-groups">
         ${[...grouped.entries()].map(([category, capabilities]) => `

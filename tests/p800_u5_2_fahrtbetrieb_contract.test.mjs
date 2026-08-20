@@ -53,7 +53,7 @@ test("U5.2 Fahrtbetrieb has compact date title and check-in header", () => {
 test("U5.2 counters show Angemeldet Anwesend Bezahlt Fehlt", () => {
   assert.match(
     operations,
-    /participants\.filter\(person => person\.isPaid === true\)\.length/
+    /participants\.filter\([\s\S]*person => person\.isPaid === true[\s\S]*\)\.length/
   );
 
   for (const label of ["Angemeldet", "Anwesend", "Bezahlt", "Fehlt"]) {

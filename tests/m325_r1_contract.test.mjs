@@ -195,7 +195,9 @@ test("M325 UI reuses portal smart forms, field widths, dialogs and action contai
   assert.doesNotMatch(operationsWorkspace, /dialog-actions/);
   assert.match(operationsWorkspace, /class="v4-m325-workspace-header"><button[^>]+data-m325-back/);
   assert.match(operationsWorkspace, /v4-m325-operation-card/);
-  assert.match(operationsWorkspace, /class="v4-row-actions v4-m325-checkin-actions"><button[^>]+data-m325-checkin/);
+  assert.match(operationsWorkspace, /class="v4-row-actions v4-m325-checkin-actions"/);
+  assert.match(operationsWorkspace, /data-m325-checkin="PRESENT"/);
+  assert.match(operationsWorkspace, /data-m325-paid=/);
 
   const masterRecords = sourceBetween(ui, "const masterRecords", "const tripRecords");
   assert.match(masterRecords, /class="v4-row-actions v4-m325-stop-actions">[\s\S]*data-m325-master-move/);

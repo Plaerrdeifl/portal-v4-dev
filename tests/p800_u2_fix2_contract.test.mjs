@@ -15,10 +15,10 @@ function section(start, end) {
 }
 
 test("fanbus.manage independently retains occupancy bus and stop management", () => {
-  const navigation = section("function tripNavigation", "function tripDetailMarkup");
-  assert.match(navigation, /const canOpenOccupancy = canManage \|\| canManageRegistrations/);
+  const navigation = section("function fanbusOperationsAccess", "function tripDetailMarkup");
+  assert.match(navigation, /canOpenOccupancy\s*=\s*canManage\s*\|\|\s*operationsAccess\.canManageRegistrations/);
   assert.match(navigation, /canOpenOccupancy \? `[\s\S]*data-m310-occupancy/);
-  assert.match(navigation, /canManageRegistrations \? `[\s\S]*data-m325-operations/);
+  assert.match(navigation, /operationsAccess\.canRead \? `[\s\S]*data-m325-operations/);
 
   const access = section("function occupancyAccess", "function occupancyMarkup");
   assert.match(access, /canManageBuses: hasCapability\("fanbus\.manage"\)/);

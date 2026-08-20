@@ -35,8 +35,14 @@ function openTeam(team = null) {
     kicker: "Teams",
     body: teamForm(team || {}),
     onSubmit: async values => {
+      const payload = normalizeCheckbox(values, "active");
+
+      if (team) {
+        payload.expectedRevision = team.revision;
+      }
+
       snapshot = await runWrite(
-        () => call("save_team", normalizeCheckbox(values, "active")),
+        () => call("save_team", payload),
         team ? "Team wurde aktualisiert." : "Team wurde angelegt."
       );
       render();
@@ -70,10 +76,95 @@ function openMembership(team, membership = null) {
     kicker: team.name,
     body: membershipForm(team, membership || {}),
     onSubmit: async values => {
+      const payload = { ...values };
+
+      if (membership) {
+        payload.expectedRevision = membership.revision;
+      }
+
       snapshot = await runWrite(
-        () => call("save_team_member", values),
+        () => call("save_team_member", payload),
         "Teammitgliedschaft wurde gespeichert."
       );
+      render();
+    }
+  });
+}
+
+function teamFunctionForm(team, membership) {
+  const availableFunctions = team.availableFunctions || [];
+  const assignedCodes = new Set(
+    (membership.functions || []).map(item => item.code)
+  );
+
+  const functionRows = availableFunctions.map((item, index) => `
+    <label class="checkbox-row full">
+      <input
+        name="function_${index}"
+        type="checkbox"
+        ${assignedCodes.has(item.code) ? "checked" : ""}
+      >
+      <span>
+        <strong>${escapeHtml(item.name)}</strong>
+        ${item.description
+          ? `<small>${escapeHtml(item.description)}</small>`
+          : ""}
+      </span>
+    </label>
+  `).join("");
+
+  return `<form class="form-grid">
+    <div class="full">
+      <p class="subtle">
+        Fachfunktionen vergeben konkrete Berechtigungen innerhalb dieses Teams.
+        Die organisatorische Teamrolle bleibt davon unabhängig.
+      </p>
+    </div>
+
+    ${functionRows || `
+      <div class="notice neutral full">
+        Für dieses Team sind keine Fachfunktionen konfiguriert.
+      </div>
+    `}
+  </form>`;
+}
+
+function openTeamFunctions(team, membership) {
+  if (!team.canManageFunctions) {
+    showToast(
+      "Du darfst keine Fachfunktionen vergeben.",
+      "error",
+      5200
+    );
+    return;
+  }
+
+  const availableFunctions = team.availableFunctions || [];
+
+  openDialog({
+    title: `Funktionen · ${membership.name}`,
+    kicker: team.name,
+    body: teamFunctionForm(team, membership),
+    submitLabel: "Funktionen speichern",
+
+    onSubmit: async values => {
+      const functionCodes = availableFunctions
+        .filter(
+          (_, index) =>
+            values[`function_${index}`] === "on"
+        )
+        .map(item => item.code);
+
+      snapshot = await runWrite(
+        () => call("set_team_functions", {
+          teamId: team.id,
+          userId: membership.userId,
+          expectedRevision: membership.revision,
+          functionCodes
+        }),
+        "Fachfunktionen wurden gespeichert."
+      );
+
       render();
     }
   });
@@ -87,7 +178,8 @@ async function removeMembership(team, membership) {
   snapshot = await runWrite(
     () => call("remove_team_member", {
       teamId: team.id,
-      userId: membership.userId
+      userId: membership.userId,
+      expectedRevision: membership.revision
     }),
     "Teammitglied wurde entfernt."
   );
@@ -160,8 +252,247 @@ function taskDependencyNotice(team) {
 
 function ownTeamRole(team){const userId=currentUser().id;const membership=(team.members||[]).find(member=>member.userId===userId);return membership?roleLabel(membership.role):"";}
 function teamListRow(team){const role=ownTeamRole(team);return `<button class="v4-team-list-row" type="button" data-open-team="${escapeAttr(team.id)}"><span><strong>${escapeHtml(team.name)}</strong><small>${escapeHtml(role||`${(team.members||[]).filter(member=>member.active).length} Mitglieder`)}</small></span><span class="v4-row-chevron" aria-hidden="true">›</span></button>`;}
-function teamDetailMarkup(team){const activeMembers=(team.members||[]).filter(member=>member.active);const taskCount=Number(team.taskCount||0);return `<div class="v4-detail-grid v4-team-detail-grid"><div class="v4-detail-wide"><span>Beschreibung</span><strong class="v4-preserve-lines">${escapeHtml(team.description||"Keine Beschreibung")}</strong></div><div><span>Eigene Rolle</span><strong>${escapeHtml(ownTeamRole(team)||"–")}</strong></div><div><span>Status</span><strong>${team.active?"Aktiv":"Inaktiv"}</strong></div><div><span>Mitglieder</span><strong>${activeMembers.length}</strong></div><div><span>Aufgaben</span><strong>${taskCount}</strong></div></div><section class="v4-team-detail-members"><div class="v4-dialog-section-title"><h3>Mitglieder</h3></div>${activeMembers.length?`<div class="v4-team-member-list">${activeMembers.map(member=>`<div class="v4-team-member-row"><span><strong>${escapeHtml(member.name)}</strong><small>${escapeHtml(roleLabel(member.role))}</small></span>${team.canManage?`<span class="v4-row-actions"><button class="button small secondary" data-edit-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}" type="button">Rolle</button><button class="button small ghost" data-remove-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}" type="button">Entfernen</button></span>`:""}</div>`).join("")}</div>`:'<p class="subtle">Noch keine aktiven Teammitglieder.</p>'}</section>${taskDependencyNotice(team)}${team.canManage?`<div class="dialog-actions v4-detail-actions"><button class="button primary" data-add-team-member="${escapeAttr(team.id)}" type="button">Mitglied hinzufügen</button>${snapshot.canCreateTeam?`<button class="button secondary" data-edit-team="${escapeAttr(team.id)}" type="button">Team bearbeiten</button><button class="button danger" data-delete-team="${escapeAttr(team.id)}" type="button" ${taskCount>0?'title="Vor der Löschung müssen alle Teamaufgaben endgültig entfernt werden."':""}>Team löschen</button>`:""}</div>`:""}`;}
-function openTeamDetails(team){const dialog=openDialog({title:team.name,kicker:"Mein Team",body:teamDetailMarkup(team)});dialog.querySelector("[data-edit-team]")?.addEventListener("click",()=>openTeam(team));dialog.querySelector("[data-delete-team]")?.addEventListener("click",async event=>{event.currentTarget.disabled=true;await deleteTeam(team);dialog.close();});dialog.querySelector("[data-open-team-archive]")?.addEventListener("click",()=>openTeamArchive(team));dialog.querySelector("[data-add-team-member]")?.addEventListener("click",()=>openMembership(team));dialog.querySelectorAll("[data-edit-team-member]").forEach(button=>button.addEventListener("click",()=>{const[,userId]=button.dataset.editTeamMember.split(":");const membership=team.members.find(item=>item.userId===userId);if(membership)openMembership(team,membership);}));dialog.querySelectorAll("[data-remove-team-member]").forEach(button=>button.addEventListener("click",async event=>{const[,userId]=button.dataset.removeTeamMember.split(":");const membership=team.members.find(item=>item.userId===userId);if(!membership)return;event.currentTarget.disabled=true;await removeMembership(team,membership);dialog.close();}));}
+function memberFunctionsMarkup(team, member) {
+  if (!team.canManageFunctions) return "";
+
+  const functions = member.functions || [];
+
+  return functions.length
+    ? `<small>Funktionen: ${escapeHtml(
+        functions.map(item => item.name).join(", ")
+      )}</small>`
+    : '<small>Keine Fachfunktionen</small>';
+}
+
+function teamDetailMarkup(team) {
+  const activeMembers = (team.members || [])
+    .filter(member => member.active);
+
+  const taskCount = Number(team.taskCount || 0);
+
+  return `
+    <div class="v4-detail-grid v4-team-detail-grid">
+      <div class="v4-detail-wide">
+        <span>Beschreibung</span>
+        <strong class="v4-preserve-lines">
+          ${escapeHtml(team.description || "Keine Beschreibung")}
+        </strong>
+      </div>
+
+      <div>
+        <span>Eigene Rolle</span>
+        <strong>${escapeHtml(ownTeamRole(team) || "–")}</strong>
+      </div>
+
+      <div>
+        <span>Status</span>
+        <strong>${team.active ? "Aktiv" : "Inaktiv"}</strong>
+      </div>
+
+      <div>
+        <span>Mitglieder</span>
+        <strong>${activeMembers.length}</strong>
+      </div>
+
+      <div>
+        <span>Aufgaben</span>
+        <strong>${taskCount}</strong>
+      </div>
+    </div>
+
+    <section class="v4-team-detail-members">
+      <div class="v4-dialog-section-title">
+        <h3>Mitglieder</h3>
+      </div>
+
+      ${activeMembers.length
+        ? `<div class="v4-team-member-list">
+            ${activeMembers.map(member => `
+              <div class="v4-team-member-row">
+                <span>
+                  <strong>${escapeHtml(member.name)}</strong>
+                  <small>${escapeHtml(roleLabel(member.role))}</small>
+                  ${memberFunctionsMarkup(team, member)}
+                </span>
+
+                ${
+                  team.canManage || team.canManageFunctions
+                    ? `<span class="v4-row-actions">
+                        ${
+                          team.canManageFunctions
+                            ? `<button
+                                class="button small secondary"
+                                data-edit-team-functions="${escapeAttr(team.id)}:${escapeAttr(member.userId)}"
+                                type="button"
+                              >Funktionen</button>`
+                            : ""
+                        }
+
+                        ${
+                          team.canManage
+                            ? `<button
+                                class="button small secondary"
+                                data-edit-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}"
+                                type="button"
+                              >Rolle</button>
+
+                              <button
+                                class="button small ghost"
+                                data-remove-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}"
+                                type="button"
+                              >Entfernen</button>`
+                            : ""
+                        }
+                      </span>`
+                    : ""
+                }
+              </div>
+            `).join("")}
+          </div>`
+        : '<p class="subtle">Noch keine aktiven Teammitglieder.</p>'
+      }
+    </section>
+
+    ${taskDependencyNotice(team)}
+
+    ${team.canManage
+      ? `<div class="dialog-actions v4-detail-actions">
+          <button
+            class="button primary"
+            data-add-team-member="${escapeAttr(team.id)}"
+            type="button"
+          >
+            Mitglied hinzufügen
+          </button>
+
+          ${snapshot.canCreateTeam
+            ? `<button
+                class="button secondary"
+                data-edit-team="${escapeAttr(team.id)}"
+                type="button"
+              >
+                Team bearbeiten
+              </button>
+
+              <button
+                class="button danger"
+                data-delete-team="${escapeAttr(team.id)}"
+                type="button"
+                ${
+                  taskCount > 0
+                    ? 'title="Vor der Löschung müssen alle Teamaufgaben endgültig entfernt werden."'
+                    : ""
+                }
+              >
+                Team löschen
+              </button>`
+            : ""
+          }
+        </div>`
+      : ""
+    }
+  `;
+}
+
+function openTeamDetails(team) {
+  const dialog = openDialog({
+    title: team.name,
+    kicker: "Mein Team",
+    body: teamDetailMarkup(team)
+  });
+
+  dialog.querySelector("[data-edit-team]")
+    ?.addEventListener(
+      "click",
+      () => openTeam(team)
+    );
+
+  dialog.querySelector("[data-delete-team]")
+    ?.addEventListener(
+      "click",
+      async event => {
+        event.currentTarget.disabled = true;
+        await deleteTeam(team);
+        dialog.close();
+      }
+    );
+
+  dialog.querySelector("[data-open-team-archive]")
+    ?.addEventListener(
+      "click",
+      () => openTeamArchive(team)
+    );
+
+  dialog.querySelector("[data-add-team-member]")
+    ?.addEventListener(
+      "click",
+      () => openMembership(team)
+    );
+
+  dialog.querySelectorAll("[data-edit-team-functions]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        const [, userId] =
+          button.dataset.editTeamFunctions.split(":");
+
+        const membership = team.members.find(
+          item => item.userId === userId
+        );
+
+        if (membership) {
+          openTeamFunctions(
+            team,
+            membership
+          );
+        }
+      });
+    });
+
+  dialog.querySelectorAll("[data-edit-team-member]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        const [, userId] =
+          button.dataset.editTeamMember.split(":");
+
+        const membership = team.members.find(
+          item => item.userId === userId
+        );
+
+        if (membership) {
+          openMembership(
+            team,
+            membership
+          );
+        }
+      });
+    });
+
+  dialog.querySelectorAll("[data-remove-team-member]")
+    .forEach(button => {
+      button.addEventListener(
+        "click",
+        async event => {
+          const [, userId] =
+            button.dataset.removeTeamMember.split(":");
+
+          const membership = team.members.find(
+            item => item.userId === userId
+          );
+
+          if (!membership) return;
+
+          event.currentTarget.disabled = true;
+
+          await removeMembership(
+            team,
+            membership
+          );
+
+          dialog.close();
+        }
+      );
+    });
+}
 
 function render(){const panel=document.getElementById("teamsPanel");if(!panel||!snapshot)return;const teams=snapshot.teams||[];const tabs=document.getElementById("teamsTabs");if(tabs){tabs.innerHTML=`<div class="v4-tabs" role="tablist"><button class="v4-tab active" type="button" role="tab" aria-selected="true">Meine Teams</button></div>${snapshot.canCreateTeam?`<div class="v4-heading-row v4-teams-heading"><h3>Meine Teams</h3><button id="addTeamButton" class="button secondary v4-heading-action" type="button">+ Team</button></div>`:""}`;}panel.innerHTML=teams.length?`<div class="v4-team-list">${teams.map(teamListRow).join("")}</div>`:empty("Dir ist noch kein Team zugeordnet.");document.getElementById("addTeamButton")?.addEventListener("click",()=>openTeam());panel.querySelectorAll("[data-open-team]").forEach(button=>button.addEventListener("click",()=>{const team=teams.find(item=>item.id===button.dataset.openTeam);if(team)openTeamDetails(team);}));const status=document.getElementById("teamsStatus");if(status){status.textContent="Aktuell";status.className="status-pill success";}}
 

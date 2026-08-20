@@ -8,6 +8,7 @@
     "dev": "node scripts/serve.mjs",
     "runtime:local": "node scripts/write-runtime-config.mjs --url http://127.0.0.1:54321 --environment LOCAL",
     "test": "node scripts/check-frontend-foundation.mjs && node --test tests/*.test.mjs",
+    "check": "npm run check:static && npm run check:frontend",
     "check:static": "python tests/static_check.py",
     "supabase:version": "supabase --version",
     "supabase:status": "supabase status",
