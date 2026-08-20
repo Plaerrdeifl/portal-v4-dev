@@ -258,10 +258,17 @@ function memberFunctionsMarkup(team, member) {
   const functions = member.functions || [];
 
   return functions.length
-    ? `<small>Funktionen: ${escapeHtml(
-        functions.map(item => item.name).join(", ")
-      )}</small>`
-    : '<small>Keine Fachfunktionen</small>';
+    ? `<div class="v4-team-member-functions">
+        <small>Fachfunktionen</small>
+        <span class="v4-team-function-list">
+          ${functions.map(item => `
+            <span class="badge neutral v4-team-function-badge">
+              ${escapeHtml(item.name)}
+            </span>
+          `).join("")}
+        </span>
+      </div>`
+    : '<small class="v4-team-member-no-functions">Keine Fachfunktionen</small>';
 }
 
 function teamDetailMarkup(team) {
@@ -309,15 +316,15 @@ function teamDetailMarkup(team) {
         ? `<div class="v4-team-member-list">
             ${activeMembers.map(member => `
               <div class="v4-team-member-row">
-                <span>
+                <div class="v4-team-member-copy">
                   <strong>${escapeHtml(member.name)}</strong>
-                  <small>${escapeHtml(roleLabel(member.role))}</small>
+                  <small class="v4-team-member-role">${escapeHtml(roleLabel(member.role))}</small>
                   ${memberFunctionsMarkup(team, member)}
-                </span>
+                </div>
 
                 ${
                   team.canManage || team.canManageFunctions
-                    ? `<span class="v4-row-actions">
+                    ? `<div class="v4-row-actions v4-team-member-actions">
                         ${
                           team.canManageFunctions
                             ? `<button
@@ -337,13 +344,13 @@ function teamDetailMarkup(team) {
                               >Rolle</button>
 
                               <button
-                                class="button small ghost"
+                                class="button small ghost v4-team-member-remove"
                                 data-remove-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}"
                                 type="button"
                               >Entfernen</button>`
                             : ""
                         }
-                      </span>`
+                      </div>`
                     : ""
                 }
               </div>
@@ -356,7 +363,7 @@ function teamDetailMarkup(team) {
     ${taskDependencyNotice(team)}
 
     ${team.canManage
-      ? `<div class="dialog-actions v4-detail-actions">
+      ? `<div class="dialog-actions v4-detail-actions v4-team-detail-actions">
           <button
             class="button primary"
             data-add-team-member="${escapeAttr(team.id)}"
