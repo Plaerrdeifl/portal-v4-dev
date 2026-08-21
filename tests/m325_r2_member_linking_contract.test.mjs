@@ -176,6 +176,10 @@ test("D-055 UI uses Portaluser identity and capability-gated admin controls", as
     read("js/fanbus-registration.js"),
     read("css/app.css")
   ]);
+  const companionUi = ui.slice(
+    ui.indexOf("function companionPersonBadge"),
+    ui.indexOf("function operationEventLabel")
+  );
   assert.match(ui, /Portaluser suchen/);
   assert.match(ui, /Portaluser verknüpfen/);
   assert.match(ui, /fanbus\.participant_identity\.manage/);
@@ -193,12 +197,16 @@ test("D-055 UI uses Portaluser identity and capability-gated admin controls", as
   assert.doesNotMatch(ui, /linkedMemberId|data-m325-linked-member-id|memberCode/);
   assert.match(registration, /data-m325-linked-portal-user-id/);
   assert.match(registration, /Portaluser · inaktiv/);
-  assert.match(registration, /member\.isMember/);
+  assert.doesNotMatch(registration, /member\.isMember|>Mitglied</);
+  assert.doesNotMatch(companionUi, /member\.isMember|person\.isMember|>Mitglied</);
+  assert.match(companionUi, /v4-m325-person-search-result is-name-only/);
   assert.match(registration, /!linked && email/);
   assert.match(registration, /Der aktuelle Name im Portal wird für die Buchung verwendet\./);
   assert.doesNotMatch(registration, /Der aktuelle Mitgliedsname wird für die Buchung verwendet\./);
   assert.doesNotMatch(registration, /linkedMemberId|data-m325-linked-member-id/);
   assert.match(css, /\.v4-m325-person-search-result/);
+  assert.match(css, /\.v4-m325-companion-identity-badges/);
+  assert.match(css, /\.v4-m325-template-person/);
   assert.match(css, /\.v4-m325-registration-identity/);
 });
 

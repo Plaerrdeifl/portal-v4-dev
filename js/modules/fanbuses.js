@@ -691,7 +691,7 @@ function workspaceLoading(title, message, returnTripId = "") {
 function companionPersonBadge(member) {
   if (!member?.linkedPortalUserId) return "";
   const inactive = member.portalUserStatus !== "ACTIVE";
-  return `<span class="v4-person-badge${inactive ? " is-inactive" : ""}">${inactive ? "Portaluser · inaktiv" : "Portaluser"}</span>${member.isMember ? '<span class="v4-person-badge">Mitglied</span>' : ""}`;
+  return `<span class="v4-person-badges v4-m325-companion-identity-badges"><span class="v4-person-badge${inactive ? " is-inactive" : ""}">${inactive ? "Portaluser · inaktiv" : "Portaluser"}</span></span>`;
 }
 
 function companionListCard(list, stopLabels) {
@@ -839,7 +839,7 @@ function openCompanionPersonSearchDialog(listId, panel, summary, companion = nul
   let requestSequence = 0;
 
   const renderResults = people => {
-    results.innerHTML = people.map(person => `<button class="button secondary v4-m325-person-search-result" type="button" data-portal-user-id="${escapeAttr(person.portalUserId)}"><span><strong>${escapeHtml(person.displayName)}</strong></span><span class="v4-person-badges"><span class="v4-person-badge">Portaluser</span>${person.isMember ? '<span class="v4-person-badge">Mitglied</span>' : ""}</span></button>`).join("");
+    results.innerHTML = people.map(person => `<button class="button secondary v4-m325-person-search-result is-name-only" type="button" data-portal-user-id="${escapeAttr(person.portalUserId)}"><strong>${escapeHtml(person.displayName)}</strong></button>`).join("");
     results.querySelectorAll("[data-portal-user-id]").forEach(button => button.addEventListener("click", async () => {
       const selected = people.find(person => person.portalUserId === button.dataset.portalUserId);
       if (!selected) return;

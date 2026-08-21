@@ -350,7 +350,7 @@ function companionMarkup(index, member = null) {
   const linked = Boolean(member?.linkedPortalUserId);
   const portalUnavailable = linked && member.portalUserStatus !== "ACTIVE";
   return `<article class="fanbus-companion" data-m320-companion${member?.id ? ` data-m325-template-member-id="${escapeHtml(member.id)}"` : ""}${linked ? ` data-m325-linked-portal-user-id="${escapeHtml(member.linkedPortalUserId)}"` : ""}>
-    <div class="fanbus-companion-head"><strong>Begleiter ${index + 1}</strong>${linked ? `<span class="v4-person-badge${portalUnavailable ? " is-inactive" : ""}">${portalUnavailable ? "Portaluser · inaktiv" : "Portaluser"}</span>${member.isMember ? '<span class="v4-person-badge">Mitglied</span>' : ""}` : ""}<button class="button small secondary" type="button" data-m320-remove-companion>Entfernen</button></div>
+    <div class="fanbus-companion-head"><strong>Begleiter ${index + 1}</strong>${linked ? `<span class="v4-person-badges v4-m325-companion-identity-badges"><span class="v4-person-badge${portalUnavailable ? " is-inactive" : ""}">${portalUnavailable ? "Portaluser · inaktiv" : "Portaluser"}</span></span>` : ""}<button class="button small secondary" type="button" data-m320-remove-companion>Entfernen</button></div>
     <div class="form-grid"><label>Vorname<input name="companionFirstName" maxlength="120" required value="${escapeHtml(member?.firstName || "")}"${linked ? " readonly" : ""}></label><label>Nachname<input name="companionLastName" maxlength="120" required value="${escapeHtml(member?.lastName || "")}"${linked ? " readonly" : ""}></label>${linked ? '<p class="subtle full">Der aktuelle Name im Portal wird für die Buchung verwendet.</p>' : '<label class="full">E-Mail (optional)<input name="companionEmail" type="email" maxlength="320"></label>'}<label class="full">Buswunsch<select name="companionBusPreference" required><option value="EGAL"${member?.defaultBusPreference === "EGAL" ? " selected" : ""}>Egal</option><option value="RUHIG"${member?.defaultBusPreference === "RUHIG" ? " selected" : ""}>Ruhig</option><option value="PARTY"${member?.defaultBusPreference === "PARTY" ? " selected" : ""}>Party</option></select></label>${stopField}<label class="full">Operativer Hinweis (optional)<textarea name="companionOperationalNote" maxlength="240">${escapeHtml(member?.operationalNote || "")}</textarea></label></div>
   </article>`;
 }
@@ -439,9 +439,9 @@ function renderCompanionListMembers() {
   target.innerHTML = (list?.members || []).map(member => {
     const unavailable = Boolean(member.linkedPortalUserId && member.portalUserStatus !== "ACTIVE");
     const identity = member.linkedPortalUserId
-      ? ` · ${unavailable ? "Portaluser (inaktiv)" : "Portaluser"}${member.isMember ? " · Mitglied" : ""}`
+      ? `<span class="v4-person-badges v4-m325-companion-identity-badges"><span class="v4-person-badge${unavailable ? " is-inactive" : ""}">${unavailable ? "Portaluser · inaktiv" : "Portaluser"}</span></span>`
       : "";
-    return `<label class="check-row fanbus-companion"><input type="checkbox" value="${escapeHtml(member.id)}" data-m325-select-template${unavailable ? " disabled" : " checked"}><span>${escapeHtml(`${member.firstName} ${member.lastName}`)}${identity}</span></label>`;
+    return `<label class="check-row fanbus-companion"><input type="checkbox" value="${escapeHtml(member.id)}" data-m325-select-template${unavailable ? " disabled" : " checked"}><span class="v4-m325-template-person"><span class="v4-m325-template-person-name">${escapeHtml(`${member.firstName} ${member.lastName}`)}</span>${identity}</span></label>`;
   }).join("") || '<p class="subtle">Diese Liste enthält keine Personen.</p>';
 }
 
