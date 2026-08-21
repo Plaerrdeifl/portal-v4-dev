@@ -185,6 +185,18 @@ test("D-055 UI uses Portaluser identity and capability-gated admin controls", as
     registration.indexOf("function renderTrip"),
     registration.indexOf("function appendReferenceConsent")
   );
+  const portalForm = standalone.slice(
+    standalone.indexOf('<form id="m310PortalForm"'),
+    standalone.indexOf("</form>", standalone.indexOf('<form id="m310PortalForm"'))
+  );
+  const guestForm = standalone.slice(
+    standalone.indexOf('<form id="m310GuestForm"'),
+    standalone.indexOf("</form>", standalone.indexOf('<form id="m310GuestForm"'))
+  );
+  const publicMode = registration.slice(
+    registration.indexOf("async function renderMode"),
+    registration.indexOf("async function loadTrip")
+  );
   assert.match(ui, /Portaluser suchen/);
   assert.match(ui, /Portaluser verknüpfen/);
   assert.match(ui, /fanbus\.participant_identity\.manage/);
@@ -210,18 +222,41 @@ test("D-055 UI uses Portaluser identity and capability-gated admin controls", as
   assert.doesNotMatch(registration, /Der aktuelle Mitgliedsname wird für die Buchung verwendet\./);
   assert.doesNotMatch(registration, /linkedMemberId|data-m325-linked-member-id/);
   assert.match(standalone, /Plärrdeifl<small>FANBUS-ANMELDUNG<\/small>/);
+  assert.match(standalone, /Melde dich hier für die ausgewählte Fanbusfahrt an\./);
   assert.doesNotMatch(standalone, /<h1>Fanbus-Anmeldung<\/h1>/);
   assert.match(standalone, /fanbus-public-booking-card[\s\S]*id="m310PublicTrip"[\s\S]*id="m310RegistrationPanel"/);
   assert.doesNotMatch(publicTrip, /trip\.(?:departureAt|priceCents|capacity|registrationOpensAt|registrationClosesAt)/);
+  assert.doesNotMatch(publicTrip, /trip\.venue/);
+  assert.match(publicTrip, /trip\.eventDate[\s\S]*trip\.eventTime[\s\S]*trip\.registrationStatus/);
+  assert.match(publicTrip, /fanbus-public-trip-head[\s\S]*fanbus-public-trip-date[\s\S]*fanbus-public-trip-status/);
+  assert.doesNotMatch(publicTrip, /status-pill/);
+  assert.match(standalone, /fanbus-public-trip-date,\.fanbus-public-trip-status\{font-size:\.84rem/);
   assert.doesNotMatch(publicTrip, />Abfahrt<|>Fahrtpreis<|>Freie Plätze<|>Anmeldezeitraum</);
   assert.match(registration, /elements\.title\.textContent = "Deine Anmeldung"/);
-  assert.doesNotMatch(registration, /Mit Portal anmelden|Angemeldet als/);
+  assert.match(registration, /elements\.title\.textContent = "Anmeldung"/);
+  assert.doesNotMatch(registration, /Mit Portal anmelden|Als Gast anmelden|Angemeldet als/);
   assert.match(registration, /function companionEditorBody\(linked, values\)[\s\S]*linked[\s\S]*Portaluser[\s\S]*Vorname/);
   assert.doesNotMatch(registration, /readonly|Operativer Hinweis/);
   assert.match(registration, /Hinweis \(optional\)/);
-  assert.match(registration, /title: "Mitfahrer hinzufügen"[\s\S]*Aus Mitfahrerliste[\s\S]*Portaluser suchen[\s\S]*Gast hinzufügen/);
-  assert.match(standalone, /\+ Mitfahrer hinzufügen/);
+  assert.doesNotMatch(registration, /Portaluser suchen|fanbus_companion_person_search/);
+  assert.doesNotMatch(standalone, /Portaluser suchen|\+ Mitfahrer hinzufügen/);
+  assert.equal((standalone.match(/<h3>Mitfahrer hinzufügen<\/h3>/g) || []).length, 2);
+  assert.match(portalForm, /data-m320-add-guest="portal"[^>]*>Gast<\/button>[\s\S]*data-m325-open-companion-list[^>]*>Mitfahrerliste<\/button>/);
+  assert.match(guestForm, /data-m320-add-guest="guest"[^>]*>Gast<\/button>/);
+  assert.doesNotMatch(guestForm, /Mitfahrerliste|Portaluser/);
+  assert.match(registration, /data-m320-add-guest="portal"[\s\S]*openCompanionEditor\("portal"\)/);
+  assert.match(registration, /data-m320-add-guest="guest"[\s\S]*openCompanionEditor\("guest"\)/);
+  assert.match(registration, /data-m325-open-companion-list[\s\S]*openCompanionListDialog/);
+  assert.match(registration, /function openCompanionListCreateDialog\(\)[\s\S]*Noch keine Mitfahrerliste vorhanden\.[\s\S]*fanbus_companion_list_upsert[\s\S]*await loadCompanionLists\(\)[\s\S]*setTimeout\(openCompanionListDialog/);
+  assert.match(registration, /submitLabel: "Übernehmen"/);
+  assert.match(standalone, /fanbus-public-list-member input\[type="checkbox"\][^}]*width:24px[^}]*height:24px/);
   assert.doesNotMatch(standalone, /Mitfahrerliste verwenden|Wer fährt mit\?/);
+  assert.match(standalone, /id="m310MemberLoginToggle"[^>]*>Mitgliederlogin<\/button>/);
+  assert.match(standalone, /id="m310MemberLoginPanel"[^>]*hidden[\s\S]*Der Portalzugang ist aktuell Plärrdeifl-Mitgliedern und ausgewählten Personen vorbehalten\. Eine Anmeldung führt nicht automatisch zu einer Freischaltung\./);
+  assert.match(publicMode, /memberLogin\.hidden = true[\s\S]*current\.authenticated && current\.status === "ACTIVE"[\s\S]*elements\.title\.textContent = "Deine Anmeldung"/);
+  assert.match(publicMode, /if \(!current\.authenticated\) \{[\s\S]*elements\.memberLogin\.hidden = false/);
+  assert.doesNotMatch(publicMode, /renderGoogleSignInButton/);
+  assert.match(registration, /async function toggleMemberLogin\(\)[\s\S]*renderGoogleSignInButton\(elements\.google/);
   assert.match(registration, /link\.textContent = linkText/);
   assert.match(registration, /link\.target = "_blank"[\s\S]*link\.rel = "noopener noreferrer"/);
   assert.doesNotMatch(registration, /link\.textContent = normalized/);
@@ -255,8 +290,8 @@ test("compact companion UI preserves current-trip boarding-stop validation", asy
     registration.indexOf("async function submitGuest"),
     registration.indexOf("async function renderMode")
   );
-  const portalSearch = registration.slice(
-    registration.indexOf("function openCompanionPortalSearchDialog"),
+  const listSelection = registration.slice(
+    registration.indexOf("function replaceTemplateCompanions"),
     registration.indexOf("async function submitPortal")
   );
 
@@ -278,8 +313,33 @@ test("compact companion UI preserves current-trip boarding-stop validation", asy
   assert.ok(guestValidation >= 0);
   assert.ok(guestValidation < guestSubmit.indexOf("await fetch("));
 
-  assert.match(portalSearch, /defaultBoardingStopId: null/);
-  assert.match(portalSearch, /!companionCardHasValidBoardingStop\(card\)[\s\S]*requestCompanionBoardingStop\("portal", card\)/);
+  assert.match(listSelection, /selected\.forEach\(member => insertCompanion\("portal", member\)\)/);
+  assert.match(listSelection, /openCompanionListDialog[\s\S]*replaceTemplateCompanions\(list, selected\)/);
+});
+
+test("public companion lists distinguish confirmed empty reads from load errors", async () => {
+  const registration = await read("js/fanbus-registration.js");
+  const loader = registration.slice(
+    registration.indexOf("async function loadCompanionLists"),
+    registration.indexOf("function companionListMemberMarkup")
+  );
+  const dialog = registration.slice(
+    registration.indexOf("function openCompanionListDialog"),
+    registration.indexOf("async function submitPortal")
+  );
+
+  assert.match(loader, /api\.call\("fanbus_companion_lists_list"[\s\S]*companionListsLoadState = "LOADED"/);
+  assert.match(loader, /catch \{[\s\S]*companionLists = \[\];[\s\S]*companionListsLoadState = "ERROR"/);
+
+  const errorStart = dialog.indexOf('if (companionListsLoadState === "ERROR")');
+  const pendingStart = dialog.indexOf('if (companionListsLoadState !== "LOADED")');
+  const emptyStart = dialog.indexOf('if (companionListsLoadState === "LOADED" && !companionLists.length)');
+  assert.ok(errorStart >= 0 && pendingStart > errorStart && emptyStart > pendingStart);
+
+  const errorBranch = dialog.slice(errorStart, pendingStart);
+  assert.match(errorBranch, /Deine Mitfahrerliste konnte gerade nicht geladen werden\. Bitte versuche es erneut\./);
+  assert.doesNotMatch(errorBranch, /openCompanionListCreateDialog|Mitfahrerliste anlegen/);
+  assert.match(dialog.slice(emptyStart), /openCompanionListCreateDialog\(\)/);
 });
 
 test("D-055 pgTAP coverage preserves M020 M150 and M330 boundaries", async () => {

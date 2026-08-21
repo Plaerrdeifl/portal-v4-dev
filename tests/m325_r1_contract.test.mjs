@@ -226,7 +226,10 @@ test("M325 UI reuses portal smart forms, field widths, dialogs and action contai
 
   assert.match(standalone, /data-m325-primary-stop="portal"/);
   assert.doesNotMatch(standalone, /data-m325-companion-list|data-m325-apply-companion-list/);
-  assert.match(standalone, /data-m320-add-companion="portal"[^>]*>\+ Mitfahrer hinzufügen/);
+  assert.match(standalone, /data-m320-add-guest="portal"[^>]*>Gast<\/button>/);
+  assert.match(standalone, /data-m325-open-companion-list[^>]*>Mitfahrerliste<\/button>/);
+  assert.match(standalone, /data-m320-add-guest="guest"[^>]*>Gast<\/button>/);
+  assert.doesNotMatch(standalone, /data-m320-add-companion|Portaluser suchen/);
   assert.match(standalone, /\.fanbus-companion\{[^}]*grid-template-columns/);
   assert.match(registration, /function companionEditorBody\(linked, values\)/);
   assert.match(registration, /v4-field-half">Vorname/);

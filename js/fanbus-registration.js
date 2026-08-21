@@ -2,7 +2,7 @@ import { api } from "./api.js";
 import { auth } from "./auth.js";
 import { CONFIG } from "./config.js";
 import { renderGoogleSignInButton } from "./google-signin.js";
-import { closeAllDialogs, openDialog } from "./modules/common.js";
+import { openDialog } from "./modules/common.js";
 import { getSupabaseClient } from "./supabase-client.js";
 
 const TURNSTILE_SCRIPT_ID = "m310-turnstile-api";
@@ -18,6 +18,9 @@ const elements = {
   title: document.getElementById("m310RegistrationTitle"),
   intro: document.getElementById("m310RegistrationIntro"),
   status: document.getElementById("m310RegistrationStatus"),
+  memberLogin: document.getElementById("m310MemberLogin"),
+  memberLoginToggle: document.getElementById("m310MemberLoginToggle"),
+  memberLoginPanel: document.getElementById("m310MemberLoginPanel"),
   google: document.getElementById("m310GoogleSignIn"),
   portalForm: document.getElementById("m310PortalForm"),
   portalIdentity: document.getElementById("m310PortalIdentity"),
@@ -34,6 +37,8 @@ let portalAttempt = null;
 let portalPreviewFingerprint = "";
 let selectedCompanionListId = "";
 let companionLists = [];
+let companionListsLoadState = "PENDING";
+let googleSignInReady = false;
 let registrationComplete = false;
 let modeRenderSequence = 0;
 
@@ -125,14 +130,11 @@ function renderTrip() {
 
   elements.trip.className = "entity-card fanbus-public-trip-card";
   elements.trip.innerHTML = `
-    <div class="entity-head">
-      <div>
-        <span class="subtle">${escapeHtml(formatEventDate(trip.eventDate))} · ${escapeHtml(formatEventTime(trip.eventTime))}</span>
-        <h2>${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</h2>
-      </div>
-      <span class="status-pill${statusClass ? ` ${statusClass}` : ""}">${escapeHtml(registrationStatusLabel(trip.registrationStatus))}</span>
+    <div class="fanbus-public-trip-head">
+      <span class="fanbus-public-trip-date">${escapeHtml(formatEventDate(trip.eventDate))} · ${escapeHtml(formatEventTime(trip.eventTime))}</span>
+      <span class="fanbus-public-trip-status${statusClass ? ` ${statusClass}` : ""}">${escapeHtml(registrationStatusLabel(trip.registrationStatus))}</span>
     </div>
-    ${trip.venue ? `<p class="subtle">${escapeHtml(trip.venue)}</p>` : ""}
+    <h2>${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</h2>
     ${tripCancelled ? `
       <div class="notice error fanbus-trip-cancellation" role="status">
         <strong>Fahrt abgesagt</strong>
@@ -152,8 +154,10 @@ function renderTrip() {
     elements.intro.textContent = tripCancelled
       ? "Diese Fanbusfahrt wurde abgesagt. Eine Anmeldung ist nicht möglich."
       : "Für diese Fahrt ist aktuell keine Anmeldung möglich.";
+    elements.intro.hidden = false;
     elements.portalForm.hidden = true;
     elements.guestForm.hidden = true;
+    elements.memberLogin.hidden = true;
     elements.google.hidden = true;
     setStatus("", "");
     return;
@@ -332,6 +336,8 @@ function finishRegistration(outcome = "CREATED") {
     : "Deine gemeinsame Anmeldung wurde erfolgreich entgegengenommen.";
   elements.portalForm.hidden = true;
   elements.guestForm.hidden = true;
+  elements.memberLogin.hidden = true;
+  elements.memberLoginPanel.hidden = true;
   elements.google.hidden = true;
   removeTurnstile();
   setStatus(waitlisted ? "Die gesamte Anmeldung ist auf der Warteliste." : "Die Fanbus-Anmeldung wurde bestätigt.", waitlisted ? "warning" : "success");
@@ -577,27 +583,6 @@ function openCompanionEditor(mode, card = null) {
   });
 }
 
-function addCompanion(mode) {
-  const target = document.querySelector(`[data-m320-companions="${mode}"]`);
-  if (!target || target.children.length >= 19) return;
-  if (mode !== "portal") {
-    openCompanionEditor(mode);
-    return;
-  }
-  const dialog = openDialog({
-    kicker: "Mitfahrer",
-    title: "Mitfahrer hinzufügen",
-    body: `<div class="fanbus-public-add-choice">
-      <button class="button secondary" type="button" data-m325-add-from-list>Aus Mitfahrerliste</button>
-      <button class="button secondary" type="button" data-m325-add-portal-user>Portaluser suchen</button>
-      <button class="button secondary" type="button" data-m325-add-guest>Gast hinzufügen</button>
-    </div>`
-  });
-  dialog.querySelector("[data-m325-add-from-list]")?.addEventListener("click", openCompanionListDialog);
-  dialog.querySelector("[data-m325-add-portal-user]")?.addEventListener("click", openCompanionPortalSearchDialog);
-  dialog.querySelector("[data-m325-add-guest]")?.addEventListener("click", () => openCompanionEditor(mode));
-}
-
 function companionsFor(form) {
   return [...form.querySelectorAll("[data-m320-companion]")].map(card => {
     const linked = Boolean(card.dataset.m325LinkedPortalUserId);
@@ -618,11 +603,14 @@ function companionsFor(form) {
 }
 
 async function loadCompanionLists() {
+  companionListsLoadState = "PENDING";
   try {
     const data = await api.call("fanbus_companion_lists_list", {});
     companionLists = Array.isArray(data?.lists) ? data.lists : [];
+    companionListsLoadState = "LOADED";
   } catch {
     companionLists = [];
+    companionListsLoadState = "ERROR";
   }
   return companionLists;
 }
@@ -644,13 +632,43 @@ function replaceTemplateCompanions(list, selected) {
   updateBookingSummary("portal");
 }
 
+function openCompanionListCreateDialog() {
+  openDialog({
+    kicker: "Mitfahrer",
+    title: "Mitfahrerliste anlegen",
+    body: `<form class="form-grid v4-smart-form">
+      <p class="subtle v4-field-full">Noch keine Mitfahrerliste vorhanden.</p>
+      <label class="v4-field-full">Listenname<input name="name" maxlength="120" required placeholder="z. B. Auswärtsfahrt"></label>
+    </form>`,
+    submitLabel: "Mitfahrerliste anlegen",
+    onSubmit: async values => {
+      const created = await api.call("fanbus_companion_list_upsert", { name: values.name });
+      selectedCompanionListId = String(created?.id || "");
+      await loadCompanionLists();
+      window.setTimeout(openCompanionListDialog, 0);
+    }
+  });
+}
+
 function openCompanionListDialog() {
-  if (!companionLists.length) {
+  if (companionListsLoadState === "ERROR") {
     openDialog({
       kicker: "Mitfahrer",
-      title: "Aus Mitfahrerliste",
-      body: '<p class="notice">Du hast noch keine Mitfahrerliste. Lege sie zuerst im Portal unter „Meine Mitfahrer“ an.</p>'
+      title: "Mitfahrerliste",
+      body: '<p class="subtle">Deine Mitfahrerliste konnte gerade nicht geladen werden. Bitte versuche es erneut.</p>'
     });
+    return;
+  }
+  if (companionListsLoadState !== "LOADED") {
+    openDialog({
+      kicker: "Mitfahrer",
+      title: "Mitfahrerliste",
+      body: '<p class="subtle">Deine Mitfahrerliste wird gerade geladen.</p>'
+    });
+    return;
+  }
+  if (companionListsLoadState === "LOADED" && !companionLists.length) {
+    openCompanionListCreateDialog();
     return;
   }
   const initialList = companionLists.find(list => list.id === selectedCompanionListId) || companionLists[0];
@@ -661,7 +679,7 @@ function openCompanionListDialog() {
       <label>Liste<select name="listId">${companionLists.map(list => `<option value="${escapeHtml(list.id)}"${list.id === initialList.id ? " selected" : ""}>${escapeHtml(list.name)} (${list.members.length})</option>`).join("")}</select></label>
       <div class="fanbus-public-list-members" data-m325-public-list-members></div>
     </form>`,
-    submitLabel: "Auswahl übernehmen",
+    submitLabel: "Übernehmen",
     onSubmit: async values => {
       const list = companionLists.find(item => item.id === values.listId);
       const selected = (list?.members || []).filter(member => values[`member_${member.id}`] === "on");
@@ -680,97 +698,6 @@ function openCompanionListDialog() {
   };
   select.addEventListener("change", renderMembers);
   renderMembers();
-}
-
-function addSearchedPortalUser(list, member) {
-  const target = document.querySelector('[data-m320-companions="portal"]');
-  if (!target) return null;
-  if (selectedCompanionListId && selectedCompanionListId !== list.id) {
-    target.querySelectorAll("[data-m325-template-member-id]").forEach(card => card.remove());
-  }
-  selectedCompanionListId = list.id;
-  let card = target.querySelector(`[data-m325-template-member-id="${CSS.escape(member.id)}"]`);
-  if (!card) card = insertCompanion("portal", member);
-  updateBookingSummary("portal");
-  return card;
-}
-
-function openCompanionPortalSearchDialog() {
-  if (!companionLists.length) {
-    openDialog({
-      kicker: "Mitfahrer",
-      title: "Portaluser suchen",
-      body: '<p class="notice">Für verknüpfte Portaluser brauchst du zuerst eine Mitfahrerliste unter „Meine Mitfahrer“.</p>'
-    });
-    return;
-  }
-  const initialList = companionLists.find(list => list.id === selectedCompanionListId) || companionLists[0];
-  const dialog = openDialog({
-    kicker: "Mitfahrer",
-    title: "Portaluser suchen",
-    body: `<form class="form-grid v4-smart-form">
-      <label class="v4-field-full">In Liste speichern<select name="listId">${companionLists.map(list => `<option value="${escapeHtml(list.id)}"${list.id === initialList.id ? " selected" : ""}>${escapeHtml(list.name)}</option>`).join("")}</select></label>
-      <label class="v4-field-full">Name<input name="query" type="search" minlength="3" autocomplete="off" placeholder="Mindestens 3 Zeichen"></label>
-      <p class="subtle v4-field-full" data-m325-public-person-status>Gib mindestens 3 Zeichen des Namens ein.</p>
-      <div class="fanbus-public-search-results v4-field-full" data-m325-public-person-results></div>
-    </form>`
-  });
-  const input = dialog.querySelector('[name="query"]');
-  const listSelect = dialog.querySelector('[name="listId"]');
-  const status = dialog.querySelector("[data-m325-public-person-status]");
-  const results = dialog.querySelector("[data-m325-public-person-results]");
-  let timer = 0;
-  let sequence = 0;
-  input.addEventListener("input", () => {
-    window.clearTimeout(timer);
-    const query = input.value.trim();
-    const currentSequence = ++sequence;
-    results.replaceChildren();
-    if (query.length < 3) {
-      status.textContent = "Gib mindestens 3 Zeichen des Namens ein.";
-      return;
-    }
-    status.textContent = "Suche läuft …";
-    timer = window.setTimeout(async () => {
-      try {
-        const data = await api.call("fanbus_companion_person_search", { query });
-        if (currentSequence !== sequence) return;
-        const people = Array.isArray(data?.people) ? data.people.slice(0, 8) : [];
-        status.textContent = people.length ? `${people.length} Treffer` : "Keine aktiven Portaluser gefunden.";
-        results.innerHTML = people.map(person => `<button class="button secondary" type="button" data-portal-user-id="${escapeHtml(person.portalUserId)}"><strong>${escapeHtml(person.displayName)}</strong></button>`).join("");
-        results.querySelectorAll("[data-portal-user-id]").forEach(button => button.addEventListener("click", async () => {
-          const selected = people.find(person => person.portalUserId === button.dataset.portalUserId);
-          const listId = listSelect.value;
-          if (!selected || !listId) return;
-          button.disabled = true;
-          status.textContent = "Portaluser wird hinzugefügt …";
-          try {
-            const created = await api.call("fanbus_companion_member_upsert", {
-              listId,
-              linkedPortalUserId: selected.portalUserId,
-              defaultBusPreference: "EGAL",
-              defaultBoardingStopId: null,
-              operationalNote: null
-            });
-            await loadCompanionLists();
-            const list = companionLists.find(item => item.id === listId);
-            const member = list?.members.find(item => item.id === created?.id);
-            if (!list || !member) throw new Error("PORTAL_USER_NOT_LOADED");
-            const card = addSearchedPortalUser(list, member);
-            closeAllDialogs();
-            if (card && !companionCardHasValidBoardingStop(card)) {
-              window.setTimeout(() => requestCompanionBoardingStop("portal", card), 0);
-            }
-          } catch {
-            button.disabled = false;
-            status.textContent = "Der Portaluser konnte nicht hinzugefügt werden.";
-          }
-        }));
-      } catch {
-        if (currentSequence === sequence) status.textContent = "Die Portalusersuche ist gerade nicht verfügbar.";
-      }
-    }, 300);
-  });
 }
 
 async function submitPortal(event) {
@@ -949,6 +876,32 @@ async function submitGuest(event) {
   }
 }
 
+async function toggleMemberLogin() {
+  if (auth.current().authenticated) return;
+  const opening = elements.memberLoginPanel.hidden;
+  elements.memberLoginPanel.hidden = !opening;
+  elements.google.hidden = !opening;
+  elements.memberLoginToggle.setAttribute("aria-expanded", String(opening));
+  if (!opening || googleSignInReady) return;
+
+  try {
+    await renderGoogleSignInButton(elements.google, {
+      clientId: CONFIG.auth.googleClientId,
+      onCredential: async (response, nonce) => {
+        try {
+          await auth.signInWithGoogleIdToken(response?.credential, nonce);
+          await renderMode();
+        } catch {
+          setStatus("Die Portal-Anmeldung ist fehlgeschlagen. Die Gastanmeldung bleibt verfügbar.", "error");
+        }
+      }
+    });
+    googleSignInReady = true;
+  } catch {
+    setStatus("Die Google-Anmeldung ist aktuell nicht verfügbar. Die Gastanmeldung bleibt verfügbar.", "warning");
+  }
+}
+
 async function renderMode() {
   const sequence = ++modeRenderSequence;
   if (!trip || !["OPEN", "WAITLIST"].includes(trip.registrationStatus) || registrationComplete) return;
@@ -956,6 +909,9 @@ async function renderMode() {
   const current = auth.current();
   elements.portalForm.hidden = true;
   elements.guestForm.hidden = true;
+  elements.memberLogin.hidden = true;
+  elements.memberLoginPanel.hidden = true;
+  elements.memberLoginToggle.setAttribute("aria-expanded", "false");
   elements.google.hidden = true;
   setStatus("", "");
 
@@ -965,38 +921,24 @@ async function renderMode() {
     elements.intro.textContent = "";
     elements.intro.hidden = true;
     elements.portalIdentity.innerHTML = `<strong>${escapeHtml(current.user?.name || current.user?.email || "Portalprofil")}</strong><span class="v4-person-badge">Portaluser</span>`;
-    elements.portalForm.hidden = false;
     await loadCompanionLists();
+    if (sequence !== modeRenderSequence) return;
+    elements.portalForm.hidden = false;
     updateBookingSummary("portal");
     return;
   }
 
-  elements.title.textContent = "Als Gast anmelden";
-  elements.intro.hidden = false;
+  elements.title.textContent = "Anmeldung";
   elements.intro.textContent = current.authenticated
     ? "Dein Portalzugang ist nicht aktiv. Du kannst dich weiterhin als Gast anmelden."
-    : "Melde dich mit Google am Portal an oder nutze die Gastanmeldung.";
+    : "";
+  elements.intro.hidden = !elements.intro.textContent;
   elements.guestForm.hidden = false;
   updateBookingSummary("guest");
   elements.guestForm.querySelector('button[type="submit"]').disabled = false;
 
   if (!current.authenticated) {
-    elements.google.hidden = false;
-    try {
-      await renderGoogleSignInButton(elements.google, {
-        clientId: CONFIG.auth.googleClientId,
-        onCredential: async (response, nonce) => {
-          try {
-            await auth.signInWithGoogleIdToken(response?.credential, nonce);
-            await renderMode();
-          } catch {
-            setStatus("Die Portal-Anmeldung ist fehlgeschlagen. Die Gastanmeldung bleibt verfügbar.", "error");
-          }
-        }
-      });
-    } catch {
-      setStatus("Die Google-Anmeldung ist aktuell nicht verfügbar. Die Gastanmeldung bleibt verfügbar.", "warning");
-    }
+    elements.memberLogin.hidden = false;
   }
 
   const turnstileReady = await ensureTurnstile();
@@ -1059,8 +1001,10 @@ async function initialize() {
 
 elements.portalForm.addEventListener("submit", submitPortal);
 elements.guestForm.addEventListener("submit", submitGuest);
-document.querySelector('[data-m320-add-companion="portal"]')?.addEventListener("click", () => addCompanion("portal"));
-document.querySelector('[data-m320-add-companion="guest"]')?.addEventListener("click", () => addCompanion("guest"));
+document.querySelector('[data-m320-add-guest="portal"]')?.addEventListener("click", () => openCompanionEditor("portal"));
+document.querySelector('[data-m320-add-guest="guest"]')?.addEventListener("click", () => openCompanionEditor("guest"));
+document.querySelector("[data-m325-open-companion-list]")?.addEventListener("click", openCompanionListDialog);
+elements.memberLoginToggle.addEventListener("click", () => { void toggleMemberLogin(); });
 elements.portalForm.addEventListener("input", () => {
   resetPortalSubmissionState();
   updateBookingSummary("portal");
