@@ -101,7 +101,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260820071500_adjust_fanbus_read_permissions_m010_r2.sql",
     "20260820073000_retire_member_role_m010_r2.sql",
     "20260820074500_manage_team_functions_m010_r2.sql",
-    "20260820080000_dynamic_fanbus_org_recipients_m010_r2.sql"
+    "20260820080000_dynamic_fanbus_org_recipients_m010_r2.sql",
+    "20260820120000_add_m325_r2_member_linking.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);

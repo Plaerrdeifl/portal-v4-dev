@@ -171,14 +171,19 @@ test("pd_api routes D-055 actions while private functions remain closed", async 
 });
 
 test("D-055 UI uses Portaluser identity and capability-gated admin controls", async () => {
-  const [ui, registration, css] = await Promise.all([
+  const [ui, registration, css, standalone] = await Promise.all([
     read("js/modules/fanbuses.js"),
     read("js/fanbus-registration.js"),
-    read("css/app.css")
+    read("css/app.css"),
+    read("fanbus-anmeldung.html")
   ]);
   const companionUi = ui.slice(
     ui.indexOf("function companionPersonBadge"),
     ui.indexOf("function operationEventLabel")
+  );
+  const publicTrip = registration.slice(
+    registration.indexOf("function renderTrip"),
+    registration.indexOf("function appendReferenceConsent")
   );
   assert.match(ui, /Portaluser suchen/);
   assert.match(ui, /Portaluser verknüpfen/);
@@ -201,13 +206,80 @@ test("D-055 UI uses Portaluser identity and capability-gated admin controls", as
   assert.doesNotMatch(companionUi, /member\.isMember|person\.isMember|>Mitglied</);
   assert.match(companionUi, /v4-m325-person-search-result is-name-only/);
   assert.match(registration, /!linked && email/);
-  assert.match(registration, /Der aktuelle Name im Portal wird für die Buchung verwendet\./);
+  assert.doesNotMatch(registration, /Der aktuelle Name im Portal wird für die Buchung verwendet\./);
   assert.doesNotMatch(registration, /Der aktuelle Mitgliedsname wird für die Buchung verwendet\./);
   assert.doesNotMatch(registration, /linkedMemberId|data-m325-linked-member-id/);
+  assert.match(standalone, /Plärrdeifl<small>FANBUS-ANMELDUNG<\/small>/);
+  assert.doesNotMatch(standalone, /<h1>Fanbus-Anmeldung<\/h1>/);
+  assert.match(standalone, /fanbus-public-booking-card[\s\S]*id="m310PublicTrip"[\s\S]*id="m310RegistrationPanel"/);
+  assert.doesNotMatch(publicTrip, /trip\.(?:departureAt|priceCents|capacity|registrationOpensAt|registrationClosesAt)/);
+  assert.doesNotMatch(publicTrip, />Abfahrt<|>Fahrtpreis<|>Freie Plätze<|>Anmeldezeitraum</);
+  assert.match(registration, /elements\.title\.textContent = "Deine Anmeldung"/);
+  assert.doesNotMatch(registration, /Mit Portal anmelden|Angemeldet als/);
+  assert.match(registration, /function companionEditorBody\(linked, values\)[\s\S]*linked[\s\S]*Portaluser[\s\S]*Vorname/);
+  assert.doesNotMatch(registration, /readonly|Operativer Hinweis/);
+  assert.match(registration, /Hinweis \(optional\)/);
+  assert.match(registration, /title: "Mitfahrer hinzufügen"[\s\S]*Aus Mitfahrerliste[\s\S]*Portaluser suchen[\s\S]*Gast hinzufügen/);
+  assert.match(standalone, /\+ Mitfahrer hinzufügen/);
+  assert.doesNotMatch(standalone, /Mitfahrerliste verwenden|Wer fährt mit\?/);
+  assert.match(registration, /link\.textContent = linkText/);
+  assert.match(registration, /link\.target = "_blank"[\s\S]*link\.rel = "noopener noreferrer"/);
+  assert.doesNotMatch(registration, /link\.textContent = normalized/);
+  assert.match(registration, /\$\{total\} \$\{total === 1 \? "Person wird" : "Personen werden"\} angemeldet/);
+  assert.doesNotMatch(registration, /reguläre Anmeldung|Wartelistenanmeldung|Begleiter/);
+  assert.ok(
+    registration.indexOf('api.call("fanbus_companion_duplicate_preview"')
+      < registration.indexOf('"fanbus_companion_booking_submit"')
+  );
+  assert.match(registration, /if \(!preview\.canSubmit\)[\s\S]*Buchung nicht möglich/);
+  assert.match(registration, /portalPreviewFingerprint = fingerprint;[\s\S]*previewBox\.hidden = true;[\s\S]*previewBox\.replaceChildren\(\);/);
+  assert.doesNotMatch(registration, /Duplicate Preview|Geprüfte Buchung bestätigen|Vorschau ist bereit/);
+  assert.match(registration, /if \(\["CREATED", "WAITLISTED", "ALREADY_ACTIVE"\][\s\S]*previewBox\.hidden = true;[\s\S]*finishRegistration/);
   assert.match(css, /\.v4-m325-person-search-result/);
   assert.match(css, /\.v4-m325-companion-identity-badges/);
   assert.match(css, /\.v4-m325-template-person/);
   assert.match(css, /\.v4-m325-registration-identity/);
+});
+
+test("compact companion UI preserves current-trip boarding-stop validation", async () => {
+  const registration = await read("js/fanbus-registration.js");
+  const validation = registration.slice(
+    registration.indexOf("function tripHasBoardingStops"),
+    registration.indexOf("function companionMarkup")
+  );
+  const portalSubmit = registration.slice(
+    registration.indexOf("async function submitPortal"),
+    registration.indexOf("async function submitGuest")
+  );
+  const guestSubmit = registration.slice(
+    registration.indexOf("async function submitGuest"),
+    registration.indexOf("async function renderMode")
+  );
+  const portalSearch = registration.slice(
+    registration.indexOf("function openCompanionPortalSearchDialog"),
+    registration.indexOf("async function submitPortal")
+  );
+
+  assert.match(validation, /if \(!tripHasBoardingStops\(\)\) return true/);
+  assert.match(validation, /companionBoardingStopId[\s\S]*resolvedBoardingStop\(boardingStopId\)/);
+  assert.match(validation, /querySelectorAll\("\[data-m320-companion\]"\)[\s\S]*find\(card => !companionCardHasValidBoardingStop\(card\)\)/);
+  assert.match(validation, /Bitte wähle für \$\{name\} einen Zustiegsort\./);
+  assert.match(validation, /requestCompanionBoardingStop\(mode, invalidCard\)[\s\S]*return false/);
+  assert.match(registration, /const boardingStop = resolvedBoardingStop\([\s\S]*boardingStop\?\.id \? \{ boardingStopId: boardingStop\.id \} : \{\}/);
+  assert.match(registration, /else if \(tripHasBoardingStops\(\)\) parts\.push\("Zustiegsort fehlt"\)/);
+  assert.match(registration, /fanbus-companion-meta[\s\S]*data-m325-edit-booking-companion>Ändern/);
+
+  const portalValidation = portalSubmit.indexOf('validateCompanionBoardingStops(elements.portalForm, "portal")');
+  assert.ok(portalValidation >= 0);
+  assert.ok(portalValidation < portalSubmit.indexOf('api.call("fanbus_companion_duplicate_preview"'));
+  assert.ok(portalValidation < portalSubmit.indexOf('"fanbus_companion_booking_submit"'));
+
+  const guestValidation = guestSubmit.indexOf('validateCompanionBoardingStops(elements.guestForm, "guest")');
+  assert.ok(guestValidation >= 0);
+  assert.ok(guestValidation < guestSubmit.indexOf("await fetch("));
+
+  assert.match(portalSearch, /defaultBoardingStopId: null/);
+  assert.match(portalSearch, /!companionCardHasValidBoardingStop\(card\)[\s\S]*requestCompanionBoardingStop\("portal", card\)/);
 });
 
 test("D-055 pgTAP coverage preserves M020 M150 and M330 boundaries", async () => {

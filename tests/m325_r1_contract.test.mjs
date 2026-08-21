@@ -80,7 +80,8 @@ test("M325 extends public guest and portal registration only with bounded stop/n
   assert.match(registration, /participants: templateCompanions/);
   assert.match(standalone, /data-m325-primary-stop="portal"/);
   assert.match(standalone, /data-m325-primary-stop="guest"/);
-  assert.match(standalone, /data-m325-companion-list-members/);
+  assert.doesNotMatch(standalone, /data-m325-companion-list-members/);
+  assert.match(registration, /data-m325-public-list-members/);
   assert.match(standalone, /data-m325-duplicate-preview/);
 });
 
@@ -182,10 +183,10 @@ test("M325 UI reuses portal smart forms, field widths, dialogs and action contai
   assert.doesNotMatch(companionWorkspace, /dialog-actions/);
   assert.match(companionWorkspace, /class="v4-m325-workspace-header"><button[^>]+data-m325-back/);
   assert.match(companionWorkspace, /class="v4-detail-actions v4-field-full"><button[^>]+type="submit"/);
-  assert.match(companionWorkspace, /v4-m325-list-card/);
-  assert.match(companionWorkspace, /v4-compact-record-copy v4-m325-record-copy/);
-  assert.match(companionWorkspace, /v4-row-actions v4-m325-list-actions/);
-  assert.match(companionWorkspace, /v4-row-actions v4-m325-member-actions/);
+  assert.match(ui, /v4-m325-list-card/);
+  assert.match(ui, /v4-compact-record-copy v4-m325-record-copy/);
+  assert.match(ui, /v4-row-actions v4-m325-list-actions/);
+  assert.match(ui, /v4-row-actions v4-m325-member-actions/);
 
   const operationsWorkspace = sourceBetween(
     ui,
@@ -223,12 +224,14 @@ test("M325 UI reuses portal smart forms, field widths, dialogs and action contai
   assert.doesNotMatch(`${ui}\n${css}`, /v4-m325-button\b/);
   assert.match(css, /\[data-m325-operation-filters\] > \.v4-field-four \{ grid-column: span 6 !important; \}/);
 
-  assert.match(standalone, /class="full" data-m325-primary-stop="portal"/);
-  assert.match(standalone, /class="full" data-m325-companion-list/);
-  assert.match(standalone, /class="fanbus-public-actions full"><button[^>]+data-m325-apply-companion-list/);
-  assert.match(standalone, /\.fanbus-companion-head\{[^}]*flex-wrap:wrap/);
-  assert.match(registration, /<div class="form-grid"><label>Vorname/);
-  assert.match(registration, /<label class="full">Operativer Hinweis/);
+  assert.match(standalone, /data-m325-primary-stop="portal"/);
+  assert.doesNotMatch(standalone, /data-m325-companion-list|data-m325-apply-companion-list/);
+  assert.match(standalone, /data-m320-add-companion="portal"[^>]*>\+ Mitfahrer hinzufügen/);
+  assert.match(standalone, /\.fanbus-companion\{[^}]*grid-template-columns/);
+  assert.match(registration, /function companionEditorBody\(linked, values\)/);
+  assert.match(registration, /v4-field-half">Vorname/);
+  assert.match(registration, /v4-field-full">Hinweis \(optional\)/);
+  assert.doesNotMatch(registration, /Operativer Hinweis/);
 });
 
 test("M325 F5 Round 2 keeps workspace navigation, mobile cards and dialog forms structurally distinct", async () => {
