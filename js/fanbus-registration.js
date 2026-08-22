@@ -38,6 +38,8 @@ let portalPreviewFingerprint = "";
 let selectedCompanionListId = "";
 let companionLists = [];
 let companionListsLoadState = "PENDING";
+let userBoardingPreference = null;
+let portalBoardingStopTouched = false;
 let googleSignInReady = false;
 let registrationComplete = false;
 let modeRenderSequence = 0;
@@ -356,13 +358,19 @@ function finishRegistration(outcome = "CREATED") {
 }
 
 function busPreferenceLabel(value) {
-  return { EGAL: "Egal", RUHIG: "Ruhig", PARTY: "Party" }[value] || "Egal";
+  return { EGAL: "EGAL", RUHIG: "RUHIG", PARTY: "PARTY" }[value] || "EGAL";
 }
 
 function busPreferenceOptions(selected = "EGAL") {
   return ["EGAL", "RUHIG", "PARTY"].map(value =>
     `<option value="${value}"${value === selected ? " selected" : ""}>${busPreferenceLabel(value)}</option>`
   ).join("");
+}
+
+function busPreferenceSelectionEnabled() {
+  return trip?.busPreferenceSelectionEnabled === true
+    && Array.isArray(trip?.allowedBusPreferences)
+    && trip.allowedBusPreferences.join(",") === "EGAL,RUHIG,PARTY";
 }
 
 function resolvedBoardingStop(value) {
@@ -386,20 +394,25 @@ function boardingStopOptions(selected = "") {
 }
 
 function companionValues(member = {}) {
+  const preferredStop = resolvedBoardingStop(
+    member.boardingStopId || member.defaultBoardingStopId || ""
+  ) || resolvedBoardingStop(trip?.defaultTripBoardingStopId || "");
   return {
     firstName: String(member.firstName || ""),
     lastName: String(member.lastName || ""),
     email: String(member.email || ""),
-    busPreference: String(member.busPreference || member.defaultBusPreference || "EGAL"),
-    boardingStopId: resolvedBoardingStopValue(
-      member.boardingStopId || member.defaultBoardingStopId || ""
-    ),
+    busPreference: busPreferenceSelectionEnabled()
+      ? String(member.busPreference || member.defaultBusPreference || "EGAL")
+      : "EGAL",
+    boardingStopId: String(preferredStop?.id || ""),
     operationalNote: String(member.operationalNote || "")
   };
 }
 
 function companionMeta(values) {
-  const parts = [busPreferenceLabel(values.busPreference)];
+  const parts = busPreferenceSelectionEnabled()
+    ? [busPreferenceLabel(values.busPreference)]
+    : [];
   const stop = resolvedBoardingStop(values.boardingStopId);
   if (stop?.label) parts.push(stop.label);
   else if (tripHasBoardingStops()) parts.push("Zustiegsort fehlt");
@@ -470,7 +483,21 @@ function renderBoardingStopFields() {
     if (!label || !select) return;
     label.hidden = !hasStops;
     select.required = hasStops;
-    select.innerHTML = hasStops ? boardingStopOptions() : "";
+    select.innerHTML = hasStops
+      ? boardingStopOptions(trip?.defaultTripBoardingStopId || "")
+      : "";
+  });
+}
+
+function renderBusPreferenceFields() {
+  const enabled = busPreferenceSelectionEnabled();
+  ["portal", "guest"].forEach(mode => {
+    const field = document.querySelector(`[data-m320-bus-preference="${mode}"]`);
+    const select = field?.querySelector("select");
+    if (!field || !select) return;
+    field.hidden = !enabled;
+    select.required = enabled;
+    if (!enabled) select.value = "EGAL";
   });
 }
 
@@ -558,7 +585,9 @@ function companionEditorBody(linked, values) {
     ${linked
       ? `<div class="fanbus-public-identity-row v4-field-full"><strong>${escapeHtml(`${values.firstName} ${values.lastName}`.trim())}</strong><span class="v4-person-badge">Portaluser</span></div>`
       : `<label class="v4-field-half">Vorname<input name="firstName" maxlength="120" required value="${escapeHtml(values.firstName)}"></label><label class="v4-field-half">Nachname<input name="lastName" maxlength="120" required value="${escapeHtml(values.lastName)}"></label><label class="v4-field-full">E-Mail (optional)<input name="email" type="email" maxlength="320" value="${escapeHtml(values.email)}"></label>`}
-    <label class="v4-field-full">Buswunsch<select name="busPreference" required>${busPreferenceOptions(values.busPreference)}</select></label>
+    ${busPreferenceSelectionEnabled()
+      ? `<label class="v4-field-full">Buswunsch<select name="busPreference" required>${busPreferenceOptions(values.busPreference)}</select></label>`
+      : ""}
     ${stopField}
     <label class="v4-field-full">Hinweis (optional)<textarea name="operationalNote" maxlength="240">${escapeHtml(values.operationalNote)}</textarea></label>
   </form>`;
@@ -584,7 +613,7 @@ function openCompanionEditor(mode, card = null) {
         firstName: linked ? current.firstName : values.firstName,
         lastName: linked ? current.lastName : values.lastName,
         email: linked ? "" : values.email,
-        busPreference: values.busPreference,
+        busPreference: busPreferenceSelectionEnabled() ? values.busPreference : "EGAL",
         boardingStopId: values.boardingStopId,
         operationalNote: values.operationalNote
       });
@@ -606,7 +635,9 @@ function companionsFor(form) {
       firstName: card.querySelector('[name="companionFirstName"]')?.value.trim() || "",
       lastName: card.querySelector('[name="companionLastName"]')?.value.trim() || "",
       ...(!linked && email ? { email } : {}),
-      busPreference: card.querySelector('[name="companionBusPreference"]')?.value || "",
+      busPreference: busPreferenceSelectionEnabled()
+        ? card.querySelector('[name="companionBusPreference"]')?.value || "EGAL"
+        : "EGAL",
       ...(boardingStop?.id ? { boardingStopId: boardingStop.id } : {}),
       operationalNote: card.querySelector('[name="companionOperationalNote"]')?.value.trim() || "",
       ...(card.dataset.m325TemplateMemberId ? { templateMemberId: card.dataset.m325TemplateMemberId } : {})
@@ -625,6 +656,83 @@ async function loadCompanionLists() {
     companionListsLoadState = "ERROR";
   }
   return companionLists;
+}
+
+function applyPortalBoardingPreference() {
+  const select = elements.portalForm.elements.namedItem("boardingStopId");
+  if (!select || portalBoardingStopTouched) return;
+  const effective = resolvedBoardingStop(
+    userBoardingPreference?.effectiveTripBoardingStopId
+      || trip?.defaultTripBoardingStopId
+      || ""
+  );
+  select.value = String(effective?.id || "");
+}
+
+function renderUserBoardingPreference() {
+  const target = document.getElementById("m325UserBoardingPreference");
+  if (!target) return;
+  const stops = Array.isArray(userBoardingPreference?.availableBoardingStops)
+    ? userBoardingPreference.availableBoardingStops
+    : [];
+  target.hidden = false;
+  target.innerHTML = `<label>Persönlicher Standard-Zustieg
+    <select name="userDefaultBoardingStopId">
+      <option value="">Kein Standard</option>
+      ${stops.map(stop => `<option value="${escapeHtml(stop.id)}"${stop.id === userBoardingPreference?.defaultBoardingStopId ? " selected" : ""}>${escapeHtml(stop.label)}</option>`).join("")}
+    </select>
+  </label>
+  <button class="button small secondary" type="button" data-m325-save-user-preference>Speichern</button>
+  <button class="button small ghost" type="button" data-m325-delete-user-preference${userBoardingPreference?.revision ? "" : " disabled"}>Löschen</button>`;
+
+  target.querySelector("[data-m325-save-user-preference]")?.addEventListener("click", async () => {
+    const stopId = target.querySelector('[name="userDefaultBoardingStopId"]')?.value || "";
+    if (!stopId) {
+      setStatus("Bitte wähle einen allgemeinen Zustiegsort oder lösche den Standard.", "warning");
+      return;
+    }
+    try {
+      await api.call("fanbus_user_preference_set", {
+        defaultBoardingStopId: stopId,
+        ...(userBoardingPreference?.revision
+          ? { expectedRevision: Number(userBoardingPreference.revision) }
+          : {})
+      });
+      userBoardingPreference = await api.call("fanbus_user_preference_get", {
+        tripId: trip.tripId
+      });
+      renderUserBoardingPreference();
+      applyPortalBoardingPreference();
+      setStatus("Persönlicher Standard-Zustieg gespeichert.", "success");
+    } catch (error) {
+      setStatus(error?.message || "Der Standard-Zustieg konnte nicht gespeichert werden.", "error");
+    }
+  });
+
+  target.querySelector("[data-m325-delete-user-preference]")?.addEventListener("click", async () => {
+    if (!userBoardingPreference?.revision) return;
+    try {
+      await api.call("fanbus_user_preference_delete", {
+        expectedRevision: Number(userBoardingPreference.revision)
+      });
+      userBoardingPreference = await api.call("fanbus_user_preference_get", {
+        tripId: trip.tripId
+      });
+      renderUserBoardingPreference();
+      applyPortalBoardingPreference();
+      setStatus("Persönlicher Standard-Zustieg gelöscht.", "success");
+    } catch (error) {
+      setStatus(error?.message || "Der Standard-Zustieg konnte nicht gelöscht werden.", "error");
+    }
+  });
+}
+
+async function loadUserBoardingPreference() {
+  userBoardingPreference = await api.call("fanbus_user_preference_get", {
+    tripId: trip.tripId
+  });
+  renderUserBoardingPreference();
+  applyPortalBoardingPreference();
 }
 
 function companionListMemberMarkup(member) {
@@ -720,7 +828,9 @@ async function submitPortal(event) {
   const formData = new FormData(elements.portalForm);
   const payload = {
     tripId: trip.tripId,
-    busPreference: String(formData.get("busPreference") || ""),
+    busPreference: busPreferenceSelectionEnabled()
+      ? String(formData.get("busPreference") || "EGAL")
+      : "EGAL",
     ...(formData.get("boardingStopId") ? { boardingStopId: String(formData.get("boardingStopId")) } : {}),
     companions: companionsFor(elements.portalForm),
     privacyConfirmed: formData.get("privacyConfirmed") === "on",
@@ -823,7 +933,9 @@ async function submitGuest(event) {
     firstName: String(formData.get("firstName") || "").trim(),
     lastName: String(formData.get("lastName") || "").trim(),
     email: String(formData.get("email") || "").trim(),
-    busPreference: String(formData.get("busPreference") || ""),
+    busPreference: busPreferenceSelectionEnabled()
+      ? String(formData.get("busPreference") || "EGAL")
+      : "EGAL",
     ...(formData.get("boardingStopId") ? { boardingStopId: String(formData.get("boardingStopId")) } : {}),
     companions: companionsFor(elements.guestForm),
     privacyConfirmed: formData.get("privacyConfirmed") === "on",
@@ -925,6 +1037,8 @@ async function renderMode() {
   elements.memberLoginPanel.hidden = true;
   elements.memberLoginToggle.setAttribute("aria-expanded", "false");
   elements.google.hidden = true;
+  const preferencePanel = document.getElementById("m325UserBoardingPreference");
+  if (preferencePanel) preferencePanel.hidden = true;
   setStatus("", "");
 
   if (current.authenticated && current.status === "ACTIVE") {
@@ -933,7 +1047,13 @@ async function renderMode() {
     elements.intro.textContent = "";
     elements.intro.hidden = true;
     elements.portalIdentity.innerHTML = `<strong>${escapeHtml(current.user?.name || current.user?.email || "Portalprofil")}</strong><span class="v4-person-badge">Portaluser</span>`;
-    await loadCompanionLists();
+    await Promise.all([
+      loadCompanionLists(),
+      loadUserBoardingPreference().catch(() => {
+        userBoardingPreference = null;
+        applyPortalBoardingPreference();
+      })
+    ]);
     if (sequence !== modeRenderSequence) return;
     elements.portalForm.hidden = false;
     updateBookingSummary("portal");
@@ -1004,6 +1124,7 @@ async function initialize() {
 
   renderTrip();
   renderBoardingStopFields();
+  renderBusPreferenceFields();
   if (!["OPEN", "WAITLIST"].includes(trip.registrationStatus)) return;
 
   renderConsentReferences();
@@ -1017,6 +1138,9 @@ document.querySelector('[data-m320-add-guest="portal"]')?.addEventListener("clic
 document.querySelector('[data-m320-add-guest="guest"]')?.addEventListener("click", () => openCompanionEditor("guest"));
 document.querySelector("[data-m325-open-companion-list]")?.addEventListener("click", openCompanionListDialog);
 elements.memberLoginToggle.addEventListener("click", () => { void toggleMemberLogin(); });
+elements.portalForm.elements.namedItem("boardingStopId")?.addEventListener("change", () => {
+  portalBoardingStopTouched = true;
+});
 elements.portalForm.addEventListener("input", () => {
   resetPortalSubmissionState();
   updateBookingSummary("portal");

@@ -52,9 +52,9 @@ const MONEY_FORMAT = new Intl.NumberFormat("de-DE", {
 });
 
 const BUS_PREFERENCES = [
-  { value: "RUHIG", label: "Ruhig" },
-  { value: "PARTY", label: "Party" },
-  { value: "EGAL", label: "Egal" }
+  { value: "EGAL", label: "EGAL" },
+  { value: "RUHIG", label: "RUHIG" },
+  { value: "PARTY", label: "PARTY" }
 ];
 
 let snapshot = { trips: [] };
@@ -471,14 +471,21 @@ function bindTripDetail(dialog, trip) {
     settings.setAttribute("aria-label", open ? "Verwaltung schließen" : "Verwaltung öffnen");
   });
 
-  dialog.querySelector("[data-m310-edit-mode]")?.addEventListener("click", () => {
+  dialog.querySelector("[data-m310-edit-mode]")?.addEventListener("click", async () => {
+    let tripStops;
+    try {
+      tripStops = await loadTripDetailStops(trip);
+    } catch (error) {
+      showToast(error?.message || "Zustiegsorte konnten nicht geladen werden.", "error", 5200);
+      return;
+    }
     dialog.dataset.m310TripMode = "edit";
     const body = dialog.querySelector("#v4DialogBody");
     if (!body) return;
     body.innerHTML = `<div class="v4-m325-trip-detail v4-m310-trip-edit-mode">
       <div class="v4-m310-trip-heading"><strong>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeCompact(trip.eventTime))}</strong></div>
       <p class="subtle">Spieltermin, Gegner und Spielort werden im Terminmodul verwaltet.</p>
-      ${tripForm(trip)}
+      ${tripForm(trip, tripStops)}
       <div class="dialog-actions v4-detail-actions"><button class="button ghost" type="button" data-m310-cancel-edit>Abbrechen</button><button class="button primary" type="submit" form="m310TripEditorForm">Änderungen speichern</button></div>
     </div>`;
     bindInlineTripEditor(dialog, trip);
@@ -1296,7 +1303,10 @@ async function openBoardingStops(trip) {
     dialog.querySelector("[data-m325-trip-stop]")?.addEventListener("submit", async event => {
       event.preventDefault(); const form = event.currentTarget; if (!form.reportValidity()) return;
       const departureAt = tripTimeToBerlinIso(trip, new FormData(form).get("departureTime"), "Abfahrtszeit");
-      await runWrite(() => call("fanbus_trip_boarding_stop_upsert", { tripId: trip.id, boardingStopId: new FormData(form).get("boardingStopId"), departureAt, tripNote:new FormData(form).get("tripNote")||null, position: assigned.length + 1, isActive: true }), "Fahrtzustiegsort angelegt."); dialog.close(); void openBoardingStops(trip);
+      await runWrite(() => call("fanbus_trip_boarding_stop_upsert", { tripId: trip.id, boardingStopId: new FormData(form).get("boardingStopId"), departureAt, tripNote:new FormData(form).get("tripNote")||null, position: assigned.length + 1, isActive: true }), "Fahrtzustiegsort angelegt.");
+      const updatedTrip = await refreshTripSnapshot(trip.id);
+      dialog.close();
+      void openBoardingStops(updatedTrip || trip);
     });
     dialog.querySelectorAll("[data-m325-master-edit]").forEach(button=>button.addEventListener("click",()=>openMasterStopEditor(trip,stops.find(stop=>stop.id===button.dataset.m325MasterEdit),dialog)));
     dialog.querySelectorAll("[data-m325-trip-edit]").forEach(button=>button.addEventListener("click",()=>openTripStopEditor(trip,assigned.find(stop=>stop.id===button.dataset.m325TripEdit),dialog)));
@@ -1304,6 +1314,13 @@ async function openBoardingStops(trip) {
     bindStopReorder(dialog,"[data-m325-trip-move]",assigned,"fanbus_trip_boarding_stops_reorder",{tripId:trip.id},trip);
     dialog.querySelectorAll("[data-m325-bus-stops]").forEach(form=>form.addEventListener("submit",async event=>{event.preventDefault();const ids=new FormData(form).getAll("stopId");await runWrite(()=>call("fanbus_bus_boarding_stops_set",{tripId:trip.id,busId:form.dataset.m325BusStops,expectedRevision:Number(form.dataset.revision),tripBoardingStopIds:ids}),"Bus-Zustiege gespeichert.");dialog.close();void openBoardingStops(trip);}));
   } catch (error) { showToast(error?.message || "Zustiegsorte konnten nicht geladen werden.", "error", 5200); }
+}
+
+async function refreshTripSnapshot(tripId) {
+  const nextSnapshot = await call("fanbus_trips_list");
+  snapshot = nextSnapshot || { trips: [] };
+  render();
+  return trips().find(item => item.id === tripId) || null;
 }
 
 function bindStopReorder(dialog,selector,items,action,extra,trip){dialog.querySelectorAll(selector).forEach(button=>button.addEventListener("click",async()=>{const id=button.dataset.m325MasterMove||button.dataset.m325TripMove;const index=items.findIndex(item=>item.id===id);const target=index+Number(button.dataset.direction);if(index<0||target<0||target>=items.length)return;const ids=items.map(item=>item.id);[ids[index],ids[target]]=[ids[target],ids[index]];await runWrite(()=>call(action,{...extra,ids}),"Reihenfolge aktualisiert.");dialog.close();void openBoardingStops(trip);}));}
@@ -1338,7 +1355,34 @@ function openMasterStopCreate(trip, position, parent) {
 
 function openMasterStopEditor(trip,stop,parent){if(!stop)return;const dialog=openDialog({title:"Stammpunkt bearbeiten",body:`<form class="form-grid v4-smart-form" data-m325-edit-master><label class="v4-field-half">Name<input name="label" maxlength="160" value="${escapeAttr(stop.label)}" required></label><label class="v4-field-half">Adresse<input name="address" value="${escapeAttr(stop.address||"")}"></label><label class="v4-field-full">Standardhinweis<input name="defaultNote" value="${escapeAttr(stop.defaultNote||"")}"></label><label class="check-row v4-compact-check v4-field-full"><input name="isActive" type="checkbox"${stop.isActive?" checked":""}><span>Aktiv</span></label><div class="dialog-actions v4-detail-actions v4-field-full"><button class="button primary">Speichern</button></div></form>`});dialog.querySelector("form").addEventListener("submit",async event=>{event.preventDefault();const values=Object.fromEntries(new FormData(event.currentTarget));await runWrite(()=>call("fanbus_boarding_stop_upsert",{id:stop.id,expectedRevision:stop.revision,label:values.label,address:values.address||null,defaultNote:values.defaultNote||null,position:stop.position,isActive:values.isActive==="on"}),"Stammpunkt aktualisiert.");dialog.close();parent.close();void openBoardingStops(trip);});}
 
-function openTripStopEditor(trip,stop,parent){if(!stop)return;const dialog=openDialog({title:"Fahrt-Zustieg bearbeiten",body:`<form class="form-grid v4-smart-form" data-m325-edit-trip-stop><label class="v4-field-full">Abfahrtszeit<input name="departureTime" type="time" value="${escapeAttr(toBerlinTimeInputValue(stop.departureAt))}" required></label><label class="v4-field-full">Fahrthinweis<input name="tripNote" value="${escapeAttr(stop.tripNote||"")}"></label><label class="check-row v4-compact-check v4-field-full"><input name="isActive" type="checkbox"${stop.isActive?" checked":""}><span>Aktiv</span></label><div class="dialog-actions v4-detail-actions v4-field-full"><button class="button primary">Speichern</button></div></form>`});dialog.querySelector("form").addEventListener("submit",async event=>{event.preventDefault();const values=Object.fromEntries(new FormData(event.currentTarget));await runWrite(()=>call("fanbus_trip_boarding_stop_upsert",{id:stop.id,tripId:trip.id,boardingStopId:stop.boardingStopId,expectedRevision:stop.revision,departureAt:tripTimeToBerlinIso(trip,values.departureTime,"Abfahrtszeit"),position:stop.position,tripNote:values.tripNote||null,isActive:values.isActive==="on"}),"Fahrt-Zustieg aktualisiert.");dialog.close();parent.close();void openBoardingStops(trip);});}
+function openTripStopEditor(trip, stop, parent) {
+  if (!stop) return;
+  const dialog = openDialog({
+    title: "Fahrt-Zustieg bearbeiten",
+    body: `<form class="form-grid v4-smart-form" data-m325-edit-trip-stop><label class="v4-field-full">Abfahrtszeit<input name="departureTime" type="time" value="${escapeAttr(toBerlinTimeInputValue(stop.departureAt))}" required></label><label class="v4-field-full">Fahrthinweis<input name="tripNote" value="${escapeAttr(stop.tripNote || "")}"></label><label class="check-row v4-compact-check v4-field-full"><input name="isActive" type="checkbox"${stop.isActive ? " checked" : ""}><span>Aktiv</span></label><div class="dialog-actions v4-detail-actions v4-field-full"><button class="button primary">Speichern</button></div></form>`
+  });
+  dialog.querySelector("form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const values = Object.fromEntries(new FormData(event.currentTarget));
+    await runWrite(
+      () => call("fanbus_trip_boarding_stop_upsert", {
+        id: stop.id,
+        tripId: trip.id,
+        boardingStopId: stop.boardingStopId,
+        expectedRevision: stop.revision,
+        departureAt: tripTimeToBerlinIso(trip, values.departureTime, "Abfahrtszeit"),
+        position: stop.position,
+        tripNote: values.tripNote || null,
+        isActive: values.isActive === "on"
+      }),
+      "Fahrt-Zustieg aktualisiert."
+    );
+    const updatedTrip = await refreshTripSnapshot(trip.id);
+    dialog.close();
+    parent.close();
+    void openBoardingStops(updatedTrip || trip);
+  });
+}
 
 function availableEventLabel(event) {
   const visibility = event.visibility === "PUBLIC" ? "Öffentlich" : "Intern";
@@ -1391,9 +1435,11 @@ function defaultRegistrationClosesInput(departureAt) {
 }
 
 function tripForm(trip) {
+  const tripStops = Array.isArray(arguments[1]) ? arguments[1] : [];
   const required = trip.status === "PUBLISHED" ? "required" : "";
   const registrationClosesAt = toBerlinInputValue(trip.registrationClosesAt)
     || defaultRegistrationClosesInput(trip.departureAt);
+  const activeStops = normalizedTripDetailStops(tripStops);
 
   return `<form id="m310TripEditorForm" class="form-grid v4-smart-form">
     <label class="v4-field-full">Abfahrt
@@ -1409,6 +1455,16 @@ function tripForm(trip) {
     <label class="v4-field-five">Fahrtpreis
       <input name="price" inputmode="decimal" pattern="[0-9]+([,.][0-9]{1,2})?" value="${escapeAttr(centsToEuroInput(trip.priceCents))}" placeholder="25,00" ${required}>
     </label>
+    <label class="v4-field-seven">Standard-Zustiegsort
+      <select name="defaultBoardingStopId">
+        <option value="">Kein Standard</option>
+        ${activeStops.map(stop => `<option value="${escapeAttr(stop.boardingStopId)}"${stop.boardingStopId === trip.defaultBoardingStopId ? " selected" : ""}>${escapeHtml(`${stop.label} · ${formatBerlinTime(stop.departureAt)}`)}</option>`).join("")}
+      </select>
+    </label>
+    <label class="v4-field-five v4-compact-check">
+      <input name="busPreferenceEnabled" type="checkbox"${trip.busPreferenceEnabled ? " checked" : ""}>
+      <span>Buswunsch erlauben<small>Nur mit mindestens einem aktiven PARTY- und RUHIG-Bus.</small></span>
+    </label>
   </form>`;
 }
 
@@ -1422,16 +1478,25 @@ function tripUpdatePayload(trip, values) {
     registrationClosesAt: berlinLocalToIso(values.registrationClosesAt, "Das Anmeldeende"),
     priceCents: euroInputToCents(values.price),
     capacity: trip.capacity,
+    defaultBoardingStopId: values.defaultBoardingStopId || null,
+    busPreferenceEnabled: values.busPreferenceEnabled === "on",
     privacyReference: PRIVACY_REFERENCE,
     termsReference: TERMS_REFERENCE
   };
 }
 
-function openTripEditor(trip) {
+async function openTripEditor(trip) {
+  let tripStops;
+  try {
+    tripStops = await loadTripDetailStops(trip);
+  } catch (error) {
+    showToast(error?.message || "Zustiegsorte konnten nicht geladen werden.", "error", 5200);
+    return;
+  }
   const dialog = openDialog({
     title: "Fanbusfahrt bearbeiten",
     kicker: trip.displayTitle || "Fanbusfahrt",
-    body: tripForm(trip),
+    body: tripForm(trip, tripStops),
     submitLabel: "Änderungen speichern",
     onSubmit: async values => {
       snapshot = await runWrite(
@@ -2442,8 +2507,11 @@ function manualPersonLabel(person) {
   return `${person.lastName || ""}, ${person.firstName || ""} · ${type}${email}`;
 }
 
-function manualRegistrationForm(people, tripStops = []) {
+function manualRegistrationForm(people, tripStops = [], trip = {}) {
   const activeTripStops = tripStops.filter(stop => stop.isActive);
+  const defaultTripStop = activeTripStops.find(
+    stop => stop.boardingStopId === trip.defaultBoardingStopId
+  );
   const personOptions = people.map(person => {
     const id = person.personType === "MEMBER" ? person.memberId : person.portalUserId;
     const value = `${person.personType}:${id}`;
@@ -2457,11 +2525,11 @@ function manualRegistrationForm(people, tripStops = []) {
         <option value="GUEST">Gast</option>
       </select>
     </label>
-    <label class="v4-field-half">Buspräferenz
+    ${trip.busPreferenceSelectionEnabled ? `<label class="v4-field-half">Buspräferenz
       <select name="busPreference" required>${optionList(BUS_PREFERENCES, "EGAL")}</select>
-    </label>
+    </label>` : ""}
     ${activeTripStops.length ? `<label class="v4-field-full">Zustiegsort
-      <select name="boardingStopId" required><option value="">Bitte wählen</option>${activeTripStops.map(stop => `<option value="${escapeAttr(stop.tripBoardingStopId || stop.id)}">${escapeHtml(`${stop.label} · ${formatBerlinDateTime(stop.departureAt)}`)}</option>`).join("")}</select>
+      <select name="boardingStopId" required><option value="">Bitte wählen</option>${activeTripStops.map(stop => `<option value="${escapeAttr(stop.tripBoardingStopId || stop.id)}"${(stop.tripBoardingStopId || stop.id) === (defaultTripStop?.tripBoardingStopId || defaultTripStop?.id) ? " selected" : ""}>${escapeHtml(`${stop.label} · ${formatBerlinTime(stop.departureAt)}`)}</option>`).join("")}</select>
     </label>` : ""}
     <label class="v4-field-full">Operativer Hinweis (optional)
       <textarea name="operationalNote" maxlength="240"></textarea>
@@ -2543,14 +2611,16 @@ async function openManualRegistration(trip, registrationsDialog) {
     const dialog = openDialog({
       title: "Mitfahrer hinzufügen",
       kicker: trip.displayTitle || "Fanbusfahrt",
-      body: manualRegistrationForm(people, tripStops),
+      body: manualRegistrationForm(people, tripStops, trip),
       submitLabel: "Mitfahrer anmelden",
       preserveParentOnSubmit: true,
       onSubmit: async values => {
         const payload = {
           tripId: trip.id,
           mode: values.mode,
-          busPreference: values.busPreference,
+          busPreference: trip.busPreferenceSelectionEnabled
+            ? values.busPreference
+            : "EGAL",
           ...(values.boardingStopId ? { boardingStopId: values.boardingStopId } : {}),
           operationalNote: values.operationalNote || "",
           privacyConfirmed: values.consentConfirmed === "on",

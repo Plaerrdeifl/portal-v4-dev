@@ -76,6 +76,7 @@
     .fanbus-public-registration-panel{margin-top:14px;padding-top:14px;border-top:1px solid var(--line,#d8e2ee)}
     .fanbus-public-registration-heading{align-items:center;flex-wrap:nowrap}
     .fanbus-public-companion-section{display:grid;gap:9px;padding-top:4px}
+    .fanbus-user-preference{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:end;padding:10px 11px;border:1px solid var(--line,#d8e2ee);border-radius:13px;background:#f8fbff}.fanbus-user-preference label{min-width:0}.fanbus-user-preference .button{min-width:0;white-space:nowrap}
     .fanbus-public-section-heading h3{margin:0;font-size:1.02rem}
     .fanbus-public-person-count{color:var(--ink-500);font-size:.78rem;font-weight:800;white-space:nowrap}
     .fanbus-public-booking-count{padding:2px 0;color:var(--ink-700,#334155);font-size:.9rem;font-weight:800}
@@ -92,7 +93,7 @@
     .fanbus-public-status{margin-top:0}
     .fanbus-public-status[hidden],.fanbus-public-form[hidden],.fanbus-public-google[hidden],.fanbus-public-member-login[hidden],.fanbus-public-member-login-panel[hidden]{display:none!important}
     .fanbus-companions{display:grid;gap:8px}.fanbus-companion{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 10px;align-items:center;min-width:0;padding:10px 11px;border:1px solid var(--line,#d8e2ee);border-radius:13px;background:#f8fbff}.fanbus-companion-meta{min-width:0;color:var(--ink-500);font-size:.8rem;overflow-wrap:anywhere}.fanbus-companion-actions{display:flex;align-items:center;gap:6px;grid-column:2;grid-row:1 / span 2}.fanbus-companion-actions .button{min-width:0;padding-inline:9px}.fanbus-companion-remove{width:34px!important;min-width:34px!important;padding-inline:0!important;font-size:1.05rem}.fanbus-public-companion-add-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.fanbus-public-companion-add-actions.is-guest-only{grid-template-columns:1fr}.fanbus-public-companion-add-actions .button{width:100%;min-width:0}.fanbus-public-list-picker{display:grid;gap:12px}.fanbus-public-list-members{display:grid;gap:7px}.fanbus-public-list-member{margin:0;padding:9px 10px;border:1px solid var(--line,#d8e2ee);border-radius:11px;background:#fff;cursor:pointer}.fanbus-public-list-member input[type="checkbox"]{width:24px;height:24px;min-height:24px;flex:0 0 24px;accent-color:var(--blue-800)}
-    @media (max-width:620px){.fanbus-public-form.form-grid{grid-template-columns:1fr}.fanbus-public-form .full{grid-column:auto}.fanbus-public-primary-fields{grid-template-columns:1fr}.fanbus-public-trip-date,.fanbus-public-trip-status{font-size:.76rem}.fanbus-public-shell{gap:10px}.card{padding:14px}.fanbus-public-brand img{width:46px;height:46px}.fanbus-companion{grid-template-columns:minmax(0,1fr) auto}.fanbus-companion-actions{align-self:center}.fanbus-public-actions .button{width:100%}}
+    @media (max-width:620px){.fanbus-public-form.form-grid{grid-template-columns:1fr}.fanbus-public-form .full{grid-column:auto}.fanbus-public-primary-fields{grid-template-columns:1fr}.fanbus-user-preference{grid-template-columns:1fr 1fr}.fanbus-user-preference label{grid-column:1 / -1}.fanbus-public-trip-date,.fanbus-public-trip-status{font-size:.76rem}.fanbus-public-shell{gap:10px}.card{padding:14px}.fanbus-public-brand img{width:46px;height:46px}.fanbus-companion{grid-template-columns:minmax(0,1fr) auto}.fanbus-companion-actions{align-self:center}.fanbus-public-actions .button{width:100%}}
     @media (max-width:390px){.fanbus-public-trip-head{gap:5px}.fanbus-public-trip-date,.fanbus-public-trip-status{overflow:hidden;text-overflow:ellipsis;font-size:.7rem}.fanbus-public-guest-primary-fields{gap:8px}.fanbus-companion{grid-template-columns:1fr}.fanbus-companion-actions{grid-column:1;grid-row:auto;justify-content:flex-end}.fanbus-public-identity-row,.fanbus-companion-person{align-items:flex-start}.v4-m325-companion-identity-badges{margin-inline-start:8px}}
   </style>
   <title>Fanbus-Anmeldung · Plärrdeifl</title>
@@ -145,12 +146,12 @@
       <form id="m310PortalForm" class="form-grid fanbus-public-form" novalidate hidden>
         <div id="m310PortalIdentity" class="fanbus-public-identity-row full"></div>
         <div class="fanbus-public-primary-fields full">
-          <label>
+          <label data-m320-bus-preference="portal">
             Buswunsch
             <select name="busPreference" required>
-              <option value="EGAL">Egal</option>
-              <option value="RUHIG">Ruhig</option>
-              <option value="PARTY">Party</option>
+              <option value="EGAL">EGAL</option>
+              <option value="RUHIG">RUHIG</option>
+              <option value="PARTY">PARTY</option>
             </select>
           </label>
           <label data-m325-primary-stop="portal" hidden>
@@ -158,6 +159,7 @@
             <select name="boardingStopId"></select>
           </label>
         </div>
+        <div id="m325UserBoardingPreference" class="fanbus-user-preference full" hidden></div>
         <section class="fanbus-public-companion-section full">
           <div class="fanbus-public-section-heading"><h3>Mitfahrer hinzufügen</h3><span class="fanbus-public-person-count" data-m320-companion-count="portal">0 Personen</span></div>
           <div data-m320-companions="portal" class="fanbus-companions"></div>
@@ -198,12 +200,12 @@
           E-Mail
           <input name="email" type="email" autocomplete="email" maxlength="320" required>
         </label>
-        <label class="full">
+        <label class="full" data-m320-bus-preference="guest">
           Buswunsch
           <select name="busPreference" required>
-            <option value="EGAL">Egal</option>
-            <option value="RUHIG">Ruhig</option>
-            <option value="PARTY">Party</option>
+            <option value="EGAL">EGAL</option>
+            <option value="RUHIG">RUHIG</option>
+            <option value="PARTY">PARTY</option>
           </select>
         </label>
         <label class="full" data-m325-primary-stop="guest" hidden>

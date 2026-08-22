@@ -35,7 +35,8 @@ insert into app_portal.users(id,user_code,email,first_name,last_name,status,role
   ('00000000-0000-4325-8000-000000000004','U-M325-WAITER','m325-waiter@example.invalid','Willi','Waiter','ACTIVE','00000000-0000-4000-8000-000000000003');
 insert into app_portal.user_capabilities(user_id,capability_code) values
   ('00000000-0000-4325-8000-000000000003','fanbus.manage'),
-  ('00000000-0000-4325-8000-000000000003','fanbus.registrations.manage');
+  ('00000000-0000-4325-8000-000000000003','fanbus.registrations.manage'),
+  ('00000000-0000-4325-8000-000000000003','fanbus.operations.manage');
 
 insert into app_modules.events(id,event_type,title,event_date,event_time,visibility) values
   ('00000000-0000-4325-8100-000000000001','OTHER','M325 Fahrt Eins',current_date+10,time '18:00','PUBLIC'),
@@ -217,7 +218,7 @@ insert into m325_results values ('booking_subset',app_private.api_fanbus_compani
   'privacyConfirmed',true,'termsConfirmed',true,'idempotencyKey','00000000-0000-4325-8300-000000000002')));
 select is((select count(*)::integer from app_modules.fanbus_registrations where trip_id='00000000-0000-4325-8200-000000000001'),2,'Subset-Buchung legt Primary plus genau einen Mitfahrer an');
 select is((select first_name||' '||last_name from app_modules.fanbus_registrations where trip_id='00000000-0000-4325-8200-000000000001' and booking_role='COMPANION'),'Rita Override','Namensoverride wird gebucht');
-select is((select bus_preference from app_modules.fanbus_registrations where trip_id='00000000-0000-4325-8200-000000000001' and booking_role='COMPANION'),'PARTY','Buspräferenz-Override wird gebucht');
+select is((select bus_preference from app_modules.fanbus_registrations where trip_id='00000000-0000-4325-8200-000000000001' and booking_role='COMPANION'),'EGAL','Gesperrte Buspräferenz wird effektiv EGAL gebucht');
 select is((select operational_note from app_modules.fanbus_registrations where trip_id='00000000-0000-4325-8200-000000000001' and booking_role='COMPANION'),'Editierter Vorschlag','Editierte Notiz wird gebucht');
 select is((select trip_boarding_stop_id::text from app_modules.fanbus_registrations where trip_id='00000000-0000-4325-8200-000000000001' and booking_role='COMPANION'),(select result->>'id' from m325_results where name='trip_b'),'Master-Standardhalt wird auf aktiven Fahrthalt abgebildet');
 select ok((public.pd_public_fanbus_trip_boarding_stops('00000000-0000-4325-8200-000000000001'::uuid)->'stops'->0 ?& array['tripBoardingStopId','boardingStopId']),'Öffentliche Fahrthalt-API liefert normalen Usern beide IDs');
@@ -369,7 +370,7 @@ select lives_ok(format('select app_private.api_fanbus_companion_member_delete(%L
 select is((select first_name||' '||last_name from app_modules.fanbus_registrations where booking_id=(select (result->>'bookingId')::uuid from m325_results where name='booking_after_cancel') and booking_role='COMPANION'),'Dora Delta','Vorlagenlöschung beeinflusst alte Registrierung nicht');
 select is((select companion_list_member_id from app_modules.fanbus_registrations where trip_id='00000000-0000-4325-8200-000000000001' and booking_role='COMPANION'),null,'Gelöschte Vorlage wird referenziell gelöst');
 select throws_ok($q$select app_private.api_fanbus_operations_snapshot('{"tripId":"00000000-0000-4325-8200-000000000001"}'::jsonb)$q$,
-  '42501','Berechtigung fehlt: fanbus.registrations.manage','User ohne Capability kann Betriebssnapshot nicht lesen');
+  '42501','Berechtigung fehlt: Fanbus-Teilnehmer, Fahrtbetrieb oder Bezahlt-Marker.','User ohne Capability kann Betriebssnapshot nicht lesen');
 select set_config('request.jwt.claim.sub','',true);
 select throws_ok('select app_private.api_fanbus_companion_lists_list()','42501','Anmeldung erforderlich.','Nicht angemeldeter Aufruf wird abgelehnt');
 
@@ -438,7 +439,7 @@ select ok(
   position('from app_modules.fanbus_buses bus' in lower(definition))
     > position('from app_modules.fanbus_registrations' in lower(definition)),
   'Technischer Lockvertrag ordnet Teilnehmer-Lock vor Bus-Lock an'
-) from (select pg_get_functiondef('app_private.api_fanbus_registration_operational_update(jsonb)'::regprocedure) definition) lock_contract;
+) from (select pg_get_functiondef('app_private.api_fanbus_registration_operational_update_before_m330_r1(jsonb)'::regprocedure) definition) lock_contract;
 
 -- Snapshot: zwei Busse, zwei Halte, fehlender Check-in sowie Statuswechsel.
 delete from app_modules.fanbus_participant_checkins where participant_id=(select id from app_modules.fanbus_registrations where trip_id='00000000-0000-4325-8200-000000000001' and booking_role='COMPANION');
