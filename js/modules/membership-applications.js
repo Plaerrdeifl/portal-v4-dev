@@ -79,6 +79,11 @@ let activeDetailId = "";
 let activeDetailDialog = null;
 let loadSequence = 0;
 
+function requestedApplicationId() {
+  const query = String(location.hash || "").split("?")[1] || "";
+  return new URLSearchParams(query).get("applicationId") || "";
+}
+
 function applicationName(application) {
   return String(
     application?.name
@@ -99,6 +104,16 @@ function statusMeta(status) {
 function applicationStatusBadge(status) {
   const meta = statusMeta(status);
   return `<span class="badge ${meta.type}">${escapeHtml(meta.label)}</span>`;
+}
+
+function applicationListBadges(application) {
+  const badges = [applicationStatusBadge(application.status)];
+
+  if (application.transferPending === true) {
+    badges.push('<span class="badge warning">Übernahme offen</span>');
+  }
+
+  return badges.join(" ");
 }
 
 function voteBadge(vote) {
@@ -125,7 +140,10 @@ function voteSummary(application) {
 function filteredApplications() {
   const query = nameSearch.trim().toLocaleLowerCase("de-DE");
   return applications.filter(application => {
-    const matchesStatus = statusFilter === "ALL" || application.status === statusFilter;
+    const matchesStatus = statusFilter === "ALL"
+      || (statusFilter === "TRANSFER_PENDING"
+        ? application.transferPending === true
+        : application.status === statusFilter);
     const matchesName = !query
       || applicationName(application).toLocaleLowerCase("de-DE").includes(query);
     return matchesStatus && matchesName;
@@ -152,6 +170,7 @@ function renderApplicationList() {
         <select id="membershipApplicationStatusFilter">
           <option value="PENDING" ${statusFilter === "PENDING" ? "selected" : ""}>Offen</option>
           <option value="APPROVED" ${statusFilter === "APPROVED" ? "selected" : ""}>Angenommen</option>
+          <option value="TRANSFER_PENDING" ${statusFilter === "TRANSFER_PENDING" ? "selected" : ""}>Übernahme offen</option>
           <option value="REJECTED" ${statusFilter === "REJECTED" ? "selected" : ""}>Abgelehnt</option>
           <option value="WITHDRAWN" ${statusFilter === "WITHDRAWN" ? "selected" : ""}>Zurückgezogen</option>
           <option value="ALL" ${statusFilter === "ALL" ? "selected" : ""}>Alle</option>
@@ -166,7 +185,7 @@ function renderApplicationList() {
             <td><strong>${escapeHtml(applicationName(application))}</strong></td>
             <td>${escapeHtml(fmtDateTime(application.submittedAt))}</td>
             <td>${voteSummary(application) || "–"}</td>
-            <td>${applicationStatusBadge(application.status)}</td>
+            <td>${applicationListBadges(application)}</td>
             <td><button class="button small secondary v4-row-action" type="button" data-membership-application-id="${escapeAttr(application.id)}">Details <span aria-hidden="true">›</span></button></td>
           </tr>`).join("")}</tbody>
         </table>
@@ -178,7 +197,7 @@ function renderApplicationList() {
             <strong>${escapeHtml(applicationName(application))}</strong>
             ${voteSummary(application)}
           </span>
-          <span class="v4-compact-record-end">${applicationStatusBadge(application.status)}</span>
+          <span class="v4-compact-record-end">${applicationListBadges(application)}</span>
           <span class="v4-row-chevron" aria-hidden="true">›</span>
         </button>`).join("")}
       </div>
@@ -793,6 +812,14 @@ export async function renderMembershipApplications(panel, context = {}) {
     if (sequence !== loadSequence || panelNode !== panel) return;
     applications = nextApplications;
     renderApplicationList();
+    const requestedId = requestedApplicationId();
+    if (requestedId && activeDetailId !== requestedId) {
+      try {
+        await openApplicationDetail(requestedId);
+      } catch (error) {
+        showToast(error?.message || "Der verlinkte Mitgliedsantrag konnte nicht geladen werden.", "error", 6500);
+      }
+    }
   } catch (error) {
     if (sequence !== loadSequence || panelNode !== panel) return;
     panelNode.innerHTML = `${errorPanel(error, "Mitgliedsanträge konnten nicht geladen werden")}

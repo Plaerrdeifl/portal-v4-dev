@@ -250,7 +250,7 @@ test("manual UI idempotency attempt is bound to the complete business payload", 
   assert.match(ui, /let manualAttempt = null/);
   assert.match(
     ui,
-    /const payload = \{[\s\S]+tripId: trip\.id,[\s\S]+mode: values\.mode,[\s\S]+busPreference: values\.busPreference,[\s\S]+privacyConfirmed:[\s\S]+termsConfirmed:/
+    /const payload = \{[\s\S]+tripId: trip\.id,[\s\S]+mode: values\.mode,[\s\S]+busPreference: trip\.busPreferenceSelectionEnabled[\s\S]+values\.busPreference[\s\S]+: "EGAL",[\s\S]+privacyConfirmed:[\s\S]+termsConfirmed:/
   );
   assert.match(ui, /payload\.personType = person\.personType/);
   assert.match(ui, /payload\.memberId = person\.memberId/);

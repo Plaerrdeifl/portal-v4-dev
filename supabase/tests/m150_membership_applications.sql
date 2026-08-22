@@ -1902,16 +1902,21 @@ begin
   select count(*) into v_votes_before from app_fanclub.membership_application_votes;
   select count(*) into v_rosters_before from app_fanclub.membership_application_board_roster;
   select count(*) into v_outbox_before
-  from app_private.membership_application_email_outbox;
+  from app_private.notification_events as event
+  where event.source_module = 'M150'
+    and event.entity_type = 'membership_application'
+    and event.entity_id in (v_withdraw_app::text, v_roster_app::text);
   select jsonb_agg(to_jsonb(office) order by office.code)
   into v_offices_before
   from app_fanclub.office_slots as office;
 
   if (select count(*)
-      from app_private.membership_application_email_outbox as outbox
-      where outbox.application_id = v_withdraw_app
-        and outbox.email_type = 'RECEIPT') <> 1 then
-    raise exception 'Vorhandene RECEIPT-Historie für Withdrawal-Fixture fehlt.';
+      from app_private.notification_events as event
+      where event.notification_type = 'MEMBERSHIP_APPLICATION_RECEIVED'
+        and event.source_module = 'M150'
+        and event.entity_type = 'membership_application'
+        and event.entity_id = v_withdraw_app::text) <> 1 then
+    raise exception 'Vorhandene zentrale RECEIPT-Historie für Withdrawal-Fixture fehlt.';
   end if;
 
   perform set_config('request.jwt.claim.sub', v_admin::text, true);
@@ -2117,17 +2122,28 @@ begin
   end if;
 
   if (select count(*)
-      from app_private.membership_application_email_outbox as outbox
-      where outbox.application_id = v_withdraw_app
-        and outbox.email_type = 'RECEIPT') <> 1
+      from app_private.notification_events as event
+      where event.notification_type = 'MEMBERSHIP_APPLICATION_RECEIVED'
+        and event.source_module = 'M150'
+        and event.entity_type = 'membership_application'
+        and event.entity_id = v_withdraw_app::text) <> 1
      or exists (
        select 1
-       from app_private.membership_application_email_outbox as outbox
-       where outbox.application_id in (v_withdraw_app, v_roster_app)
-         and outbox.email_type in ('REJECTION', 'ADMISSION')
+       from app_private.notification_events as event
+       where event.source_module = 'M150'
+         and event.entity_type = 'membership_application'
+         and event.entity_id in (v_withdraw_app::text, v_roster_app::text)
+         and event.notification_type in (
+           'MEMBERSHIP_APPLICATION_REJECTED',
+           'MEMBERSHIP_ADMISSION_COMPLETED'
+         )
      )
-     or (select count(*) from app_private.membership_application_email_outbox) <> v_outbox_before then
-    raise exception 'Withdrawal löschte RECEIPT-Historie oder erzeugte eine REJECTION-/ADMISSION-/WITHDRAWAL-Mail.';
+     or (select count(*)
+         from app_private.notification_events as event
+         where event.source_module = 'M150'
+           and event.entity_type = 'membership_application'
+           and event.entity_id in (v_withdraw_app::text, v_roster_app::text)) <> v_outbox_before then
+    raise exception 'Withdrawal löschte zentrale RECEIPT-Historie oder erzeugte ein REJECTION-/ADMISSION-/WITHDRAWAL-Ereignis.';
   end if;
 
   if (select count(*)

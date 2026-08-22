@@ -18,8 +18,8 @@ select ok(exists (
   where conname = 'fanbus_registrations_booking_trip_fk'
 ), 'Booking und Teilnehmer sind per Fahrt verbunden');
 select ok(not exists (
-  select 1 from app_portal.capabilities where code like 'fanbus.%'
-    and code not in ('fanbus.manage', 'fanbus.registrations.manage')
+  select 1 from app_portal.capabilities
+  where code in ('fanbus.bus_preference.manage', 'fanbus.assignment.auto')
 ), 'M320 führt keine neue Capability ein');
 
 insert into auth.users (id, email) values
@@ -444,7 +444,7 @@ select 'assign', app_private.api_fanbus_bus_assignment_set(jsonb_build_object(
   'participantId', id,
   'busId', (select result ->> 'id' from m320_results where name = 'bus_normal')
 )) from app_modules.fanbus_registrations
-where trip_id = '00000000-0000-4320-8200-000000000001' and participant_sequence = 1;
+where trip_id = '00000000-0000-4320-8200-000000000001' and participant_sequence = 2;
 select is((select count(*)::integer from app_modules.fanbus_bus_assignments where bus_id = ((select result ->> 'id' from m320_results where name = 'bus_normal')::uuid)), 1, 'ACTIVE kann zugeordnet werden');
 select ok(exists (
   select 1 from app_modules.fanbus_bus_assignments as assignment
@@ -458,12 +458,12 @@ select 'move', app_private.api_fanbus_bus_assignment_set(jsonb_build_object(
   'participantId', id,
   'busId', (select result ->> 'id' from m320_results where name = 'bus_party')
 )) from app_modules.fanbus_registrations
-where trip_id = '00000000-0000-4320-8200-000000000001' and participant_sequence = 1;
+where trip_id = '00000000-0000-4320-8200-000000000001' and participant_sequence = 2;
 select is((select count(*)::integer from app_modules.fanbus_bus_assignments where bus_id = ((select result ->> 'id' from m320_results where name = 'bus_party')::uuid)), 1, 'Move ersetzt die aktuelle Zuordnung');
 do $m320_unassign$
 begin
   perform app_private.api_fanbus_bus_assignment_set(jsonb_build_object(
-    'participantId', (select id from app_modules.fanbus_registrations where trip_id = '00000000-0000-4320-8200-000000000001' and participant_sequence = 1),
+    'participantId', (select id from app_modules.fanbus_registrations where trip_id = '00000000-0000-4320-8200-000000000001' and participant_sequence = 2),
     'busId', null
   ));
 end

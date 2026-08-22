@@ -61,8 +61,8 @@ test("M310 mobile card exposes one primary status without internal capacity valu
 });
 
 test("M310 registrations use compact operational records without empty cancellation metadata", () => {
-  const start = fanbuses.indexOf("function registrationCard(registration, buses = [])");
-  const end = fanbuses.indexOf("function registrationsMarkup(data)", start);
+  const start = fanbuses.indexOf("function registrationCard(registration, buses = [], readOnly = false)");
+  const end = fanbuses.indexOf("function registrationsMarkup(data, trip)", start);
   assert.notEqual(start, -1);
   assert.notEqual(end, -1);
   const card = fanbuses.slice(start, end);

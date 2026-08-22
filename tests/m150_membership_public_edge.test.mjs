@@ -42,6 +42,7 @@ test("only explicitly approved functions receive dedicated JWT bypass config", (
     "send-web-push",
     "m150-membership-submit",
     "m150-membership-email-dispatch",
+    "notification-dispatch",
     "m310-fanbus-register"
   ]);
   assert.equal(
@@ -55,6 +56,14 @@ test("only explicitly approved functions receive dedicated JWT bypass config", (
   assert.match(
     config,
     /^\[functions\.send-web-push\]\r?\nverify_jwt = false\s*$/m
+  );
+  assert.equal(
+    (config.match(/^\[functions\.notification-dispatch\]$/gm) || []).length,
+    1
+  );
+  assert.match(
+    config,
+    /^\[functions\.notification-dispatch\]\r?\nverify_jwt = false\s*$/m
   );
   assert.equal(
     (config.match(/^\[functions\.m310-fanbus-register\]$/gm) || []).length,

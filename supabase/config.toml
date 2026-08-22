@@ -430,5 +430,8 @@ verify_jwt = false
 [functions.m150-membership-email-dispatch]
 verify_jwt = false
 
+[functions.notification-dispatch]
+verify_jwt = false
+
 [functions.m310-fanbus-register]
 verify_jwt = false

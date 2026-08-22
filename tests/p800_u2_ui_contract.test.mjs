@@ -76,8 +76,12 @@ test("trip detail is compact and exposes capability-gated occupancy, operations 
   assert.match(navigationSource, />Belegung</);
   assert.match(navigationSource, />Fahrtbetrieb</);
   assert.match(navigationSource, /data-m310-trip-settings/);
-  assert.match(navigationSource, /canManageRegistrations/);
-  assert.match(navigationSource, /const canOpenOccupancy = canManage \|\| canManageRegistrations/);
+  assert.match(navigationSource, /operationsAccess\.canManageRegistrations/);
+  assert.match(
+    navigationSource,
+    /canOpenOccupancy\s*=\s*canManage\s*\|\|\s*operationsAccess\.canManageRegistrations/
+  );
+  assert.match(navigationSource, /operationsAccess\.canRead/);
 });
 
 test("occupancy remains bus-centered and preserves per-bus stop mapping", () => {

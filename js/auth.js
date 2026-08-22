@@ -73,8 +73,6 @@ async function refreshBootstrap() {
 function registerAuthListener(client) {
   if (authSubscription) return;
   const { data } = client.auth.onAuthStateChange((event, session) => {
-    // getSession() übernimmt den initialen Zustand bereits vollständig.
-    // INITIAL_SESSION darf deshalb keinen zweiten UI-Render auslösen.
     if (event === "INITIAL_SESSION") {
       return;
     }
@@ -97,6 +95,48 @@ function registerAuthListener(client) {
     }, 0);
   });
   authSubscription = data.subscription;
+}
+
+async function deactivateCurrentPushSubscriptionForLogout() {
+  if (
+    typeof navigator === "undefined"
+    || !("serviceWorker" in navigator)
+    || !state.session
+  ) {
+    return;
+  }
+
+  let subscription = null;
+  try {
+    const registration = await navigator.serviceWorker.getRegistration?.();
+    if (!registration?.pushManager) return;
+    subscription = await registration.pushManager.getSubscription();
+  } catch {
+    return;
+  }
+
+  if (!subscription) return;
+
+  try {
+    await api.call("remove_push_subscription", {
+      endpoint: subscription.endpoint
+    });
+  } catch {
+    // Logout bleibt möglich. Ein veralteter Server-Endpunkt wird beim nächsten
+    // Zustellversuch durch M020 über 404/410 dauerhaft deaktiviert.
+  }
+
+  try {
+    await subscription.unsubscribe();
+  } catch {
+    // Lokales Unsubscribe ist best effort und darf den Logout nicht blockieren.
+  }
+
+  try {
+    if ("clearAppBadge" in navigator) await navigator.clearAppBadge();
+  } catch {
+    // Badge ist rein ergänzend.
+  }
 }
 
 export const auth = Object.freeze({
@@ -237,12 +277,9 @@ export const auth = Object.freeze({
         token: credential
       };
 
-      if (rawNonce) {
-        credentials.nonce = rawNonce;
-      }
+      if (rawNonce) credentials.nonce = rawNonce;
 
       const { data, error } = await client.auth.signInWithIdToken(credentials);
-
       if (error) throw error;
       if (!data?.session) {
         throw new Error("Die Google-Anmeldung hat keine Portalsitzung erzeugt.");
@@ -251,7 +288,6 @@ export const auth = Object.freeze({
       state.session = data.session;
       state.initialized = true;
       await refreshBootstrap();
-
       return this.current();
     } catch (error) {
       state.error = error;
@@ -283,6 +319,9 @@ export const auth = Object.freeze({
   async logout() {
     if (!isSupabaseConfigured()) return;
     const client = getSupabaseClient();
+
+    await deactivateCurrentPushSubscriptionForLogout();
+
     const { error } = await client.auth.signOut();
     if (error) throw error;
     state.session = null;
@@ -304,8 +343,10 @@ export const auth = Object.freeze({
       const value = sessionStorage.getItem(CONFIG.auth.postLoginRouteKey) || "";
       sessionStorage.removeItem(CONFIG.auth.postLoginRouteKey);
       return value;
-    } catch (error) {
+    } catch {
       return "";
     }
   }
 });
+
+const __M020_R1_LOGOUT_PUSH_CLEANUP__ = true;

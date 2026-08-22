@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plärrdeifl M310 Fanbusfahrten
  * Description: Öffentliche Anzeige der Fanbusfahrten mit Verlinkung zur zentralen Anmeldung.
- * Version: 1.0.3
+ * Version: 1.0.4
  * Requires PHP: 8.3
  */
 
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 
 final class PD_M310_Fanbus_Plugin
 {
-    private const VERSION = '1.0.3';
+    private const VERSION = '1.0.4';
     private const OPTION_NAME = 'plaerrdeifl_m310_fanbus_settings';
     private const SETTINGS_GROUP = 'plaerrdeifl_m310_fanbus_settings_group';
     private const ADMIN_SLUG = 'plaerrdeifl-m310-fanbus';
@@ -620,7 +620,10 @@ final class PD_M310_Fanbus_Plugin
             'registrationOpensAt',
             'registrationClosesAt',
             'priceCents',
+            'tripStatus',
             'registrationStatus',
+            'cancellationReason',
+            'cancelledAt',
         );
 
         if (array_diff($required_keys, array_keys($value)) !== array()) {
@@ -640,6 +643,8 @@ final class PD_M310_Fanbus_Plugin
             || !self::valid_timestamp($value['registrationClosesAt'])
             || !is_int($value['priceCents'])
             || $value['priceCents'] < 0
+            || !is_string($value['tripStatus'])
+            || !in_array($value['tripStatus'], array('PUBLISHED', 'CANCELLED'), true)
             || !is_string($value['registrationStatus'])
             || !in_array(
                 $value['registrationStatus'],
@@ -649,10 +654,18 @@ final class PD_M310_Fanbus_Plugin
                     'WAITLIST',
                     'FULL',
                     'CLOSED',
+                    'CANCELLED',
                     'UNAVAILABLE',
                 ),
                 true
             )
+            || !self::valid_optional_text($value['cancellationReason'], 240)
+            || ($value['cancelledAt'] !== null && !self::valid_timestamp($value['cancelledAt']))
+            || ($value['tripStatus'] === 'CANCELLED' && (
+                $value['registrationStatus'] !== 'CANCELLED'
+                || !self::valid_text($value['cancellationReason'], 240)
+                || !self::valid_timestamp($value['cancelledAt'])
+            ))
         ) {
             return null;
         }
@@ -670,7 +683,12 @@ final class PD_M310_Fanbus_Plugin
             'registrationOpensAt' => $value['registrationOpensAt'],
             'registrationClosesAt' => $value['registrationClosesAt'],
             'priceCents' => $value['priceCents'],
+            'tripStatus' => $value['tripStatus'],
             'registrationStatus' => $value['registrationStatus'],
+            'cancellationReason' => is_string($value['cancellationReason'])
+                ? trim($value['cancellationReason'])
+                : null,
+            'cancelledAt' => $value['cancelledAt'],
         );
     }
 
@@ -824,6 +842,14 @@ final class PD_M310_Fanbus_Plugin
                     <strong><?php echo esc_html(self::registration_window_text($trip)); ?></strong>
                 </p>
 
+                <?php if ($trip['tripStatus'] === 'CANCELLED') : ?>
+                    <section class="pd-m310-cancellation" aria-label="Fahrtabsage">
+                        <strong>Fahrt abgesagt</strong>
+                        <p><?php echo esc_html($trip['cancellationReason']); ?></p>
+                        <small>Abgesagt am <?php echo esc_html(self::format_timestamp($trip['cancelledAt'])); ?></small>
+                    </section>
+                <?php endif; ?>
+
                 <section class="pd-m310-stops" aria-label="Zustiegsorte">
                     <h3 class="pd-m310-stops-heading">Zustiegsorte</h3>
 
@@ -857,7 +883,7 @@ final class PD_M310_Fanbus_Plugin
                     <?php endif; ?>
                 </section>
 
-                <?php if ($trip['registrationStatus'] !== 'UNAVAILABLE') : ?>
+                <?php if (!in_array($trip['registrationStatus'], array('UNAVAILABLE', 'CANCELLED'), true)) : ?>
                     <a
                         class="pd-m310-link"
                         href="<?php echo esc_url($deep_link); ?>"
@@ -877,6 +903,7 @@ final class PD_M310_Fanbus_Plugin
             'FULL' => array('label' => 'Ausgebucht', 'class' => 'pd-m310-status-full'),
             'WAITLIST' => array('label' => 'Warteliste', 'class' => 'pd-m310-status-full'),
             'CLOSED' => array('label' => 'Geschlossen', 'class' => 'pd-m310-status-closed'),
+            'CANCELLED' => array('label' => 'Fahrt abgesagt', 'class' => 'pd-m310-status-cancelled'),
             'UNAVAILABLE' => array('label' => 'Nicht verfügbar', 'class' => 'pd-m310-status-unavailable'),
         )[$status];
     }
@@ -895,6 +922,10 @@ final class PD_M310_Fanbus_Plugin
 
         if ($trip['registrationStatus'] === 'CLOSED') {
             return 'Anmeldung geschlossen';
+        }
+
+        if ($trip['registrationStatus'] === 'CANCELLED') {
+            return 'Fahrt abgesagt';
         }
 
         if ($trip['registrationStatus'] === 'FULL') {

@@ -90,7 +90,20 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260815120000_fix_m325_f5_capacity_and_ui_contract.sql",
     "20260815214000_p800_u5_fanbus_paid_marker.sql",
     "20260815223000_p800_u5_1_remove_departure_info_requirement.sql",
-    "20260816125838_harden_fanbus_m325_idempotency_rls.sql"
+    "20260816125838_harden_fanbus_m325_idempotency_rls.sql",
+    "20260816170000_add_central_notifications_m020_r1.sql",
+    "20260817183000_add_notification_preferences_m020_r2.sql",
+    "20260818194500_add_fanbus_trip_cancellation_m330_r1.sql",
+    "20260818194600_add_fanbus_change_notifications_m330_r1.sql",
+    "20260819151000_add_membership_portal_identity_m150_r2.sql",
+    "20260820065000_add_team_function_authorization_m010_r2.sql",
+    "20260820070000_split_fanbus_operations_permissions_m010_r2.sql",
+    "20260820071500_adjust_fanbus_read_permissions_m010_r2.sql",
+    "20260820073000_retire_member_role_m010_r2.sql",
+    "20260820074500_manage_team_functions_m010_r2.sql",
+    "20260820080000_dynamic_fanbus_org_recipients_m010_r2.sql",
+    "20260820120000_add_m325_r2_member_linking.sql",
+    "20260822074900_add_joint_fanbus_preferences_and_bus_control.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
@@ -217,13 +230,16 @@ test("member email match migration is safe and confirmable", async () => {
     admin.includes('call("member_match"')
   );
   assert.ok(
-    admin.includes("Mitglied automatisch erkannt")
+    admin.includes("Mögliche Mitgliedszuordnung gefunden")
   );
   assert.ok(
-    admin.includes("Bitte prüfen und bestätigen")
+    admin.includes("Bitte Identität prüfen")
   );
   assert.ok(
     admin.includes("AMBIGUOUS")
+  );
+  assert.ok(
+    !admin.includes("Mitglied automatisch erkannt")
   );
 });
 
@@ -583,7 +599,12 @@ test("portal profile privacy and account creation contracts remain intact", asyn
   assert.match(ui, /data-user-logout/);
   assert.match(ui, /body\.classList\.toggle\(\s*"overlay-open"/);
   assert.doesNotMatch(ui, /profileField\("Portal-ID"/);
-  assert.doesNotMatch(ui, /member\.memberCode/);
+  assert.match(ui, /member\.memberCode/);
+  assert.match(ui, /memberStatusLabel\(member\.status\)/);
+  assert.match(
+    ui,
+    /Keine Mitgliedschaft mit diesem Portalaccount verknüpft/
+  );
 
   assert.match(admin, /\["profileChanges", "Datenänderungen"\]/);
   assert.match(admin, /review_profile_change_request/);
