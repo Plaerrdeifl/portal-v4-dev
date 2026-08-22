@@ -82,6 +82,18 @@ function formatBerlinDateTime(value) {
   }).format(date);
 }
 
+function formatBerlinTime(value) {
+  if (!value) return "–";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "–";
+  return new Intl.DateTimeFormat("de-DE", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Europe/Berlin"
+  }).format(date);
+}
+
 function registrationStatusLabel(value) {
   return {
     NOT_STARTED: "Anmeldung noch nicht geöffnet",
@@ -370,7 +382,7 @@ function resolvedBoardingStopValue(value) {
 
 function boardingStopOptions(selected = "") {
   const resolved = resolvedBoardingStopValue(selected);
-  return `<option value="">Bitte wählen</option>${(trip?.boardingStops || []).map(stop => `<option value="${escapeHtml(stop.id)}"${String(stop.id) === resolved ? " selected" : ""}>${escapeHtml(`${stop.label} · ${formatBerlinDateTime(stop.departureAt)}`)}</option>`).join("")}`;
+  return `<option value="">Bitte wählen</option>${(trip?.boardingStops || []).map(stop => `<option value="${escapeHtml(stop.id)}"${String(stop.id) === resolved ? " selected" : ""}>${escapeHtml(`${stop.label} · ${formatBerlinTime(stop.departureAt)}`)}</option>`).join("")}`;
 }
 
 function companionValues(member = {}) {

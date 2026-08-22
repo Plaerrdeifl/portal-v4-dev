@@ -55,10 +55,10 @@
     .fanbus-public-brand small{margin-top:5px;color:var(--ink-500);font-size:.7rem;letter-spacing:.17em}
     .fanbus-public-header p{margin:0;color:var(--ink-500);font-size:.92rem;line-height:1.45}
     .fanbus-public-trip-card{display:grid;gap:8px}
-    .fanbus-public-trip-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px;min-width:0}
-    .fanbus-public-trip-date,.fanbus-public-trip-status{font-size:.84rem;font-weight:800;line-height:1.3}
+    .fanbus-public-trip-head{display:flex;flex-wrap:nowrap;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+    .fanbus-public-trip-date,.fanbus-public-trip-status{min-width:0;white-space:nowrap;font-size:.84rem;font-weight:800;line-height:1.3}
     .fanbus-public-trip-date{color:var(--ink-600,#475569)}
-    .fanbus-public-trip-status{display:inline-flex;align-items:center;gap:6px;flex:none;margin-inline-start:auto;color:var(--blue-900);text-align:right}
+    .fanbus-public-trip-status{display:inline-flex;align-items:center;gap:5px;flex:none;margin-inline-start:auto;color:var(--blue-900);text-align:right}
     .fanbus-public-trip-status::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--blue-700)}
     .fanbus-public-trip-status.success{color:#0f6940}.fanbus-public-trip-status.success::before{background:var(--success)}
     .fanbus-public-trip-status.warning{color:#7a4700}.fanbus-public-trip-status.warning::before{background:#d98300}
@@ -71,7 +71,10 @@
     .fanbus-public-identity-row{padding:10px 12px;border:1px solid var(--line,#d8e2ee);border-radius:13px;background:#f8fbff}
     .fanbus-public-identity-row strong,.fanbus-companion-person strong{min-width:0;overflow-wrap:anywhere}
     .fanbus-public-primary-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .fanbus-public-guest-primary-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;min-width:0}
+    .fanbus-public-guest-primary-fields label,.fanbus-public-guest-primary-fields input{min-width:0}
     .fanbus-public-registration-panel{margin-top:14px;padding-top:14px;border-top:1px solid var(--line,#d8e2ee)}
+    .fanbus-public-registration-heading{align-items:center;flex-wrap:nowrap}
     .fanbus-public-companion-section{display:grid;gap:9px;padding-top:4px}
     .fanbus-public-section-heading h3{margin:0;font-size:1.02rem}
     .fanbus-public-person-count{color:var(--ink-500);font-size:.78rem;font-weight:800;white-space:nowrap}
@@ -81,7 +84,7 @@
     .fanbus-public-consent span{line-height:1.45}
     .fanbus-public-legal-link{color:var(--blue-800)}
     .fanbus-public-consents{display:grid;gap:9px;padding-top:8px;border-top:1px solid var(--line,#d8e2ee)}
-    .fanbus-public-member-login{display:grid;justify-items:start;gap:9px;margin-top:10px}
+    .fanbus-public-member-login{display:block;flex:none;margin-inline-start:auto}
     .fanbus-public-member-login-panel{display:grid;gap:8px;width:100%;padding:11px 12px;border:1px solid var(--line,#d8e2ee);border-radius:13px;background:#f8fbff}
     .fanbus-public-member-login-panel p{margin:0;color:var(--ink-500);font-size:.8rem;line-height:1.45}
     .fanbus-public-google{min-height:52px;display:flex;justify-content:center;align-items:center;overflow:hidden}
@@ -89,8 +92,8 @@
     .fanbus-public-status{margin-top:0}
     .fanbus-public-status[hidden],.fanbus-public-form[hidden],.fanbus-public-google[hidden],.fanbus-public-member-login[hidden],.fanbus-public-member-login-panel[hidden]{display:none!important}
     .fanbus-companions{display:grid;gap:8px}.fanbus-companion{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 10px;align-items:center;min-width:0;padding:10px 11px;border:1px solid var(--line,#d8e2ee);border-radius:13px;background:#f8fbff}.fanbus-companion-meta{min-width:0;color:var(--ink-500);font-size:.8rem;overflow-wrap:anywhere}.fanbus-companion-actions{display:flex;align-items:center;gap:6px;grid-column:2;grid-row:1 / span 2}.fanbus-companion-actions .button{min-width:0;padding-inline:9px}.fanbus-companion-remove{width:34px!important;min-width:34px!important;padding-inline:0!important;font-size:1.05rem}.fanbus-public-companion-add-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.fanbus-public-companion-add-actions.is-guest-only{grid-template-columns:1fr}.fanbus-public-companion-add-actions .button{width:100%;min-width:0}.fanbus-public-list-picker{display:grid;gap:12px}.fanbus-public-list-members{display:grid;gap:7px}.fanbus-public-list-member{margin:0;padding:9px 10px;border:1px solid var(--line,#d8e2ee);border-radius:11px;background:#fff;cursor:pointer}.fanbus-public-list-member input[type="checkbox"]{width:24px;height:24px;min-height:24px;flex:0 0 24px;accent-color:var(--blue-800)}
-    @media (max-width:620px){.fanbus-public-form.form-grid{grid-template-columns:1fr}.fanbus-public-form .full{grid-column:auto}.fanbus-public-primary-fields{grid-template-columns:1fr}.fanbus-public-shell{gap:10px}.card{padding:14px}.fanbus-public-brand img{width:46px;height:46px}.fanbus-companion{grid-template-columns:minmax(0,1fr) auto}.fanbus-companion-actions{align-self:center}.fanbus-public-actions .button{width:100%}}
-    @media (max-width:390px){.fanbus-companion{grid-template-columns:1fr}.fanbus-companion-actions{grid-column:1;grid-row:auto;justify-content:flex-end}.fanbus-public-identity-row,.fanbus-companion-person{align-items:flex-start}.v4-m325-companion-identity-badges{margin-inline-start:8px}}
+    @media (max-width:620px){.fanbus-public-form.form-grid{grid-template-columns:1fr}.fanbus-public-form .full{grid-column:auto}.fanbus-public-primary-fields{grid-template-columns:1fr}.fanbus-public-trip-date,.fanbus-public-trip-status{font-size:.76rem}.fanbus-public-shell{gap:10px}.card{padding:14px}.fanbus-public-brand img{width:46px;height:46px}.fanbus-companion{grid-template-columns:minmax(0,1fr) auto}.fanbus-companion-actions{align-self:center}.fanbus-public-actions .button{width:100%}}
+    @media (max-width:390px){.fanbus-public-trip-head{gap:5px}.fanbus-public-trip-date,.fanbus-public-trip-status{overflow:hidden;text-overflow:ellipsis;font-size:.7rem}.fanbus-public-guest-primary-fields{gap:8px}.fanbus-companion{grid-template-columns:1fr}.fanbus-companion-actions{grid-column:1;grid-row:auto;justify-content:flex-end}.fanbus-public-identity-row,.fanbus-companion-person{align-items:flex-start}.v4-m325-companion-identity-badges{margin-inline-start:8px}}
   </style>
   <title>Fanbus-Anmeldung · Plärrdeifl</title>
 </head>
@@ -116,10 +119,13 @@
       </section>
 
     <section id="m310RegistrationPanel" class="fanbus-public-registration-panel" hidden>
-      <div class="section-title">
+      <div class="section-title fanbus-public-registration-heading">
         <div>
           <h2 id="m310RegistrationTitle">Anmeldung</h2>
           <p id="m310RegistrationIntro" hidden></p>
+        </div>
+        <div id="m310MemberLogin" class="fanbus-public-member-login" hidden>
+          <button id="m310MemberLoginToggle" class="button small ghost" type="button" aria-controls="m310MemberLoginPanel" aria-expanded="false">Mitgliederlogin</button>
         </div>
       </div>
 
@@ -131,13 +137,10 @@
         hidden
       ></div>
 
-      <section id="m310MemberLogin" class="fanbus-public-member-login" hidden>
-        <button id="m310MemberLoginToggle" class="button small ghost" type="button" aria-controls="m310MemberLoginPanel" aria-expanded="false">Mitgliederlogin</button>
-        <div id="m310MemberLoginPanel" class="fanbus-public-member-login-panel" hidden>
-          <p>Der Portalzugang ist aktuell Plärrdeifl-Mitgliedern und ausgewählten Personen vorbehalten. Eine Anmeldung führt nicht automatisch zu einer Freischaltung.</p>
-          <div id="m310GoogleSignIn" class="google-signin-slot fanbus-public-google" hidden></div>
-        </div>
-      </section>
+      <div id="m310MemberLoginPanel" class="fanbus-public-member-login-panel" hidden>
+        <p>Der Portalzugang ist aktuell Plärrdeifl-Mitgliedern und ausgewählten Personen vorbehalten. Eine Anmeldung führt nicht automatisch zu einer Freischaltung.</p>
+        <div id="m310GoogleSignIn" class="google-signin-slot fanbus-public-google" hidden></div>
+      </div>
 
       <form id="m310PortalForm" class="form-grid fanbus-public-form" novalidate hidden>
         <div id="m310PortalIdentity" class="fanbus-public-identity-row full"></div>
@@ -181,14 +184,16 @@
       </form>
 
       <form id="m310GuestForm" class="form-grid fanbus-public-form" novalidate hidden>
-        <label>
-          Vorname
-          <input name="firstName" type="text" autocomplete="given-name" maxlength="120" required>
-        </label>
-        <label>
-          Nachname
-          <input name="lastName" type="text" autocomplete="family-name" maxlength="120" required>
-        </label>
+        <div class="fanbus-public-guest-primary-fields full">
+          <label>
+            Vorname
+            <input name="firstName" type="text" autocomplete="given-name" maxlength="120" required>
+          </label>
+          <label>
+            Nachname
+            <input name="lastName" type="text" autocomplete="family-name" maxlength="120" required>
+          </label>
+        </div>
         <label class="full">
           E-Mail
           <input name="email" type="email" autocomplete="email" maxlength="320" required>

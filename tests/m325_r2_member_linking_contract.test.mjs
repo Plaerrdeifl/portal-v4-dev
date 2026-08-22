@@ -197,6 +197,18 @@ test("D-055 UI uses Portaluser identity and capability-gated admin controls", as
     registration.indexOf("async function renderMode"),
     registration.indexOf("async function loadTrip")
   );
+  const registrationHeading = standalone.slice(
+    standalone.indexOf('<div class="section-title fanbus-public-registration-heading">'),
+    standalone.indexOf('<div\n        id="m310RegistrationStatus"')
+  );
+  const berlinTime = registration.slice(
+    registration.indexOf("function formatBerlinTime"),
+    registration.indexOf("function registrationStatusLabel")
+  );
+  const boardingOptions = registration.slice(
+    registration.indexOf("function boardingStopOptions"),
+    registration.indexOf("function companionValues")
+  );
   assert.match(ui, /Portaluser suchen/);
   assert.match(ui, /Portaluser verknüpfen/);
   assert.match(ui, /fanbus\.participant_identity\.manage/);
@@ -230,7 +242,9 @@ test("D-055 UI uses Portaluser identity and capability-gated admin controls", as
   assert.match(publicTrip, /trip\.eventDate[\s\S]*trip\.eventTime[\s\S]*trip\.registrationStatus/);
   assert.match(publicTrip, /fanbus-public-trip-head[\s\S]*fanbus-public-trip-date[\s\S]*fanbus-public-trip-status/);
   assert.doesNotMatch(publicTrip, /status-pill/);
-  assert.match(standalone, /fanbus-public-trip-date,\.fanbus-public-trip-status\{font-size:\.84rem/);
+  assert.match(standalone, /\.fanbus-public-trip-date,\.fanbus-public-trip-status\{[^}]*font-size:\.84rem/);
+  assert.match(standalone, /\.fanbus-public-trip-head\{[^}]*flex-wrap:nowrap[^}]*gap:8px/);
+  assert.doesNotMatch(standalone, /\.fanbus-public-trip-head\{[^}]*flex-wrap:wrap/);
   assert.doesNotMatch(publicTrip, />Abfahrt<|>Fahrtpreis<|>Freie Plätze<|>Anmeldezeitraum</);
   assert.match(registration, /elements\.title\.textContent = "Deine Anmeldung"/);
   assert.match(registration, /elements\.title\.textContent = "Anmeldung"/);
@@ -251,15 +265,29 @@ test("D-055 UI uses Portaluser identity and capability-gated admin controls", as
   assert.match(registration, /submitLabel: "Übernehmen"/);
   assert.match(standalone, /fanbus-public-list-member input\[type="checkbox"\][^}]*width:24px[^}]*height:24px/);
   assert.doesNotMatch(standalone, /Mitfahrerliste verwenden|Wer fährt mit\?/);
+  assert.match(registrationHeading, /id="m310RegistrationTitle"[\s\S]*id="m310MemberLogin"[\s\S]*id="m310MemberLoginToggle"/);
+  assert.doesNotMatch(registrationHeading, /id="m310MemberLoginPanel"/);
+  assert.match(standalone, /\.fanbus-public-registration-heading\{[^}]*flex-wrap:nowrap/);
   assert.match(standalone, /id="m310MemberLoginToggle"[^>]*>Mitgliederlogin<\/button>/);
   assert.match(standalone, /id="m310MemberLoginPanel"[^>]*hidden[\s\S]*Der Portalzugang ist aktuell Plärrdeifl-Mitgliedern und ausgewählten Personen vorbehalten\. Eine Anmeldung führt nicht automatisch zu einer Freischaltung\./);
   assert.match(publicMode, /memberLogin\.hidden = true[\s\S]*current\.authenticated && current\.status === "ACTIVE"[\s\S]*elements\.title\.textContent = "Deine Anmeldung"/);
   assert.match(publicMode, /if \(!current\.authenticated\) \{[\s\S]*elements\.memberLogin\.hidden = false/);
   assert.doesNotMatch(publicMode, /renderGoogleSignInButton/);
   assert.match(registration, /async function toggleMemberLogin\(\)[\s\S]*renderGoogleSignInButton\(elements\.google/);
+  assert.match(guestForm, /fanbus-public-guest-primary-fields[\s\S]*name="firstName"[^>]*autocomplete="given-name"[^>]*maxlength="120"[^>]*required[\s\S]*name="lastName"[^>]*autocomplete="family-name"[^>]*maxlength="120"[^>]*required/);
+  assert.match(guestForm, /class="full">\s*E-Mail[\s\S]*name="email"[^>]*type="email"/);
+  assert.match(standalone, /\.fanbus-public-guest-primary-fields\{[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(standalone, /\.fanbus-public-guest-primary-fields label,\.fanbus-public-guest-primary-fields input\{min-width:0\}/);
+  assert.match(berlinTime, /hour: "2-digit"[\s\S]*minute: "2-digit"[\s\S]*timeZone: "Europe\/Berlin"/);
+  assert.doesNotMatch(berlinTime, /day:|month:|year:/);
+  assert.match(boardingOptions, /formatBerlinTime\(stop\.departureAt\)/);
+  assert.doesNotMatch(boardingOptions, /formatBerlinDateTime|day:|month:|year:/);
   assert.match(registration, /link\.textContent = linkText/);
+  assert.match(registration, /url\.protocol === "https:"[\s\S]*link\.href = url\.href/);
   assert.match(registration, /link\.target = "_blank"[\s\S]*link\.rel = "noopener noreferrer"/);
   assert.doesNotMatch(registration, /link\.textContent = normalized/);
+  assert.match(registration, /trip\.termsReference/);
+  assert.doesNotMatch(registration, /fanbus-teilnahmebedingungen|termsReference\s*=|termsReference\s*:/);
   assert.match(registration, /\$\{total\} \$\{total === 1 \? "Person wird" : "Personen werden"\} angemeldet/);
   assert.doesNotMatch(registration, /reguläre Anmeldung|Wartelistenanmeldung|Begleiter/);
   assert.ok(
