@@ -1,6 +1,7 @@
 import { api } from "../api.js";
 import { auth } from "../auth.js";
 import { escapeAttr, escapeHtml, showToast } from "../ui.js";
+import { platformMode } from "../platform-mode.js";
 
 export { escapeAttr, escapeHtml, showToast };
 
@@ -384,6 +385,12 @@ export function confirmAction(message, options = {}) {
 }
 
 export async function runWrite(operation, successMessage = "Änderung gespeichert.") {
+  try {
+    platformMode.assertUserWriteAllowed();
+  } catch (error) {
+    showToast(error?.message || "Schreibaktionen sind aktuell nicht verfügbar.", "warning", 6000);
+    throw error;
+  }
   const result = await operation();
   showToast(successMessage, "success", 3800);
   return result;

@@ -20,6 +20,7 @@ final class PD_M310_Fanbus_Plugin
     private const ADMIN_SLUG = 'plaerrdeifl-m310-fanbus';
     private const RPC_PATH = '/rest/v1/rpc/pd_public_fanbus_trips';
     private const STOPS_RPC_PATH = '/rest/v1/rpc/pd_public_fanbus_trip_boarding_stops';
+    private const STATUS_RPC_PATH = '/rest/v1/rpc/pd_public_platform_status';
     private const REQUEST_TIMEOUT = 8;
     private const MAX_RESPONSE_BYTES = 262144;
     private const MAX_URL_LENGTH = 2048;
@@ -362,6 +363,10 @@ final class PD_M310_Fanbus_Plugin
                 . '</div>';
         }
 
+        $platform_status = self::load_platform_status($config);
+        $registration_allowed = is_array($platform_status)
+            && $platform_status['mode'] === 'NORMAL';
+
         $heading_id = wp_unique_id('pd-m310-fanbus-title-');
         ob_start();
         ?>
@@ -370,6 +375,23 @@ final class PD_M310_Fanbus_Plugin
                 <p class="pd-m310-eyebrow">Gemeinsam zum Spiel</p>
                 <h2 id="<?php echo esc_attr($heading_id); ?>" class="pd-m310-heading">Fanbusfahrten</h2>
             </header>
+
+            <?php if (!$registration_allowed) : ?>
+                <div class="pd-m310-platform-notice" role="status">
+                    <strong>Fanbus-Anmeldungen aktuell pausiert</strong>
+                    <p><?php echo esc_html(
+                        is_array($platform_status) && is_string($platform_status['message'])
+                            ? $platform_status['message']
+                            : 'Die Fahrten bleiben sichtbar; neue Anmeldungen sind vorübergehend nicht möglich.'
+                    ); ?></p>
+                    <?php $expected_end = is_array($platform_status)
+                        ? self::format_platform_expected_end($platform_status['expectedEnd'])
+                        : ''; ?>
+                    <?php if ($expected_end !== '') : ?>
+                        <small><?php echo esc_html('Voraussichtliches Ende: ' . $expected_end); ?></small>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
 
             <div class="pd-m310-grid">
                 <?php foreach ($trips as $trip) : ?>
@@ -381,7 +403,8 @@ final class PD_M310_Fanbus_Plugin
                     self::render_trip(
                         $trip,
                         $config['portal_registration_url'],
-                        $stops
+                        $stops,
+                        $registration_allowed
                     );
                     ?>
                 <?php endforeach; ?>
@@ -473,6 +496,50 @@ final class PD_M310_Fanbus_Plugin
         }
 
         return $trips;
+    }
+
+    private static function load_platform_status(array $config): ?array
+    {
+        $response = wp_remote_post(
+            $config['supabase_url'] . self::STATUS_RPC_PATH,
+            array(
+                'timeout' => self::REQUEST_TIMEOUT,
+                'redirection' => 0,
+                'reject_unsafe_urls' => true,
+                'limit_response_size' => 8192,
+                'headers' => array(
+                    'apikey' => $config['publishable_key'],
+                    'Content-Type' => 'application/json',
+                    'Cache-Control' => 'no-cache, no-store, max-age=0',
+                ),
+                'body' => '{}',
+            )
+        );
+        if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
+            return null;
+        }
+        $data = json_decode(wp_remote_retrieve_body($response), true);
+        if (!is_array($data) || array_is_list($data)) return null;
+        $keys = array_keys($data);
+        sort($keys);
+        if ($keys !== array('expectedEnd', 'message', 'mode', 'revision')) return null;
+        if (!in_array($data['mode'], array('NORMAL', 'READ_ONLY', 'MAINTENANCE'), true)) return null;
+        if (!is_int($data['revision']) || $data['revision'] < 1) return null;
+        if (!is_null($data['message']) && !is_string($data['message'])) return null;
+        if (!is_null($data['expectedEnd']) && !is_string($data['expectedEnd'])) return null;
+        return $data;
+    }
+
+    private static function format_platform_expected_end(mixed $value): string
+    {
+        if (!is_string($value) || $value === '') return '';
+        try {
+            return (new DateTimeImmutable($value))
+                ->setTimezone(new DateTimeZone('Europe/Berlin'))
+                ->format('d.m.Y, H:i \U\h\r');
+        } catch (Exception) {
+            return '';
+        }
     }
 
     private static function load_public_trip_stops(
@@ -762,7 +829,8 @@ final class PD_M310_Fanbus_Plugin
     private static function render_trip(
         array $trip,
         string $portal_url,
-        ?array $stops
+        ?array $stops,
+        bool $registration_allowed
     ): void {
         $status = self::status_presentation($trip['registrationStatus']);
         $deep_link = add_query_arg('trip', $trip['tripId'], $portal_url);
@@ -883,12 +951,14 @@ final class PD_M310_Fanbus_Plugin
                     <?php endif; ?>
                 </section>
 
-                <?php if (!in_array($trip['registrationStatus'], array('UNAVAILABLE', 'CANCELLED'), true)) : ?>
+                <?php if ($registration_allowed && !in_array($trip['registrationStatus'], array('UNAVAILABLE', 'CANCELLED'), true)) : ?>
                     <a
                         class="pd-m310-link"
                         href="<?php echo esc_url($deep_link); ?>"
                         aria-label="<?php echo esc_attr($button_label . ': ' . $trip['displayTitle']); ?>"
                     ><?php echo esc_html($button_label); ?></a>
+                <?php elseif (!$registration_allowed && !in_array($trip['registrationStatus'], array('UNAVAILABLE', 'CANCELLED'), true)) : ?>
+                    <p class="pd-m310-registration-disabled">Anmeldung vorübergehend nicht möglich</p>
                 <?php endif; ?>
             </div>
         </details>

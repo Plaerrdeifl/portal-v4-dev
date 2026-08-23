@@ -4,6 +4,7 @@ import { CONFIG } from "./config.js";
 import { renderGoogleSignInButton } from "./google-signin.js";
 import { openDialog } from "./modules/common.js";
 import { getSupabaseClient } from "./supabase-client.js";
+import { hasReleaseBypass, platformMode, releaseBypassHeaders } from "./platform-mode.js";
 
 const TURNSTILE_SCRIPT_ID = "m310-turnstile-api";
 const TURNSTILE_SCRIPT_URL = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
@@ -43,6 +44,7 @@ let portalBoardingStopTouched = false;
 let googleSignInReady = false;
 let registrationComplete = false;
 let modeRenderSequence = 0;
+let platformStatus = platformMode.current();
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -336,7 +338,10 @@ function safeOutcomeMessage(outcome) {
     CLOSED: "Die Anmeldung ist geschlossen.",
     CANCELLED: "Diese Fanbusfahrt wurde abgesagt.",
     FANBUS_TRIP_CANCELLED: "Diese Fanbusfahrt wurde abgesagt.",
-    UNAVAILABLE: "Diese Fanbusfahrt ist aktuell nicht verfügbar."
+    UNAVAILABLE: "Diese Fanbusfahrt ist aktuell nicht verfügbar.",
+    PLATFORM_READ_ONLY: "Fanbus-Anmeldungen sind aktuell pausiert.",
+    PLATFORM_MAINTENANCE: "Die Plattform befindet sich aktuell im Wartungsmodus.",
+    PLATFORM_WRITE_UNAVAILABLE: "Fanbus-Anmeldungen sind aktuell nicht verfügbar."
   }[outcome] || "Die Anmeldung konnte nicht verarbeitet werden.";
 }
 
@@ -911,8 +916,13 @@ async function submitPortal(event) {
       return;
     }
     setStatus(safeOutcomeMessage(result?.outcome), "warning");
-  } catch {
-    setStatus("Die Anmeldung konnte gerade nicht verarbeitet werden. Bitte versuche es erneut.", "error");
+  } catch (error) {
+    setStatus(
+      String(error?.code || "").startsWith("PLATFORM_")
+        ? safeOutcomeMessage(error.code)
+        : "Die Anmeldung konnte gerade nicht verarbeitet werden. Bitte versuche es erneut.",
+      "error"
+    );
   } finally {
     if (!registrationComplete) setFormBusy(elements.portalForm, false);
   }
@@ -955,7 +965,8 @@ async function submitGuest(event) {
         credentials: "omit",
         headers: {
           apikey: CONFIG.supabase.publishableKey,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          ...releaseBypassHeaders()
         },
         body: JSON.stringify({
           ...payload,
@@ -983,6 +994,8 @@ async function submitGuest(event) {
       setStatus("Zu viele Versuche. Bitte versuche es später erneut.", "warning");
     } else if (response.status === 403 && result?.code === "TURNSTILE_REJECTED") {
       setStatus("Die Sicherheitsprüfung ist fehlgeschlagen. Bitte versuche es erneut.", "warning");
+    } else if (["PLATFORM_READ_ONLY", "PLATFORM_MAINTENANCE", "PLATFORM_WRITE_UNAVAILABLE"].includes(result?.code)) {
+      setStatus(safeOutcomeMessage(result.code), "warning");
     } else if (["FULL", "NOT_STARTED", "CLOSED", "FANBUS_TRIP_CANCELLED", "UNAVAILABLE"].includes(result?.code)) {
       setStatus(safeOutcomeMessage(result.code), "warning");
     } else if (response.status >= 500) {
@@ -1040,6 +1053,20 @@ async function renderMode() {
   const preferencePanel = document.getElementById("m325UserBoardingPreference");
   if (preferencePanel) preferencePanel.hidden = true;
   setStatus("", "");
+
+  if (platformStatus.mode !== "NORMAL" && !hasReleaseBypass()) {
+    removeTurnstile();
+    elements.title.textContent = platformStatus.mode === "READ_ONLY"
+      ? "Anmeldung vorübergehend pausiert"
+      : "Anmeldung aktuell nicht verfügbar";
+    elements.intro.textContent = platformStatus.message
+      || (platformStatus.mode === "READ_ONLY"
+        ? "Die Fahrten bleiben sichtbar; neue Anmeldungen sind derzeit gesperrt."
+        : "Die Plattform befindet sich aktuell im Wartungsmodus.");
+    elements.intro.hidden = false;
+    setStatus("Neue Fanbus-Anmeldungen sind aktuell nicht möglich.", "warning");
+    return;
+  }
 
   if (current.authenticated && current.status === "ACTIVE") {
     removeTurnstile();
@@ -1116,7 +1143,10 @@ async function initialize() {
     return;
   }
 
-  trip = await loadTrip(tripId);
+  [platformStatus, trip] = await Promise.all([
+    platformMode.refresh(),
+    loadTrip(tripId)
+  ]);
   if (!trip?.available) {
     unavailableTrip();
     return;

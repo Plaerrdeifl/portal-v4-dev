@@ -9,6 +9,9 @@ import {
 
 const MAX_REQUEST_BYTES = MAX_ICS_BYTES + 64 * 1024;
 const FINGERPRINT_PATTERN = /^[0-9a-f]{64}$/;
+const RELEASE_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
+const RELEASE_RUN_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{2,95}$/;
+const RELEASE_ENVIRONMENT_PATTERN = /^[A-Z][A-Z0-9_-]{1,31}$/;
 
 type RuntimeConfig = {
   supabaseUrl: string;
@@ -53,7 +56,7 @@ function corsHeaders(origin: string) {
   return {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+    "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-pd-release-bypass, x-pd-release-run, x-pd-environment",
     "Access-Control-Max-Age": "600",
     "Vary": "Origin"
   };
@@ -101,13 +104,35 @@ async function authenticatedUserId(token: string, config: RuntimeConfig) {
   }
 }
 
-async function rpc(name: string, payload: Record<string, unknown>, config: RuntimeConfig) {
+function releaseBypassHeaders(request: Request) {
+  const token = String(request.headers.get("X-PD-Release-Bypass") || "").trim();
+  const runId = String(request.headers.get("X-PD-Release-Run") || "").trim();
+  const environment = String(request.headers.get("X-PD-Environment") || "").trim().toUpperCase();
+  if (
+    !RELEASE_TOKEN_PATTERN.test(token)
+    || !RELEASE_RUN_PATTERN.test(runId)
+    || !RELEASE_ENVIRONMENT_PATTERN.test(environment)
+  ) return {};
+  return {
+    "X-PD-Release-Bypass": token,
+    "X-PD-Release-Run": runId,
+    "X-PD-Environment": environment
+  };
+}
+
+async function rpc(
+  name: string,
+  payload: Record<string, unknown>,
+  config: RuntimeConfig,
+  additionalHeaders: Record<string, string> = {}
+) {
   const response = await fetch(`${config.supabaseUrl}/rest/v1/rpc/${name}`, {
     method: "POST",
     headers: {
       apikey: config.serviceRoleKey,
       Authorization: `Bearer ${config.serviceRoleKey}`,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      ...additionalHeaders
     },
     body: JSON.stringify(payload),
     signal: AbortSignal.timeout(30_000)
@@ -168,6 +193,9 @@ async function readRawBody(request: Request): Promise<BodyReadResult> {
 }
 
 function mapRpcError(error: Error & { code?: string }, origin: string) {
+  if (error.code === "P0902") return errorResponse(423, "PLATFORM_READ_ONLY", "Bestätigungen sind aktuell pausiert; die Vorschau bleibt verfügbar.", origin);
+  if (error.code === "P0903") return errorResponse(503, "PLATFORM_MAINTENANCE", "Die Plattform befindet sich aktuell im Wartungsmodus.", origin);
+  if (error.code === "P0901") return errorResponse(503, "PLATFORM_WRITE_UNAVAILABLE", "Bestätigungen sind aktuell nicht verfügbar.", origin);
   if (error.code === "42501") return errorResponse(403, "FORBIDDEN", "Die Berechtigung events.manage ist erforderlich.", origin);
   if (error.code === "P2101") return errorResponse(409, "PREVIEW_STALE", "Die Vorschau ist nicht mehr aktuell. Bitte analysiere die Datei erneut.", origin);
   if (error.code === "22023") return errorResponse(400, "INVALID_IMPORT", error.message, origin);
@@ -257,7 +285,7 @@ Deno.serve(async request => {
       p_records: parsed.records,
       p_expected_state: state,
       p_preview_fingerprint: fingerprint
-    }, config);
+    }, config, releaseBypassHeaders(request));
     return jsonResponse(200, { ok: true, data: result }, origin);
   } catch (error) {
     return mapRpcError(error as Error & { code?: string }, origin);

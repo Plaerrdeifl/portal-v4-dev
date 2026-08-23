@@ -43,6 +43,9 @@ type BodyReadResult =
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SOURCE_HASH_PATTERN = /^[0-9a-f]{64}$/;
+const RELEASE_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
+const RELEASE_RUN_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{2,95}$/;
+const RELEASE_ENVIRONMENT_PATTERN = /^[A-Z][A-Z0-9_-]{1,31}$/;
 const REQUIRED_BODY_KEYS = Object.freeze([
   "tripId",
   "firstName",
@@ -138,9 +141,25 @@ function corsHeaders(origin: string) {
   return {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "apikey, content-type",
+    "Access-Control-Allow-Headers": "apikey, content-type, x-pd-release-bypass, x-pd-release-run, x-pd-environment",
     "Access-Control-Max-Age": "600",
     "Vary": "Origin"
+  };
+}
+
+function releaseBypassHeaders(request: Request) {
+  const token = String(request.headers.get("X-PD-Release-Bypass") || "").trim();
+  const runId = String(request.headers.get("X-PD-Release-Run") || "").trim();
+  const environment = String(request.headers.get("X-PD-Environment") || "").trim().toUpperCase();
+  if (
+    !RELEASE_TOKEN_PATTERN.test(token)
+    || !RELEASE_RUN_PATTERN.test(runId)
+    || !RELEASE_ENVIRONMENT_PATTERN.test(environment)
+  ) return {};
+  return {
+    "X-PD-Release-Bypass": token,
+    "X-PD-Release-Run": runId,
+    "X-PD-Environment": environment
   };
 }
 
@@ -497,7 +516,8 @@ Deno.serve(async request => {
         headers: {
           apikey: config.serviceRoleKey,
           Authorization: `Bearer ${config.serviceRoleKey}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          ...releaseBypassHeaders(request)
         },
         body: JSON.stringify({
           p_payload: {
@@ -530,6 +550,15 @@ Deno.serve(async request => {
 
   if (!rpcResponse.ok) {
     const rpcError = isPlainObject(rpcResult) ? rpcResult : {};
+    if (rpcError.code === "P0902") {
+      return errorResponse(423, "PLATFORM_READ_ONLY", "Fanbus-Anmeldungen sind aktuell pausiert.", origin);
+    }
+    if (rpcError.code === "P0903") {
+      return errorResponse(503, "PLATFORM_MAINTENANCE", "Die Plattform befindet sich aktuell im Wartungsmodus.", origin);
+    }
+    if (rpcError.code === "P0901") {
+      return errorResponse(503, "PLATFORM_WRITE_UNAVAILABLE", "Fanbus-Anmeldungen sind aktuell nicht verfügbar.", origin);
+    }
     if (rpcError.code === "P3101") {
       return errorResponse(429, "RATE_LIMITED", "Bitte versuche es später erneut.", origin);
     }

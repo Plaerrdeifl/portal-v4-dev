@@ -1,4 +1,5 @@
-const CACHE_VERSION = "pd-portal-v4-m010-central-capabilities-r1-20260810";
+const CACHE_VERSION = "pd-portal-v4-m900-platform-mode-r1-20260823";
+const M010_CENTRAL_CAPABILITIES_CACHE_VERSION = "pd-portal-v4-m010-central-capabilities-r1-20260810";
 const PREVIOUS_CACHE_VERSION = "pd-portal-v4-m150-withdrawn-r1-20260810";
 const PWA_INSTALL_GUIDANCE_CACHE_VERSION = "pd-portal-v4-pwa-install-guidance-r1-20260802";
 const PERSONAL_DASHBOARD_WIDGETS_CACHE_VERSION = "pd-portal-v4-personal-dashboard-widgets-r1-fix4-20260724";
@@ -23,6 +24,7 @@ const SHELL = [
   "./js/config.js",
   "./js/supabase-client.js",
   "./js/api.js",
+  "./js/platform-mode.js",
   "./js/auth.js",
   "./js/auth-gate.js",
   "./js/google-signin.js",
@@ -85,8 +87,12 @@ async function offlineDocument() {
 
 self.addEventListener("fetch", event => {
   const request = event.request;
-  if (request.method !== "GET") return;
   const url = new URL(request.url);
+  if (url.pathname.endsWith("/rest/v1/rpc/pd_public_platform_status")) {
+    event.respondWith(fetch(request, { cache: "no-store" }));
+    return;
+  }
+  if (request.method !== "GET") return;
   if (url.origin !== self.location.origin) return;
   if (url.pathname.endsWith("/js/runtime-config.js")) {
     event.respondWith(fetch(request, { cache: "no-store" }));

@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "./supabase-client.js";
 import { CONFIG } from "./config.js";
+import { platformMessage, releaseBypassHeaders } from "./platform-mode.js";
 
 let pendingRequests = 0;
 let lastError = null;
@@ -27,7 +28,7 @@ function unwrap(payload) {
   if (!payload || payload.ok !== true) {
     const error = payload?.error || {};
     throw new ApiError(
-      error.message || "Die Portalaktion ist fehlgeschlagen.",
+      platformMessage(error.code, error.message || "Die Portalaktion ist fehlgeschlagen."),
       error.code || "PORTAL_API_ERROR",
       error
     );
@@ -48,10 +49,37 @@ export const api = Object.freeze({
       let response;
 
       try {
-        response = await client.rpc("pd_api", {
-          p_action: String(action || ""),
-          p_payload: payload || {}
-        });
+        const bypassHeaders = releaseBypassHeaders();
+        if (Object.keys(bypassHeaders).length) {
+          const { data: sessionData, error: sessionError } = await client.auth.getSession();
+          const accessToken = sessionData?.session?.access_token;
+          if (sessionError || !accessToken) {
+            throw new ApiError("Anmeldung erforderlich.", "AUTH_REQUIRED", sessionError);
+          }
+          const directResponse = await fetch(
+            `${CONFIG.supabase.url.replace(/\/+$/, "")}/rest/v1/rpc/pd_api`,
+            {
+              method: "POST",
+              cache: "no-store",
+              headers: {
+                apikey: CONFIG.supabase.publishableKey,
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+                ...bypassHeaders
+              },
+              body: JSON.stringify({ p_action: String(action || ""), p_payload: payload || {} })
+            }
+          );
+          const directData = await directResponse.json().catch(() => null);
+          response = directResponse.ok
+            ? { data: directData, error: null }
+            : { data: null, error: directData || { message: "Supabase-Anfrage fehlgeschlagen." } };
+        } else {
+          response = await client.rpc("pd_api", {
+            p_action: String(action || ""),
+            p_payload: payload || {}
+          });
+        }
       } catch (error) {
         transportFailure = true;
         throw error;
@@ -62,7 +90,7 @@ export const api = Object.freeze({
       if (error) {
         transportFailure = true;
         throw new ApiError(
-          error.message || "Supabase-Anfrage fehlgeschlagen.",
+          platformMessage(error.code, error.message || "Supabase-Anfrage fehlgeschlagen."),
           error.code || "SUPABASE_RPC_ERROR",
           error
         );
@@ -106,7 +134,8 @@ export const api = Object.freeze({
             method: "POST",
             headers: {
               apikey: CONFIG.supabase.publishableKey,
-              Authorization: `Bearer ${accessToken}`
+              Authorization: `Bearer ${accessToken}`,
+              ...(String(action || "").toLowerCase() === "confirm" ? releaseBypassHeaders() : {})
             },
             body: form
           }
@@ -125,7 +154,7 @@ export const api = Object.freeze({
       if (!response.ok || result?.ok !== true) {
         const error = result?.error || {};
         throw new ApiError(
-          error.message || "Der Spielplanimport ist fehlgeschlagen.",
+          platformMessage(error.code, error.message || "Der Spielplanimport ist fehlgeschlagen."),
           error.code || `HTTP_${response.status}`,
           error
         );

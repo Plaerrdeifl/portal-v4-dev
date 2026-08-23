@@ -422,6 +422,21 @@ final class PD_M150_Membership_Plugin
                 . '</div>';
         }
 
+        $platform_status = self::load_platform_status($config);
+        if ($platform_status === null || $platform_status['mode'] !== 'NORMAL') {
+            $message = is_array($platform_status) && is_string($platform_status['message'])
+                ? $platform_status['message']
+                : 'Der digitale Mitgliedsantrag ist vorübergehend nicht verfügbar.';
+            $expected_end = is_array($platform_status)
+                ? self::format_platform_expected_end($platform_status['expectedEnd'])
+                : '';
+            return '<div class="pd-m150-unavailable pd-m150-platform-notice" role="status"><strong>'
+                . esc_html('Mitgliedsanträge aktuell pausiert')
+                . '</strong><p>' . esc_html($message) . '</p>'
+                . ($expected_end === '' ? '' : '<small>' . esc_html('Voraussichtliches Ende: ' . $expected_end) . '</small>')
+                . '</div>';
+        }
+
         self::enqueue_public_assets();
         $minor_url = $config['minor_url'];
 
@@ -623,20 +638,35 @@ final class PD_M150_Membership_Plugin
             return self::error_response(400, 'input', 'Bitte prüfe deine Eingaben.');
         }
 
-        if (!self::consume_rate_limit()) {
-            return self::error_response(
-                429,
-                'rate_limit',
-                'Zu viele Versuche. Bitte versuche es später erneut.'
-            );
-        }
-
         $config = self::digital_configuration();
         if ($config === null) {
             return self::error_response(
                 503,
                 'technical',
                 'Der Mitgliedsantrag ist derzeit technisch nicht möglich.'
+            );
+        }
+
+        $platform_status = self::load_platform_status($config);
+        $release_headers = self::release_bypass_headers($request);
+        if (
+            ($platform_status === null || $platform_status['mode'] !== 'NORMAL')
+            && $release_headers === array()
+        ) {
+            return self::error_response(
+                503,
+                'platform',
+                is_array($platform_status) && is_string($platform_status['message'])
+                    ? $platform_status['message']
+                    : 'Mitgliedsanträge sind aktuell vorübergehend pausiert.'
+            );
+        }
+
+        if (!self::consume_rate_limit()) {
+            return self::error_response(
+                429,
+                'rate_limit',
+                'Zu viele Versuche. Bitte versuche es später erneut.'
             );
         }
 
@@ -734,7 +764,8 @@ final class PD_M150_Membership_Plugin
             $raw_json,
             $timestamp,
             $idempotency_key,
-            $signature
+            $signature,
+            $release_headers
         );
         if (is_wp_error($edge_response)) {
             return self::error_response(
@@ -760,6 +791,24 @@ final class PD_M150_Membership_Plugin
 
         if ($edge_status === 400) {
             return self::error_response(400, 'input', 'Bitte prüfe deine Eingaben.');
+        }
+
+        if (
+            in_array($edge_status, array(423, 503), true)
+            && is_array($edge_data)
+            && in_array(
+                $edge_data['code'] ?? '',
+                array('PLATFORM_READ_ONLY', 'PLATFORM_MAINTENANCE', 'PLATFORM_WRITE_UNAVAILABLE'),
+                true
+            )
+        ) {
+            return self::error_response(
+                503,
+                'platform',
+                is_string($edge_data['message'] ?? null)
+                    ? $edge_data['message']
+                    : 'Mitgliedsanträge sind aktuell vorübergehend pausiert.'
+            );
         }
 
         return self::error_response(
@@ -972,7 +1021,8 @@ final class PD_M150_Membership_Plugin
         string $raw_json,
         string $timestamp,
         string $idempotency_key,
-        string $signature
+        string $signature,
+        array $release_headers = array()
     ): array|WP_Error {
         $response = new WP_Error('pd_m150_edge_unavailable');
         for ($attempt = 0; $attempt < 2; $attempt++) {
@@ -980,12 +1030,12 @@ final class PD_M150_Membership_Plugin
                 $edge_url,
                 array(
                     'timeout' => 15,
-                    'headers' => array(
+                    'headers' => array_merge(array(
                         'Content-Type' => 'application/json',
                         'X-M150-Timestamp' => $timestamp,
                         'X-M150-Idempotency-Key' => $idempotency_key,
                         'X-M150-Signature' => $signature,
-                    ),
+                    ), $release_headers),
                     'body' => $raw_json,
                 )
             );
@@ -1015,6 +1065,8 @@ final class PD_M150_Membership_Plugin
             'PD_M150_INTAKE_HMAC_SECRET',
             'PD_M150_TURNSTILE_SITE_KEY',
             'PD_M150_TURNSTILE_SECRET_KEY',
+            'PD_M150_PLATFORM_STATUS_URL',
+            'PD_M150_PLATFORM_PUBLIC_KEY',
         );
         foreach ($required_constants as $constant_name) {
             if (!defined($constant_name)) {
@@ -1026,6 +1078,8 @@ final class PD_M150_Membership_Plugin
         $hmac_secret = (string) constant('PD_M150_INTAKE_HMAC_SECRET');
         $turnstile_site_key = trim((string) constant('PD_M150_TURNSTILE_SITE_KEY'));
         $turnstile_secret = (string) constant('PD_M150_TURNSTILE_SECRET_KEY');
+        $platform_status_url = trim((string) constant('PD_M150_PLATFORM_STATUS_URL'));
+        $platform_public_key = trim((string) constant('PD_M150_PLATFORM_PUBLIC_KEY'));
         if (
             $edge_url === ''
             || wp_http_validate_url($edge_url) === false
@@ -1033,6 +1087,11 @@ final class PD_M150_Membership_Plugin
             || strlen($hmac_secret) < 32
             || $turnstile_site_key === ''
             || $turnstile_secret === ''
+            || $platform_status_url === ''
+            || wp_http_validate_url($platform_status_url) === false
+            || wp_parse_url($platform_status_url, PHP_URL_SCHEME) !== 'https'
+            || $platform_public_key === ''
+            || strlen($platform_public_key) > 2048
         ) {
             return null;
         }
@@ -1061,10 +1120,73 @@ final class PD_M150_Membership_Plugin
             'hmac_secret' => $hmac_secret,
             'turnstile_site_key' => $turnstile_site_key,
             'turnstile_secret' => $turnstile_secret,
+            'platform_status_url' => $platform_status_url,
+            'platform_public_key' => $platform_public_key,
             'privacy_url' => $privacy_url,
             'statutes_url' => $statutes_url,
             'minor_url' => $minor_url,
             'settings' => $settings,
+        );
+    }
+
+    private static function load_platform_status(array $config): ?array
+    {
+        $response = wp_remote_post(
+            $config['platform_status_url'],
+            array(
+                'timeout' => 8,
+                'redirection' => 0,
+                'reject_unsafe_urls' => true,
+                'limit_response_size' => 8192,
+                'headers' => array(
+                    'apikey' => $config['platform_public_key'],
+                    'Content-Type' => 'application/json',
+                    'Cache-Control' => 'no-cache, no-store, max-age=0',
+                ),
+                'body' => '{}',
+            )
+        );
+        if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
+            return null;
+        }
+        $data = json_decode(wp_remote_retrieve_body($response), true);
+        if (!is_array($data) || array_is_list($data)) return null;
+        $keys = array_keys($data);
+        sort($keys);
+        if ($keys !== array('expectedEnd', 'message', 'mode', 'revision')) return null;
+        if (!in_array($data['mode'], array('NORMAL', 'READ_ONLY', 'MAINTENANCE'), true)) return null;
+        if (!is_int($data['revision']) || $data['revision'] < 1) return null;
+        if (!is_null($data['message']) && !is_string($data['message'])) return null;
+        if (!is_null($data['expectedEnd']) && !is_string($data['expectedEnd'])) return null;
+        return $data;
+    }
+
+    private static function format_platform_expected_end(mixed $value): string
+    {
+        if (!is_string($value) || $value === '') return '';
+        try {
+            return (new DateTimeImmutable($value))
+                ->setTimezone(new DateTimeZone('Europe/Berlin'))
+                ->format('d.m.Y, H:i \U\h\r');
+        } catch (Exception) {
+            return '';
+        }
+    }
+
+    private static function release_bypass_headers(WP_REST_Request $request): array
+    {
+        $token = trim((string) $request->get_header('X-PD-Release-Bypass'));
+        $run_id = trim((string) $request->get_header('X-PD-Release-Run'));
+        $environment = strtoupper(trim((string) $request->get_header('X-PD-Environment')));
+        if (
+            preg_match('/^[0-9a-f]{64}$/D', $token) !== 1
+            || preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,95}$/D', $run_id) !== 1
+            || preg_match('/^[A-Z][A-Z0-9_-]{1,31}$/D', $environment) !== 1
+        ) return array();
+        return array(
+            'X-PD-Release-Bypass' => $token,
+            'X-PD-Release-Run' => $run_id,
+            'X-PD-Environment' => $environment,
         );
     }
 

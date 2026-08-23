@@ -182,6 +182,11 @@ function setOpeningCopy(status, detail) {
   }
 }
 
+function hideMaintenance() {
+  const maintenance = element("authGateMaintenance");
+  if (maintenance) maintenance.hidden = true;
+}
+
 export function showOpening(
   status = "Portal wird geöffnet …",
   detail = "Sichere Anmeldung wird vorbereitet."
@@ -192,6 +197,7 @@ export function showOpening(
   const shell = element("appShell");
 
   setAuthLayout(true);
+  hideMaintenance();
   setOpeningCopy(status, detail);
 
   if (gate) {
@@ -245,6 +251,7 @@ export async function showLogin({
   const shell = element("appShell");
 
   setAuthLayout(true);
+  hideMaintenance();
 
   if (shell) {
     shell.hidden = true;
@@ -361,6 +368,7 @@ export function showApp({
   const shell = element("appShell");
 
   setAuthLayout(authLayout);
+  hideMaintenance();
 
   if (gate) {
     gate.hidden = true;
@@ -370,5 +378,35 @@ export function showApp({
   if (shell) {
     shell.hidden = false;
     shell.inert = false;
+  }
+}
+
+export function showMaintenance({ message = "", expectedEnd = "" } = {}) {
+  const gate = element("authGate");
+  const opening = element("authGateOpening");
+  const login = element("authGateLogin");
+  const maintenance = element("authGateMaintenance");
+  const maintenanceMessage = element("authGateMaintenanceMessage");
+  const maintenanceEnd = element("authGateMaintenanceEnd");
+  const shell = element("appShell");
+
+  setAuthLayout(true);
+  if (gate) {
+    gate.hidden = false;
+    gate.setAttribute("aria-busy", "false");
+  }
+  if (opening) opening.hidden = true;
+  if (login) login.hidden = true;
+  if (maintenance) maintenance.hidden = false;
+  if (maintenanceMessage) {
+    maintenanceMessage.textContent = message || "Das Portal ist vorübergehend nicht verfügbar.";
+  }
+  if (maintenanceEnd) {
+    maintenanceEnd.textContent = expectedEnd ? `Voraussichtliches Ende: ${expectedEnd}` : "";
+    maintenanceEnd.hidden = !expectedEnd;
+  }
+  if (shell) {
+    shell.hidden = true;
+    shell.inert = true;
   }
 }

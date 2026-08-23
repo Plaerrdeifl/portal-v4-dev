@@ -18,9 +18,11 @@ import {
   showApp,
   showChecking,
   showLogin,
+  showMaintenance,
   showOpening,
   syncLegalLinks
 } from "./auth-gate.js";
+import { formatExpectedEnd, hasReleaseBypass, platformMode } from "./platform-mode.js";
 import {
   bindGlobalUi,
   loadFragment,
@@ -37,6 +39,25 @@ let renderSequence = 0;
 let authEventQueued = false;
 let authOperationActive = false;
 let apiActivity = api.activity();
+
+function renderPlatformMode(status) {
+  document.documentElement.dataset.platformMode = status.mode;
+  const banner = document.getElementById("platformReadOnlyBanner");
+  const message = document.getElementById("platformReadOnlyMessage");
+  const end = document.getElementById("platformReadOnlyEnd");
+  if (!banner) return;
+
+  const readOnly = status.mode === "READ_ONLY" && status.available;
+  banner.hidden = !readOnly;
+  if (message) {
+    message.textContent = status.message || "Lesen ist weiterhin möglich; Änderungen sind vorübergehend gesperrt.";
+  }
+  const expectedEnd = formatExpectedEnd(status.expectedEnd);
+  if (end) {
+    end.textContent = expectedEnd ? `Voraussichtliches Ende: ${expectedEnd}` : "";
+    end.hidden = !expectedEnd;
+  }
+}
 
 function connectionState() {
   const current = auth.current();
@@ -482,6 +503,16 @@ async function bootstrap() {
     "Portal wird geöffnet …",
     "Sichere Anmeldung wird vorbereitet."
   );
+
+  const platformStatus = await platformMode.refresh();
+  renderPlatformMode(platformStatus);
+  if ((platformStatus.mode === "MAINTENANCE" || !platformStatus.available) && !hasReleaseBypass()) {
+    showMaintenance({
+      message: platformStatus.message,
+      expectedEnd: formatExpectedEnd(platformStatus.expectedEnd)
+    });
+    return;
+  }
 
   await mountComponents();
 

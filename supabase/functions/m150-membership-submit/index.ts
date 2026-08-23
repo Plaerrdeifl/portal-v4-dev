@@ -22,6 +22,10 @@ const INPUT_ERROR_CODES = Object.freeze([
   "M150_IDEMPOTENCY_KEY_REUSED"
 ]);
 
+const RELEASE_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
+const RELEASE_RUN_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{2,95}$/;
+const RELEASE_ENVIRONMENT_PATTERN = /^[A-Z][A-Z0-9_-]{1,31}$/;
+
 const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8", { fatal: true });
 
@@ -29,7 +33,7 @@ type BodyReadResult =
   | { status: "ok"; bytes: Uint8Array }
   | { status: "too_large" | "read_error" };
 
-function jsonResponse(status: number, body: typeof SUCCESS_RESPONSE | typeof ERROR_RESPONSE) {
+function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
@@ -143,6 +147,35 @@ async function verifySignature(
 
 function isInputRpcError(responseText: string) {
   return INPUT_ERROR_CODES.some(code => responseText.includes(code));
+}
+
+function releaseBypassHeaders(request: Request) {
+  const token = String(request.headers.get("X-PD-Release-Bypass") || "").trim();
+  const runId = String(request.headers.get("X-PD-Release-Run") || "").trim();
+  const environment = String(request.headers.get("X-PD-Environment") || "").trim().toUpperCase();
+  if (
+    !RELEASE_TOKEN_PATTERN.test(token)
+    || !RELEASE_RUN_PATTERN.test(runId)
+    || !RELEASE_ENVIRONMENT_PATTERN.test(environment)
+  ) return {};
+  return {
+    "X-PD-Release-Bypass": token,
+    "X-PD-Release-Run": runId,
+    "X-PD-Environment": environment
+  };
+}
+
+function platformRpcError(responseText: string) {
+  if (responseText.includes('"code":"P0902"')) {
+    return jsonResponse(423, { ok: false, code: "PLATFORM_READ_ONLY", message: "Anträge sind aktuell vorübergehend pausiert." });
+  }
+  if (responseText.includes('"code":"P0903"')) {
+    return jsonResponse(503, { ok: false, code: "PLATFORM_MAINTENANCE", message: "Die Plattform befindet sich aktuell im Wartungsmodus." });
+  }
+  if (responseText.includes('"code":"P0901"')) {
+    return jsonResponse(503, { ok: false, code: "PLATFORM_WRITE_UNAVAILABLE", message: "Anträge sind aktuell nicht verfügbar." });
+  }
+  return null;
 }
 
 Deno.serve(async request => {
@@ -259,7 +292,8 @@ Deno.serve(async request => {
         headers: {
           apikey: serviceRoleKey,
           Authorization: `Bearer ${serviceRoleKey}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          ...releaseBypassHeaders(request)
         },
         body: JSON.stringify({
           p_payload: payload,
@@ -279,6 +313,8 @@ Deno.serve(async request => {
   }
 
   if (!rpcResponse.ok) {
+    const platformError = platformRpcError(rpcText);
+    if (platformError) return platformError;
     return errorResponse(isInputRpcError(rpcText) ? 400 : 500);
   }
 
