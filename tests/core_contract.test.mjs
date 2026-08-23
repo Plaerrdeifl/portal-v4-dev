@@ -103,7 +103,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260820074500_manage_team_functions_m010_r2.sql",
     "20260820080000_dynamic_fanbus_org_recipients_m010_r2.sql",
     "20260820120000_add_m325_r2_member_linking.sql",
-    "20260822074900_add_joint_fanbus_preferences_and_bus_control.sql"
+    "20260822074900_add_joint_fanbus_preferences_and_bus_control.sql",
+    "20260823002244_add_platform_mode_core_m900_r1.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
@@ -146,6 +147,49 @@ test("database migrations are ordered and contain the core contract", async () =
     publicDefaultPrivileges,
     /alter\s+default\s+privileges\s+for\s+role\s+postgres\s+in\s+schema\s+public\s+revoke\s+all\s+on\s+functions\s+from\s+anon\s*,\s*authenticated\s*,\s*service_role\s*;/i
   );
+});
+
+test("M900-R1 centralizes the fail-closed platform mode contract", async () => {
+  const migration = await read(
+    "supabase/migrations/20260823002244_add_platform_mode_core_m900_r1.sql"
+  );
+  const sqlTest = await read("supabase/tests/m900_platform_mode_core.sql");
+  const readAllowlist = migration.match(
+    /platform_action_classification[\s\S]+?= any \(array\[([\s\S]+?)\]::text\[\]\)/
+  );
+
+  assert.ok(readAllowlist);
+  assert.equal([...readAllowlist[1].matchAll(/'([^']+)'/g)].length, 29);
+  assert.match(migration, /insert into app_portal\.settings[\s\S]+?'platform\.mode'/);
+  assert.match(migration, /create function app_private\.platform_runtime_state\(\)/);
+  assert.match(migration, /create function app_private\.require_platform_user_write_allowed\(\)/);
+  assert.match(migration, /create function public\.pd_public_platform_status\(\)/);
+  assert.match(migration, /rename to pd_api_before_platform_mode_m900_r1/);
+  assert.match(migration, /else 'USER_MUTATION'::text/);
+  assert.match(migration, /PLATFORM_WRITE_UNAVAILABLE/);
+  assert.match(migration, /PLATFORM_READ_ONLY/);
+  assert.match(migration, /PLATFORM_MAINTENANCE/);
+  assert.doesNotMatch(migration, /execute\s+format|\bexecute\s+v_/i);
+  assert.match(
+    migration,
+    /grant execute on function public\.pd_public_platform_status\(\)\s+to anon, authenticated;/
+  );
+  assert.match(
+    migration,
+    /grant execute on function public\.pd_api\(text, jsonb\)\s+to authenticated;/
+  );
+  for (const requiredCase of [
+    "NORMAL",
+    "READ_ONLY",
+    "MAINTENANCE",
+    "Fehlendes Setting",
+    "Fehlender mode",
+    "Unbekannter mode",
+    "Ungueltige Struktur",
+    "Public-Status-Vertrag"
+  ]) {
+    assert.ok(sqlTest.includes(requiredCase), `SQL-Vertragstest fehlt: ${requiredCase}`);
+  }
 });
 
 test("M150 conversion remains behind the authenticated additive RPC boundary", async () => {
