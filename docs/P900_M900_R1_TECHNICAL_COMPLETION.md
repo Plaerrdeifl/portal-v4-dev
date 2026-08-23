@@ -171,3 +171,6 @@ architecture was introduced. PROD remains out of scope.
 
 This document does not authorize any PROD migration, deployment, Auth change,
 WordPress rollout or test data.
+
+The completed rollout and DEV RC evidence is frozen in
+`docs/P900_M900_R1_DEV_RC.md`.
