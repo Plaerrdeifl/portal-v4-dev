@@ -22,7 +22,7 @@ import {
   showOpening,
   syncLegalLinks
 } from "./auth-gate.js";
-import { formatExpectedEnd, hasReleaseBypass, platformMode } from "./platform-mode.js";
+import { formatExpectedEnd, platformMode } from "./platform-mode.js";
 import {
   bindGlobalUi,
   loadFragment,
@@ -506,7 +506,7 @@ async function bootstrap() {
 
   const platformStatus = await platformMode.refresh();
   renderPlatformMode(platformStatus);
-  if ((platformStatus.mode === "MAINTENANCE" || !platformStatus.available) && !hasReleaseBypass()) {
+  if (platformStatus.mode === "MAINTENANCE" || !platformStatus.available) {
     showMaintenance({
       message: platformStatus.message,
       expectedEnd: formatExpectedEnd(platformStatus.expectedEnd)

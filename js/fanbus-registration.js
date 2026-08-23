@@ -4,7 +4,7 @@ import { CONFIG } from "./config.js";
 import { renderGoogleSignInButton } from "./google-signin.js";
 import { openDialog } from "./modules/common.js";
 import { getSupabaseClient } from "./supabase-client.js";
-import { hasReleaseBypass, platformMode, releaseBypassHeaders } from "./platform-mode.js";
+import { hasReleaseTestContext, platformMode, releaseBypassHeaders } from "./platform-mode.js";
 
 const TURNSTILE_SCRIPT_ID = "m310-turnstile-api";
 const TURNSTILE_SCRIPT_URL = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
@@ -1054,7 +1054,10 @@ async function renderMode() {
   if (preferencePanel) preferencePanel.hidden = true;
   setStatus("", "");
 
-  if (platformStatus.mode !== "NORMAL" && !hasReleaseBypass()) {
+  const readOnlyReleaseRequest = platformStatus.mode === "READ_ONLY"
+    && platformStatus.available
+    && hasReleaseTestContext();
+  if (platformStatus.mode !== "NORMAL" && !readOnlyReleaseRequest) {
     removeTurnstile();
     elements.title.textContent = platformStatus.mode === "READ_ONLY"
       ? "Anmeldung vorübergehend pausiert"

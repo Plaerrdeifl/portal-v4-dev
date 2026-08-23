@@ -240,8 +240,8 @@ test("M310 WordPress presentation is portal-scoped, readable and mobile-safe", a
     readFile(resolve(pluginRoot, "assets", "m310-fanbus.css"), "utf8")
   ]);
 
-  assert.match(plugin, /^ \* Version: 1\.0\.4$/m);
-  assert.match(plugin, /private const VERSION = '1\.0\.4'/);
+  assert.match(plugin, /^ \* Version: 1\.0\.5$/m);
+  assert.match(plugin, /private const VERSION = '1\.0\.5'/);
   assert.match(style, /\.pd-m310-fanbus\s*\{[\s\S]+color:\s*var\(--pd-m310-ink\)/);
   assert.match(style, /\.pd-m310-fanbus \.pd-m310-title\s*\{[\s\S]+color:\s*var\(--pd-m310-ink\)[\s\S]+white-space:\s*normal/);
   assert.match(style, /\.pd-m310-fanbus \.pd-m310-meta-item dd\s*\{[\s\S]+color:\s*var\(--pd-m310-ink\)/);

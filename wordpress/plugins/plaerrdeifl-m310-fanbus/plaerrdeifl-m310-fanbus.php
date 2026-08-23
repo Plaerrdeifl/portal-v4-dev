@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plärrdeifl M310 Fanbusfahrten
  * Description: Öffentliche Anzeige der Fanbusfahrten mit Verlinkung zur zentralen Anmeldung.
- * Version: 1.0.4
+ * Version: 1.0.5
  * Requires PHP: 8.3
  */
 
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 
 final class PD_M310_Fanbus_Plugin
 {
-    private const VERSION = '1.0.4';
+    private const VERSION = '1.0.5';
     private const OPTION_NAME = 'plaerrdeifl_m310_fanbus_settings';
     private const SETTINGS_GROUP = 'plaerrdeifl_m310_fanbus_settings_group';
     private const ADMIN_SLUG = 'plaerrdeifl-m310-fanbus';

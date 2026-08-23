@@ -90,6 +90,6 @@ test("U5.1 WordPress accepts legacy departureInfo only as optional transport dat
   );
   assert.doesNotMatch(wordpressFanbus, /<strong>Abfahrtsinfo<\/strong>/);
   assert.doesNotMatch(wordpressFanbus, /pd-m310-departure-info/);
-  assert.match(wordpressFanbus, /Version: 1\.0\.4/);
-  assert.match(wordpressFanbus, /private const VERSION = '1\.0\.4'/);
+  assert.match(wordpressFanbus, /Version: 1\.0\.5/);
+  assert.match(wordpressFanbus, /private const VERSION = '1\.0\.5'/);
 });

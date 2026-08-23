@@ -94,7 +94,7 @@ export function releaseBypassHeaders() {
   };
 }
 
-export function hasReleaseBypass() {
+export function hasReleaseTestContext() {
   return Object.keys(releaseBypassHeaders()).length === 3;
 }
 
@@ -137,7 +137,8 @@ export const platformMode = Object.freeze({
   },
 
   assertUserWriteAllowed() {
-    if ((state.mode === "NORMAL" && state.available) || hasReleaseBypass()) return;
+    if (state.mode === "NORMAL" && state.available) return;
+    if (state.mode === "READ_ONLY" && state.available && hasReleaseTestContext()) return;
     const code = !state.available
       ? "PLATFORM_WRITE_UNAVAILABLE"
       : state.mode === "READ_ONLY"

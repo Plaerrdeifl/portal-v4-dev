@@ -271,6 +271,99 @@ function bindInlineValidation(form) {
   });
 }
 
+const DIALOG_ALLOWED_ELEMENTS = new Set([
+  "A", "ARTICLE", "ASIDE", "B", "BR", "BUTTON", "CODE", "DD", "DETAILS",
+  "DIV", "DL", "DT", "EM", "FIELDSET", "FOOTER", "FORM", "H2", "H3", "H4",
+  "HEADER", "HR", "I", "INPUT", "LABEL", "LEGEND", "LI", "NAV", "OL",
+  "OPTION", "OUTPUT", "P", "SECTION", "SELECT", "SMALL", "SPAN", "STRONG", "SUMMARY", "TABLE",
+  "TBODY", "TD", "TEXTAREA", "TH", "THEAD", "TIME", "TR", "UL"
+]);
+
+const DIALOG_ALLOWED_ATTRIBUTES = new Set([
+  "accept", "autocomplete", "autofocus", "checked", "class", "cols",
+  "colspan", "disabled", "download", "for", "hidden", "href", "id",
+  "inputmode", "max", "maxlength", "method", "min", "minlength", "multiple",
+  "name", "novalidate", "open", "pattern", "placeholder", "readonly", "rel",
+  "required", "role", "rows", "rowspan", "scope", "selected", "step",
+  "tabindex", "target", "title", "type", "value"
+]);
+
+function safeDialogHref(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return false;
+  if (raw.startsWith("#") || raw.startsWith("./")) return true;
+  if (raw.startsWith("/") && !raw.startsWith("//")) return true;
+  if (/^tel:\+?[0-9 ()/-]{3,40}$/u.test(raw)) return true;
+
+  try {
+    const url = new URL(raw);
+    return url.protocol === "https:" && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
+function safeDialogFragment(markup) {
+  const template = document.createElement("template");
+  template.innerHTML = String(markup || "");
+
+  for (const element of template.content.querySelectorAll("*")) {
+    if (!DIALOG_ALLOWED_ELEMENTS.has(element.tagName)) {
+      throw new TypeError(`DIALOG_UNSAFE_ELEMENT:${element.tagName}`);
+    }
+
+    for (const attribute of Array.from(element.attributes)) {
+      const name = attribute.name.toLowerCase();
+      const allowed = DIALOG_ALLOWED_ATTRIBUTES.has(name)
+        || name.startsWith("aria-")
+        || name.startsWith("data-");
+      if (!allowed || name.startsWith("on") || name === "style") {
+        throw new TypeError(`DIALOG_UNSAFE_ATTRIBUTE:${name}`);
+      }
+    }
+
+    if (element.hasAttribute("href") && !safeDialogHref(element.getAttribute("href"))) {
+      throw new TypeError("DIALOG_UNSAFE_URL");
+    }
+
+    if (element.hasAttribute("target")) {
+      const rel = new Set(
+        String(element.getAttribute("rel") || "").toLowerCase().split(/\s+/).filter(Boolean)
+      );
+      if (
+        element.tagName !== "A"
+        || element.getAttribute("target") !== "_blank"
+        || !rel.has("noopener")
+        || !rel.has("noreferrer")
+      ) {
+        throw new TypeError("DIALOG_UNSAFE_EXTERNAL_LINK");
+      }
+    }
+  }
+
+  return template.content;
+}
+
+function appendDialogActions(bodyNode, { submitLabel, danger }) {
+  const actions = document.createElement("div");
+  actions.className = "dialog-actions";
+
+  const cancel = document.createElement("button");
+  cancel.className = "button ghost";
+  cancel.type = "button";
+  cancel.dataset.v4DialogClose = "";
+  cancel.textContent = "Abbrechen";
+
+  const submit = document.createElement("button");
+  submit.id = "v4DialogSubmit";
+  submit.className = `button ${danger ? "danger" : "primary"}`;
+  submit.type = "button";
+  submit.textContent = String(submitLabel || "Speichern");
+
+  actions.append(cancel, submit);
+  bodyNode.append(actions);
+}
+
 export function openDialog({
   title,
   kicker = "",
@@ -297,7 +390,8 @@ export function openDialog({
   document.getElementById("v4DialogKicker").textContent = kicker || "";
 
   const bodyNode = document.getElementById("v4DialogBody");
-  bodyNode.innerHTML = `${body || ""}${onSubmit ? `<div class="dialog-actions"><button class="button ghost" type="button" data-v4-dialog-close>Abbrechen</button><button id="v4DialogSubmit" class="button ${danger ? "danger" : "primary"}" type="button">${escapeHtml(submitLabel)}</button></div>` : ""}`;
+  bodyNode.replaceChildren(safeDialogFragment(body));
+  if (onSubmit) appendDialogActions(bodyNode, { submitLabel, danger });
 
   const form = bodyNode.querySelector("form");
   bindInlineValidation(form);

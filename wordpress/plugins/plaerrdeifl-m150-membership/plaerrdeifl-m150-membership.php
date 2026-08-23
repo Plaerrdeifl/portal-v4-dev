@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plärrdeifl M150 Mitglied werden
  * Description: Öffentlicher Mitgliedsantrag mit Dokumentverwaltung und sicherem Servertransport.
- * Version: 1.0.4
+ * Version: 1.0.5
  * Requires PHP: 8.3
  */
 
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 
 final class PD_M150_Membership_Plugin
 {
-    private const VERSION = '1.0.4';
+    private const VERSION = '1.0.5';
     private const OPTION_NAME = 'plaerrdeifl_m150_settings';
     private const SETTINGS_GROUP = 'plaerrdeifl_m150_settings_group';
     private const ADMIN_SLUG = 'plaerrdeifl-m150-membership';
