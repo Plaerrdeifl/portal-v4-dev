@@ -22,8 +22,9 @@ test("syntactically valid release context never opens the maintenance portal", a
   assert.match(platform, /X-PD-Release-Bypass/);
   assert.match(platform, /X-PD-Release-Run/);
   assert.match(platform, /X-PD-Environment/);
-  assert.match(registration, /platformStatus\.mode === "READ_ONLY"[\s\S]*hasReleaseTestContext\(\)/);
-  assert.doesNotMatch(registration, /platformStatus\.mode === "MAINTENANCE"[\s\S]{0,120}hasReleaseTestContext/);
+  assert.match(registration, /platformStatus\.mode !== "NORMAL"/);
+  assert.doesNotMatch(registration, /hasReleaseTestContext|releaseBypassHeaders/);
+  assert.doesNotMatch(registration, /X-PD-Release-(?:Bypass|Run)|X-PD-Environment/);
 });
 
 test("companion search is prefix-only, specific, bounded and privacy-minimal", async () => {

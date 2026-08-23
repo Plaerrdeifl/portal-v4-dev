@@ -24,10 +24,18 @@ test("M900 full integration guards all user mutation boundaries but no preview o
   assert.doesNotMatch(sql, /m210_ics_import_preview[\s\S]*require_platform_user_write_allowed/);
   assert.match(m210, /m210_ics_import_preview/);
   assert.match(m210, /m210_ics_import_confirm[\s\S]*releaseBypassHeaders\(request\)/);
-  for (const edge of [m150, m210, m310]) {
+  for (const edge of [m150, m310]) {
+    assert.doesNotMatch(edge, /X-PD-Release-Bypass/);
+    assert.doesNotMatch(edge, /X-PD-Release-Run/);
+    assert.doesNotMatch(edge, /X-PD-Environment/);
+    assert.doesNotMatch(edge, /releaseBypassHeaders/);
+  }
+  for (const edge of [m210]) {
     assert.match(edge, /X-PD-Release-Bypass/);
     assert.match(edge, /X-PD-Release-Run/);
     assert.match(edge, /X-PD-Environment/);
+  }
+  for (const edge of [m150, m210, m310]) {
     assert.match(edge, /P0901/);
     assert.match(edge, /P0902/);
     assert.match(edge, /P0903/);
@@ -35,7 +43,10 @@ test("M900 full integration guards all user mutation boundaries but no preview o
 });
 
 test("release bypass is hash-only, bounded, bound and ops-only", async () => {
-  const sql = await read(migrationPath);
+  const strict = await read(
+    "supabase/migrations/20260823154611_harden_release_bypass_strict_user_bound_m900_r1.sql"
+  );
+  const sql = `${await read(migrationPath)}\n${strict}`;
   assert.match(sql, /create table app_private\.platform_release_bypass_tokens/);
   assert.match(sql, /token_digest text not null unique/);
   assert.match(sql, /extensions\.gen_random_bytes\(32\)/);
@@ -46,7 +57,10 @@ test("release bypass is hash-only, bounded, bound and ops-only", async () => {
   assert.match(sql, /expires_at <= created_at \+ interval '1 hour'/);
   assert.match(sql, /environment = v_environment/);
   assert.match(sql, /run_id = v_run_id/);
-  assert.match(sql, /bound_user_id is null or bypass\.bound_user_id = p_actor/);
+  assert.match(strict, /alter column bound_user_id set not null/);
+  assert.match(strict, /bypass\.bound_user_id = p_actor/);
+  assert.doesNotMatch(strict, /bound_user_id is null or/);
+  assert.match(strict, /if p_actor is null[\s\S]*return false/);
   assert.match(sql, /PLATFORM_RELEASE_BYPASS_USED/);
   assert.match(sql, /'actorType'/);
   assert.match(sql, /'bypassUsed', true/);

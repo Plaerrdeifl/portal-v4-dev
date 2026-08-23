@@ -165,13 +165,31 @@ set value = excluded.value,
     description = excluded.description,
     revision = app_portal.settings.revision + 1;
 
+insert into auth.users(id, email)
+values ('00000000-0000-4900-8000-000000000021', 'm900-security-bypass@example.invalid');
+
+insert into app_portal.users(
+  id, user_code, email, first_name, last_name, status, role_id
+)
+select
+  '00000000-0000-4900-8000-000000000021',
+  'U-M900-SECURITY-BYPASS',
+  'm900-security-bypass@example.invalid',
+  'M900',
+  'Security Bypass',
+  'ACTIVE',
+  role.id
+from app_portal.portal_roles as role
+where role.code = 'PORTAL_USER'
+  and role.is_active;
+
 create temporary table m900_security_bypass_fixture(result jsonb) on commit drop;
 insert into m900_security_bypass_fixture(result)
 select app_private.create_platform_release_bypass(
   'LOCAL',
   'm900-security-test',
   now() + interval '15 minutes',
-  null
+  '00000000-0000-4900-8000-000000000021'
 );
 
 select is(

@@ -22,10 +22,6 @@ const INPUT_ERROR_CODES = Object.freeze([
   "M150_IDEMPOTENCY_KEY_REUSED"
 ]);
 
-const RELEASE_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
-const RELEASE_RUN_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{2,95}$/;
-const RELEASE_ENVIRONMENT_PATTERN = /^[A-Z][A-Z0-9_-]{1,31}$/;
-
 const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8", { fatal: true });
 
@@ -147,22 +143,6 @@ async function verifySignature(
 
 function isInputRpcError(responseText: string) {
   return INPUT_ERROR_CODES.some(code => responseText.includes(code));
-}
-
-function releaseBypassHeaders(request: Request) {
-  const token = String(request.headers.get("X-PD-Release-Bypass") || "").trim();
-  const runId = String(request.headers.get("X-PD-Release-Run") || "").trim();
-  const environment = String(request.headers.get("X-PD-Environment") || "").trim().toUpperCase();
-  if (
-    !RELEASE_TOKEN_PATTERN.test(token)
-    || !RELEASE_RUN_PATTERN.test(runId)
-    || !RELEASE_ENVIRONMENT_PATTERN.test(environment)
-  ) return {};
-  return {
-    "X-PD-Release-Bypass": token,
-    "X-PD-Release-Run": runId,
-    "X-PD-Environment": environment
-  };
 }
 
 function platformRpcError(responseText: string) {
@@ -292,8 +272,7 @@ Deno.serve(async request => {
         headers: {
           apikey: serviceRoleKey,
           Authorization: `Bearer ${serviceRoleKey}`,
-          "Content-Type": "application/json",
-          ...releaseBypassHeaders(request)
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           p_payload: payload,

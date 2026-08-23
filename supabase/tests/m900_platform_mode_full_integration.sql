@@ -321,10 +321,10 @@ begin
   end if;
 
   insert into app_private.platform_release_bypass_tokens (
-    token_digest, environment, run_id, expires_at, created_at
+    token_digest, environment, run_id, bound_user_id, expires_at, created_at
   ) values (
     encode(extensions.digest(convert_to(repeat('e', 64), 'UTF8'), 'sha256'), 'hex'),
-    'DEV', 'expired-run', now() - interval '1 minute', now() - interval '30 minutes'
+    'DEV', 'expired-run', v_privileged, now() - interval '1 minute', now() - interval '30 minutes'
   );
   perform set_config(
     'request.headers',
@@ -341,7 +341,7 @@ begin
   end if;
 
   v_revoked_created := app_private.create_platform_release_bypass(
-    'DEV', 'revoked-run', now() + interval '10 minutes', null
+    'DEV', 'revoked-run', now() + interval '10 minutes', v_privileged
   );
   if not app_private.revoke_platform_release_bypass((v_revoked_created ->> 'id')::uuid) then
     raise exception 'Bypass konnte nicht widerrufen werden.';
