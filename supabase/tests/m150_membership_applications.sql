@@ -6,7 +6,7 @@ select plan(1);
 
 do $m150_verification$
 declare
-  v_role_member constant uuid := '00000000-0000-4000-8000-000000000002';
+  v_role_member constant uuid := '00000000-0000-4000-8000-000000000003';
   v_role_admin constant uuid := '00000000-0000-4000-8000-000000000001';
   v_u1 constant uuid := '15000000-0000-4000-8000-000000000001';
   v_u2 constant uuid := '15000000-0000-4000-8000-000000000002';
@@ -583,7 +583,7 @@ $m150_verification$;
 
 do $m150_conversion_verification$
 declare
-  v_role_member constant uuid := '00000000-0000-4000-8000-000000000002';
+  v_role_member constant uuid := '00000000-0000-4000-8000-000000000003';
   v_u1 constant uuid := '15000000-0000-4000-8000-000000000001';
   v_u2 constant uuid := '15000000-0000-4000-8000-000000000002';
   v_admin constant uuid := '15000000-0000-4000-8000-000000000099';
@@ -1177,7 +1177,7 @@ $m150_conversion_verification$;
 
 do $m150_public_intake_verification$
 declare
-  v_role_member constant uuid := '00000000-0000-4000-8000-000000000002';
+  v_role_member constant uuid := '00000000-0000-4000-8000-000000000003';
   v_existing_active_member constant uuid := '15000000-0000-4001-8000-000000000301';
   v_existing_inactive_member constant uuid := '15000000-0000-4001-8000-000000000302';
   v_existing_portal_user constant uuid := '15000000-0000-4000-8000-000000000303';
