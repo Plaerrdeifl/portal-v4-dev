@@ -4,6 +4,35 @@ import { auth } from "./auth.js";
 let dialog = null;
 let snapshot = null;
 let busy = false;
+let logoutRecoveryPromise = null;
+
+const PD_PUSH_LOGOUT_RECOVERY_PREFIX = "pdPushLogoutRecovery:";
+
+function recoveryMarkerKey(userId) {
+  return `${PD_PUSH_LOGOUT_RECOVERY_PREFIX}${userId}`;
+}
+
+function hasLogoutRecoveryMarker(userId) {
+  if (!userId) return false;
+  try {
+    return localStorage.getItem(recoveryMarkerKey(userId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function clearLogoutRecoveryMarker(userId) {
+  if (!userId) return;
+  try {
+    localStorage.removeItem(recoveryMarkerKey(userId));
+  } catch {
+    // Lokaler Speicher ist optional und darf Push-Aktionen nicht blockieren.
+  }
+}
+
+function currentUserId() {
+  return auth.current().session?.user?.id || null;
+}
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -424,6 +453,16 @@ function render() {
     </form>
 
     <section class="v4-push-preferences">
+      <h3>Globaler Push-Opt-out</h3>
+      <p class="subtle">
+        Deaktiviert Push vollständig und entfernt alle registrierten Geräte.
+        Dies ist unabhängig von „Auf diesem Gerät deaktivieren“.
+      </p>
+      <button class="button danger" type="button" data-disable-push-globally
+        ${busy || preferences.pushEnabled !== true ? "disabled" : ""}>Push vollständig deaktivieren</button>
+    </section>
+
+    <section class="v4-push-preferences">
       <h3>Aktive Push-Geräte</h3>
       <p class="subtle">Es werden nur Gerätebezeichnung und Zeitpunkte angezeigt – keine Push-Schlüssel oder Endpunkte.</p>
       ${deviceMarkup(deviceList)}
@@ -432,6 +471,7 @@ function render() {
 
   host.querySelector("[data-enable-push]")?.addEventListener("click", enablePush);
   host.querySelector("[data-disable-push]")?.addEventListener("click", disablePush);
+  host.querySelector("[data-disable-push-globally]")?.addEventListener("click", disablePushGlobally);
   host.querySelector("[data-send-push-test]")?.addEventListener("click", sendTest);
   host.querySelector("#pushPreferencesForm")?.addEventListener("submit", savePreferences);
   host.querySelectorAll("[data-remove-push-device]").forEach(button => {
@@ -500,6 +540,7 @@ async function enablePush() {
       deviceLabel: deviceLabel(),
       userAgent: navigator.userAgent
     });
+    clearLogoutRecoveryMarker(currentUserId());
 
     notify("Push-Mitteilungen sind auf diesem Gerät aktiviert.", "success");
     await updateBadge(Number(snapshot?.unreadNotificationCount || 0));
@@ -517,6 +558,7 @@ async function disablePush() {
   render();
 
   try {
+    clearLogoutRecoveryMarker(currentUserId());
     const subscription = await currentSubscription();
     if (subscription) {
       await api.call("remove_push_subscription", { endpoint: subscription.endpoint });
@@ -528,6 +570,41 @@ async function disablePush() {
     notify("Push wurde auf diesem Gerät deaktiviert.", "success");
   } catch (error) {
     notify(error?.message || "Push konnte nicht deaktiviert werden.", "error");
+  } finally {
+    busy = false;
+    render();
+  }
+}
+
+async function disablePushGlobally() {
+  if (busy || snapshot?.preferences?.pushEnabled !== true) return;
+  busy = true;
+  render();
+
+  try {
+    await api.call("save_notification_preferences", {
+      revision: snapshot.preferences.revision,
+      pushEnabled: false
+    });
+
+    try {
+      const subscription = await currentSubscription();
+      if (subscription) await subscription.unsubscribe();
+    } catch {
+      // Server-seitiger Opt-out ist maßgeblich; lokales Unsubscribe ist best effort.
+    }
+
+    try {
+      if ("clearAppBadge" in navigator) await navigator.clearAppBadge();
+    } catch {
+      // Badge ist rein ergänzend.
+    }
+
+    clearLogoutRecoveryMarker(currentUserId());
+    snapshot = await api.call("push_snapshot");
+    notify("Push wurde auf allen Geräten vollständig deaktiviert.", "success");
+  } catch (error) {
+    notify(error?.message || "Push konnte nicht vollständig deaktiviert werden.", "error");
   } finally {
     busy = false;
     render();
@@ -579,7 +656,6 @@ async function savePreferences(event) {
 
     snapshot = await api.call("save_notification_preferences", {
       revision: values.revision,
-      pushEnabled: Number(snapshot?.activeDeviceCount || 0) > 0,
       emailAccountMembership: form.elements.emailAccountMembership.checked,
       pushAccountMembership: form.elements.pushAccountMembership.checked,
       pushMembershipApplications: form.elements.pushMembershipApplications.checked,
@@ -631,6 +707,60 @@ async function savePreferences(event) {
   }
 }
 
+async function reconcileLogoutPush(authState = auth.current()) {
+  if (logoutRecoveryPromise) return logoutRecoveryPromise;
+
+  const userId = authState?.session?.user?.id || null;
+  if (
+    authState?.authenticated !== true
+    || authState?.status !== "ACTIVE"
+    || !supported()
+    || !userId
+    || !hasLogoutRecoveryMarker(userId)
+  ) {
+    return null;
+  }
+
+  logoutRecoveryPromise = (async () => {
+    const recoverySnapshot = await api.call("push_snapshot");
+    if (recoverySnapshot?.preferences?.pushEnabled !== true) {
+      clearLogoutRecoveryMarker(userId);
+      return;
+    }
+
+    if (isIos() && !isStandalone()) return;
+    if (Notification.permission !== "granted") return;
+    if (!recoverySnapshot?.publicKey) {
+      throw new Error("PUSH_PUBLIC_KEY_MISSING");
+    }
+
+    const registration = await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(recoverySnapshot.publicKey)
+      });
+    }
+
+    const serialized = subscription.toJSON();
+    snapshot = await api.call("save_push_subscription", {
+      endpoint: serialized.endpoint,
+      p256dh: serialized.keys?.p256dh || "",
+      auth: serialized.keys?.auth || "",
+      deviceLabel: deviceLabel(),
+      userAgent: navigator.userAgent
+    });
+    clearLogoutRecoveryMarker(userId);
+  })().catch(error => {
+    console.warn("Push-Recovery nach Login konnte nicht abgeschlossen werden", error);
+  }).finally(() => {
+    logoutRecoveryPromise = null;
+  });
+
+  return logoutRecoveryPromise;
+}
+
 async function openSettings() {
   if (!auth.current().authenticated) {
     notify("Bitte melde dich zuerst an.", "error");
@@ -674,6 +804,10 @@ window.setTimeout(() => {
 
 window.addEventListener("online", () => {
   if (auth.current().authenticated) updateBadge();
+});
+
+window.addEventListener("pd-auth-change", event => {
+  void reconcileLogoutPush(event.detail);
 });
 
 document.addEventListener("visibilitychange", () => {
