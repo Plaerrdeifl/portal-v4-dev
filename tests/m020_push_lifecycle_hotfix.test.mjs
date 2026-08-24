@@ -6,8 +6,9 @@ import test from "node:test";
 const root = path.resolve(import.meta.dirname, "..");
 const read = relative => fs.readFile(path.join(root, relative), "utf8");
 
-const [migration, push, auth, serviceWorker] = await Promise.all([
+const [migration, actorProjectionMigration, push, auth, serviceWorker] = await Promise.all([
   read("supabase/migrations/20260823202816_m020_push_subscription_lifecycle_hotfix.sql"),
+  read("supabase/migrations/20260824044603_m020_access_request_actor_projection_hotfix.sql"),
   read("js/push.js"),
   read("js/auth.js"),
   read("service-worker.js")
@@ -193,4 +194,20 @@ test("T17 erfolgreiches manuelles enablePush löscht den Marker erst nach Server
   const markerClear = block.indexOf("clearLogoutRecoveryMarker(currentUserId())");
   assert.ok(serverSave >= 0);
   assert.ok(markerClear > serverSave);
+});
+
+test("T18 Access-Request-Projektion nullt Nicht-Portal-Akteure und erhält Portaluser", () => {
+  const block = functionBlock(actorProjectionMigration, "notification_project_user");
+  assert.match(block, /v_actor_user_id uuid/);
+  assert.match(
+    block,
+    /if p_event\.actor_user_id is not null\s+and exists \(\s+select 1\s+from app_portal\.users u\s+where u\.id = p_event\.actor_user_id\s+\) then/s
+  );
+  assert.match(block, /v_actor_user_id := p_event\.actor_user_id/);
+  assert.match(block, /else\s+v_actor_user_id := null/);
+  assert.match(
+    block,
+    /entity_id,\s+actor_user_id,\s+push_state[\s\S]*nullif\(p_event\.entity_id, ''\),\s+v_actor_user_id,\s+'SKIPPED'/
+  );
+  assert.match(block, /Non-portal actors remain on the event/);
 });
