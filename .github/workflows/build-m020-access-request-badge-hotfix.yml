@@ -178,9 +178,6 @@ jobs:
           set -euo pipefail
           git config user.name "Plärrdeifl Release Automation"
           git config user.email "release@plaerrdeifl.de"
-          git add supabase/migrations/20260824222500_m020_access_request_badge_actionability_hotfix.sql \
-                  tests/m020_access_request_badge_hotfix.test.mjs \
-                  tests/core_contract.test.mjs \
-                  .github/workflows/build-m020-access-request-badge-hotfix.yml
+          git add -A
           git commit -m "fix(m020): ignore resolved access requests in badge count"
           git push origin HEAD:fix/m020-access-request-badge
