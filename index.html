@@ -154,8 +154,34 @@
           role="status"
         ></p>
       </article>
+
+      <article
+        id="authGateMaintenance"
+        class="auth-maintenance-card"
+        aria-labelledby="authGateMaintenanceTitle"
+        hidden
+      >
+        <span class="auth-maintenance-kicker">Plattformstatus</span>
+        <h1 id="authGateMaintenanceTitle">Wartungsmodus</h1>
+        <p id="authGateMaintenanceMessage">Das Portal ist vorübergehend nicht verfügbar.</p>
+        <small id="authGateMaintenanceEnd" hidden></small>
+      </article>
     </div>
   </section>
+
+  <aside
+    id="platformReadOnlyBanner"
+    class="platform-read-only-banner"
+    role="status"
+    aria-live="polite"
+    hidden
+  >
+    <div>
+      <strong>Portal aktuell schreibgeschützt</strong>
+      <span id="platformReadOnlyMessage">Lesen ist weiterhin möglich.</span>
+      <small id="platformReadOnlyEnd" hidden></small>
+    </div>
+  </aside>
 
   <div
     id="appShell"

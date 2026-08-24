@@ -19,6 +19,8 @@ let initializePromise = null;
 let refreshPromise = null;
 let authSubscription = null;
 
+const PD_PUSH_LOGOUT_RECOVERY_PREFIX = "pdPushLogoutRecovery:";
+
 function emit() {
   window.dispatchEvent(
     new CustomEvent("pd-auth-change", { detail: auth.current() })
@@ -116,6 +118,15 @@ async function deactivateCurrentPushSubscriptionForLogout() {
   }
 
   if (!subscription) return;
+
+  const userId = state.session?.user?.id;
+  if (userId) {
+    try {
+      localStorage.setItem(`${PD_PUSH_LOGOUT_RECOVERY_PREFIX}${userId}`, "1");
+    } catch (error) {
+      console.debug("Push-Recovery-Marker konnte nicht gespeichert werden", error);
+    }
+  }
 
   try {
     await api.call("remove_push_subscription", {

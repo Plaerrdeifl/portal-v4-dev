@@ -446,6 +446,9 @@ input,select,textarea,button{max-width:100%}
 @keyframes toast-in{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
 .install-banner{position:fixed;z-index:1100;left:50%;bottom:calc(18px + var(--safe-bottom));transform:translateX(-50%);width:min(720px,calc(100% - 28px));background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px 14px 14px 18px;box-shadow:var(--shadow-md);display:flex;align-items:center;gap:14px}
 .install-banner div{min-width:0;flex:1}
+.platform-read-only-banner{position:fixed;z-index:1050;top:max(10px,var(--safe-top));left:50%;transform:translateX(-50%);width:min(760px,calc(100% - 28px));padding:12px 16px;border:1px solid #d7a022;border-radius:16px;background:#fff8df;color:#6f4300;box-shadow:var(--shadow-md)}
+.platform-read-only-banner div{display:grid;gap:2px}.platform-read-only-banner strong{font-size:.94rem}.platform-read-only-banner span,.platform-read-only-banner small{font-size:.8rem;line-height:1.4}.platform-read-only-banner[hidden]{display:none!important}
+.auth-maintenance-card{width:min(460px,100%);padding:clamp(22px,5vw,34px);border:1px solid rgba(255,255,255,.22);border-radius:24px;background:rgba(255,255,255,.96);color:var(--ink-900);box-shadow:var(--shadow-lg);text-align:left}.auth-maintenance-card h1{margin:8px 0 10px}.auth-maintenance-card p{margin:0;color:var(--ink-600);line-height:1.55}.auth-maintenance-card small{display:block;margin-top:14px;color:var(--ink-500)}.auth-maintenance-kicker{color:var(--blue-800);font-size:.73rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase}
 .install-banner strong{display:block}
 .install-banner span{display:block;color:var(--ink-500);font-size:.84rem;margin-top:3px;line-height:1.35}
 .mobile-backdrop{display:none}

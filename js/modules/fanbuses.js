@@ -832,9 +832,9 @@ function openCompanionPersonSearchDialog(listId, panel, summary, companion = nul
     title: companion ? "Portaluser verknüpfen" : "Portaluser suchen",
     body: `<form class="form-grid v4-smart-form" data-m325-person-search-form>
       <label class="v4-field-full">Portaluser suchen
-        <input name="query" type="search" minlength="3" autocomplete="off" placeholder="Mindestens 3 Zeichen">
+        <input name="query" type="search" minlength="5" maxlength="120" autocomplete="off" placeholder="Name oder Namensanfang, mindestens 5 Zeichen">
       </label>
-      <p class="subtle v4-field-full" data-m325-person-search-status>Gib mindestens 3 Zeichen des Namens ein.</p>
+      <p class="subtle v4-field-full" data-m325-person-search-status>Gib einen Namen oder Namensanfang mit mindestens 5 Zeichen ein.</p>
       <div class="v4-field-full v4-m325-person-search-results" data-m325-person-search-results></div>
     </form>`
   });
@@ -876,8 +876,8 @@ function openCompanionPersonSearchDialog(listId, panel, summary, companion = nul
     requestSequence += 1;
     const sequence = requestSequence;
     results.replaceChildren();
-    if (query.length < 3) {
-      status.textContent = "Gib mindestens 3 Zeichen des Namens ein.";
+    if (query.length < 5) {
+      status.textContent = "Gib einen Namen oder Namensanfang mit mindestens 5 Zeichen ein.";
       return;
     }
     status.textContent = "Suche läuft …";
@@ -1767,9 +1767,9 @@ function openRegistrationIdentitySearch(
     kicker: `${registration.firstName} ${registration.lastName}`,
     body: `<form class="form-grid v4-smart-form" data-m325-registration-person-search>
       <label class="v4-field-full">Portaluser suchen
-        <input name="query" type="search" minlength="3" autocomplete="off" placeholder="Mindestens 3 Zeichen">
+        <input name="query" type="search" minlength="5" maxlength="120" autocomplete="off" placeholder="Name oder Namensanfang, mindestens 5 Zeichen">
       </label>
-      <p class="subtle v4-field-full" data-m325-registration-person-status>Gib mindestens 3 Zeichen des Namens ein.</p>
+      <p class="subtle v4-field-full" data-m325-registration-person-status>Gib einen Namen oder Namensanfang mit mindestens 5 Zeichen ein.</p>
       <div class="v4-field-full v4-m325-person-search-results" data-m325-registration-person-results></div>
     </form>`,
     preserveParentOnSubmit: true
@@ -1787,8 +1787,8 @@ function openRegistrationIdentitySearch(
     requestSequence += 1;
     const sequence = requestSequence;
     results.replaceChildren();
-    if (query.length < 3) {
-      status.textContent = "Gib mindestens 3 Zeichen des Namens ein.";
+    if (query.length < 5) {
+      status.textContent = "Gib einen Namen oder Namensanfang mit mindestens 5 Zeichen ein.";
       return;
     }
     status.textContent = "Suche läuft …";
@@ -1798,7 +1798,7 @@ function openRegistrationIdentitySearch(
         if (sequence !== requestSequence) return;
         const people = Array.isArray(data?.people) ? data.people.slice(0, 8) : [];
         status.textContent = people.length ? `${people.length} Treffer` : "Keine aktiven Portaluser gefunden.";
-        results.innerHTML = people.map(person => `<button class="button secondary v4-m325-person-search-result" type="button" data-portal-user-id="${escapeAttr(person.portalUserId)}"><span><strong>${escapeHtml(person.displayName)}</strong></span><span class="v4-person-badges"><span class="v4-person-badge">Portaluser</span>${person.isMember ? '<span class="v4-person-badge">Mitglied</span>' : ""}</span></button>`).join("");
+        results.innerHTML = people.map(person => `<button class="button secondary v4-m325-person-search-result" type="button" data-portal-user-id="${escapeAttr(person.portalUserId)}"><span><strong>${escapeHtml(person.displayName)}</strong></span><span class="v4-person-badges"><span class="v4-person-badge">Portaluser</span></span></button>`).join("");
         results.querySelectorAll("[data-portal-user-id]").forEach(button => {
           button.addEventListener("click", () => {
             void applyRegistrationIdentity(
@@ -1835,7 +1835,7 @@ async function loadRegistrationIdentitySuggestion(
     if (!actionsDialog.open) return;
     if (data?.status === "SINGLE" && data.suggestion) {
       const person = data.suggestion;
-      target.innerHTML = `<p class="subtle">Möglicher Portaluser</p><button class="button secondary v4-m325-person-search-result" type="button" data-m325-apply-identity-suggestion><span><strong>${escapeHtml(person.displayName)}</strong></span><span class="v4-person-badges"><span class="v4-person-badge">Portaluser</span>${person.isMember ? '<span class="v4-person-badge">Mitglied</span>' : ""}</span></button><p class="subtle">Der Vorschlag wird erst durch deine Auswahl verknüpft.</p>`;
+      target.innerHTML = `<p class="subtle">Möglicher Portaluser</p><button class="button secondary v4-m325-person-search-result" type="button" data-m325-apply-identity-suggestion><span><strong>${escapeHtml(person.displayName)}</strong></span><span class="v4-person-badges"><span class="v4-person-badge">Portaluser</span></span></button><p class="subtle">Der Vorschlag wird erst durch deine Auswahl verknüpft.</p>`;
       target.querySelector("[data-m325-apply-identity-suggestion]")
         ?.addEventListener("click", () => {
           void applyRegistrationIdentity(
