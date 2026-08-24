@@ -1,37 +1,34 @@
 name: Build F2.14 WordPress packages
 
 on:
-  push:
+  pull_request:
     branches:
-      - release/prod-r4-f2-14-packages
-    paths:
-      - .github/workflows/build-f2-14-packages.yml
+      - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   package:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: release/prod-r4-f2-14-packages
-          fetch-depth: 1
 
-      - name: Verify RC source
+      - name: Verify exact RC plugin blobs
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "edc230a923acac68e38efd7df1b5fbd89a0c05f4"
-          grep -q "Version: 1.0.5" wordpress/plugins/plaerrdeifl-m150-membership/plaerrdeifl-m150-membership.php
-          grep -q "Version: 1.0.5" wordpress/plugins/plaerrdeifl-m310-fanbus/plaerrdeifl-m310-fanbus.php
+          test "$(git hash-object wordpress/plugins/plaerrdeifl-m150-membership/plaerrdeifl-m150-membership.php)" = "fe92ba58a2e83fd02d43c6a2088122cb0a0d1c97"
+          test "$(git hash-object wordpress/plugins/plaerrdeifl-m150-membership/assets/m150-membership-admin.js)" = "f8411d58cfc196331989fc603e9771329c18d79e"
+          test "$(git hash-object wordpress/plugins/plaerrdeifl-m150-membership/assets/m150-membership.css)" = "58d7855d22b78ae0b8d027dcc047a7082d852d07"
+          test "$(git hash-object wordpress/plugins/plaerrdeifl-m150-membership/assets/m150-membership.js)" = "7f7c620a468e6396fb9839c84ce737cba021c1be"
+          test "$(git hash-object wordpress/plugins/plaerrdeifl-m310-fanbus/plaerrdeifl-m310-fanbus.php)" = "e05cf70114eb883fce6e937d43d09d820281918e"
+          test "$(git hash-object wordpress/plugins/plaerrdeifl-m310-fanbus/assets/m310-fanbus.css)" = "a89a73d2b82d4c4ccc8bcf724552433293cde357"
 
       - name: Build plugin ZIPs
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf dist
           mkdir -p dist
           cd wordpress/plugins
           zip -X -qr ../../dist/plaerrdeifl-m150-membership-prod-r4.zip plaerrdeifl-m150-membership
@@ -39,12 +36,12 @@ jobs:
           cd ../..
           sha256sum dist/*.zip > dist/SHA256SUMS.txt
 
-      - name: Commit packages to temporary branch
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "Plärrdeifl Release Automation"
-          git config user.email "release@plaerrdeifl.de"
-          git add dist/plaerrdeifl-m150-membership-prod-r4.zip dist/plaerrdeifl-m310-fanbus-prod-r4.zip dist/SHA256SUMS.txt
-          git commit -m "chore(release): publish F2.14 WordPress packages"
-          git push origin HEAD:release/prod-r4-f2-14-packages
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prod-r4-wordpress-plugins
+          path: |
+            dist/plaerrdeifl-m150-membership-prod-r4.zip
+            dist/plaerrdeifl-m310-fanbus-prod-r4.zip
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 7
