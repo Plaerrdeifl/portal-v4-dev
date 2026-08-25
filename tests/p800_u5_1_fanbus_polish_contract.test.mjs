@@ -34,8 +34,10 @@ test("U5.1 detail uses normal stop styling, lifecycle status and right-aligned r
 
 test("U5.1 moves trip edit into management menu and removes legacy meeting field", () => {
   const management = section(fanbuses, "function tripManagementActions", "function registrationWindowText");
+  const navigation = section(fanbuses, "function tripNavigation", "function normalizedTripDetailStops");
   const form = section(fanbuses, "function tripForm", "function tripUpdatePayload");
-  assert.match(management, /data-m310-edit-mode/);
+  assert.doesNotMatch(management, /data-m310-edit-mode/);
+  assert.match(navigation, /data-m310-edit-mode/);
   assert.doesNotMatch(form, /Treffpunkt \/ Abfahrtsort|name="departureInfo"/);
   assert.match(fanbuses, /departureInfo:\s*trip\.departureInfo \|\| null/);
 });

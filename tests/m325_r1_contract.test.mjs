@@ -255,7 +255,7 @@ test("M325 F5 Round 2 keeps workspace navigation, mobile cards and dialog forms 
   const detail = sourceBetween(ui, "function tripDetailMarkup", "function openTripDetail");
   assert.match(detail, /v4-m325-trip-detail/);
   assert.match(detail, /eventTimeCompact\(trip\.eventTime\)/);
-  assert.match(detail, /registrationWindowText\(trip\)/);
+  assert.match(detail, /tripRegistrationDeadlineMarkup\(trip\)/);
   assert.match(detail, /v4-m325-trip-travel/);
   assert.match(detail, /<span>Abfahrt<\/span>/);
   assert.match(detail, /<span>Fahrtpreis<\/span>/);

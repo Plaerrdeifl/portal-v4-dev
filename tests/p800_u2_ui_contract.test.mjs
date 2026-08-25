@@ -63,7 +63,7 @@ test("trip detail is compact and exposes capability-gated occupancy, operations 
   assert.match(detailSource, /eventTimeCompact\(trip\.eventTime\)/);
   assert.doesNotMatch(detailSource, /v4-m310-trip-status|tripBadges\\(trip\\)/);
   assert.match(detailSource, /v4-m325-trip-travel/);
-  assert.match(detailSource, /registrationWindowText\(trip\)/);
+  assert.match(detailSource, /tripRegistrationDeadlineMarkup\(trip\)/);
   assert.match(detailSource, /\$\{tripNavigation\(trip\)\}/);
   assert.doesNotMatch(detailSource, /Anmeldungen \/ Kapazität/);
   assert.doesNotMatch(detailSource, /Meine Mitfahrer/);
@@ -73,9 +73,11 @@ test("trip detail is compact and exposes capability-gated occupancy, operations 
   assert.match(detailSource, />Änderungen speichern</);
 
   assert.doesNotMatch(navigationSource, />Übersicht</);
-  assert.match(navigationSource, />Belegung</);
+  assert.match(navigationSource, />Teilnehmerliste</);
+  assert.match(navigationSource, /Busverwaltung/);
   assert.match(navigationSource, />Fahrtbetrieb</);
-  assert.match(navigationSource, /data-m310-trip-settings/);
+  assert.doesNotMatch(navigationSource, /data-m310-trip-settings|⚙️/);
+  assert.match(navigationSource, /data-m310-edit-mode/);
   assert.match(navigationSource, /operationsAccess\.canManageRegistrations/);
   assert.match(
     navigationSource,
