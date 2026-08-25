@@ -134,12 +134,22 @@ function injectStyles() {
   style.id = "p800R2FanbusUxStyles";
   style.textContent = `
     .v4-m310-inline-trip-detail-row>td{padding:0!important;border-top:0!important}
-    .v4-m310-inline-trip-detail,.v4-m310-inline-trip-detail-row>td{background:var(--surface,#fff)}
-    .v4-m310-inline-trip-detail-shell{margin:0 0 14px;padding:14px;border:1px solid var(--line,#d8e2ee);border-radius:14px;background:var(--surface,#fff);box-shadow:0 8px 24px rgba(22,43,70,.08)}
-    .v4-m310-inline-trip-detail-row .v4-m310-inline-trip-detail-shell{margin:0 8px 12px}
-    .v4-m310-inline-trip-detail-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
-    .v4-m310-inline-trip-detail-heading>div{display:grid;gap:2px;min-width:0}
-    .v4-m310-inline-trip-detail-heading small{color:var(--ink-500)}
+    .v4-m310-inline-trip-detail-row>td{background:var(--surface,#fff)}
+    .v4-m310-inline-trip-detail-shell{margin:0;padding:14px 0 0;border:0;border-radius:0;background:transparent;box-shadow:none}
+    .v4-m310-inline-trip-detail-row .v4-m310-inline-trip-detail-shell{margin:0 8px 12px;padding:14px}
+    .v4-m310-inline-trip-detail .v4-m325-trip-lifecycle,
+    .v4-m310-inline-trip-detail-row .v4-m325-trip-lifecycle,
+    .v4-m310-inline-trip-detail .v4-m325-trip-date,
+    .v4-m310-inline-trip-detail-row .v4-m325-trip-date,
+    .v4-m310-inline-trip-detail .v4-m325-trip-venue,
+    .v4-m310-inline-trip-detail-row .v4-m325-trip-venue,
+    .v4-m310-inline-trip-detail .v4-m325-trip-opponent,
+    .v4-m310-inline-trip-detail-row .v4-m325-trip-opponent{display:none}
+    .v4-m310-mobile-trip-card{overflow:hidden;border:1px solid var(--line,#d8e2ee);border-radius:18px;background:var(--surface,#fff)}
+    .v4-m310-mobile-trip-card>.v4-m310-mobile-trip{width:100%;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+    .v4-m310-mobile-trip-card.is-expanded>.v4-m310-mobile-trip{border-bottom:1px solid var(--line,#d8e2ee)!important}
+    .v4-m310-mobile-trip-card>.v4-m310-inline-trip-detail{margin:0;padding:0 14px 14px;background:transparent}
+    .v4-m310-mobile-trip-card>.v4-m310-inline-trip-detail .v4-m325-trip-detail{margin:0}
     [data-m310-open-trip].is-expanded .v4-row-chevron{transform:rotate(90deg)}
     @media (max-width:620px){
       .p800-fanbus-filter-disclosure{grid-column:1/-1;width:100%;margin:2px 0 0}
