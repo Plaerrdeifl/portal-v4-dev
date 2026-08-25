@@ -201,9 +201,16 @@ function ensureDialog() {
   dialog.close = returnValue => closeDialog(dialog, returnValue);
 
   dialog.addEventListener("click", event => {
-    if (event.target === dialog || event.target.closest("[data-v4-dialog-close]")) {
-      closeDialog(dialog);
+    const closeTarget = event.target.closest?.("[data-v4-dialog-close]");
+    if (event.target !== dialog && !closeTarget) return;
+
+    if (event.target === dialog || closeTarget?.closest("header")) {
+      dialogContexts.length = 0;
+      closeDialog(dialog, "", { restoreParent: false });
+      return;
     }
+
+    closeDialog(dialog);
   });
 
   dialog.addEventListener("cancel", event => {

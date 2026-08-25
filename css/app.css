@@ -2341,14 +2341,15 @@ html[data-portal-area="portal"] .v4-toolbar p{
 }
 
 #v4DialogBody{
-  flex:0 1 auto!important;
+  flex:1 1 auto!important;
   height:auto!important;
   min-height:0!important;
-  max-height:none!important;
+  max-height:calc(100dvh - 96px)!important;
   overflow-x:hidden!important;
   overflow-y:auto!important;
   overscroll-behavior:contain;
   -webkit-overflow-scrolling:touch;
+  touch-action:pan-y!important;
   padding:13px 16px!important;
   background:#f7f9fc!important;
   scroll-padding-bottom:84px;
@@ -6623,4 +6624,14 @@ html[data-portal-area="portal"] .v4-toolbar p{
   .v4-m325-operations-workspace > .v4-m325-workspace-header > .button {
     min-height: 32px;
   }
+}
+
+
+/* P800-R2 Fanbus Verwaltung – mobile Arbeitsflächen */
+.v4-m310-registration-actions,.v4-m310-bus-card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.v4-m310-registration-actions .button,.v4-m310-bus-card-actions .button{flex:1 1 130px}
+.v4-m310-bus-delete-note{display:block;margin-top:8px}
+@media(max-width:620px){
+  .v4-m310-registration-actions,.v4-m310-bus-card-actions{display:grid;grid-template-columns:1fr 1fr}
+  .v4-m310-bus-card-actions .button.danger{grid-column:1/-1}
 }
