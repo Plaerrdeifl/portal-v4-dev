@@ -1,0 +1,59 @@
+name: P800-R2 Fanbus detail page patch
+
+"on":
+  push:
+    branches:
+      - ux/p800-r2-fanbus-detail-page
+    paths:
+      - .github/workflows/p800-r2-fanbus-detail-page-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          ref: ux/p800-r2-fanbus-detail-page
+
+      - name: Replace modal trip detail with routed page
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const file = 'js/modules/fanbuses.js';
+          let source = fs.readFileSync(file, 'utf8');
+          const decode = value => Buffer.from(value, 'base64').toString('utf8');
+          const replaceOnce = (before64, after64, label) => {
+            const before = decode(before64);
+            const after = decode(after64);
+            const index = source.indexOf(before);
+            if (index < 0) throw new Error(`${label}: source block not found`);
+            if (source.indexOf(before, index + before.length) >= 0) throw new Error(`${label}: source block not unique`);
+            source = source.slice(0, index) + after + source.slice(index + before.length);
+          };
+          replaceOnce('ZnVuY3Rpb24gb3BlblRyaXBEZXRhaWwodHJpcCkgewogIGNvbnN0IGRpYWxvZyA9IG9wZW5EaWFsb2coewogICAgdGl0bGU6IHRyaXAuZGlzcGxheVRpdGxlIHx8ICJGYW5idXNmYWhydCIsCiAgICBraWNrZXI6IGAke2Zvcm1hdENhbGVuZGFyRGF0ZSh0cmlwLmV2ZW50RGF0ZSl9IMK3ICR7ZXZlbnRUaW1lQ29tcGFjdCh0cmlwLmV2ZW50VGltZSl9YCwKICAgIGJvZHk6IHRyaXBEZXRhaWxNYXJrdXAodHJpcCkKICB9KTsKICBkaWFsb2cuZGF0YXNldC5tMzEwVHJpcE1vZGUgPSAiZGV0YWlsIjsKICBiaW5kVHJpcERldGFpbChkaWFsb2csIHRyaXApOwogIHZvaWQgaHlkcmF0ZVRyaXBEZXRhaWxTdG9wcyhkaWFsb2csIHRyaXApOwp9', 'ZnVuY3Rpb24gcmVuZGVyVHJpcERldGFpbFBhZ2UocGFuZWwsIHN1bW1hcnksIHRyaXApIHsKICBpZiAoc3VtbWFyeSkgc3VtbWFyeS50ZXh0Q29udGVudCA9ICIiOwogIHBhbmVsLmlubmVySFRNTCA9IGA8c2VjdGlvbiBjbGFzcz0idjQtbTMyNS13b3Jrc3BhY2UgdjQtbTMxMC10cmlwLXdvcmtzcGFjZSIgZGF0YS1tMzEwLXRyaXAtcGFnZT4KICAgIDxoZWFkZXIgY2xhc3M9InY0LW0zMjUtd29ya3NwYWNlLWhlYWRlciI+CiAgICAgIDxidXR0b24gY2xhc3M9ImJ1dHRvbiBzbWFsbCBzZWNvbmRhcnkiIHR5cGU9ImJ1dHRvbiIgZGF0YS1tMzEwLXRyaXAtYmFjaz7ihpAgWnVyw7xjazwvYnV0dG9uPgogICAgICA8ZGl2PgogICAgICAgIDxoMj4ke2VzY2FwZUh0bWwodHJpcC5kaXNwbGF5VGl0bGUgfHwgIkZhbmJ1c2ZhaHJ0Iil9PC9oMj4KICAgICAgICA8cD4ke2VzY2FwZUh0bWwoZm9ybWF0Q2FsZW5kYXJEYXRlKHRyaXAuZXZlbnREYXRlKSl9IMK3ICR7ZXNjYXBlSHRtbChldmVudFRpbWVDb21wYWN0KHRyaXAuZXZlbnRUaW1lKSl9PC9wPgogICAgICA8L2Rpdj4KICAgIDwvaGVhZGVyPgogICAgPGRpdiBpZD0idjREaWFsb2dCb2R5IiBjbGFzcz0idjQtbTMxMC10cmlwLXBhZ2UtYm9keSI+JHt0cmlwRGV0YWlsTWFya3VwKHRyaXApfTwvZGl2PgogIDwvc2VjdGlvbj5gOwoKICBjb25zdCBwYWdlID0gcGFuZWwucXVlcnlTZWxlY3RvcigiW2RhdGEtbTMxMC10cmlwLXBhZ2VdIik7CiAgaWYgKCFwYWdlKSByZXR1cm47CiAgcGFnZS5kYXRhc2V0Lm0zMTBUcmlwTW9kZSA9ICJkZXRhaWwiOwogIHBhZ2UuZGF0YXNldC5tMzEwVHJpcFN1cmZhY2UgPSAicGFnZSI7CiAgcGFnZS5kYXRhc2V0LnY0RGlhbG9nQ29udGV4dCA9IGB0cmlwLXBhZ2U6JHt0cmlwLmlkfWA7CiAgcGFnZS5vcGVuID0gdHJ1ZTsKICBwYWdlLmNsb3NlID0gKCkgPT4gcmV0dXJuVG9GYW5idXNlcygpOwogIHBhZ2UucXVlcnlTZWxlY3RvcigiW2RhdGEtbTMxMC10cmlwLWJhY2tdIikKICAgID8uYWRkRXZlbnRMaXN0ZW5lcigiY2xpY2siLCAoKSA9PiByZXR1cm5Ub0ZhbmJ1c2VzKCkpOwogIGJpbmRUcmlwRGV0YWlsKHBhZ2UsIHRyaXApOwogIHZvaWQgaHlkcmF0ZVRyaXBEZXRhaWxTdG9wcyhwYWdlLCB0cmlwKTsKfQ==', 'trip detail surface');
+          replaceOnce('ICAgICAgcmVuZGVyKCk7CiAgICAgIGNvbnN0IHVwZGF0ZWQgPSB0cmlwcygpLmZpbmQoaXRlbSA9PiBpdGVtLmlkID09PSB0cmlwLmlkKTsKICAgICAgaWYgKHVwZGF0ZWQpIHJlc3RvcmVUcmlwT3ZlcnZpZXcoZGlhbG9nLCB1cGRhdGVkKTsKICAgICAgZWxzZSBkaWFsb2cuY2xvc2UoKTs=', 'ICAgICAgcmVuZGVyKCk7CiAgICAgIGNvbnN0IHVwZGF0ZWQgPSB0cmlwcygpLmZpbmQoaXRlbSA9PiBpdGVtLmlkID09PSB0cmlwLmlkKTsKICAgICAgaWYgKGRpYWxvZy5kYXRhc2V0Lm0zMTBUcmlwU3VyZmFjZSA9PT0gInBhZ2UiKSB7CiAgICAgICAgaWYgKCF1cGRhdGVkKSByZXR1cm5Ub0ZhbmJ1c2VzKCk7CiAgICAgICAgcmV0dXJuOwogICAgICB9CiAgICAgIGlmICh1cGRhdGVkKSByZXN0b3JlVHJpcE92ZXJ2aWV3KGRpYWxvZywgdXBkYXRlZCk7CiAgICAgIGVsc2UgZGlhbG9nLmNsb3NlKCk7', 'inline editor rerender');
+          replaceOnce('ICB9CgogIHNldFdvcmtzcGFjZVNoZWxsKGZhbHNlKTsKCiAgY29uc3QgaXRlbXMgPSB0cmlwcygpOwogIGNvbnN0IGNhbk1hbmFnZSA9IGhhc0NhcGFiaWxpdHkoImZhbmJ1cy5tYW5hZ2UiKTs=', 'ICB9CgogIGNvbnN0IGl0ZW1zID0gdHJpcHMoKTsKICBjb25zdCBkZXRhaWxUcmlwID0gaXRlbXMuZmluZChpdGVtID0+IGl0ZW0uaWQgPT09IHJvdXRlUXVlcnkuZ2V0KCJkZXRhaWwiKSk7CiAgaWYgKGRldGFpbFRyaXApIHsKICAgIHNldFdvcmtzcGFjZVNoZWxsKHRydWUpOwogICAgcmVuZGVyVHJpcERldGFpbFBhZ2UocGFuZWwsIHN1bW1hcnksIGRldGFpbFRyaXApOwogICAgc2V0U3RhdHVzKCJBa3R1ZWxsIiwgInN1Y2Nlc3MiKTsKICAgIHJldHVybjsKICB9CiAgaWYgKHJvdXRlUXVlcnkuaGFzKCJkZXRhaWwiKSkgewogICAgd2luZG93Lmhpc3RvcnkucmVwbGFjZVN0YXRlKG51bGwsICIiLCAiIy9mYW5idXNlcyIpOwogIH0KCiAgc2V0V29ya3NwYWNlU2hlbGwoZmFsc2UpOwoKICBjb25zdCBjYW5NYW5hZ2UgPSBoYXNDYXBhYmlsaXR5KCJmYW5idXMubWFuYWdlIik7', 'detail route render');
+          replaceOnce('ICAgICAgY29uc3QgdHJpcCA9IGl0ZW1zLmZpbmQoaXRlbSA9PiBpdGVtLmlkID09PSByZWNvcmQuZGF0YXNldC5tMzEwT3BlblRyaXApOwogICAgICBpZiAodHJpcCkgb3BlblRyaXBEZXRhaWwodHJpcCk7', 'ICAgICAgY29uc3QgdHJpcCA9IGl0ZW1zLmZpbmQoaXRlbSA9PiBpdGVtLmlkID09PSByZWNvcmQuZGF0YXNldC5tMzEwT3BlblRyaXApOwogICAgICBpZiAodHJpcCkgewogICAgICAgIHdpbmRvdy5sb2NhdGlvbi5oYXNoID0gYCMvZmFuYnVzZXM/ZGV0YWlsPSR7ZW5jb2RlVVJJQ29tcG9uZW50KHRyaXAuaWQpfWA7CiAgICAgIH0=', 'trip click route');
+          replaceOnce('ICBjb25zdCBkZXRhaWxUcmlwID0gaXRlbXMuZmluZChpdGVtID0+IGl0ZW0uaWQgPT09IHJvdXRlUXVlcnkuZ2V0KCJkZXRhaWwiKSk7CiAgaWYgKGRldGFpbFRyaXApIHsKICAgIHdpbmRvdy5oaXN0b3J5LnJlcGxhY2VTdGF0ZShudWxsLCAiIiwgIiMvZmFuYnVzZXMiKTsKICAgIG9wZW5UcmlwRGV0YWlsKGRldGFpbFRyaXApOwogIH0K', '', 'old modal deep link');
+          fs.writeFileSync(file, source);
+          NODE
+
+      - name: Verify detail page contract
+        run: |
+          node --check js/modules/fanbuses.js
+          grep -F 'function renderTripDetailPage(panel, summary, trip)' js/modules/fanbuses.js
+          grep -F 'data-m310-trip-page' js/modules/fanbuses.js
+          grep -F 'window.location.hash = `#/fanbuses?detail=${encodeURIComponent(trip.id)}`;' js/modules/fanbuses.js
+          if grep -F 'function openTripDetail(trip)' js/modules/fanbuses.js; then exit 1; fi
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add js/modules/fanbuses.js
+          git commit -m "fix(p800-r2): open Fanbus trips as detail pages"
+          git push origin HEAD:ux/p800-r2-fanbus-detail-page
