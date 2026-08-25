@@ -211,6 +211,12 @@ function ensureDialog() {
     closeDialog(dialog);
   });
 
+  window.addEventListener("keydown", event => {
+    if (event.key !== "Escape" || !dialog.open) return;
+    event.preventDefault();
+    closeDialog(dialog);
+  });
+
   dialog.addEventListener("close", () => {
     blurDialogFocus(dialog);
     dialogContexts.length = 0;
@@ -223,6 +229,10 @@ function ensureDialog() {
     if (returnTarget instanceof HTMLElement && returnTarget.isConnected) {
       returnTarget.focus({ preventScroll: true });
     }
+  });
+
+  window.addEventListener("hashchange", () => {
+    if (dialog.open) closeAllDialogs();
   });
 
   return dialog;

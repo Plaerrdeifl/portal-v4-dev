@@ -16,8 +16,7 @@ function section(start, end) {
 
 test("fanbus.manage independently retains occupancy bus and stop management", () => {
   const navigation = section("function fanbusOperationsAccess", "function tripDetailMarkup");
-  assert.match(navigation, /canOpenOccupancy\s*=\s*canManage\s*\|\|\s*operationsAccess\.canManageRegistrations/);
-  assert.match(navigation, /canOpenOccupancy \? `[\s\S]*data-m310-occupancy/);
+  assert.match(navigation, /canManage \? `[\s\S]*data-m310-occupancy/);
   assert.match(navigation, /operationsAccess\.canRead \? `[\s\S]*data-m325-operations/);
 
   const access = section("function occupancyAccess", "function occupancyMarkup");
@@ -25,7 +24,8 @@ test("fanbus.manage independently retains occupancy bus and stop management", ()
   assert.match(access, /canManageRegistrations: hasCapability\("fanbus\.registrations\.manage"\)/);
 
   const reads = section("async function occupancyData", "async function loadOccupancyInto");
-  assert.match(reads, /access\.canManageRegistrations[\s\S]*call\("fanbus_registrations_list"[\s\S]*call\("fanbus_buses_list"/);
+  assert.match(reads, /access\.canManageBuses[\s\S]*call\("fanbus_buses_list"/);
+  assert.doesNotMatch(reads, /fanbus_registrations_list/);
   assert.match(reads, /access\.canManageBuses[\s\S]*fanbus_bus_boarding_stops_list/);
   assert.match(reads, /access\.canManageBuses[\s\S]*fanbus_trip_boarding_stops_list/);
 
@@ -42,19 +42,15 @@ test("fanbus.manage independently retains occupancy bus and stop management", ()
   );
 });
 
-test("participant reads metrics and actions remain registration-management only", () => {
+test("bus management stays bus-centered while participant actions remain in the participant list", () => {
   const markup = section("function occupancyMarkup", "async function occupancyData");
-  assert.match(markup, /const registrations = canManageRegistrations && Array\.isArray\(data\?\.registrations\)/);
-  assert.match(markup, /canManageRegistrations \? `<div class="v4-m325-counters/);
-  assert.match(markup, /canManageRegistrations \? '<button class="button small secondary"[^']*data-m310-manage-participants/);
-  assert.match(markup, /canManageRegistrations \? `<details><summary>Teilnehmer/);
-  assert.match(markup, /canManageRegistrations \? `<section class="v4-m310-occupancy-groups"/);
+  assert.match(markup, /const occupancy = Number\(bus\.occupancy \?\? bus\.occupied \?\? 0\)/);
+  assert.doesNotMatch(markup, /registrations|data-m310-manage-participants|Teilnehmer \(|Ohne Bus|Warteliste/);
 
-  const actions = section("function bindOccupancyActions", "function reloadOccupancyAfterChild");
-  assert.match(actions, /if \(access\?\.canManageRegistrations\)/);
-  assert.match(actions, /showRegistrationsDialog\(trip, data, dialog\)/);
-  assert.match(actions, /fanbus_bus_assignment_set/);
-  assert.match(actions, /fanbus_waitlist_promote/);
+  const participantActions = section("function bindRegistrationActions", "function renderRegistrationsDialog");
+  assert.match(participantActions, /fanbus_bus_assignment_set/);
+  assert.match(participantActions, /data-m320-edit-registration/);
+  assert.match(participantActions, /data-m320-more-registration/);
 });
 
 test("general desktop and mobile trip lists expose no registration or capacity values", () => {
