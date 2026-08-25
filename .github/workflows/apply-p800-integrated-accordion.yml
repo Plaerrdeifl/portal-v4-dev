@@ -17,12 +17,23 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ux/p800-r2-fanbus-integrated-accordion
+      - name: Fix generated contract assertions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/p800-r2-integrated-accordion-patch.mjs')
+          s = p.read_text()
+          s = s.replace('  assert.doesNotMatch(detail, /openDialog\\\\(/);', '  assert.ok(!detail.includes("openDialog("));')
+          s = s.replace('  assert.doesNotMatch(detail, /window\\\\.location\\\\.hash/);', '  assert.ok(!detail.includes("window.location.hash"));')
+          p.write_text(s)
+          PY
       - name: Apply patch
         run: node scripts/p800-r2-integrated-accordion-patch.mjs
       - name: Remove one-shot files
         run: |
           rm -f scripts/p800-r2-integrated-accordion-patch.mjs
           rm -f .github/workflows/apply-p800-integrated-accordion.yml
+          rm -f .github/workflows/retry-p800-integrated-accordion.yml
       - name: Verify syntax
         run: |
           node --check js/modules/fanbuses.js
