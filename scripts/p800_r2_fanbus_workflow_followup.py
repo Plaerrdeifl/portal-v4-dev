@@ -96,6 +96,7 @@ p.write_text(s)
 p = Path('tests/p800_u5_fanbus_contract.test.mjs')
 s = p.read_text()
 s = one(s, '  assert.match(nav, />Teilnehmer</);', '  assert.match(nav, />Teilnehmerliste</);', 'U5 participant work area')
+s = one(s, '  assert.match(nav, />Busse</);', '  assert.match(nav, /Busverwaltung/);', 'U5 bus management work area')
 p.write_text(s)
 
 p = Path('tests/p800_r2_fanbus_workflow_ux.test.mjs')
