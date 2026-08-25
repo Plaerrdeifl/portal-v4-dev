@@ -24,9 +24,10 @@ test("P800 U5 removes registration status from detail and overview navigation", 
   assert.doesNotMatch(detail, /tripBadges\(trip\)|v4-m310-trip-status|Treffpunkt \/ Abfahrtsort/);
   assert.match(detail, /tripLifecycleBadge\(trip\)/);
   assert.doesNotMatch(nav, />Übersicht</);
-  assert.match(nav, />Belegung</);
+  assert.match(nav, />Teilnehmerliste</);
+  assert.match(nav, /Busverwaltung/);
   assert.match(nav, />Fahrtbetrieb</);
-  assert.match(fanbuses, /Anmeldeschluss:/);
+  assert.match(fanbuses, /ANMELDESCHLUSS/);
 });
 
 test("P800 U5 renders deduplicated structured trip stops", () => {

@@ -295,18 +295,14 @@ function tripManagementActions(trip) {
   const canManage = hasCapability("fanbus.manage") && trip.canManage !== false;
   const actions = [];
 
-  if (trip.status === "CANCELLED") return "";
+  if (!canManage || trip.status === "CANCELLED") return "";
 
-  if (canManage && ["DRAFT", "PUBLISHED"].includes(trip.status)) {
-    actions.push(`<button class="button small secondary" type="button" data-m310-edit-mode="${escapeAttr(trip.id)}">Bearbeiten</button>`);
-  }
-
-  if (canManage && trip.status === "DRAFT") {
+  if (trip.status === "DRAFT") {
     actions.push(`<button class="button small primary" type="button" data-m310-publish="${escapeAttr(trip.id)}">Veröffentlichen</button>`);
     actions.push(`<button class="button small danger" type="button" data-m310-delete="${escapeAttr(trip.id)}">Entwurf löschen</button>`);
   }
 
-  if (canManage && ["DRAFT", "PUBLISHED"].includes(trip.status)) {
+  if (["DRAFT", "PUBLISHED"].includes(trip.status)) {
     actions.push(`<button class="button small ghost" type="button" data-m310-close="${escapeAttr(trip.id)}">Fahrt schließen</button>`);
   }
 
@@ -314,12 +310,8 @@ function tripManagementActions(trip) {
     actions.push(`<button class="button small secondary" type="button" data-m310-reopen="${escapeAttr(trip.id)}">Wieder als Entwurf öffnen</button>`);
   }
 
-  if (canManage && trip.canCancel === true) {
+  if (trip.canCancel === true) {
     actions.push(`<button class="button small danger" type="button" data-m330-cancel-trip="${escapeAttr(trip.id)}">Fahrt absagen</button>`);
-  }
-
-  if (canManage && trip.status !== "CANCELLED") {
-    actions.push(`<button class="button small secondary" type="button" data-m325-stops="${escapeAttr(trip.id)}">Zustiegsstammdaten</button>`);
   }
 
   return actions.join("");
@@ -363,23 +355,34 @@ function fanbusOperationsAccess(trip = {}) {
 }
 
 function tripNavigation(trip) {
-  const canManage =
-    hasCapability("fanbus.manage")
-    && trip.canManage !== false;
+  const canManage = hasCapability("fanbus.manage") && trip.canManage !== false;
+  const operationsAccess = fanbusOperationsAccess(trip);
+  const canOpenOccupancy = canManage || operationsAccess.canManageRegistrations;
+  const canEdit = canManage && ["DRAFT", "PUBLISHED"].includes(trip.status);
+  const moreActions = tripManagementActions(trip);
 
-  const operationsAccess =
-    fanbusOperationsAccess(trip);
-
-  const canOpenOccupancy =
-    canManage
-    || operationsAccess.canManageRegistrations;
-
-  return `<nav class="v4-m310-trip-nav" aria-label="Bereiche der Fanbusfahrt">
-    ${canOpenOccupancy ? `<button class="button small secondary" type="button" data-m310-occupancy="${escapeAttr(trip.id)}">Belegung</button>` : ""}
+  return `<nav class="v4-m310-trip-nav" aria-label="Arbeitsbereiche der Fanbusfahrt">
+    ${operationsAccess.canManageRegistrations ? `<button class="button small secondary" type="button" data-m310-participants="${escapeAttr(trip.id)}">Teilnehmerliste</button>` : ""}
+    ${canOpenOccupancy ? `<button class="button small secondary" type="button" data-m310-occupancy="${escapeAttr(trip.id)}">${canManage ? "Busverwaltung" : "Belegung"}</button>` : ""}
     ${operationsAccess.canRead ? `<button class="button small secondary" type="button" data-m325-operations="${escapeAttr(trip.id)}">Fahrtbetrieb</button>` : ""}
-    ${canManage && trip.status !== "CANCELLED" ? `<button class="icon-button v4-m310-trip-settings" type="button" data-m310-trip-settings aria-label="Verwaltung öffnen" aria-controls="m310TripManagement" aria-expanded="false">⚙️</button>` : ""}
+    ${canEdit ? `<button class="button small secondary" type="button" data-m310-edit-mode="${escapeAttr(trip.id)}">Bearbeiten</button>` : ""}
   </nav>
-  ${canManage && trip.status !== "CANCELLED" ? `<div id="m310TripManagement" class="v4-m310-trip-management" data-m310-trip-management hidden>${tripManagementActions(trip) || '<p class="subtle">Keine Verwaltungsaktion verfügbar.</p>'}</div>` : ""}`;
+  ${moreActions ? `<details class="v4-m310-more-actions"><summary>Weitere Aktionen</summary><div class="v4-m310-trip-management" data-m310-trip-management>${moreActions}</div></details>` : ""}`;
+}
+
+function formatBerlinDateTimeCompact(value) {
+  const localValue = toBerlinInputValue(value);
+  if (!localValue) return "Noch nicht festgelegt";
+  const [date, time] = localValue.split("T");
+  return `${formatCalendarDate(date)} · ${time} Uhr`;
+}
+
+function tripRegistrationDeadlineMarkup(trip) {
+  if (trip.status === "CANCELLED") return "";
+  if (trip.registrationClosesAt) {
+    return `<div class="v4-m325-trip-registration-deadline"><span>ANMELDESCHLUSS</span><strong>${escapeHtml(formatBerlinDateTimeCompact(trip.registrationClosesAt))}</strong></div>`;
+  }
+  return `<div class="v4-m325-trip-registration-deadline"><span>ANMELDESCHLUSS</span><strong>Noch nicht festgelegt</strong></div>`;
 }
 
 function normalizedTripDetailStops(stops) {
@@ -429,9 +432,9 @@ function tripDetailMarkup(trip, tripStops = []) {
       <div class="v4-m325-trip-date"><span>Termin / Spielzeit</span><strong>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeCompact(trip.eventTime))}</strong></div>
       ${trip.venue ? `<div class="v4-m325-trip-venue"><span>Ziel / Ort</span><strong>${escapeHtml(trip.venue)}</strong></div>` : `<div class="v4-m325-trip-venue"><span>Ziel / Ort</span><strong>Noch nicht festgelegt</strong></div>`}
       ${trip.opponentName ? `<div class="full v4-m325-trip-opponent"><span>Gegner</span><strong>${escapeHtml(trip.opponentName)}</strong></div>` : ""}
-      <div class="full v4-m325-trip-travel"><div><span>Abfahrt</span><strong>${escapeHtml(formatBerlinDateTime(trip.departureAt))}</strong></div><div><span>Fahrtpreis</span><strong>${escapeHtml(formatMoney(trip.priceCents))}</strong></div></div>
-      <div class="full v4-m325-trip-registration-window"><strong>${escapeHtml(registrationWindowText(trip))}</strong></div>
+      <div class="full v4-m325-trip-travel"><div><span>Abfahrt</span><strong>${escapeHtml(formatBerlinTime(trip.departureAt))}</strong></div><div><span>Fahrtpreis</span><strong>${escapeHtml(formatMoney(trip.priceCents))}</strong></div></div>
       ${tripDetailStopsMarkup(tripStops)}
+      ${tripRegistrationDeadlineMarkup(trip)}
     </div>
     ${trip.status === "PUBLISHED" ? `<a class="button small primary v4-m310-register-link" href="./fanbus-anmeldung?trip=${escapeAttr(trip.id)}">${["OPEN", "WAITLIST"].includes(trip.registrationStatus) ? "Jetzt anmelden" : "Anmeldung ansehen"}</a>` : ""}
     ${tripNavigation(trip)}
@@ -512,36 +515,37 @@ async function hydrateTripDetailStops(dialog, trip) {
   }
 }
 
+async function openInlineTripEditor(dialog, trip) {
+  let tripStops;
+  let masterStops;
+  try {
+    const [loadedTripStops, masterData] = await Promise.all([
+      loadTripDetailStops(trip),
+      call("fanbus_boarding_stops_list")
+    ]);
+    tripStops = loadedTripStops;
+    masterStops = Array.isArray(masterData?.stops) ? masterData.stops : [];
+  } catch (error) {
+    showToast(error?.message || "Zustiegsorte konnten nicht geladen werden.", "error", 5200);
+    return;
+  }
+
+  dialog.dataset.m310TripMode = "edit";
+  const body = dialog.querySelector("#v4DialogBody");
+  if (!body) return;
+  body.innerHTML = `<div class="v4-m310-trip-edit-mode">
+    <div class="v4-m310-editor-context"><strong>${escapeHtml(trip.venue || trip.opponentName || trip.displayTitle || "Fanbusfahrt")}</strong><span>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeLabel(trip.eventTime))}</span></div>
+    <p class="subtle v4-m310-editor-context-note">Spieltermin, Gegner und Spielort werden im Terminmodul verwaltet.</p>
+    ${tripForm(trip, tripStops, masterStops)}
+    <div class="dialog-actions v4-detail-actions"><button class="button ghost" type="button" data-m310-cancel-edit>Abbrechen</button><button class="button primary" type="submit" form="m310TripEditorForm">Änderungen speichern</button></div>
+  </div>`;
+  bindInlineTripEditor(dialog, trip, { tripStops, masterStops });
+}
+
 function bindTripDetail(dialog, trip) {
-  const settings = dialog.querySelector("[data-m310-trip-settings]");
-  const management = dialog.querySelector("[data-m310-trip-management]");
-  settings?.addEventListener("click", () => {
-    const open = management?.hidden !== false;
-    if (management) management.hidden = !open;
-    settings.setAttribute("aria-expanded", String(open));
-    settings.setAttribute("aria-label", open ? "Verwaltung schließen" : "Verwaltung öffnen");
+  dialog.querySelector("[data-m310-edit-mode]")?.addEventListener("click", () => {
+    void openInlineTripEditor(dialog, trip);
   });
-
-  dialog.querySelector("[data-m310-edit-mode]")?.addEventListener("click", async () => {
-    let tripStops;
-    try {
-      tripStops = await loadTripDetailStops(trip);
-    } catch (error) {
-      showToast(error?.message || "Zustiegsorte konnten nicht geladen werden.", "error", 5200);
-      return;
-    }
-    dialog.dataset.m310TripMode = "edit";
-    const body = dialog.querySelector("#v4DialogBody");
-    if (!body) return;
-    body.innerHTML = `<div class="v4-m325-trip-detail v4-m310-trip-edit-mode">
-      <div class="v4-m310-trip-heading"><strong>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeCompact(trip.eventTime))}</strong></div>
-      <p class="subtle">Spieltermin, Gegner und Spielort werden im Terminmodul verwaltet.</p>
-      ${tripForm(trip, tripStops)}
-      <div class="dialog-actions v4-detail-actions"><button class="button ghost" type="button" data-m310-cancel-edit>Abbrechen</button><button class="button primary" type="submit" form="m310TripEditorForm">Änderungen speichern</button></div>
-    </div>`;
-    bindInlineTripEditor(dialog, trip);
-  });
-
   bindTripActions(dialog, [trip]);
 }
 
@@ -554,21 +558,148 @@ function restoreTripOverview(dialog, trip, tripStops = null) {
   if (tripStops === null) void hydrateTripDetailStops(dialog, trip);
 }
 
+function syncTripDefaultStopOptions(form, trip) {
+  const select = form.querySelector("[data-m310-trip-default-stop]");
+  if (!select) return;
+  const current = select.value || trip.defaultBoardingStopId || "";
+  const options = [];
+  const seen = new Set();
+  form.querySelectorAll("[data-m310-trip-stop-editor-row]").forEach(row => {
+    if (row.dataset.removed === "true") return;
+    const stopSelect = row.querySelector("[data-m310-trip-stop-master]");
+    const id = stopSelect?.value || "";
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    options.push({ id, label: stopSelect.selectedOptions?.[0]?.textContent?.trim() || "Zustiegsort" });
+  });
+  select.innerHTML = `<option value="">Kein Standard</option>${options.map(option => `<option value="${escapeAttr(option.id)}">${escapeHtml(option.label)}</option>`).join("")}`;
+  select.value = seen.has(current) ? current : "";
+}
+
+function bindTripStopEditor(form, trip) {
+  const list = form.querySelector("[data-m310-trip-stop-editor-list]");
+  const template = form.querySelector("template[data-m310-trip-stop-template]");
+  if (!list || !template) return;
+
+  const bindRow = row => {
+    const remove = row.querySelector("[data-m310-trip-stop-remove]");
+    const stopSelect = row.querySelector("[data-m310-trip-stop-master]");
+    remove?.addEventListener("click", () => {
+      if (row.dataset.new === "true") {
+        row.remove();
+      } else {
+        const removed = row.dataset.removed === "true";
+        row.dataset.removed = removed ? "false" : "true";
+        row.classList.toggle("is-removed", !removed);
+        row.querySelectorAll("select,input").forEach(control => { control.disabled = !removed; });
+        if (remove) remove.textContent = removed ? "Entfernen" : "Rückgängig";
+      }
+      syncTripDefaultStopOptions(form, trip);
+    });
+    stopSelect?.addEventListener("change", () => syncTripDefaultStopOptions(form, trip));
+  };
+
+  list.querySelectorAll("[data-m310-trip-stop-editor-row]").forEach(bindRow);
+  form.querySelector("[data-m310-trip-stop-add]")?.addEventListener("click", () => {
+    const fragment = template.content.cloneNode(true);
+    const row = fragment.querySelector("[data-m310-trip-stop-editor-row]");
+    if (!row) return;
+    list.appendChild(fragment);
+    bindRow(row);
+    syncTripDefaultStopOptions(form, trip);
+    row.querySelector("select")?.focus();
+  });
+  syncTripDefaultStopOptions(form, trip);
+}
+
+function collectTripStopEditorPlan(form, trip) {
+  const rows = [...form.querySelectorAll("[data-m310-trip-stop-editor-row]")];
+  const activeRows = rows.filter(row => row.dataset.removed !== "true");
+  const selectedIds = activeRows.map(row => row.querySelector("[data-m310-trip-stop-master]")?.value || "");
+  if (selectedIds.some(id => !id)) throw new Error("Bitte für jeden Zustieg einen zentralen Zustiegsort auswählen.");
+  if (new Set(selectedIds).size !== selectedIds.length) throw new Error("Ein Zustiegsort kann pro Fahrt nur einmal verwendet werden.");
+
+  let nextPosition = rows.reduce((max, row) => Math.max(max, Number(row.dataset.position || 0)), 0) + 1;
+  const removals = [];
+  const upserts = [];
+
+  rows.forEach(row => {
+    const id = row.dataset.tripStopId || null;
+    const revision = id ? Number(row.dataset.revision || 0) : null;
+    const removed = row.dataset.removed === "true";
+    const select = row.querySelector("[data-m310-trip-stop-master]");
+    const timeInput = row.querySelector("[data-m310-trip-stop-time]");
+    const boardingStopId = select?.value || row.dataset.originalBoardingStopId || "";
+    const time = timeInput?.value || row.dataset.originalTime || "";
+    const position = id ? Number(row.dataset.position || 1) : nextPosition++;
+
+    if (removed) {
+      if (!id) return;
+      removals.push({
+        id,
+        tripId: trip.id,
+        boardingStopId: row.dataset.originalBoardingStopId,
+        departureAt: tripTimeToBerlinIso(trip, row.dataset.originalTime, "Die Zustiegszeit"),
+        position,
+        isActive: false,
+        expectedRevision: revision
+      });
+      return;
+    }
+
+    if (!time) throw new Error("Bitte für jeden Zustieg eine Uhrzeit angeben.");
+    const originalMaster = row.dataset.originalBoardingStopId || "";
+    const originalTime = row.dataset.originalTime || "";
+    const changed = !id || boardingStopId !== originalMaster || time !== originalTime;
+    if (!changed) return;
+
+    upserts.push({
+      id,
+      tripId: trip.id,
+      boardingStopId,
+      departureAt: tripTimeToBerlinIso(trip, time, "Die Zustiegszeit"),
+      position,
+      isActive: true,
+      expectedRevision: revision
+    });
+  });
+
+  const defaultSelect = form.querySelector("[data-m310-trip-default-stop]");
+  const defaultBoardingStopId = defaultSelect?.value || null;
+  return { removals, upserts, defaultBoardingStopId };
+}
+
 function bindInlineTripEditor(dialog, trip) {
   const form = dialog.querySelector("#m310TripEditorForm");
+  if (!form) return;
   bindTripEditorDateDefaults(form, trip);
+  bindTripStopEditor(form, trip);
+
   dialog.querySelector("[data-m310-cancel-edit]")
     ?.addEventListener("click", () => restoreTripOverview(dialog, trip));
-  form?.addEventListener("submit", async event => {
+
+  form.addEventListener("submit", async event => {
     event.preventDefault();
     if (!form.reportValidity()) return;
     const button = dialog.querySelector('[type="submit"][form="m310TripEditorForm"]');
     if (button) button.disabled = true;
+
     try {
-      snapshot = await runWrite(
-        () => call("fanbus_trip_update", tripUpdatePayload(trip, Object.fromEntries(new FormData(form)))),
-        "Fanbusfahrt wurde aktualisiert."
-      );
+      const values = Object.fromEntries(new FormData(form));
+      const stopPlan = collectTripStopEditorPlan(form, trip);
+      values.defaultBoardingStopId = stopPlan.defaultBoardingStopId || "";
+
+      snapshot = await runWrite(async () => {
+        const nextSnapshot = await call("fanbus_trip_update", tripUpdatePayload(trip, values));
+        for (const payload of stopPlan.removals) {
+          await call("fanbus_trip_boarding_stop_upsert", payload);
+        }
+        for (const payload of stopPlan.upserts) {
+          await call("fanbus_trip_boarding_stop_upsert", payload);
+        }
+        return nextSnapshot;
+      }, "Fanbusfahrt wurde aktualisiert.");
+
       render();
       const updated = trips().find(item => item.id === trip.id);
       if (updated) restoreTripOverview(dialog, updated);
@@ -627,6 +758,7 @@ function setupFanbusActionMenu(canManage) {
   const menu = document.getElementById("m310FanbusActionMenu");
   const addButton = document.getElementById("m310AddTripButton");
   const companionButton = document.getElementById("m325CompanionListsButton");
+  const settingsButton = document.getElementById("m310FanbusSettingsButton");
   if (!root || !toggle || !menu) return;
 
   const close = ({ restoreFocus = false } = {}) => {
@@ -651,6 +783,13 @@ function setupFanbusActionMenu(canManage) {
       close();
       window.location.hash = "#/fanbuses?view=companions";
     };
+  }
+  if (settingsButton) {
+    settingsButton.hidden = !canManage;
+    settingsButton.onclick = canManage ? () => {
+      close();
+      window.location.hash = "#/fanbuses?view=settings";
+    } : null;
   }
   toggle.onclick = () => menu.hidden ? open() : close({ restoreFocus: true });
 
@@ -678,6 +817,15 @@ function render() {
   if (routeQuery.get("view") === "companions") {
     setWorkspaceShell(true);
     void renderCompanionWorkspace(panel, summary, routeQuery.get("fromTrip"));
+    return;
+  }
+  if (routeQuery.get("view") === "settings") {
+    if (!hasCapability("fanbus.manage")) {
+      returnToFanbuses();
+      return;
+    }
+    setWorkspaceShell(true);
+    void renderFanbusSettingsWorkspace(panel, summary);
     return;
   }
   if (routeQuery.get("view") === "operations" && routeQuery.get("trip")) {
@@ -1208,6 +1356,18 @@ function openWorkspaceRoute(source, route) {
 }
 
 function bindTripActions(panel, items) {
+  panel.querySelectorAll("[data-m310-participants]").forEach(button => {
+    button.addEventListener("click", () => {
+      const trip = items.find(item => item.id === button.dataset.m310Participants);
+      if (trip) void openRegistrations(trip, button);
+    });
+  });
+  panel.querySelectorAll("[data-m310-buses]").forEach(button => {
+    button.addEventListener("click", () => {
+      const trip = items.find(item => item.id === button.dataset.m310Buses);
+      if (trip) void openBuses(trip, button);
+    });
+  });
   panel.querySelectorAll("[data-m310-occupancy]").forEach(button => {
     button.addEventListener("click", () => {
       const trip = items.find(item => item.id === button.dataset.m310Occupancy);
@@ -1293,6 +1453,80 @@ function bindTripActions(panel, items) {
       if (trip) openBoardingStops(trip);
     });
   });
+}
+
+function fanbusMasterStopSettingsCard(stop) {
+  return `<article class="v4-m310-master-stop-card">
+    <div><strong>${escapeHtml(stop.label || "Zustiegsort")}</strong>${stop.address ? `<small>${escapeHtml(stop.address)}</small>` : ""}</div>
+    <span class="badge ${stop.isActive === false ? "neutral" : "success"}">${stop.isActive === false ? "Inaktiv" : "Aktiv"}</span>
+    <button class="button small secondary" type="button" data-m310-master-stop-settings-edit="${escapeAttr(stop.id)}">Bearbeiten</button>
+  </article>`;
+}
+
+function openFanbusMasterStopSettingsEditor(stop, stops, refresh) {
+  const creating = !stop;
+  const nextPosition = Math.max(0, ...(Array.isArray(stops) ? stops : []).map(item => Number(item?.position || 0))) + 1;
+  const dialog = openDialog({
+    title: creating ? "Zustiegsort anlegen" : "Zustiegsort bearbeiten",
+    body: `<form class="form-grid v4-smart-form" data-m310-master-stop-settings-form>
+      <label class="v4-field-full">Bezeichnung<input name="label" maxlength="160" required value="${escapeAttr(stop?.label || "")}"></label>
+      <label class="v4-field-full">Adresse (optional)<input name="address" maxlength="240" value="${escapeAttr(stop?.address || "")}"></label>
+      <label class="v4-field-full">Hinweis (optional)<textarea name="defaultNote" maxlength="240">${escapeHtml(stop?.defaultNote || "")}</textarea></label>
+      <label class="v4-field-half">Reihenfolge<input name="position" type="number" min="1" step="1" required value="${escapeAttr(stop?.position || nextPosition)}"></label>
+      <label class="v4-field-half v4-m310-master-stop-active"><input name="isActive" type="checkbox"${stop?.isActive === false ? "" : " checked"}><span>Aktiv</span></label>
+      <div class="dialog-actions v4-detail-actions v4-field-full"><button class="button primary" type="submit">Speichern</button></div>
+    </form>`
+  });
+
+  dialog.querySelector("[data-m310-master-stop-settings-form]")?.addEventListener("submit", async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.reportValidity()) return;
+    const values = Object.fromEntries(new FormData(form));
+    try {
+      await runWrite(() => call("fanbus_boarding_stop_upsert", {
+        id: stop?.id || null,
+        expectedRevision: stop ? Number(stop.revision) : null,
+        label: values.label,
+        address: values.address || null,
+        defaultNote: values.defaultNote || null,
+        position: Number(values.position),
+        isActive: values.isActive === "on"
+      }), "Zustiegsort gespeichert.");
+      dialog.close();
+      void refresh();
+    } catch (error) {
+      showToast(error?.message || "Zustiegsort konnte nicht gespeichert werden.", "error", 5200);
+    }
+  });
+}
+
+async function renderFanbusSettingsWorkspace(panel, summary) {
+  if (summary) summary.textContent = "";
+  panel.innerHTML = workspaceLoading("Fanbus-Einstellungen", "Zentrale Zustiegsorte werden geladen …");
+  panel.querySelector("[data-m325-back]")?.addEventListener("click", () => returnToFanbuses());
+
+  try {
+    const data = await call("fanbus_boarding_stops_list");
+    const stops = Array.isArray(data?.stops) ? data.stops.slice().sort((a, b) => Number(a.position || 0) - Number(b.position || 0)) : [];
+    const refresh = () => renderFanbusSettingsWorkspace(panel, summary);
+    panel.innerHTML = `<section class="v4-m325-workspace v4-m310-fanbus-settings" data-m310-fanbus-settings>
+      <header class="v4-m325-workspace-header">
+        <button class="button small secondary" type="button" data-m310-settings-back>← Zurück</button>
+        <div><h2>Fanbus-Einstellungen</h2><p>Zentrale Zustiegsorte einmalig pflegen. In einer Fahrt werden anschließend nur Zustiegsort und Uhrzeit gewählt.</p></div>
+      </header>
+      <div class="v4-m310-settings-section-heading"><div><h3>Zentrale Zustiegsorte</h3><p class="subtle">Diese Liste steht allen Fanbusfahrten zur Auswahl.</p></div><button class="button small primary" type="button" data-m310-master-stop-settings-add>+ Zustiegsort</button></div>
+      <div class="v4-m310-master-stop-settings-list">${stops.length ? stops.map(fanbusMasterStopSettingsCard).join("") : '<p class="empty-state">Noch keine Zustiegsorte angelegt.</p>'}</div>
+    </section>`;
+    panel.querySelector("[data-m310-settings-back]")?.addEventListener("click", () => returnToFanbuses());
+    panel.querySelector("[data-m310-master-stop-settings-add]")?.addEventListener("click", () => openFanbusMasterStopSettingsEditor(null, stops, refresh));
+    panel.querySelectorAll("[data-m310-master-stop-settings-edit]").forEach(button => {
+      button.addEventListener("click", () => openFanbusMasterStopSettingsEditor(stops.find(stop => stop.id === button.dataset.m310MasterStopSettingsEdit), stops, refresh));
+    });
+  } catch (error) {
+    panel.innerHTML = errorPanel(error?.message || "Fanbus-Einstellungen konnten nicht geladen werden.");
+    panel.querySelector("[data-m325-back]")?.addEventListener("click", () => returnToFanbuses());
+  }
 }
 
 async function openBoardingStops(trip) {
@@ -1487,37 +1721,84 @@ function defaultRegistrationClosesInput(departureAt) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}T20:00`;
 }
 
-function tripForm(trip) {
-  const tripStops = Array.isArray(arguments[1]) ? arguments[1] : [];
+function tripStopMasterOptions(masterStops, selectedId = "") {
+  return (Array.isArray(masterStops) ? masterStops : [])
+    .map(stop => `<option value="${escapeAttr(stop.id)}"${stop.id === selectedId ? " selected" : ""}>${escapeHtml(stop.label || "Zustiegsort")}</option>`)
+    .join("");
+}
+
+function tripStopEditorRow(trip, stop, masterStops, index, isNew = false) {
+  const stopId = stop?.id || "";
+  const boardingStopId = stop?.boardingStopId || "";
+  const time = toBerlinTimeInputValue(stop?.departureAt) || defaultTripStopTime(trip);
+  const position = Number(stop?.position || index + 1);
+  const revision = stopId ? Number(stop?.revision || 0) : "";
+  return `<div class="v4-m310-trip-stop-editor-row" data-m310-trip-stop-editor-row data-trip-stop-id="${escapeAttr(stopId)}" data-revision="${escapeAttr(revision)}" data-position="${escapeAttr(position)}" data-original-boarding-stop-id="${escapeAttr(boardingStopId)}" data-original-time="${escapeAttr(time)}" data-new="${isNew ? "true" : "false"}">
+    <label>Zustiegsort
+      <select data-m310-trip-stop-master required>
+        <option value="">Bitte auswählen</option>
+        ${tripStopMasterOptions(masterStops, boardingStopId)}
+      </select>
+    </label>
+    <label>Uhrzeit
+      <input data-m310-trip-stop-time type="time" step="60" required value="${escapeAttr(time)}">
+    </label>
+    <button class="button small ghost v4-m310-trip-stop-remove" type="button" data-m310-trip-stop-remove>${isNew ? "Entfernen" : "Entfernen"}</button>
+  </div>`;
+}
+
+function tripForm(trip, tripStops = [], masterStops = []) {
   const required = trip.status === "PUBLISHED" ? "required" : "";
   const registrationClosesAt = toBerlinInputValue(trip.registrationClosesAt)
     || defaultRegistrationClosesInput(trip.departureAt);
   const activeStops = normalizedTripDetailStops(tripStops);
+  const usedMasterIds = new Set(activeStops.map(stop => stop.boardingStopId).filter(Boolean));
+  const selectableMasterStops = (Array.isArray(masterStops) ? masterStops : [])
+    .filter(stop => stop?.isActive !== false || usedMasterIds.has(stop?.id))
+    .sort((left, right) => Number(left?.position || 0) - Number(right?.position || 0));
+  const openSince = trip.registrationOpensAt
+    ? formatBerlinDateTimeCompact(trip.registrationOpensAt)
+    : "Noch nicht festgelegt";
 
-  return `<form id="m310TripEditorForm" class="form-grid v4-smart-form">
-    <label class="v4-field-full">Abfahrt
-      <input name="departureAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(trip.departureAt))}" ${required}>
-    </label>
-    <label class="v4-field-seven">Anmeldung beginnt
-      <input name="registrationOpensAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(trip.registrationOpensAt))}" ${required}${trip.status === "PUBLISHED" ? " readonly" : ""}>
-      ${trip.status === "PUBLISHED" ? "<small>Bei veröffentlichten Fahrten serverseitig festgelegt.</small>" : ""}
-    </label>
-    <label class="v4-field-seven">Anmeldung endet
-      <input name="registrationClosesAt" type="datetime-local" step="60" value="${escapeAttr(registrationClosesAt)}" ${required}>
-    </label>
-    <label class="v4-field-five">Fahrtpreis
-      <input name="price" inputmode="decimal" pattern="[0-9]+([,.][0-9]{1,2})?" value="${escapeAttr(centsToEuroInput(trip.priceCents))}" placeholder="25,00" ${required}>
-    </label>
-    <label class="v4-field-seven">Standard-Zustiegsort
-      <select name="defaultBoardingStopId">
-        <option value="">Kein Standard</option>
-        ${activeStops.map(stop => `<option value="${escapeAttr(stop.boardingStopId)}"${stop.boardingStopId === trip.defaultBoardingStopId ? " selected" : ""}>${escapeHtml(`${stop.label} · ${formatBerlinTime(stop.departureAt)}`)}</option>`).join("")}
-      </select>
-    </label>
-    <label class="v4-field-five v4-compact-check">
-      <input name="busPreferenceEnabled" type="checkbox"${trip.busPreferenceEnabled ? " checked" : ""}>
-      <span>Buswunsch erlauben<small>Nur mit mindestens einem aktiven PARTY- und RUHIG-Bus.</small></span>
-    </label>
+  return `<form id="m310TripEditorForm" class="v4-m310-trip-editor-form">
+    <section class="v4-m310-editor-section">
+      <h3>Fahrt</h3>
+      <div class="v4-m310-editor-fields">
+        <label>Abfahrt
+          <input name="departureTime" type="time" step="60" value="${escapeAttr(toBerlinTimeInputValue(trip.departureAt))}" ${required}>
+        </label>
+        <label>Fahrtpreis
+          <input name="price" inputmode="decimal" pattern="[0-9]+([,.][0-9]{1,2})?" value="${escapeAttr(centsToEuroInput(trip.priceCents))}" placeholder="25,00" ${required}>
+        </label>
+        <label class="v4-m310-editor-deadline">Anmeldeschluss
+          <input name="registrationClosesAt" type="datetime-local" step="60" value="${escapeAttr(registrationClosesAt)}" ${required}>
+        </label>
+        ${trip.status === "DRAFT" ? `<label class="v4-m310-editor-open">Anmeldung beginnt
+          <input name="registrationOpensAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(trip.registrationOpensAt))}">
+        </label>` : `<div class="v4-m310-registration-open-info"><span>Anmeldung geöffnet seit</span><strong>${escapeHtml(openSince)}</strong></div>`}
+        <label class="v4-m310-bus-preference-toggle">
+          <input name="busPreferenceEnabled" type="checkbox"${trip.busPreferenceEnabled === true ? " checked" : ""}>
+          <span>Buswunsch erlauben<small>Nur mit mindestens einem aktiven Party- und Ruhig-Bus.</small></span>
+        </label>
+      </div>
+    </section>
+
+    <section class="v4-m310-editor-section v4-m310-editor-stops">
+      <div class="v4-m310-editor-section-heading">
+        <div><h3>Zustiegsorte</h3><p class="subtle">Zentralen Zustiegsort auswählen und Uhrzeit für diese Fahrt festlegen.</p></div>
+        <button class="button small secondary" type="button" data-m310-trip-stop-add>+ Zustiegsort</button>
+      </div>
+      <div class="v4-m310-trip-stop-editor-list" data-m310-trip-stop-editor-list>
+        ${activeStops.map((stop, index) => tripStopEditorRow(trip, stop, selectableMasterStops, index)).join("")}
+      </div>
+      <template data-m310-trip-stop-template>${tripStopEditorRow(trip, null, selectableMasterStops, activeStops.length, true)}</template>
+      <label class="v4-m310-trip-default-stop">Standard für diese Fahrt
+        <select name="defaultBoardingStopId" data-m310-trip-default-stop>
+          <option value="">Kein Standard</option>
+          ${activeStops.map(stop => `<option value="${escapeAttr(stop.boardingStopId)}"${stop.boardingStopId === trip.defaultBoardingStopId ? " selected" : ""}>${escapeHtml(stop.label || "Zustiegsort")}</option>`).join("")}
+        </select>
+      </label>
+    </section>
   </form>`;
 }
 
@@ -1525,9 +1806,13 @@ function tripUpdatePayload(trip, values) {
   return {
     id: trip.id,
     expectedRevision: Number(trip.revision),
-    departureAt: berlinLocalToIso(values.departureAt, "Die Abfahrt"),
+    departureAt: values.departureTime
+      ? tripTimeToBerlinIso(trip, values.departureTime, "Die Abfahrt")
+      : trip.departureAt || null,
     departureInfo: trip.departureInfo || null,
-    registrationOpensAt: berlinLocalToIso(values.registrationOpensAt, "Der Anmeldestart"),
+    registrationOpensAt: values.registrationOpensAt
+      ? berlinLocalToIso(values.registrationOpensAt, "Der Anmeldestart")
+      : trip.registrationOpensAt || null,
     registrationClosesAt: berlinLocalToIso(values.registrationClosesAt, "Das Anmeldeende"),
     priceCents: euroInputToCents(values.price),
     capacity: trip.capacity,
@@ -1564,7 +1849,7 @@ async function openTripEditor(trip) {
 }
 
 function bindTripEditorDateDefaults(form, trip) {
-  const departure = form?.elements.namedItem("departureAt");
+  const departure = form?.elements.namedItem("departureTime") || form?.elements.namedItem("departureAt");
   const registrationCloses = form?.elements.namedItem("registrationClosesAt");
   let registrationClosesAutoManaged = !trip.registrationClosesAt;
 
@@ -1577,22 +1862,14 @@ function bindTripEditorDateDefaults(form, trip) {
   departure?.addEventListener("change", () => {
     if (!registrationCloses || !registrationClosesAutoManaged || !departure.value) return;
     try {
-      registrationCloses.value = defaultRegistrationClosesInput(
-        berlinLocalToIso(departure.value, "Die Abfahrt")
-      );
+      const departureIso = departure.name === "departureTime"
+        ? tripTimeToBerlinIso(trip, departure.value, "Die Abfahrt")
+        : berlinLocalToIso(departure.value, "Die Abfahrt");
+      registrationCloses.value = defaultRegistrationClosesInput(departureIso);
     } catch {
-      // Die native Datumseingabe zeigt die Validierung beim Speichern an.
+      // Native field validation remains authoritative while the value is incomplete.
     }
   });
-}
-
-async function publishTrip(trip, button) {
-  const confirmed = await confirmAction(
-    `Fanbusfahrt „${trip.displayTitle || "Fanbusfahrt"}“ veröffentlichen?`,
-    { title: "Fanbusfahrt veröffentlichen", submitLabel: "Veröffentlichen" }
-  );
-  if (!confirmed) return;
-  await runTripWrite(button, "fanbus_trip_publish", trip, "Fanbusfahrt wurde veröffentlicht.");
 }
 
 function openTripCancellation(trip) {
