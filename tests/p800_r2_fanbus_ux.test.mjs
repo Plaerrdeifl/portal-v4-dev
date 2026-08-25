@@ -40,6 +40,17 @@ test("public Fanbus UX renders user-facing labels review and compact standard st
   assert.match(ux, /badge\.remove\(\)/);
 });
 
+test("public Fanbus registration distinguishes an already active booking", async () => {
+  const registration = await read("js/fanbus-registration.js");
+
+  assert.match(registration, /const alreadyActive = outcome === "ALREADY_ACTIVE"/);
+  assert.match(registration, /\? "Bereits angemeldet"/);
+  assert.match(registration, /Es wurde keine weitere Anmeldung angelegt/);
+  assert.match(registration, /Du bist für diese Fanbusfahrt bereits angemeldet/);
+  assert.match(registration, /\["WAITLISTED", "ALREADY_ACTIVE"\]\.includes\(result\?\.outcome\)/);
+  assert.match(registration, /alreadyActive \|\| waitlisted \? "warning" : "success"/);
+});
+
 test("internal Fanbus UX collapses mobile filters and fixes action hierarchy", async () => {
   const ux = await read("js/p800-r2-fanbus-ux.js");
 
