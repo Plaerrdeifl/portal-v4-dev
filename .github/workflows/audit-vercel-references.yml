@@ -1,0 +1,20 @@
+name: Audit obsolete Vercel references
+
+"on":
+  push:
+    branches:
+      - chore/remove-vercel
+    paths:
+      - .github/workflows/audit-vercel-references.yml
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: List Vercel references
+        run: |
+          echo '=== VERCEL REFERENCES ==='
+          grep -RIn -i --exclude-dir=.git --exclude='audit-vercel-references.yml' 'vercel' . || true
+          echo '=== VERCEL-NAMED PATHS ==='
+          find . -path './.git' -prune -o -iname '*vercel*' -print
