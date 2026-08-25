@@ -1,0 +1,49 @@
+name: Remove obsolete hosting config
+
+"on":
+  push:
+    branches:
+      - chore/remove-vercel
+    paths:
+      - .github/workflows/remove-vercel-cleanup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: chore/remove-vercel
+
+      - name: Replace obsolete deployment contract
+        run: >-
+          python -c 'from pathlib import Path; p=Path("tests/core_contract.test.mjs"); s=p.read_text(); a=s.index("test(\"Vercel DEV deployment publishes only the static build\""); b=s.index("\ntest(\"team codes are generated internally", a); n="""test(\"Cloudflare Pages DEV deployment publishes only the static build\", async () => {\n  const pkg = JSON.parse(await read(\"package.json\"));\n  const build = await read(\"scripts/build-static.mjs\");\n  const ignore = await read(\".gitignore\");\n  const readme = await read(\"README.md\");\n\n  assert.equal(pkg.scripts.build, \"node scripts/build-static.mjs\");\n  assert.match(readme, /DEV-Hosting:\\*\\* Cloudflare Pages/);\n  assert.match(readme, /Hosting\\/Deployment: Cloudflare Pages über die GitHub-Integration/);\n\n  for (const directory of [\n    \"assets\",\n    \"components\",\n    \"css\",\n    \"js\",\n    \"pages\"\n  ]) {\n    assert.ok(build.includes(`\"${directory}\"`));\n  }\n\n  assert.ok(build.includes(\"write-runtime-config.mjs\"));\n  assert.ok(build.includes(\"SUPABASE_PUBLISHABLE_KEY\"));\n  assert.doesNotMatch(build, /service[_-]?role/i);\n  assert.match(ignore, /^\\/dist\\/$/m);\n});\n"""; p.write_text(s[:a]+n+s[b:])'
+
+      - name: Pin Cloudflare hosting in workspace rules
+        run: >-
+          python -c 'from pathlib import Path; p=Path("AGENTS.md"); s=p.read_text(); m="## 5. Geheimhaltung & Netzwerksicherheit\n"; n="""## 5. Hosting / Deployment-Ziel\n\n* **Frontend-Hosting:** DEV und PROD verwenden ausschließlich Cloudflare Pages.\n* **Kein Vercel:** Vercel gehört nicht zu diesem Projekt und darf weder als Hosting-/Deploymentziel vorgeschlagen noch konfiguriert, installiert oder verwendet werden.\n* **DEV:** `https://dev.plaerrdeifl.de/` wird aus `main` über die Cloudflare-Pages-GitHub-Integration veröffentlicht.\n\n---\n\n## 6. Geheimhaltung & Netzwerksicherheit\n"""; assert m in s; p.write_text(s.replace(m,n,1))'
+
+      - name: Delete obsolete files and verify
+        run: |
+          rm -f vercel.json
+          rm -f .github/workflows/audit-vercel-references.yml
+          rm -f .github/workflows/remove-vercel-cleanup.yml
+          test ! -e vercel.json
+          grep -F 'Cloudflare Pages DEV deployment publishes only the static build' tests/core_contract.test.mjs
+          grep -F 'Vercel gehört nicht zu diesem Projekt' AGENTS.md
+          if grep -RIn -i --exclude-dir=.git --exclude='AGENTS.md' 'vercel' .; then
+            echo 'Unexpected obsolete Vercel reference remains.'
+            exit 1
+          fi
+          node --check tests/core_contract.test.mjs
+
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: remove obsolete Vercel configuration"
+          git push origin HEAD:chore/remove-vercel
