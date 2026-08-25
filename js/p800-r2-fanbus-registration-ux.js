@@ -68,9 +68,7 @@ function normalizeCompanionControls() {
     if (!match) return;
     const count = Number(match[1]);
     const portal = counter.dataset.m320CompanionCount === "portal";
-    const next = portal
-      ? `Du + ${count} ${count === 1 ? "Mitfahrer" : "Mitfahrer"}`
-      : `${count} ${count === 1 ? "Mitfahrer" : "Mitfahrer"}`;
+    const next = portal ? `Du + ${count} Mitfahrer` : `${count} Mitfahrer`;
     if (raw !== next) counter.textContent = next;
   });
 }
@@ -130,9 +128,14 @@ function buildReview(form) {
   };
 }
 
+function reviewSignature(review) {
+  return JSON.stringify(review);
+}
+
 function reviewMarkup(review) {
+  const signature = escapeHtml(reviewSignature(review));
   return `
-    <section class="p800-fanbus-review" aria-label="Zusammenfassung deiner Anmeldung">
+    <section class="p800-fanbus-review" data-p800-review-signature="${signature}" aria-label="Zusammenfassung deiner Anmeldung">
       <h3>Deine Anmeldung im Überblick</h3>
       ${row("Fahrt", review.trip)}
       ${row(review.count === 1 ? "Person" : "Personen", review.people)}
@@ -145,6 +148,7 @@ function ensureReview(form) {
   if (form.hidden) return;
   let review = form.querySelector(":scope > .p800-fanbus-review");
   const next = buildReview(form);
+  const signature = reviewSignature(next);
   lastReview = next;
 
   if (!review) {
@@ -153,8 +157,10 @@ function ensureReview(form) {
     const anchor = duplicate || actions;
     if (!anchor) return;
     anchor.insertAdjacentHTML("beforebegin", reviewMarkup(next));
-    review = form.querySelector(":scope > .p800-fanbus-review");
-  } else {
+    return;
+  }
+
+  if (review.dataset.p800ReviewSignature !== signature) {
     review.outerHTML = reviewMarkup(next);
   }
 }
