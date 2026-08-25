@@ -16,21 +16,21 @@ test("P800-R2 loads scoped Fanbus UX modules", async () => {
   assert.match(registration, /p800-r2-fanbus-registration-ux\.js/);
 });
 
-test("public Fanbus registration uses user-facing labels and accessible touch targets", async () => {
+test("public Fanbus registration preserves domain markup and accessible touch targets", async () => {
   const registration = await read("fanbus-anmeldung.html");
 
-  assert.match(registration, />Egal<\/option>/);
-  assert.match(registration, />Ruhig<\/option>/);
-  assert.match(registration, />Party<\/option>/);
-  assert.match(registration, />\+ Mitfahrer hinzufügen<\/button>/);
-  assert.match(registration, />Gespeicherte Mitfahrer<\/button>/);
+  assert.match(registration, /data-m320-add-guest="portal"[^>]*>Gast<\/button>/);
+  assert.match(registration, /data-m325-open-companion-list[^>]*>Mitfahrerliste<\/button>/);
+  assert.match(registration, />EGAL<\/option>/);
   assert.match(registration, /fanbus-companion-remove\{[^}]*width:44px!important;[^}]*min-width:44px!important;/);
-  assert.doesNotMatch(registration, />EGAL<\/option>/);
 });
 
-test("public Fanbus UX adds review, compact standard stop and success continuation", async () => {
+test("public Fanbus UX renders user-facing labels review and compact standard stop", async () => {
   const ux = await read("js/p800-r2-fanbus-registration-ux.js");
 
+  assert.match(ux, /EGAL: "Egal"/);
+  assert.match(ux, /\+ Mitfahrer hinzufügen/);
+  assert.match(ux, /Gespeicherte Mitfahrer/);
   assert.match(ux, /Deine Anmeldung im Überblick/);
   assert.match(ux, /Standard-Zustieg:/);
   assert.match(ux, /Gespeicherte Mitfahrer einrichten/);
