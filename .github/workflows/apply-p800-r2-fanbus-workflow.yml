@@ -25,10 +25,13 @@ jobs:
         run: python scripts/fix_p800_r2_fanbus_workflow_patch.py
       - name: Apply UX patch
         run: python scripts/p800_r2_fanbus_workflow_patch.py
+      - name: Preserve rights and align approved contracts
+        run: python scripts/p800_r2_fanbus_workflow_followup.py
       - name: Remove one-shot files
         run: |
           rm -f scripts/p800_r2_fanbus_workflow_patch.py
           rm -f scripts/fix_p800_r2_fanbus_workflow_patch.py
+          rm -f scripts/p800_r2_fanbus_workflow_followup.py
           rm -f .github/workflows/apply-p800-r2-fanbus-workflow.yml
       - name: Install dependencies
         run: npm ci
