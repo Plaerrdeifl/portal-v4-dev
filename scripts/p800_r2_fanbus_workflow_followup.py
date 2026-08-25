@@ -93,6 +93,11 @@ s = one(s, '  assert.match(navigationSource, />Belegung</);', '  assert.match(na
 s = one(s, '  assert.match(navigationSource, /data-m310-trip-settings/);', '  assert.doesNotMatch(navigationSource, /data-m310-trip-settings|⚙️/);\n  assert.match(navigationSource, /data-m310-edit-mode/);', 'u2 no gear')
 p.write_text(s)
 
+p = Path('tests/p800_u5_fanbus_contract.test.mjs')
+s = p.read_text()
+s = one(s, '  assert.match(nav, />Teilnehmer</);', '  assert.match(nav, />Teilnehmerliste</);', 'U5 participant work area')
+p.write_text(s)
+
 p = Path('tests/p800_r2_fanbus_workflow_ux.test.mjs')
 s = p.read_text()
 s = one(s, '  assert.match(nav, /data-m310-buses/);\n  assert.match(nav, />Busse</);', '  assert.match(nav, /data-m310-occupancy/);\n  assert.match(nav, /Busverwaltung/);', 'new workflow bus management')
