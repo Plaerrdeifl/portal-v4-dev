@@ -348,18 +348,32 @@ function safeOutcomeMessage(outcome) {
 function finishRegistration(outcome = "CREATED") {
   registrationComplete = true;
   const waitlisted = outcome === "WAITLISTED";
-  elements.title.textContent = waitlisted ? "Auf Warteliste eingetragen" : "Anmeldung bestätigt";
+  const alreadyActive = outcome === "ALREADY_ACTIVE";
+  elements.title.textContent = alreadyActive
+    ? "Bereits angemeldet"
+    : waitlisted
+      ? "Auf Warteliste eingetragen"
+      : "Anmeldung bestätigt";
   elements.intro.hidden = false;
-  elements.intro.textContent = waitlisted
-    ? "Die gesamte gemeinsame Anmeldung wurde auf die Warteliste gesetzt."
-    : "Deine gemeinsame Anmeldung wurde erfolgreich entgegengenommen.";
+  elements.intro.textContent = alreadyActive
+    ? "Für diese Fahrt besteht bereits eine aktive Anmeldung. Es wurde keine weitere Anmeldung angelegt."
+    : waitlisted
+      ? "Die gesamte gemeinsame Anmeldung wurde auf die Warteliste gesetzt."
+      : "Deine gemeinsame Anmeldung wurde erfolgreich entgegengenommen.";
   elements.portalForm.hidden = true;
   elements.guestForm.hidden = true;
   elements.memberLogin.hidden = true;
   elements.memberLoginPanel.hidden = true;
   elements.google.hidden = true;
   removeTurnstile();
-  setStatus(waitlisted ? "Die gesamte Anmeldung ist auf der Warteliste." : "Die Fanbus-Anmeldung wurde bestätigt.", waitlisted ? "warning" : "success");
+  setStatus(
+    alreadyActive
+      ? "Du bist für diese Fanbusfahrt bereits angemeldet."
+      : waitlisted
+        ? "Die gesamte Anmeldung ist auf der Warteliste."
+        : "Die Fanbus-Anmeldung wurde bestätigt.",
+    alreadyActive || waitlisted ? "warning" : "success"
+  );
 }
 
 function busPreferenceLabel(value) {
@@ -984,7 +998,11 @@ async function submitGuest(event) {
 
     if (response.ok && result?.ok === true && result?.code === "ACCEPTED") {
       succeeded = true;
-      finishRegistration(result?.outcome === "WAITLISTED" ? "WAITLISTED" : "CREATED");
+      finishRegistration(
+        ["WAITLISTED", "ALREADY_ACTIVE"].includes(result?.outcome)
+          ? result.outcome
+          : "CREATED"
+      );
       void refreshTripAfterSuccess();
       return;
     }
