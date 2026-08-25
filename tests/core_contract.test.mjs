@@ -332,15 +332,15 @@ test("admins can delete unused teams safely", async () => {
   );
 });
 
-test("Vercel DEV deployment publishes only the static build", async () => {
+test("Cloudflare Pages DEV deployment publishes only the static build", async () => {
   const pkg = JSON.parse(await read("package.json"));
-  const vercel = JSON.parse(await read("vercel.json"));
   const build = await read("scripts/build-static.mjs");
   const ignore = await read(".gitignore");
+  const readme = await read("README.md");
 
   assert.equal(pkg.scripts.build, "node scripts/build-static.mjs");
-  assert.equal(vercel.buildCommand, "npm run build");
-  assert.equal(vercel.outputDirectory, "dist");
+  assert.match(readme, /DEV-Hosting:\*\* Cloudflare Pages/);
+  assert.match(readme, /Hosting\/Deployment: Cloudflare Pages über die GitHub-Integration/);
 
   for (const directory of [
     "assets",

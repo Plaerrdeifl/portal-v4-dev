@@ -78,7 +78,15 @@ Folgende Aktionen sind strikt untersagt:
 
 ---
 
-## 5. Geheimhaltung & Netzwerksicherheit
+## 5. Hosting / Deployment-Ziel
+
+* **Frontend-Hosting:** DEV und PROD verwenden ausschließlich Cloudflare Pages.
+* **Kein Vercel:** Vercel gehört nicht zu diesem Projekt und darf weder als Hosting-/Deploymentziel vorgeschlagen noch konfiguriert, installiert oder verwendet werden.
+ * **DEV:** `https://dev.plaerrdeifl.de/` wird aus `main` über die Cloudflare-Pages-GitHub-Integration veröffentlicht.
+
+---
+
+## 6. Geheimhaltung & Netzwerksicherheit
 * **Secrets & Zugangsdaten:**
   * Secrets, API-Keys, Tokens, Passwörter, Inhalte von `.env`-Dateien und Zugangsdaten dürfen **niemals** im Chat ausgegeben, committet, in Log-Dateien kopiert oder anderweitig offengelegt werden.
 * **Keine impliziten Netzwerk-/Remote-Aktionen:**
