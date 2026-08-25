@@ -17,18 +17,18 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ux/p800-r2-fanbus-integrated-accordion
-      - name: Fix generated contract assertions
+      - name: Apply patch
+        run: node scripts/p800-r2-integrated-accordion-patch.mjs
+      - name: Normalize generated assertions
         run: |
           python - <<'PY'
           from pathlib import Path
-          p = Path('scripts/p800-r2-integrated-accordion-patch.mjs')
+          p = Path('tests/p800_r2_fanbus_accordion.test.mjs')
           s = p.read_text()
-          s = s.replace('  assert.doesNotMatch(detail, /openDialog\\\\(/);', '  assert.ok(!detail.includes("openDialog("));')
-          s = s.replace('  assert.doesNotMatch(detail, /window\\\\.location\\\\.hash/);', '  assert.ok(!detail.includes("window.location.hash"));')
+          s = s.replace('  assert.doesNotMatch(detail, /openDialog(/);', '  assert.ok(!detail.includes("openDialog("));')
+          s = s.replace('  assert.doesNotMatch(detail, /window.location.hash/);', '  assert.ok(!detail.includes("window.location.hash"));')
           p.write_text(s)
           PY
-      - name: Apply patch
-        run: node scripts/p800-r2-integrated-accordion-patch.mjs
       - name: Remove one-shot files
         run: |
           rm -f scripts/p800-r2-integrated-accordion-patch.mjs
