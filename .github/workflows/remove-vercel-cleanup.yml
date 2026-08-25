@@ -20,81 +20,13 @@ jobs:
 
       - name: Remove Vercel config and replace deployment contract
         run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          test_path = Path('tests/core_contract.test.mjs')
-          source = test_path.read_text()
-          old = '''test("Vercel DEV deployment publishes only the static build", async () => {
-  const pkg = JSON.parse(await read("package.json"));
-  const vercel = JSON.parse(await read("vercel.json"));
-  const build = await read("scripts/build-static.mjs");
-  const ignore = await read(".gitignore");
-
-  assert.equal(pkg.scripts.build, "node scripts/build-static.mjs");
-  assert.equal(vercel.buildCommand, "npm run build");
-  assert.equal(vercel.outputDirectory, "dist");
-
-  for (const directory of [
-    "assets",
-    "components",
-    "css",
-    "js",
-    "pages"
-  ]) {
-    assert.ok(build.includes(`"${directory}"`));
-  }
-
-  assert.ok(build.includes("write-runtime-config.mjs"));
-  assert.ok(build.includes("SUPABASE_PUBLISHABLE_KEY"));
-  assert.doesNotMatch(build, /service[_-]?role/i);
-  assert.match(ignore, /^\\/dist\\/$/m);
-});'''
-          new = '''test("Cloudflare Pages DEV deployment publishes only the static build", async () => {
-  const pkg = JSON.parse(await read("package.json"));
-  const build = await read("scripts/build-static.mjs");
-  const ignore = await read(".gitignore");
-  const readme = await read("README.md");
-  const rootFiles = await readdir(root);
-
-  assert.equal(pkg.scripts.build, "node scripts/build-static.mjs");
-  assert.match(readme, /DEV-Hosting:\*\* Cloudflare Pages/);
-  assert.match(readme, /Hosting\/Deployment: Cloudflare Pages über die GitHub-Integration/);
-  assert.ok(!rootFiles.includes("vercel.json"));
-
-  for (const directory of [
-    "assets",
-    "components",
-    "css",
-    "js",
-    "pages"
-  ]) {
-    assert.ok(build.includes(`"${directory}"`));
-  }
-
-  assert.ok(build.includes("write-runtime-config.mjs"));
-  assert.ok(build.includes("SUPABASE_PUBLISHABLE_KEY"));
-  assert.doesNotMatch(build, /service[_-]?role/i);
-  assert.match(ignore, /^\\/dist\\/$/m);
-});'''
-          if source.count(old) != 1:
-            raise SystemExit(f'Expected exactly one Vercel contract block, found {source.count(old)}')
-          test_path.write_text(source.replace(old, new, 1))
-
-          agents_path = Path('AGENTS.md')
-          agents = agents_path.read_text()
-          marker = '## 5. Geheimhaltung & Netzwerksicherheit\n'
-          addition = '''## 5. Hosting / Deployment-Ziel\n\n* **Frontend-Hosting:** DEV und PROD verwenden ausschließlich Cloudflare Pages.\n* **Kein Vercel:** Vercel gehört nicht zu diesem Projekt und darf weder als Hosting-/Deploymentziel vorgeschlagen noch konfiguriert, installiert oder verwendet werden.\n* **DEV:** `https://dev.plaerrdeifl.de/` wird aus `main` über die Cloudflare-Pages-GitHub-Integration veröffentlicht.\n\n---\n\n## 6. Geheimhaltung & Netzwerksicherheit\n'''
-          if marker not in agents:
-            raise SystemExit('AGENTS hosting insertion marker missing')
-          agents_path.write_text(agents.replace(marker, addition, 1))
-          PY
-
+          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCgp0ZXN0X3BhdGggPSBQYXRoKCJ0ZXN0cy9jb3JlX2NvbnRyYWN0LnRlc3QubWpzIikKc291cmNlID0gdGVzdF9wYXRoLnJlYWRfdGV4dCgpCm9sZCA9ICIiInRlc3QoIlZlcmNlbCBERVYgZGVwbG95bWVudCBwdWJsaXNoZXMgb25seSB0aGUgc3RhdGljIGJ1aWxkIiwgYXN5bmMgKCkgPT4gewogIGNvbnN0IHBrZyA9IEpTT04ucGFyc2UoYXdhaXQgcmVhZCgicGFja2FnZS5qc29uIikpOwogIGNvbnN0IHZlcmNlbCA9IEpTT04ucGFyc2UoYXdhaXQgcmVhZCgidmVyY2VsLmpzb24iKSk7CiAgY29uc3QgYnVpbGQgPSBhd2FpdCByZWFkKCJzY3JpcHRzL2J1aWxkLXN0YXRpYy5tanMiKTsKICBjb25zdCBpZ25vcmUgPSBhd2FpdCByZWFkKCIuZ2l0aWdub3JlIik7CgogIGFzc2VydC5lcXVhbChwa2cuc2NyaXB0cy5idWlsZCwgIm5vZGUgc2NyaXB0cy9idWlsZC1zdGF0aWMubWpzIik7CiAgYXNzZXJ0LmVxdWFsKHZlcmNlbC5idWlsZENvbW1hbmQsICJucG0gcnVuIGJ1aWxkIik7CiAgYXNzZXJ0LmVxdWFsKHZlcmNlbC5vdXRwdXREaXJlY3RvcnksICJkaXN0Iik7CgogIGZvciAoY29uc3QgZGlyZWN0b3J5IG9mIFsKICAgICJhc3NldHMiLAogICAgImNvbXBvbmVudHMiLAogICAgImNzcyIsCiAgICAianMiLAogICAgInBhZ2VzIgogIF0pIHsKICAgIGFzc2VydC5vayhidWlsZC5pbmNsdWRlcyhgIiR7ZGlyZWN0b3J5fSJgKSk7CiAgfQoKICBhc3NlcnQub2soYnVpbGQuaW5jbHVkZXMoIndyaXRlLXJ1bnRpbWUtY29uZmlnLm1qcyIpKTsKICBhc3NlcnQub2soYnVpbGQuaW5jbHVkZXMoIlNVUEFCQVNFX1BVQkxJU0hBQkxFX0tFWSIpKTsKICBhc3NlcnQuZG9lc05vdE1hdGNoKGJ1aWxkLCAvc2VydmljZVtfLV0/cm9sZS9pKTsKICBhc3NlcnQubWF0Y2goaWdub3JlLCAvXlxcL2Rpc3RcXC8kL20pOwp9KTsiIiIKbmV3ID0gIiIidGVzdCgiQ2xvdWRmbGFyZSBQYWdlcyBERVYgZGVwbG95bWVudCBwdWJsaXNoZXMgb25seSB0aGUgc3RhdGljIGJ1aWxkIiwgYXN5bmMgKCkgPT4gewogIGNvbnN0IHBrZyA9IEpTT04ucGFyc2UoYXdhaXQgcmVhZCgicGFja2FnZS5qc29uIikpOwogIGNvbnN0IGJ1aWxkID0gYXdhaXQgcmVhZCgic2NyaXB0cy9idWlsZC1zdGF0aWMubWpzIik7CiAgY29uc3QgaWdub3JlID0gYXdhaXQgcmVhZCgiLmdpdGlnbm9yZSIpOwogIGNvbnN0IHJlYWRtZSA9IGF3YWl0IHJlYWQoIlJFQURNRS5tZCIpOwogIGNvbnN0IHJvb3RGaWxlcyA9IGF3YWl0IHJlYWRkaXIocm9vdCk7CgogIGFzc2VydC5lcXVhbChwa2cuc2NyaXB0cy5idWlsZCwgIm5vZGUgc2NyaXB0cy9idWlsZC1zdGF0aWMubWpzIik7CiAgYXNzZXJ0Lm1hdGNoKHJlYWRtZSwgL0RFVi1Ib3N0aW5nOlxcKlxcKiBDbG91ZGZsYXJlIFBhZ2VzLyk7CiAgYXNzZXJ0Lm1hdGNoKHJlYWRtZSwgL0hvc3RpbmdcXC9EZXBsb3ltZW50OiBDbG91ZGZsYXJlIFBhZ2VzIMO8YmVyIGRpZSBHaXRIdWItSW50ZWdyYXRpb24vKTsKICBhc3NlcnQub2soIXJvb3RGaWxlcy5pbmNsdWRlcygidmVyY2VsLmpzb24iKSk7CgogIGZvciAoY29uc3QgZGlyZWN0b3J5IG9mIFsKICAgICJhc3NldHMiLAogICAgImNvbXBvbmVudHMiLAogICAgImNzcyIsCiAgICAianMiLAogICAgInBhZ2VzIgogIF0pIHsKICAgIGFzc2VydC5vayhidWlsZC5pbmNsdWRlcyhgIiR7ZGlyZWN0b3J5fSJgKSk7CiAgfQoKICBhc3NlcnQub2soYnVpbGQuaW5jbHVkZXMoIndyaXRlLXJ1bnRpbWUtY29uZmlnLm1qcyIpKTsKICBhc3NlcnQub2soYnVpbGQuaW5jbHVkZXMoIlNVUEFCQVNFX1BVQkxJU0hBQkxFX0tFWSIpKTsKICBhc3NlcnQuZG9lc05vdE1hdGNoKGJ1aWxkLCAvc2VydmljZVtfLV0/cm9sZS9pKTsKICBhc3NlcnQubWF0Y2goaWdub3JlLCAvXlxcL2Rpc3RcXC8kL20pOwp9KTsiIiIKaWYgc291cmNlLmNvdW50KG9sZCkgIT0gMToKICAgIHJhaXNlIFN5c3RlbUV4aXQoZiJFeHBlY3RlZCBleGFjdGx5IG9uZSBWZXJjZWwgY29udHJhY3QgYmxvY2ssIGZvdW5kIHtzb3VyY2UuY291bnQob2xkKX0iKQp0ZXN0X3BhdGgud3JpdGVfdGV4dChzb3VyY2UucmVwbGFjZShvbGQsIG5ldywgMSkpCgphZ2VudHNfcGF0aCA9IFBhdGgoIkFHRU5UUy5tZCIpCmFnZW50cyA9IGFnZW50c19wYXRoLnJlYWRfdGV4dCgpCm1hcmtlciA9ICIjIyA1LiBHZWhlaW1oYWx0dW5nICYgTmV0endlcmtzaWNoZXJoZWl0XG4iCmFkZGl0aW9uID0gIiIiIyMgNS4gSG9zdGluZyAvIERlcGxveW1lbnQtWmllbAoKKiAqKkZyb250ZW5kLUhvc3Rpbmc6KiogREVWIHVuZCBQUk9EIHZlcndlbmRlbiBhdXNzY2hsaWXDn2xpY2ggQ2xvdWRmbGFyZSBQYWdlcy4KKiAqKktlaW4gVmVyY2VsOioqIFZlcmNlbCBnZWjDtnJ0IG5pY2h0IHp1IGRpZXNlbSBQcm9qZWt0IHVuZCBkYXJmIHdlZGVyIGFscyBIb3N0aW5nLS9EZXBsb3ltZW50emllbCB2b3JnZXNjaGxhZ2VuIG5vY2gga29uZmlndXJpZXJ0LCBpbnN0YWxsaWVydCBvZGVyIHZlcndlbmRldCB3ZXJkZW4uCiogKipERVY6KiogYGh0dHBzOi8vZGV2LnBsYWVycmRlaWZsLmRlL2Agd2lyZCBhdXMgYG1haW5gIMO8YmVyIGRpZSBDbG91ZGZsYXJlLVBhZ2VzLUdpdEh1Yi1JbnRlZ3JhdGlvbiB2ZXLDtmZmZW50bGljaHQuCgotLS0KCiMjIDYuIEdlaGVpbWhhbHR1bmcgJiBOZXR6d2Vya3NpY2hlcmhlaXQKIiIiCmlmIG1hcmtlciBub3QgaW4gYWdlbnRzOgogICAgcmFpc2UgU3lzdGVtRXhpdCgiQUdFTlRTIGhvc3RpbmcgaW5zZXJ0aW9uIG1hcmtlciBtaXNzaW5nIikKYWdlbnRzX3BhdGgud3JpdGVfdGV4dChhZ2VudHMucmVwbGFjZShtYXJrZXIsIGFkZGl0aW9uLCAxKSkK' | base64 -d > /tmp/remove_vercel.py
+          python /tmp/remove_vercel.py
           rm -f vercel.json
           rm -f .github/workflows/audit-vercel-references.yml
           rm -f .github/workflows/remove-vercel-cleanup.yml
 
-      - name: Verify no obsolete Vercel runtime/config remains
+      - name: Verify cleanup
         run: |
           test ! -e vercel.json
           grep -F 'Cloudflare Pages DEV deployment publishes only the static build' tests/core_contract.test.mjs
