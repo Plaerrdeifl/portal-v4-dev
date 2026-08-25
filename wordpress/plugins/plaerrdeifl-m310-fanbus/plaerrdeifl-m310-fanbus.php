@@ -337,11 +337,16 @@ final class PD_M310_Fanbus_Plugin
 
     private static function enqueue_public_assets(): void
     {
+        $style_path = plugin_dir_path(__FILE__) . 'assets/m310-fanbus.css';
+        $style_version = is_file($style_path)
+            ? (string) filemtime($style_path)
+            : self::VERSION;
+
         wp_enqueue_style(
             'pd-m310-fanbus',
             plugins_url('assets/m310-fanbus.css', __FILE__),
             array(),
-            self::VERSION
+            $style_version
         );
     }
 
@@ -372,8 +377,8 @@ final class PD_M310_Fanbus_Plugin
         ?>
         <section class="pd-m310-fanbus" aria-labelledby="<?php echo esc_attr($heading_id); ?>">
             <header class="pd-m310-header">
-                <p class="pd-m310-eyebrow">Gemeinsam zum Spiel</p>
-                <h2 id="<?php echo esc_attr($heading_id); ?>" class="pd-m310-heading">Fanbusfahrten</h2>
+                <h2 id="<?php echo esc_attr($heading_id); ?>" class="pd-m310-heading">Gemeinsam zum Spiel</h2>
+                <p class="pd-m310-intro">Klicke in der Übersicht ein Spiel an um mehr Informationen zu erhalten und dich für diese Auswärtsfahrt anzumelden.</p>
             </header>
 
             <?php if (!$registration_allowed) : ?>
