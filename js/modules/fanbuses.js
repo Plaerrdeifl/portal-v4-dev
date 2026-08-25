@@ -438,32 +438,14 @@ function tripDetailMarkup(trip, tripStops = []) {
 }
 
 function openTripDetail(trip) {
-  const panel = document.getElementById("m310FanbusList");
-  const summary = document.getElementById("m310FanbusSummary");
-  if (!panel) return;
-  if (summary) summary.textContent = "";
-  panel.innerHTML = `<section class="v4-m325-workspace v4-m310-trip-workspace" data-m310-trip-page>
-    <header class="v4-m325-workspace-header">
-      <button class="button small secondary" type="button" data-m310-trip-back>← Zurück</button>
-      <div>
-        <h2>${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</h2>
-        <p>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeCompact(trip.eventTime))}</p>
-      </div>
-    </header>
-    <div id="v4DialogBody" class="v4-m310-trip-page-body">${tripDetailMarkup(trip)}</div>
-  </section>`;
-
-  const page = panel.querySelector("[data-m310-trip-page]");
-  if (!page) return;
-  page.dataset.m310TripMode = "detail";
-  page.dataset.m310TripSurface = "page";
-  page.dataset.v4DialogContext = `trip-page:${trip.id}`;
-  page.open = true;
-  page.close = () => returnToFanbuses();
-  page.querySelector("[data-m310-trip-back]")
-    ?.addEventListener("click", () => returnToFanbuses());
-  bindTripDetail(page, trip);
-  void hydrateTripDetailStops(page, trip);
+  const dialog = openDialog({
+    title: trip.displayTitle || "Fanbusfahrt",
+    kicker: `${formatCalendarDate(trip.eventDate)} · ${eventTimeCompact(trip.eventTime)}`,
+    body: tripDetailMarkup(trip)
+  });
+  dialog.dataset.m310TripMode = "detail";
+  bindTripDetail(dialog, trip);
+  void hydrateTripDetailStops(dialog, trip);
 }
 
 async function hydrateTripDetailStops(dialog, trip) {
@@ -538,10 +520,6 @@ function bindInlineTripEditor(dialog, trip) {
       );
       render();
       const updated = trips().find(item => item.id === trip.id);
-      if (dialog.dataset.m310TripSurface === "page") {
-        if (!updated) returnToFanbuses();
-        return;
-      }
       if (updated) restoreTripOverview(dialog, updated);
       else dialog.close();
     } catch (error) {
@@ -660,20 +638,9 @@ function render() {
     return;
   }
 
-  const items = trips();
-  const detailTrip = items.find(item => item.id === routeQuery.get("detail"));
-  if (detailTrip) {
-    setWorkspaceShell(true);
-    openTripDetail(detailTrip);
-    setStatus("Aktuell", "success");
-    return;
-  }
-  if (routeQuery.has("detail")) {
-    window.history.replaceState(null, "", "#/fanbuses");
-  }
-
   setWorkspaceShell(false);
 
+  const items = trips();
   const canManage = hasCapability("fanbus.manage");
   setupFanbusActionMenu(canManage);
 
@@ -690,9 +657,7 @@ function render() {
   panel.querySelectorAll("[data-m310-open-trip]").forEach(record => {
     const open = () => {
       const trip = items.find(item => item.id === record.dataset.m310OpenTrip);
-      if (trip) {
-        window.location.hash = `#/fanbuses?detail=${encodeURIComponent(trip.id)}`;
-      }
+      if (trip) openTripDetail(trip);
     };
     record.addEventListener("click", open);
     if (record.matches("tr")) {
@@ -703,6 +668,11 @@ function render() {
       });
     }
   });
+  const detailTrip = items.find(item => item.id === routeQuery.get("detail"));
+  if (detailTrip) {
+    window.history.replaceState(null, "", "#/fanbuses");
+    openTripDetail(detailTrip);
+  }
   setStatus("Aktuell", "success");
 }
 
