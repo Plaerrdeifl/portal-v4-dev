@@ -58,6 +58,7 @@ const BUS_PREFERENCES = [
 ];
 
 let snapshot = { trips: [] };
+let openTripDetailId = "";
 let operationsUiState = { status: "ALL", bus: "ALL", stop: "ALL", search: "", scrollY: 0 };
 
 function trips() {
@@ -438,14 +439,63 @@ function tripDetailMarkup(trip, tripStops = []) {
 }
 
 function openTripDetail(trip) {
-  const dialog = openDialog({
-    title: trip.displayTitle || "Fanbusfahrt",
-    kicker: `${formatCalendarDate(trip.eventDate)} · ${eventTimeCompact(trip.eventTime)}`,
-    body: tripDetailMarkup(trip)
+  if (!trip) return;
+  const records = [...document.querySelectorAll("[data-m310-open-trip]")]
+    .filter(record => record.dataset.m310OpenTrip === trip.id);
+  const record = records.find(item => item.offsetParent !== null) || records[0];
+  if (record) openTripDetailAtRecord(trip, record);
+}
+
+function closeInlineTripDetail() {
+  document.querySelectorAll("[data-m310-inline-trip-detail]").forEach(detail => detail.remove());
+  document.querySelectorAll("[data-m310-open-trip][aria-expanded=\"true\"]").forEach(record => {
+    record.setAttribute("aria-expanded", "false");
+    record.classList.remove("is-expanded");
   });
-  dialog.dataset.m310TripMode = "detail";
-  bindTripDetail(dialog, trip);
-  void hydrateTripDetailStops(dialog, trip);
+  openTripDetailId = "";
+}
+
+function openTripDetailAtRecord(trip, record) {
+  if (!trip || !record) return;
+
+  if (openTripDetailId === trip.id && record.getAttribute("aria-expanded") === "true") {
+    closeInlineTripDetail();
+    return;
+  }
+
+  closeInlineTripDetail();
+  openTripDetailId = trip.id;
+  record.setAttribute("aria-expanded", "true");
+  record.classList.add("is-expanded");
+
+  const isTableRow = record.matches("tr");
+  const detail = document.createElement(isTableRow ? "tr" : "section");
+  detail.dataset.m310InlineTripDetail = trip.id;
+  detail.className = isTableRow
+    ? "v4-m310-inline-trip-detail-row"
+    : "v4-m310-inline-trip-detail v4-m325-workspace";
+
+  const detailBody = `<div class="v4-m310-inline-trip-detail-shell">
+    <div class="v4-m310-inline-trip-detail-heading">
+      <div><strong>${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</strong><small>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeCompact(trip.eventTime))}</small></div>
+      <button class="icon-button" type="button" data-m310-inline-trip-close aria-label="Fahrtdetails schließen">×</button>
+    </div>
+    <div id="v4DialogBody">${tripDetailMarkup(trip)}</div>
+  </div>`;
+
+  detail.innerHTML = isTableRow
+    ? `<td colspan="5">${detailBody}</td>`
+    : detailBody;
+  record.insertAdjacentElement("afterend", detail);
+
+  detail.dataset.m310TripMode = "detail";
+  detail.dataset.m310TripSurface = "inline";
+  detail.dataset.v4DialogContext = `trip-inline:${trip.id}`;
+  detail.open = true;
+  detail.close = closeInlineTripDetail;
+  detail.querySelector("[data-m310-inline-trip-close]")?.addEventListener("click", closeInlineTripDetail);
+  bindTripDetail(detail, trip);
+  void hydrateTripDetailStops(detail, trip);
 }
 
 async function hydrateTripDetailStops(dialog, trip) {
@@ -533,7 +583,7 @@ function tripTable(items) {
   return `<div class="v4-table-wrap v4-desktop-table">
     <table class="v4-table v4-compact-table">
       <thead><tr><th>Datum</th><th>Fahrt / Spiel</th><th>Ziel / Gegner</th><th>Status</th><th></th></tr></thead>
-      <tbody>${items.map(trip => `<tr class="v4-interactive-row" tabindex="0" role="button" data-m310-open-trip="${escapeAttr(trip.id)}" aria-label="Details zu ${escapeAttr(trip.displayTitle || "Fanbusfahrt")}">
+      <tbody>${items.map(trip => `<tr class="v4-interactive-row" tabindex="0" role="button" data-m310-open-trip="${escapeAttr(trip.id)}" aria-expanded="false" aria-label="Details zu ${escapeAttr(trip.displayTitle || "Fanbusfahrt")}">
         <td>${escapeHtml(formatCalendarDate(trip.eventDate))}<small>${escapeHtml(eventTimeLabel(trip.eventTime))}</small></td>
         <td><strong>${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</strong></td>
         <td>${escapeHtml(trip.opponentName || trip.venue || "–")}</td>
@@ -546,7 +596,7 @@ function tripTable(items) {
 
 function tripMobileList(items) {
   return `<div class="v4-mobile-records v4-compact-record-list" aria-label="Fanbusfahrten">
-    ${items.map(trip => `<button class="v4-compact-record v4-m310-mobile-trip" type="button" data-m310-open-trip="${escapeAttr(trip.id)}">
+    ${items.map(trip => `<button class="v4-compact-record v4-m310-mobile-trip" type="button" data-m310-open-trip="${escapeAttr(trip.id)}" aria-expanded="false">
       <span class="v4-m310-mobile-trip-meta">
         <small>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeLabel(trip.eventTime))}</small>
         ${mobileTripStatusBadge(trip)}
@@ -657,7 +707,7 @@ function render() {
   panel.querySelectorAll("[data-m310-open-trip]").forEach(record => {
     const open = () => {
       const trip = items.find(item => item.id === record.dataset.m310OpenTrip);
-      if (trip) openTripDetail(trip);
+      if (trip) openTripDetailAtRecord(trip, record);
     };
     record.addEventListener("click", open);
     if (record.matches("tr")) {
