@@ -39,11 +39,19 @@
 
 .pd-m310-fanbus .pd-m310-heading {
     margin: 0;
-    color: var(--pd-m310-ink);
+    color: #5eb1ff !important;
     font-size: clamp(1.4rem, 4vw, 1.85rem);
     font-weight: 900;
     line-height: 1.15;
     letter-spacing: -0.02em;
+}
+
+.pd-m310-fanbus .pd-m310-intro {
+    margin: 0.35rem 0 0;
+    color: #ffffff !important;
+    font-size: clamp(0.95rem, 2.6vw, 1.05rem);
+    font-weight: 600;
+    line-height: 1.4;
 }
 
 .pd-m310-fanbus .pd-m310-grid {
