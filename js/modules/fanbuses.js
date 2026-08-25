@@ -438,6 +438,14 @@ function tripDetailMarkup(trip, tripStops = []) {
   </div>`;
 }
 
+function openTripDetail(trip) {
+  if (!trip) return;
+  const records = [...document.querySelectorAll("[data-m310-open-trip]")]
+    .filter(record => record.dataset.m310OpenTrip === trip.id);
+  const record = records.find(item => item.offsetParent !== null) || records[0];
+  if (record) openTripDetailAtRecord(trip, record);
+}
+
 function closeInlineTripDetail() {
   document.querySelectorAll("[data-m310-inline-trip-detail]").forEach(detail => detail.remove());
   document.querySelectorAll("[data-m310-open-trip][aria-expanded=\"true\"]").forEach(record => {
@@ -447,7 +455,7 @@ function closeInlineTripDetail() {
   openTripDetailId = "";
 }
 
-function openTripDetail(trip, record) {
+function openTripDetailAtRecord(trip, record) {
   if (!trip || !record) return;
 
   if (openTripDetailId === trip.id && record.getAttribute("aria-expanded") === "true") {
@@ -575,7 +583,7 @@ function tripTable(items) {
   return `<div class="v4-table-wrap v4-desktop-table">
     <table class="v4-table v4-compact-table">
       <thead><tr><th>Datum</th><th>Fahrt / Spiel</th><th>Ziel / Gegner</th><th>Status</th><th></th></tr></thead>
-      <tbody>${items.map(trip => `<tr class="v4-interactive-row" tabindex="0" role="button" data-m310-open-trip="${escapeAttr(trip.id)}" aria-label="Details zu ${escapeAttr(trip.displayTitle || "Fanbusfahrt")}">
+      <tbody>${items.map(trip => `<tr class="v4-interactive-row" tabindex="0" role="button" data-m310-open-trip="${escapeAttr(trip.id)}" aria-expanded="false" aria-label="Details zu ${escapeAttr(trip.displayTitle || "Fanbusfahrt")}">
         <td>${escapeHtml(formatCalendarDate(trip.eventDate))}<small>${escapeHtml(eventTimeLabel(trip.eventTime))}</small></td>
         <td><strong>${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</strong></td>
         <td>${escapeHtml(trip.opponentName || trip.venue || "–")}</td>
@@ -588,7 +596,7 @@ function tripTable(items) {
 
 function tripMobileList(items) {
   return `<div class="v4-mobile-records v4-compact-record-list" aria-label="Fanbusfahrten">
-    ${items.map(trip => `<button class="v4-compact-record v4-m310-mobile-trip" type="button" data-m310-open-trip="${escapeAttr(trip.id)}">
+    ${items.map(trip => `<button class="v4-compact-record v4-m310-mobile-trip" type="button" data-m310-open-trip="${escapeAttr(trip.id)}" aria-expanded="false">
       <span class="v4-m310-mobile-trip-meta">
         <small>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeLabel(trip.eventTime))}</small>
         ${mobileTripStatusBadge(trip)}
@@ -699,7 +707,7 @@ function render() {
   panel.querySelectorAll("[data-m310-open-trip]").forEach(record => {
     const open = () => {
       const trip = items.find(item => item.id === record.dataset.m310OpenTrip);
-      if (trip) openTripDetail(trip, record);
+      if (trip) openTripDetailAtRecord(trip, record);
     };
     record.addEventListener("click", open);
     if (record.matches("tr")) {
@@ -713,9 +721,7 @@ function render() {
   const detailTrip = items.find(item => item.id === routeQuery.get("detail"));
   if (detailTrip) {
     window.history.replaceState(null, "", "#/fanbuses");
-    const records = [...panel.querySelectorAll(`[data-m310-open-trip="${CSS.escape(detailTrip.id)}"]`)];
-    const record = records.find(item => item.offsetParent !== null) || records[0];
-    if (record) openTripDetail(detailTrip, record);
+    openTripDetail(detailTrip);
   }
   setStatus("Aktuell", "success");
 }
