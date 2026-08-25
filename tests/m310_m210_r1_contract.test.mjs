@@ -62,22 +62,23 @@ test("M310 mobile card exposes one primary status without internal capacity valu
 
 test("M310 registrations use compact operational records without empty cancellation metadata", () => {
   const start = fanbuses.indexOf("function registrationCard(registration, buses = [], readOnly = false)");
-  const end = fanbuses.indexOf("function registrationsMarkup(data, trip)", start);
+  const end = fanbuses.indexOf("async function cancelRegistrationFromActions", start);
   assert.notEqual(start, -1);
   assert.notEqual(end, -1);
   const card = fanbuses.slice(start, end);
 
-  assert.match(card, /class="v4-m310-registration-record v4-interactive-card"/);
+  assert.match(card, /class="v4-m310-registration-record"/);
   assert.doesNotMatch(card, /card entity-card|entity-head|meta-grid|meta-item|v4-card-actions/);
   assert.match(card, /class="badge \$\{registration\.status === "ACTIVE" \? "success" : "neutral"\}"/);
   assert.match(card, /sourceText\(registration\.source\)/);
   assert.match(card, /busPreferenceText\(registration\.busPreference\)/);
-  assert.match(card, /const email = registration\.email[\s\S]+v4-m310-registration-email/);
+  assert.doesNotMatch(card, /registration\.email|v4-m310-registration-email/);
   assert.match(card, /formatBerlinDateTime\(registration\.registeredAt\)/);
   assert.match(card, /registration\.status === "CANCELLED" && registration\.cancelledAt/);
   assert.doesNotMatch(card, /cancelledAt\s*\|\|\s*"–"/);
-  assert.match(card, /data-m320-open-registration/);
-  assert.doesNotMatch(card, /data-m320-edit-registration|data-m310-cancel-registration/);
+  assert.doesNotMatch(card, /data-m320-open-registration|role="button"|tabindex="0"/);
+  assert.match(card, /data-m320-edit-registration/);
+  assert.match(card, /data-m320-more-registration/);
 
   const cancellationStart = fanbuses.indexOf("async function cancelRegistrationFromActions");
   const cancellationEnd = fanbuses.indexOf("function busCategoryLabel", cancellationStart);
@@ -103,7 +104,7 @@ test("M310 registrations use compact operational records without empty cancellat
   assert.match(recordRule, /max-width:\s*100%/);
   assert.match(toolbarActionsRule, /display:\s*flex/);
   assert.match(toolbarActionsRule, /flex-wrap:\s*wrap/);
-  assert.match(css, /\.v4-m310-registration-email\{[\s\S]{0,80}overflow-wrap:anywhere/);
+  assert.doesNotMatch(css, /\.v4-m310-registration-email\{/);
   assert.match(
     css,
     /@media\(max-width:620px\)\{[\s\S]{0,500}\.v4-m310-registration-record\{[^}]*grid-template-columns:minmax\(0,1fr\)[^}]*\}/
@@ -143,7 +144,8 @@ test("M210 and M310 editors use the shared member and finance dialog contract", 
   assert.match(shell, /height:\s*auto!important/);
   assert.match(shell, /min-height:\s*0!important/);
   assert.match(shell, /max-height:\s*calc\(100dvh - 24px\)!important/);
-  assert.match(body, /flex:\s*0 1 auto!important/);
+  assert.match(body, /flex:\s*1 1 auto!important/);
+  assert.match(body, /touch-action:\s*pan-y/);
   assert.match(body, /height:\s*auto!important/);
   assert.match(body, /min-height:\s*0!important/);
   assert.match(body, /overflow-x:\s*hidden!important/);

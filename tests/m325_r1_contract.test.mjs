@@ -266,11 +266,9 @@ test("M325 F5 Round 2 keeps workspace navigation, mobile cards and dialog forms 
   assert.doesNotMatch(tripEditor, /name="capacity"/);
   const occupancy = sourceBetween(ui, "function occupancyMarkup", "async function occupancyData");
   assert.match(occupancy, /canManageBuses/);
-  assert.match(occupancy, /canManageRegistrations/);
   assert.match(occupancy, /data-m310-create-bus/);
-  assert.match(occupancy, /data-m310-manage-participants/);
-  assert.match(occupancy, /v4-m310-occupancy-counters/);
-  assert.match(occupancy, /data-m310-occupancy-assignment/);
+  assert.match(occupancy, /bus\.occupancy \?\? bus\.occupied/);
+  assert.doesNotMatch(occupancy, /data-m310-manage-participants|data-m310-occupancy-assignment/);
 
   const busForm = formContaining(ui, "data-m325-bus-form");
   assert.match(busForm, /class="v4-field-full">Busname/);

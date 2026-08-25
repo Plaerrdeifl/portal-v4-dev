@@ -95,7 +95,7 @@ test("public and manual new-registration UIs hide disabled choices and send EGAL
   assert.match(registration, /select\.value = "EGAL"/);
   assert.match(registration, /busPreferenceSelectionEnabled\(\)[\s\S]*: "EGAL"/);
   assert.match(registration, /\["EGAL", "RUHIG", "PARTY"\]/);
-  assert.match(admin, /trip\.busPreferenceSelectionEnabled[\s\S]*Buspräferenz/);
+  assert.match(admin, /trip\.busPreferenceSelectionEnabled[\s\S]*Buswunsch/);
   assert.match(admin, /trip\.busPreferenceSelectionEnabled[\s\S]*values\.busPreference[\s\S]*: "EGAL"/);
   assert.match(admin, /busPreferenceEnabled/);
   assert.match(html, /data-m320-bus-preference="portal"/);
