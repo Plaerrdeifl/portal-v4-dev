@@ -133,6 +133,14 @@ function injectStyles() {
   const style = document.createElement("style");
   style.id = "p800R2FanbusUxStyles";
   style.textContent = `
+    .v4-m310-inline-trip-detail-row>td{padding:0!important;border-top:0!important}
+    .v4-m310-inline-trip-detail,.v4-m310-inline-trip-detail-row>td{background:var(--surface,#fff)}
+    .v4-m310-inline-trip-detail-shell{margin:0 0 14px;padding:14px;border:1px solid var(--line,#d8e2ee);border-radius:14px;background:var(--surface,#fff);box-shadow:0 8px 24px rgba(22,43,70,.08)}
+    .v4-m310-inline-trip-detail-row .v4-m310-inline-trip-detail-shell{margin:0 8px 12px}
+    .v4-m310-inline-trip-detail-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .v4-m310-inline-trip-detail-heading>div{display:grid;gap:2px;min-width:0}
+    .v4-m310-inline-trip-detail-heading small{color:var(--ink-500)}
+    [data-m310-open-trip].is-expanded .v4-row-chevron{transform:rotate(90deg)}
     @media (max-width:620px){
       .p800-fanbus-filter-disclosure{grid-column:1/-1;width:100%;margin:2px 0 0}
       .p800-fanbus-filter-summary{display:flex!important;align-items:center;justify-content:center;list-style:none;cursor:pointer;width:100%;min-height:46px}

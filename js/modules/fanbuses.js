@@ -58,6 +58,7 @@ const BUS_PREFERENCES = [
 ];
 
 let snapshot = { trips: [] };
+let openTripDetailId = "";
 let operationsUiState = { status: "ALL", bus: "ALL", stop: "ALL", search: "", scrollY: 0 };
 
 function trips() {
@@ -437,15 +438,56 @@ function tripDetailMarkup(trip, tripStops = []) {
   </div>`;
 }
 
-function openTripDetail(trip) {
-  const dialog = openDialog({
-    title: trip.displayTitle || "Fanbusfahrt",
-    kicker: `${formatCalendarDate(trip.eventDate)} · ${eventTimeCompact(trip.eventTime)}`,
-    body: tripDetailMarkup(trip)
+function closeInlineTripDetail() {
+  document.querySelectorAll("[data-m310-inline-trip-detail]").forEach(detail => detail.remove());
+  document.querySelectorAll("[data-m310-open-trip][aria-expanded=\"true\"]").forEach(record => {
+    record.setAttribute("aria-expanded", "false");
+    record.classList.remove("is-expanded");
   });
-  dialog.dataset.m310TripMode = "detail";
-  bindTripDetail(dialog, trip);
-  void hydrateTripDetailStops(dialog, trip);
+  openTripDetailId = "";
+}
+
+function openTripDetail(trip, record) {
+  if (!trip || !record) return;
+
+  if (openTripDetailId === trip.id && record.getAttribute("aria-expanded") === "true") {
+    closeInlineTripDetail();
+    return;
+  }
+
+  closeInlineTripDetail();
+  openTripDetailId = trip.id;
+  record.setAttribute("aria-expanded", "true");
+  record.classList.add("is-expanded");
+
+  const isTableRow = record.matches("tr");
+  const detail = document.createElement(isTableRow ? "tr" : "section");
+  detail.dataset.m310InlineTripDetail = trip.id;
+  detail.className = isTableRow
+    ? "v4-m310-inline-trip-detail-row"
+    : "v4-m310-inline-trip-detail v4-m325-workspace";
+
+  const detailBody = `<div class="v4-m310-inline-trip-detail-shell">
+    <div class="v4-m310-inline-trip-detail-heading">
+      <div><strong>${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</strong><small>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeCompact(trip.eventTime))}</small></div>
+      <button class="icon-button" type="button" data-m310-inline-trip-close aria-label="Fahrtdetails schließen">×</button>
+    </div>
+    <div id="v4DialogBody">${tripDetailMarkup(trip)}</div>
+  </div>`;
+
+  detail.innerHTML = isTableRow
+    ? `<td colspan="5">${detailBody}</td>`
+    : detailBody;
+  record.insertAdjacentElement("afterend", detail);
+
+  detail.dataset.m310TripMode = "detail";
+  detail.dataset.m310TripSurface = "inline";
+  detail.dataset.v4DialogContext = `trip-inline:${trip.id}`;
+  detail.open = true;
+  detail.close = closeInlineTripDetail;
+  detail.querySelector("[data-m310-inline-trip-close]")?.addEventListener("click", closeInlineTripDetail);
+  bindTripDetail(detail, trip);
+  void hydrateTripDetailStops(detail, trip);
 }
 
 async function hydrateTripDetailStops(dialog, trip) {
@@ -657,7 +699,7 @@ function render() {
   panel.querySelectorAll("[data-m310-open-trip]").forEach(record => {
     const open = () => {
       const trip = items.find(item => item.id === record.dataset.m310OpenTrip);
-      if (trip) openTripDetail(trip);
+      if (trip) openTripDetail(trip, record);
     };
     record.addEventListener("click", open);
     if (record.matches("tr")) {
@@ -671,7 +713,9 @@ function render() {
   const detailTrip = items.find(item => item.id === routeQuery.get("detail"));
   if (detailTrip) {
     window.history.replaceState(null, "", "#/fanbuses");
-    openTripDetail(detailTrip);
+    const records = [...panel.querySelectorAll(`[data-m310-open-trip="${CSS.escape(detailTrip.id)}"]`)];
+    const record = records.find(item => item.offsetParent !== null) || records[0];
+    if (record) openTripDetail(detailTrip, record);
   }
   setStatus("Aktuell", "success");
 }
