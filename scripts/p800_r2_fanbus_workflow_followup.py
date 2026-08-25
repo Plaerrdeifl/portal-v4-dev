@@ -10,6 +10,16 @@ def one(source, old, new, label):
     return source.replace(old, new, 1)
 
 
+def replace_function(source, signature, replacement, label):
+    start = source.find(signature)
+    if start < 0:
+        raise RuntimeError(f'{label}: missing function {signature}')
+    end = source.find('\nfunction ', start + len(signature))
+    if end < 0:
+        raise RuntimeError(f'{label}: missing following function marker')
+    return source[:start] + replacement.rstrip() + '\n' + source[end:]
+
+
 # Runtime compatibility/right preservation after the approved UX rewrite.
 source = FANBUSES.read_text()
 source = one(
@@ -25,9 +35,35 @@ source = one(
     'reopen capability marker'
 )
 
-old_defaults = '''function bindTripEditorDateDefaults(form, trip) {\n  const departure = form?.elements.namedItem("departureAt");\n  const registrationCloses = form?.elements.namedItem("registrationClosesAt");\n  let registrationClosesAutoManaged = !trip.registrationClosesAt;\n\n  const disableRegistrationClosesAutoManagement = () => {\n    registrationClosesAutoManaged = false;\n  };\n\n  registrationCloses?.addEventListener("input", disableRegistrationClosesAutoManagement);\n  registrationCloses?.addEventListener("change", disableRegistrationClosesAutoManagement);\n  departure?.addEventListener("change", () => {\n    if (!registrationCloses || !registrationClosesAutoManaged || !departure.value) return;\n    try {\n      registrationCloses.value = defaultRegistrationClosesInput(\n        berlinLocalToIso(departure.value, "Die Abfahrt")\n      );\n    } catch {\n      // Native field validation remains authoritative while the value is incomplete.\n    }\n  });\n}'''
-new_defaults = '''function bindTripEditorDateDefaults(form, trip) {\n  const departure = form?.elements.namedItem("departureTime") || form?.elements.namedItem("departureAt");\n  const registrationCloses = form?.elements.namedItem("registrationClosesAt");\n  let registrationClosesAutoManaged = !trip.registrationClosesAt;\n\n  const disableRegistrationClosesAutoManagement = () => {\n    registrationClosesAutoManaged = false;\n  };\n\n  registrationCloses?.addEventListener("input", disableRegistrationClosesAutoManagement);\n  registrationCloses?.addEventListener("change", disableRegistrationClosesAutoManagement);\n  departure?.addEventListener("change", () => {\n    if (!registrationCloses || !registrationClosesAutoManaged || !departure.value) return;\n    try {\n      const departureIso = departure.name === "departureTime"\n        ? tripTimeToBerlinIso(trip, departure.value, "Die Abfahrt")\n        : berlinLocalToIso(departure.value, "Die Abfahrt");\n      registrationCloses.value = defaultRegistrationClosesInput(departureIso);\n    } catch {\n      // Native field validation remains authoritative while the value is incomplete.\n    }\n  });\n}'''
-source = one(source, old_defaults, new_defaults, 'date defaults')
+new_defaults = '''function bindTripEditorDateDefaults(form, trip) {
+  const departure = form?.elements.namedItem("departureTime") || form?.elements.namedItem("departureAt");
+  const registrationCloses = form?.elements.namedItem("registrationClosesAt");
+  let registrationClosesAutoManaged = !trip.registrationClosesAt;
+
+  const disableRegistrationClosesAutoManagement = () => {
+    registrationClosesAutoManaged = false;
+  };
+
+  registrationCloses?.addEventListener("input", disableRegistrationClosesAutoManagement);
+  registrationCloses?.addEventListener("change", disableRegistrationClosesAutoManagement);
+  departure?.addEventListener("change", () => {
+    if (!registrationCloses || !registrationClosesAutoManaged || !departure.value) return;
+    try {
+      const departureIso = departure.name === "departureTime"
+        ? tripTimeToBerlinIso(trip, departure.value, "Die Abfahrt")
+        : berlinLocalToIso(departure.value, "Die Abfahrt");
+      registrationCloses.value = defaultRegistrationClosesInput(departureIso);
+    } catch {
+      // Native field validation remains authoritative while the value is incomplete.
+    }
+  });
+}'''
+source = replace_function(
+    source,
+    'function bindTripEditorDateDefaults(form, trip) {',
+    new_defaults,
+    'date defaults'
+)
 FANBUSES.write_text(source)
 
 # Update historical source-contract tests only where the approved UX changed the contract.
@@ -37,7 +73,6 @@ s = one(s, 'const tripFormStart = fanbuses.indexOf("function tripForm(trip)");',
 s = one(s, '  assert.match(fanbuses, /registrationOpensAt: berlinLocalToIso/);', '  assert.match(fanbuses, /registrationOpensAt: values\\.registrationOpensAt[\\s\\S]+berlinLocalToIso/);', 'm310 opening preservation')
 s = one(s, '  assert.match(tripFormSource, /v4-field-full">Abfahrt/);', '  assert.match(tripFormSource, /<label>Abfahrt[\\s\\S]+name="departureTime" type="time"/);', 'm310 responsive departure')
 s = one(s, '  assert.match(tripFormSource, /v4-field-seven">Anmeldung beginnt[\\s\\S]+v4-field-seven">Anmeldung endet[\\s\\S]+v4-field-five">Fahrtpreis/);', '  assert.match(tripFormSource, /Fahrtpreis[\\s\\S]+Anmeldeschluss[\\s\\S]+Anmeldung beginnt/);\n  assert.match(tripFormSource, /v4-m310-editor-fields/);', 'm310 responsive fields')
-s = one(s, '    /if \\(!registrationCloses \\|\\| !registrationClosesAutoManaged \\|\\| !departure\\.value\\) return/', '    /if \\(!registrationCloses \\|\\| !registrationClosesAutoManaged \\|\\| !departure\\.value\\) return/', 'keep auto managed marker')
 s = one(s, '    /registrationCloses\\.value = defaultRegistrationClosesInput\\([\\s\\S]+berlinLocalToIso\\(departure\\.value/', '    /registrationCloses\\.value = defaultRegistrationClosesInput\\(departureIso\\)/', 'm310 time-only close default')
 p.write_text(s)
 
