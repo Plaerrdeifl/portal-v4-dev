@@ -427,8 +427,8 @@ function tripDetailMarkup(trip, tripStops = []) {
     ${trip.status === "CANCELLED" ? `<div class="notice error v4-m330-cancellation" role="status"><strong>Fahrt abgesagt</strong><p>${escapeHtml(trip.cancellationReason || "Diese Fanbusfahrt findet nicht statt.")}</p>${trip.cancelledAt ? `<small>Abgesagt am ${escapeHtml(formatBerlinDateTime(trip.cancelledAt))}</small>` : ""}</div>` : ""}
     <div class="v4-detail-grid v4-m325-trip-facts">
       <div class="v4-m325-trip-date"><span>Termin / Spielzeit</span><strong>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeCompact(trip.eventTime))}</strong></div>
-      ${trip.venue ? `<div><span>Ziel / Ort</span><strong>${escapeHtml(trip.venue)}</strong></div>` : `<div><span>Ziel / Ort</span><strong>Noch nicht festgelegt</strong></div>`}
-      ${trip.opponentName ? `<div class="full"><span>Gegner</span><strong>${escapeHtml(trip.opponentName)}</strong></div>` : ""}
+      ${trip.venue ? `<div class="v4-m325-trip-venue"><span>Ziel / Ort</span><strong>${escapeHtml(trip.venue)}</strong></div>` : `<div class="v4-m325-trip-venue"><span>Ziel / Ort</span><strong>Noch nicht festgelegt</strong></div>`}
+      ${trip.opponentName ? `<div class="full v4-m325-trip-opponent"><span>Gegner</span><strong>${escapeHtml(trip.opponentName)}</strong></div>` : ""}
       <div class="full v4-m325-trip-travel"><div><span>Abfahrt</span><strong>${escapeHtml(formatBerlinDateTime(trip.departureAt))}</strong></div><div><span>Fahrtpreis</span><strong>${escapeHtml(formatMoney(trip.priceCents))}</strong></div></div>
       <div class="full v4-m325-trip-registration-window"><strong>${escapeHtml(registrationWindowText(trip))}</strong></div>
       ${tripDetailStopsMarkup(tripStops)}
@@ -448,6 +448,7 @@ function openTripDetail(trip) {
 
 function closeInlineTripDetail() {
   document.querySelectorAll("[data-m310-inline-trip-detail]").forEach(detail => detail.remove());
+  document.querySelectorAll("[data-m310-trip-card].is-expanded").forEach(card => card.classList.remove("is-expanded"));
   document.querySelectorAll("[data-m310-open-trip][aria-expanded=\"true\"]").forEach(record => {
     record.setAttribute("aria-expanded", "false");
     record.classList.remove("is-expanded");
@@ -469,31 +470,31 @@ function openTripDetailAtRecord(trip, record) {
   record.classList.add("is-expanded");
 
   const isTableRow = record.matches("tr");
-  const detail = document.createElement(isTableRow ? "tr" : "section");
+  const mobileCard = record.closest("[data-m310-trip-card]");
+  if (mobileCard) mobileCard.classList.add("is-expanded");
+
+  const detail = document.createElement(isTableRow ? "tr" : "div");
   detail.dataset.m310InlineTripDetail = trip.id;
   detail.className = isTableRow
     ? "v4-m310-inline-trip-detail-row"
-    : "v4-m310-inline-trip-detail v4-m325-workspace";
+    : "v4-m310-inline-trip-detail";
 
   const detailBody = `<div class="v4-m310-inline-trip-detail-shell">
-    <div class="v4-m310-inline-trip-detail-heading">
-      <div><strong>${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</strong><small>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeCompact(trip.eventTime))}</small></div>
-      <button class="icon-button" type="button" data-m310-inline-trip-close aria-label="Fahrtdetails schließen">×</button>
-    </div>
     <div id="v4DialogBody">${tripDetailMarkup(trip)}</div>
   </div>`;
 
   detail.innerHTML = isTableRow
     ? `<td colspan="5">${detailBody}</td>`
     : detailBody;
-  record.insertAdjacentElement("afterend", detail);
+
+  if (isTableRow) record.insertAdjacentElement("afterend", detail);
+  else mobileCard?.append(detail);
 
   detail.dataset.m310TripMode = "detail";
   detail.dataset.m310TripSurface = "inline";
   detail.dataset.v4DialogContext = `trip-inline:${trip.id}`;
   detail.open = true;
   detail.close = closeInlineTripDetail;
-  detail.querySelector("[data-m310-inline-trip-close]")?.addEventListener("click", closeInlineTripDetail);
   bindTripDetail(detail, trip);
   void hydrateTripDetailStops(detail, trip);
 }
@@ -596,17 +597,19 @@ function tripTable(items) {
 
 function tripMobileList(items) {
   return `<div class="v4-mobile-records v4-compact-record-list" aria-label="Fanbusfahrten">
-    ${items.map(trip => `<button class="v4-compact-record v4-m310-mobile-trip" type="button" data-m310-open-trip="${escapeAttr(trip.id)}" aria-expanded="false">
-      <span class="v4-m310-mobile-trip-meta">
-        <small>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeLabel(trip.eventTime))}</small>
-        ${mobileTripStatusBadge(trip)}
-      </span>
-      <strong class="v4-m310-mobile-trip-title">${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</strong>
-      <span class="v4-m310-mobile-trip-footer">
-        <span>${escapeHtml(trip.venue || trip.opponentName || "Ziel noch offen")}</span>
-      </span>
-      <span class="v4-row-chevron" aria-hidden="true">›</span>
-    </button>`).join("")}
+    ${items.map(trip => `<article class="v4-m310-mobile-trip-card" data-m310-trip-card="${escapeAttr(trip.id)}">
+      <button class="v4-compact-record v4-m310-mobile-trip" type="button" data-m310-open-trip="${escapeAttr(trip.id)}" aria-expanded="false">
+        <span class="v4-m310-mobile-trip-meta">
+          <small>${escapeHtml(formatCalendarDate(trip.eventDate))} · ${escapeHtml(eventTimeLabel(trip.eventTime))}</small>
+          ${mobileTripStatusBadge(trip)}
+        </span>
+        <strong class="v4-m310-mobile-trip-title">${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</strong>
+        <span class="v4-m310-mobile-trip-footer">
+          <span>${escapeHtml(trip.venue || trip.opponentName || "Ziel noch offen")}</span>
+        </span>
+        <span class="v4-row-chevron" aria-hidden="true">›</span>
+      </button>
+    </article>`).join("")}
   </div>`;
 }
 
