@@ -1,0 +1,33 @@
+name: Temporary P800-R2 Fanbus admin fixes v3
+
+on:
+  push:
+    branches:
+      - ux/p800-r2-fanbus-admin-fixes
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ux/p800-r2-fanbus-admin-fixes
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Apply robust Fanbus admin UX patch
+        run: python scripts/p800-r2-fanbus-admin-fix.py
+      - name: Verify syntax before commit
+        run: node --check js/modules/fanbuses.js && node --check js/modules/common.js
+      - name: Commit Fanbus admin fixes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add js/modules/fanbuses.js js/modules/common.js css/app.css tests/p800_r2_fanbus_admin_cleanup.test.mjs
+          git commit -m "fix(p800-r2): stabilize Fanbus admin workflows"
+          git push origin HEAD:ux/p800-r2-fanbus-admin-fixes
