@@ -1,0 +1,35 @@
+name: Apply Fanbus accordion patch
+
+"on":
+  push:
+    branches:
+      - ux/p800-r2-fanbus-accordion
+    paths:
+      - .github/workflows/apply-fanbus-accordion.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ux/p800-r2-fanbus-accordion
+      - name: Apply patch
+        run: node scripts/apply-fanbus-accordion.mjs
+      - name: Remove one-shot workflow
+        run: rm -f .github/workflows/apply-fanbus-accordion.yml
+      - name: Verify syntax
+        run: |
+          node --check js/modules/fanbuses.js
+          node --check js/p800-r2-fanbus-ux.js
+          node --check tests/p800_r2_fanbus_accordion.test.mjs
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(p800-r2): expand Fanbus trips inline"
+          git push origin HEAD:ux/p800-r2-fanbus-accordion
