@@ -19,4 +19,6 @@ test("Fanbus trip details expand inline below the selected trip", async () => {
   assert.doesNotMatch(detail, /openDialog\(/);
   assert.doesNotMatch(detail, /window\.location\.hash/);
   assert.match(source, /function openTripDetail\(trip\)/);
+  assert.match(source, /if \(trip\) openTripDetailAtRecord\(trip, record\);/);
+  assert.doesNotMatch(source, /if \(trip\) \{\s*window\.location\.hash = `#\/fanbuses\?detail=/);
 });
