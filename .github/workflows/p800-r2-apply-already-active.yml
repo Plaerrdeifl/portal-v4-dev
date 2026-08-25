@@ -1,0 +1,119 @@
+name: P800-R2 apply already-active patch
+
+on:
+  push:
+    branches:
+      - ux/p800-r2-fanbus
+    paths:
+      - .github/workflows/p800-r2-apply-already-active.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          ref: ux/p800-r2-fanbus
+
+      - name: Patch Fanbus registration outcome handling
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'js/fanbus-registration.js';
+          let source = fs.readFileSync(path, 'utf8');
+
+          function replaceExactlyOnce(before, after, label) {
+            const first = source.indexOf(before);
+            if (first < 0) {
+              throw new Error(`${label}: expected source block not found`);
+            }
+            if (source.indexOf(before, first + before.length) >= 0) {
+              throw new Error(`${label}: source block is not unique`);
+            }
+            source = source.slice(0, first) + after + source.slice(first + before.length);
+          }
+
+          replaceExactlyOnce(
+            `function finishRegistration(outcome = "CREATED") {
+  registrationComplete = true;
+  const waitlisted = outcome === "WAITLISTED";
+  elements.title.textContent = waitlisted ? "Auf Warteliste eingetragen" : "Anmeldung bestätigt";
+  elements.intro.hidden = false;
+  elements.intro.textContent = waitlisted
+    ? "Die gesamte gemeinsame Anmeldung wurde auf die Warteliste gesetzt."
+    : "Deine gemeinsame Anmeldung wurde erfolgreich entgegengenommen.";
+  elements.portalForm.hidden = true;
+  elements.guestForm.hidden = true;
+  elements.memberLogin.hidden = true;
+  elements.memberLoginPanel.hidden = true;
+  elements.google.hidden = true;
+  removeTurnstile();
+  setStatus(waitlisted ? "Die gesamte Anmeldung ist auf der Warteliste." : "Die Fanbus-Anmeldung wurde bestätigt.", waitlisted ? "warning" : "success");
+}`,
+            `function finishRegistration(outcome = "CREATED") {
+  registrationComplete = true;
+  const waitlisted = outcome === "WAITLISTED";
+  const alreadyActive = outcome === "ALREADY_ACTIVE";
+  elements.title.textContent = alreadyActive
+    ? "Bereits angemeldet"
+    : waitlisted
+      ? "Auf Warteliste eingetragen"
+      : "Anmeldung bestätigt";
+  elements.intro.hidden = false;
+  elements.intro.textContent = alreadyActive
+    ? "Für diese Fahrt besteht bereits eine aktive Anmeldung. Es wurde keine weitere Anmeldung angelegt."
+    : waitlisted
+      ? "Die gesamte gemeinsame Anmeldung wurde auf die Warteliste gesetzt."
+      : "Deine gemeinsame Anmeldung wurde erfolgreich entgegengenommen.";
+  elements.portalForm.hidden = true;
+  elements.guestForm.hidden = true;
+  elements.memberLogin.hidden = true;
+  elements.memberLoginPanel.hidden = true;
+  elements.google.hidden = true;
+  removeTurnstile();
+  setStatus(
+    alreadyActive
+      ? "Du bist für diese Fanbusfahrt bereits angemeldet."
+      : waitlisted
+        ? "Die gesamte Anmeldung ist auf der Warteliste."
+        : "Die Fanbus-Anmeldung wurde bestätigt.",
+    alreadyActive || waitlisted ? "warning" : "success"
+  );
+}`,
+            'finishRegistration'
+          );
+
+          replaceExactlyOnce(
+            `finishRegistration(result?.outcome === "WAITLISTED" ? "WAITLISTED" : "CREATED");`,
+            `finishRegistration(
+        ["WAITLISTED", "ALREADY_ACTIVE"].includes(result?.outcome)
+          ? result.outcome
+          : "CREATED"
+      );`,
+            'guest accepted outcome'
+          );
+
+          fs.writeFileSync(path, source);
+          NODE
+
+      - name: Verify exact patch contract
+        run: |
+          node --check js/fanbus-registration.js
+          grep -F 'const alreadyActive = outcome === "ALREADY_ACTIVE";' js/fanbus-registration.js
+          grep -F '["WAITLISTED", "ALREADY_ACTIVE"].includes(result?.outcome)' js/fanbus-registration.js
+
+      - name: Commit branch-only patch
+        run: |
+          if git diff --quiet -- js/fanbus-registration.js; then
+            echo "No patch changes detected."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add js/fanbus-registration.js
+          git commit -m "fix(p800-r2): distinguish already-active registration"
+          git push origin HEAD:ux/p800-r2-fanbus
