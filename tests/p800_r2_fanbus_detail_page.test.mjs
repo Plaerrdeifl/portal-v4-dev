@@ -9,9 +9,10 @@ const read = relativePath => fs.readFile(path.join(root, relativePath), "utf8");
 test("Fanbus trips open as routed detail pages instead of the trip detail modal", async () => {
   const source = await read("js/modules/fanbuses.js");
 
-  assert.match(source, /function renderTripDetailPage\(panel, summary, trip\)/);
+  assert.match(source, /function openTripDetail\(trip\)/);
   assert.match(source, /data-m310-trip-page/);
   assert.match(source, /data-m310-trip-back/);
   assert.match(source, /#\/fanbuses\?detail=\$\{encodeURIComponent\(trip\.id\)\}/);
-  assert.doesNotMatch(source, /function openTripDetail\(trip\)/);
+  const detailPage = source.slice(source.indexOf("function openTripDetail(trip)"), source.indexOf("async function hydrateTripDetailStops"));
+  assert.doesNotMatch(detailPage, /openDialog\(/);
 });

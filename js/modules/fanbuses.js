@@ -437,7 +437,10 @@ function tripDetailMarkup(trip, tripStops = []) {
   </div>`;
 }
 
-function renderTripDetailPage(panel, summary, trip) {
+function openTripDetail(trip) {
+  const panel = document.getElementById("m310FanbusList");
+  const summary = document.getElementById("m310FanbusSummary");
+  if (!panel) return;
   if (summary) summary.textContent = "";
   panel.innerHTML = `<section class="v4-m325-workspace v4-m310-trip-workspace" data-m310-trip-page>
     <header class="v4-m325-workspace-header">
@@ -661,7 +664,7 @@ function render() {
   const detailTrip = items.find(item => item.id === routeQuery.get("detail"));
   if (detailTrip) {
     setWorkspaceShell(true);
-    renderTripDetailPage(panel, summary, detailTrip);
+    openTripDetail(detailTrip);
     setStatus("Aktuell", "success");
     return;
   }
