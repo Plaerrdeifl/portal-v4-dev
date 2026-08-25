@@ -1,0 +1,114 @@
+name: Remove obsolete Vercel configuration
+
+"on":
+  push:
+    branches:
+      - chore/remove-vercel
+    paths:
+      - .github/workflows/remove-vercel-cleanup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: chore/remove-vercel
+
+      - name: Remove Vercel config and replace deployment contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          test_path = Path('tests/core_contract.test.mjs')
+          source = test_path.read_text()
+          old = '''test("Vercel DEV deployment publishes only the static build", async () => {
+  const pkg = JSON.parse(await read("package.json"));
+  const vercel = JSON.parse(await read("vercel.json"));
+  const build = await read("scripts/build-static.mjs");
+  const ignore = await read(".gitignore");
+
+  assert.equal(pkg.scripts.build, "node scripts/build-static.mjs");
+  assert.equal(vercel.buildCommand, "npm run build");
+  assert.equal(vercel.outputDirectory, "dist");
+
+  for (const directory of [
+    "assets",
+    "components",
+    "css",
+    "js",
+    "pages"
+  ]) {
+    assert.ok(build.includes(`"${directory}"`));
+  }
+
+  assert.ok(build.includes("write-runtime-config.mjs"));
+  assert.ok(build.includes("SUPABASE_PUBLISHABLE_KEY"));
+  assert.doesNotMatch(build, /service[_-]?role/i);
+  assert.match(ignore, /^\\/dist\\/$/m);
+});'''
+          new = '''test("Cloudflare Pages DEV deployment publishes only the static build", async () => {
+  const pkg = JSON.parse(await read("package.json"));
+  const build = await read("scripts/build-static.mjs");
+  const ignore = await read(".gitignore");
+  const readme = await read("README.md");
+  const rootFiles = await readdir(root);
+
+  assert.equal(pkg.scripts.build, "node scripts/build-static.mjs");
+  assert.match(readme, /DEV-Hosting:\*\* Cloudflare Pages/);
+  assert.match(readme, /Hosting\/Deployment: Cloudflare Pages über die GitHub-Integration/);
+  assert.ok(!rootFiles.includes("vercel.json"));
+
+  for (const directory of [
+    "assets",
+    "components",
+    "css",
+    "js",
+    "pages"
+  ]) {
+    assert.ok(build.includes(`"${directory}"`));
+  }
+
+  assert.ok(build.includes("write-runtime-config.mjs"));
+  assert.ok(build.includes("SUPABASE_PUBLISHABLE_KEY"));
+  assert.doesNotMatch(build, /service[_-]?role/i);
+  assert.match(ignore, /^\\/dist\\/$/m);
+});'''
+          if source.count(old) != 1:
+            raise SystemExit(f'Expected exactly one Vercel contract block, found {source.count(old)}')
+          test_path.write_text(source.replace(old, new, 1))
+
+          agents_path = Path('AGENTS.md')
+          agents = agents_path.read_text()
+          marker = '## 5. Geheimhaltung & Netzwerksicherheit\n'
+          addition = '''## 5. Hosting / Deployment-Ziel\n\n* **Frontend-Hosting:** DEV und PROD verwenden ausschließlich Cloudflare Pages.\n* **Kein Vercel:** Vercel gehört nicht zu diesem Projekt und darf weder als Hosting-/Deploymentziel vorgeschlagen noch konfiguriert, installiert oder verwendet werden.\n* **DEV:** `https://dev.plaerrdeifl.de/` wird aus `main` über die Cloudflare-Pages-GitHub-Integration veröffentlicht.\n\n---\n\n## 6. Geheimhaltung & Netzwerksicherheit\n'''
+          if marker not in agents:
+            raise SystemExit('AGENTS hosting insertion marker missing')
+          agents_path.write_text(agents.replace(marker, addition, 1))
+          PY
+
+          rm -f vercel.json
+          rm -f .github/workflows/audit-vercel-references.yml
+          rm -f .github/workflows/remove-vercel-cleanup.yml
+
+      - name: Verify no obsolete Vercel runtime/config remains
+        run: |
+          test ! -e vercel.json
+          grep -F 'Cloudflare Pages DEV deployment publishes only the static build' tests/core_contract.test.mjs
+          grep -F 'Vercel gehört nicht zu diesem Projekt' AGENTS.md
+          if grep -RIn -i --exclude-dir=.git --exclude='AGENTS.md' 'vercel' .; then
+            echo 'Unexpected Vercel reference remains.'
+            exit 1
+          fi
+          node --check tests/core_contract.test.mjs
+
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: remove obsolete Vercel configuration"
+          git push origin HEAD:chore/remove-vercel
