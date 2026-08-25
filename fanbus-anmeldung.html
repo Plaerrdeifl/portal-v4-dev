@@ -92,7 +92,7 @@
     .fanbus-public-turnstile{min-height:66px;margin-top:16px;overflow:hidden}
     .fanbus-public-status{margin-top:0}
     .fanbus-public-status[hidden],.fanbus-public-form[hidden],.fanbus-public-google[hidden],.fanbus-public-member-login[hidden],.fanbus-public-member-login-panel[hidden]{display:none!important}
-    .fanbus-companions{display:grid;gap:8px}.fanbus-companion{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 10px;align-items:center;min-width:0;padding:10px 11px;border:1px solid var(--line,#d8e2ee);border-radius:13px;background:#f8fbff}.fanbus-companion-meta{min-width:0;color:var(--ink-500);font-size:.8rem;overflow-wrap:anywhere}.fanbus-companion-actions{display:flex;align-items:center;gap:6px;grid-column:2;grid-row:1 / span 2}.fanbus-companion-actions .button{min-width:0;padding-inline:9px}.fanbus-companion-remove{width:34px!important;min-width:34px!important;padding-inline:0!important;font-size:1.05rem}.fanbus-public-companion-add-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.fanbus-public-companion-add-actions.is-guest-only{grid-template-columns:1fr}.fanbus-public-companion-add-actions .button{width:100%;min-width:0}.fanbus-public-list-picker{display:grid;gap:12px}.fanbus-public-list-members{display:grid;gap:7px}.fanbus-public-list-member{margin:0;padding:9px 10px;border:1px solid var(--line,#d8e2ee);border-radius:11px;background:#fff;cursor:pointer}.fanbus-public-list-member input[type="checkbox"]{width:24px;height:24px;min-height:24px;flex:0 0 24px;accent-color:var(--blue-800)}
+    .fanbus-companions{display:grid;gap:8px}.fanbus-companion{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 10px;align-items:center;min-width:0;padding:10px 11px;border:1px solid var(--line,#d8e2ee);border-radius:13px;background:#f8fbff}.fanbus-companion-meta{min-width:0;color:var(--ink-500);font-size:.8rem;overflow-wrap:anywhere}.fanbus-companion-actions{display:flex;align-items:center;gap:6px;grid-column:2;grid-row:1 / span 2}.fanbus-companion-actions .button{min-width:0;padding-inline:9px}.fanbus-companion-remove{width:44px!important;min-width:44px!important;height:44px!important;min-height:44px!important;padding-inline:0!important;font-size:1.05rem}.fanbus-public-companion-add-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.fanbus-public-companion-add-actions.is-guest-only{grid-template-columns:1fr}.fanbus-public-companion-add-actions .button{width:100%;min-width:0}.fanbus-public-list-picker{display:grid;gap:12px}.fanbus-public-list-members{display:grid;gap:7px}.fanbus-public-list-member{margin:0;padding:9px 10px;border:1px solid var(--line,#d8e2ee);border-radius:11px;background:#fff;cursor:pointer}.fanbus-public-list-member input[type="checkbox"]{width:24px;height:24px;min-height:24px;flex:0 0 24px;accent-color:var(--blue-800)}
     @media (max-width:620px){.fanbus-public-form.form-grid{grid-template-columns:1fr}.fanbus-public-form .full{grid-column:auto}.fanbus-public-primary-fields{grid-template-columns:1fr}.fanbus-user-preference{grid-template-columns:1fr 1fr}.fanbus-user-preference label{grid-column:1 / -1}.fanbus-public-trip-date,.fanbus-public-trip-status{font-size:.76rem}.fanbus-public-shell{gap:10px}.card{padding:14px}.fanbus-public-brand img{width:46px;height:46px}.fanbus-companion{grid-template-columns:minmax(0,1fr) auto}.fanbus-companion-actions{align-self:center}.fanbus-public-actions .button{width:100%}}
     @media (max-width:390px){.fanbus-public-trip-head{gap:5px}.fanbus-public-trip-date,.fanbus-public-trip-status{overflow:hidden;text-overflow:ellipsis;font-size:.7rem}.fanbus-public-guest-primary-fields{gap:8px}.fanbus-companion{grid-template-columns:1fr}.fanbus-companion-actions{grid-column:1;grid-row:auto;justify-content:flex-end}.fanbus-public-identity-row,.fanbus-companion-person{align-items:flex-start}.v4-m325-companion-identity-badges{margin-inline-start:8px}}
   </style>
@@ -149,9 +149,9 @@
           <label data-m320-bus-preference="portal">
             Buswunsch
             <select name="busPreference" required>
-              <option value="EGAL">EGAL</option>
-              <option value="RUHIG">RUHIG</option>
-              <option value="PARTY">PARTY</option>
+              <option value="EGAL">Egal</option>
+              <option value="RUHIG">Ruhig</option>
+              <option value="PARTY">Party</option>
             </select>
           </label>
           <label data-m325-primary-stop="portal" hidden>
@@ -161,11 +161,11 @@
         </div>
         <div id="m325UserBoardingPreference" class="fanbus-user-preference full" hidden></div>
         <section class="fanbus-public-companion-section full">
-          <div class="fanbus-public-section-heading"><h3>Mitfahrer hinzufügen</h3><span class="fanbus-public-person-count" data-m320-companion-count="portal">0 Personen</span></div>
+          <div class="fanbus-public-section-heading"><h3>Wer fährt mit?</h3><span class="fanbus-public-person-count" data-m320-companion-count="portal">Du + 0 Mitfahrer</span></div>
           <div data-m320-companions="portal" class="fanbus-companions"></div>
           <div class="fanbus-public-companion-add-actions">
-            <button data-m320-add-guest="portal" class="button small secondary" type="button">Gast</button>
-            <button data-m325-open-companion-list class="button small secondary" type="button">Mitfahrerliste</button>
+            <button data-m320-add-guest="portal" class="button small secondary" type="button">+ Mitfahrer hinzufügen</button>
+            <button data-m325-open-companion-list class="button small secondary" type="button">Gespeicherte Mitfahrer</button>
           </div>
         </section>
         <div class="fanbus-public-consents full">
@@ -203,9 +203,9 @@
         <label class="full" data-m320-bus-preference="guest">
           Buswunsch
           <select name="busPreference" required>
-            <option value="EGAL">EGAL</option>
-            <option value="RUHIG">RUHIG</option>
-            <option value="PARTY">PARTY</option>
+            <option value="EGAL">Egal</option>
+            <option value="RUHIG">Ruhig</option>
+            <option value="PARTY">Party</option>
           </select>
         </label>
         <label class="full" data-m325-primary-stop="guest" hidden>
@@ -213,10 +213,10 @@
           <select name="boardingStopId"></select>
         </label>
         <section class="fanbus-public-companion-section full">
-          <div class="fanbus-public-section-heading"><h3>Mitfahrer hinzufügen</h3><span class="fanbus-public-person-count" data-m320-companion-count="guest">0 Personen</span></div>
+          <div class="fanbus-public-section-heading"><h3>Wer fährt mit?</h3><span class="fanbus-public-person-count" data-m320-companion-count="guest">0 Mitfahrer</span></div>
           <div data-m320-companions="guest" class="fanbus-companions"></div>
           <div class="fanbus-public-companion-add-actions is-guest-only">
-            <button data-m320-add-guest="guest" class="button small secondary" type="button">Gast</button>
+            <button data-m320-add-guest="guest" class="button small secondary" type="button">+ Mitfahrer hinzufügen</button>
           </div>
         </section>
         <div class="fanbus-public-consents full">
@@ -242,5 +242,6 @@
   <script src="./js/runtime-config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7"></script>
   <script type="module" src="./js/fanbus-registration.js"></script>
+  <script type="module" src="./js/p800-r2-fanbus-registration-ux.js?v=20260825-p800-r2-fanbus-ux1"></script>
 </body>
 </html>
