@@ -51,15 +51,21 @@ test("public Fanbus registration distinguishes an already active booking", async
   assert.match(registration, /alreadyActive \|\| waitlisted \? "warning" : "success"/);
 });
 
-test("internal Fanbus UX collapses mobile filters and fixes action hierarchy", async () => {
-  const ux = await read("js/p800-r2-fanbus-ux.js");
+test("internal Fanbus UX is native and avoids portal-wide mutation scanning", async () => {
+  const [ux, fanbuses] = await Promise.all([
+    read("js/p800-r2-fanbus-ux.js"),
+    read("js/modules/fanbuses.js")
+  ]);
 
   assert.match(ux, /p800-fanbus-filter-disclosure/);
-  assert.match(ux, /Filter · \$\{active\}/);
-  assert.match(ux, /Teilnehmer anzeigen/);
-  assert.match(ux, /Excel exportieren/);
-  assert.match(ux, /Teilnehmer hinzufügen/);
-  assert.match(ux, /0 \/"\)/);
+  assert.match(fanbuses, /data-m320-filter-details/);
+  assert.match(fanbuses, /Filter · \$\{active\}/);
+  assert.match(fanbuses, /Teilnehmer verwalten/);
+  assert.match(fanbuses, /button small secondary[^>]*data-m310-export-registrations/);
+  assert.match(fanbuses, /button small primary[^>]*data-m310-add-registration>Teilnehmer hinzufügen/);
+  assert.match(fanbuses, /personType === "MEMBER" \? "Mitglied" : "Person aus dem Portal"/);
+  assert.doesNotMatch(fanbuses, /v4-person-badge">Portaluser<\/span>/);
+  assert.doesNotMatch(ux, /MutationObserver|document\.documentElement|enhance\(document\)/);
 });
 
 test("P800-R2 Fanbus UX remains frontend-only", async () => {
