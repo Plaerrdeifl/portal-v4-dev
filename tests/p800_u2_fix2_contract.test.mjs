@@ -35,10 +35,10 @@ test("fanbus.manage independently retains occupancy bus and stop management", ()
   assert.match(actions, /openBusActions\(trip, data, bus, busMappings, tripStops, dialog\)/);
 
   const busActions = section("function openBusActions", "async function occupancyData");
-  assert.match(busActions, /openBusEditor\(trip, data, bus, parentDialog\)/);
+  assert.match(busActions, /openBusEditor\(trip, data, bus, parentDialog, \{[\s\S]*replaceCurrent: true/);
   assert.match(
     busActions,
-    /openBusStops\(trip, bus, mapping, tripStops\?\.stops \|\| \[\], parentDialog\)/
+    /openBusStops\(trip, bus, mapping, tripStops\?\.stops \|\| \[\], parentDialog, \{[\s\S]*replaceCurrent: true/
   );
 });
 

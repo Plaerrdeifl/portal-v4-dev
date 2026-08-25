@@ -229,7 +229,7 @@ test("manual registration requires both stored consent confirmations", () => {
 test("M310 UI exposes manual registration only through the registration capability", () => {
   assert.match(
     ui,
-    /hasCapability\("fanbus\.registrations\.manage"\)[\s\S]+data-m310-add-registration>Mitfahrer hinzufügen/
+    /hasCapability\("fanbus\.registrations\.manage"\)[\s\S]+data-m310-add-registration>Teilnehmer hinzufügen/
   );
   assert.match(ui, /call\("fanbus_registration_people_list"\)/);
   assert.match(
