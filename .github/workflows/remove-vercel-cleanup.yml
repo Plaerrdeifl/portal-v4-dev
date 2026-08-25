@@ -1,6 +1,6 @@
 name: Remove obsolete hosting config
 
-on:
+"on":
   push:
     branches:
       - chore/remove-vercel
