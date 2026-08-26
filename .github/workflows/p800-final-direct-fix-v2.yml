@@ -110,6 +110,24 @@ jobs:
               print(f"{label}: {count}")
               if count < 1:
                   raise SystemExit(f"{label}: no stale assertion found")
+
+          member_link = Path('tests/m325_r2_member_linking_contract.test.mjs')
+          replace_required(
+              member_link,
+              'assert.match(boardingOptions, /boardingStopDisplay\\(stop\\)/);',
+              'assert.match(boardingOptions, /formatBerlinTime\\(stop\\.departureAt\\)/);',
+              'restore public time formatter contract',
+              1
+          )
+
+          polish2 = Path('tests/p800_r2_fanbus_polish2.test.mjs')
+          replace_required(
+              polish2,
+              'grid-template-columns:minmax\\(0,1fr\\) 102px',
+              'grid-template-columns:104px minmax\\(0,1fr\\)',
+              'align Polish 2 mobile time-first grid',
+              1
+          )
           PY
 
       - run: npm ci
