@@ -428,11 +428,16 @@ export function openDialog({
 
       try {
         await onSubmit(form ? formDataObject(form) : {});
+        if (!dialog.open || dialog.dataset.v4DialogContext !== contextId) return;
         closeDialog(dialog, "", { restoreParent: preserveParentOnSubmit });
       } catch (error) {
         showToast(error?.message || "Aktion fehlgeschlagen.", "error", 5200);
-        button.disabled = false;
-        button.textContent = original;
+        if (dialog.open
+            && dialog.dataset.v4DialogContext === contextId
+            && button.isConnected) {
+          button.disabled = false;
+          button.textContent = original;
+        }
       }
     });
   }
