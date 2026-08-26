@@ -67,7 +67,7 @@ test("M310 registrations use compact operational records without empty cancellat
   assert.notEqual(end, -1);
   const card = fanbuses.slice(start, end);
 
-  assert.match(card, /class="v4-m310-registration-record"/);
+  assert.match(card, /class="v4-m310-registration-record\$\{canAct \? " v4-interactive-card" : ""\}"/);
   assert.doesNotMatch(card, /card entity-card|entity-head|meta-grid|meta-item|v4-card-actions/);
   assert.match(card, /class="badge \$\{registration\.status === "ACTIVE" \? "success" : "neutral"\}"/);
   assert.match(card, /sourceText\(registration\.source\)/);
@@ -76,9 +76,11 @@ test("M310 registrations use compact operational records without empty cancellat
   assert.match(card, /formatBerlinDateTime\(registration\.registeredAt\)/);
   assert.match(card, /registration\.status === "CANCELLED" && registration\.cancelledAt/);
   assert.doesNotMatch(card, /cancelledAt\s*\|\|\s*"–"/);
-  assert.doesNotMatch(card, /data-m320-open-registration|role="button"|tabindex="0"/);
-  assert.match(card, /data-m320-edit-registration/);
-  assert.match(card, /data-m320-more-registration/);
+  assert.match(card, /const canAct = !readOnly && registration\.status !== "CANCELLED"/);
+  assert.match(card, /data-m320-open-registration/);
+  assert.match(card, /role="button" tabindex="0"/);
+  assert.match(card, /v4-m310-registration-chevron/);
+  assert.doesNotMatch(card, /data-m320-edit-registration|data-m320-more-registration|data-m310-occupancy-assignment/);
 
   const cancellationStart = fanbuses.indexOf("async function cancelRegistrationFromActions");
   const cancellationEnd = fanbuses.indexOf("function busCategoryLabel", cancellationStart);
@@ -89,7 +91,7 @@ test("M310 registrations use compact operational records without empty cancellat
   assert.match(cancellation, /renderRegistrationsDialog\(registrationsDialog, trip, nextData\)/);
   assert.doesNotMatch(cancellation, /showRegistrationsDialog\(/);
 
-  const registrationFlowEnd = fanbuses.indexOf("function manualPersonLabel(person)", end);
+  const registrationFlowEnd = fanbuses.indexOf("function manualPersonKey(person)", end);
   const registrationFlow = fanbuses.slice(end, registrationFlowEnd);
   assert.match(registrationFlow, /hasCapability\("fanbus\.registrations\.manage"\)/);
 
@@ -138,12 +140,12 @@ test("M210 and M310 editors use the shared member and finance dialog contract", 
     /\.v4-smart-form>\.v4-field-mobile-full\s*,[\s\S]{0,120}\.v4-smart-form>\.v4-field-datetime/
   );
   assert.match(dialog, /width:\s*min\(720px,calc\(100vw - 24px\)\)!important/);
-  assert.match(dialog, /max-height:\s*calc\(100dvh - 24px\)!important/);
+  assert.match(dialog, /max-height:\s*calc\(100dvh - 24px\)\)!important/);
   assert.match(shell, /display:\s*flex!important/);
   assert.match(shell, /flex-direction:\s*column!important/);
   assert.match(shell, /height:\s*auto!important/);
   assert.match(shell, /min-height:\s*0!important/);
-  assert.match(shell, /max-height:\s*calc\(100dvh - 24px\)!important/);
+  assert.match(shell, /max-height:\s*calc\(100dvh - 24px\)\)!important/);
   assert.match(body, /flex:\s*1 1 auto!important/);
   assert.match(body, /touch-action:\s*pan-y/);
   assert.match(body, /height:\s*auto!important/);
