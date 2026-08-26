@@ -140,12 +140,12 @@ test("M210 and M310 editors use the shared member and finance dialog contract", 
     /\.v4-smart-form>\.v4-field-mobile-full\s*,[\s\S]{0,120}\.v4-smart-form>\.v4-field-datetime/
   );
   assert.match(dialog, /width:\s*min\(720px,calc\(100vw - 24px\)\)!important/);
-  assert.match(dialog, /max-height:\s*calc\(100dvh - 24px\)\)!important/);
+  assert.match(dialog, /max-height:\s*calc\(100dvh - 24px\)!important/);
   assert.match(shell, /display:\s*flex!important/);
   assert.match(shell, /flex-direction:\s*column!important/);
   assert.match(shell, /height:\s*auto!important/);
   assert.match(shell, /min-height:\s*0!important/);
-  assert.match(shell, /max-height:\s*calc\(100dvh - 24px\)\)!important/);
+  assert.match(shell, /max-height:\s*calc\(100dvh - 24px\)!important/);
   assert.match(body, /flex:\s*1 1 auto!important/);
   assert.match(body, /touch-action:\s*pan-y/);
   assert.match(body, /height:\s*auto!important/);
