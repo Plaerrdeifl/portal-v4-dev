@@ -119,7 +119,7 @@ test("public and portal UIs consume server-resolved defaults without UUID copy",
   assert.match(ui, /fanbus_user_preference_delete/);
   assert.match(ui, /Persönlicher Standard-Zustieg/);
   assert.match(ui, /trip\?\.defaultTripBoardingStopId/);
-  assert.match(ui, /stop\.label} · \$\{formatBerlinTime\(stop\.departureAt\)}/);
+  assert.match(ui, /formatBerlinTime\(stop\.departureAt\)} · \$\{stop\.label}/);
   assert.match(html, /m325UserBoardingPreference/);
   assert.doesNotMatch(html, /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-/i);
 });

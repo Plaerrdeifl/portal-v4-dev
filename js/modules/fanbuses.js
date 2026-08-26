@@ -127,6 +127,17 @@ function formatBerlinTime(value) {
   return localValue ? `${localValue} Uhr` : "Zeit noch offen";
 }
 
+function formatBoardingStopTime(value) {
+  return toBerlinTimeInputValue(value) || "Zeit offen";
+}
+
+function boardingStopDisplay(stop, fallback = "Zustieg") {
+  const label = String(stop?.label || fallback).trim() || fallback;
+  return stop?.departureAt
+    ? `${formatBoardingStopTime(stop.departureAt)} · ${label}`
+    : label;
+}
+
 function berlinOffsetMilliseconds(instant) {
   const date = new Date(instant);
   const parts = berlinParts(date);
@@ -408,7 +419,7 @@ function tripDetailStopsMarkup(stops) {
   return `<div class="full v4-m325-trip-stops">
     <span>Zustiegsorte</span>
     <strong class="v4-preserve-lines">${items.map(stop =>
-      `${escapeHtml(stop.label || "Zustieg")}${stop.departureAt ? ` · ${escapeHtml(formatBerlinTime(stop.departureAt))}` : ""}`
+      escapeHtml(boardingStopDisplay(stop))
     ).join("<br>")}</strong>
   </div>`;
 }
@@ -1282,14 +1293,9 @@ function operationCards(participants, access = {}) {
         <small>
           ${escapeHtml(person.busLabel || "Kein Bus")}
           ·
-          ${escapeHtml(
-            person.boardingStopLabel || "Kein Zustiegsort"
-          )}
           ${person.departureAt
-            ? ` · ${escapeHtml(
-                formatBerlinTime(person.departureAt)
-              )}`
-            : ""
+            ? `${escapeHtml(formatBoardingStopTime(person.departureAt))} · ${escapeHtml(person.boardingStopLabel || "Kein Zustiegsort")}`
+            : escapeHtml(person.boardingStopLabel || "Kein Zustiegsort")
           }
         </small>
       </div>
@@ -1555,8 +1561,8 @@ async function openBoardingStops(trip) {
       : "";
     const tripRecords = assigned.length
       ? `<div class="v4-mobile-records v4-m325-stop-records">${assigned.map((stop, index) => `<article class="v4-compact-record v4-m325-stop-card">
-        <div class="v4-compact-record-copy v4-m325-record-copy"><strong>${escapeHtml(stop.label)}</strong>
-        <small>${escapeHtml(formatBerlinTime(stop.departureAt))} · ${stop.isActive ? "Aktiv" : "Inaktiv"}${stop.tripNote ? ` · ${escapeHtml(stop.tripNote)}` : ""}</small></div>
+        <div class="v4-compact-record-copy v4-m325-record-copy"><strong>${escapeHtml(boardingStopDisplay(stop))}</strong>
+        <small>${stop.isActive ? "Aktiv" : "Inaktiv"}${stop.tripNote ? ` · ${escapeHtml(stop.tripNote)}` : ""}</small></div>
         <div class="v4-row-actions v4-m325-stop-actions">
           <button class="button small secondary" type="button" data-m325-trip-move="${escapeAttr(stop.id)}" data-direction="-1"${index === 0 ? " disabled" : ""}>↑</button>
           <button class="button small secondary" type="button" data-m325-trip-move="${escapeAttr(stop.id)}" data-direction="1"${index === assigned.length - 1 ? " disabled" : ""}>↓</button>
@@ -1567,7 +1573,7 @@ async function openBoardingStops(trip) {
     const busStopForms = buses.length
       ? buses.map(bus => `<form class="form-grid v4-smart-form v4-compact-record v4-m325-bus-stop-card" data-m325-bus-stops="${escapeAttr(bus.busId)}" data-revision="${escapeAttr(bus.revision)}">
         <strong class="v4-field-full">${escapeHtml(bus.label)}</strong>
-        <div class="v4-field-full">${assigned.filter(stop => stop.isActive).map(stop => `<label class="check-row"><input type="checkbox" name="stopId" value="${escapeAttr(stop.id)}"${bus.tripBoardingStopIds.includes(stop.id) ? " checked" : ""}><span>${escapeHtml(stop.label)}</span></label>`).join("")}</div>
+        <div class="v4-field-full">${assigned.filter(stop => stop.isActive).map(stop => `<label class="check-row"><input type="checkbox" name="stopId" value="${escapeAttr(stop.id)}"${bus.tripBoardingStopIds.includes(stop.id) ? " checked" : ""}><span>${escapeHtml(boardingStopDisplay(stop))}</span></label>`).join("")}</div>
         <div class="dialog-actions v4-detail-actions v4-field-full"><button class="button small primary" type="submit">Bus-Zustiege speichern</button></div>
       </form>`).join("")
       : empty("Für diese Fahrt sind noch keine Busse angelegt.");
@@ -1579,8 +1585,8 @@ async function openBoardingStops(trip) {
         ${masterRecords || empty("Noch keine Stammpunkte vorhanden.")}</section>
         <section class="v4-m325-dialog-section"><h3>Fahrt-Zustiege</h3>
         <form class="form-grid v4-smart-form" data-m325-trip-stop>
+          <label class="v4-field-half">Uhrzeit<input name="departureTime" type="time" value="${escapeAttr(defaultTripStopTime(trip))}" required></label>
           <label class="v4-field-half">Zustiegsort<select name="boardingStopId" required><option value="">Bitte wählen</option>${options}</select></label>
-          <label class="v4-field-half">Abfahrtszeit<input name="departureTime" type="time" value="${escapeAttr(defaultTripStopTime(trip))}" required></label>
           <label class="v4-field-full">Fahrthinweis<input name="tripNote"></label>
           <div class="dialog-actions v4-detail-actions v4-field-full"><button class="button small primary" type="submit">Zustieg hinzufügen</button></div>
         </form>
@@ -1782,14 +1788,14 @@ function tripStopEditorRow(trip, stop, masterStops, index, isNew = false) {
   const position = Number(stop?.position || index + 1);
   const revision = stopId ? Number(stop?.revision || 0) : "";
   return `<div class="v4-m310-trip-stop-editor-row" data-m310-trip-stop-editor-row data-trip-stop-id="${escapeAttr(stopId)}" data-revision="${escapeAttr(revision)}" data-position="${escapeAttr(position)}" data-original-boarding-stop-id="${escapeAttr(boardingStopId)}" data-original-time="${escapeAttr(time)}" data-new="${isNew ? "true" : "false"}">
+    <label>Uhrzeit
+      <input data-m310-trip-stop-time type="time" step="60" required value="${escapeAttr(time)}">
+    </label>
     <label>Zustiegsort
       <select data-m310-trip-stop-master required>
         <option value="">Bitte auswählen</option>
         ${tripStopMasterOptions(masterStops, boardingStopId)}
       </select>
-    </label>
-    <label>Uhrzeit
-      <input data-m310-trip-stop-time type="time" step="60" required value="${escapeAttr(time)}">
     </label>
     <button class="button small ghost v4-m310-trip-stop-remove" type="button" data-m310-trip-stop-remove>Entfernen</button>
   </div>`;
@@ -2672,7 +2678,7 @@ function openBusStops(
     replaceCurrent,
     body: `<form class="form-grid v4-smart-form" data-m310-bus-stops>
       <p class="subtle v4-field-full">Die Auswahl gilt ausschließlich für diesen Bus.</p>
-      <div class="v4-field-full">${activeStops.map(stop => `<label class="check-row"><input type="checkbox" name="stopId" value="${escapeAttr(stop.id)}"${mapping.tripBoardingStopIds.includes(stop.id) ? " checked" : ""}><span>${escapeHtml(stop.label)} · ${escapeHtml(formatBerlinTime(stop.departureAt))}</span></label>`).join("") || empty("Für diese Fahrt sind noch keine Zustiege hinterlegt.")}</div>
+      <div class="v4-field-full">${activeStops.map(stop => `<label class="check-row"><input type="checkbox" name="stopId" value="${escapeAttr(stop.id)}"${mapping.tripBoardingStopIds.includes(stop.id) ? " checked" : ""}><span>${escapeHtml(boardingStopDisplay(stop))}</span></label>`).join("") || empty("Für diese Fahrt sind noch keine Zustiege hinterlegt.")}</div>
     </form>`,
     submitLabel: "Bus-Zustiege speichern",
     preserveParentOnSubmit: true,
@@ -3140,6 +3146,7 @@ function setManualRegistrationPerson(dialog, person) {
   button.setAttribute("aria-label", person
     ? `${manualPersonName(person)} ausgewählt. Person ändern`
     : "Person auswählen");
+  syncManualRegistrationMode(dialog);
 }
 
 function renderManualPersonPicker(dialog, people) {
@@ -3250,7 +3257,7 @@ function manualRegistrationForm(tripStops = [], trip = {}) {
       <input name="email" type="email" autocomplete="email" disabled>
     </label>
     ${activeTripStops.length ? `<label class="v4-field-full">Zustiegsort
-      <select name="boardingStopId" required><option value="">Bitte wählen</option>${activeTripStops.map(stop => `<option value="${escapeAttr(stop.tripBoardingStopId || stop.id)}"${(stop.tripBoardingStopId || stop.id) === (defaultTripStop?.tripBoardingStopId || defaultTripStop?.id) ? " selected" : ""}>${escapeHtml(`${stop.label} · ${formatBerlinTime(stop.departureAt)}`)}</option>`).join("")}</select>
+      <select name="boardingStopId" required><option value="">Bitte wählen</option>${activeTripStops.map(stop => `<option value="${escapeAttr(stop.tripBoardingStopId || stop.id)}"${(stop.tripBoardingStopId || stop.id) === (defaultTripStop?.tripBoardingStopId || defaultTripStop?.id) ? " selected" : ""}>${escapeHtml(boardingStopDisplay(stop))}</option>`).join("")}</select>
     </label>` : ""}
     ${trip.busPreferenceSelectionEnabled ? `<label class="v4-field-full">Buswunsch
       <select name="busPreference" required>${optionList(BUS_PREFERENCES, "EGAL")}</select>
@@ -3268,10 +3275,12 @@ function manualRegistrationForm(tripStops = [], trip = {}) {
 function syncManualRegistrationMode(dialog) {
   const form = dialog.querySelector("#m310ManualRegistrationForm");
   const isGuest = form?.elements.namedItem("mode")?.value === "GUEST";
+  const modeField = dialog.querySelector(".v4-m310-manual-mode");
   const personField = dialog.querySelector("[data-m310-manual-person]");
   const personInput = form?.elements.namedItem("personKey");
   const personButton = dialog.querySelector("[data-m310-open-person-picker]");
 
+  if (modeField) modeField.hidden = !isGuest && Boolean(personInput?.value);
   if (personField) personField.hidden = isGuest;
   if (personInput) {
     personInput.disabled = isGuest;

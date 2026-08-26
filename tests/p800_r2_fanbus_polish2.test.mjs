@@ -98,11 +98,11 @@ test("Polish 2 participant detail owns manual bus assignment edit and existing f
 test("Polish 2 keeps normal page scrolling while compacting the mobile trip stop editor", () => {
   assert.match(ux, /\[data-m310-inline-trip-body\]\{[^}]*max-height:none!important;[^}]*overflow:visible!important;[^}]*overscroll-behavior:auto!important;[^}]*touch-action:auto/);
   assert.match(ux, /\.v4-m310-editor-stops\{gap:8px;padding:10px\}/);
-  assert.match(ux, /\.v4-m310-trip-stop-editor-row\{[^}]*grid-template-columns:minmax\(0,1fr\) 104px auto;[^}]*gap:7px;[^}]*min-width:0;[^}]*padding:7px/);
+  assert.match(ux, /\.v4-m310-trip-stop-editor-row\{[^}]*grid-template-columns:104px minmax\(0,1fr\) auto;[^}]*gap:7px;[^}]*min-width:0;[^}]*padding:7px/);
   assert.match(ux, /\.v4-m310-editor-stops \[data-m310-trip-stop-add\]\{min-height:42px;padding:7px 11px\}/);
   assert.match(ux, /\.v4-m310-trip-stop-remove\{min-height:42px;padding:7px 10px/);
   assert.match(ux, /\.v4-m310-trip-default-stop\{grid-template-columns:minmax\(120px,\.45fr\) minmax\(0,1fr\)/);
-  assert.match(ux, /@media \(max-width:620px\)[\s\S]*\.v4-m310-trip-stop-editor-row\{grid-template-columns:minmax\(0,1fr\) 102px\}[\s\S]*\.v4-m310-trip-stop-remove\{grid-column:1\/-1;justify-self:end\}/);
+  assert.match(ux, /@media \(max-width:620px\)[\s\S]*\.v4-m310-trip-stop-editor-row\{grid-template-columns:104px minmax\(0,1fr\)\}[\s\S]*\.v4-m310-trip-stop-remove\{grid-column:1\/-1;justify-self:end\}/);
   assert.match(ux, /@media \(max-width:350px\)\{[\s\S]*\.v4-m310-editor-fields,\.v4-m310-trip-stop-editor-row,\.v4-m310-trip-default-stop\{grid-template-columns:1fr\}/);
   assert.doesNotMatch(ux, /MutationObserver/);
 });

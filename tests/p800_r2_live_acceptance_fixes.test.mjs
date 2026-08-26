@@ -83,20 +83,19 @@ test("Fanbus deadline and mobile editor follow the final compact two-column cont
   assert.match(mobile, /v4-m310-trip-stop-editor-row\{grid-template-columns:104px minmax\(0,1fr\)/);
   assert.doesNotMatch(mobile, /(?:editor-fields|trip-stop-editor-row)\{grid-template-columns:1fr/);
   assert.match(fanbusUx, /v4-m310-editor-deadline,[^\n]*v4-m310-bus-preference-toggle\{grid-column:1\/-1\}/);
-  assert.match(fanbusUx, /label:has\(\[data-m310-trip-stop-time\]\)\{order:1\}/);
-  assert.match(fanbusUx, /label:has\(\[data-m310-trip-stop-master\]\)\{order:2\}/);
   assert.doesNotMatch(fanbusUx, /contain:inline-size/);
 });
 
-test("final Fanbus live polish hides the mode selector after person selection and normalizes stop labels", () => {
-  assert.match(fanbusUx, /#m310ManualRegistrationForm:has\(\.v4-m310-person-selection\.is-selected\) \.v4-m310-manual-mode\{display:none!important\}/);
-  assert.match(fanbusUx, /function timeFirstBoardingStopText\(value\)/);
-  assert.match(fanbusUx, /return `\$\{full\[2\]\} · \$\{full\[1\]\.trim\(\)\}`/);
-  assert.match(fanbusUx, /select\[name="boardingStopId"\] option/);
-  assert.match(fanbusUx, /select\[name="tripBoardingStopId"\] option/);
-  assert.match(fanbusUx, /new MutationObserver\(scheduleBoardingStopNormalization\)/);
+test("final Fanbus live polish uses direct person and boarding-stop rendering", () => {
+  const setPerson = section(fanbuses, "function setManualRegistrationPerson", "function renderManualPersonPicker");
+  const sync = section(fanbuses, "function syncManualRegistrationMode", "function bindManualConsentValidation");
+  const row = section(fanbuses, "function tripStopEditorRow", "function tripForm");
+  assert.match(setPerson, /syncManualRegistrationMode\(dialog\)/);
+  assert.match(sync, /modeField\.hidden = !isGuest && Boolean\(personInput\?\.value\)/);
+  assert.match(fanbuses, /function boardingStopDisplay\(stop, fallback = "Zustieg"\)/);
+  assert.ok(row.indexOf("<label>Uhrzeit") < row.indexOf("<label>Zustiegsort"));
+  assert.doesNotMatch(fanbusUx, /function timeFirstBoardingStopText|new MutationObserver|#m310ManualRegistrationForm:has/);
 });
-
 test("dates hide only the successful normal status and collapse mobile filters", () => {
   const render = section(dates, "function render()", "function eventForm");
   assert.doesNotMatch(render, /setStatus\("Aktuell",\s*"success"\)/);
