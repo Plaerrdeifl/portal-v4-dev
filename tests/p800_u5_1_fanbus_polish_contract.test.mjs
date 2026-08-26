@@ -42,15 +42,18 @@ test("U5.1 moves trip edit into management menu and removes legacy meeting field
   assert.match(fanbuses, /departureInfo:\s*trip\.departureInfo \|\| null/);
 });
 
-test("U5.1 participant filters are a two by two grid with explicit actions", () => {
+test("U5.1 participant filters remain two by two while active cards open participant detail actions", () => {
   assert.equal((fanbuses.match(/class="v4-m320-filter-half"/g) || []).length, 4);
   assert.match(css, /v4-m320-filter-half[\s\S]*grid-column:\s*span 6/);
-  assert.doesNotMatch(fanbuses, /data-m320-open-registration/);
-  assert.match(fanbuses, /function openRegistrationActions/);
   const card = section(fanbuses, "function registrationCard", "async function cancelRegistrationFromActions");
-  assert.match(card, /data-m320-edit-registration/);
-  assert.match(card, /data-m320-more-registration/);
-  assert.doesNotMatch(card, /tabindex="0" role="button"/);
+  assert.match(card, /data-m320-open-registration/);
+  assert.match(card, /role="button" tabindex="0"/);
+  assert.match(card, /v4-m310-registration-chevron/);
+  assert.doesNotMatch(card, /data-m320-edit-registration|data-m320-more-registration|data-m310-occupancy-assignment/);
+  assert.match(fanbuses, /function openRegistrationDetail/);
+  assert.match(fanbuses, /data-m320-detail-assignment/);
+  assert.match(fanbuses, /data-m320-detail-edit/);
+  assert.match(fanbuses, /data-m320-detail-more/);
 });
 
 test("U5.1 bus cards are clickable and expose edit plus boarding-stop actions", () => {
