@@ -73,16 +73,28 @@ test("bus action menu replaces its child without restoring and reopening the par
   assert.match(common, /if \(dialog\.open && !replaceCurrent\) saveDialogContext\(dialog\)/);
 });
 
-test("Fanbus deadline and mobile editor follow the compact two-column mobile contract", () => {
+test("Fanbus deadline and mobile editor follow the final compact two-column contract", () => {
   const deadline = section(fanbuses, "function tripRegistrationDeadlineMarkup", "function normalizedTripDetailStops");
   assert.match(deadline, /class="full v4-m325-trip-registration-deadline"/);
   assert.match(fanbusUx, /v4-m325-trip-registration-deadline>span\{[^}]*white-space:nowrap/);
   assert.match(fanbusUx, /\.v4-m310-editor-fields\{[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   const mobile = section(fanbusUx, "@media (max-width:620px)", "@media (max-width:390px)");
   assert.match(mobile, /v4-m310-editor-fields\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
-  assert.match(mobile, /v4-m310-trip-stop-editor-row\{grid-template-columns:minmax\(0,1fr\) 104px/);
+  assert.match(mobile, /v4-m310-trip-stop-editor-row\{grid-template-columns:104px minmax\(0,1fr\)/);
   assert.doesNotMatch(mobile, /(?:editor-fields|trip-stop-editor-row)\{grid-template-columns:1fr/);
   assert.match(fanbusUx, /v4-m310-editor-deadline,[^\n]*v4-m310-bus-preference-toggle\{grid-column:1\/-1\}/);
+  assert.match(fanbusUx, /label:has\(\[data-m310-trip-stop-time\]\)\{order:1\}/);
+  assert.match(fanbusUx, /label:has\(\[data-m310-trip-stop-master\]\)\{order:2\}/);
+  assert.doesNotMatch(fanbusUx, /contain:inline-size/);
+});
+
+test("final Fanbus live polish hides the mode selector after person selection and normalizes stop labels", () => {
+  assert.match(fanbusUx, /#m310ManualRegistrationForm:has\(\.v4-m310-person-selection\.is-selected\) \.v4-m310-manual-mode\{display:none!important\}/);
+  assert.match(fanbusUx, /function timeFirstBoardingStopText\(value\)/);
+  assert.match(fanbusUx, /return `\$\{full\[2\]\} · \$\{full\[1\]\.trim\(\)\}`/);
+  assert.match(fanbusUx, /select\[name="boardingStopId"\] option/);
+  assert.match(fanbusUx, /select\[name="tripBoardingStopId"\] option/);
+  assert.match(fanbusUx, /new MutationObserver\(scheduleBoardingStopNormalization\)/);
 });
 
 test("dates hide only the successful normal status and collapse mobile filters", () => {
