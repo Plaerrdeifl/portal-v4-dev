@@ -40,8 +40,9 @@ function injectStyles() {
     .v4-m310-editor-section{display:grid;gap:10px;padding:12px;border:1px solid var(--line,#d8e2ee);border-radius:14px;background:var(--surface,#fff)}
     .v4-m310-editor-section h3{margin:0}
     .v4-m310-editor-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px;row-gap:9px;min-width:0}
-    .v4-m310-editor-fields>label,.v4-m310-trip-stop-editor-row>label,.v4-m310-trip-default-stop{display:grid;gap:4px;min-width:0;font-weight:700}
-    .v4-m310-editor-fields input,.v4-m310-editor-fields select,.v4-m310-trip-stop-editor-row input,.v4-m310-trip-stop-editor-row select,.v4-m310-trip-default-stop select{box-sizing:border-box;width:100%;min-width:0}
+    .v4-m310-editor-fields>label,.v4-m310-trip-stop-editor-row>label,.v4-m310-trip-default-stop{display:grid;gap:4px;min-width:0;max-width:100%;contain:inline-size;font-weight:700}
+    .v4-m310-editor-fields>label:has(>input:is([type="date"],[type="time"],[type="datetime-local"])),.v4-m310-trip-stop-editor-row>label:has(>input:is([type="date"],[type="time"],[type="datetime-local"])){overflow:hidden}
+    .v4-m310-editor-fields input,.v4-m310-editor-fields select,.v4-m310-trip-stop-editor-row input,.v4-m310-trip-stop-editor-row select,.v4-m310-trip-default-stop select{box-sizing:border-box;width:100%;min-width:0;max-width:100%;inline-size:100%;min-inline-size:0;max-inline-size:100%}
     .v4-m310-editor-deadline,.v4-m310-editor-open,.v4-m310-registration-open-info,.v4-m310-bus-preference-toggle{grid-column:1/-1}
     .v4-m310-registration-open-info{display:flex;align-items:baseline;justify-content:space-between;gap:6px 10px;flex-wrap:wrap;padding:8px 10px;border-radius:10px;background:var(--surface-soft,#f5f7fa)}
     .v4-m310-registration-open-info>span{font-size:.8rem;color:var(--muted,#718096)}
@@ -114,14 +115,14 @@ function injectStyles() {
     @media (max-width:620px){
       .v4-m310-editor-section{padding:12px}
       .v4-m310-editor-section.v4-m310-editor-stops{padding:10px}
-      .v4-m310-editor-fields{grid-template-columns:1fr}
+      .v4-m310-editor-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
       .v4-m310-editor-section-heading,.v4-m310-settings-section-heading{display:grid;grid-template-columns:1fr}
       .v4-m310-editor-section-heading .button,.v4-m310-settings-section-heading .button{width:100%}
       .v4-m310-editor-stops .v4-m310-editor-section-heading{display:flex;align-items:center}
       .v4-m310-editor-stops .v4-m310-editor-section-heading .button{width:auto;flex:none}
-      .v4-m310-trip-stop-editor-row{grid-template-columns:1fr}
-      .v4-m310-trip-stop-remove{grid-column:1;justify-self:start}
-      .v4-m310-trip-default-stop{grid-template-columns:1fr}
+      .v4-m310-trip-stop-editor-row{grid-template-columns:minmax(0,1fr) 104px}
+      .v4-m310-trip-stop-remove{grid-column:1/-1;justify-self:end}
+      .v4-m310-trip-default-stop{grid-template-columns:minmax(112px,.45fr) minmax(0,1fr)}
       .v4-m310-editor-fields input,.v4-m310-editor-fields select,.v4-m310-trip-stop-editor-row input,.v4-m310-trip-stop-editor-row select,.v4-m310-trip-default-stop select,.v4-m310-manual-mode select{font-size:16px}
       .v4-m310-manual-mode{grid-column:1/-1!important}
       .v4-m310-registration-record[role="button"]{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"person chevron" "summary chevron" "footer chevron";gap:5px 9px;padding:10px 11px}

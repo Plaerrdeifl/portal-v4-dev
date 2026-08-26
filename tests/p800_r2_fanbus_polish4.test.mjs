@@ -52,16 +52,23 @@ test("Polish 4 offers only future away games without an existing Fanbus trip", (
   assert.doesNotMatch(create, /(?:venue|displayTitle)[\s\S]{0,80}(?:includes|match|test|startsWith|endsWith)/);
 });
 
-test("Polish 4 stacks the Fanbus editor at the regular mobile breakpoint", () => {
+test("Polish 4 keeps the Fanbus editor compact and bounded at the regular mobile breakpoint", () => {
   const desktop = section(ux, ".v4-m310-editor-fields", "@media (max-width:620px)");
   const mobile = section(ux, "@media (max-width:620px)", "@media (max-width:430px)");
+  const narrow = ux.slice(ux.indexOf("@media (max-width:350px)"));
 
   assert.match(desktop, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(desktop, /\.v4-m310-trip-stop-editor-row\{[^}]*grid-template-columns:minmax\(0,1fr\) 104px auto/);
-  assert.match(mobile, /\.v4-m310-editor-fields\{grid-template-columns:1fr\}/);
-  assert.match(mobile, /\.v4-m310-trip-stop-editor-row\{grid-template-columns:1fr\}/);
-  assert.match(mobile, /\.v4-m310-trip-default-stop\{grid-template-columns:1fr\}/);
-  assert.match(mobile, /\.v4-m310-trip-stop-remove\{grid-column:1;justify-self:start\}/);
+  assert.match(mobile, /\.v4-m310-editor-fields\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)\}/);
+  assert.match(mobile, /\.v4-m310-trip-stop-editor-row\{grid-template-columns:minmax\(0,1fr\) 104px\}/);
+  assert.match(mobile, /\.v4-m310-trip-stop-remove\{grid-column:1\/-1;justify-self:end\}/);
+  assert.match(mobile, /\.v4-m310-trip-default-stop\{grid-template-columns:minmax\(112px,\.45fr\) minmax\(0,1fr\)\}/);
+  assert.doesNotMatch(mobile, /(?:editor-fields|trip-stop-editor-row|trip-default-stop)\{grid-template-columns:1fr/);
+
+  assert.match(desktop, /min-width:0;max-width:100%;contain:inline-size/);
+  assert.match(desktop, /box-sizing:border-box;width:100%;min-width:0;max-width:100%;inline-size:100%;min-inline-size:0;max-inline-size:100%/);
+  assert.match(desktop, /input:is\(\[type="date"\],\[type="time"\],\[type="datetime-local"\]\)[^}]+overflow:hidden/);
+  assert.match(narrow, /\.v4-m310-editor-fields,\.v4-m310-trip-stop-editor-row,\.v4-m310-trip-default-stop\{grid-template-columns:1fr\}/);
 });
 
 test("Polish 4 keeps guest identity fields hidden in person mode", () => {
