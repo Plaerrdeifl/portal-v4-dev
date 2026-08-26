@@ -81,3 +81,5 @@ jobs:
           git add js/modules/fanbuses.js js/fanbus-registration.js js/p800-r2-fanbus-ux.js js/pages.js index.html fanbus-anmeldung.html tests/core_contract.test.mjs tests/p800_r2_fanbus_polish4.test.mjs tests/p800_r2_live_acceptance_fixes.test.mjs tests/p800_r2_fanbus_final_direct_fix.test.mjs
           git commit -m "P800-R2: finalize direct Fanbus UX fixes"
           git push origin HEAD:ux/p800-r2-polish4-final-direct-fix-v2
+
+# trigger after workflow exists on branch
