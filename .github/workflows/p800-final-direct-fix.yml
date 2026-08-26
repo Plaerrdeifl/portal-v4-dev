@@ -1,0 +1,264 @@
+name: P800 final Fanbus direct fix
+
+on:
+  push:
+    branches:
+      - ux/p800-r2-polish4-final-direct-fix
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ux/p800-r2-polish4-final-direct-fix
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24.18.0'
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Apply deterministic Fanbus fix
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly 1 match, got {count}")
+              return text.replace(old, new, 1)
+
+          fanbus_path = Path('js/modules/fanbuses.js')
+          s = fanbus_path.read_text()
+
+          old = '''function formatBerlinTime(value) {
+            const localValue = toBerlinTimeInputValue(value);
+            return localValue ? `${localValue} Uhr` : "Zeit noch offen";
+          }
+          '''
+          new = old + '''
+          function formatBoardingStopTime(value) {
+            return toBerlinTimeInputValue(value) || "Zeit offen";
+          }
+
+          function boardingStopDisplay(stop, fallback = "Zustieg") {
+            const label = String(stop?.label || fallback).trim() || fallback;
+            return stop?.departureAt
+              ? `${formatBoardingStopTime(stop.departureAt)} · ${label}`
+              : label;
+          }
+          '''
+          s = replace_once(s, old, new, 'boarding-stop helper')
+
+          old = '''      `${escapeHtml(stop.label || "Zustieg")}${stop.departureAt ? ` · ${escapeHtml(formatBerlinTime(stop.departureAt))}` : ""}`'''
+          new = '''      escapeHtml(boardingStopDisplay(stop))'''
+          s = replace_once(s, old, new, 'trip detail stop display')
+
+          old = '''          ${escapeHtml(
+            person.boardingStopLabel || "Kein Zustiegsort"
+          )}
+          ${person.departureAt
+            ? ` · ${escapeHtml(
+                formatBerlinTime(person.departureAt)
+              )}`
+            : ""
+          }'''
+          new = '''          ${person.departureAt
+            ? `${escapeHtml(formatBoardingStopTime(person.departureAt))} · ${escapeHtml(person.boardingStopLabel || "Kein Zustiegsort")}`
+            : escapeHtml(person.boardingStopLabel || "Kein Zustiegsort")
+          }'''
+          s = replace_once(s, old, new, 'operation stop display')
+
+          old = '''        <div class="v4-compact-record-copy v4-m325-record-copy"><strong>${escapeHtml(stop.label)}</strong>
+        <small>${escapeHtml(formatBerlinTime(stop.departureAt))} · ${stop.isActive ? "Aktiv" : "Inaktiv"}${stop.tripNote ? ` · ${escapeHtml(stop.tripNote)}` : ""}</small></div>'''
+          new = '''        <div class="v4-compact-record-copy v4-m325-record-copy"><strong>${escapeHtml(boardingStopDisplay(stop))}</strong>
+        <small>${stop.isActive ? "Aktiv" : "Inaktiv"}${stop.tripNote ? ` · ${escapeHtml(stop.tripNote)}` : ""}</small></div>'''
+          s = replace_once(s, old, new, 'trip stop card')
+
+          old = '''<span>${escapeHtml(stop.label)}</span></label>`).join("")}</div>'''
+          new = '''<span>${escapeHtml(boardingStopDisplay(stop))}</span></label>`).join("")}</div>'''
+          s = replace_once(s, old, new, 'bus stop assignment display')
+
+          old = '''          <label class="v4-field-half">Zustiegsort<select name="boardingStopId" required><option value="">Bitte wählen</option>${options}</select></label>
+          <label class="v4-field-half">Abfahrtszeit<input name="departureTime" type="time" value="${escapeAttr(defaultTripStopTime(trip))}" required></label>'''
+          new = '''          <label class="v4-field-half">Uhrzeit<input name="departureTime" type="time" value="${escapeAttr(defaultTripStopTime(trip))}" required></label>
+          <label class="v4-field-half">Zustiegsort<select name="boardingStopId" required><option value="">Bitte wählen</option>${options}</select></label>'''
+          s = replace_once(s, old, new, 'boarding stop create order')
+
+          start = s.index('function tripStopEditorRow(')
+          end = s.index('\nfunction tripForm(', start)
+          section = s[start:end]
+          pattern = re.compile(
+              r'(    <label>Zustiegsort\n      <select data-m310-trip-stop-master required>.*?\n    </label>)\n'
+              r'(    <label>Uhrzeit\n      <input data-m310-trip-stop-time[^\n]*>\n    </label>)',
+              re.S
+          )
+          section2, count = pattern.subn(r'\2\n\1', section, count=1)
+          if count != 1:
+              raise SystemExit(f'trip stop editor order: expected 1 match, got {count}')
+          s = s[:start] + section2 + s[end:]
+
+          old = '''<span>${escapeHtml(stop.label)} · ${escapeHtml(formatBerlinTime(stop.departureAt))}</span>'''
+          new = '''<span>${escapeHtml(boardingStopDisplay(stop))}</span>'''
+          s = replace_once(s, old, new, 'bus stop dialog display')
+
+          old = '''>${escapeHtml(`${stop.label} · ${formatBerlinTime(stop.departureAt)}`)}</option>'''
+          new = '''>${escapeHtml(boardingStopDisplay(stop))}</option>'''
+          s = replace_once(s, old, new, 'manual registration stop display')
+
+          old = '''  button.setAttribute("aria-label", person
+    ? `${manualPersonName(person)} ausgewählt. Person ändern`
+    : "Person auswählen");
+}'''
+          new = '''  button.setAttribute("aria-label", person
+    ? `${manualPersonName(person)} ausgewählt. Person ändern`
+    : "Person auswählen");
+  syncManualRegistrationMode(dialog);
+}'''
+          s = replace_once(s, old, new, 'sync after person selection')
+
+          old = '''  const personField = dialog.querySelector("[data-m310-manual-person]");
+  const personInput = form?.elements.namedItem("personKey");
+  const personButton = dialog.querySelector("[data-m310-open-person-picker]");
+
+  if (personField) personField.hidden = isGuest;'''
+          new = '''  const modeField = dialog.querySelector(".v4-m310-manual-mode");
+  const personField = dialog.querySelector("[data-m310-manual-person]");
+  const personInput = form?.elements.namedItem("personKey");
+  const personButton = dialog.querySelector("[data-m310-open-person-picker]");
+
+  if (modeField) modeField.hidden = !isGuest && Boolean(personInput?.value);
+  if (personField) personField.hidden = isGuest;'''
+          s = replace_once(s, old, new, 'manual mode visibility')
+
+          fanbus_path.write_text(s)
+
+          public_path = Path('js/fanbus-registration.js')
+          public = public_path.read_text()
+          old = '''>${escapeHtml(`${stop.label} · ${formatBerlinTime(stop.departureAt)}`)}</option>'''
+          new = '''>${escapeHtml(`${formatBerlinTime(stop.departureAt)} · ${stop.label}`)}</option>'''
+          public = replace_once(public, old, new, 'public boarding stop order')
+          public_path.write_text(public)
+
+          pages_path = Path('js/pages.js')
+          pages = pages_path.read_text()
+          pages = replace_once(
+              pages,
+              'if (key === "fanbuses") return feature("./modules/fanbuses.js", "hydrateFanbuses", context);',
+              'if (key === "fanbuses") return feature("./modules/fanbuses.js?v=20260826-p800-r2-final-direct-fix", "hydrateFanbuses", context);',
+              'fanbuses module cache bust'
+          )
+          pages_path.write_text(pages)
+
+          index_path = Path('index.html')
+          index = index_path.read_text()
+          index = replace_once(
+              index,
+              './js/p800-r2-fanbus-ux.js?v=20260825-p800-r2-fanbus-ux1',
+              './js/p800-r2-fanbus-ux.js?v=20260826-p800-r2-final-direct-fix',
+              'fanbus UX cache bust'
+          )
+          index_path.write_text(index)
+
+          public_html_path = Path('fanbus-anmeldung.html')
+          public_html = public_html_path.read_text()
+          public_html = replace_once(
+              public_html,
+              '<script type="module" src="./js/fanbus-registration.js"></script>',
+              '<script type="module" src="./js/fanbus-registration.js?v=20260826-p800-r2-final-direct-fix"></script>',
+              'public registration cache bust'
+          )
+          public_html_path.write_text(public_html)
+
+          core_path = Path('tests/core_contract.test.mjs')
+          core = core_path.read_text()
+          old = '''    "20260824222500_m020_access_request_badge_actionability_hotfix.sql"\n  ]);'''
+          new = '''    "20260824222500_m020_access_request_badge_actionability_hotfix.sql",\n    "20260826193856_p800_r2_fanbus_available_away_events_polish4.sql"\n  ]);'''
+          core = replace_once(core, old, new, 'core migration inventory')
+          core_path.write_text(core)
+
+          test_path = Path('tests/p800_r2_fanbus_final_direct_fix.test.mjs')
+          test_path.write_text(r'''import assert from "node:assert/strict";
+          import { readFile } from "node:fs/promises";
+          import { join, resolve } from "node:path";
+          import test from "node:test";
+
+          const root = resolve(import.meta.dirname, "..");
+          const read = path => readFile(join(root, path), "utf8");
+          const [fanbuses, publicRegistration, pages, index, publicHtml] = await Promise.all([
+            read("js/modules/fanbuses.js"),
+            read("js/fanbus-registration.js"),
+            read("js/pages.js"),
+            read("index.html"),
+            read("fanbus-anmeldung.html")
+          ]);
+
+          function section(source, start, end) {
+            const from = source.indexOf(start);
+            const to = source.indexOf(end, from + start.length);
+            assert.ok(from >= 0 && to > from, `missing section: ${start}`);
+            return source.slice(from, to);
+          }
+
+          test("manual member selection hides the capture-mode field in source logic", () => {
+            const setPerson = section(fanbuses, "function setManualRegistrationPerson", "function renderManualPersonPicker");
+            const sync = section(fanbuses, "function syncManualRegistrationMode", "function bindManualConsentValidation");
+            assert.match(setPerson, /syncManualRegistrationMode\(dialog\)/);
+            assert.match(sync, /modeField\.hidden = !isGuest && Boolean\(personInput\?\.value\)/);
+          });
+
+          test("boarding stops render time first without Uhr in the internal Fanbus UI", () => {
+            assert.match(fanbuses, /function formatBoardingStopTime\(value\)/);
+            assert.match(fanbuses, /return toBerlinTimeInputValue\(value\) \|\| "Zeit offen"/);
+            assert.match(fanbuses, /function boardingStopDisplay\(stop, fallback = "Zustieg"\)/);
+            assert.match(fanbuses, /`\$\{formatBoardingStopTime\(stop\.departureAt\)\} · \$\{label\}`/);
+            const row = section(fanbuses, "function tripStopEditorRow", "function tripForm");
+            assert.ok(row.indexOf("<label>Uhrzeit") < row.indexOf("<label>Zustiegsort"));
+            const manual = section(fanbuses, "function manualRegistrationForm", "function syncManualRegistrationMode");
+            assert.match(manual, /escapeHtml\(boardingStopDisplay\(stop\)\)/);
+          });
+
+          test("public boarding-stop options use time before place", () => {
+            const options = section(publicRegistration, "function boardingStopOptions", "function companionValues");
+            assert.match(options, /`\$\{formatBerlinTime\(stop\.departureAt\)\} · \$\{stop\.label\}`/);
+          });
+
+          test("final Fanbus assets are cache-busted", () => {
+            assert.match(pages, /fanbuses\.js\?v=20260826-p800-r2-final-direct-fix/);
+            assert.match(index, /p800-r2-fanbus-ux\.js\?v=20260826-p800-r2-final-direct-fix/);
+            assert.match(publicHtml, /fanbus-registration\.js\?v=20260826-p800-r2-final-direct-fix/);
+          });
+          '''.replace('          ', ''))
+          PY
+
+      - run: npm ci
+      - name: Targeted Fanbus tests
+        run: node --test tests/p800_r2_fanbus_polish4.test.mjs tests/p800_r2_live_acceptance_fixes.test.mjs tests/p800_r2_fanbus_final_direct_fix.test.mjs
+      - name: Full test suite
+        run: npm test
+      - name: Static checks
+        run: npm run check:static
+      - name: JavaScript syntax
+        run: node --check js/modules/fanbuses.js && node --check js/fanbus-registration.js && node --check js/pages.js && node --check js/p800-r2-fanbus-ux.js
+      - name: Diff check
+        run: git diff --check
+
+      - name: Commit final fix and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "HV9019"
+          git config user.email "57114727+HV9019@users.noreply.github.com"
+          git rm .github/workflows/p800-final-direct-fix.yml
+          git add js/modules/fanbuses.js js/fanbus-registration.js js/pages.js index.html fanbus-anmeldung.html tests/core_contract.test.mjs tests/p800_r2_fanbus_final_direct_fix.test.mjs
+          git commit -m "P800-R2: finalize direct Fanbus UX fixes"
+          git push origin HEAD:ux/p800-r2-polish4-final-direct-fix
