@@ -104,3 +104,13 @@ test("Polish 3 mobile editor keeps two-column layouts when they fit and stacks o
   assert.match(ux, /@media \(max-width:350px\)\{[\s\S]*\.v4-m310-editor-fields,\.v4-m310-trip-stop-editor-row,\.v4-m310-trip-default-stop\{grid-template-columns:1fr\}/);
   assert.doesNotMatch(ux, /MutationObserver/);
 });
+
+test("Polish 3 keeps away-only filtering, manual groups and automatic assignment outside this hotfix", () => {
+  const create = section(fanbuses, "async function openTripCreate", "function defaultRegistrationClosesInput");
+  const manual = section(fanbuses, "async function openManualRegistration", "function showRegistrationsDialog");
+
+  assert.doesNotMatch(create, /homeAway|home_away|\bAWAY\b/);
+  assert.match(manual, /fanbus_registration_create_manual/);
+  assert.doesNotMatch(manual, /companions|\bCOMPANION\b/);
+  assert.doesNotMatch(fanbuses, /fanbus_(?:auto|automatic).*assign/i);
+});
