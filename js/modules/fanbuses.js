@@ -1745,7 +1745,7 @@ function tripStopEditorRow(trip, stop, masterStops, index, isNew = false) {
     <label>Uhrzeit
       <input data-m310-trip-stop-time type="time" step="60" required value="${escapeAttr(time)}">
     </label>
-    <button class="button small ghost v4-m310-trip-stop-remove" type="button" data-m310-trip-stop-remove>${isNew ? "Entfernen" : "Entfernen"}</button>
+    <button class="button small ghost v4-m310-trip-stop-remove" type="button" data-m310-trip-stop-remove>Entfernen</button>
   </div>`;
 }
 
@@ -1998,7 +1998,6 @@ function registrationIdentityBadges(registration) {
 function registrationCard(registration, buses = [], readOnly = false) {
   const isActive = registration.status === "ACTIVE";
   const bookingRole = registration.bookingRole === "COMPANION" ? "Begleiter" : "Hauptperson";
-  const occupancy = bus => Number(bus.occupancy ?? bus.occupied ?? 0);
   const assignedBus = buses.find(bus => bus.id === registration.busId);
   const preferenceMismatch = assignedBus
     && ["RUHIG", "PARTY"].includes(registration.busPreference)
@@ -2011,8 +2010,9 @@ function registrationCard(registration, buses = [], readOnly = false) {
     ? ""
     : `${bookingRole} · ${sourceText(registration.source)} · `;
 
-  return `<article class="v4-m310-registration-record"
-    data-m320-registration-record="${escapeAttr(registration.id)}">
+  return `<article class="v4-m310-registration-record${canAct ? " v4-interactive-card" : ""}"
+    data-m320-registration-record="${escapeAttr(registration.id)}"
+    ${canAct ? `data-m320-open-registration="${escapeAttr(registration.id)}" role="button" tabindex="0" aria-label="${escapeAttr(`${registration.firstName} ${registration.lastName} verwalten`)}"` : ""}>
     <div class="v4-m310-registration-person">
       <span class="v4-m325-person-title"><strong>${escapeHtml(`${registration.firstName} ${registration.lastName}`)}</strong>${registrationIdentityBadges(registration)}</span>
       <span class="badge ${registration.status === "ACTIVE" ? "success" : "neutral"}">${escapeHtml(registrationStatusText(registration.status))}</span>
@@ -2021,15 +2021,43 @@ function registrationCard(registration, buses = [], readOnly = false) {
     ${preferenceMismatch ? `<small class="notice warning">Buswunsch weicht von der Buskategorie ${escapeHtml(busCategoryLabel(assignedBus.category))} ab.</small>` : ""}
     <div class="v4-m310-registration-footer">
       <small>Angemeldet ${escapeHtml(formatBerlinDateTime(registration.registeredAt))}</small>
-      ${isActive ? readOnly ? `<small>Bus: ${escapeHtml(assignedBus?.label || "Nicht zugeordnet")}</small>` : `<select aria-label="Buszuordnung" data-m320-assignment="${escapeAttr(registration.id)}"><option value="">Nicht zugeordnet</option>${buses.filter(bus => bus.isActive).map(bus => `<option value="${escapeAttr(bus.id)}"${bus.id === registration.busId ? " selected" : ""}>${escapeHtml(`${bus.label} · ${occupancy(bus)}/${bus.capacity}`)}</option>`).join("")}</select>` : ""}
-      ${registration.status === "WAITLISTED" ? `<small>Wartelistenposition ${escapeHtml(registration.waitlistPosition || "–")}</small>${!readOnly && Number(registration.waitlistPosition) === 1 ? `<button class="button small primary" type="button" data-m320-promote="${escapeAttr(registration.id)}" data-revision="${escapeAttr(registration.revision)}">Promotion bestätigen</button>` : ""}` : ""}
+      ${isActive ? `<small>Bus: ${escapeHtml(assignedBus?.label || "Nicht zugeordnet")}</small>` : ""}
+      ${registration.status === "WAITLISTED" ? `<small>Wartelistenposition ${escapeHtml(registration.waitlistPosition || "–")}</small>` : ""}
       ${cancelledAt}
-      ${canAct ? `<span class="v4-m310-registration-actions">
-        <button class="button small secondary" type="button" data-m320-edit-registration="${escapeAttr(registration.id)}">Bearbeiten</button>
-        <button class="button small ghost" type="button" data-m320-more-registration="${escapeAttr(registration.id)}">Weitere Aktionen</button>
-      </span>` : ""}
     </div>
+    ${canAct ? '<span class="v4-row-chevron v4-m310-registration-chevron" aria-hidden="true">›</span>' : ""}
   </article>`;
+}
+
+function registrationDetailMarkup(registration, buses = []) {
+  const isActive = registration.status === "ACTIVE";
+  const assignedBus = buses.find(bus => bus.id === registration.busId);
+  const bookingRole = registration.bookingRole === "COMPANION" ? "Begleiter" : "Hauptperson";
+  const occupancy = bus => Number(bus.occupancy ?? bus.occupied ?? 0);
+
+  return `<div class="v4-m310-registration-detail">
+    <div class="v4-detail-grid">
+      <div><span>Status</span><strong>${escapeHtml(registrationStatusText(registration.status))}</strong></div>
+      <div><span>Person</span><strong>${escapeHtml(`${bookingRole} · ${sourceText(registration.source)}`)}</strong></div>
+      <div><span>Buswunsch</span><strong>${escapeHtml(busPreferenceText(registration.busPreference))}</strong></div>
+      <div><span>Angemeldet</span><strong>${escapeHtml(formatBerlinDateTime(registration.registeredAt))}</strong></div>
+      ${registration.status === "WAITLISTED" ? `<div class="full"><span>Warteliste</span><strong>Position ${escapeHtml(registration.waitlistPosition || "–")}</strong></div>` : ""}
+    </div>
+    ${isActive ? `<label class="v4-m310-registration-assignment">Buszuordnung
+      <select data-m320-detail-assignment="${escapeAttr(registration.id)}">
+        <option value="">Nicht zugeordnet</option>
+        ${buses.filter(bus => bus.isActive).map(bus => `<option value="${escapeAttr(bus.id)}"${bus.id === registration.busId ? " selected" : ""}>${escapeHtml(`${bus.label} · ${occupancy(bus)}/${bus.capacity}`)}</option>`).join("")}
+      </select>
+      <small>Aktuell: ${escapeHtml(assignedBus?.label || "Nicht zugeordnet")}</small>
+    </label>` : ""}
+    <div class="v4-card-action-menu v4-m310-registration-detail-actions">
+      <button class="button secondary" type="button" data-m320-detail-edit>Bearbeiten</button>
+      <button class="button secondary" type="button" data-m320-detail-more>Weitere Aktionen</button>
+      ${registration.status === "WAITLISTED" && Number(registration.waitlistPosition) === 1
+        ? `<button class="button primary" type="button" data-m320-detail-promote data-revision="${escapeAttr(registration.revision)}">Promotion bestätigen</button>`
+        : ""}
+    </div>
+  </div>`;
 }
 
 async function cancelRegistrationFromActions(trip, registration, registrationsDialog, actionsDialog) {
@@ -2192,7 +2220,12 @@ async function loadRegistrationIdentitySuggestion(
   }
 }
 
-function openRegistrationActions(trip, registration, registrationsDialog) {
+function openRegistrationActions(
+  trip,
+  registration,
+  registrationsDialog,
+  { replaceCurrent = false } = {}
+) {
   const cancelled = registration.status === "CANCELLED";
   const tripCancelled = trip.status === "CANCELLED";
   const portalPrimaryIdentity = registration.source === "PORTAL"
@@ -2208,6 +2241,7 @@ function openRegistrationActions(trip, registration, registrationsDialog) {
   const dialog = openDialog({
     title: "Weitere Aktionen",
     kicker: `${registration.firstName} ${registration.lastName} · Teilnehmerverwaltung`,
+    replaceCurrent,
     body: tripCancelled
       ? `<p class="notice error">Die Fahrt ist abgesagt. Teilnehmerdaten bleiben historisch lesbar und können nicht mehr geändert werden.</p>`
       : cancelled
@@ -2617,13 +2651,21 @@ function updateRegistrationFilterSummary(form) {
   summary.textContent = active ? `Filter · ${active}` : "Filter";
 }
 
-async function openRegistrationEdit(trip, registration, registrationsDialog) {
-  const parentContextId = registrationsDialog?.dataset.v4DialogContext;
+async function openRegistrationEdit(
+  trip,
+  registration,
+  registrationsDialog,
+  {
+    replaceCurrent = false,
+    parentContextId = registrationsDialog?.dataset.v4DialogContext
+  } = {}
+) {
   const linkedIdentity = Boolean(registration.memberId || registration.portalUserId);
   const readonly = linkedIdentity ? " disabled" : "";
   const dialog = openDialog({
     title: "Teilnehmer bearbeiten",
     kicker: trip.displayTitle || "Fanbusfahrt",
+    replaceCurrent,
     body: loading("Teilnehmer wird geladen …")
   });
   const loadingContextId = dialog.dataset.v4DialogContext;
@@ -2682,38 +2724,88 @@ async function openRegistrationEdit(trip, registration, registrationsDialog) {
   });
 }
 
-function bindRegistrationActions(body, data, trip, dialog) {
-  const registrations = Array.isArray(data?.registrations) ? data.registrations : [];
-
-  body.querySelectorAll("[data-m320-assignment]").forEach(select => {
-    select.onchange = async () => {
-      try {
-        const next = await call("fanbus_bus_assignment_set", {
-          participantId: select.dataset.m320Assignment,
-          busId: select.value || null
-        });
-        renderRegistrationsDialog(dialog, trip, next);
-      } catch (error) {
-        showToast(error?.message || "Buszuordnung konnte nicht gespeichert werden.", "error", 5200);
-      }
-    };
+function openRegistrationDetail(trip, registration, data, registrationsDialog) {
+  const buses = Array.isArray(data?.buses) ? data.buses : [];
+  const parentContextId = registrationsDialog?.dataset.v4DialogContext;
+  const dialog = openDialog({
+    title: `${registration.firstName} ${registration.lastName}`,
+    kicker: `${trip.displayTitle || "Fanbusfahrt"} · Teilnehmerverwaltung`,
+    body: registrationDetailMarkup(registration, buses)
   });
 
-  body.querySelectorAll("[data-m320-edit-registration]").forEach(button => {
-    button.addEventListener("click", () => {
-      const registration = registrations.find(
-        item => item.id === button.dataset.m320EditRegistration
-      );
-      if (registration) void openRegistrationEdit(trip, registration, dialog);
+  dialog.querySelector("[data-m320-detail-edit]")?.addEventListener("click", () => {
+    void openRegistrationEdit(trip, registration, registrationsDialog, {
+      replaceCurrent: true,
+      parentContextId
     });
   });
 
-  body.querySelectorAll("[data-m320-more-registration]").forEach(button => {
-    button.addEventListener("click", () => {
+  dialog.querySelector("[data-m320-detail-more]")?.addEventListener("click", () => {
+    openRegistrationActions(trip, registration, registrationsDialog, {
+      replaceCurrent: true
+    });
+  });
+
+  const assignment = dialog.querySelector("[data-m320-detail-assignment]");
+  if (assignment) {
+    assignment.addEventListener("change", async () => {
+      assignment.disabled = true;
+      try {
+        const next = await call("fanbus_bus_assignment_set", {
+          participantId: registration.id,
+          busId: assignment.value || null
+        });
+        dialog.close();
+        if (registrationsDialog?.open
+            && registrationsDialog.dataset.v4DialogContext === parentContextId) {
+          renderRegistrationsDialog(registrationsDialog, trip, next);
+        }
+      } catch (error) {
+        assignment.disabled = false;
+        showToast(error?.message || "Buszuordnung konnte nicht gespeichert werden.", "error", 5200);
+      }
+    });
+  }
+
+  dialog.querySelector("[data-m320-detail-promote]")?.addEventListener("click", async event => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      const next = await call("fanbus_waitlist_promote", {
+        id: registration.id,
+        expectedRevision: Number(button.dataset.revision)
+      });
+      snapshot = await call("fanbus_trips_list");
+      render();
+      dialog.close();
+      if (registrationsDialog?.open
+          && registrationsDialog.dataset.v4DialogContext === parentContextId) {
+        renderRegistrationsDialog(registrationsDialog, trip, next);
+      }
+    } catch (error) {
+      button.disabled = false;
+      showToast(error?.message || "Promotion ist derzeit nicht möglich.", "error", 5200);
+    }
+  });
+}
+
+function bindRegistrationActions(body, data, trip, dialog) {
+  const registrations = Array.isArray(data?.registrations) ? data.registrations : [];
+
+  body.querySelectorAll("[data-m320-open-registration]").forEach(card => {
+    const open = () => {
       const registration = registrations.find(
-        item => item.id === button.dataset.m320MoreRegistration
+        item => item.id === card.dataset.m320OpenRegistration
       );
-      if (registration) openRegistrationActions(trip, registration, dialog);
+      if (registration) openRegistrationDetail(trip, registration, data, dialog);
+    };
+
+    card.addEventListener("click", open);
+    card.addEventListener("keydown", event => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      if (event.repeat) return;
+      open();
     });
   });
 }
@@ -2745,22 +2837,6 @@ function renderRegistrationsDialog(dialog, trip, data) {
   updateRegistrationFilterSummary(filters);
 
   bindRegistrationActions(body, data, trip, dialog);
-
-  body.querySelectorAll("[data-m320-promote]").forEach(button => {
-    button.addEventListener("click", async () => {
-      try {
-        const next = await call("fanbus_waitlist_promote", {
-          id: button.dataset.m320Promote,
-          expectedRevision: Number(button.dataset.revision)
-        });
-        snapshot = await call("fanbus_trips_list");
-        render();
-        renderRegistrationsDialog(dialog, trip, next);
-      } catch (error) {
-        showToast(error?.message || "Promotion ist derzeit nicht möglich.", "error", 5200);
-      }
-    });
-  });
 
   body.querySelector("[data-m310-export-registrations]")
     ?.addEventListener("click", () => {
@@ -2882,22 +2958,141 @@ function openBusManager(trip, data) {
   });
 }
 
-function manualPersonLabel(person) {
-  const type = person.personType === "MEMBER" ? "Mitglied" : "Person aus dem Portal";
-  const email = person.email ? ` · ${person.email}` : "";
-  return `${person.lastName || ""}, ${person.firstName || ""} · ${type}${email}`;
+function manualPersonKey(person) {
+  const id = person?.personType === "MEMBER" ? person.memberId : person?.portalUserId;
+  return id ? `${person.personType}:${id}` : "";
 }
 
-function manualRegistrationForm(people, tripStops = [], trip = {}) {
+function manualPersonName(person) {
+  return `${person?.firstName || ""} ${person?.lastName || ""}`.trim() || "Unbenannte Person";
+}
+
+function manualPersonTypeLabel(person) {
+  return person?.personType === "MEMBER" ? "Mitglied" : "Portaluser";
+}
+
+function deduplicateManualPeople(people) {
+  const linkedPortalUsers = new Set(
+    people
+      .filter(person => person?.personType === "MEMBER" && person.portalUserId)
+      .map(person => person.portalUserId)
+  );
+  const seen = new Set();
+
+  return people.filter(person => {
+    if (person?.personType === "PORTAL_USER"
+        && linkedPortalUsers.has(person.portalUserId)) return false;
+    const key = manualPersonKey(person);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function manualPersonSelectionContent(person) {
+  if (!person) {
+    return `<span class="v4-m310-person-selection-copy">
+      <small>Person</small><strong>Person auswählen</strong>
+    </span><span class="v4-row-chevron" aria-hidden="true">›</span>`;
+  }
+  return `<span class="v4-m310-person-selection-copy">
+    <small>Person</small><strong>${escapeHtml(manualPersonName(person))}</strong>
+  </span><span class="v4-person-badge">${escapeHtml(manualPersonTypeLabel(person))}</span>`;
+}
+
+function setManualRegistrationPerson(dialog, person) {
+  const form = dialog.querySelector("#m310ManualRegistrationForm");
+  const input = form?.elements.namedItem("personKey");
+  const button = dialog.querySelector("[data-m310-open-person-picker]");
+  if (!input || !button) return;
+  input.value = manualPersonKey(person);
+  button.innerHTML = manualPersonSelectionContent(person);
+  button.classList.toggle("is-selected", Boolean(person));
+  button.setAttribute("aria-label", person
+    ? `${manualPersonName(person)} ausgewählt. Person ändern`
+    : "Person auswählen");
+}
+
+function renderManualPersonPicker(dialog, people) {
+  const search = dialog.querySelector("[data-m310-person-search]");
+  const results = dialog.querySelector("[data-m310-person-results]");
+  const status = dialog.querySelector("[data-m310-person-result-status]");
+  const activeFilter = dialog.querySelector("[data-m310-person-filter][aria-pressed='true']")
+    ?.dataset.m310PersonFilter || "ALL";
+  const query = String(search?.value || "").trim().toLocaleLowerCase("de-DE");
+  const matches = people.filter(person => {
+    const matchesType = activeFilter === "ALL" || person.personType === activeFilter;
+    return matchesType
+      && (!query || manualPersonName(person).toLocaleLowerCase("de-DE").includes(query));
+  });
+
+  if (status) {
+    status.textContent = matches.length === 1 ? "1 Person" : `${matches.length} Personen`;
+  }
+  if (!results) return;
+  results.innerHTML = matches.length
+    ? matches.map(person => `<button class="button secondary v4-m310-person-picker-result" type="button" data-m310-person-result="${escapeAttr(manualPersonKey(person))}">
+        <span><strong>${escapeHtml(manualPersonName(person))}</strong></span>
+        <span class="v4-person-badge">${escapeHtml(manualPersonTypeLabel(person))}</span>
+      </button>`).join("")
+    : '<p class="subtle v4-m310-person-picker-empty">Keine passende Person gefunden.</p>';
+}
+
+function openManualPersonPicker(parentDialog, people) {
+  const selectedKey = parentDialog.querySelector('[name="personKey"]')?.value || "";
+  const picker = openDialog({
+    title: "Person auswählen",
+    kicker: "Teilnehmer hinzufügen",
+    body: `<div class="v4-m310-person-picker">
+      <label>Person suchen
+        <input type="search" placeholder="Person suchen …" autocomplete="off" data-m310-person-search>
+      </label>
+      <div class="v4-m310-person-picker-filters" role="group" aria-label="Personentyp filtern">
+        <button class="button small secondary is-active" type="button" data-m310-person-filter="ALL" aria-pressed="true">Alle</button>
+        <button class="button small secondary" type="button" data-m310-person-filter="MEMBER" aria-pressed="false">Mitglieder</button>
+        <button class="button small secondary" type="button" data-m310-person-filter="PORTAL_USER" aria-pressed="false">Portaluser</button>
+      </div>
+      <div class="v4-m310-person-picker-heading"><strong>Treffer</strong><small data-m310-person-result-status></small></div>
+      <div class="v4-m310-person-picker-results" data-m310-person-results></div>
+    </div>`
+  });
+
+  const renderResults = () => {
+    renderManualPersonPicker(picker, people);
+    picker.querySelectorAll("[data-m310-person-result]").forEach(button => {
+      if (button.dataset.m310PersonResult === selectedKey) {
+        button.classList.add("is-selected");
+      }
+      button.addEventListener("click", () => {
+        const person = people.find(item => manualPersonKey(item) === button.dataset.m310PersonResult);
+        if (!person) return;
+        picker.close();
+        setManualRegistrationPerson(parentDialog, person);
+      });
+    });
+  };
+
+  picker.querySelector("[data-m310-person-search]")
+    ?.addEventListener("input", renderResults);
+  picker.querySelectorAll("[data-m310-person-filter]").forEach(button => {
+    button.addEventListener("click", () => {
+      picker.querySelectorAll("[data-m310-person-filter]").forEach(filter => {
+        const selected = filter === button;
+        filter.classList.toggle("is-active", selected);
+        filter.setAttribute("aria-pressed", String(selected));
+      });
+      renderResults();
+    });
+  });
+  renderResults();
+  picker.querySelector("[data-m310-person-search]")?.focus();
+}
+
+function manualRegistrationForm(tripStops = [], trip = {}) {
   const activeTripStops = tripStops.filter(stop => stop.isActive);
   const defaultTripStop = activeTripStops.find(
     stop => stop.boardingStopId === trip.defaultBoardingStopId
   );
-  const personOptions = people.map(person => {
-    const id = person.personType === "MEMBER" ? person.memberId : person.portalUserId;
-    const value = `${person.personType}:${id}`;
-    return `<option value="${escapeAttr(value)}">${escapeHtml(manualPersonLabel(person))}</option>`;
-  }).join("");
 
   return `<form id="m310ManualRegistrationForm" class="form-grid v4-smart-form">
     <label class="v4-field-half">Art der Erfassung
@@ -2915,12 +3110,12 @@ function manualRegistrationForm(people, tripStops = [], trip = {}) {
     <label class="v4-field-full">Operativer Hinweis (optional)
       <textarea name="operationalNote" maxlength="240"></textarea>
     </label>
-    <label class="v4-field-full" data-m310-manual-person>Person
-      <select name="personKey" required>
-        <option value="">Person auswählen</option>
-        ${personOptions}
-      </select>
-    </label>
+    <div class="v4-field-full v4-m310-manual-person" data-m310-manual-person>
+      <input name="personKey" type="hidden">
+      <button class="button secondary v4-m310-person-selection" type="button" data-m310-open-person-picker aria-label="Person auswählen">
+        ${manualPersonSelectionContent(null)}
+      </button>
+    </div>
     <label class="v4-field-half" data-m310-manual-guest hidden>Vorname
       <input name="firstName" autocomplete="given-name" disabled>
     </label>
@@ -2930,7 +3125,7 @@ function manualRegistrationForm(people, tripStops = [], trip = {}) {
     <label class="v4-field-full" data-m310-manual-guest hidden>E-Mail (optional)
       <input name="email" type="email" autocomplete="email" disabled>
     </label>
-    <label class="v4-field-full v4-compact-check">
+    <label class="v4-field-full v4-compact-check v4-m310-manual-consent">
       <input name="consentConfirmed" type="checkbox" required>
       <span>Die Person hat die Teilnahmebedingungen akzeptiert und wurde auf die Datenschutzhinweise hingewiesen.</span>
     </label>
@@ -2941,12 +3136,11 @@ function syncManualRegistrationMode(dialog) {
   const form = dialog.querySelector("#m310ManualRegistrationForm");
   const isGuest = form?.elements.namedItem("mode")?.value === "GUEST";
   const personField = dialog.querySelector("[data-m310-manual-person]");
-  const personSelect = form?.elements.namedItem("personKey");
+  const personInput = form?.elements.namedItem("personKey");
 
   if (personField) personField.hidden = isGuest;
-  if (personSelect) {
-    personSelect.disabled = isGuest;
-    personSelect.required = !isGuest;
+  if (personInput) {
+    personInput.disabled = isGuest;
   }
 
   dialog.querySelectorAll("[data-m310-manual-guest]").forEach(field => {
@@ -2984,16 +3178,18 @@ async function openManualRegistration(trip, registrationsDialog) {
       call("fanbus_registration_people_list"),
       call("fanbus_trip_boarding_stops_list", { tripId: trip.id })
     ]);
-    const people = Array.isArray(lookup?.people) ? lookup.people : [];
+    const people = deduplicateManualPeople(
+      Array.isArray(lookup?.people) ? lookup.people : []
+    );
     const tripStops = Array.isArray(stopData?.stops) ? stopData.stops : [];
     if (!registrationsDialog?.open
         || registrationsDialog.dataset.v4DialogContext !== parentContextId) return;
     let manualAttempt = null;
     const dialog = openDialog({
-      title: "Mitfahrer hinzufügen",
+      title: "Teilnehmer hinzufügen",
       kicker: trip.displayTitle || "Fanbusfahrt",
-      body: manualRegistrationForm(people, tripStops, trip),
-      submitLabel: "Mitfahrer anmelden",
+      body: manualRegistrationForm(tripStops, trip),
+      submitLabel: "Teilnehmer anmelden",
       preserveParentOnSubmit: true,
       onSubmit: async values => {
         const payload = {
@@ -3009,10 +3205,7 @@ async function openManualRegistration(trip, registrationsDialog) {
         };
 
         if (values.mode === "PERSON") {
-          const person = people.find(item => {
-            const id = item.personType === "MEMBER" ? item.memberId : item.portalUserId;
-            return `${item.personType}:${id}` === values.personKey;
-          });
+          const person = people.find(item => manualPersonKey(item) === values.personKey);
           if (!person) throw new Error("Bitte wähle eine vorhandene Person aus.");
           payload.personType = person.personType;
           if (person.personType === "MEMBER") payload.memberId = person.memberId;
@@ -3041,8 +3234,8 @@ async function openManualRegistration(trip, registrationsDialog) {
         render();
         showToast(
           result.outcome === "WAITLISTED"
-            ? "Mitfahrer wurde auf die Warteliste gesetzt."
-            : "Mitfahrer wurde angemeldet.",
+            ? "Teilnehmer wurde auf die Warteliste gesetzt."
+            : "Teilnehmer wurde angemeldet.",
           result.outcome === "WAITLISTED" ? "warning" : "success",
           3800
         );
@@ -3057,6 +3250,8 @@ async function openManualRegistration(trip, registrationsDialog) {
 
     dialog.querySelector('[name="mode"]')
       ?.addEventListener("change", () => syncManualRegistrationMode(dialog));
+    dialog.querySelector("[data-m310-open-person-picker]")
+      ?.addEventListener("click", () => openManualPersonPicker(dialog, people));
     syncManualRegistrationMode(dialog);
   } catch (error) {
     showToast(error?.message || "Die Personenauswahl konnte nicht geladen werden.", "error", 5200);

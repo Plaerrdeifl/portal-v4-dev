@@ -42,15 +42,21 @@ test("fanbus.manage independently retains occupancy bus and stop management", ()
   );
 });
 
-test("bus management stays bus-centered while participant actions remain in the participant list", () => {
+test("bus management stays bus-centered while participant actions live in the participant detail", () => {
   const markup = section("function occupancyMarkup", "async function occupancyData");
   assert.match(markup, /const occupancy = Number\(bus\.occupancy \?\? bus\.occupied \?\? 0\)/);
   assert.doesNotMatch(markup, /registrations|data-m310-manage-participants|Teilnehmer \(|Ohne Bus|Warteliste/);
 
-  const participantActions = section("function bindRegistrationActions", "function renderRegistrationsDialog");
-  assert.match(participantActions, /fanbus_bus_assignment_set/);
-  assert.match(participantActions, /data-m320-edit-registration/);
-  assert.match(participantActions, /data-m320-more-registration/);
+  const participantBindings = section("function bindRegistrationActions", "function renderRegistrationsDialog");
+  assert.match(participantBindings, /data-m320-open-registration/);
+  assert.match(participantBindings, /openRegistrationDetail/);
+  assert.doesNotMatch(participantBindings, /data-m320-edit-registration|data-m320-more-registration/);
+
+  assert.match(fanbuses, /function openRegistrationDetail/);
+  assert.match(fanbuses, /data-m320-detail-assignment/);
+  assert.match(fanbuses, /data-m320-detail-edit/);
+  assert.match(fanbuses, /data-m320-detail-more/);
+  assert.match(fanbuses, /fanbus_bus_assignment_set/);
 });
 
 test("general desktop and mobile trip lists expose no registration or capacity values", () => {
