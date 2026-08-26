@@ -51,7 +51,7 @@ test("public Fanbus registration distinguishes an already active booking", async
   assert.match(registration, /alreadyActive \|\| waitlisted \? "warning" : "success"/);
 });
 
-test("internal Fanbus UX is native and avoids portal-wide mutation scanning", async () => {
+test("internal Fanbus UX uses the searchable portal person picker and avoids portal-wide mutation scanning", async () => {
   const [ux, fanbuses] = await Promise.all([
     read("js/p800-r2-fanbus-ux.js"),
     read("js/modules/fanbuses.js")
@@ -63,8 +63,14 @@ test("internal Fanbus UX is native and avoids portal-wide mutation scanning", as
   assert.match(fanbuses, /Teilnehmer verwalten/);
   assert.match(fanbuses, /button small secondary[^>]*data-m310-export-registrations/);
   assert.match(fanbuses, /button small primary[^>]*data-m310-add-registration>Teilnehmer hinzufügen/);
-  assert.match(fanbuses, /personType === "MEMBER" \? "Mitglied" : "Person aus dem Portal"/);
-  assert.doesNotMatch(fanbuses, /v4-person-badge">Portaluser<\/span>/);
+  assert.match(fanbuses, /function manualPersonTypeLabel\(person\)[\s\S]*"Mitglied" : "Portaluser"/);
+  assert.match(fanbuses, /function deduplicateManualPeople\(people\)/);
+  assert.match(fanbuses, /data-m310-open-person-picker/);
+  assert.match(fanbuses, /placeholder="Person suchen …"/);
+  assert.match(fanbuses, /data-m310-person-filter="ALL"/);
+  assert.match(fanbuses, /data-m310-person-filter="MEMBER"/);
+  assert.match(fanbuses, /data-m310-person-filter="PORTAL_USER"/);
+  assert.doesNotMatch(fanbuses, /<select name="personKey"/);
   assert.doesNotMatch(ux, /MutationObserver|document\.documentElement|enhance\(document\)/);
 });
 
