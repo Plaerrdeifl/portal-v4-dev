@@ -45,12 +45,13 @@ test("bus deletion uses the existing deactivation contract and explains occupied
   assert.match(fanbuses, /allBuses\.filter\(bus => bus\.isActive !== false\)/);
 });
 
-test("participant overview omits email and exposes explicit edit and more actions", () => {
+test("participant overview omits email and opens the active record as one actionable card", () => {
   const card = section(fanbuses, "function registrationCard", "async function cancelRegistrationFromActions");
   assert.doesNotMatch(card, /registration\.email|type="email"|v4-m310-registration-email/);
-  assert.doesNotMatch(card, /role="button"|tabindex="0"|data-m320-open-registration/);
-  assert.match(card, /data-m320-edit-registration/);
-  assert.match(card, /data-m320-more-registration/);
+  assert.match(card, /data-m320-open-registration/);
+  assert.match(card, /role="button" tabindex="0"/);
+  assert.match(card, /v4-m310-registration-chevron/);
+  assert.doesNotMatch(card, /data-m320-edit-registration|data-m320-more-registration|data-m310-occupancy-assignment/);
   assert.match(card, /Buswunsch:/);
   assert.match(card, /busPreferenceText/);
 
@@ -59,13 +60,18 @@ test("participant overview omits email and exposes explicit edit and more action
   assert.match(edit, />Buswunsch<select/);
 });
 
-test("participant actions bind only explicit controls", () => {
+test("participant actions bind the whole card and route edit assignment and more actions through detail", () => {
   const bindings = section(fanbuses, "function bindRegistrationActions", "function renderRegistrationsDialog");
-  assert.match(bindings, /data-m320-edit-registration/);
-  assert.match(bindings, /openRegistrationEdit/);
-  assert.match(bindings, /data-m320-more-registration/);
-  assert.match(bindings, /openRegistrationActions/);
-  assert.doesNotMatch(bindings, /card\.addEventListener|data-m320-open-registration/);
+  assert.match(bindings, /data-m320-open-registration/);
+  assert.match(bindings, /openRegistrationDetail/);
+  assert.match(bindings, /event\.key !== "Enter" && event\.key !== " "/);
+  assert.doesNotMatch(bindings, /data-m320-edit-registration|data-m320-more-registration/);
+
+  assert.match(fanbuses, /function openRegistrationDetail/);
+  assert.match(fanbuses, /data-m320-detail-assignment/);
+  assert.match(fanbuses, /data-m320-detail-edit/);
+  assert.match(fanbuses, /data-m320-detail-more/);
+  assert.match(fanbuses, /fanbus_bus_assignment_set/);
 });
 
 test("shared dialog closes by X backdrop Escape and navigation and restores focus", () => {
