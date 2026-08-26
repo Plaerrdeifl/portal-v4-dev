@@ -79,8 +79,8 @@ test("Fanbus deadline and mobile editor use the final non-overlapping two-column
   assert.match(fanbusUx, /v4-m325-trip-registration-deadline>span\{[^}]*white-space:nowrap/);
   assert.match(fanbusUx, /\.v4-m310-editor-fields\{[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   const mobile = section(fanbusUx, "@media (max-width:620px)", "@media (max-width:390px)");
-  assert.match(mobile, /v4-m310-editor-fields\{grid-template-columns:1fr/);
-  assert.match(mobile, /v4-m310-trip-stop-editor-row\{grid-template-columns:1fr/);
+  assert.match(mobile, /v4-m310-editor-fields\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\);column-gap:8px/);
+  assert.match(mobile, /v4-m310-trip-stop-editor-row\{grid-template-columns:112px minmax\(0,1fr\)/);
   assert.match(mobile, /v4-m310-trip-stop-remove\{grid-column:1\/-1;justify-self:end/);
   assert.doesNotMatch(mobile, /(?:editor-fields|trip-stop-editor-row)\{grid-template-columns:1fr[^}]*grid-template-columns/);
   assert.match(fanbusUx, /v4-m310-editor-deadline,[^\n]*v4-m310-bus-preference-toggle\{grid-column:1\/-1\}/);

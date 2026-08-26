@@ -59,9 +59,9 @@ test("Polish 4 keeps the Fanbus editor compact, time-first and unclipped on mobi
 
   assert.match(desktop, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(desktop, /\.v4-m310-trip-stop-editor-row\{[^}]*grid-template-columns:104px minmax\(0,1fr\) auto/);
-  assert.match(mobile, /\.v4-m310-editor-fields\{grid-template-columns:1fr\}/);
-  assert.match(mobile, /\.v4-m310-trip-stop-editor-row\{grid-template-columns:1fr\}/);
-  assert.match(mobile, /\.v4-m310-trip-stop-remove\{grid-column:1;justify-self:end\}/);
+  assert.match(mobile, /\.v4-m310-editor-fields\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\);column-gap:8px\}/);
+  assert.match(mobile, /\.v4-m310-trip-stop-editor-row\{grid-template-columns:112px minmax\(0,1fr\)\}/);
+  assert.match(mobile, /\.v4-m310-trip-stop-remove\{grid-column:1\/-1;justify-self:end\}/);
   assert.match(mobile, /\.v4-m310-trip-default-stop\{grid-template-columns:minmax\(112px,\.45fr\) minmax\(0,1fr\)\}/);
   assert.doesNotMatch(mobile, /\.v4-m310-trip-default-stop\{grid-template-columns:1fr/);
 
