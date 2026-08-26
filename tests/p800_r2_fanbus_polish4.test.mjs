@@ -52,26 +52,29 @@ test("Polish 4 offers only future away games without an existing Fanbus trip", (
   assert.doesNotMatch(create, /(?:venue|displayTitle)[\s\S]{0,80}(?:includes|match|test|startsWith|endsWith)/);
 });
 
-test("Polish 4 keeps the Fanbus editor compact and bounded at the regular mobile breakpoint", () => {
+test("Polish 4 keeps the Fanbus editor compact, time-first and unclipped on mobile", () => {
   const desktop = section(ux, ".v4-m310-editor-fields", "@media (max-width:620px)");
   const mobile = section(ux, "@media (max-width:620px)", "@media (max-width:430px)");
   const narrow = ux.slice(ux.indexOf("@media (max-width:350px)"));
 
   assert.match(desktop, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
-  assert.match(desktop, /\.v4-m310-trip-stop-editor-row\{[^}]*grid-template-columns:minmax\(0,1fr\) 104px auto/);
+  assert.match(desktop, /\.v4-m310-trip-stop-editor-row\{[^}]*grid-template-columns:104px minmax\(0,1fr\) auto/);
+  assert.match(desktop, /label:has\(\[data-m310-trip-stop-time\]\)\{order:1\}/);
+  assert.match(desktop, /label:has\(\[data-m310-trip-stop-master\]\)\{order:2\}/);
   assert.match(mobile, /\.v4-m310-editor-fields\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)\}/);
-  assert.match(mobile, /\.v4-m310-trip-stop-editor-row\{grid-template-columns:minmax\(0,1fr\) 104px\}/);
+  assert.match(mobile, /\.v4-m310-trip-stop-editor-row\{grid-template-columns:104px minmax\(0,1fr\)\}/);
   assert.match(mobile, /\.v4-m310-trip-stop-remove\{grid-column:1\/-1;justify-self:end\}/);
   assert.match(mobile, /\.v4-m310-trip-default-stop\{grid-template-columns:minmax\(112px,\.45fr\) minmax\(0,1fr\)\}/);
   assert.doesNotMatch(mobile, /(?:editor-fields|trip-stop-editor-row|trip-default-stop)\{grid-template-columns:1fr/);
 
-  assert.match(desktop, /min-width:0;max-width:100%;contain:inline-size/);
-  assert.match(desktop, /box-sizing:border-box;width:100%;min-width:0;max-width:100%;inline-size:100%;min-inline-size:0;max-inline-size:100%/);
-  assert.match(desktop, /input:is\(\[type="date"\],\[type="time"\],\[type="datetime-local"\]\)[^}]+overflow:hidden/);
+  assert.match(desktop, /display:grid;gap:4px;width:100%;min-width:0;max-width:100%;font-weight:700/);
+  assert.match(desktop, /display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;inline-size:100%;min-inline-size:0;max-inline-size:100%/);
+  assert.doesNotMatch(desktop, /contain:inline-size/);
+  assert.doesNotMatch(desktop, /input:is\(\[type="date"\],\[type="time"\],\[type="datetime-local"\]\)[^}]+overflow:hidden/);
   assert.match(narrow, /\.v4-m310-editor-fields,\.v4-m310-trip-stop-editor-row,\.v4-m310-trip-default-stop\{grid-template-columns:1fr\}/);
 });
 
-test("Polish 4 keeps guest identity fields hidden in person mode", () => {
+test("Polish 4 keeps guest identity fields hidden and collapses mode after person selection", () => {
   const form = section(fanbuses, "function manualRegistrationForm", "function syncManualRegistrationMode");
   const sync = section(fanbuses, "function syncManualRegistrationMode", "function bindManualConsentValidation");
 
@@ -81,9 +84,22 @@ test("Polish 4 keeps guest identity fields hidden in person mode", () => {
   assert.match(sync, /field\.hidden = !isGuest/);
   assert.match(sync, /input\.disabled = !isGuest/);
   assert.match(sync, /input\.required = isGuest && input\.name !== "email"/);
+  assert.match(ux, /#m310ManualRegistrationForm:has\(\.v4-m310-person-selection\.is-selected\) \.v4-m310-manual-mode\{display:none!important\}/);
 
   const dialogLabel = css.indexOf(".v4-dialog label,");
   const hiddenLabel = css.indexOf(".v4-dialog label[hidden]", dialogLabel);
   assert.ok(dialogLabel >= 0 && hiddenLabel > dialogLabel);
   assert.match(cssRule(css, ".v4-dialog label[hidden]", dialogLabel), /display:none!important/);
+});
+
+test("Polish 4 normalizes boarding-stop labels to time first without Uhr", () => {
+  const normalizer = section(ux, "function timeFirstBoardingStopText", "function normalizeTripStopCard");
+  const apply = section(ux, "function normalizeBoardingStopLabels", "let normalizeQueued");
+
+  assert.match(normalizer, /Uhr\$\/u\.exec\(raw\)/);
+  assert.match(normalizer, /return `\$\{full\[2\]\} · \$\{full\[1\]\.trim\(\)\}`/);
+  assert.match(apply, /select\[name="boardingStopId"\] option/);
+  assert.match(apply, /select\[name="tripBoardingStopId"\] option/);
+  assert.match(apply, /\[data-m310-bus-stops\] \.check-row span/);
+  assert.match(ux, /new MutationObserver\(scheduleBoardingStopNormalization\)/);
 });

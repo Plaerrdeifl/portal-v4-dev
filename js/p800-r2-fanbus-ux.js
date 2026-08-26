@@ -40,9 +40,8 @@ function injectStyles() {
     .v4-m310-editor-section{display:grid;gap:10px;padding:12px;border:1px solid var(--line,#d8e2ee);border-radius:14px;background:var(--surface,#fff)}
     .v4-m310-editor-section h3{margin:0}
     .v4-m310-editor-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px;row-gap:9px;min-width:0}
-    .v4-m310-editor-fields>label,.v4-m310-trip-stop-editor-row>label,.v4-m310-trip-default-stop{display:grid;gap:4px;min-width:0;max-width:100%;contain:inline-size;font-weight:700}
-    .v4-m310-editor-fields>label:has(>input:is([type="date"],[type="time"],[type="datetime-local"])),.v4-m310-trip-stop-editor-row>label:has(>input:is([type="date"],[type="time"],[type="datetime-local"])){overflow:hidden}
-    .v4-m310-editor-fields input,.v4-m310-editor-fields select,.v4-m310-trip-stop-editor-row input,.v4-m310-trip-stop-editor-row select,.v4-m310-trip-default-stop select{box-sizing:border-box;width:100%;min-width:0;max-width:100%;inline-size:100%;min-inline-size:0;max-inline-size:100%}
+    .v4-m310-editor-fields>label,.v4-m310-trip-stop-editor-row>label,.v4-m310-trip-default-stop{display:grid;gap:4px;width:100%;min-width:0;max-width:100%;font-weight:700}
+    .v4-m310-editor-fields input,.v4-m310-editor-fields select,.v4-m310-trip-stop-editor-row input,.v4-m310-trip-stop-editor-row select,.v4-m310-trip-default-stop select{display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;inline-size:100%;min-inline-size:0;max-inline-size:100%}
     .v4-m310-editor-deadline,.v4-m310-editor-open,.v4-m310-registration-open-info,.v4-m310-bus-preference-toggle{grid-column:1/-1}
     .v4-m310-registration-open-info{display:flex;align-items:baseline;justify-content:space-between;gap:6px 10px;flex-wrap:wrap;padding:8px 10px;border-radius:10px;background:var(--surface-soft,#f5f7fa)}
     .v4-m310-registration-open-info>span{font-size:.8rem;color:var(--muted,#718096)}
@@ -57,9 +56,11 @@ function injectStyles() {
     .v4-m310-editor-stops .v4-m310-editor-section-heading{align-items:center}
     .v4-m310-editor-stops [data-m310-trip-stop-add]{min-height:42px;padding:7px 11px}
     .v4-m310-trip-stop-editor-list{display:grid;gap:7px}
-    .v4-m310-trip-stop-editor-row{display:grid;grid-template-columns:minmax(0,1fr) 104px auto;gap:7px;align-items:end;min-width:0;padding:7px;border:1px solid var(--line,#d8e2ee);border-radius:11px}
+    .v4-m310-trip-stop-editor-row{display:grid;grid-template-columns:104px minmax(0,1fr) auto;gap:7px;align-items:end;min-width:0;padding:7px;border:1px solid var(--line,#d8e2ee);border-radius:11px}
+    .v4-m310-trip-stop-editor-row>label:has([data-m310-trip-stop-time]){order:1}
+    .v4-m310-trip-stop-editor-row>label:has([data-m310-trip-stop-master]){order:2}
     .v4-m310-trip-stop-editor-row.is-removed{opacity:.65}
-    .v4-m310-trip-stop-remove{min-height:42px;padding:7px 10px;border-color:rgba(169,31,45,.42)!important;color:var(--danger,#a91f2d)!important;background:transparent!important}
+    .v4-m310-trip-stop-remove{order:3;min-height:42px;padding:7px 10px;border-color:rgba(169,31,45,.42)!important;color:var(--danger,#a91f2d)!important;background:transparent!important}
     .v4-m310-trip-default-stop{grid-template-columns:minmax(120px,.45fr) minmax(0,1fr);align-items:center;gap:8px;margin-top:0}
     .v4-m310-registration-record[role="button"]{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(170px,.8fr) auto;grid-template-areas:"person summary footer chevron";cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease}
     .v4-m310-registration-record[role="button"]:hover{border-color:rgba(24,118,211,.42);box-shadow:0 7px 18px rgba(24,45,72,.1)}
@@ -76,6 +77,7 @@ function injectStyles() {
     .v4-m310-person-selection-copy small{color:var(--muted,#718096);font-weight:600}
     .v4-m310-person-selection-copy strong{overflow-wrap:anywhere}
     .v4-m310-person-selection.is-selected{border-color:rgba(24,118,211,.45);background:var(--surface-soft,#f5f7fa)}
+    #m310ManualRegistrationForm:has(.v4-m310-person-selection.is-selected) .v4-m310-manual-mode{display:none!important}
     .v4-m310-person-picker{display:grid;gap:12px}
     .v4-m310-person-picker>label{display:grid;gap:6px;font-weight:700}
     .v4-m310-person-picker-filters{display:flex;flex-wrap:wrap;gap:6px}
@@ -120,7 +122,7 @@ function injectStyles() {
       .v4-m310-editor-section-heading .button,.v4-m310-settings-section-heading .button{width:100%}
       .v4-m310-editor-stops .v4-m310-editor-section-heading{display:flex;align-items:center}
       .v4-m310-editor-stops .v4-m310-editor-section-heading .button{width:auto;flex:none}
-      .v4-m310-trip-stop-editor-row{grid-template-columns:minmax(0,1fr) 104px}
+      .v4-m310-trip-stop-editor-row{grid-template-columns:104px minmax(0,1fr)}
       .v4-m310-trip-stop-remove{grid-column:1/-1;justify-self:end}
       .v4-m310-trip-default-stop{grid-template-columns:minmax(112px,.45fr) minmax(0,1fr)}
       .v4-m310-editor-fields input,.v4-m310-editor-fields select,.v4-m310-trip-stop-editor-row input,.v4-m310-trip-stop-editor-row select,.v4-m310-trip-default-stop select,.v4-m310-manual-mode select{font-size:16px}
@@ -154,8 +156,77 @@ function injectStyles() {
   document.head.appendChild(style);
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", injectStyles, { once: true });
-} else {
+function timeFirstBoardingStopText(value) {
+  const raw = String(value || "").replace(/\s+/gu, " ").trim();
+  if (!raw) return raw;
+
+  const full = /^(.*?)\s*·\s*(?:\d{2}\.\d{2}\.\d{4},?\s*)?(\d{2}:\d{2})\s*Uhr$/u.exec(raw);
+  if (full) return `${full[2]} · ${full[1].trim()}`;
+
+  return raw;
+}
+
+function normalizeTripStopCard(card) {
+  const strong = card.querySelector(".v4-m325-record-copy>strong");
+  const small = card.querySelector(".v4-m325-record-copy>small");
+  if (!strong || !small) return;
+  const match = /^(\d{2}:\d{2})\s*Uhr\s*·\s*(.+)$/u.exec(
+    String(small.textContent || "").replace(/\s+/gu, " ").trim()
+  );
+  if (!match) return;
+  strong.textContent = `${match[1]} · ${String(strong.textContent || "").trim()}`;
+  small.textContent = match[2];
+}
+
+function normalizeOperationCard(card) {
+  const small = card.querySelector(".v4-m325-record-copy>small");
+  if (!small) return;
+  const raw = String(small.textContent || "").replace(/\s+/gu, " ").trim();
+  const match = /^(.*?)\s*·\s*([^·]+?)\s*·\s*(\d{2}:\d{2})\s*Uhr$/u.exec(raw);
+  if (!match) return;
+  small.textContent = `${match[1].trim()} · ${match[3]} · ${match[2].trim()}`;
+}
+
+function normalizeBoardingStopLabels(root = document) {
+  root.querySelectorAll(
+    'select[name="boardingStopId"] option,select[name="tripBoardingStopId"] option,[data-m310-bus-stops] .check-row span'
+  ).forEach(node => {
+    const next = timeFirstBoardingStopText(node.textContent);
+    if (next && next !== String(node.textContent || "").trim()) node.textContent = next;
+  });
+
+  root.querySelectorAll(".v4-m325-trip-stops .v4-preserve-lines").forEach(container => {
+    container.childNodes.forEach(node => {
+      if (node.nodeType !== Node.TEXT_NODE) return;
+      const next = timeFirstBoardingStopText(node.textContent);
+      if (next && next !== String(node.textContent || "").trim()) node.textContent = next;
+    });
+  });
+
+  root.querySelectorAll(".v4-m325-stop-card").forEach(normalizeTripStopCard);
+  root.querySelectorAll(".v4-m325-operation-card").forEach(normalizeOperationCard);
+}
+
+let normalizeQueued = false;
+
+function scheduleBoardingStopNormalization() {
+  if (normalizeQueued) return;
+  normalizeQueued = true;
+  requestAnimationFrame(() => {
+    normalizeQueued = false;
+    normalizeBoardingStopLabels(document);
+  });
+}
+
+function startFanbusUx() {
   injectStyles();
+  normalizeBoardingStopLabels(document);
+  const observer = new MutationObserver(scheduleBoardingStopNormalization);
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", startFanbusUx, { once: true });
+} else {
+  startFanbusUx();
 }
