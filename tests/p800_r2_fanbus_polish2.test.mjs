@@ -102,7 +102,7 @@ test("Polish 2 keeps normal page scrolling while compacting the mobile trip stop
   assert.match(ux, /\.v4-m310-editor-stops \[data-m310-trip-stop-add\]\{min-height:42px;padding:7px 11px\}/);
   assert.match(ux, /\.v4-m310-trip-stop-remove\{min-height:42px;padding:7px 10px/);
   assert.match(ux, /\.v4-m310-trip-default-stop\{grid-template-columns:minmax\(120px,\.45fr\) minmax\(0,1fr\)/);
-  assert.match(ux, /@media \(max-width:620px\)[\s\S]*\.v4-m310-trip-stop-editor-row\{grid-template-columns:104px minmax\(0,1fr\)\}[\s\S]*\.v4-m310-trip-stop-remove\{grid-column:1\/-1;justify-self:end\}/);
+  assert.match(ux, /@media \(max-width:620px\)[\s\S]*\.v4-m310-editor-fields\{grid-template-columns:1fr\}[\s\S]*\.v4-m310-trip-stop-editor-row\{grid-template-columns:1fr\}[\s\S]*\.v4-m310-trip-stop-remove\{grid-column:1;justify-self:end\}/);
   assert.match(ux, /@media \(max-width:350px\)\{[\s\S]*\.v4-m310-editor-fields,\.v4-m310-trip-stop-editor-row,\.v4-m310-trip-default-stop\{grid-template-columns:1fr\}/);
   assert.doesNotMatch(ux, /MutationObserver/);
 });

@@ -59,11 +59,11 @@ test("Polish 4 keeps the Fanbus editor compact, time-first and unclipped on mobi
 
   assert.match(desktop, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(desktop, /\.v4-m310-trip-stop-editor-row\{[^}]*grid-template-columns:104px minmax\(0,1fr\) auto/);
-  assert.match(mobile, /\.v4-m310-editor-fields\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)\}/);
-  assert.match(mobile, /\.v4-m310-trip-stop-editor-row\{grid-template-columns:104px minmax\(0,1fr\)\}/);
-  assert.match(mobile, /\.v4-m310-trip-stop-remove\{grid-column:1\/-1;justify-self:end\}/);
+  assert.match(mobile, /\.v4-m310-editor-fields\{grid-template-columns:1fr\}/);
+  assert.match(mobile, /\.v4-m310-trip-stop-editor-row\{grid-template-columns:1fr\}/);
+  assert.match(mobile, /\.v4-m310-trip-stop-remove\{grid-column:1;justify-self:end\}/);
   assert.match(mobile, /\.v4-m310-trip-default-stop\{grid-template-columns:minmax\(112px,\.45fr\) minmax\(0,1fr\)\}/);
-  assert.doesNotMatch(mobile, /(?:editor-fields|trip-stop-editor-row|trip-default-stop)\{grid-template-columns:1fr/);
+  assert.doesNotMatch(mobile, /\.v4-m310-trip-default-stop\{grid-template-columns:1fr/);
 
   assert.match(desktop, /display:grid;gap:4px;width:100%;min-width:0;max-width:100%;font-weight:700/);
   assert.match(desktop, /display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;inline-size:100%;min-inline-size:0;max-inline-size:100%/);
