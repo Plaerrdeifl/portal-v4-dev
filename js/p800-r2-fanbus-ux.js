@@ -114,13 +114,14 @@ function injectStyles() {
     @media (max-width:620px){
       .v4-m310-editor-section{padding:12px}
       .v4-m310-editor-section.v4-m310-editor-stops{padding:10px}
+      .v4-m310-editor-fields{grid-template-columns:1fr}
       .v4-m310-editor-section-heading,.v4-m310-settings-section-heading{display:grid;grid-template-columns:1fr}
       .v4-m310-editor-section-heading .button,.v4-m310-settings-section-heading .button{width:100%}
       .v4-m310-editor-stops .v4-m310-editor-section-heading{display:flex;align-items:center}
       .v4-m310-editor-stops .v4-m310-editor-section-heading .button{width:auto;flex:none}
-      .v4-m310-trip-stop-editor-row{grid-template-columns:minmax(0,1fr) 102px}
-      .v4-m310-trip-stop-remove{grid-column:1/-1;justify-self:end}
-      .v4-m310-trip-default-stop{grid-template-columns:minmax(112px,.45fr) minmax(0,1fr)}
+      .v4-m310-trip-stop-editor-row{grid-template-columns:1fr}
+      .v4-m310-trip-stop-remove{grid-column:1;justify-self:start}
+      .v4-m310-trip-default-stop{grid-template-columns:1fr}
       .v4-m310-editor-fields input,.v4-m310-editor-fields select,.v4-m310-trip-stop-editor-row input,.v4-m310-trip-stop-editor-row select,.v4-m310-trip-default-stop select,.v4-m310-manual-mode select{font-size:16px}
       .v4-m310-manual-mode{grid-column:1/-1!important}
       .v4-m310-registration-record[role="button"]{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"person chevron" "summary chevron" "footer chevron";gap:5px 9px;padding:10px 11px}

@@ -73,13 +73,14 @@ test("bus action menu replaces its child without restoring and reopening the par
   assert.match(common, /if \(dialog\.open && !replaceCurrent\) saveDialogContext\(dialog\)/);
 });
 
-test("Fanbus deadline and mobile editor follow the compact full-width contract", () => {
+test("Fanbus deadline and mobile editor follow the full-width stacked mobile contract", () => {
   const deadline = section(fanbuses, "function tripRegistrationDeadlineMarkup", "function normalizedTripDetailStops");
   assert.match(deadline, /class="full v4-m325-trip-registration-deadline"/);
   assert.match(fanbusUx, /v4-m325-trip-registration-deadline>span\{[^}]*white-space:nowrap/);
   assert.match(fanbusUx, /\.v4-m310-editor-fields\{[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   const mobile = section(fanbusUx, "@media (max-width:620px)", "@media (max-width:390px)");
-  assert.doesNotMatch(mobile, /v4-m310-editor-fields\{grid-template-columns:1fr/);
+  assert.match(mobile, /v4-m310-editor-fields\{grid-template-columns:1fr/);
+  assert.match(mobile, /v4-m310-trip-stop-editor-row\{grid-template-columns:1fr/);
   assert.match(fanbusUx, /v4-m310-editor-deadline,[^\n]*v4-m310-bus-preference-toggle\{grid-column:1\/-1\}/);
 });
 

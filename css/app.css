@@ -2387,6 +2387,10 @@ html[data-portal-area="portal"] .v4-toolbar p{
   line-height:1.25!important;
 }
 
+.v4-dialog label[hidden]{
+  display:none!important;
+}
+
 .v4-dialog input,
 .v4-dialog select,
 .v4-dialog textarea,
