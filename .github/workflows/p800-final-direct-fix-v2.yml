@@ -1,0 +1,83 @@
+name: P800 final Fanbus direct fix v2
+
+on:
+  push:
+    branches:
+      - ux/p800-r2-polish4-final-direct-fix-v2
+
+permissions:
+  contents: write
+
+jobs:
+  apply-test-commit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ux/p800-r2-polish4-final-direct-fix-v2
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24.18.0'
+          cache: npm
+
+      - name: Apply deterministic source fix
+        shell: bash
+        run: |
+          git fetch origin ux/p800-r2-polish4-final-direct-fix
+          python - <<'PY'
+          import base64
+          import re
+          import subprocess
+          from pathlib import Path
+
+          source = subprocess.check_output([
+            "git", "show", "FETCH_HEAD:.github/workflows/p800-final-direct-fix.yml"
+          ], text=True)
+          match = re.search(r"echo '([^']+)' \| base64 -d > /tmp/p800-fix\.py", source)
+          if not match:
+            raise SystemExit("could not recover deterministic fix payload")
+          Path("/tmp/p800-fix.py").write_bytes(base64.b64decode(match.group(1)))
+          PY
+          python /tmp/p800-fix.py
+
+      - run: npm ci
+
+      - name: Targeted Fanbus tests
+        run: node --test tests/p800_r2_fanbus_polish4.test.mjs tests/p800_r2_live_acceptance_fixes.test.mjs tests/p800_r2_fanbus_final_direct_fix.test.mjs
+
+      - name: Full test suite
+        shell: bash
+        run: |
+          set +e
+          npm test > /tmp/npm-test.log 2>&1
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ]; then
+            echo "=== npm test failure summary ==="
+            grep -nE '^not ok|AssertionError|ERR_ASSERTION|failureType:|error:' /tmp/npm-test.log | tail -n 100 || true
+            echo "=== tail ==="
+            tail -n 140 /tmp/npm-test.log
+            exit "$code"
+          fi
+          tail -n 40 /tmp/npm-test.log
+
+      - name: Static checks
+        run: npm run check:static
+
+      - name: JavaScript syntax
+        run: node --check js/modules/fanbuses.js && node --check js/fanbus-registration.js && node --check js/pages.js && node --check js/p800-r2-fanbus-ux.js
+
+      - name: Diff check
+        run: git diff --check
+
+      - name: Commit clean final fix
+        shell: bash
+        run: |
+          git config user.name "HV9019"
+          git config user.email "57114727+HV9019@users.noreply.github.com"
+          git rm .github/workflows/p800-final-direct-fix-v2.yml
+          git add js/modules/fanbuses.js js/fanbus-registration.js js/p800-r2-fanbus-ux.js js/pages.js index.html fanbus-anmeldung.html tests/core_contract.test.mjs tests/p800_r2_fanbus_polish4.test.mjs tests/p800_r2_live_acceptance_fixes.test.mjs tests/p800_r2_fanbus_final_direct_fix.test.mjs
+          git commit -m "P800-R2: finalize direct Fanbus UX fixes"
+          git push origin HEAD:ux/p800-r2-polish4-final-direct-fix-v2
