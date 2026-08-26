@@ -36,7 +36,7 @@ function injectStyles() {
     .v4-m310-editor-context{display:grid;gap:3px;margin-bottom:4px}
     .v4-m310-editor-context>strong{font-size:1.05rem}
     .v4-m310-editor-context>span,.v4-m310-editor-context-note{color:var(--muted,#718096)}
-    .v4-m310-trip-editor-form{display:grid;gap:16px;margin-top:14px}
+    .v4-m310-trip-editor-form{display:grid;gap:12px;margin-top:14px}
     .v4-m310-editor-section{display:grid;gap:12px;padding:14px;border:1px solid var(--line,#d8e2ee);border-radius:14px;background:var(--surface,#fff)}
     .v4-m310-editor-section h3{margin:0}
     .v4-m310-editor-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
@@ -51,11 +51,45 @@ function injectStyles() {
     .v4-m310-bus-preference-toggle small{font-weight:400;color:var(--muted,#718096)}
     .v4-m310-editor-section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
     .v4-m310-editor-section-heading h3,.v4-m310-editor-section-heading p{margin:0}
-    .v4-m310-trip-stop-editor-list{display:grid;gap:10px}
-    .v4-m310-trip-stop-editor-row{display:grid;grid-template-columns:minmax(0,1fr) 112px auto;gap:8px;align-items:end;padding:10px;border:1px solid var(--line,#d8e2ee);border-radius:12px}
+    .v4-m310-editor-stops{gap:9px;padding:12px}
+    .v4-m310-editor-stops .v4-m310-editor-section-heading{align-items:center}
+    .v4-m310-editor-stops [data-m310-trip-stop-add]{min-height:42px;padding:7px 11px}
+    .v4-m310-trip-stop-editor-list{display:grid;gap:7px}
+    .v4-m310-trip-stop-editor-row{display:grid;grid-template-columns:minmax(0,1fr) 104px auto;gap:6px;align-items:end;padding:8px;border:1px solid var(--line,#d8e2ee);border-radius:11px}
     .v4-m310-trip-stop-editor-row.is-removed{opacity:.65}
-    .v4-m310-trip-stop-remove{min-height:44px}
-    .v4-m310-trip-default-stop{margin-top:2px}
+    .v4-m310-trip-stop-remove{min-height:42px;padding:7px 10px;border-color:rgba(169,31,45,.42)!important;color:var(--danger,#a91f2d)!important;background:transparent!important}
+    .v4-m310-trip-default-stop{grid-template-columns:minmax(120px,.45fr) minmax(0,1fr);align-items:center;gap:8px;margin-top:0}
+    .v4-m310-registration-record[role="button"]{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(170px,.8fr) auto;grid-template-areas:"person summary footer chevron";cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease}
+    .v4-m310-registration-record[role="button"]:hover{border-color:rgba(24,118,211,.42);box-shadow:0 7px 18px rgba(24,45,72,.1)}
+    .v4-m310-registration-record[role="button"]:active{transform:translateY(1px)}
+    .v4-m310-registration-record>.notice{grid-column:1/-1}
+    .v4-m310-registration-chevron{grid-area:chevron;align-self:center}
+    .v4-m310-registration-detail{display:grid;gap:12px}
+    .v4-m310-registration-assignment{display:grid;gap:6px;min-width:0;font-weight:700}
+    .v4-m310-registration-assignment select{width:100%;min-width:0}
+    .v4-m310-registration-assignment small{color:var(--muted,#718096);font-weight:400}
+    .v4-m310-registration-detail-actions{margin-top:2px}
+    .v4-m310-person-selection{display:flex!important;align-items:center;justify-content:space-between;gap:10px;width:100%;min-width:0;min-height:52px;padding:8px 11px;text-align:left}
+    .v4-m310-person-selection-copy{display:grid;gap:2px;min-width:0}
+    .v4-m310-person-selection-copy small{color:var(--muted,#718096);font-weight:600}
+    .v4-m310-person-selection-copy strong{overflow-wrap:anywhere}
+    .v4-m310-person-selection.is-selected{border-color:rgba(24,118,211,.45);background:var(--surface-soft,#f5f7fa)}
+    .v4-m310-person-picker{display:grid;gap:12px}
+    .v4-m310-person-picker>label{display:grid;gap:6px;font-weight:700}
+    .v4-m310-person-picker-filters{display:flex;flex-wrap:wrap;gap:6px}
+    .v4-m310-person-picker-filters .button{flex:1 1 auto;min-height:42px;padding:7px 10px}
+    .v4-m310-person-picker-filters .button.is-active{border-color:var(--primary,#1876d3);background:rgba(24,118,211,.1);color:var(--primary,#1876d3)}
+    .v4-m310-person-picker-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .v4-m310-person-picker-heading small{color:var(--muted,#718096)}
+    .v4-m310-person-picker-results{display:grid;gap:7px}
+    .v4-m310-person-picker-result{display:flex!important;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:52px;padding:8px 11px;text-align:left}
+    .v4-m310-person-picker-result>span:first-child{display:grid;gap:2px;min-width:0}
+    .v4-m310-person-picker-result strong{overflow-wrap:anywhere}
+    .v4-m310-person-picker-result.is-selected{border-color:var(--primary,#1876d3)}
+    .v4-m310-person-picker-empty{margin:4px 0}
+    .v4-m310-manual-consent{display:flex!important;align-items:flex-start;gap:10px;min-height:44px;padding:8px 0;line-height:1.4;white-space:normal!important}
+    .v4-m310-manual-consent input{flex:0 0 20px;width:20px!important;min-width:20px!important;height:20px;margin:2px 0 0}
+    .v4-m310-manual-consent span{min-width:0;overflow-wrap:anywhere}
     .v4-m310-fanbus-settings{display:grid;gap:16px}
     .v4-m310-settings-section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
     .v4-m310-settings-section-heading h3,.v4-m310-settings-section-heading p{margin:0}
@@ -71,8 +105,14 @@ function injectStyles() {
       .v4-m310-editor-section{padding:12px}
       .v4-m310-editor-section-heading,.v4-m310-settings-section-heading{display:grid;grid-template-columns:1fr}
       .v4-m310-editor-section-heading .button,.v4-m310-settings-section-heading .button{width:100%}
-      .v4-m310-trip-stop-editor-row{grid-template-columns:minmax(0,1fr) 108px}
+      .v4-m310-editor-stops .v4-m310-editor-section-heading{display:flex;align-items:center}
+      .v4-m310-editor-stops .v4-m310-editor-section-heading .button{width:auto;flex:none}
+      .v4-m310-trip-stop-editor-row{grid-template-columns:minmax(0,1fr) 102px}
       .v4-m310-trip-stop-remove{grid-column:1/-1;justify-self:end}
+      .v4-m310-trip-default-stop{grid-template-columns:minmax(112px,.45fr) minmax(0,1fr)}
+      .v4-m310-registration-record[role="button"]{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"person chevron" "summary chevron" "footer chevron";gap:5px 9px;padding:10px 11px}
+      .v4-m310-registration-record[role="button"] .v4-m310-registration-footer{justify-content:flex-start}
+      .v4-m310-person-picker input,.v4-m310-registration-assignment select{font-size:16px}
       .v4-m310-master-stop-card{grid-template-columns:minmax(0,1fr) auto}
       .v4-m310-master-stop-card>.button{grid-column:1/-1;width:100%}
       .p800-fanbus-filter-disclosure{display:block;grid-column:1/-1;width:100%;margin:2px 0 0}
