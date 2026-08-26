@@ -96,7 +96,7 @@ test("Polish 4 normalizes boarding-stop labels to time first without Uhr", () =>
   const normalizer = section(ux, "function timeFirstBoardingStopText", "function normalizeTripStopCard");
   const apply = section(ux, "function normalizeBoardingStopLabels", "let normalizeQueued");
 
-  assert.match(normalizer, /\(\d\{2\}:\\d\{2\}\)\\s\*Uhr/);
+  assert.match(normalizer, /Uhr\$\/u\.exec\(raw\)/);
   assert.match(normalizer, /return `\$\{full\[2\]\} · \$\{full\[1\]\.trim\(\)\}`/);
   assert.match(apply, /select\[name="boardingStopId"\] option/);
   assert.match(apply, /select\[name="tripBoardingStopId"\] option/);
