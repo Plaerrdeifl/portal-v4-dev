@@ -1,0 +1,161 @@
+name: P800 final mobile Fanbus editor stack
+
+on:
+  push:
+    branches:
+      - ux/p800-r2-mobile-editor-stack-final
+
+permissions:
+  contents: write
+
+jobs:
+  fix-test-commit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ux/p800-r2-mobile-editor-stack-final
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24.18.0'
+          cache: npm
+
+      - name: Apply only mobile Fanbus editor layout fix
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_required(path, old, new, label, expected=1):
+              text = path.read_text()
+              count = text.count(old)
+              if count != expected:
+                  raise SystemExit(f"{label}: expected {expected}, got {count}")
+              path.write_text(text.replace(old, new))
+              print(f"{label}: {count}")
+
+          ux = Path('js/p800-r2-fanbus-ux.js')
+          replace_required(
+              ux,
+              '      .v4-m310-editor-fields{grid-template-columns:repeat(2,minmax(0,1fr))}',
+              '      .v4-m310-editor-fields{grid-template-columns:1fr}',
+              'mobile Fahrt fields stack'
+          )
+          replace_required(
+              ux,
+              '      .v4-m310-trip-stop-editor-row{grid-template-columns:104px minmax(0,1fr)}',
+              '      .v4-m310-trip-stop-editor-row{grid-template-columns:1fr}',
+              'mobile stop row stack'
+          )
+          replace_required(
+              ux,
+              '      .v4-m310-trip-stop-remove{grid-column:1/-1;justify-self:end}',
+              '      .v4-m310-trip-stop-remove{grid-column:1;justify-self:end}',
+              'mobile remove stays inside row'
+          )
+
+          index = Path('index.html')
+          replace_required(
+              index,
+              './js/p800-r2-fanbus-ux.js?v=20260826-p800-r2-final-direct-fix',
+              './js/p800-r2-fanbus-ux.js?v=20260826-p800-r2-mobile-stack-final',
+              'Fanbus UX cache key'
+          )
+
+          polish4 = Path('tests/p800_r2_fanbus_polish4.test.mjs')
+          replace_required(
+              polish4,
+              'assert.match(mobile, /\\.v4-m310-editor-fields\\{grid-template-columns:repeat\\(2,minmax\\(0,1fr\\)\\)\\}/);',
+              'assert.match(mobile, /\\.v4-m310-editor-fields\\{grid-template-columns:1fr\\}/);',
+              'Polish4 mobile Fahrt assertion'
+          )
+          replace_required(
+              polish4,
+              'assert.match(mobile, /\\.v4-m310-trip-stop-editor-row\\{grid-template-columns:104px minmax\\(0,1fr\\)\\}/);',
+              'assert.match(mobile, /\\.v4-m310-trip-stop-editor-row\\{grid-template-columns:1fr\\}/);',
+              'Polish4 mobile stop assertion'
+          )
+          replace_required(
+              polish4,
+              'assert.match(mobile, /\\.v4-m310-trip-stop-remove\\{grid-column:1\\/-1;justify-self:end\\}/);',
+              'assert.match(mobile, /\\.v4-m310-trip-stop-remove\\{grid-column:1;justify-self:end\\}/);',
+              'Polish4 remove assertion'
+          )
+          replace_required(
+              polish4,
+              'assert.doesNotMatch(mobile, /(?:editor-fields|trip-stop-editor-row|trip-default-stop)\\{grid-template-columns:1fr/);',
+              'assert.doesNotMatch(mobile, /\\.v4-m310-trip-default-stop\\{grid-template-columns:1fr/);',
+              'Polish4 preserve default-stop layout assertion'
+          )
+
+          polish2 = Path('tests/p800_r2_fanbus_polish2.test.mjs')
+          replace_required(
+              polish2,
+              'assert.match(ux, /@media \\(max-width:620px\\)[\\s\\S]*\\.v4-m310-trip-stop-editor-row\\{grid-template-columns:104px minmax\\(0,1fr\\)\\}[\\s\\S]*\\.v4-m310-trip-stop-remove\\{grid-column:1\\/-1;justify-self:end\\}/);',
+              'assert.match(ux, /@media \\(max-width:620px\\)[\\s\\S]*\\.v4-m310-editor-fields\\{grid-template-columns:1fr\\}[\\s\\S]*\\.v4-m310-trip-stop-editor-row\\{grid-template-columns:1fr\\}[\\s\\S]*\\.v4-m310-trip-stop-remove\\{grid-column:1;justify-self:end\\}/);',
+              'Polish2 mobile stack assertion'
+          )
+
+          live = Path('tests/p800_r2_live_acceptance_fixes.test.mjs')
+          replace_required(
+              live,
+              'test("Fanbus deadline and mobile editor follow the final compact two-column contract", () => {',
+              'test("Fanbus deadline and mobile editor use the final non-overlapping mobile stack", () => {',
+              'Live test title'
+          )
+          replace_required(
+              live,
+              '  assert.match(mobile, /v4-m310-editor-fields\\{grid-template-columns:repeat\\(2,minmax\\(0,1fr\\)\\)/);',
+              '  assert.match(mobile, /v4-m310-editor-fields\\{grid-template-columns:1fr/);',
+              'Live mobile Fahrt assertion'
+          )
+          replace_required(
+              live,
+              '  assert.match(mobile, /v4-m310-trip-stop-editor-row\\{grid-template-columns:104px minmax\\(0,1fr\\)/);',
+              '  assert.match(mobile, /v4-m310-trip-stop-editor-row\\{grid-template-columns:1fr/);',
+              'Live mobile stop assertion'
+          )
+          replace_required(
+              live,
+              '  assert.doesNotMatch(mobile, /(?:editor-fields|trip-stop-editor-row)\\{grid-template-columns:1fr/);',
+              '  assert.doesNotMatch(mobile, /v4-m310-editor-fields\\{grid-template-columns:repeat\\(2|minmax\\(0,1fr\\) 104px/);',
+              'Live no mobile two-column regression assertion'
+          )
+
+          direct = Path('tests/p800_r2_fanbus_final_direct_fix.test.mjs')
+          replace_required(
+              direct,
+              'assert.match(index, /p800-r2-fanbus-ux\\.js\\?v=20260826-p800-r2-final-direct-fix/);',
+              'assert.match(index, /p800-r2-fanbus-ux\\.js\\?v=20260826-p800-r2-mobile-stack-final/);',
+              'Direct-fix cache assertion'
+          )
+          PY
+
+      - run: npm ci
+
+      - name: Targeted Fanbus regression tests
+        run: node --test tests/p800_r2_fanbus_polish2.test.mjs tests/p800_r2_fanbus_polish4.test.mjs tests/p800_r2_live_acceptance_fixes.test.mjs tests/p800_r2_fanbus_final_direct_fix.test.mjs
+
+      - name: Full test suite
+        run: npm test
+
+      - name: Static checks
+        run: npm run check:static
+
+      - name: JavaScript syntax
+        run: node --check js/p800-r2-fanbus-ux.js
+
+      - name: Diff check
+        run: git diff --check
+
+      - name: Commit only final mobile layout correction
+        shell: bash
+        run: |
+          git config user.name "HV9019"
+          git config user.email "57114727+HV9019@users.noreply.github.com"
+          git rm .github/workflows/p800-mobile-editor-stack-final.yml
+          git add js/p800-r2-fanbus-ux.js index.html tests/p800_r2_fanbus_polish2.test.mjs tests/p800_r2_fanbus_polish4.test.mjs tests/p800_r2_live_acceptance_fixes.test.mjs tests/p800_r2_fanbus_final_direct_fix.test.mjs
+          git commit -m "P800-R2: stack Fanbus editor fields on mobile"
+          git push origin HEAD:ux/p800-r2-mobile-editor-stack-final
