@@ -1674,34 +1674,78 @@ function openTripStopEditor(trip, stop, parent) {
 }
 
 function availableEventLabel(event) {
-  const visibility = event.visibility === "PUBLIC" ? "Öffentlich" : "Intern";
-  return `${formatCalendarDate(event.eventDate)} · ${event.displayTitle || "Termin"} · ${visibility}`;
+  return `${formatCalendarDate(event.eventDate)} · ${event.venue || "Spielort noch offen"}`;
+}
+
+function setTripCreateEvent(dialog, event) {
+  const form = dialog.querySelector("[data-m310-trip-create-form]");
+  const input = form?.elements.namedItem("eventId");
+  const button = dialog.querySelector("[data-m310-open-event-picker]");
+  if (!input || !button) return;
+  input.value = event?.id || "";
+  button.innerHTML = event
+    ? `<span><small>Termin</small><strong>${escapeHtml(availableEventLabel(event))}</strong></span><span class="v4-person-badge">Ausgewählt</span>`
+    : '<span><small>Termin</small><strong>Termin auswählen</strong></span><span class="v4-row-chevron" aria-hidden="true">›</span>';
+  button.classList.toggle("is-selected", Boolean(event));
+  button.setAttribute("aria-label", event
+    ? `${availableEventLabel(event)} ausgewählt. Termin ändern`
+    : "Termin auswählen");
+}
+
+function openAvailableEventPicker(parentDialog, events) {
+  const parentContextId = parentDialog?.dataset.v4DialogContext;
+  const selectedEventId = parentDialog.querySelector('[name="eventId"]')?.value || "";
+  const picker = openDialog({
+    title: "Termin auswählen",
+    kicker: "Fanbusfahrt anlegen",
+    body: `<div class="v4-m310-event-picker-list">
+      ${events.map(event => `<button class="button secondary v4-m310-event-picker-result${event.id === selectedEventId ? " is-selected" : ""}" type="button" data-m310-event-result="${escapeAttr(event.id)}">
+        <strong>${escapeHtml(availableEventLabel(event))}</strong>
+      </button>`).join("")}
+    </div>`
+  });
+  const pickerContextId = picker.dataset.v4DialogContext;
+
+  picker.querySelectorAll("[data-m310-event-result]").forEach(button => {
+    button.addEventListener("click", () => {
+      const event = events.find(item => item.id === button.dataset.m310EventResult);
+      if (!event || !isDialogContextCurrent(picker, pickerContextId)) return;
+      picker.close();
+      if (isDialogContextCurrent(parentDialog, parentContextId)) {
+        setTripCreateEvent(parentDialog, event);
+      }
+    });
+  });
 }
 
 async function openTripCreate() {
   try {
     const available = await call("fanbus_available_events");
-    const events = Array.isArray(available?.events) ? available.events : [];
+    const events = (Array.isArray(available?.events) ? available.events : [])
+      .slice()
+      .sort((left, right) => String(left.eventDate || "").localeCompare(String(right.eventDate || "")));
 
     if (!events.length) {
       showToast("Es ist aktuell kein kommender Termin ohne Fanbusfahrt verfügbar.", "info", 4200);
       return;
     }
 
-    openDialog({
+    const dialog = openDialog({
       title: "Fanbusfahrt anlegen",
       kicker: "Vorhandenen Termin auswählen",
-      body: `<form class="form-grid v4-smart-form">
-        <label class="v4-field-full">Termin
-          <select name="eventId" required>${optionList(
-            events.map(event => ({ value: event.id, label: availableEventLabel(event) })),
-            "",
-            "Termin auswählen"
-          )}</select>
-        </label>
+      body: `<form class="form-grid v4-smart-form" data-m310-trip-create-form>
+        <input name="eventId" type="hidden">
+        <div class="v4-field-full">
+          <button class="button secondary v4-m310-event-selection" type="button" data-m310-open-event-picker aria-label="Termin auswählen">
+            <span><small>Termin</small><strong>Termin auswählen</strong></span><span class="v4-row-chevron" aria-hidden="true">›</span>
+          </button>
+        </div>
       </form>`,
       submitLabel: "Entwurf anlegen",
       onSubmit: async values => {
+        if (!events.some(event => event.id === values.eventId)) {
+          throw new Error("Bitte wähle einen Termin aus.");
+        }
         snapshot = await runWrite(
           () => call("fanbus_trip_create", { eventId: values.eventId }),
           "Fanbusfahrt wurde als Entwurf angelegt."
@@ -1709,6 +1753,8 @@ async function openTripCreate() {
         render();
       }
     });
+    dialog.querySelector("[data-m310-open-event-picker]")
+      ?.addEventListener("click", () => openAvailableEventPicker(dialog, events));
   } catch (error) {
     showToast(error?.message || "Verfügbare Termine konnten nicht geladen werden.", "error", 5200);
   }
@@ -1923,6 +1969,20 @@ async function closeTrip(trip, button) {
   await runTripWrite(button, "fanbus_trip_close", trip, "Fanbusfahrt wurde geschlossen.");
 }
 
+async function publishTrip(trip, button) {
+  const confirmed = await confirmAction(
+    `Fanbusfahrt „${trip.displayTitle || "Fanbusfahrt"}“ veröffentlichen?`,
+    { title: "Fanbusfahrt veröffentlichen", submitLabel: "Veröffentlichen" }
+  );
+  if (!confirmed) return;
+  await runTripWrite(
+    button,
+    "fanbus_trip_publish",
+    trip,
+    "Fanbusfahrt wurde veröffentlicht."
+  );
+}
+
 async function reopenTrip(trip, button) {
   const confirmed = await confirmAction(
     "Die Fanbusfahrt wird wieder als Entwurf geöffnet. Sie ist danach nicht öffentlich verfügbar und kann wieder bearbeitet werden. Löschen ist weiterhin nur möglich, wenn keine Anmeldungen zur Fahrt vorhanden sind.",
@@ -2060,7 +2120,21 @@ function registrationDetailMarkup(registration, buses = []) {
   </div>`;
 }
 
-async function cancelRegistrationFromActions(trip, registration, registrationsDialog, actionsDialog) {
+function isDialogContextCurrent(dialog, contextId) {
+  return Boolean(
+    contextId
+    && dialog?.open
+    && dialog.dataset.v4DialogContext === contextId
+  );
+}
+
+async function cancelRegistrationFromActions(
+  trip,
+  registration,
+  registrationsDialog,
+  actionsDialog,
+  { actionsContextId, parentContextId }
+) {
   const confirmed = await confirmAction(
     "Diesen bestätigten oder wartenden Teilnehmer wirklich stornieren?",
     { danger: true, title: "Anmeldung stornieren", submitLabel: "Stornieren" }
@@ -2077,8 +2151,10 @@ async function cancelRegistrationFromActions(trip, registration, registrationsDi
     );
     snapshot = await call("fanbus_trips_list");
     render();
-    actionsDialog?.close();
-    if (registrationsDialog?.open) {
+    if (isDialogContextCurrent(actionsDialog, actionsContextId)) {
+      actionsDialog.close();
+    }
+    if (isDialogContextCurrent(registrationsDialog, parentContextId)) {
       renderRegistrationsDialog(registrationsDialog, trip, nextData);
     }
   } catch (error) {
@@ -2089,9 +2165,13 @@ async function cancelRegistrationFromActions(trip, registration, registrationsDi
   }
 }
 
-async function refreshRegistrationsAfterIdentity(trip, registrationsDialog) {
+async function refreshRegistrationsAfterIdentity(
+  trip,
+  registrationsDialog,
+  parentContextId
+) {
   const next = await call("fanbus_registrations_list", { tripId: trip.id });
-  if (registrationsDialog?.open) {
+  if (isDialogContextCurrent(registrationsDialog, parentContextId)) {
     renderRegistrationsDialog(registrationsDialog, trip, next);
   }
 }
@@ -2102,7 +2182,8 @@ async function applyRegistrationIdentity(
   registrationsDialog,
   portalUserId,
   mode = "LINK",
-  childDialog = null
+  childDialog = null,
+  { childContextId, actionsContextId, parentContextId } = {}
 ) {
   const action = mode === "RELINK"
     ? "fanbus_registration_identity_relink"
@@ -2112,15 +2193,21 @@ async function applyRegistrationIdentity(
     expectedRevision: Number(registration.revision),
     portalUserId
   }), mode === "RELINK" ? "Portaluser-Zuordnung korrigiert." : "Portaluser verknüpft.");
-  childDialog?.close();
-  await refreshRegistrationsAfterIdentity(trip, registrationsDialog);
+  if (isDialogContextCurrent(childDialog, childContextId)) {
+    childDialog.close();
+  }
+  if (isDialogContextCurrent(registrationsDialog, actionsContextId)) {
+    registrationsDialog.close();
+  }
+  await refreshRegistrationsAfterIdentity(trip, registrationsDialog, parentContextId);
 }
 
 function openRegistrationIdentitySearch(
   trip,
   registration,
   registrationsDialog,
-  mode = "LINK"
+  mode = "LINK",
+  { actionsContextId, parentContextId } = {}
 ) {
   if (!hasCapability("fanbus.participant_identity.manage")) return;
   const dialog = openDialog({
@@ -2135,6 +2222,7 @@ function openRegistrationIdentitySearch(
     </form>`,
     preserveParentOnSubmit: true
   });
+  const searchContextId = dialog.dataset.v4DialogContext;
   const form = dialog.querySelector("[data-m325-registration-person-search]");
   const input = form?.elements.namedItem("query");
   const status = dialog.querySelector("[data-m325-registration-person-status]");
@@ -2156,7 +2244,8 @@ function openRegistrationIdentitySearch(
     timer = window.setTimeout(async () => {
       try {
         const data = await call("fanbus_registration_identity_search", { query });
-        if (sequence !== requestSequence) return;
+        if (sequence !== requestSequence
+            || !isDialogContextCurrent(dialog, searchContextId)) return;
         const people = Array.isArray(data?.people) ? data.people.slice(0, 8) : [];
         status.textContent = people.length ? `${people.length} Treffer` : "Keine aktiven Portaluser gefunden.";
         results.innerHTML = people.map(person => `<button class="button secondary v4-m325-person-search-result" type="button" data-portal-user-id="${escapeAttr(person.portalUserId)}"><span><strong>${escapeHtml(person.displayName)}</strong></span></button>`).join("");
@@ -2168,12 +2257,18 @@ function openRegistrationIdentitySearch(
               registrationsDialog,
               button.dataset.portalUserId,
               mode,
-              dialog
+              dialog,
+              {
+                childContextId: searchContextId,
+                actionsContextId,
+                parentContextId
+              }
             );
           });
         });
       } catch (error) {
-        if (sequence !== requestSequence) return;
+        if (sequence !== requestSequence
+            || !isDialogContextCurrent(dialog, searchContextId)) return;
         status.textContent = error?.message || "Portalusersuche fehlgeschlagen.";
       }
     }, 300);
@@ -2185,7 +2280,8 @@ async function loadRegistrationIdentitySuggestion(
   trip,
   registration,
   registrationsDialog,
-  actionsDialog
+  actionsDialog,
+  { actionsContextId, parentContextId }
 ) {
   const target = actionsDialog.querySelector("[data-m325-identity-suggestion]");
   if (!target) return;
@@ -2193,7 +2289,7 @@ async function loadRegistrationIdentitySuggestion(
     const data = await call("fanbus_registration_identity_suggestion", {
       registrationId: registration.id
     });
-    if (!actionsDialog.open) return;
+    if (!isDialogContextCurrent(actionsDialog, actionsContextId)) return;
     if (data?.status === "SINGLE" && data.suggestion) {
       const person = data.suggestion;
       target.innerHTML = `<p class="subtle">Möglicher Portaluser</p><button class="button secondary v4-m325-person-search-result" type="button" data-m325-apply-identity-suggestion><span><strong>${escapeHtml(person.displayName)}</strong></span></button><p class="subtle">Der Vorschlag wird erst durch deine Auswahl verknüpft.</p>`;
@@ -2205,7 +2301,12 @@ async function loadRegistrationIdentitySuggestion(
             registrationsDialog,
             person.portalUserId,
             "LINK",
-            actionsDialog
+            actionsDialog,
+            {
+              childContextId: actionsContextId,
+              actionsContextId,
+              parentContextId
+            }
           );
         });
     } else if (data?.status === "MULTIPLE") {
@@ -2214,7 +2315,7 @@ async function loadRegistrationIdentitySuggestion(
       target.innerHTML = '<p class="subtle">Kein eindeutiger Portaluser-Vorschlag.</p>';
     }
   } catch (error) {
-    if (actionsDialog.open) {
+    if (isDialogContextCurrent(actionsDialog, actionsContextId)) {
       target.innerHTML = `<p class="subtle">${escapeHtml(error?.message || "Vorschlag nicht verfügbar.")}</p>`;
     }
   }
@@ -2224,7 +2325,10 @@ function openRegistrationActions(
   trip,
   registration,
   registrationsDialog,
-  { replaceCurrent = false } = {}
+  {
+    replaceCurrent = false,
+    parentContextId = registrationsDialog?.dataset.v4DialogContext
+  } = {}
 ) {
   const cancelled = registration.status === "CANCELLED";
   const tripCancelled = trip.status === "CANCELLED";
@@ -2250,33 +2354,49 @@ function openRegistrationActions(
           <button class="button danger" type="button" data-m320-action-cancel>Stornieren</button>
         </div>${identityActions}`
   });
+  const actionsContextId = dialog.dataset.v4DialogContext;
 
   dialog.querySelector("[data-m320-action-cancel]")?.addEventListener("click", () => {
-    void cancelRegistrationFromActions(trip, registration, registrationsDialog, dialog);
+    void cancelRegistrationFromActions(trip, registration, registrationsDialog, dialog, {
+      actionsContextId,
+      parentContextId
+    });
   });
 
   dialog.querySelector("[data-m325-registration-identity-search]")
     ?.addEventListener("click", () => {
-      openRegistrationIdentitySearch(trip, registration, registrationsDialog, "LINK");
+      openRegistrationIdentitySearch(trip, registration, registrationsDialog, "LINK", {
+        actionsContextId,
+        parentContextId
+      });
     });
 
   dialog.querySelector("[data-m325-registration-identity-relink]")
     ?.addEventListener("click", () => {
-      openRegistrationIdentitySearch(trip, registration, registrationsDialog, "RELINK");
+      openRegistrationIdentitySearch(trip, registration, registrationsDialog, "RELINK", {
+        actionsContextId,
+        parentContextId
+      });
     });
 
   dialog.querySelector("[data-m325-registration-identity-unlink]")
     ?.addEventListener("click", async () => {
       if (!await confirmAction(
-        "Portaluser-Verknüpfung dieser aktuellen Teilnahme lösen?",
-        "Der zuletzt gespeicherte Name bleibt als Snapshot erhalten."
+        "Portaluser-Verknüpfung dieser aktuellen Teilnahme lösen? Der zuletzt gespeicherte Name bleibt als Snapshot erhalten.",
+        { title: "Portaluser-Verknüpfung lösen", submitLabel: "Verknüpfung lösen" }
       )) return;
       await runWrite(() => call("fanbus_registration_identity_unlink", {
         registrationId: registration.id,
         expectedRevision: Number(registration.revision)
       }), "Portaluser-Verknüpfung gelöst.");
-      dialog.close();
-      await refreshRegistrationsAfterIdentity(trip, registrationsDialog);
+      if (isDialogContextCurrent(dialog, actionsContextId)) {
+        dialog.close();
+      }
+      await refreshRegistrationsAfterIdentity(
+        trip,
+        registrationsDialog,
+        parentContextId
+      );
     });
 
   if (canManageIdentity && !hasPortalIdentity) {
@@ -2284,7 +2404,8 @@ function openRegistrationActions(
       trip,
       registration,
       registrationsDialog,
-      dialog
+      dialog,
+      { actionsContextId, parentContextId }
     );
   }
 }
@@ -2732,6 +2853,7 @@ function openRegistrationDetail(trip, registration, data, registrationsDialog) {
     kicker: `${trip.displayTitle || "Fanbusfahrt"} · Teilnehmerverwaltung`,
     body: registrationDetailMarkup(registration, buses)
   });
+  const detailContextId = dialog.dataset.v4DialogContext;
 
   dialog.querySelector("[data-m320-detail-edit]")?.addEventListener("click", () => {
     void openRegistrationEdit(trip, registration, registrationsDialog, {
@@ -2742,7 +2864,8 @@ function openRegistrationDetail(trip, registration, data, registrationsDialog) {
 
   dialog.querySelector("[data-m320-detail-more]")?.addEventListener("click", () => {
     openRegistrationActions(trip, registration, registrationsDialog, {
-      replaceCurrent: true
+      replaceCurrent: true,
+      parentContextId
     });
   });
 
@@ -2755,13 +2878,16 @@ function openRegistrationDetail(trip, registration, data, registrationsDialog) {
           participantId: registration.id,
           busId: assignment.value || null
         });
+        if (!isDialogContextCurrent(dialog, detailContextId)) return;
         dialog.close();
-        if (registrationsDialog?.open
-            && registrationsDialog.dataset.v4DialogContext === parentContextId) {
+        if (isDialogContextCurrent(registrationsDialog, parentContextId)) {
           renderRegistrationsDialog(registrationsDialog, trip, next);
         }
       } catch (error) {
-        assignment.disabled = false;
+        if (isDialogContextCurrent(dialog, detailContextId)
+            && assignment.isConnected) {
+          assignment.disabled = false;
+        }
         showToast(error?.message || "Buszuordnung konnte nicht gespeichert werden.", "error", 5200);
       }
     });
@@ -2777,13 +2903,16 @@ function openRegistrationDetail(trip, registration, data, registrationsDialog) {
       });
       snapshot = await call("fanbus_trips_list");
       render();
+      if (!isDialogContextCurrent(dialog, detailContextId)) return;
       dialog.close();
-      if (registrationsDialog?.open
-          && registrationsDialog.dataset.v4DialogContext === parentContextId) {
+      if (isDialogContextCurrent(registrationsDialog, parentContextId)) {
         renderRegistrationsDialog(registrationsDialog, trip, next);
       }
     } catch (error) {
-      button.disabled = false;
+      if (isDialogContextCurrent(dialog, detailContextId)
+          && button.isConnected) {
+        button.disabled = false;
+      }
       showToast(error?.message || "Promotion ist derzeit nicht möglich.", "error", 5200);
     }
   });
@@ -3039,6 +3168,7 @@ function renderManualPersonPicker(dialog, people) {
 }
 
 function openManualPersonPicker(parentDialog, people) {
+  const parentContextId = parentDialog?.dataset.v4DialogContext;
   const selectedKey = parentDialog.querySelector('[name="personKey"]')?.value || "";
   const picker = openDialog({
     title: "Person auswählen",
@@ -3056,6 +3186,7 @@ function openManualPersonPicker(parentDialog, people) {
       <div class="v4-m310-person-picker-results" data-m310-person-results></div>
     </div>`
   });
+  const pickerContextId = picker.dataset.v4DialogContext;
 
   const renderResults = () => {
     renderManualPersonPicker(picker, people);
@@ -3065,9 +3196,11 @@ function openManualPersonPicker(parentDialog, people) {
       }
       button.addEventListener("click", () => {
         const person = people.find(item => manualPersonKey(item) === button.dataset.m310PersonResult);
-        if (!person) return;
+        if (!person || !isDialogContextCurrent(picker, pickerContextId)) return;
         picker.close();
-        setManualRegistrationPerson(parentDialog, person);
+        if (isDialogContextCurrent(parentDialog, parentContextId)) {
+          setManualRegistrationPerson(parentDialog, person);
+        }
       });
     });
   };
@@ -3095,20 +3228,11 @@ function manualRegistrationForm(tripStops = [], trip = {}) {
   );
 
   return `<form id="m310ManualRegistrationForm" class="form-grid v4-smart-form">
-    <label class="v4-field-half">Art der Erfassung
+    <label class="v4-field-full v4-m310-manual-mode">Art der Erfassung
       <select name="mode" required>
-        <option value="PERSON">Mitglied / Portalnutzer</option>
+        <option value="PERSON">Mitglied / Portaluser</option>
         <option value="GUEST">Gast</option>
       </select>
-    </label>
-    ${trip.busPreferenceSelectionEnabled ? `<label class="v4-field-half">Buswunsch
-      <select name="busPreference" required>${optionList(BUS_PREFERENCES, "EGAL")}</select>
-    </label>` : ""}
-    ${activeTripStops.length ? `<label class="v4-field-full">Zustiegsort
-      <select name="boardingStopId" required><option value="">Bitte wählen</option>${activeTripStops.map(stop => `<option value="${escapeAttr(stop.tripBoardingStopId || stop.id)}"${(stop.tripBoardingStopId || stop.id) === (defaultTripStop?.tripBoardingStopId || defaultTripStop?.id) ? " selected" : ""}>${escapeHtml(`${stop.label} · ${formatBerlinTime(stop.departureAt)}`)}</option>`).join("")}</select>
-    </label>` : ""}
-    <label class="v4-field-full">Operativer Hinweis (optional)
-      <textarea name="operationalNote" maxlength="240"></textarea>
     </label>
     <div class="v4-field-full v4-m310-manual-person" data-m310-manual-person>
       <input name="personKey" type="hidden">
@@ -3125,6 +3249,15 @@ function manualRegistrationForm(tripStops = [], trip = {}) {
     <label class="v4-field-full" data-m310-manual-guest hidden>E-Mail (optional)
       <input name="email" type="email" autocomplete="email" disabled>
     </label>
+    ${activeTripStops.length ? `<label class="v4-field-full">Zustiegsort
+      <select name="boardingStopId" required><option value="">Bitte wählen</option>${activeTripStops.map(stop => `<option value="${escapeAttr(stop.tripBoardingStopId || stop.id)}"${(stop.tripBoardingStopId || stop.id) === (defaultTripStop?.tripBoardingStopId || defaultTripStop?.id) ? " selected" : ""}>${escapeHtml(`${stop.label} · ${formatBerlinTime(stop.departureAt)}`)}</option>`).join("")}</select>
+    </label>` : ""}
+    ${trip.busPreferenceSelectionEnabled ? `<label class="v4-field-full">Buswunsch
+      <select name="busPreference" required>${optionList(BUS_PREFERENCES, "EGAL")}</select>
+    </label>` : ""}
+    <label class="v4-field-full">Operativer Hinweis (optional)
+      <textarea name="operationalNote" maxlength="240"></textarea>
+    </label>
     <label class="v4-field-full v4-compact-check v4-m310-manual-consent">
       <input name="consentConfirmed" type="checkbox" required>
       <span>Die Person hat die Teilnahmebedingungen akzeptiert und wurde auf die Datenschutzhinweise hingewiesen.</span>
@@ -3137,11 +3270,13 @@ function syncManualRegistrationMode(dialog) {
   const isGuest = form?.elements.namedItem("mode")?.value === "GUEST";
   const personField = dialog.querySelector("[data-m310-manual-person]");
   const personInput = form?.elements.namedItem("personKey");
+  const personButton = dialog.querySelector("[data-m310-open-person-picker]");
 
   if (personField) personField.hidden = isGuest;
   if (personInput) {
     personInput.disabled = isGuest;
   }
+  if (personButton) personButton.disabled = isGuest;
 
   dialog.querySelectorAll("[data-m310-manual-guest]").forEach(field => {
     field.hidden = !isGuest;
@@ -3150,6 +3285,18 @@ function syncManualRegistrationMode(dialog) {
     input.disabled = !isGuest;
     input.required = isGuest && input.name !== "email";
   });
+}
+
+function bindManualConsentValidation(dialog) {
+  const consent = dialog.querySelector('[name="consentConfirmed"]');
+  if (!consent) return;
+  const updateMessage = () => {
+    consent.setCustomValidity(
+      consent.checked ? "" : "Bitte Datenschutz und Teilnahmebedingungen bestätigen."
+    );
+  };
+  consent.addEventListener("change", updateMessage);
+  updateMessage();
 }
 
 function manualRegistrationError(outcome) {
@@ -3253,6 +3400,7 @@ async function openManualRegistration(trip, registrationsDialog) {
     dialog.querySelector("[data-m310-open-person-picker]")
       ?.addEventListener("click", () => openManualPersonPicker(dialog, people));
     syncManualRegistrationMode(dialog);
+    bindManualConsentValidation(dialog);
   } catch (error) {
     showToast(error?.message || "Die Personenauswahl konnte nicht geladen werden.", "error", 5200);
   }
