@@ -297,7 +297,7 @@ test("M325 F5 Round 2 keeps workspace navigation, mobile cards and dialog forms 
   assert.match(tripStopForm, /name="departureTime" type="time"/);
   assert.doesNotMatch(tripStopForm, /datetime-local/);
   assert.match(tripStopForm, /dialog-actions v4-detail-actions v4-field-full/);
-  assert.match(boarding, /formatBerlinTime\(stop\.departureAt\)/);
+  assert.match(boarding, /boardingStopDisplay\(stop\)/);
 
   assert.match(css, /\.v4-m325-list-card,[\s\S]*\.v4-m325-operation-card/);
   assert.match(css, /\[data-m325-bus-form\] > \.v4-field-half/);

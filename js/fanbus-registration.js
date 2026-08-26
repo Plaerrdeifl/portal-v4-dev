@@ -409,7 +409,7 @@ function resolvedBoardingStopValue(value) {
 
 function boardingStopOptions(selected = "") {
   const resolved = resolvedBoardingStopValue(selected);
-  return `<option value="">Bitte wählen</option>${(trip?.boardingStops || []).map(stop => `<option value="${escapeHtml(stop.id)}"${String(stop.id) === resolved ? " selected" : ""}>${escapeHtml(`${stop.label} · ${formatBerlinTime(stop.departureAt)}`)}</option>`).join("")}`;
+  return `<option value="">Bitte wählen</option>${(trip?.boardingStops || []).map(stop => `<option value="${escapeHtml(stop.id)}"${String(stop.id) === resolved ? " selected" : ""}>${escapeHtml(`${formatBerlinTime(stop.departureAt)} · ${stop.label}`)}</option>`).join("")}`;
 }
 
 function companionValues(member = {}) {

@@ -99,7 +99,7 @@ test("Polish 3 trip creation uses the portal picker with compact chronological d
 
 test("Polish 3 mobile editor keeps two-column layouts when they fit and stacks only on very narrow screens", () => {
   assert.match(ux, /\.v4-m310-editor-fields\{[^}]*column-gap:12px;[^}]*row-gap:9px;[^}]*min-width:0/);
-  assert.match(ux, /\.v4-m310-trip-stop-editor-row\{[^}]*grid-template-columns:minmax\(0,1fr\) 104px auto;[^}]*gap:7px;[^}]*min-width:0;[^}]*padding:7px/);
+  assert.match(ux, /\.v4-m310-trip-stop-editor-row\{[^}]*grid-template-columns:104px minmax\(0,1fr\) auto;[^}]*gap:7px;[^}]*min-width:0;[^}]*padding:7px/);
   assert.match(ux, /box-sizing:border-box;width:100%;min-width:0/);
   assert.match(ux, /@media \(max-width:350px\)\{[\s\S]*\.v4-m310-editor-fields,\.v4-m310-trip-stop-editor-row,\.v4-m310-trip-default-stop\{grid-template-columns:1fr\}/);
   assert.doesNotMatch(ux, /MutationObserver/);
