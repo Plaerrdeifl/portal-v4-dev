@@ -67,8 +67,9 @@ test("Polish 4 keeps the Fanbus editor compact, time-first and unclipped on mobi
 
   assert.match(desktop, /display:grid;gap:4px;width:100%;min-width:0;max-width:100%;font-weight:700/);
   assert.match(desktop, /display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;inline-size:100%;min-inline-size:0;max-inline-size:100%/);
-  assert.doesNotMatch(desktop, /contain:inline-size/);
-  assert.doesNotMatch(desktop, /input:is\(\[type="date"\],\[type="time"\],\[type="datetime-local"\]\)[^}]+overflow:hidden/);
+  assert.match(desktop, /\.v4-m310-editor-fields>label:has\(>input:is\([^}]+contain:inline-size;overflow:hidden/);
+  assert.match(desktop, /\.v4-m310-trip-editor-form input:is\([^}]+-webkit-appearance:none!important;appearance:none!important/);
+  assert.match(desktop, /min-inline-size:0!important;max-width:100%!important;max-inline-size:100%!important/);
   assert.match(narrow, /\.v4-m310-editor-fields,\.v4-m310-trip-stop-editor-row,\.v4-m310-trip-default-stop\{grid-template-columns:1fr\}/);
 });
 
