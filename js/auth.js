@@ -18,10 +18,58 @@ let state = { ...EMPTY };
 let initializePromise = null;
 let refreshPromise = null;
 let authSubscription = null;
+let renderFingerprint = "";
+let renderRevision = 0;
 
 const PD_PUSH_LOGOUT_RECOVERY_PREFIX = "pdPushLogoutRecovery:";
 
+function stableRenderValue(value) {
+  if (Array.isArray(value)) {
+    return value.map(stableRenderValue);
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.keys(value)
+        .sort()
+        .map(key => [key, stableRenderValue(value[key])])
+    );
+  }
+
+  return value ?? null;
+}
+
+function currentRenderFingerprint() {
+  const bootstrap = state.bootstrap
+    ? { ...state.bootstrap }
+    : null;
+
+  if (bootstrap) {
+    delete bootstrap.serverTime;
+    if (Array.isArray(bootstrap.permissions)) {
+      bootstrap.permissions = [...bootstrap.permissions].sort();
+    }
+  }
+
+  return JSON.stringify(stableRenderValue({
+    authenticated: Boolean(state.session),
+    sessionUser: state.session?.user
+      ? {
+          id: state.session.user.id || null,
+          email: state.session.user.email || null
+        }
+      : null,
+    bootstrap
+  }));
+}
+
 function emit() {
+  const nextRenderFingerprint = currentRenderFingerprint();
+  if (nextRenderFingerprint !== renderFingerprint) {
+    renderFingerprint = nextRenderFingerprint;
+    renderRevision += 1;
+  }
+
   window.dispatchEvent(
     new CustomEvent("pd-auth-change", { detail: auth.current() })
   );
@@ -202,6 +250,7 @@ export const auth = Object.freeze({
       request: state.bootstrap?.request || null,
       suggestions: state.bootstrap?.suggestions || {},
       system: state.bootstrap?.system || {},
+      renderRevision,
       busy: Boolean(state.busy),
       error: state.error
     };

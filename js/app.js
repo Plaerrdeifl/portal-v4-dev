@@ -38,7 +38,13 @@ import {
 let renderSequence = 0;
 let authEventQueued = false;
 let authOperationActive = false;
+let explicitRefreshActive = false;
+let lastAuthRenderRevision = -1;
 let apiActivity = api.activity();
+
+function syncAuthRenderRevision(current = auth.current()) {
+  lastAuthRenderRevision = Number(current.renderRevision || 0);
+}
 
 function renderPlatformMode(status) {
   document.documentElement.dataset.platformMode = status.mode;
@@ -186,17 +192,20 @@ function authenticatedTarget(
   return "#/dashboard";
 }
 
-function updateChrome() {
-  renderNavigation();
-  updateUserChrome();
-  updateActiveNavigation();
-
+function updateConnectionChrome() {
   const connection = connectionState();
 
   setConnectionStatus(
     connection.label,
     connection.type
   );
+}
+
+function updateChrome() {
+  renderNavigation();
+  updateUserChrome();
+  updateActiveNavigation();
+  updateConnectionChrome();
 }
 
 function enforceRoute(key) {
@@ -252,6 +261,7 @@ async function renderRoute() {
   }
 
   document.documentElement.dataset.route = allowed;
+  const renderId = ++renderSequence;
 
   if (allowed === "login") {
     updateChrome();
@@ -264,7 +274,6 @@ async function renderRoute() {
   }
 
   const route = routes()[allowed];
-  const renderId = ++renderSequence;
 
   setRouteHeader(route);
 
@@ -350,6 +359,7 @@ async function renderRoute() {
 function handleAuthChange() {
   if (
     authOperationActive
+    || explicitRefreshActive
     || authEventQueued
   ) {
     return;
@@ -360,6 +370,13 @@ function handleAuthChange() {
   queueMicrotask(async () => {
     authEventQueued = false;
 
+    if (
+      authOperationActive
+      || explicitRefreshActive
+    ) {
+      return;
+    }
+
     const current = auth.current();
 
     if (
@@ -369,11 +386,20 @@ function handleAuthChange() {
       return;
     }
 
+    const renderRelevantChange =
+      Number(current.renderRevision || 0)
+      !== lastAuthRenderRevision;
+
+    syncAuthRenderRevision(current);
+
+    let routeChanged = false;
+
     if (
       !current.authenticated
       && currentRoute() !== "login"
     ) {
       replaceHash("#/login");
+      routeChanged = true;
     }
     else if (
       current.authenticated
@@ -382,9 +408,15 @@ function handleAuthChange() {
       replaceHash(
         authenticatedTarget(current)
       );
+      routeChanged = true;
     }
 
-    await renderRoute();
+    if (routeChanged || renderRelevantChange) {
+      await renderRoute();
+      return;
+    }
+
+    updateConnectionChrome();
   });
 }
 
@@ -411,6 +443,8 @@ async function signInWithGoogleCredential(
         response?.credential,
         nonce
       );
+
+    syncAuthRenderRevision(current);
 
     replaceHash(
       authenticatedTarget(current, true)
@@ -441,11 +475,18 @@ async function signInWithGoogleCredential(
 }
 
 async function refreshCurrentView() {
+  if (explicitRefreshActive) {
+    return;
+  }
+
+  explicitRefreshActive = true;
+
   try {
     if (auth.isAuthenticated()) {
       await auth.refresh();
     }
 
+    syncAuthRenderRevision();
     await renderRoute();
   }
   catch (error) {
@@ -455,6 +496,9 @@ async function refreshCurrentView() {
       "error",
       6500
     );
+  }
+  finally {
+    explicitRefreshActive = false;
   }
 }
 
@@ -472,6 +516,7 @@ async function logout() {
 
   try {
     await auth.logout();
+    syncAuthRenderRevision();
 
     replaceHash("#/login");
 
@@ -597,6 +642,7 @@ async function bootstrap() {
   );
 
   const current = auth.current();
+  syncAuthRenderRevision(current);
   const hadInitialHash = Boolean(location.hash);
 
   if (!hadInitialHash) {

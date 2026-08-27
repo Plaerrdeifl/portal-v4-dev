@@ -61,6 +61,7 @@ let snapshot = { trips: [] };
 let openTripDetailId = "";
 let operationsUiState = { status: "ALL", bus: "ALL", stop: "ALL", search: "", scrollY: 0 };
 let registrationFiltersOpen = false;
+let personGroupsRenderSequence = 0;
 
 function trips() {
   return Array.isArray(snapshot?.trips) ? snapshot.trips : [];
@@ -1491,7 +1492,15 @@ async function openPersonGroupDetailDialog(group, people, riders, refresh) {
   });
 }
 
+function refreshPersonGroupsWorkspace() {
+  const panel = document.getElementById("m310FanbusList");
+  const summary = document.getElementById("m310FanbusSummary");
+  if (!panel?.isConnected) return Promise.resolve();
+  return renderPersonGroupsWorkspace(panel, summary);
+}
+
 async function renderPersonGroupsWorkspace(panel, summary) {
+  const renderId = ++personGroupsRenderSequence;
   if (summary) summary.textContent = "";
   panel.innerHTML = workspaceLoading("Personengruppen", "Gruppen werden geladen …");
   try {
@@ -1500,10 +1509,11 @@ async function renderPersonGroupsWorkspace(panel, summary) {
       call("fanbus_registration_people_list"),
       call("fanbus_regular_riders_list")
     ]);
+    if (renderId !== personGroupsRenderSequence || !panel.isConnected) return;
     const groups = Array.isArray(data?.groups) ? data.groups : [];
     const people = Array.isArray(peopleData?.people) ? peopleData.people : [];
     const riders = Array.isArray(riderData?.regularRiders) ? riderData.regularRiders : [];
-    const refresh = () => renderPersonGroupsWorkspace(panel, summary);
+    const refresh = refreshPersonGroupsWorkspace;
     panel.innerHTML = `<section class="v4-m325-workspace v4-m326-workspace"><header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m326-back>Zurück</button><div><h2>Personengruppen</h2><p>Gruppen sind bearbeitbare Vorlagen; Buchungen bleiben einzelne Teilnehmer.</p></div></header><div class="v4-m326-toolbar"><button class="button primary" type="button" data-m326-add-group>+ Gruppe</button></div><div class="v4-mobile-records v4-m326-records">${groups.map(personGroupListCard).join("") || empty("Noch keine Personengruppen vorhanden.")}</div></section>`;
     panel.querySelector("[data-m326-back]")?.addEventListener("click", () => returnToFanbuses());
     panel.querySelector("[data-m326-add-group]")?.addEventListener("click", () => openPersonGroupForm(null, refresh));
@@ -1517,6 +1527,7 @@ async function renderPersonGroupsWorkspace(panel, summary) {
       }
     }));
   } catch (error) {
+    if (renderId !== personGroupsRenderSequence || !panel.isConnected) return;
     panel.innerHTML = errorPanel(error, "Personengruppen konnten nicht geladen werden");
   }
 }
