@@ -7,6 +7,16 @@ function activeSourceFilter(form) {
   return active?.dataset.m326SourceFilter || "ALL";
 }
 
+function setFlowVisible(element, visible) {
+  element.hidden = !visible;
+  element.setAttribute("aria-hidden", String(!visible));
+  if (visible) {
+    element.style.removeProperty("display");
+  } else {
+    element.style.setProperty("display", "none", "important");
+  }
+}
+
 function enhancePicker(form) {
   if (!(form instanceof HTMLFormElement) || form.dataset.m326PickerEnhanced === "true") return;
 
@@ -21,12 +31,23 @@ function enhancePicker(form) {
   form.dataset.m326PickerEnhanced = "true";
   form.dataset.m326PickerMode = "person";
 
+  // Der bestehende M326-Dialog fokussiert die Suche beim Öffnen.
+  // Auf iOS würde dadurch direkt Tastatur bzw. nach dem Umbau der Select-Picker aufgehen.
+  // Das Formular selbst dient deshalb während der Initialisierung als neutrales Fokusziel.
+  form.tabIndex = -1;
+  try {
+    form.focus({ preventScroll: true });
+  } catch {
+    form.focus();
+  }
+
   queryLabel.classList.add("v4-field-full", "full");
   filters.classList.add("v4-field-full", "full", "button-row");
   results.classList.add("v4-field-full", "full");
   guestFields.classList.remove("v4-smart-form");
   guestFields.querySelectorAll(".v4-field-full").forEach(element => element.classList.add("full"));
   legacyGuestButton.hidden = true;
+  legacyGuestButton.style.setProperty("display", "none", "important");
 
   const modeLabel = document.createElement("label");
   modeLabel.className = "v4-field-full";
@@ -90,10 +111,8 @@ function enhancePicker(form) {
     form.dataset.m326PickerMode = guest ? "guest" : "person";
     modeSelect.value = guest ? "guest" : "person";
 
-    personPane.hidden = guest;
-    personPane.setAttribute("aria-hidden", String(guest));
-    guestFields.hidden = !guest;
-    guestFields.setAttribute("aria-hidden", String(!guest));
+    setFlowVisible(personPane, !guest);
+    setFlowVisible(guestFields, guest);
 
     query.disabled = guest;
     filterButtons.forEach(button => {
@@ -114,6 +133,20 @@ function enhancePicker(form) {
     }
   };
 
+  const neutralizeInitialFieldFocus = () => {
+    if (!form.isConnected) return;
+    const active = document.activeElement;
+    const fieldHasInitialFocus = active === modeSelect
+      || active === query
+      || guestFields.contains(active);
+    if (!fieldHasInitialFocus) return;
+    try {
+      form.focus({ preventScroll: true });
+    } catch {
+      form.focus();
+    }
+  };
+
   query.addEventListener("input", () => requestAnimationFrame(updatePersonVisibility));
   filterButtons.forEach(button => button.addEventListener("click", () => requestAnimationFrame(updatePersonVisibility)));
   modeSelect.addEventListener("change", () => setMode(modeSelect.value));
@@ -129,6 +162,11 @@ function enhancePicker(form) {
   dialog?.addEventListener("close", () => resultObserver.disconnect(), { once: true });
 
   setMode("person");
+
+  // iOS kann den Fokus erst nach der DOM-Erweiterung auf den ersten Form-Control legen.
+  // Zwei kurze Nachprüfungen verhindern das, ohne spätere Nutzereingaben anzutasten.
+  requestAnimationFrame(neutralizeInitialFieldFocus);
+  window.setTimeout(neutralizeInitialFieldFocus, 80);
 }
 
 function scan(root = document) {
