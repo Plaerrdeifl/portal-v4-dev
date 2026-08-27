@@ -1325,6 +1325,32 @@ function groupMemberAnchor(member) {
   return `${member.anchorType}:${member.anchorId}`;
 }
 
+function groupMemberType(member) {
+  return {
+    PORTAL_USER: "Portaluser",
+    MEMBER: "Mitglied",
+    REGULAR_RIDER: "Stammfahrer"
+  }[member.anchorType] || "Person";
+}
+
+function groupMemberName(member) {
+  return member.name || `${member.firstName || "Nicht verfügbar"} ${member.lastName || ""}`.trim();
+}
+
+function personGroupListCard(group) {
+  const count = Number(group.memberCount || 0);
+  return `<button class="v4-compact-record v4-m326-group-card" type="button" data-m326-open-group="${escapeAttr(group.id)}" aria-label="Details zu ${escapeAttr(group.name)} öffnen"><span class="v4-compact-record-copy"><strong>${escapeHtml(group.name)}</strong><small>${count} ${count === 1 ? "Person" : "Personen"} · ${group.isActive ? "Aktiv" : "Inaktiv"}</small></span><span class="v4-row-chevron" aria-hidden="true">›</span></button>`;
+}
+
+function personGroupDetailBody(group, canManage) {
+  const members = Array.isArray(group.members) ? group.members : [];
+  return `<section class="v4-m326-group-detail">
+    <dl class="v4-m326-group-detail-facts"><div><dt>Status</dt><dd>${group.isActive ? "Aktiv" : "Inaktiv"}</dd></div><div><dt>Personen</dt><dd>${members.length}</dd></div></dl>
+    <section class="v4-m326-group-detail-members"><h3>Personenübersicht</h3><div>${members.map(member => `<article class="v4-m326-group-member-row is-readonly"><span class="v4-m326-group-member-copy"><strong>${escapeHtml(groupMemberName(member))}</strong><small>${escapeHtml(groupMemberType(member))}${member.available === false ? " · Nicht verfügbar" : ""}${member.conflict ? " · Identitätskonflikt" : ""}</small></span></article>`).join("") || empty("Noch keine Personen in dieser Gruppe.")}</div></section>
+    ${canManage && group.isActive ? '<div class="dialog-actions v4-detail-actions v4-m326-group-detail-actions"><button class="button secondary" type="button" data-m326-detail-group-members>Personen bearbeiten</button><button class="button secondary" type="button" data-m326-detail-edit-group>Bearbeiten</button><button class="button danger" type="button" data-m326-detail-deactivate-group>Deaktivieren</button></div>' : ""}
+  </section>`;
+}
+
 function openPersonGroupForm(group, refresh) {
   const dialog = openDialog({
     title: group ? "Gruppe bearbeiten" : "Gruppe anlegen",
@@ -1341,12 +1367,44 @@ function openPersonGroupForm(group, refresh) {
         name: values.name,
         note: values.note || null
       }), "Gruppe gespeichert.");
-      dialog.close();
+      closeAllDialogs();
       await refresh();
     } catch (error) {
       showToast(error?.message || "Gruppe konnte nicht gespeichert werden.", "error", 5200);
     }
   });
+}
+
+function openPersonGroupPicker(selected, choices, renderSelected) {
+  const dialog = openDialog({
+    title: "Person hinzufügen",
+    body: `<div class="v4-m326-group-person-picker"><label>Person suchen<input type="search" autocomplete="off" data-m326-group-person-query placeholder="Name"></label><div class="v4-m326-group-picker-filters"><button class="button small secondary is-active" type="button" data-m326-group-source="ALL">Alle</button><button class="button small secondary" type="button" data-m326-group-source="MEMBER">Mitglieder</button><button class="button small secondary" type="button" data-m326-group-source="PORTAL_USER">Portaluser</button><button class="button small secondary" type="button" data-m326-group-source="REGULAR_RIDER">Stammfahrer</button></div><div class="v4-m325-person-search-results" data-m326-group-person-results></div></div>`
+  });
+  const queryInput = dialog.querySelector("[data-m326-group-person-query]");
+  const results = dialog.querySelector("[data-m326-group-person-results]");
+  let sourceFilter = "ALL";
+  const renderChoices = () => {
+    const query = String(queryInput?.value || "").trim().toLocaleLowerCase("de-DE");
+    const selectedAnchors = new Set(selected.map(groupMemberAnchor));
+    const visible = choices.filter(choice => !selectedAnchors.has(groupMemberAnchor(choice))
+      && (sourceFilter === "ALL" || choice.anchorType === sourceFilter)
+      && (!query || choice.name.toLocaleLowerCase("de-DE").includes(query)));
+    results.innerHTML = visible.map(choice => `<button class="button secondary v4-m325-person-search-result" type="button" data-m326-group-picker-choice="${escapeAttr(groupMemberAnchor(choice))}"><span><strong>${escapeHtml(choice.name)}</strong><small>${escapeHtml(choice.source)}</small></span><span>Übernehmen</span></button>`).join("") || empty("Keine weitere passende Person gefunden.");
+    results.querySelectorAll("[data-m326-group-picker-choice]").forEach(button => button.addEventListener("click", () => {
+      const choice = choices.find(item => groupMemberAnchor(item) === button.dataset.m326GroupPickerChoice);
+      if (!choice || selected.some(item => groupMemberAnchor(item) === groupMemberAnchor(choice))) return;
+      selected.push({ ...choice });
+      dialog.close();
+      renderSelected();
+    }));
+  };
+  queryInput?.addEventListener("input", renderChoices);
+  dialog.querySelectorAll("[data-m326-group-source]").forEach(button => button.addEventListener("click", () => {
+    sourceFilter = button.dataset.m326GroupSource;
+    dialog.querySelectorAll("[data-m326-group-source]").forEach(filter => filter.classList.toggle("is-active", filter === button));
+    renderChoices();
+  }));
+  renderChoices();
 }
 
 async function openPersonGroupMembers(group, people, riders, refresh) {
@@ -1357,7 +1415,7 @@ async function openPersonGroupMembers(group, people, riders, refresh) {
     name: `${member.firstName || "Nicht verfügbar"} ${member.lastName || ""}`.trim()
   }));
   const choices = [
-    ...people.map(person => ({
+    ...people.filter(person => person.personType === "MEMBER" || person.personType === "PORTAL_USER").map(person => ({
       anchorType: person.personType === "MEMBER" ? "MEMBER" : "PORTAL_USER",
       anchorId: person.personType === "MEMBER" ? person.memberId : person.portalUserId,
       name: `${person.firstName} ${person.lastName}`,
@@ -1370,11 +1428,11 @@ async function openPersonGroupMembers(group, people, riders, refresh) {
   ].filter(choice => choice.anchorId);
   const dialog = openDialog({
     title: `Personen in ${group.name}`,
-    body: `<div class="v4-m326-group-editor"><p class="subtle">Die ursprüngliche Personenquelle bleibt stabil gespeichert. Gäste können nicht in Gruppen aufgenommen werden.</p><div data-m326-group-selected></div><label>Person hinzufügen<select data-m326-group-choice><option value="">Bitte wählen</option>${choices.map(choice => `<option value="${escapeAttr(`${choice.anchorType}:${choice.anchorId}`)}">${escapeHtml(`${choice.name} · ${choice.source}`)}</option>`).join("")}</select></label><button class="button secondary" type="button" data-m326-group-add>+ Person</button><div class="dialog-actions"><button class="button primary" type="button" data-m326-group-save>Gruppe speichern</button></div></div>`
+    body: `<div class="v4-m326-group-editor"><p class="subtle">Die ursprüngliche Personenquelle bleibt stabil gespeichert. Gäste können nicht in Gruppen aufgenommen werden.</p><div data-m326-group-selected></div><button class="button secondary v4-m326-group-add-person" type="button" data-m326-group-add>+ Person hinzufügen</button><div class="dialog-actions"><button class="button primary" type="button" data-m326-group-save>Gruppe speichern</button></div></div>`
   });
   const renderSelected = () => {
     const root = dialog.querySelector("[data-m326-group-selected]");
-    root.innerHTML = selected.map((person, index) => `<article class="v4-m326-composer-card"><div><strong>${escapeHtml(person.name)}</strong><small>${escapeHtml(person.anchorType === "PORTAL_USER" ? "Portaluser" : person.anchorType === "MEMBER" ? "Mitglied" : "Stammfahrer")}</small></div><button class="icon-button" type="button" data-m326-remove-group-member="${index}" aria-label="Person entfernen">×</button></article>`).join("") || empty("Noch keine Personen in dieser Gruppe.");
+    root.innerHTML = selected.map((person, index) => `<article class="v4-m326-group-member-row"><span class="v4-m326-group-member-copy"><strong>${escapeHtml(groupMemberName(person))}</strong><small>${escapeHtml(groupMemberType(person))}</small></span><button class="icon-button v4-m326-group-member-remove" type="button" data-m326-remove-group-member="${index}" aria-label="${escapeAttr(`${groupMemberName(person)} entfernen`)}">×</button></article>`).join("") || empty("Noch keine Personen in dieser Gruppe.");
     root.querySelectorAll("[data-m326-remove-group-member]").forEach(button => button.addEventListener("click", () => {
       selected.splice(Number(button.dataset.m326RemoveGroupMember), 1);
       renderSelected();
@@ -1382,11 +1440,7 @@ async function openPersonGroupMembers(group, people, riders, refresh) {
   };
   renderSelected();
   dialog.querySelector("[data-m326-group-add]")?.addEventListener("click", () => {
-    const value = dialog.querySelector("[data-m326-group-choice]")?.value;
-    const choice = choices.find(item => `${item.anchorType}:${item.anchorId}` === value);
-    if (!choice || selected.some(item => `${item.anchorType}:${item.anchorId}` === value)) return;
-    selected.push(choice);
-    renderSelected();
+    openPersonGroupPicker(selected, choices, renderSelected);
   });
   dialog.querySelector("[data-m326-group-save]")?.addEventListener("click", async () => {
     try {
@@ -1399,10 +1453,40 @@ async function openPersonGroupMembers(group, people, riders, refresh) {
           ...(person.anchorType === "REGULAR_RIDER" ? { regularRiderId: person.anchorId } : {})
         }))
       }), "Gruppenmitglieder gespeichert.");
-      dialog.close();
+      closeAllDialogs();
       await refresh();
     } catch (error) {
       showToast(error?.message || "Gruppenmitglieder konnten nicht gespeichert werden.", "error", 5200);
+    }
+  });
+}
+
+async function openPersonGroupDetailDialog(group, people, riders, refresh) {
+  const detail = await call("fanbus_person_group_detail", { id: group.id });
+  const canManage = hasCapability("fanbus.registrations.manage");
+  const dialog = openDialog({
+    title: detail.name,
+    kicker: "Personengruppe",
+    body: personGroupDetailBody(detail, canManage)
+  });
+  if (!canManage || !detail.isActive) return;
+  dialog.querySelector("[data-m326-detail-group-members]")?.addEventListener("click", () => {
+    void openPersonGroupMembers(detail, people, riders, refresh);
+  });
+  dialog.querySelector("[data-m326-detail-edit-group]")?.addEventListener("click", () => {
+    openPersonGroupForm(detail, refresh);
+  });
+  dialog.querySelector("[data-m326-detail-deactivate-group]")?.addEventListener("click", async () => {
+    if (!await confirmAction("Gruppe deaktivieren? Die Vorlage bleibt nachvollziehbar, kann aber nicht mehr für Anmeldungen verwendet werden.")) return;
+    try {
+      await runWrite(() => call("fanbus_person_group_deactivate", {
+        id: detail.id,
+        expectedRevision: detail.revision
+      }), "Gruppe deaktiviert.");
+      dialog.close();
+      await refresh();
+    } catch (error) {
+      showToast(error?.message || "Gruppe konnte nicht deaktiviert werden.", "error", 5200);
     }
   });
 }
@@ -1420,19 +1504,16 @@ async function renderPersonGroupsWorkspace(panel, summary) {
     const people = Array.isArray(peopleData?.people) ? peopleData.people : [];
     const riders = Array.isArray(riderData?.regularRiders) ? riderData.regularRiders : [];
     const refresh = () => renderPersonGroupsWorkspace(panel, summary);
-    panel.innerHTML = `<section class="v4-m325-workspace v4-m326-workspace"><header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m326-back>Zurück</button><div><h2>Personengruppen</h2><p>Gruppen sind bearbeitbare Vorlagen; Buchungen bleiben einzelne Teilnehmer.</p></div></header><div class="v4-m326-toolbar"><button class="button primary" type="button" data-m326-add-group>+ Gruppe</button></div><div class="v4-mobile-records v4-m326-records">${groups.map(group => `<article class="v4-compact-record"><div class="v4-compact-record-copy"><strong>${escapeHtml(group.name)}</strong><small>${group.memberCount} ${group.memberCount === 1 ? "Person" : "Personen"} · ${group.isActive ? "Aktiv" : "Inaktiv"}</small></div><div class="v4-row-actions">${group.isActive ? `<button class="button small secondary" data-m326-group-members="${escapeAttr(group.id)}">Personen</button><button class="button small secondary" data-m326-edit-group="${escapeAttr(group.id)}">Bearbeiten</button><button class="button small danger" data-m326-deactivate-group="${escapeAttr(group.id)}">Deaktivieren</button>` : ""}</div></article>`).join("") || empty("Noch keine Personengruppen vorhanden.")}</div></section>`;
+    panel.innerHTML = `<section class="v4-m325-workspace v4-m326-workspace"><header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m326-back>Zurück</button><div><h2>Personengruppen</h2><p>Gruppen sind bearbeitbare Vorlagen; Buchungen bleiben einzelne Teilnehmer.</p></div></header><div class="v4-m326-toolbar"><button class="button primary" type="button" data-m326-add-group>+ Gruppe</button></div><div class="v4-mobile-records v4-m326-records">${groups.map(personGroupListCard).join("") || empty("Noch keine Personengruppen vorhanden.")}</div></section>`;
     panel.querySelector("[data-m326-back]")?.addEventListener("click", () => returnToFanbuses());
     panel.querySelector("[data-m326-add-group]")?.addEventListener("click", () => openPersonGroupForm(null, refresh));
-    panel.querySelectorAll("[data-m326-edit-group]").forEach(button => button.addEventListener("click", () => openPersonGroupForm(groups.find(item => item.id === button.dataset.m326EditGroup), refresh)));
-    panel.querySelectorAll("[data-m326-group-members]").forEach(button => button.addEventListener("click", () => void openPersonGroupMembers(groups.find(item => item.id === button.dataset.m326GroupMembers), people, riders, refresh)));
-    panel.querySelectorAll("[data-m326-deactivate-group]").forEach(button => button.addEventListener("click", async () => {
-      const group = groups.find(item => item.id === button.dataset.m326DeactivateGroup);
-      if (!group || !await confirmAction("Gruppe deaktivieren? Die Vorlage bleibt nachvollziehbar, kann aber nicht mehr für Anmeldungen verwendet werden.")) return;
+    panel.querySelectorAll("[data-m326-open-group]").forEach(button => button.addEventListener("click", async () => {
+      const group = groups.find(item => item.id === button.dataset.m326OpenGroup);
+      if (!group) return;
       try {
-        await runWrite(() => call("fanbus_person_group_deactivate", { id: group.id, expectedRevision: group.revision }), "Gruppe deaktiviert.");
-        await refresh();
+        await openPersonGroupDetailDialog(group, people, riders, refresh);
       } catch (error) {
-        showToast(error?.message || "Gruppe konnte nicht deaktiviert werden.", "error", 5200);
+        showToast(error?.message || "Personengruppe konnte nicht geladen werden.", "error", 5200);
       }
     }));
   } catch (error) {

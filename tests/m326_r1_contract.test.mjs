@@ -233,6 +233,74 @@ test("F5 successful regular-rider writes discard stale parent dialog contexts", 
   assert.doesNotMatch(linkWrite, /dialog\.close\(\)/);
 });
 
+test("F5 person-group management uses compact cards, structured rows and a searchable stable-anchor picker", () => {
+  const card = ui.slice(
+    ui.indexOf("function personGroupListCard"),
+    ui.indexOf("function personGroupDetailBody")
+  );
+  assert.match(card, /v4-compact-record v4-m326-group-card/);
+  assert.match(card, /data-m326-open-group/);
+  assert.match(card, /<strong>\$\{escapeHtml\(group\.name\)\}<\/strong><small>/);
+  assert.doesNotMatch(card, /Personen bearbeiten|Bearbeiten|Deaktivieren|data-m326-detail-/);
+
+  const detailBody = ui.slice(
+    ui.indexOf("function personGroupDetailBody"),
+    ui.indexOf("function openPersonGroupForm")
+  );
+  assert.match(detailBody, /Personenübersicht/);
+  assert.match(detailBody, /canManage && group\.isActive/);
+  for (const action of ["data-m326-detail-group-members", "data-m326-detail-edit-group", "data-m326-detail-deactivate-group"]) {
+    assert.match(detailBody, new RegExp(action));
+  }
+
+  const detailFlow = ui.slice(
+    ui.indexOf("async function openPersonGroupDetailDialog"),
+    ui.indexOf("async function renderPersonGroupsWorkspace")
+  );
+  assert.match(detailFlow, /hasCapability\("fanbus\.registrations\.manage"\)/);
+  assert.match(detailFlow, /title: detail\.name/);
+
+  const workspace = ui.slice(
+    ui.indexOf("async function renderPersonGroupsWorkspace"),
+    ui.indexOf("function operationEventLabel")
+  );
+  assert.match(workspace, /groups\.map\(personGroupListCard\)/);
+  assert.match(workspace, /data-m326-open-group[\s\S]*openPersonGroupDetailDialog/);
+  assert.doesNotMatch(workspace, /data-m326-(?:group-members|edit-group|deactivate-group)/);
+
+  const picker = ui.slice(
+    ui.indexOf("function openPersonGroupPicker"),
+    ui.indexOf("async function openPersonGroupMembers")
+  );
+  assert.match(picker, /type="search"[\s\S]*data-m326-group-person-query/);
+  assert.match(picker, /selectedAnchors\.has\(groupMemberAnchor\(choice\)\)/);
+  assert.match(picker, /<strong>\$\{escapeHtml\(choice\.name\)\}<\/strong><small>\$\{escapeHtml\(choice\.source\)\}<\/small>/);
+  assert.doesNotMatch(picker, /<select|GUEST/);
+  assert.deepEqual(
+    [...picker.matchAll(/data-m326-group-source="([A-Z_]+)"/g)].map(match => match[1]),
+    ["ALL", "MEMBER", "PORTAL_USER", "REGULAR_RIDER"]
+  );
+
+  const editor = ui.slice(
+    ui.indexOf("async function openPersonGroupMembers"),
+    ui.indexOf("async function openPersonGroupDetailDialog")
+  );
+  assert.match(editor, /v4-m326-group-member-copy"><strong>[\s\S]*<\/strong><small>[\s\S]*<\/small><\/span>/);
+  assert.match(editor, /v4-m326-group-member-remove/);
+  assert.match(editor, /\+ Person hinzufügen/);
+  assert.match(editor, /people\.filter\(person => person\.personType === "MEMBER" \|\| person\.personType === "PORTAL_USER"\)/);
+  assert.doesNotMatch(editor, /<select|data-m326-group-choice/);
+  assert.match(editor, /person\.anchorType === "PORTAL_USER" \? \{ portalUserId: person\.anchorId \}/);
+  assert.match(editor, /person\.anchorType === "MEMBER" \? \{ memberId: person\.anchorId \}/);
+  assert.match(editor, /person\.anchorType === "REGULAR_RIDER" \? \{ regularRiderId: person\.anchorId \}/);
+
+  assert.match(css, /\.v4-m326-group-card\s*\{[\s\S]*grid-template-columns: minmax\(0, 1fr\) auto;[\s\S]*max-width: 100%;/);
+  assert.match(css, /\.v4-m326-group-card \.v4-compact-record-copy strong\s*\{[\s\S]*overflow-wrap: break-word;[\s\S]*hyphens: none;/);
+  assert.match(css, /\.v4-m326-group-member-row\s*\{[\s\S]*grid-template-columns: minmax\(0, 1fr\) 44px;/);
+  assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.v4-m326-group-detail-facts\s*\{[\s\S]*grid-template-columns: minmax\(0, 1fr\);/);
+  assert.match(css, /@media \(max-width: 350px\)[\s\S]*\.v4-m326-group-card,[\s\S]*\.v4-m326-group-member-row\s*\{[\s\S]*max-width: 100%;/);
+});
+
 test("F4 central mail resolver is fail-closed and guards every fanbus outbox email", () => {
   assert.match(mail, /create function app_private\.fanbus_trip_mail_label/);
   assert.match(mail, /when v_type='GAME' then nullif\(btrim\(v_opponent\),''\)/);
