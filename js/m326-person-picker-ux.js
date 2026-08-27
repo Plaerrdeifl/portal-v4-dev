@@ -7,13 +7,6 @@ function activeSourceFilter(form) {
   return active?.dataset.m326SourceFilter || "ALL";
 }
 
-function setButtonState(button, active) {
-  if (!button) return;
-  button.classList.toggle("primary", active);
-  button.classList.toggle("secondary", !active);
-  button.setAttribute("aria-pressed", String(active));
-}
-
 function enhancePicker(form) {
   if (!(form instanceof HTMLFormElement) || form.dataset.m326PickerEnhanced === "true") return;
 
@@ -34,24 +27,22 @@ function enhancePicker(form) {
   guestFields.classList.add("v4-smart-form");
   legacyGuestButton.hidden = true;
 
-  const switcher = document.createElement("div");
-  switcher.className = "v4-field-full button-row";
-  switcher.setAttribute("role", "group");
-  switcher.setAttribute("aria-label", "Art der Personenauswahl");
+  const modeLabel = document.createElement("label");
+  modeLabel.className = "v4-field-full";
+  modeLabel.textContent = "Art der Erfassung";
 
-  const personButton = document.createElement("button");
-  personButton.type = "button";
-  personButton.className = "button primary";
-  personButton.textContent = "Bestehende Person";
-  personButton.dataset.m326PickerModeButton = "person";
+  const modeSelect = document.createElement("select");
+  modeSelect.dataset.m326PickerModeSelect = "true";
+  modeSelect.innerHTML = `
+    <option value="person">Bestehende Person</option>
+    <option value="guest">Neuer Gast</option>
+  `;
+  modeLabel.append(modeSelect);
 
-  const guestButton = document.createElement("button");
-  guestButton.type = "button";
-  guestButton.className = "button secondary";
-  guestButton.textContent = "Neuer Gast";
-  guestButton.dataset.m326PickerModeButton = "guest";
-
-  switcher.append(personButton, guestButton);
+  const personPane = document.createElement("div");
+  personPane.className = "v4-field-full form-grid v4-smart-form";
+  personPane.dataset.m326PickerPersonPane = "true";
+  personPane.setAttribute("aria-label", "Bestehende Person auswählen");
 
   const helper = document.createElement("p");
   helper.className = "subtle v4-field-full";
@@ -62,24 +53,13 @@ function enhancePicker(form) {
   more.className = "subtle v4-field-full";
   more.hidden = true;
 
-  const personPane = document.createElement("section");
-  personPane.className = "v4-field-full form-grid v4-smart-form";
-  personPane.setAttribute("aria-label", "Bestehende Person auswählen");
   queryLabel.before(personPane);
   personPane.append(queryLabel, filters, helper, results, more);
-
-  form.prepend(switcher);
+  form.prepend(modeLabel);
 
   const filterButtons = [...form.querySelectorAll("[data-m326-source-filter]")]
     .filter(button => button !== legacyGuestButton);
-
-  const syncFilterButtons = () => {
-    filterButtons.forEach(button => {
-      const active = button.classList.contains("is-active");
-      setButtonState(button, active);
-      button.classList.add("small");
-    });
-  };
+  filterButtons.forEach(button => button.classList.add("small"));
 
   const updateResultLimit = () => {
     const buttons = [...results.querySelectorAll("[data-m326-choice]")];
@@ -101,17 +81,15 @@ function enhancePicker(form) {
     helper.hidden = showResults;
     results.hidden = !showResults;
     more.hidden = !showResults;
-    syncFilterButtons();
     if (showResults) requestAnimationFrame(updateResultLimit);
   };
 
   const setMode = mode => {
     const guest = mode === "guest";
     form.dataset.m326PickerMode = guest ? "guest" : "person";
+    modeSelect.value = guest ? "guest" : "person";
     personPane.hidden = guest;
     guestFields.hidden = !guest;
-    setButtonState(personButton, !guest);
-    setButtonState(guestButton, guest);
 
     guestFields.querySelectorAll("input").forEach(input => {
       input.disabled = !guest;
@@ -129,11 +107,9 @@ function enhancePicker(form) {
     }
   };
 
-  const scheduleVisibilityUpdate = () => requestAnimationFrame(updatePersonVisibility);
-  query.addEventListener("input", scheduleVisibilityUpdate);
-  filterButtons.forEach(button => button.addEventListener("click", scheduleVisibilityUpdate));
-  personButton.addEventListener("click", () => setMode("person"));
-  guestButton.addEventListener("click", () => setMode("guest"));
+  query.addEventListener("input", () => requestAnimationFrame(updatePersonVisibility));
+  filterButtons.forEach(button => button.addEventListener("click", () => requestAnimationFrame(updatePersonVisibility)));
+  modeSelect.addEventListener("change", () => setMode(modeSelect.value));
 
   const resultObserver = new MutationObserver(() => {
     if (form.dataset.m326PickerMode === "person" && !results.hidden) {
@@ -145,7 +121,6 @@ function enhancePicker(form) {
   const dialog = form.closest("dialog");
   dialog?.addEventListener("close", () => resultObserver.disconnect(), { once: true });
 
-  syncFilterButtons();
   setMode("person");
 }
 
