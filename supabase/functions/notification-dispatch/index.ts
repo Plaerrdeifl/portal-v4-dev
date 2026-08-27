@@ -449,7 +449,15 @@ function buildEmail(config: RuntimeConfig, claim: Claim): EmailContent {
   const firstName = asString(data.firstName, 120);
   const name = asString(data.name, 240) || firstName || "Mitglied";
   const affectedName = asString(data.affectedName, 240) || name;
-  const tripTitle = asString(data.tripTitle, 240) || "der Fanbusfahrt";
+  const projectedTripTitle = asString(data.tripTitle, 240).trim();
+  if (key.startsWith("fanbus.") && (
+    !projectedTripTitle || [
+      "fanbusfahrt", "die fanbusfahrt", "der fanbusfahrt", "eine fanbusfahrt"
+    ].includes(projectedTripTitle.toLowerCase())
+  )) {
+    throw new DispatchError("FANBUS_MAIL_LABEL_MISSING");
+  }
+  const tripTitle = projectedTripTitle || "der Fanbusfahrt";
   const applicantNotice = asString(data.applicantNotice, 2000).trim();
   const participantCount = Number(data.participantCount || 0);
   const link = absolutePortalLink(config, claim.deepLink);

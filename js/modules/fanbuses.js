@@ -769,6 +769,8 @@ function setupFanbusActionMenu(canManage) {
   const menu = document.getElementById("m310FanbusActionMenu");
   const addButton = document.getElementById("m310AddTripButton");
   const companionButton = document.getElementById("m325CompanionListsButton");
+  const regularRidersButton = document.getElementById("m326RegularRidersButton");
+  const personGroupsButton = document.getElementById("m326PersonGroupsButton");
   const settingsButton = document.getElementById("m310FanbusSettingsButton");
   if (!root || !toggle || !menu) return;
 
@@ -794,6 +796,21 @@ function setupFanbusActionMenu(canManage) {
       close();
       window.location.hash = "#/fanbuses?view=companions";
     };
+  }
+  const canManagePeople = hasCapability("fanbus.registrations.manage");
+  if (regularRidersButton) {
+    regularRidersButton.hidden = !canManagePeople;
+    regularRidersButton.onclick = canManagePeople ? () => {
+      close();
+      window.location.hash = "#/fanbuses?view=regular-riders";
+    } : null;
+  }
+  if (personGroupsButton) {
+    personGroupsButton.hidden = !canManagePeople;
+    personGroupsButton.onclick = canManagePeople ? () => {
+      close();
+      window.location.hash = "#/fanbuses?view=person-groups";
+    } : null;
   }
   if (settingsButton) {
     settingsButton.hidden = !canManage;
@@ -837,6 +854,22 @@ function render() {
     }
     setWorkspaceShell(true);
     void renderFanbusSettingsWorkspace(panel, summary);
+    return;
+  }
+  if (routeQuery.get("view") === "regular-riders") {
+    if (!hasCapability("fanbus.registrations.manage")) returnToFanbuses();
+    else {
+      setWorkspaceShell(true);
+      void renderRegularRidersWorkspace(panel, summary);
+    }
+    return;
+  }
+  if (routeQuery.get("view") === "person-groups") {
+    if (!hasCapability("fanbus.registrations.manage")) returnToFanbuses();
+    else {
+      setWorkspaceShell(true);
+      void renderPersonGroupsWorkspace(panel, summary);
+    }
     return;
   }
   if (routeQuery.get("view") === "operations" && routeQuery.get("trip")) {
@@ -1109,6 +1142,254 @@ function openCompanionPersonSearchDialog(listId, panel, summary, companion = nul
     }, 300);
   });
   input?.focus();
+}
+
+function regularRiderForm(rider = null, stops = []) {
+  return `<form class="form-grid v4-smart-form" data-m326-regular-form>
+    <label class="v4-field-half">Vorname<input name="firstName" maxlength="160" required value="${escapeAttr(rider?.firstName || "")}"></label>
+    <label class="v4-field-half">Nachname<input name="lastName" maxlength="160" required value="${escapeAttr(rider?.lastName || "")}"></label>
+    <label class="v4-field-half">E-Mail (optional)<input name="email" type="email" maxlength="320" value="${escapeAttr(rider?.email || "")}"></label>
+    <label class="v4-field-half">Mobilnummer (optional)<input name="mobile" type="tel" maxlength="40" value="${escapeAttr(rider?.mobile || "")}"></label>
+    <label class="v4-field-half">Standard-Zustieg<select name="defaultBoardingStopId"><option value="">Kein Standard</option>${stops.map(stop => `<option value="${escapeAttr(stop.id)}"${stop.id === rider?.defaultBoardingStopId ? " selected" : ""}>${escapeHtml(stop.label)}</option>`).join("")}</select></label>
+    <label class="v4-field-half">Standard-Buswunsch<select name="defaultBusPreference">${optionList(BUS_PREFERENCES, rider?.defaultBusPreference || "EGAL")}</select></label>
+    <label class="v4-field-full">Interne Notiz (optional)<textarea name="note" maxlength="1000">${escapeHtml(rider?.note || "")}</textarea></label>
+    <div class="dialog-actions v4-detail-actions v4-field-full"><button class="button primary" type="submit">Speichern</button></div>
+  </form>`;
+}
+
+function openRegularRiderDialog(rider, stops, refresh) {
+  const dialog = openDialog({
+    title: rider ? "Stammfahrer bearbeiten" : "Stammfahrer anlegen",
+    body: regularRiderForm(rider, stops)
+  });
+  dialog.querySelector("[data-m326-regular-form]")?.addEventListener("submit", async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.reportValidity()) return;
+    const values = Object.fromEntries(new FormData(form));
+    try {
+      await runWrite(() => call(rider ? "fanbus_regular_rider_update" : "fanbus_regular_rider_create", {
+        ...(rider ? { id: rider.id, expectedRevision: rider.revision } : {}),
+        ...values,
+        email: values.email || null,
+        mobile: values.mobile || null,
+        note: values.note || null,
+        defaultBoardingStopId: values.defaultBoardingStopId || null
+      }), "Stammfahrer gespeichert.");
+      dialog.close();
+      await refresh();
+    } catch (error) {
+      showToast(error?.message || "Stammfahrer konnte nicht gespeichert werden.", "error", 5200);
+    }
+  });
+}
+
+function openRegularRiderLinkDialog(rider, people, refresh) {
+  const portals = [...new Map(people.filter(person => person.portalUserId).map(person => [
+    person.portalUserId,
+    { id: person.portalUserId, name: `${person.firstName} ${person.lastName}` }
+  ])).values()].sort((a, b) => a.name.localeCompare(b.name, "de"));
+  const dialog = openDialog({
+    title: rider.linkedPortalUserId ? "Portaluser neu verknüpfen" : "Portaluser verknüpfen",
+    body: `<form class="form-grid v4-smart-form" data-m326-link-form><label class="v4-field-full">Portaluser<select name="portalUserId" required><option value="">Bitte wählen</option>${portals.map(person => `<option value="${escapeAttr(person.id)}">${escapeHtml(person.name)}</option>`).join("")}</select></label><p class="subtle v4-field-full">Die Verknüpfung ändert keine historischen Buchungen.</p><div class="dialog-actions v4-detail-actions v4-field-full"><button class="button primary" type="submit">${rider.linkedPortalUserId ? "Neu verknüpfen" : "Verknüpfen"}</button></div></form>`
+  });
+  dialog.querySelector("[data-m326-link-form]")?.addEventListener("submit", async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.reportValidity()) return;
+    try {
+      await runWrite(() => call(
+        rider.linkedPortalUserId ? "fanbus_regular_rider_relink" : "fanbus_regular_rider_link",
+        {
+          regularRiderId: rider.id,
+          portalUserId: new FormData(form).get("portalUserId"),
+          expectedRevision: rider.revision
+        }
+      ), rider.linkedPortalUserId ? "Portaluser neu verknüpft." : "Portaluser verknüpft.");
+      dialog.close();
+      await refresh();
+    } catch (error) {
+      showToast(error?.message || "Portaluser konnte nicht verknüpft werden.", "error", 5200);
+    }
+  });
+}
+
+async function renderRegularRidersWorkspace(panel, summary) {
+  if (summary) summary.textContent = "";
+  panel.innerHTML = workspaceLoading("Stammfahrer", "Stammfahrer werden geladen …");
+  try {
+    const [data, stopData, peopleData] = await Promise.all([
+      call("fanbus_regular_riders_list", { includeInactive: true }),
+      call("fanbus_boarding_stops_list"),
+      call("fanbus_registration_people_list")
+    ]);
+    const riders = Array.isArray(data?.regularRiders) ? data.regularRiders : [];
+    const stops = Array.isArray(stopData?.stops) ? stopData.stops.filter(stop => stop.isActive) : [];
+    const people = Array.isArray(peopleData?.people) ? peopleData.people : [];
+    const stopLabels = new Map(stops.map(stop => [stop.id, stop.label]));
+    const refresh = () => renderRegularRidersWorkspace(panel, summary);
+    panel.innerHTML = `<section class="v4-m325-workspace v4-m326-workspace">
+      <header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m326-back>Zurück</button><div><h2>Stammfahrer</h2><p>Wiederkehrende Fahrgäste mit optionaler Portalverknüpfung und Buchungsdefaults.</p></div></header>
+      <div class="v4-m326-toolbar"><label>Stammfahrer suchen<input type="search" data-m326-rider-search placeholder="Name"></label><button class="button primary" type="button" data-m326-add-rider>+ Stammfahrer</button></div>
+      <div class="v4-mobile-records v4-m326-records" data-m326-rider-list>${riders.map(rider => `<article class="v4-compact-record v4-m326-person-card" data-m326-rider-card data-search="${escapeAttr(`${rider.firstName} ${rider.lastName}`.toLocaleLowerCase("de-DE"))}"><div class="v4-compact-record-copy"><strong>${escapeHtml(`${rider.firstName} ${rider.lastName}`)}</strong><small>${rider.isActive ? "Aktiv" : "Inaktiv"} · ${escapeHtml(busPreferenceText(rider.defaultBusPreference))}${rider.defaultBoardingStopId ? ` · ${escapeHtml(stopLabels.get(rider.defaultBoardingStopId) || "Zustieg inaktiv")}` : " · Kein Standard-Zustieg"}${rider.linkedPortalUserId ? " · Portaluser verknüpft" : ""}</small></div><div class="v4-row-actions"><button class="button small secondary" data-m326-edit-rider="${escapeAttr(rider.id)}">Bearbeiten</button>${rider.isActive ? `<button class="button small secondary" data-m326-link-rider="${escapeAttr(rider.id)}">${rider.linkedPortalUserId ? "Neu verknüpfen" : "Verknüpfen"}</button>${rider.linkedPortalUserId ? `<button class="button small secondary" data-m326-unlink-rider="${escapeAttr(rider.id)}">Link lösen</button>` : ""}<button class="button small danger" data-m326-deactivate-rider="${escapeAttr(rider.id)}">Deaktivieren</button>` : ""}</div></article>`).join("") || empty("Noch keine Stammfahrer vorhanden.")}</div>
+    </section>`;
+    panel.querySelector("[data-m326-back]")?.addEventListener("click", () => returnToFanbuses());
+    panel.querySelector("[data-m326-add-rider]")?.addEventListener("click", () => openRegularRiderDialog(null, stops, refresh));
+    panel.querySelector("[data-m326-rider-search]")?.addEventListener("input", event => {
+      const query = event.currentTarget.value.trim().toLocaleLowerCase("de-DE");
+      panel.querySelectorAll("[data-m326-rider-card]").forEach(card => { card.hidden = query && !card.dataset.search.includes(query); });
+    });
+    panel.querySelectorAll("[data-m326-edit-rider]").forEach(button => button.addEventListener("click", async () => {
+      try {
+        const rider = await call("fanbus_regular_rider_detail", { id: button.dataset.m326EditRider });
+        openRegularRiderDialog(rider, stops, refresh);
+      } catch (error) {
+        showToast(error?.message || "Stammfahrer konnte nicht geladen werden.", "error", 5200);
+      }
+    }));
+    panel.querySelectorAll("[data-m326-link-rider]").forEach(button => button.addEventListener("click", () => openRegularRiderLinkDialog(riders.find(item => item.id === button.dataset.m326LinkRider), people, refresh)));
+    panel.querySelectorAll("[data-m326-unlink-rider]").forEach(button => button.addEventListener("click", async () => {
+      const rider = riders.find(item => item.id === button.dataset.m326UnlinkRider);
+      if (!rider || !await confirmAction("Portaluser-Verknüpfung lösen? Künftige Buchungen verwenden wieder die Stammfahreridentität; historische Buchungen bleiben unverändert.")) return;
+      try {
+        await runWrite(() => call("fanbus_regular_rider_unlink", { regularRiderId: rider.id, expectedRevision: rider.revision }), "Verknüpfung gelöst.");
+        await refresh();
+      } catch (error) {
+        showToast(error?.message || "Verknüpfung konnte nicht gelöst werden.", "error", 5200);
+      }
+    }));
+    panel.querySelectorAll("[data-m326-deactivate-rider]").forEach(button => button.addEventListener("click", async () => {
+      const rider = riders.find(item => item.id === button.dataset.m326DeactivateRider);
+      if (!rider || !await confirmAction("Stammfahrer deaktivieren? Die Person bleibt in bestehenden Gruppen als inaktiv sichtbar.")) return;
+      try {
+        await runWrite(() => call("fanbus_regular_rider_deactivate", { id: rider.id, expectedRevision: rider.revision }), "Stammfahrer deaktiviert.");
+        await refresh();
+      } catch (error) {
+        showToast(error?.message || "Stammfahrer konnte nicht deaktiviert werden.", "error", 5200);
+      }
+    }));
+  } catch (error) {
+    panel.innerHTML = errorPanel(error, "Stammfahrer konnten nicht geladen werden");
+  }
+}
+
+function groupMemberAnchor(member) {
+  return `${member.anchorType}:${member.anchorId}`;
+}
+
+function openPersonGroupForm(group, refresh) {
+  const dialog = openDialog({
+    title: group ? "Gruppe bearbeiten" : "Gruppe anlegen",
+    body: `<form class="form-grid v4-smart-form" data-m326-group-form><label class="v4-field-full">Name<input name="name" maxlength="120" required value="${escapeAttr(group?.name || "")}"></label><label class="v4-field-full">Interne Notiz (optional)<textarea name="note" maxlength="1000">${escapeHtml(group?.note || "")}</textarea></label><div class="dialog-actions v4-detail-actions v4-field-full"><button class="button primary" type="submit">Speichern</button></div></form>`
+  });
+  dialog.querySelector("[data-m326-group-form]")?.addEventListener("submit", async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.reportValidity()) return;
+    const values = Object.fromEntries(new FormData(form));
+    try {
+      await runWrite(() => call(group ? "fanbus_person_group_update" : "fanbus_person_group_create", {
+        ...(group ? { id: group.id, expectedRevision: group.revision } : {}),
+        name: values.name,
+        note: values.note || null
+      }), "Gruppe gespeichert.");
+      dialog.close();
+      await refresh();
+    } catch (error) {
+      showToast(error?.message || "Gruppe konnte nicht gespeichert werden.", "error", 5200);
+    }
+  });
+}
+
+async function openPersonGroupMembers(group, people, riders, refresh) {
+  const detail = await call("fanbus_person_group_detail", { id: group.id });
+  let selected = (detail.members || []).map(member => ({
+    anchorType: member.anchorType,
+    anchorId: member.anchorId,
+    name: `${member.firstName || "Nicht verfügbar"} ${member.lastName || ""}`.trim()
+  }));
+  const choices = [
+    ...people.map(person => ({
+      anchorType: person.personType === "MEMBER" ? "MEMBER" : "PORTAL_USER",
+      anchorId: person.personType === "MEMBER" ? person.memberId : person.portalUserId,
+      name: `${person.firstName} ${person.lastName}`,
+      source: person.personType === "MEMBER" ? "Mitglied" : "Portaluser"
+    })),
+    ...riders.filter(rider => rider.isActive).map(rider => ({
+      anchorType: "REGULAR_RIDER", anchorId: rider.id,
+      name: `${rider.firstName} ${rider.lastName}`, source: "Stammfahrer"
+    }))
+  ].filter(choice => choice.anchorId);
+  const dialog = openDialog({
+    title: `Personen in ${group.name}`,
+    body: `<div class="v4-m326-group-editor"><p class="subtle">Die ursprüngliche Personenquelle bleibt stabil gespeichert. Gäste können nicht in Gruppen aufgenommen werden.</p><div data-m326-group-selected></div><label>Person hinzufügen<select data-m326-group-choice><option value="">Bitte wählen</option>${choices.map(choice => `<option value="${escapeAttr(`${choice.anchorType}:${choice.anchorId}`)}">${escapeHtml(`${choice.name} · ${choice.source}`)}</option>`).join("")}</select></label><button class="button secondary" type="button" data-m326-group-add>+ Person</button><div class="dialog-actions"><button class="button primary" type="button" data-m326-group-save>Gruppe speichern</button></div></div>`
+  });
+  const renderSelected = () => {
+    const root = dialog.querySelector("[data-m326-group-selected]");
+    root.innerHTML = selected.map((person, index) => `<article class="v4-m326-composer-card"><div><strong>${escapeHtml(person.name)}</strong><small>${escapeHtml(person.anchorType === "PORTAL_USER" ? "Portaluser" : person.anchorType === "MEMBER" ? "Mitglied" : "Stammfahrer")}</small></div><button class="icon-button" type="button" data-m326-remove-group-member="${index}" aria-label="Person entfernen">×</button></article>`).join("") || empty("Noch keine Personen in dieser Gruppe.");
+    root.querySelectorAll("[data-m326-remove-group-member]").forEach(button => button.addEventListener("click", () => {
+      selected.splice(Number(button.dataset.m326RemoveGroupMember), 1);
+      renderSelected();
+    }));
+  };
+  renderSelected();
+  dialog.querySelector("[data-m326-group-add]")?.addEventListener("click", () => {
+    const value = dialog.querySelector("[data-m326-group-choice]")?.value;
+    const choice = choices.find(item => `${item.anchorType}:${item.anchorId}` === value);
+    if (!choice || selected.some(item => `${item.anchorType}:${item.anchorId}` === value)) return;
+    selected.push(choice);
+    renderSelected();
+  });
+  dialog.querySelector("[data-m326-group-save]")?.addEventListener("click", async () => {
+    try {
+      await runWrite(() => call("fanbus_person_group_members_replace", {
+        id: detail.id,
+        expectedRevision: detail.revision,
+        members: selected.map(person => ({
+          ...(person.anchorType === "PORTAL_USER" ? { portalUserId: person.anchorId } : {}),
+          ...(person.anchorType === "MEMBER" ? { memberId: person.anchorId } : {}),
+          ...(person.anchorType === "REGULAR_RIDER" ? { regularRiderId: person.anchorId } : {})
+        }))
+      }), "Gruppenmitglieder gespeichert.");
+      dialog.close();
+      await refresh();
+    } catch (error) {
+      showToast(error?.message || "Gruppenmitglieder konnten nicht gespeichert werden.", "error", 5200);
+    }
+  });
+}
+
+async function renderPersonGroupsWorkspace(panel, summary) {
+  if (summary) summary.textContent = "";
+  panel.innerHTML = workspaceLoading("Personengruppen", "Gruppen werden geladen …");
+  try {
+    const [data, peopleData, riderData] = await Promise.all([
+      call("fanbus_person_groups_list", { includeInactive: true }),
+      call("fanbus_registration_people_list"),
+      call("fanbus_regular_riders_list")
+    ]);
+    const groups = Array.isArray(data?.groups) ? data.groups : [];
+    const people = Array.isArray(peopleData?.people) ? peopleData.people : [];
+    const riders = Array.isArray(riderData?.regularRiders) ? riderData.regularRiders : [];
+    const refresh = () => renderPersonGroupsWorkspace(panel, summary);
+    panel.innerHTML = `<section class="v4-m325-workspace v4-m326-workspace"><header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m326-back>Zurück</button><div><h2>Personengruppen</h2><p>Gruppen sind bearbeitbare Vorlagen; Buchungen bleiben einzelne Teilnehmer.</p></div></header><div class="v4-m326-toolbar"><button class="button primary" type="button" data-m326-add-group>+ Gruppe</button></div><div class="v4-mobile-records v4-m326-records">${groups.map(group => `<article class="v4-compact-record"><div class="v4-compact-record-copy"><strong>${escapeHtml(group.name)}</strong><small>${group.memberCount} ${group.memberCount === 1 ? "Person" : "Personen"} · ${group.isActive ? "Aktiv" : "Inaktiv"}</small></div><div class="v4-row-actions">${group.isActive ? `<button class="button small secondary" data-m326-group-members="${escapeAttr(group.id)}">Personen</button><button class="button small secondary" data-m326-edit-group="${escapeAttr(group.id)}">Bearbeiten</button><button class="button small danger" data-m326-deactivate-group="${escapeAttr(group.id)}">Deaktivieren</button>` : ""}</div></article>`).join("") || empty("Noch keine Personengruppen vorhanden.")}</div></section>`;
+    panel.querySelector("[data-m326-back]")?.addEventListener("click", () => returnToFanbuses());
+    panel.querySelector("[data-m326-add-group]")?.addEventListener("click", () => openPersonGroupForm(null, refresh));
+    panel.querySelectorAll("[data-m326-edit-group]").forEach(button => button.addEventListener("click", () => openPersonGroupForm(groups.find(item => item.id === button.dataset.m326EditGroup), refresh)));
+    panel.querySelectorAll("[data-m326-group-members]").forEach(button => button.addEventListener("click", () => void openPersonGroupMembers(groups.find(item => item.id === button.dataset.m326GroupMembers), people, riders, refresh)));
+    panel.querySelectorAll("[data-m326-deactivate-group]").forEach(button => button.addEventListener("click", async () => {
+      const group = groups.find(item => item.id === button.dataset.m326DeactivateGroup);
+      if (!group || !await confirmAction("Gruppe deaktivieren? Die Vorlage bleibt nachvollziehbar, kann aber nicht mehr für Anmeldungen verwendet werden.")) return;
+      try {
+        await runWrite(() => call("fanbus_person_group_deactivate", { id: group.id, expectedRevision: group.revision }), "Gruppe deaktiviert.");
+        await refresh();
+      } catch (error) {
+        showToast(error?.message || "Gruppe konnte nicht deaktiviert werden.", "error", 5200);
+      }
+    }));
+  } catch (error) {
+    panel.innerHTML = errorPanel(error, "Personengruppen konnten nicht geladen werden");
+  }
 }
 
 function operationEventLabel(trip) {
@@ -3325,90 +3606,280 @@ function manualAttemptFor(currentAttempt, fingerprint) {
     : { fingerprint, key: crypto.randomUUID() };
 }
 
+function manualComposerSource(person) {
+  return {
+    PORTAL_USER: "Portaluser",
+    MEMBER: "Mitglied",
+    REGULAR_RIDER: "Stammfahrer",
+    GUEST: "Gast"
+  }[person.source] || person.source;
+}
+
+function manualComposerStopOptions(stops, selected) {
+  return `<option value="">Bitte wählen</option>${stops.filter(stop => stop.isActive).map(stop => `<option value="${escapeAttr(stop.tripBoardingStopId || stop.id)}"${(stop.tripBoardingStopId || stop.id) === selected ? " selected" : ""}>${escapeHtml(boardingStopDisplay(stop))}</option>`).join("")}`;
+}
+
+function renderManualComposer(dialog, state, tripStops, trip) {
+  const root = dialog.querySelector("[data-m326-composer]");
+  const summary = dialog.querySelector("[data-m326-composer-summary]");
+  if (!root || !summary) return;
+  root.innerHTML = state.participants.map((person, index) => `<article class="v4-m326-composer-card" data-m326-composer-person="${index}">
+    <div class="v4-m326-composer-person"><strong>${escapeHtml(`${person.firstName} ${person.lastName}`)}</strong><small>${escapeHtml(manualComposerSource(person))}</small></div>
+    <button class="icon-button v4-m326-composer-remove" type="button" data-m326-remove-person="${index}" aria-label="${escapeAttr(`${person.firstName} ${person.lastName} entfernen`)}">×</button>
+    ${tripStops.some(stop => stop.isActive) ? `<label>Zustiegsort<select data-m326-person-stop="${index}" required>${manualComposerStopOptions(tripStops, person.boardingStopId)}</select></label>` : ""}
+    ${trip.busPreferenceSelectionEnabled ? `<label>Buswunsch<select data-m326-person-preference="${index}">${optionList(BUS_PREFERENCES, person.busPreference || "EGAL")}</select></label>` : `<input type="hidden" data-m326-person-preference="${index}" value="EGAL">`}
+    <label class="v4-m326-composer-note">Operativer Hinweis (optional)<input maxlength="240" data-m326-person-note="${index}" value="${escapeAttr(person.operationalNote || "")}"></label>
+  </article>`).join("") || empty("Füge mindestens eine Person oder eine Gruppe hinzu.");
+  summary.innerHTML = `<strong>${state.participants.length} ${state.participants.length === 1 ? "Person" : "Personen"}</strong><span>${state.participants.map(person => escapeHtml(`${person.firstName} ${person.lastName}`)).join(", ") || "Noch keine Auswahl"}</span>`;
+  root.querySelectorAll("[data-m326-remove-person]").forEach(button => button.addEventListener("click", () => {
+    state.participants.splice(Number(button.dataset.m326RemovePerson), 1);
+    renderManualComposer(dialog, state, tripStops, trip);
+  }));
+  root.querySelectorAll("[data-m326-person-stop]").forEach(select => select.addEventListener("change", () => {
+    state.participants[Number(select.dataset.m326PersonStop)].boardingStopId = select.value;
+  }));
+  root.querySelectorAll("[data-m326-person-preference]").forEach(select => select.addEventListener("change", () => {
+    state.participants[Number(select.dataset.m326PersonPreference)].busPreference = select.value;
+  }));
+  root.querySelectorAll("[data-m326-person-note]").forEach(input => input.addEventListener("input", () => {
+    state.participants[Number(input.dataset.m326PersonNote)].operationalNote = input.value;
+  }));
+}
+
+function addManualComposerPerson(state, person) {
+  if (state.participants.length >= 20) {
+    throw new Error("Pro gemeinsamer Anmeldung sind höchstens 20 Personen möglich.");
+  }
+  if (state.participants.some(item => item.identityKey === person.identityKey)) {
+    throw new Error("Diese effektive Person ist bereits im Composer enthalten.");
+  }
+  state.participants.push(person);
+}
+
+function openManualComposerPersonPicker(parentDialog, state, people, riders, tripStops, trip) {
+  const choices = [
+    ...people.map(person => ({
+      key: manualPersonKey(person),
+      source: person.personType === "MEMBER" ? "MEMBER" : "PORTAL_USER",
+      sourceId: person.personType === "MEMBER" ? person.memberId : person.portalUserId,
+      identityKey: person.portalUserId ? `PORTAL:${person.portalUserId}` : `MEMBER:${person.memberId}`,
+      firstName: person.firstName,
+      lastName: person.lastName
+    })),
+    ...riders.filter(rider => rider.isActive).map(rider => ({
+      key: `REGULAR_RIDER:${rider.id}`,
+      source: "REGULAR_RIDER",
+      sourceId: rider.id,
+      identityKey: rider.effectiveIdentityKey || `REGULAR_RIDER:${rider.id}`,
+      firstName: rider.effectiveFirstName || rider.firstName,
+      lastName: rider.effectiveLastName || rider.lastName,
+      defaultBoardingStopId: rider.defaultBoardingStopId,
+      defaultBusPreference: rider.defaultBusPreference
+    }))
+  ].sort((a, b) => `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, "de"));
+  const dialog = openDialog({
+    title: "Person hinzufügen",
+    body: `<form class="form-grid v4-smart-form" data-m326-person-form><label class="v4-field-full">Person suchen<input name="query" type="search" autocomplete="off" placeholder="Person suchen …"></label><div class="v4-field-full v4-m326-person-filters"><button class="button small secondary is-active" type="button" data-m326-source-filter="ALL">Alle</button><button class="button small secondary" type="button" data-m326-source-filter="MEMBER">Mitglieder</button><button class="button small secondary" type="button" data-m326-source-filter="PORTAL_USER">Portaluser</button><button class="button small secondary" type="button" data-m326-source-filter="REGULAR_RIDER">Stammfahrer</button><button class="button small secondary" type="button" data-m326-new-guest>Gast</button></div><div class="v4-field-full v4-m325-person-search-results" data-m326-person-results></div><div class="v4-field-full form-grid" data-m326-guest-fields hidden><label class="v4-field-half">Vorname<input name="firstName" maxlength="160" disabled></label><label class="v4-field-half">Nachname<input name="lastName" maxlength="160" disabled></label><label class="v4-field-full">E-Mail (optional)<input name="email" type="email" maxlength="320" disabled></label><div class="dialog-actions v4-detail-actions v4-field-full"><button class="button primary" type="submit">Gast übernehmen</button></div></div></form>`,
+    preserveParentOnSubmit: true
+  });
+  const form = dialog.querySelector("[data-m326-person-form]");
+  const results = dialog.querySelector("[data-m326-person-results]");
+  const guestFields = dialog.querySelector("[data-m326-guest-fields]");
+  let sourceFilter = "ALL";
+  const defaultTripStop = tripStops.find(stop => stop.isActive && stop.boardingStopId === trip.defaultBoardingStopId);
+  const addChoice = choice => {
+    const riderDefaultStop = choice.defaultBoardingStopId
+      ? tripStops.find(stop => stop.isActive && stop.boardingStopId === choice.defaultBoardingStopId)
+      : null;
+    addManualComposerPerson(state, {
+      source: choice.source,
+      identityKey: choice.identityKey,
+      firstName: choice.firstName,
+      lastName: choice.lastName,
+      ...(choice.source === "MEMBER" ? { memberId: choice.sourceId } : {}),
+      ...(choice.source === "PORTAL_USER" ? { portalUserId: choice.sourceId } : {}),
+      ...(choice.source === "REGULAR_RIDER" ? { regularRiderId: choice.sourceId } : {}),
+      boardingStopId: riderDefaultStop?.tripBoardingStopId || riderDefaultStop?.id || defaultTripStop?.tripBoardingStopId || defaultTripStop?.id || "",
+      busPreference: choice.defaultBusPreference || "EGAL"
+    });
+    dialog.close();
+    renderManualComposer(parentDialog, state, tripStops, trip);
+  };
+  const renderChoices = () => {
+    const query = form.elements.query.value.trim().toLocaleLowerCase("de-DE");
+    const visible = choices.filter(choice => (sourceFilter === "ALL" || choice.source === sourceFilter)
+      && (!query || `${choice.firstName} ${choice.lastName}`.toLocaleLowerCase("de-DE").includes(query)));
+    results.innerHTML = visible.slice(0, 40).map(choice => `<button class="button secondary v4-m325-person-search-result is-name-only" type="button" data-m326-choice="${escapeAttr(choice.key)}"><strong>${escapeHtml(`${choice.firstName} ${choice.lastName}`)}</strong><small>${escapeHtml(manualComposerSource(choice))}</small></button>`).join("") || empty("Keine passende aktive Person gefunden.");
+    results.querySelectorAll("[data-m326-choice]").forEach(button => button.addEventListener("click", () => {
+      const choice = choices.find(item => item.key === button.dataset.m326Choice);
+      if (!choice) return;
+      try { addChoice(choice); } catch (error) { showToast(error.message, "warning", 4200); }
+    }));
+  };
+  const showGuest = () => {
+    guestFields.hidden = false;
+    results.hidden = true;
+    guestFields.querySelectorAll("input").forEach(input => {
+      input.disabled = false;
+      input.required = input.name !== "email";
+    });
+    form.elements.firstName.focus();
+  };
+  form.elements.query.addEventListener("input", renderChoices);
+  dialog.querySelectorAll("[data-m326-source-filter]").forEach(button => button.addEventListener("click", () => {
+    sourceFilter = button.dataset.m326SourceFilter;
+    dialog.querySelectorAll("[data-m326-source-filter]").forEach(filter => filter.classList.toggle("is-active", filter === button));
+    renderChoices();
+  }));
+  dialog.querySelector("[data-m326-new-guest]")?.addEventListener("click", showGuest);
+  form.addEventListener("submit", event => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    const values = Object.fromEntries(new FormData(form));
+    const participant = {
+      source: "GUEST",
+      identityKey: values.email ? `GUEST_EMAIL:${String(values.email).toLowerCase()}` : `GUEST_NAME:${String(values.firstName).toLowerCase()}:${String(values.lastName).toLowerCase()}`,
+      firstName: values.firstName,
+      lastName: values.lastName,
+      email: values.email || null,
+      boardingStopId: defaultTripStop?.tripBoardingStopId || defaultTripStop?.id || "",
+      busPreference: "EGAL"
+    };
+    try {
+      addManualComposerPerson(state, participant);
+      dialog.close();
+      renderManualComposer(parentDialog, state, tripStops, trip);
+    } catch (error) {
+      showToast(error.message, "warning", 4200);
+    }
+  });
+  renderChoices();
+  form.elements.query.focus();
+}
+
+function openManualComposerGroupPicker(parentDialog, state, groups, tripStops, trip) {
+  const dialog = openDialog({
+    title: "Gruppe übernehmen",
+    body: `<form class="form-grid v4-smart-form" data-m326-group-pick-form><label class="v4-field-full">Personengruppe<select name="groupId" required><option value="">Bitte wählen</option>${groups.filter(group => group.isActive).map(group => `<option value="${escapeAttr(group.id)}">${escapeHtml(`${group.name} · ${group.memberCount} Personen`)}</option>`).join("")}</select></label><div class="v4-field-full v4-m326-group-import-review" data-m326-group-import-review aria-live="polite"></div><div class="dialog-actions v4-detail-actions v4-field-full"><button class="button primary" type="submit">Gruppe prüfen und übernehmen</button></div></form>`,
+    preserveParentOnSubmit: true
+  });
+  dialog.querySelector("[data-m326-group-pick-form]")?.addEventListener("submit", async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.reportValidity()) return;
+    try {
+      const resolved = await call("fanbus_person_group_resolve", { id: new FormData(form).get("groupId"), tripId: trip.id });
+      const members = Array.isArray(resolved.members) ? resolved.members : [];
+      const nameOf = member => `${member.firstName || "Nicht verfügbar"} ${member.lastName || ""}`.trim();
+      const unavailableMembers = members.filter(member => !member.available);
+      const convergedMembers = members.filter(member => member.conflict);
+      const alreadySelectedMembers = members.filter(member => state.participants
+        .some(person => person.identityKey === member.identityKey));
+      const conflictingMembers = [...convergedMembers, ...alreadySelectedMembers];
+      const unavailable = [...new Set(unavailableMembers.map(nameOf))];
+      const collisions = [...new Set(conflictingMembers.map(nameOf))];
+      const eligible = members.filter(member => member.available && !member.conflict
+        && !state.participants.some(person => person.identityKey === member.identityKey));
+      const toComposerPerson = member => ({
+          source: member.anchorType,
+          identityKey: member.identityKey,
+          firstName: member.firstName,
+          lastName: member.lastName,
+          ...(member.anchorType === "PORTAL_USER" ? { portalUserId: member.anchorId } : {}),
+          ...(member.anchorType === "MEMBER" ? { memberId: member.anchorId } : {}),
+          ...(member.anchorType === "REGULAR_RIDER" ? { regularRiderId: member.anchorId } : {}),
+          boardingStopId: member.tripBoardingStopId || "",
+          busPreference: member.defaultBusPreference || "EGAL"
+        });
+      const transfer = selectedMembers => {
+        if (state.participants.length + selectedMembers.length > 20) {
+          throw new Error("Die ausgewählten Personen überschreiten das Limit von 20 Personen.");
+        }
+        state.participants.push(...selectedMembers.map(toComposerPerson));
+        dialog.close();
+        renderManualComposer(parentDialog, state, tripStops, trip);
+        showToast(`${selectedMembers.length} Personen aus der Gruppe übernommen.`, "success", 4200);
+      };
+
+      if (!unavailable.length && !collisions.length) {
+        transfer(members);
+        return;
+      }
+
+      const review = dialog.querySelector("[data-m326-group-import-review]");
+      if (!review) return;
+      review.innerHTML = `<section class="v4-m326-group-import-conflict"><strong>Gruppe noch nicht übernommen</strong><dl><div><dt>Gesamt</dt><dd>${Number(resolved.totalCount || members.length)}</dd></div><div><dt>Aktiv/verfügbar</dt><dd>${members.length - unavailableMembers.length}</dd></div><div><dt>Konfliktfrei übernehmbar</dt><dd>${eligible.length}</dd></div></dl>${unavailable.length ? `<p><strong>Nicht verfügbar:</strong> ${unavailable.map(escapeHtml).join(", ")}</p>` : ""}${collisions.length ? `<p><strong>Identitätskonflikt:</strong> ${collisions.map(escapeHtml).join(", ")}</p>` : ""}${convergedMembers.length ? "<p>Die konvergierten Gruppenanker müssen vor einer Übernahme bewusst in der Gruppe geklärt werden.</p>" : ""}${alreadySelectedMembers.length ? "<p>Mindestens eine Person ist bereits im Composer enthalten. Entferne sie dort oder wähle eine andere Gruppe.</p>" : ""}${!collisions.length && eligible.length ? `<button class="button secondary" type="button" data-m326-accept-available>Nur ${eligible.length} verfügbare Personen übernehmen</button>` : ""}</section>`;
+      review.querySelector("[data-m326-accept-available]")?.addEventListener("click", () => {
+        try {
+          transfer(eligible);
+        } catch (error) {
+          showToast(error?.message || "Die Gruppe konnte nicht übernommen werden.", "warning", 5200);
+        }
+      });
+    } catch (error) {
+      showToast(error?.message || "Die Gruppe konnte nicht aufgelöst werden.", "error", 5200);
+    }
+  });
+}
+
 async function openManualRegistration(trip, registrationsDialog) {
   if (!hasCapability("fanbus.registrations.manage")) return;
   const parentContextId = registrationsDialog?.dataset.v4DialogContext;
-
   try {
-    const [lookup, stopData] = await Promise.all([
+    const [lookup, riderData, groupData, stopData] = await Promise.all([
       call("fanbus_registration_people_list"),
+      call("fanbus_regular_riders_list"),
+      call("fanbus_person_groups_list"),
       call("fanbus_trip_boarding_stops_list", { tripId: trip.id })
     ]);
-    const people = deduplicateManualPeople(
-      Array.isArray(lookup?.people) ? lookup.people : []
-    );
+    const people = deduplicateManualPeople(Array.isArray(lookup?.people) ? lookup.people : []);
+    const riders = Array.isArray(riderData?.regularRiders) ? riderData.regularRiders : [];
+    const groups = Array.isArray(groupData?.groups) ? groupData.groups : [];
     const tripStops = Array.isArray(stopData?.stops) ? stopData.stops : [];
-    if (!registrationsDialog?.open
-        || registrationsDialog.dataset.v4DialogContext !== parentContextId) return;
+    if (!registrationsDialog?.open || registrationsDialog.dataset.v4DialogContext !== parentContextId) return;
+    const state = { participants: [] };
     let manualAttempt = null;
     const dialog = openDialog({
       title: "Teilnehmer hinzufügen",
       kicker: trip.displayTitle || "Fanbusfahrt",
-      body: manualRegistrationForm(tripStops, trip),
-      submitLabel: "Teilnehmer anmelden",
+      body: `<form id="m326ManualComposerForm" class="v4-m326-composer"><div class="v4-m326-composer-actions"><button class="button secondary" type="button" data-m326-add-person>+ Person</button><button class="button secondary" type="button" data-m326-add-group>+ Gruppe</button></div><div data-m326-composer></div><section class="v4-m326-composer-summary" data-m326-composer-summary aria-label="Zusammenfassung"></section><label class="v4-compact-check"><input name="consentConfirmed" type="checkbox" required><span>Alle Personen haben die Teilnahmebedingungen akzeptiert und wurden auf die Datenschutzhinweise hingewiesen.</span></label></form>`,
+      submitLabel: "Gemeinsam anmelden",
       preserveParentOnSubmit: true,
       onSubmit: async values => {
+        if (!state.participants.length) throw new Error("Füge mindestens eine Person hinzu.");
         const payload = {
           tripId: trip.id,
-          mode: values.mode,
-          busPreference: trip.busPreferenceSelectionEnabled
-            ? values.busPreference
-            : "EGAL",
-          ...(values.boardingStopId ? { boardingStopId: values.boardingStopId } : {}),
-          operationalNote: values.operationalNote || "",
-          privacyConfirmed: values.consentConfirmed === "on",
+          participants: state.participants.map(person => ({
+            source: person.source,
+            ...(person.portalUserId ? { portalUserId: person.portalUserId } : {}),
+            ...(person.memberId ? { memberId: person.memberId } : {}),
+            ...(person.regularRiderId ? { regularRiderId: person.regularRiderId } : {}),
+            ...(person.source === "GUEST" ? { firstName: person.firstName, lastName: person.lastName, email: person.email || null } : {}),
+            ...(person.boardingStopId ? { boardingStopId: person.boardingStopId } : {}),
+            busPreference: trip.busPreferenceSelectionEnabled ? person.busPreference || "EGAL" : "EGAL",
+            operationalNote: person.operationalNote || null
+          })),
           termsConfirmed: values.consentConfirmed === "on"
         };
-
-        if (values.mode === "PERSON") {
-          const person = people.find(item => manualPersonKey(item) === values.personKey);
-          if (!person) throw new Error("Bitte wähle eine vorhandene Person aus.");
-          payload.personType = person.personType;
-          if (person.personType === "MEMBER") payload.memberId = person.memberId;
-          else payload.portalUserId = person.portalUserId;
-        } else {
-          payload.firstName = values.firstName;
-          payload.lastName = values.lastName;
-          payload.email = values.email || null;
-        }
-
         const fingerprint = JSON.stringify(payload);
         manualAttempt = manualAttemptFor(manualAttempt, fingerprint);
-        const result = await call("fanbus_registration_create_manual", {
-          ...payload,
-          idempotencyKey: manualAttempt.key
-        });
-        if (!["CREATED", "WAITLISTED"].includes(result?.outcome)) {
-          throw new Error(manualRegistrationError(result?.outcome));
-        }
-
+        const result = await call("fanbus_registration_create_manual_bulk", { ...payload, idempotencyKey: manualAttempt.key });
+        if (!["CREATED", "WAITLISTED"].includes(result?.outcome)) throw new Error(manualRegistrationError(result?.outcome));
         const [nextData, nextSnapshot] = await Promise.all([
           call("fanbus_registrations_list", { tripId: trip.id }),
           call("fanbus_trips_list")
         ]);
         snapshot = nextSnapshot || { trips: [] };
         render();
-        showToast(
-          result.outcome === "WAITLISTED"
-            ? "Teilnehmer wurde auf die Warteliste gesetzt."
-            : "Teilnehmer wurde angemeldet.",
-          result.outcome === "WAITLISTED" ? "warning" : "success",
-          3800
-        );
+        showToast(result.outcome === "WAITLISTED" ? `${result.participantCount} Personen wurden gemeinsam auf die Warteliste gesetzt.` : `${result.participantCount} Personen wurden gemeinsam angemeldet.`, result.outcome === "WAITLISTED" ? "warning" : "success", 4200);
         setTimeout(() => {
-          if (registrationsDialog?.open
-              && registrationsDialog.dataset.v4DialogContext === parentContextId) {
-            renderRegistrationsDialog(registrationsDialog, trip, nextData);
-          }
+          if (registrationsDialog?.open && registrationsDialog.dataset.v4DialogContext === parentContextId) renderRegistrationsDialog(registrationsDialog, trip, nextData);
         }, 0);
       }
     });
-
-    dialog.querySelector('[name="mode"]')
-      ?.addEventListener("change", () => syncManualRegistrationMode(dialog));
-    dialog.querySelector("[data-m310-open-person-picker]")
-      ?.addEventListener("click", () => openManualPersonPicker(dialog, people));
-    syncManualRegistrationMode(dialog);
+    dialog.querySelector("[data-m326-add-person]")?.addEventListener("click", () => openManualComposerPersonPicker(dialog, state, people, riders, tripStops, trip));
+    dialog.querySelector("[data-m326-add-group]")?.addEventListener("click", () => openManualComposerGroupPicker(dialog, state, groups, tripStops, trip));
+    renderManualComposer(dialog, state, tripStops, trip);
     bindManualConsentValidation(dialog);
   } catch (error) {
     showToast(error?.message || "Die Personenauswahl konnte nicht geladen werden.", "error", 5200);

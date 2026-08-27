@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
 const read = path => readFile(join(root, path), "utf8");
-const migrationPath = "supabase/migrations/20260826193856_p800_r2_fanbus_available_away_events_polish4.sql";
+const migrationPath = "supabase/migrations/20260826200358_p800_r2_fanbus_available_away_events_polish4.sql";
 
 const [migration, fanbuses, ux, css] = await Promise.all([
   read(migrationPath),

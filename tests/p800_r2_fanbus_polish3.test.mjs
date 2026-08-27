@@ -105,12 +105,13 @@ test("Polish 3 mobile editor keeps two-column layouts when they fit and stacks o
   assert.doesNotMatch(ux, /MutationObserver/);
 });
 
-test("Polish 3 keeps away-only filtering, manual groups and automatic assignment outside this hotfix", () => {
+test("M326 extends the preserved away-event flow with manual groups but no automatic assignment", () => {
   const create = section(fanbuses, "async function openTripCreate", "function defaultRegistrationClosesInput");
   const manual = section(fanbuses, "async function openManualRegistration", "function showRegistrationsDialog");
 
   assert.doesNotMatch(create, /homeAway|home_away|\bAWAY\b/);
-  assert.match(manual, /fanbus_registration_create_manual/);
-  assert.doesNotMatch(manual, /companions|\bCOMPANION\b/);
+  assert.match(manual, /fanbus_registration_create_manual_bulk/);
+  assert.match(manual, /fanbus_person_groups_list/);
+  assert.match(manual, /data-m326-add-group/);
   assert.doesNotMatch(fanbuses, /fanbus_(?:auto|automatic).*assign/i);
 });
