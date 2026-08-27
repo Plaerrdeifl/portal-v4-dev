@@ -1,5 +1,6 @@
 import {
   call,
+  closeAllDialogs,
   escapeAttr,
   escapeHtml,
   hasCapability,
@@ -12,7 +13,10 @@ const WARNING_LABELS = {
   BOOKING_SPLIT_REQUIRED: "Buchung kann nicht vollständig in einem Bus bleiben.",
   PREFERENCE_MISMATCH: "Buswunsch kann nicht vollständig erfüllt werden.",
   STOP_NO_COMPATIBLE_BUS: "Kein Bus bedient den erforderlichen Zustieg.",
-  NO_CAPACITY: "Keine passende freie Buskapazität vorhanden."
+  NO_CAPACITY: "Keine passende freie Buskapazität vorhanden.",
+  FIXED_CAPACITY_OVERFLOW: "Bestehende Zuordnungen überschreiten bereits die Buskapazität.",
+  EXISTING_ASSIGNMENT_INVALID_BUS: "Eine bestehende Zuordnung verweist auf einen ungültigen Bus.",
+  EXISTING_ASSIGNMENT_STOP_INVALID: "Eine bestehende Zuordnung passt nicht zur Zustiegsstelle."
 };
 
 const EXPLANATION_LABELS = {
@@ -25,6 +29,10 @@ const EXPLANATION_LABELS = {
   NO_VALID_BUS_AVAILABLE: "Aktuell kein gültiger Bus verfügbar.",
   EXISTING_ASSIGNMENT_PROTECTED: "Bestehende Zuordnung bleibt geschützt."
 };
+
+let activeTripId = "";
+let activeTripLabel = "Fanbusfahrt";
+let participantTrigger = null;
 
 function injectStyles() {
   if (document.getElementById("m320R3AutoAssignmentStyles")) return;
@@ -59,11 +67,7 @@ function busName(buses, busId) {
 }
 
 function outcomeLabel(value) {
-  return {
-    MATCHED: "Wunsch erfüllt",
-    MISMATCHED: "Abweichung",
-    FLEXIBLE: "Flexibel"
-  }[value] || "–";
+  return { MATCHED: "Wunsch erfüllt", MISMATCHED: "Abweichung", FLEXIBLE: "Flexibel" }[value] || "–";
 }
 
 function stateLabel(proposal) {
@@ -109,12 +113,9 @@ function previewMarkup(preview, registrations) {
         <select name="assignment_${escapeAttr(proposal.participantId)}" data-m320-r3-assignment="${escapeAttr(proposal.participantId)}">
           ${busOptions(buses, proposal.proposedBusId)}
         </select>
-        <small>Eine Änderung gegenüber dem Auto-Vorschlag wird beim Apply serverseitig als MANUAL gespeichert.</small>
+        <small>Eine Änderung gegenüber dem Auto-Vorschlag wird beim Apply serverseitig als MANUAL gespeichert. Kapazität und Zustieg werden beim Apply erneut serverseitig geprüft.</small>
       </label>` : `<div><small>Bestehende Zuordnung</small><br><strong>${escapeHtml(busName(buses, proposal.currentBusId))}</strong></div>`}
-      <div class="m320-r3-tags">
-        ${codesMarkup(proposal.warnings, WARNING_LABELS, "warning")}
-        ${codesMarkup(proposal.explanations, EXPLANATION_LABELS)}
-      </div>
+      <div class="m320-r3-tags">${codesMarkup(proposal.warnings, WARNING_LABELS, "warning")}${codesMarkup(proposal.explanations, EXPLANATION_LABELS)}</div>
     </article>`;
   }).join("");
 
@@ -141,26 +142,35 @@ function previewMarkup(preview, registrations) {
 
 function normalizeApplyError(error) {
   const message = String(error?.message || error || "");
-  if (message.includes("FANBUS_ASSIGNMENT_PREVIEW_STALE")) {
-    return new Error("Daten haben sich geändert. Bitte Zuordnung neu berechnen.");
-  }
-  if (message.includes("FANBUS_BUS_CAPACITY_EXHAUSTED")) {
-    return new Error("Die gewählte Busverteilung überschreitet eine Buskapazität.");
-  }
-  if (message.includes("FANBUS_BUS_DOES_NOT_SERVE_BOARDING_STOP")) {
-    return new Error("Mindestens ein gewählter Bus bedient den erforderlichen Zustieg nicht.");
-  }
+  if (message.includes("FANBUS_ASSIGNMENT_PREVIEW_STALE")) return new Error("Daten haben sich geändert. Bitte Zuordnung neu berechnen.");
+  if (message.includes("FANBUS_BUS_CAPACITY_EXHAUSTED")) return new Error("Die gewählte Busverteilung überschreitet eine Buskapazität.");
+  if (message.includes("FANBUS_BUS_DOES_NOT_SERVE_BOARDING_STOP")) return new Error("Mindestens ein gewählter Bus bedient den erforderlichen Zustieg nicht.");
+  if (message.includes("PLATFORM_READ_ONLY") || message.includes("P0902")) return new Error("Das Portal ist aktuell schreibgeschützt. Die Vorschau ist möglich, Anwenden jedoch nicht.");
   return error instanceof Error ? error : new Error(message || "Zuordnung konnte nicht angewendet werden.");
 }
 
-async function openAssignmentPreview(trip, registrations, onApplied) {
-  const preview = await call("fanbus_assignment_preview", { tripId: trip.id });
+function reopenParticipantDialog() {
+  const trigger = participantTrigger;
+  setTimeout(() => {
+    closeAllDialogs();
+    setTimeout(() => {
+      if (trigger instanceof HTMLElement && trigger.isConnected) trigger.click();
+    }, 0);
+  }, 0);
+}
+
+async function openAssignmentPreview() {
+  const [preview, registrationData] = await Promise.all([
+    call("fanbus_assignment_preview", { tripId: activeTripId }),
+    call("fanbus_registrations_list", { tripId: activeTripId })
+  ]);
+  const registrations = Array.isArray(registrationData?.registrations) ? registrationData.registrations : [];
   const proposals = Array.isArray(preview?.participantProposals) ? preview.participantProposals : [];
   const editable = proposals.filter(item => item.assignmentState === "PROPOSED_AUTO");
 
   openDialog({
     title: "Automatische Buszuordnung",
-    kicker: trip.displayTitle || "Fanbusfahrt",
+    kicker: activeTripLabel,
     body: previewMarkup(preview, registrations),
     submitLabel: preview.canApply ? "Zuordnung anwenden" : "Keine Zuordnung anwendbar",
     onSubmit: preview.canApply ? async values => {
@@ -170,13 +180,13 @@ async function openAssignmentPreview(trip, registrations, onApplied) {
       }));
       try {
         const result = await call("fanbus_assignment_apply", {
-          tripId: trip.id,
+          tripId: activeTripId,
           algorithmVersion: preview.algorithmVersion,
           inputFingerprint: preview.inputFingerprint,
           finalAssignments
         });
         showToast(`${Number(result?.applied || 0)} Buszuordnung(en) wurden gespeichert.`, "success", 4200);
-        await onApplied?.();
+        reopenParticipantDialog();
       } catch (error) {
         throw normalizeApplyError(error);
       }
@@ -185,8 +195,12 @@ async function openAssignmentPreview(trip, registrations, onApplied) {
   });
 }
 
-export function mountFanbusAutoAssignment({ body, trip, registrations = [], onApplied }) {
-  if (!body || !trip || !hasCapability("fanbus.registrations.manage") || trip.status === "CANCELLED") return;
+function mountEntry() {
+  if (!activeTripId || !hasCapability("fanbus.registrations.manage")) return;
+  const dialog = document.getElementById("v4Dialog");
+  const body = dialog?.querySelector("#v4DialogBody");
+  const title = dialog?.querySelector("#v4DialogTitle")?.textContent || "";
+  if (!dialog?.open || !body || title !== "Teilnehmer und Anmeldungen") return;
   if (body.querySelector("[data-m320-r3-auto-assignment-entry]")) return;
   injectStyles();
 
@@ -205,7 +219,7 @@ export function mountFanbusAutoAssignment({ body, trip, registrations = [], onAp
     const original = button.textContent;
     button.textContent = "Wird berechnet …";
     try {
-      await openAssignmentPreview(trip, registrations, onApplied);
+      await openAssignmentPreview();
     } catch (error) {
       showToast(error?.message || "Zuordnung konnte nicht berechnet werden.", "error", 5200);
     } finally {
@@ -218,3 +232,21 @@ export function mountFanbusAutoAssignment({ body, trip, registrations = [], onAp
 
   body.prepend(section);
 }
+
+function scheduleMount() {
+  requestAnimationFrame(() => {
+    mountEntry();
+    setTimeout(mountEntry, 80);
+  });
+}
+
+document.addEventListener("click", event => {
+  const trigger = event.target.closest?.("[data-m310-participants]");
+  if (!trigger) return;
+  activeTripId = String(trigger.dataset.m310Participants || "").trim();
+  activeTripLabel = trigger.closest("[data-m310-open-trip],.v4-m310-mobile-trip-card")?.querySelector("strong")?.textContent?.trim() || "Fanbusfahrt";
+  participantTrigger = trigger;
+  scheduleMount();
+}, true);
+
+new MutationObserver(scheduleMount).observe(document.body, { childList: true, subtree: true });
