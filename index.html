@@ -1,113 +1,453 @@
 <!doctype html>
-<html lang="de">
+<html
+  lang="de"
+  data-route="login"
+  data-auth-layout="true"
+  data-environment="UNCONFIGURED"
+>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#001f35">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Plärrdeifl">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+  <meta name="theme-color" content="#041c33">
+  <meta name="color-scheme" content="light">
+  <meta
+    name="referrer"
+    content="strict-origin-when-cross-origin"
+  >
+  <meta
+    name="description"
+    content="Plärrdeifl Portal – geschützter Mitgliederbereich."
+  >
+  <meta name="pd-release" content="20260802-pwa-install-guidance-r1">
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-src https://accounts.google.com https://*.supabase.co; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://accounts.google.com; script-src 'self' https://cdn.jsdelivr.net https://accounts.google.com; connect-src 'self' https://*.supabase.co https://accounts.google.com wss://*.supabase.co http://127.0.0.1:54321 http://localhost:54321 ws://127.0.0.1:54321 ws://localhost:54321; worker-src 'self'; manifest-src 'self'; form-action 'self' https://accounts.google.com https://*.supabase.co"
+  >
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="format-detection" content="telephone=no">
-  <title>Plärrdeifl Portal</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta
+    name="apple-mobile-web-app-title"
+    content="Plärrdeifl"
+  >
+
+  <link
+    rel="apple-touch-icon"
+    sizes="180x180"
+    href="./assets/icons/icon-180.png"
+  >
+  <link
+    rel="icon"
+    type="image/x-icon"
+    href="./favicon.ico"
+  >
+  <link
+    rel="icon"
+    type="image/png"
+    sizes="32x32"
+    href="./assets/icons/icon-32.png"
+  >
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/icon-32.png">
-  <link rel="apple-touch-icon" href="./assets/icons/icon-180.png">
-  <link rel="stylesheet" href="./css/tokens.css?v=20260717-final-mobile-shell-r1">
-  <link rel="stylesheet" href="./css/app.css?v=20260826-p800-r2-mobile-two-column-final">
-  <script src="./js/runtime-config.js"></script>
+  <link
+    rel="stylesheet"
+    href="./css/tokens.css?v=20260802-pwa-install-guidance-r1"
+  >
+  <link
+    rel="stylesheet"
+    href="./css/app.css?v=20260802-pwa-install-guidance-r1"
+  >
+
+  <title>Plärrdeifl Portal</title>
 </head>
 <body>
-  <div class="ios-fixed-backdrop" aria-hidden="true"></div>
-  <div id="app" class="app-shell">
-    <aside class="sidebar" data-sidebar aria-label="Hauptnavigation">
-      <div class="sidebar-brand">
-        <img src="./assets/icons/icon-192.png" alt="Plärrdeifl">
-        <div>
-          <strong>Plärrdeifl</strong>
-          <span>Digitalplattform</span>
-        </div>
-      </div>
-      <nav class="sidebar-nav" data-sidebar-nav></nav>
-      <div class="sidebar-footer" data-sidebar-footer></div>
-    </aside>
-
-    <div class="shell-main">
-      <header class="topbar">
-        <button class="icon-button menu-button" type="button" data-sidebar-toggle aria-label="Navigation öffnen">☰</button>
-        <div class="topbar-title">
-          <strong data-page-title>Plärrdeifl</strong>
-          <span data-page-subtitle>Digitalplattform</span>
-        </div>
-        <div class="topbar-actions">
-          <button class="icon-button" type="button" data-notification-button aria-label="Benachrichtigungen">
-            <span aria-hidden="true">🔔</span>
-            <span class="notification-dot" data-notification-dot hidden></span>
-          </button>
-          <button class="avatar-button" type="button" data-profile-button aria-label="Profil öffnen">
-            <span data-profile-initials>PD</span>
-          </button>
-        </div>
-      </header>
-
-      <main id="main" class="main-content" tabindex="-1"></main>
+  <noscript>
+    <div class="noscript">
+      Für das Plärrdeifl Portal muss JavaScript aktiviert sein.
     </div>
+  </noscript>
 
-    <nav class="bottom-nav" data-bottom-nav aria-label="Mobile Navigation"></nav>
+  <div
+    id="environmentBadge"
+    class="environment-badge"
+    aria-label="Entwicklungsumgebung"
+    hidden
+  >
+    DEV-PORTAL
   </div>
 
-  <div class="sidebar-scrim" data-sidebar-scrim></div>
-
-  <dialog id="v4Dialog" class="v4-dialog">
-    <div class="v4-dialog-card">
-      <header class="v4-dialog-header">
-        <div>
-          <span class="v4-dialog-kicker" data-v4-dialog-kicker></span>
-          <h2 data-v4-dialog-title></h2>
+  <section
+    id="authGate"
+    class="auth-gate"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <div class="auth-gate-shell">
+      <div class="auth-gate-brand">
+        <div class="auth-gate-logo-shell">
+          <img
+            src="./assets/icons/icon-512.png"
+            alt="Schweinfurter Plärrdeifl Logo"
+          >
         </div>
-        <button class="icon-button" type="button" data-v4-dialog-close aria-label="Dialog schließen">×</button>
-      </header>
-      <div class="v4-dialog-body" data-v4-dialog-body></div>
-    </div>
-  </dialog>
 
-  <dialog id="v4ConfirmDialog" class="v4-dialog confirm-dialog">
-    <form method="dialog" class="v4-dialog-card">
-      <header class="v4-dialog-header">
-        <div>
-          <span class="v4-dialog-kicker">Bestätigung</span>
-          <h2 data-v4-confirm-title>Aktion bestätigen</h2>
-        </div>
-        <button class="icon-button" value="cancel" aria-label="Dialog schließen">×</button>
-      </header>
-      <div class="v4-dialog-body">
-        <p data-v4-confirm-message></p>
-        <div class="dialog-actions">
-          <button class="button secondary" value="cancel">Abbrechen</button>
-          <button class="button primary" value="confirm" data-v4-confirm-submit>Bestätigen</button>
+        <div
+          class="auth-gate-wordmark"
+          aria-label="Plärrdeifl Portal"
+        >
+          <strong>Plärrdeifl</strong>
+          <span>PORTAL</span>
         </div>
       </div>
-    </form>
-  </dialog>
 
-  <section id="authGate" class="auth-gate" hidden>
-    <div class="auth-card">
-      <img src="./assets/icons/icon-192.png" alt="Plärrdeifl">
-      <h1>Plärrdeifl Portal</h1>
-      <p>Melde dich an, um die Digitalplattform zu nutzen.</p>
-      <div data-auth-gate-content></div>
+      <div
+        id="authGateOpening"
+        class="auth-gate-opening"
+      >
+        <div
+          class="auth-gate-dots"
+          aria-hidden="true"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+
+        <strong id="authGateStatus">
+          Portal wird geöffnet …
+        </strong>
+
+        <small id="authGateDetail">
+          Sichere Anmeldung wird vorbereitet.
+        </small>
+      </div>
+
+      <article
+        id="authGateLogin"
+        class="auth-login-card"
+        aria-labelledby="authGateLoginTitle"
+        hidden
+      >
+        <h1 id="authGateLoginTitle">
+          Anmelden oder registrieren
+        </h1>
+
+        <div
+          id="authGateError"
+          class="auth-login-error"
+          role="alert"
+          hidden
+        ></div>
+
+        <div
+          id="googleSignInButton"
+          class="google-signin-slot auth-google-slot"
+          aria-label="Mit Google anmelden"
+          aria-live="polite"
+        ></div>
+
+        <p
+          id="googleSignInStatus"
+          class="auth-login-status"
+          role="status"
+        ></p>
+      </article>
+
+      <article
+        id="authGateMaintenance"
+        class="auth-maintenance-card"
+        aria-labelledby="authGateMaintenanceTitle"
+        hidden
+      >
+        <span class="auth-maintenance-kicker">Plattformstatus</span>
+        <h1 id="authGateMaintenanceTitle">Wartungsmodus</h1>
+        <p id="authGateMaintenanceMessage">Das Portal ist vorübergehend nicht verfügbar.</p>
+        <small id="authGateMaintenanceEnd" hidden></small>
+      </article>
     </div>
   </section>
 
-  <section id="authGateMaintenance" class="auth-gate" hidden>
-    <div class="auth-card">
-      <img src="./assets/icons/icon-192.png" alt="Plärrdeifl">
-      <h1 id="authGateMaintenanceTitle">Wartungsmodus</h1>
-      <p data-auth-gate-maintenance-message>Die Plattform ist vorübergehend nicht verfügbar.</p>
+  <aside
+    id="platformReadOnlyBanner"
+    class="platform-read-only-banner"
+    role="status"
+    aria-live="polite"
+    hidden
+  >
+    <div>
+      <strong>Portal aktuell schreibgeschützt</strong>
+      <span id="platformReadOnlyMessage">Lesen ist weiterhin möglich.</span>
+      <small id="platformReadOnlyEnd" hidden></small>
     </div>
-  </section>
+  </aside>
 
-  <script type="module" src="./js/task-push-r3.js?v=20260802-pwa-install-guidance-r1"></script>
+  <div
+    id="appShell"
+    class="app-shell"
+    hidden
+    inert
+  >
+    <div id="sidebarSlot">
+      <div
+        id="mobileBackdrop"
+        class="mobile-backdrop"
+        data-close-menu
+      ></div>
+
+      <aside
+        id="sidebar"
+        class="sidebar"
+        aria-label="Hauptnavigation"
+      >
+        <div class="sidebar-mobile-header">
+          <span>Navigation</span>
+
+          <button
+            class="mobile-sidebar-close"
+            type="button"
+            data-close-menu
+            aria-label="Navigation schließen"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="brand">
+          <div class="brand-logo-shell">
+            <img
+              src="./assets/icons/icon-192.png"
+              alt="Schweinfurter Plärrdeifl"
+            >
+          </div>
+
+          <div class="brand-wordmark">
+            <strong>Plärrdeifl</strong>
+            <span id="brandContext">PORTAL</span>
+          </div>
+        </div>
+
+        <div class="sidebar-caption">
+          Vereinsportal
+        </div>
+
+        <nav
+          id="mainNav"
+          class="nav nav-main"
+        ></nav>
+
+        <nav
+          id="portalNavFooter"
+          class="nav nav-footer"
+          aria-label="Portalnavigation"
+          aria-hidden="true"
+          hidden
+        ></nav>
+      </aside>
+    </div>
+
+    <div class="app-main">
+      <div id="topbarSlot">
+        <header class="topbar">
+          <div class="topbar-leading">
+            <button
+              id="mobileMenuToggle"
+              class="icon-button mobile-menu-toggle"
+              type="button"
+              aria-label="Menü öffnen"
+            >
+              <span
+                class="menu-lines"
+                aria-hidden="true"
+              >
+                <i></i>
+                <i></i>
+                <i></i>
+              </span>
+            </button>
+
+            <div
+              class="mobile-brand"
+              aria-label="Plärrdeifl Portal"
+            >
+              <img
+                src="./assets/icons/icon-32.png"
+                alt=""
+              >
+
+              <span>
+                <strong>Plärrdeifl</strong>
+                <small id="mobileBrandContext">
+                  PORTAL
+                </small>
+              </span>
+            </div>
+
+            <button
+              id="portalHomeButton"
+              class="topbar-home-button"
+              type="button"
+              aria-label="Portalstartseite"
+              hidden
+            >
+              <span aria-hidden="true">⌂</span>
+              <span>Startseite</span>
+            </button>
+          </div>
+
+          <div class="topbar-actions">
+            <span
+              id="connectionStatus"
+              class="connection-indicator success"
+              data-state="success"
+              aria-live="polite"
+            >
+              <i aria-hidden="true"></i>
+              <span data-status-text>Online</span>
+            </span>
+
+            <button
+              id="userSummary"
+              class="user-summary user-menu-toggle"
+              type="button"
+              aria-haspopup="dialog"
+              aria-expanded="false"
+              aria-label="Benutzermenü öffnen"
+              hidden
+            >
+              <span
+                id="userAvatar"
+                class="user-avatar"
+                aria-hidden="true"
+              >
+                <img
+                  id="userAvatarImage"
+                  alt=""
+                  hidden
+                >
+
+                <span id="userAvatarInitials">
+                  PD
+                </span>
+              </span>
+
+              <span class="user-summary-copy">
+                <strong id="userSummaryName">
+                  Benutzer
+                </strong>
+
+                <small id="userSummaryRole">
+                  Rolle
+                </small>
+              </span>
+            </button>
+          </div>
+        </header>
+      </div>
+
+      <main
+        id="view"
+        class="view"
+        tabindex="-1"
+        aria-live="polite"
+      ></main>
+    </div>
+  </div>
+
+  <nav
+    id="mobileNav"
+    class="mobile-bottom-nav"
+    aria-label="Mobile Hauptnavigation"
+    hidden
+  ></nav>
+
+  <nav
+    id="authLegalLinks"
+    class="auth-legal-links"
+    aria-label="Rechtliche Informationen"
+    hidden
+  >
+    <a
+      data-legal-imprint
+      href=""
+      rel="noopener"
+      hidden
+    >
+      Impressum
+    </a>
+
+    <span
+      data-legal-separator
+      aria-hidden="true"
+      hidden
+    >
+      ·
+    </span>
+
+    <a
+      data-legal-privacy
+      href=""
+      rel="noopener"
+      hidden
+    >
+      Datenschutz
+    </a>
+  </nav>
+
+  <div
+    id="toastRegion"
+    class="toast-region"
+    aria-live="polite"
+    aria-atomic="true"
+  ></div>
+
+  <div
+    id="updateBanner"
+    class="install-banner"
+    hidden
+  >
+    <div>
+      <strong>Neue Portalversion verfügbar</strong>
+
+      <span>
+        Die Aktualisierung wird erst nach deiner Bestätigung übernommen.
+      </span>
+    </div>
+
+    <button
+      id="updateButton"
+      class="button primary"
+      type="button"
+    >
+      Jetzt aktualisieren
+    </button>
+
+    <button
+      id="updateDismiss"
+      class="icon-button"
+      type="button"
+      aria-label="Später aktualisieren"
+    >
+      ×
+    </button>
+  </div>
+
+  <script src="./js/runtime-config.js"></script>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7"
+  ></script>
+
+  <script
+    type="module"
+    src="./js/push.js?v=20260802-pwa-install-guidance-r1"
+  ></script>
+
+  <script
+    type="module"
+    src="./js/task-push-r3.js?v=20260802-pwa-install-guidance-r1"
+  ></script>
 
   <script type="module" src="./js/app.js?v=20260802-pwa-install-guidance-r1"></script>
   <script type="module" src="./js/p800-r2-fanbus-ux.js?v=20260826-p800-r2-mobile-two-column-final"></script>
