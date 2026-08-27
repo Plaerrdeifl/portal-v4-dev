@@ -3740,6 +3740,13 @@ function manualRegistrationError(outcome) {
   }[outcome] || "Die manuelle Anmeldung konnte nicht angelegt werden.";
 }
 
+function manualBulkSubmitError(error) {
+  if (error?.code === "P3201" || error?.message === "FANBUS_BATCH_DUPLICATE") {
+    return new Error("Mindestens eine Person ist für diese Fahrt bereits angemeldet. Es wurde keine neue Anmeldung erstellt.");
+  }
+  return error;
+}
+
 function manualAttemptFor(currentAttempt, fingerprint) {
   return currentAttempt?.fingerprint === fingerprint
     ? currentAttempt
@@ -3948,7 +3955,7 @@ function openManualComposerGroupPicker(parentDialog, state, groups, tripStops, t
 
       const review = dialog.querySelector("[data-m326-group-import-review]");
       if (!review) return;
-      review.innerHTML = `<section class="v4-m326-group-import-conflict"><strong>Gruppe noch nicht übernommen</strong><dl><div><dt>Gesamt</dt><dd>${Number(resolved.totalCount || members.length)}</dd></div><div><dt>Aktiv/verfügbar</dt><dd>${members.length - unavailableMembers.length}</dd></div><div><dt>Konfliktfrei übernehmbar</dt><dd>${eligible.length}</dd></div></dl>${unavailable.length ? `<p><strong>Nicht verfügbar:</strong> ${unavailable.map(escapeHtml).join(", ")}</p>` : ""}${collisions.length ? `<p><strong>Identitätskonflikt:</strong> ${collisions.map(escapeHtml).join(", ")}</p>` : ""}${convergedMembers.length ? "<p>Die konvergierten Gruppenanker müssen vor einer Übernahme bewusst in der Gruppe geklärt werden.</p>" : ""}${alreadySelectedMembers.length ? "<p>Mindestens eine Person ist bereits im Composer enthalten. Entferne sie dort oder wähle eine andere Gruppe.</p>" : ""}${!collisions.length && eligible.length ? `<button class="button secondary" type="button" data-m326-accept-available>Nur ${eligible.length} verfügbare Personen übernehmen</button>` : ""}</section>`;
+      review.innerHTML = `<section class="v4-m326-group-import-conflict"><strong>Gruppe noch nicht übernommen</strong><dl><div><dt>Gesamt</dt><dd>${Number(resolved.totalCount || members.length)}</dd></div><div><dt>Aktiv/verfügbar</dt><dd>${members.length - unavailableMembers.length}</dd></div><div><dt>Konfliktfrei übernehmbar</dt><dd>${eligible.length}</dd></div></dl>${unavailable.length ? `<p><strong>Nicht verfügbar:</strong> ${unavailable.map(escapeHtml).join(", ")}</p>` : ""}${collisions.length ? `<p><strong>Identitätskonflikt:</strong> ${collisions.map(escapeHtml).join(", ")}</p>` : ""}${convergedMembers.length ? "<p>Die konvergierten Gruppenanker müssen vor einer Übernahme bewusst in der Gruppe geklärt werden.</p>" : ""}${alreadySelectedMembers.length ? "<p>Mindestens eine Person ist bereits im Composer enthalten. Entferne sie dort oder wähle eine andere Gruppe.</p>" : ""}${!collisions.length && eligible.length ? `<button class="button secondary" type="button" data-m326-accept-available>Nur ${eligible.length} ${eligible.length === 1 ? "verfügbare Person" : "verfügbare Personen"} übernehmen</button>` : ""}</section>`;
       review.querySelector("[data-m326-accept-available]")?.addEventListener("click", () => {
         try {
           transfer(eligible);
@@ -4003,7 +4010,12 @@ async function openManualRegistration(trip, registrationsDialog) {
         };
         const fingerprint = JSON.stringify(payload);
         manualAttempt = manualAttemptFor(manualAttempt, fingerprint);
-        const result = await call("fanbus_registration_create_manual_bulk", { ...payload, idempotencyKey: manualAttempt.key });
+        let result;
+        try {
+          result = await call("fanbus_registration_create_manual_bulk", { ...payload, idempotencyKey: manualAttempt.key });
+        } catch (error) {
+          throw manualBulkSubmitError(error);
+        }
         if (!["CREATED", "WAITLISTED"].includes(result?.outcome)) throw new Error(manualRegistrationError(result?.outcome));
         const [nextData, nextSnapshot] = await Promise.all([
           call("fanbus_registrations_list", { tripId: trip.id }),

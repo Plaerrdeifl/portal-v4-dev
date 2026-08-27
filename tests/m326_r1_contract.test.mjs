@@ -183,6 +183,37 @@ test("F3 management UI exposes regular riders, conscious links and stable groups
   assert.match(ui, /Gäste können nicht in Gruppen aufgenommen werden/);
 });
 
+test("F5 DEV-E2E projects group-import singular and bulk duplicates without changing atomic booking", () => {
+  const groupImport = ui.slice(
+    ui.indexOf("function openManualComposerGroupPicker"),
+    ui.indexOf("async function openManualRegistration")
+  );
+  assert.match(groupImport, /Nur \$\{eligible\.length\} \$\{eligible\.length === 1 \? "verfügbare Person" : "verfügbare Personen"\} übernehmen/);
+  assert.doesNotMatch(groupImport, /Nur \$\{eligible\.length\} verfügbare Personen übernehmen/);
+
+  const projection = ui.slice(
+    ui.indexOf("function manualBulkSubmitError"),
+    ui.indexOf("function manualAttemptFor")
+  );
+  assert.match(projection, /error\?\.code === "P3201" \|\| error\?\.message === "FANBUS_BATCH_DUPLICATE"/);
+  assert.match(projection, /Mindestens eine Person ist für diese Fahrt bereits angemeldet\. Es wurde keine neue Anmeldung erstellt\./);
+  assert.match(projection, /return error;/);
+
+  const submit = ui.slice(
+    ui.indexOf("async function openManualRegistration"),
+    ui.indexOf("function showRegistrationsDialog")
+  );
+  assert.match(submit, /fanbus_registration_create_manual_bulk[\s\S]*catch \(error\) \{\s*throw manualBulkSubmitError\(error\);/);
+  assert.doesNotMatch(submit, /showToast\([^\n]*FANBUS_BATCH_DUPLICATE/);
+
+  const atomicBulk = bulk.slice(
+    bulk.indexOf("create function app_private.api_fanbus_registration_create_manual_bulk"),
+    bulk.indexOf("alter function app_private.pd_api_current_actions")
+  );
+  assert.equal((atomicBulk.match(/fanbus_submit_booking_core\(/g) || []).length, 1);
+  assert.ok(atomicBulk.indexOf("FANBUS_BATCH_DUPLICATE") < atomicBulk.indexOf("fanbus_submit_booking_core("));
+});
+
 test("F5 regular-rider management uses compact mobile cards and a capability-gated detail dialog", () => {
   const card = ui.slice(
     ui.indexOf("function regularRiderListCard"),
