@@ -6,7 +6,7 @@ const index = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const ux = readFileSync(new URL("../js/m326-person-picker-ux.js", import.meta.url), "utf8");
 
 test("M326 compact person picker is loaded in the portal", () => {
-  assert.match(index, /js\/m326-person-picker-ux\.js\?v=20260827-m326-mobile-picker-r4/);
+  assert.match(index, /js\/m326-person-picker-ux\.js\?v=20260827-m326-mobile-picker-r5/);
 });
 
 test("M326 person picker uses the portal form grid instead of custom layout CSS", () => {
@@ -22,6 +22,12 @@ test("M326 compact person picker does not dump the full directory initially", ()
   assert.match(ux, /MAX_VISIBLE_RESULTS = 8/);
   assert.match(ux, /Mindestens 2 Buchstaben eingeben oder einen Personentyp wählen/);
   assert.match(ux, /button\.hidden = index >= MAX_VISIBLE_RESULTS/);
+});
+
+test("M326 person picker removes the empty visual ALL filter but keeps ALL as search fallback", () => {
+  assert.match(ux, /data-m326-source-filter=\"ALL\"/);
+  assert.match(ux, /\?\.remove\(\)/);
+  assert.match(ux, /return active\?\.dataset\.m326SourceFilter \|\| \"ALL\"/);
 });
 
 test("M326 person and guest modes are mutually exclusive even against portal important grid rules", () => {
