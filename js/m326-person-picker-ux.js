@@ -1,3 +1,5 @@
+import { call } from "./modules/common.js";
+
 const FORM_SELECTOR = "[data-m326-person-form]";
 const MAX_VISIBLE_RESULTS = 8;
 
@@ -5,6 +7,56 @@ function activeSourceFilter(form) {
   const active = [...form.querySelectorAll("[data-m326-source-filter]")]
     .find(button => !button.hidden && button.classList.contains("is-active"));
   return active?.dataset.m326SourceFilter || "ALL";
+}
+
+function personChoiceKey(person) {
+  const type = String(person?.personType || "");
+  const id = type === "MEMBER" ? person?.memberId : person?.portalUserId;
+  return type && id ? `${type}:${id}` : "";
+}
+
+async function loadPersonDefaultStops() {
+  try {
+    const data = await call("fanbus_registration_people_list");
+    const defaults = new Map();
+    for (const person of Array.isArray(data?.people) ? data.people : []) {
+      const key = personChoiceKey(person);
+      const label = String(person?.defaultBoardingStopLabel || "").trim();
+      if (key && person?.defaultBoardingStopId && label) {
+        defaults.set(key, {
+          boardingStopId: person.defaultBoardingStopId,
+          label
+        });
+      }
+    }
+    return defaults;
+  } catch {
+    return new Map();
+  }
+}
+
+function applyPreferredStopToComposer(index, preferredLabel) {
+  const composer = document.getElementById("m326ManualComposerForm");
+  const select = composer?.querySelector(`[data-m326-person-stop="${index}"]`);
+  if (!select) return false;
+
+  const label = String(preferredLabel || "").trim();
+  if (!label) return true;
+
+  const option = [...select.options].find(candidate => {
+    const text = String(candidate.textContent || "").trim();
+    return text === label || text.endsWith(` · ${label}`);
+  });
+
+  // Persönlicher Standard ist für diese Fahrt nicht aktiv: die bereits vom
+  // Composer gesetzte Fahrt-Vorgabe bleibt bestehen.
+  if (!option?.value) return true;
+
+  if (select.value !== option.value) {
+    select.value = option.value;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  return true;
 }
 
 function setFlowVisible(element, visible) {
@@ -30,6 +82,10 @@ function enhancePicker(form) {
 
   form.dataset.m326PickerEnhanced = "true";
   form.dataset.m326PickerMode = "person";
+
+  // Die persönlichen Fanbus-Vorgaben werden parallel geladen. Beim Übernehmen
+  // gilt: persönlicher aktiver Zustieg > Fahrtstandard > Bitte wählen.
+  const personDefaultsPromise = loadPersonDefaultStops();
 
   // Der bestehende M326-Dialog fokussiert die Suche beim Öffnen.
   // Auf iOS würde dadurch direkt Tastatur bzw. nach dem Umbau der Select-Picker aufgehen.
@@ -154,6 +210,32 @@ function enhancePicker(form) {
   query.addEventListener("input", () => requestAnimationFrame(updatePersonVisibility));
   filterButtons.forEach(button => button.addEventListener("click", () => requestAnimationFrame(updatePersonVisibility)));
   modeSelect.addEventListener("change", () => setMode(modeSelect.value));
+
+  // Vor dem bestehenden Choice-Handler merken wir uns den neuen Composer-Index.
+  // Nach dessen Re-Render überschreibt ein aktiver Personenstandard den
+  // Fahrtstandard; ist er für diese Fahrt nicht verfügbar, bleibt der
+  // Fahrtstandard unangetastet.
+  results.addEventListener("click", event => {
+    const button = event.target.closest("[data-m326-choice]");
+    if (!button) return;
+    const choiceKey = button.dataset.m326Choice || "";
+    const targetIndex = document.querySelectorAll(
+      "#m326ManualComposerForm [data-m326-composer-person]"
+    ).length;
+
+    personDefaultsPromise.then(defaults => {
+      const preferred = defaults.get(choiceKey);
+      if (!preferred?.label) return;
+
+      let attempts = 0;
+      const apply = () => {
+        attempts += 1;
+        if (applyPreferredStopToComposer(targetIndex, preferred.label) || attempts >= 8) return;
+        window.setTimeout(apply, 25);
+      };
+      window.setTimeout(apply, 0);
+    });
+  }, true);
 
   const resultObserver = new MutationObserver(() => {
     if (form.dataset.m326PickerMode === "person" && !results.hidden) {
