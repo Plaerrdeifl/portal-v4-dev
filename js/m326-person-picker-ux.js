@@ -21,10 +21,11 @@ function enhancePicker(form) {
   form.dataset.m326PickerEnhanced = "true";
   form.dataset.m326PickerMode = "person";
 
-  queryLabel.classList.add("v4-field-full");
-  filters.classList.add("v4-field-full", "button-row");
-  results.classList.add("v4-field-full");
-  guestFields.classList.add("v4-smart-form");
+  queryLabel.classList.add("v4-field-full", "full");
+  filters.classList.add("v4-field-full", "full", "button-row");
+  results.classList.add("v4-field-full", "full");
+  guestFields.classList.remove("v4-smart-form");
+  guestFields.querySelectorAll(".v4-field-full").forEach(element => element.classList.add("full"));
   legacyGuestButton.hidden = true;
 
   const modeLabel = document.createElement("label");
@@ -40,17 +41,17 @@ function enhancePicker(form) {
   modeLabel.append(modeSelect);
 
   const personPane = document.createElement("div");
-  personPane.className = "v4-field-full form-grid v4-smart-form";
+  personPane.className = "v4-field-full form-grid";
   personPane.dataset.m326PickerPersonPane = "true";
   personPane.setAttribute("aria-label", "Bestehende Person auswählen");
 
   const helper = document.createElement("p");
-  helper.className = "subtle v4-field-full";
+  helper.className = "subtle v4-field-full full";
   helper.setAttribute("role", "status");
   helper.textContent = "Mindestens 2 Buchstaben eingeben oder einen Personentyp wählen.";
 
   const more = document.createElement("p");
-  more.className = "subtle v4-field-full";
+  more.className = "subtle v4-field-full full";
   more.hidden = true;
 
   queryLabel.before(personPane);
@@ -88,8 +89,16 @@ function enhancePicker(form) {
     const guest = mode === "guest";
     form.dataset.m326PickerMode = guest ? "guest" : "person";
     modeSelect.value = guest ? "guest" : "person";
+
     personPane.hidden = guest;
+    personPane.setAttribute("aria-hidden", String(guest));
     guestFields.hidden = !guest;
+    guestFields.setAttribute("aria-hidden", String(!guest));
+
+    query.disabled = guest;
+    filterButtons.forEach(button => {
+      button.disabled = guest;
+    });
 
     guestFields.querySelectorAll("input").forEach(input => {
       input.disabled = !guest;
@@ -100,10 +109,8 @@ function enhancePicker(form) {
       helper.hidden = true;
       results.hidden = true;
       more.hidden = true;
-      requestAnimationFrame(() => form.elements.namedItem("firstName")?.focus());
     } else {
       updatePersonVisibility();
-      requestAnimationFrame(() => query.focus());
     }
   };
 
