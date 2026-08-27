@@ -183,6 +183,56 @@ test("F3 management UI exposes regular riders, conscious links and stable groups
   assert.match(ui, /Gäste können nicht in Gruppen aufgenommen werden/);
 });
 
+test("F5 regular-rider management uses compact mobile cards and a capability-gated detail dialog", () => {
+  const card = ui.slice(
+    ui.indexOf("function regularRiderListCard"),
+    ui.indexOf("function regularRiderDetailBody")
+  );
+  assert.match(card, /data-m326-open-rider/);
+  assert.match(card, /v4-compact-record v4-m326-person-card/);
+  assert.match(card, /<strong>\$\{escapeHtml\(name\)\}<\/strong><small>/);
+  assert.doesNotMatch(card, /Bearbeiten|Verknüpfen|Deaktivieren|data-m326-detail-/);
+
+  const detail = ui.slice(
+    ui.indexOf("function regularRiderDetailBody"),
+    ui.indexOf("async function renderRegularRidersWorkspace")
+  );
+  assert.match(detail, /hasCapability\("fanbus\.registrations\.manage"\)/);
+  for (const action of ["data-m326-detail-edit", "data-m326-detail-link", "data-m326-detail-unlink", "data-m326-detail-deactivate"]) {
+    assert.match(detail, new RegExp(action));
+  }
+  assert.match(detail, /Standard-Zustieg/);
+  assert.match(detail, /Standard-Buswunsch/);
+  assert.match(detail, /E-Mail/);
+  assert.match(detail, /Mobilnummer/);
+  assert.match(detail, /Interne Notiz/);
+  assert.match(detail, /Portaluser/);
+  assert.match(ui, /data-m326-open-rider[\s\S]*fanbus_regular_rider_detail[\s\S]*openRegularRiderDetailDialog/);
+
+  assert.match(css, /\.v4-m326-person-card\s*\{[\s\S]*grid-template-columns: minmax\(0, 1fr\) auto;[\s\S]*max-width: 100%;/);
+  assert.match(css, /\.v4-m326-person-card \.v4-compact-record-copy strong\s*\{[\s\S]*overflow-wrap: break-word;[\s\S]*hyphens: none;/);
+  assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.v4-m326-rider-toolbar\s*\{[\s\S]*grid-template-columns: minmax\(0, 1fr\);[\s\S]*\.v4-m326-rider-toolbar > \.button\s*\{[\s\S]*min-height: 44px;[\s\S]*white-space: nowrap;/);
+  assert.match(css, /@media \(max-width: 350px\)[\s\S]*\.v4-m326-rider-toolbar,[\s\S]*\.v4-m326-person-card\s*\{[\s\S]*max-width: 100%;/);
+});
+
+test("F5 successful regular-rider writes discard stale parent dialog contexts", () => {
+  const editWrite = ui.slice(
+    ui.indexOf("function openRegularRiderDialog"),
+    ui.indexOf("function openRegularRiderLinkDialog")
+  );
+  assert.match(editWrite, /fanbus_regular_rider_update[\s\S]*fanbus_regular_rider_create/);
+  assert.match(editWrite, /closeAllDialogs\(\);\s*await refresh\(\);/);
+  assert.doesNotMatch(editWrite, /dialog\.close\(\)/);
+
+  const linkWrite = ui.slice(
+    ui.indexOf("function openRegularRiderLinkDialog"),
+    ui.indexOf("function regularRiderListCard")
+  );
+  assert.match(linkWrite, /fanbus_regular_rider_relink[\s\S]*fanbus_regular_rider_link/);
+  assert.match(linkWrite, /closeAllDialogs\(\);\s*await refresh\(\);/);
+  assert.doesNotMatch(linkWrite, /dialog\.close\(\)/);
+});
+
 test("F4 central mail resolver is fail-closed and guards every fanbus outbox email", () => {
   assert.match(mail, /create function app_private\.fanbus_trip_mail_label/);
   assert.match(mail, /when v_type='GAME' then nullif\(btrim\(v_opponent\),''\)/);

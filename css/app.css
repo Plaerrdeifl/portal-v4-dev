@@ -6488,12 +6488,81 @@ html[data-portal-area="portal"] .v4-toolbar p{
   flex: 1 1 240px;
 }
 
+.v4-m326-rider-toolbar > .button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .v4-m326-records,
 .v4-m326-composer,
 .v4-m326-group-editor,
 .v4-m326-group-editor [data-m326-group-selected] {
   display: grid;
   gap: 12px;
+}
+
+.v4-m326-person-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  appearance: none;
+  font: inherit;
+}
+
+.v4-m326-person-card .v4-compact-record-copy,
+.v4-m326-person-card .v4-compact-record-copy strong,
+.v4-m326-person-card .v4-compact-record-copy small {
+  min-width: 0;
+  word-break: normal;
+}
+
+.v4-m326-person-card .v4-compact-record-copy strong {
+  overflow-wrap: break-word;
+  hyphens: none;
+}
+
+.v4-m326-person-card .v4-compact-record-copy small {
+  overflow-wrap: break-word;
+}
+
+.v4-m326-rider-detail {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.v4-m326-rider-detail-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin: 0;
+}
+
+.v4-m326-rider-detail-facts > div {
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid var(--line, #d8e2ee);
+  border-radius: 12px;
+  background: var(--surface-subtle, #f8fbff);
+}
+
+.v4-m326-rider-detail-facts dt {
+  color: var(--ink-500, #64748b);
+  font-size: .74rem;
+  font-weight: 700;
+}
+
+.v4-m326-rider-detail-facts dd {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--ink-900, #142033);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.v4-m326-rider-detail-note {
+  grid-column: 1 / -1;
 }
 
 .v4-m326-composer-card {
@@ -6579,6 +6648,31 @@ html[data-portal-area="portal"] .v4-toolbar p{
     flex: 1 1 0;
   }
 
+  .v4-m326-rider-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .v4-m326-rider-toolbar label,
+  .v4-m326-rider-toolbar > .button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .v4-m326-rider-toolbar > .button {
+    min-height: 44px;
+    white-space: nowrap;
+  }
+
+  .v4-m326-rider-detail-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .v4-m326-rider-detail-note {
+    grid-column: auto;
+  }
+
   .v4-m326-composer-card {
     grid-template-columns: minmax(0, 1fr) 44px;
   }
@@ -6605,6 +6699,12 @@ html[data-portal-area="portal"] .v4-toolbar p{
   .v4-m326-composer-actions {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .v4-m326-rider-toolbar,
+  .v4-m326-person-card {
+    min-width: 0;
+    max-width: 100%;
   }
 }
 @media (max-width: 350px) {

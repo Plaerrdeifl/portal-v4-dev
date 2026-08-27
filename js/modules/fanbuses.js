@@ -1176,7 +1176,7 @@ function openRegularRiderDialog(rider, stops, refresh) {
         note: values.note || null,
         defaultBoardingStopId: values.defaultBoardingStopId || null
       }), "Stammfahrer gespeichert.");
-      dialog.close();
+      closeAllDialogs();
       await refresh();
     } catch (error) {
       showToast(error?.message || "Stammfahrer konnte nicht gespeichert werden.", "error", 5200);
@@ -1206,10 +1206,79 @@ function openRegularRiderLinkDialog(rider, people, refresh) {
           expectedRevision: rider.revision
         }
       ), rider.linkedPortalUserId ? "Portaluser neu verknüpft." : "Portaluser verknüpft.");
-      dialog.close();
+      closeAllDialogs();
       await refresh();
     } catch (error) {
       showToast(error?.message || "Portaluser konnte nicht verknüpft werden.", "error", 5200);
+    }
+  });
+}
+
+function regularRiderListCard(rider, stopLabels) {
+  const name = `${rider.firstName} ${rider.lastName}`;
+  const stop = rider.defaultBoardingStopId
+    ? stopLabels.get(rider.defaultBoardingStopId) || "Zustieg inaktiv"
+    : "Kein Standard-Zustieg";
+  return `<button class="v4-compact-record v4-m326-person-card" type="button" data-m326-rider-card data-m326-open-rider="${escapeAttr(rider.id)}" data-search="${escapeAttr(name.toLocaleLowerCase("de-DE"))}" aria-label="Details zu ${escapeAttr(name)} öffnen"><span class="v4-compact-record-copy"><strong>${escapeHtml(name)}</strong><small>${rider.isActive ? "Aktiv" : "Inaktiv"} · ${escapeHtml(busPreferenceText(rider.defaultBusPreference))} · ${escapeHtml(stop)}</small></span><span class="v4-row-chevron" aria-hidden="true">›</span></button>`;
+}
+
+function regularRiderDetailBody(rider, stopLabels, canManage) {
+  const stop = rider.defaultBoardingStopId
+    ? stopLabels.get(rider.defaultBoardingStopId) || "Zustieg inaktiv"
+    : "Kein Standard-Zustieg";
+  const value = content => escapeHtml(content || "Nicht hinterlegt");
+  return `<section class="v4-m326-rider-detail">
+    <dl class="v4-m326-rider-detail-facts">
+      <div><dt>Status</dt><dd>${rider.isActive ? "Aktiv" : "Inaktiv"}</dd></div>
+      <div><dt>Standard-Buswunsch</dt><dd>${escapeHtml(busPreferenceText(rider.defaultBusPreference))}</dd></div>
+      <div><dt>Standard-Zustieg</dt><dd>${escapeHtml(stop)}</dd></div>
+      <div><dt>Portaluser</dt><dd>${rider.linkedPortalUserId ? "Verknüpft" : "Nicht verknüpft"}</dd></div>
+      <div><dt>E-Mail</dt><dd>${value(rider.email)}</dd></div>
+      <div><dt>Mobilnummer</dt><dd>${value(rider.mobile)}</dd></div>
+      <div class="v4-m326-rider-detail-note"><dt>Interne Notiz</dt><dd>${value(rider.note)}</dd></div>
+    </dl>
+    ${canManage ? `<div class="dialog-actions v4-detail-actions v4-m326-rider-detail-actions"><button class="button secondary" type="button" data-m326-detail-edit>Bearbeiten</button>${rider.isActive ? `<button class="button secondary" type="button" data-m326-detail-link>${rider.linkedPortalUserId ? "Neu verknüpfen" : "Verknüpfen"}</button>${rider.linkedPortalUserId ? '<button class="button secondary" type="button" data-m326-detail-unlink>Verknüpfung lösen</button>' : ""}<button class="button danger" type="button" data-m326-detail-deactivate>Deaktivieren</button>` : ""}</div>` : ""}
+  </section>`;
+}
+
+function openRegularRiderDetailDialog(rider, stops, stopLabels, people, refresh) {
+  const canManage = hasCapability("fanbus.registrations.manage");
+  const dialog = openDialog({
+    title: `${rider.firstName} ${rider.lastName}`,
+    kicker: "Stammfahrer",
+    body: regularRiderDetailBody(rider, stopLabels, canManage)
+  });
+  if (!canManage) return;
+  dialog.querySelector("[data-m326-detail-edit]")?.addEventListener("click", () => {
+    openRegularRiderDialog(rider, stops, refresh);
+  });
+  dialog.querySelector("[data-m326-detail-link]")?.addEventListener("click", () => {
+    openRegularRiderLinkDialog(rider, people, refresh);
+  });
+  dialog.querySelector("[data-m326-detail-unlink]")?.addEventListener("click", async () => {
+    if (!await confirmAction("Portaluser-Verknüpfung lösen? Künftige Buchungen verwenden wieder die Stammfahreridentität; historische Buchungen bleiben unverändert.")) return;
+    try {
+      await runWrite(() => call("fanbus_regular_rider_unlink", {
+        regularRiderId: rider.id,
+        expectedRevision: rider.revision
+      }), "Verknüpfung gelöst.");
+      dialog.close();
+      await refresh();
+    } catch (error) {
+      showToast(error?.message || "Verknüpfung konnte nicht gelöst werden.", "error", 5200);
+    }
+  });
+  dialog.querySelector("[data-m326-detail-deactivate]")?.addEventListener("click", async () => {
+    if (!await confirmAction("Stammfahrer deaktivieren? Die Person bleibt in bestehenden Gruppen als inaktiv sichtbar.")) return;
+    try {
+      await runWrite(() => call("fanbus_regular_rider_deactivate", {
+        id: rider.id,
+        expectedRevision: rider.revision
+      }), "Stammfahrer deaktiviert.");
+      dialog.close();
+      await refresh();
+    } catch (error) {
+      showToast(error?.message || "Stammfahrer konnte nicht deaktiviert werden.", "error", 5200);
     }
   });
 }
@@ -1230,8 +1299,8 @@ async function renderRegularRidersWorkspace(panel, summary) {
     const refresh = () => renderRegularRidersWorkspace(panel, summary);
     panel.innerHTML = `<section class="v4-m325-workspace v4-m326-workspace">
       <header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m326-back>Zurück</button><div><h2>Stammfahrer</h2><p>Wiederkehrende Fahrgäste mit optionaler Portalverknüpfung und Buchungsdefaults.</p></div></header>
-      <div class="v4-m326-toolbar"><label>Stammfahrer suchen<input type="search" data-m326-rider-search placeholder="Name"></label><button class="button primary" type="button" data-m326-add-rider>+ Stammfahrer</button></div>
-      <div class="v4-mobile-records v4-m326-records" data-m326-rider-list>${riders.map(rider => `<article class="v4-compact-record v4-m326-person-card" data-m326-rider-card data-search="${escapeAttr(`${rider.firstName} ${rider.lastName}`.toLocaleLowerCase("de-DE"))}"><div class="v4-compact-record-copy"><strong>${escapeHtml(`${rider.firstName} ${rider.lastName}`)}</strong><small>${rider.isActive ? "Aktiv" : "Inaktiv"} · ${escapeHtml(busPreferenceText(rider.defaultBusPreference))}${rider.defaultBoardingStopId ? ` · ${escapeHtml(stopLabels.get(rider.defaultBoardingStopId) || "Zustieg inaktiv")}` : " · Kein Standard-Zustieg"}${rider.linkedPortalUserId ? " · Portaluser verknüpft" : ""}</small></div><div class="v4-row-actions"><button class="button small secondary" data-m326-edit-rider="${escapeAttr(rider.id)}">Bearbeiten</button>${rider.isActive ? `<button class="button small secondary" data-m326-link-rider="${escapeAttr(rider.id)}">${rider.linkedPortalUserId ? "Neu verknüpfen" : "Verknüpfen"}</button>${rider.linkedPortalUserId ? `<button class="button small secondary" data-m326-unlink-rider="${escapeAttr(rider.id)}">Link lösen</button>` : ""}<button class="button small danger" data-m326-deactivate-rider="${escapeAttr(rider.id)}">Deaktivieren</button>` : ""}</div></article>`).join("") || empty("Noch keine Stammfahrer vorhanden.")}</div>
+      <div class="v4-m326-toolbar v4-m326-rider-toolbar"><label>Stammfahrer suchen<input type="search" data-m326-rider-search placeholder="Name"></label><button class="button primary" type="button" data-m326-add-rider>+ Stammfahrer</button></div>
+      <div class="v4-mobile-records v4-m326-records" data-m326-rider-list>${riders.map(rider => regularRiderListCard(rider, stopLabels)).join("") || empty("Noch keine Stammfahrer vorhanden.")}</div>
     </section>`;
     panel.querySelector("[data-m326-back]")?.addEventListener("click", () => returnToFanbuses());
     panel.querySelector("[data-m326-add-rider]")?.addEventListener("click", () => openRegularRiderDialog(null, stops, refresh));
@@ -1239,33 +1308,12 @@ async function renderRegularRidersWorkspace(panel, summary) {
       const query = event.currentTarget.value.trim().toLocaleLowerCase("de-DE");
       panel.querySelectorAll("[data-m326-rider-card]").forEach(card => { card.hidden = query && !card.dataset.search.includes(query); });
     });
-    panel.querySelectorAll("[data-m326-edit-rider]").forEach(button => button.addEventListener("click", async () => {
+    panel.querySelectorAll("[data-m326-open-rider]").forEach(button => button.addEventListener("click", async () => {
       try {
-        const rider = await call("fanbus_regular_rider_detail", { id: button.dataset.m326EditRider });
-        openRegularRiderDialog(rider, stops, refresh);
+        const rider = await call("fanbus_regular_rider_detail", { id: button.dataset.m326OpenRider });
+        openRegularRiderDetailDialog(rider, stops, stopLabels, people, refresh);
       } catch (error) {
         showToast(error?.message || "Stammfahrer konnte nicht geladen werden.", "error", 5200);
-      }
-    }));
-    panel.querySelectorAll("[data-m326-link-rider]").forEach(button => button.addEventListener("click", () => openRegularRiderLinkDialog(riders.find(item => item.id === button.dataset.m326LinkRider), people, refresh)));
-    panel.querySelectorAll("[data-m326-unlink-rider]").forEach(button => button.addEventListener("click", async () => {
-      const rider = riders.find(item => item.id === button.dataset.m326UnlinkRider);
-      if (!rider || !await confirmAction("Portaluser-Verknüpfung lösen? Künftige Buchungen verwenden wieder die Stammfahreridentität; historische Buchungen bleiben unverändert.")) return;
-      try {
-        await runWrite(() => call("fanbus_regular_rider_unlink", { regularRiderId: rider.id, expectedRevision: rider.revision }), "Verknüpfung gelöst.");
-        await refresh();
-      } catch (error) {
-        showToast(error?.message || "Verknüpfung konnte nicht gelöst werden.", "error", 5200);
-      }
-    }));
-    panel.querySelectorAll("[data-m326-deactivate-rider]").forEach(button => button.addEventListener("click", async () => {
-      const rider = riders.find(item => item.id === button.dataset.m326DeactivateRider);
-      if (!rider || !await confirmAction("Stammfahrer deaktivieren? Die Person bleibt in bestehenden Gruppen als inaktiv sichtbar.")) return;
-      try {
-        await runWrite(() => call("fanbus_regular_rider_deactivate", { id: rider.id, expectedRevision: rider.revision }), "Stammfahrer deaktiviert.");
-        await refresh();
-      } catch (error) {
-        showToast(error?.message || "Stammfahrer konnte nicht deaktiviert werden.", "error", 5200);
       }
     }));
   } catch (error) {
