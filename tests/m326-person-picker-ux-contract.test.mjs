@@ -5,9 +5,13 @@ import test from "node:test";
 
 const index = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const ux = readFileSync(new URL("../js/m326-person-picker-ux.js", import.meta.url), "utf8");
+const defaultStopOverlay = readFileSync(
+  new URL("../supabase/dev-overlays/20260828_m326_person_default_boarding_stop.sql", import.meta.url),
+  "utf8"
+);
 
 test("M326 compact person picker is loaded in the portal", () => {
-  assert.match(index, /js\/m326-person-picker-ux\.js\?v=20260827-m326-mobile-picker-r5/);
+  assert.match(index, /js\/m326-person-picker-ux\.js\?v=20260828-m326-mobile-picker-r6/);
 });
 
 test("M326 person picker uses the portal form grid instead of custom layout CSS", () => {
@@ -52,6 +56,17 @@ test("M326 picker opens without focusing a select, search or guest field", () =>
 test("M326 guest fields keep the existing portal half/full-width field contract", () => {
   assert.match(ux, /guestFields\.classList\.remove\("v4-smart-form"\)/);
   assert.match(ux, /querySelectorAll\("\.v4-field-full"\).*classList\.add\("full"\)/s);
+});
+
+test("M326 manual composer honors person default before the trip fallback", () => {
+  assert.match(defaultStopOverlay, /fanbus_user_preferences/);
+  assert.match(defaultStopOverlay, /defaultBoardingStopId/);
+  assert.match(defaultStopOverlay, /defaultBoardingStopLabel/);
+  assert.match(ux, /loadPersonDefaultStops/);
+  assert.match(ux, /applyPreferredStopToComposer/);
+  assert.match(ux, /text\.endsWith\(` · \$\{label\}`\)/);
+  assert.match(ux, /select\.dispatchEvent\(new Event\("change", \{ bubbles: true \}\)\)/);
+  assert.match(ux, /Fahrt-Vorgabe bleibt bestehen/);
 });
 
 test("M326 compact person picker follows dynamically created dialogs", () => {
