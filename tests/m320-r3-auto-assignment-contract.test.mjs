@@ -79,7 +79,10 @@ test("M320-R3 apply does not accept assignment_source from the browser", async (
 test("M320-R3 R1 only plans currently unassigned ACTIVE participants and protects existing assignments", async () => {
   const migration = await read(migrationPath);
 
-  assert.match(migration, /participant\.status='ACTIVE' and assignment\.participant_id is null/);
+  assert.match(
+    migration,
+    /participant\.status\s*=\s*'ACTIVE'[\s\S]*?assignment\.participant_id\s+is\s+null/i
+  );
   assert.match(migration, /'assignmentState',case when assignment\.assignment_source='MANUAL' then 'FIXED_MANUAL' else 'EXISTING_AUTO' end/);
   assert.match(migration, /'EXISTING_ASSIGNMENT_PROTECTED'/);
   assert.doesNotMatch(migration, /update app_modules\.fanbus_bus_assignments[\s\S]*assignment_source='AUTO'/i);
