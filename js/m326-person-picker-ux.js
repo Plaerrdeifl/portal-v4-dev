@@ -49,6 +49,10 @@ function enhancePicker(form) {
   legacyGuestButton.hidden = true;
   legacyGuestButton.style.setProperty("display", "none", "important");
 
+  // "Alle" ist kein eigener ausgabender Personentyp. Ohne gewählten Typ bleibt
+  // die Namenssuche intern trotzdem auf ALL, der leere visuelle Filter entfällt.
+  form.querySelector('[data-m326-source-filter="ALL"]')?.remove();
+
   const modeLabel = document.createElement("label");
   modeLabel.className = "v4-field-full";
   modeLabel.textContent = "Art der Erfassung";
