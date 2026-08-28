@@ -15,6 +15,7 @@ import {
   showToast
 } from "./common.js";
 import { downloadFanbusRegistrationsXlsx } from "./fanbus-xlsx.js";
+import { groupFanbusTrips } from "./fanbus-trip-groups.js";
 
 const BERLIN_TIME_ZONE = "Europe/Berlin";
 const PRIVACY_REFERENCE = "https://plaerrdeifl.de/datenschutzerklaerung/";
@@ -756,6 +757,20 @@ function tripMobileList(items) {
   </div>`;
 }
 
+function tripGroup(key, title, items, emptyMessage) {
+  const headingId = `m310TripGroup-${key}`;
+  const countLabel = items.length === 1 ? "1 Fahrt" : `${items.length} Fahrten`;
+  return `<section class="module-panel v4-m310-trip-group" aria-labelledby="${headingId}">
+    <div class="v4-heading-row v4-section-heading">
+      <h3 id="${headingId}">${escapeHtml(title)}</h3>
+      <span class="badge neutral">${escapeHtml(countLabel)}</span>
+    </div>
+    ${items.length
+      ? `${tripTable(items)}${tripMobileList(items)}`
+      : empty(emptyMessage)}
+  </section>`;
+}
+
 function setStatus(label, type = "") {
   const status = document.getElementById("m310FanbusStatus");
   if (!status) return;
@@ -887,6 +902,7 @@ function render() {
   setWorkspaceShell(false);
 
   const items = trips();
+  const groupedTrips = groupFanbusTrips(items);
   const canManage = hasCapability("fanbus.manage");
   setupFanbusActionMenu(canManage);
 
@@ -897,7 +913,9 @@ function render() {
   }
 
   panel.innerHTML = items.length
-    ? `${tripTable(items)}${tripMobileList(items)}`
+    ? `${tripGroup("active", "Aktive Fahrten", groupedTrips.active, "Keine aktiven Fahrten vorhanden.")}
+       ${tripGroup("planned", "Geplante Fahrten", groupedTrips.planned, "Keine geplanten Fahrten vorhanden.")}
+       ${tripGroup("history", "Vergangene / abgesagte Fahrten", groupedTrips.history, "Keine vergangenen oder abgesagten Fahrten vorhanden.")}`
     : empty("Aktuell sind keine kommenden Fanbusfahrten verfügbar.");
 
   panel.querySelectorAll("[data-m310-open-trip]").forEach(record => {
