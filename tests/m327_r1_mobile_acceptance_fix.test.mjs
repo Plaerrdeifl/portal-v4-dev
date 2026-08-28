@@ -57,6 +57,18 @@ test("M327 normalizes public Bus-Orga contact text and links", () => {
   assert.match(polishSource, /document\.createTextNode\(" "\)/);
 });
 
+test("M327 renders bookings collapsed first and expands details on demand", () => {
+  assert.match(polishSource, /m327-booking-expanded/);
+  assert.match(polishSource, /body\.hidden = true/);
+  assert.match(polishSource, /aria-expanded/);
+  assert.match(polishSource, /role", "button"/);
+  assert.match(polishSource, /tabindex", "0"/);
+  assert.match(polishSource, /event\.key !== "Enter" && event\.key !== " "/);
+  assert.match(polishSource, /Buchungsdetails öffnen oder schließen/);
+  assert.match(polishSource, /m327-booking-chevron/);
+  assert.match(polishSource, /setBookingExpanded/);
+});
+
 test("M327 acceptance polish is wired into portal and guest registration", () => {
   assert.match(pagesSource, /m327-r1-acceptance-polish\.js/);
   assert.match(guestHtml, /m327-r1-guest-contact-polish\.js/);
