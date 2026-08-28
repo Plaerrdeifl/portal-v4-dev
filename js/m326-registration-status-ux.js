@@ -1,4 +1,6 @@
 const RECORD_SELECTOR = "[data-m320-registration-record]";
+const ASSIGNMENT_APPLY_ACTION = "fanbus_assignment_apply";
+let pendingAssignmentRefresh = null;
 
 function statusOf(record) {
   if (!(record instanceof HTMLElement)) return "";
@@ -41,6 +43,84 @@ function scan(root = document) {
   root.querySelectorAll?.(RECORD_SELECTOR).forEach(applyStatusTint);
 }
 
+function participantTrigger(tripId) {
+  if (!tripId) return null;
+  return [...document.querySelectorAll(`[data-m310-participants="${CSS.escape(tripId)}"]`)]
+    .find(button => button instanceof HTMLButtonElement && button.isConnected && !button.disabled)
+    || null;
+}
+
+function bindStaleParticipantCleanup(dialog, freshContextId, staleContextId) {
+  const handleClose = event => {
+    if (event.detail?.contextId !== freshContextId) return;
+    dialog.removeEventListener("v4dialogclose", handleClose);
+    setTimeout(() => {
+      if (dialog.open && dialog.dataset.v4DialogContext === staleContextId) {
+        dialog.close();
+      }
+    }, 0);
+  };
+  dialog.addEventListener("v4dialogclose", handleClose);
+}
+
+function reopenFreshParticipantList(tripId, dialog) {
+  const trigger = participantTrigger(tripId);
+  if (!trigger) return false;
+
+  const staleContextId = String(dialog.dataset.v4DialogContext || "");
+  const observer = new MutationObserver(() => {
+    if (!dialog.open) return;
+    const contextId = String(dialog.dataset.v4DialogContext || "");
+    const title = dialog.querySelector("#v4DialogTitle")?.textContent?.trim() || "";
+    if (!contextId || contextId === staleContextId || title !== "Teilnehmer und Anmeldungen") return;
+    observer.disconnect();
+    bindStaleParticipantCleanup(dialog, contextId, staleContextId);
+  });
+  observer.observe(dialog, {
+    attributes: true,
+    attributeFilter: ["data-v4-dialog-context"],
+    childList: true,
+    subtree: true
+  });
+
+  trigger.click();
+  setTimeout(() => observer.disconnect(), 5000);
+  return true;
+}
+
+function refreshParticipantListAfterApply(pending, attempt = 0) {
+  const dialog = document.getElementById("v4Dialog");
+  const title = dialog?.querySelector("#v4DialogTitle")?.textContent?.trim() || "";
+  const contextId = String(dialog?.dataset.v4DialogContext || "");
+
+  if (dialog?.open
+      && title === "Teilnehmer und Anmeldungen"
+      && contextId
+      && contextId !== pending.previewContextId) {
+    reopenFreshParticipantList(pending.tripId, dialog);
+    return;
+  }
+
+  if (attempt >= 20) return;
+  setTimeout(() => refreshParticipantListAfterApply(pending, attempt + 1), 35);
+}
+
+function rememberAssignmentApply(event) {
+  if (event.detail?.action !== ASSIGNMENT_APPLY_ACTION) return;
+  const dialog = document.getElementById("v4Dialog");
+  pendingAssignmentRefresh = {
+    tripId: String(event.detail?.payload?.tripId || ""),
+    previewContextId: String(dialog?.dataset.v4DialogContext || "")
+  };
+}
+
+function scheduleAssignmentRefresh(event) {
+  if (event.detail?.action !== ASSIGNMENT_APPLY_ACTION || !pendingAssignmentRefresh) return;
+  const pending = pendingAssignmentRefresh;
+  pendingAssignmentRefresh = null;
+  setTimeout(() => refreshParticipantListAfterApply(pending), 0);
+}
+
 scan();
 
 const observer = new MutationObserver(mutations => {
@@ -49,3 +129,6 @@ const observer = new MutationObserver(mutations => {
   }));
 });
 observer.observe(document.body, { childList: true, subtree: true });
+
+window.addEventListener("pd-api-before-call", rememberAssignmentApply);
+window.addEventListener("pd-api-after-call", scheduleAssignmentRefresh);
