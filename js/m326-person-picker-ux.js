@@ -2,6 +2,8 @@ import { call } from "./modules/common.js";
 
 const FORM_SELECTOR = "[data-m326-person-form]";
 const MAX_VISIBLE_RESULTS = 8;
+const MANUAL_BULK_ACTION = "fanbus_registration_create_manual_bulk";
+let pendingSingleManualToast = null;
 
 function activeSourceFilter(form) {
   const active = [...form.querySelectorAll("[data-m326-source-filter]")]
@@ -255,11 +257,53 @@ function enhancePicker(form) {
   window.setTimeout(neutralizeInitialFieldFocus, 80);
 }
 
+function rememberSingleManualResult(event) {
+  if (event.detail?.action !== MANUAL_BULK_ACTION) return;
+  const result = event.detail?.data;
+  const count = Number(result?.participantCount || result?.bookingCount || 0);
+  if (count !== 1) return;
+  const warning = result?.outcome === "WAITLISTED";
+  pendingSingleManualToast = {
+    message: warning
+      ? "Person wurde auf die Warteliste gesetzt."
+      : "Person wurde angemeldet.",
+    warning,
+    expiresAt: Date.now() + 12000
+  };
+}
+
+function installSingleManualToastCorrection() {
+  const region = document.getElementById("toastRegion");
+  if (!region || region.dataset.m326SingleToastBound === "true") return;
+  region.dataset.m326SingleToastBound = "true";
+  new MutationObserver(mutations => {
+    if (!pendingSingleManualToast || pendingSingleManualToast.expiresAt < Date.now()) {
+      pendingSingleManualToast = null;
+      return;
+    }
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (!(node instanceof HTMLElement) || !node.classList.contains("toast")) continue;
+        if (!/1 Personen wurden gemeinsam (?:angemeldet|auf die Warteliste gesetzt)/i.test(node.textContent || "")) continue;
+        node.textContent = pendingSingleManualToast.message;
+        if (pendingSingleManualToast.warning) {
+          node.classList.remove("success");
+          node.classList.add("warning");
+        }
+        pendingSingleManualToast = null;
+        return;
+      }
+    }
+  }).observe(region, { childList: true });
+}
+
 function scan(root = document) {
   if (root instanceof Element && root.matches(FORM_SELECTOR)) enhancePicker(root);
   root.querySelectorAll?.(FORM_SELECTOR).forEach(enhancePicker);
 }
 
+window.addEventListener("pd-api-after-call", rememberSingleManualResult);
+installSingleManualToastCorrection();
 scan();
 
 const observer = new MutationObserver(mutations => {
