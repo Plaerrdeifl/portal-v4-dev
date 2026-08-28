@@ -1,10 +1,12 @@
-function separatorOnly(value) {
+export function isM327SeparatorOnly(value) {
   const text = String(value || "").trim();
   return !text || /^[\s•·|/\\–—-]+$/u.test(text);
 }
 
-function normalizePhoneHref(value) {
-  return String(value || "").replace(/[^+0-9]/g, "");
+export function normalizeM327PhoneHref(value) {
+  const text = String(value || "").trim();
+  const digits = text.replace(/\D/g, "");
+  return text.startsWith("+") ? `+${digits}` : digits;
 }
 
 function contactValue(li, label) {
@@ -53,7 +55,7 @@ function polishContact(section) {
       : configuredLabel || (isEmail ? "E-Mail" : "Telefon");
 
     const link = document.createElement("a");
-    link.href = isEmail ? `mailto:${value}` : `tel:${normalizePhoneHref(value)}`;
+    link.href = isEmail ? `mailto:${value}` : `tel:${normalizeM327PhoneHref(value)}`;
     link.textContent = value;
 
     labelElement.textContent = `${label}:`;
@@ -62,8 +64,7 @@ function polishContact(section) {
 }
 
 function polishBookingCard(card) {
-  if (!card || card.dataset.m327AcceptancePolished === "true") return;
-  card.dataset.m327AcceptancePolished = "true";
+  if (!card) return;
 
   const header = card.querySelector(".m327-booking-head");
   if (header) {
@@ -79,7 +80,11 @@ function polishBookingCard(card) {
   card.querySelectorAll(".m327-booking-meta > div").forEach(item => {
     const term = item.querySelector("dt");
     const value = item.querySelector("dd");
-    if (term?.textContent?.trim() === "Abfahrt" && value && separatorOnly(value.textContent)) {
+    if (
+      term?.textContent?.trim() === "Abfahrt"
+      && value
+      && isM327SeparatorOnly(value.textContent)
+    ) {
       value.textContent = "Noch nicht festgelegt";
     }
   });
@@ -88,8 +93,13 @@ function polishBookingCard(card) {
 }
 
 function polish(root = document) {
+  if (root.matches?.(".m327-booking-card")) polishBookingCard(root);
+  if (root.matches?.(".m327-contact-block, #m327GuestOrganizationContact")) {
+    polishContact(root);
+  }
   root.querySelectorAll?.(".m327-booking-card").forEach(polishBookingCard);
-  root.querySelectorAll?.("#m327GuestOrganizationContact").forEach(polishContact);
+  root.querySelectorAll?.(".m327-contact-block, #m327GuestOrganizationContact")
+    .forEach(polishContact);
 }
 
 let observer;
@@ -102,8 +112,6 @@ export function setupM327AcceptancePolish() {
     for (const record of records) {
       for (const node of record.addedNodes) {
         if (!(node instanceof Element)) continue;
-        if (node.matches(".m327-booking-card")) polishBookingCard(node);
-        if (node.matches("#m327GuestOrganizationContact")) polishContact(node);
         polish(node);
       }
     }
@@ -112,6 +120,9 @@ export function setupM327AcceptancePolish() {
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
-if (document.documentElement.dataset.route === "fanbus-registration") {
+if (
+  typeof document !== "undefined"
+  && document.documentElement.dataset.route === "fanbus-registration"
+) {
   setupM327AcceptancePolish();
 }
