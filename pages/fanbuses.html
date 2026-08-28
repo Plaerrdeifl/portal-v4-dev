@@ -46,3 +46,288 @@
     </section>
   </div>
 </section>
+
+<style>
+  #m327MyBookingsPanel,
+  #m327MyBookingsPanel .m327-my-bookings-list,
+  #m327MyBookingsPanel .m327-booking-group{
+    gap:10px;
+  }
+
+  #m327MyBookingsPanel .v4-subheading-row{
+    margin-bottom:0;
+    min-height:0;
+  }
+
+  #m327MyBookingsPanel .m327-booking-group>h3{
+    margin:0 0 2px;
+    font-size:.88rem;
+    line-height:1.2;
+  }
+
+  #m327MyBookingsPanel .m327-booking-card{
+    gap:10px;
+    padding:12px;
+    border-radius:16px;
+  }
+
+  #m327MyBookingsPanel .m327-booking-head{
+    align-items:center;
+    gap:8px;
+  }
+
+  #m327MyBookingsPanel .m327-booking-head>div{
+    min-width:0;
+  }
+
+  #m327MyBookingsPanel .m327-booking-head h3{
+    margin:2px 0 0;
+    font-size:1.05rem;
+    line-height:1.15;
+  }
+
+  #m327MyBookingsPanel .m327-booking-kicker{
+    font-size:.7rem;
+    line-height:1.2;
+  }
+
+  #m327MyBookingsPanel .m327-booking-head>.badge{
+    flex:0 0 auto;
+    padding:5px 8px;
+    font-size:.72rem;
+    white-space:nowrap;
+  }
+
+  #m327MyBookingsPanel .m327-booking-meta{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:0;
+    margin:0;
+    padding:6px 0;
+    border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+  }
+
+  #m327MyBookingsPanel .m327-booking-meta>div{
+    padding:2px 8px 2px 0;
+    border-radius:0;
+    background:transparent;
+  }
+
+  #m327MyBookingsPanel .m327-booking-meta>div:first-child{
+    display:none;
+  }
+
+  #m327MyBookingsPanel .m327-booking-meta dt{
+    font-size:.64rem;
+    letter-spacing:.025em;
+  }
+
+  #m327MyBookingsPanel .m327-booking-meta dd{
+    margin:2px 0 0;
+    font-size:.8rem;
+    line-height:1.25;
+  }
+
+  #m327MyBookingsPanel .m327-participants{
+    gap:7px;
+  }
+
+  #m327MyBookingsPanel .m327-participant{
+    gap:7px;
+    padding:10px;
+    border-radius:12px;
+  }
+
+  #m327MyBookingsPanel .m327-participant header{
+    flex-direction:row;
+    align-items:center;
+    gap:8px;
+  }
+
+  #m327MyBookingsPanel .m327-participant header>div{
+    gap:5px;
+  }
+
+  #m327MyBookingsPanel .m327-participant header strong{
+    font-size:.95rem;
+    line-height:1.2;
+  }
+
+  #m327MyBookingsPanel .m327-participant .badge{
+    padding:4px 7px;
+    font-size:.68rem;
+    line-height:1.1;
+  }
+
+  #m327MyBookingsPanel .m327-participant header>.badge{
+    align-self:center;
+    flex:0 0 auto;
+    white-space:nowrap;
+  }
+
+  #m327MyBookingsPanel .m327-participant-details{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:0;
+    margin:0;
+    border-top:1px solid var(--line);
+  }
+
+  #m327MyBookingsPanel .m327-participant-details>div{
+    display:grid;
+    grid-template-columns:minmax(92px,.85fr) minmax(0,1.15fr);
+    align-items:baseline;
+    gap:8px;
+    min-width:0;
+    padding:5px 0;
+    border-bottom:1px solid color-mix(in srgb,var(--line) 65%,transparent);
+    border-radius:0;
+    background:transparent;
+  }
+
+  #m327MyBookingsPanel .m327-participant-details>div:last-child{
+    border-bottom:0;
+  }
+
+  #m327MyBookingsPanel .m327-participant-details dt{
+    font-size:.66rem;
+    letter-spacing:.025em;
+  }
+
+  #m327MyBookingsPanel .m327-participant-details dd{
+    margin:0;
+    font-size:.82rem;
+    font-weight:750;
+    line-height:1.25;
+    text-align:right;
+  }
+
+  #m327MyBookingsPanel .m327-participant-actions,
+  #m327MyBookingsPanel .m327-booking-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+
+  #m327MyBookingsPanel .m327-participant-actions .button,
+  #m327MyBookingsPanel .m327-booking-actions .button{
+    width:auto;
+    min-height:38px;
+    padding:7px 10px;
+    font-size:.78rem;
+  }
+
+  #m327MyBookingsPanel .m327-participant-actions .button:first-child{
+    flex:1 1 190px;
+  }
+
+  #m327MyBookingsPanel .m327-readonly-notice{
+    padding:10px 11px;
+    border-radius:12px;
+  }
+
+  #m327MyBookingsPanel .m327-readonly-notice>strong{
+    font-size:.9rem;
+  }
+
+  #m327MyBookingsPanel .m327-readonly-notice p{
+    margin:3px 0;
+    font-size:.8rem;
+    line-height:1.35;
+  }
+
+  #m327MyBookingsPanel .m327-contact-block{
+    gap:4px;
+    margin-top:7px;
+    padding-top:7px;
+  }
+
+  #m327MyBookingsPanel .m327-contact-block strong{
+    font-size:.82rem;
+  }
+
+  #m327MyBookingsPanel .m327-contact-block ul{
+    display:grid;
+    gap:3px;
+    margin:0;
+    padding:0;
+    list-style:none;
+  }
+
+  #m327MyBookingsPanel .m327-contact-block li{
+    display:flex;
+    align-items:baseline;
+    gap:5px;
+    min-width:0;
+    font-size:.78rem;
+  }
+
+  #m327MyBookingsPanel .m327-contact-block li span{
+    flex:0 0 auto;
+  }
+
+  #m327MyBookingsPanel .m327-contact-block a{
+    min-width:0;
+  }
+
+  #m327MyBookingsPanel .m327-booking-history>summary{
+    padding:9px 11px;
+    border-radius:11px;
+    font-size:.82rem;
+  }
+
+  @media(max-width:700px){
+    #m327MyBookingsPanel .m327-booking-card{
+      padding:10px;
+    }
+
+    #m327MyBookingsPanel .m327-booking-head{
+      align-items:center;
+    }
+
+    #m327MyBookingsPanel .m327-booking-meta{
+      grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);
+    }
+
+    #m327MyBookingsPanel .m327-participant header{
+      flex-direction:row;
+      align-items:center;
+    }
+
+    #m327MyBookingsPanel .m327-participant-actions .button,
+    #m327MyBookingsPanel .m327-booking-actions .button{
+      width:auto;
+    }
+  }
+
+  @media(max-width:390px){
+    #m327MyBookingsPanel .m327-booking-head h3{
+      font-size:1rem;
+    }
+
+    #m327MyBookingsPanel .m327-booking-meta{
+      grid-template-columns:1fr;
+    }
+
+    #m327MyBookingsPanel .m327-booking-meta>div{
+      display:grid;
+      grid-template-columns:88px minmax(0,1fr);
+      align-items:baseline;
+      gap:6px;
+      padding:3px 0;
+    }
+
+    #m327MyBookingsPanel .m327-booking-meta>div:first-child{
+      display:none;
+    }
+
+    #m327MyBookingsPanel .m327-booking-meta dd{
+      margin:0;
+      text-align:right;
+    }
+
+    #m327MyBookingsPanel .m327-participant-details>div{
+      grid-template-columns:88px minmax(0,1fr);
+    }
+  }
+</style>
