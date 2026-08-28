@@ -39,8 +39,8 @@ function injectStyles() {
   const style = document.createElement("style");
   style.id = "m320R3AutoAssignmentStyles";
   style.textContent = `
-    .m320-r3-entry{width:100%;display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 14px;padding:15px 16px;border:1px solid var(--line,#d8e2ee);border-radius:14px;background:var(--surface-soft,#f5f7fa);color:inherit;text-align:left;font:inherit;cursor:pointer}
-    .m320-r3-entry:hover{background:var(--surface,#fff)}.m320-r3-entry:disabled{cursor:wait;opacity:.72}.m320-r3-entry-copy{display:grid;gap:3px;min-width:0}.m320-r3-entry-copy strong{font-size:1rem}.m320-r3-entry-copy p{margin:0;color:var(--muted,#718096)}.m320-r3-entry-chevron{flex:0 0 auto;font-size:1.55rem;font-weight:800;line-height:1;color:var(--text,#172b4d)}
+    .m320-r3-entry{width:100%;min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;margin:0 0 14px;padding:15px 16px;border:1px solid var(--primary,#1876d3);border-radius:14px;background:var(--primary,#1876d3);color:#fff;text-align:left;font:inherit;cursor:pointer;overflow:hidden;box-sizing:border-box;box-shadow:none}
+    .m320-r3-entry:hover{background:var(--primary,#1876d3)}.m320-r3-entry:disabled{cursor:wait;opacity:.72}.m320-r3-entry:focus{outline:none;box-shadow:none}.m320-r3-entry-copy{display:grid;gap:3px;min-width:0;max-width:100%;overflow:hidden}.m320-r3-entry-copy strong{font-size:1rem;color:#fff;min-width:0;overflow-wrap:anywhere}.m320-r3-entry-copy p{margin:0;color:rgba(255,255,255,.86);min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;line-height:1.35}.m320-r3-entry-chevron{flex:0 0 auto;font-size:1.55rem;font-weight:800;line-height:1;color:#fff}
     .m320-r3-preview{display:grid;gap:20px}.m320-r3-overview{display:grid;gap:5px;padding:14px 0;border-bottom:1px solid var(--line,#d8e2ee)}
     .m320-r3-overview strong{font-size:1.14rem}.m320-r3-overview small,.m320-r3-section-head small,.m320-r3-bus-row small,.m320-r3-work-card small,.m320-r3-existing-row small{color:var(--muted,#718096)}
     .m320-r3-overview-meta{display:flex;flex-wrap:wrap;gap:6px 12px}.m320-r3-overview-warning{color:#7b5400!important;font-weight:700}
@@ -249,6 +249,7 @@ function mountEntry() {
 
   const section = document.createElement("button");
   section.type = "button";
+  section.tabIndex = -1;
   section.className = "m320-r3-entry";
   section.dataset.m320R3AutoAssignmentEntry = "";
   section.dataset.m320R3Preview = "";
@@ -258,6 +259,7 @@ function mountEntry() {
   </span>
   <span class="m320-r3-entry-chevron" aria-hidden="true">›</span>`;
 
+  section.addEventListener("focus", () => section.blur());
   section.addEventListener("click", async () => {
     section.disabled = true;
     section.setAttribute("aria-busy", "true");
@@ -278,6 +280,12 @@ function mountEntry() {
   });
 
   body.prepend(section);
+  requestAnimationFrame(() => {
+    if (document.activeElement === section) section.blur();
+  });
+  setTimeout(() => {
+    if (document.activeElement === section) section.blur();
+  }, 90);
 }
 
 function scheduleMount() {
