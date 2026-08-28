@@ -153,10 +153,13 @@ function previewMarkup(preview, registrations) {
 
   const newCount = Number(summary.assignedAutomatically ?? editable.length ?? 0);
   const existingCount = Number(summary.existingAssigned ?? existing.length ?? 0);
+  const overviewTitle = newCount === 0
+    ? "Keine neue Zuordnung nötig"
+    : `${newCount} ${newCount === 1 ? "neue Zuordnung" : "neue Zuordnungen"} vorgeschlagen`;
 
   return `<form class="m320-r3-preview" data-m320-r3-preview-form>
     <section class="m320-r3-overview">
-      <strong>${escapeHtml(newCount)} ${newCount === 1 ? "neue Zuordnung" : "neue Zuordnungen"} vorgeschlagen</strong>
+      <strong>${escapeHtml(overviewTitle)}</strong>
       <div class="m320-r3-overview-meta">
         <small>${escapeHtml(existingCount)} bestehende ${existingCount === 1 ? "Zuordnung bleibt" : "Zuordnungen bleiben"} unverändert</small>
         ${mismatches ? `<small class="m320-r3-overview-warning">${escapeHtml(mismatches)} ${mismatches === 1 ? "Buswunsch weicht ab" : "Buswünsche weichen ab"}</small>` : ""}
