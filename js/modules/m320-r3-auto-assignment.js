@@ -1,6 +1,5 @@
 import {
   call,
-  closeAllDialogs,
   escapeAttr,
   escapeHtml,
   hasCapability,
@@ -32,7 +31,6 @@ const EXPLANATION_LABELS = {
 
 let activeTripId = "";
 let activeTripLabel = "Fanbusfahrt";
-let participantTrigger = null;
 
 function injectStyles() {
   if (document.getElementById("m320R3AutoAssignmentStyles")) return;
@@ -79,6 +77,10 @@ function stateLabel(proposal) {
   return "Vorschlag";
 }
 
+function numericText(value) {
+  return String(Number(value ?? 0));
+}
+
 function codesMarkup(codes, labels, type = "") {
   return (Array.isArray(codes) ? codes : []).map(code =>
     `<span class="m320-r3-tag ${escapeAttr(type)}" title="${escapeAttr(code)}">${escapeHtml(labels[code] || code)}</span>`
@@ -87,7 +89,7 @@ function codesMarkup(codes, labels, type = "") {
 
 function busOptions(buses, selected) {
   return [`<option value="">Nicht zuordnen</option>`, ...buses.map(bus =>
-    `<option value="${escapeAttr(bus.busId)}"${bus.busId === selected ? " selected" : ""}>${escapeHtml(`${bus.label} · ${bus.category} · ${bus.freeAfter} frei`)}</option>`
+    `<option value="${escapeAttr(bus.busId)}"${bus.busId === selected ? " selected" : ""}>${escapeHtml(`${bus.label} · ${bus.category} · ${numericText(bus.freeAfter)} frei`)}</option>`
   )].join("");
 }
 
@@ -117,8 +119,8 @@ function previewMarkup(preview, registrations) {
   const unassigned = Number(summary.unassigned || 0);
 
   const busRows = buses.map(bus => `<div class="m320-r3-bus-row">
-    <div class="m320-r3-bus-copy"><strong>${escapeHtml(bus.label)}</strong><small>${escapeHtml(bus.category)} · ${escapeHtml(bus.existingOccupancy)} bereits zugeordnet${Number(bus.proposedNew) ? ` · ${escapeHtml(bus.proposedNew)} neu` : ""}</small></div>
-    <strong class="m320-r3-bus-stat">${escapeHtml(bus.afterApply)}/${escapeHtml(bus.capacity)} · ${escapeHtml(bus.freeAfter)} frei</strong>
+    <div class="m320-r3-bus-copy"><strong>${escapeHtml(bus.label)}</strong><small>${escapeHtml(bus.category)} · ${escapeHtml(numericText(bus.existingOccupancy))} bereits zugeordnet${Number(bus.proposedNew) ? ` · ${escapeHtml(numericText(bus.proposedNew))} neu` : ""}</small></div>
+    <strong class="m320-r3-bus-stat">${escapeHtml(numericText(bus.afterApply))}/${escapeHtml(numericText(bus.capacity))} · ${escapeHtml(numericText(bus.freeAfter))} frei</strong>
   </div>`).join("");
 
   const workCards = editable.map(proposal => {
@@ -183,16 +185,6 @@ function normalizeApplyError(error) {
   return error instanceof Error ? error : new Error(message || "Zuordnung konnte nicht angewendet werden.");
 }
 
-function reopenParticipantDialog() {
-  const trigger = participantTrigger;
-  setTimeout(() => {
-    closeAllDialogs();
-    setTimeout(() => {
-      if (trigger instanceof HTMLElement && trigger.isConnected) trigger.click();
-    }, 0);
-  }, 0);
-}
-
 async function openAssignmentPreview() {
   const [preview, registrationData] = await Promise.all([
     call("fanbus_assignment_preview", { tripId: activeTripId }),
@@ -220,7 +212,6 @@ async function openAssignmentPreview() {
           finalAssignments
         });
         showToast(`${Number(result?.applied || 0)} Buszuordnung(en) wurden gespeichert.`, "success", 4200);
-        reopenParticipantDialog();
       } catch (error) {
         throw normalizeApplyError(error);
       }
@@ -303,7 +294,6 @@ document.addEventListener("click", event => {
   if (!trigger) return;
   activeTripId = String(trigger.dataset.m310Participants || "").trim();
   activeTripLabel = trigger.closest("[data-m310-open-trip],.v4-m310-mobile-trip-card")?.querySelector("strong")?.textContent?.trim() || "Fanbusfahrt";
-  participantTrigger = trigger;
   scheduleMount();
 }, true);
 
