@@ -39,8 +39,8 @@ function injectStyles() {
   const style = document.createElement("style");
   style.id = "m320R3AutoAssignmentStyles";
   style.textContent = `
-    .m320-r3-entry{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;margin:0 0 14px;padding:13px;border:1px solid var(--line,#d8e2ee);border-radius:14px;background:var(--surface-soft,#f5f7fa)}
-    .m320-r3-entry-copy{display:grid;gap:3px;min-width:0}.m320-r3-entry-copy p{margin:0;color:var(--muted,#718096)}
+    .m320-r3-entry{width:100%;display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 14px;padding:15px 16px;border:1px solid var(--line,#d8e2ee);border-radius:14px;background:var(--surface-soft,#f5f7fa);color:inherit;text-align:left;font:inherit;cursor:pointer}
+    .m320-r3-entry:hover{background:var(--surface,#fff)}.m320-r3-entry:disabled{cursor:wait;opacity:.72}.m320-r3-entry-copy{display:grid;gap:3px;min-width:0}.m320-r3-entry-copy strong{font-size:1rem}.m320-r3-entry-copy p{margin:0;color:var(--muted,#718096)}.m320-r3-entry-chevron{flex:0 0 auto;font-size:1.55rem;font-weight:800;line-height:1;color:var(--text,#172b4d)}
     .m320-r3-preview{display:grid;gap:20px}.m320-r3-overview{display:grid;gap:5px;padding:14px 0;border-bottom:1px solid var(--line,#d8e2ee)}
     .m320-r3-overview strong{font-size:1.14rem}.m320-r3-overview small,.m320-r3-section-head small,.m320-r3-bus-row small,.m320-r3-work-card small,.m320-r3-existing-row small{color:var(--muted,#718096)}
     .m320-r3-overview-meta{display:flex;flex-wrap:wrap;gap:6px 12px}.m320-r3-overview-warning{color:#7b5400!important;font-weight:700}
@@ -53,7 +53,7 @@ function injectStyles() {
     .m320-r3-existing-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border:0;border-bottom:1px solid var(--line,#d8e2ee);border-radius:0;background:transparent;color:inherit;text-align:left;font:inherit}
     .m320-r3-existing-row:last-child{border-bottom:0}.m320-r3-existing-copy{display:grid;gap:2px;min-width:0}.m320-r3-existing-meta{display:flex;align-items:center;gap:8px;flex:0 0 auto}.m320-r3-existing-row .v4-row-chevron{font-size:1.5rem}
     .m320-r3-conflicts{display:grid;gap:6px}.m320-r3-conflicts .notice{margin:0}.m320-r3-detail{display:grid;gap:14px}.m320-r3-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.m320-r3-detail-grid>div{display:grid;gap:3px}.m320-r3-detail-grid span{color:var(--muted,#718096);font-size:.82rem}.m320-r3-detail-tags{display:grid;gap:8px}
-    @media(max-width:620px){.m320-r3-entry{grid-template-columns:1fr}.m320-r3-entry .button{width:100%}.m320-r3-detail-grid{grid-template-columns:1fr}.m320-r3-bus-row{align-items:flex-start}.m320-r3-bus-stat{font-size:.92rem}}
+    @media(max-width:620px){.m320-r3-detail-grid{grid-template-columns:1fr}.m320-r3-bus-row{align-items:flex-start}.m320-r3-bus-stat{font-size:.92rem}}
   `;
   document.head.appendChild(style);
 }
@@ -247,28 +247,32 @@ function mountEntry() {
   if (body.querySelector("[data-m320-r3-auto-assignment-entry]")) return;
   injectStyles();
 
-  const section = document.createElement("section");
+  const section = document.createElement("button");
+  section.type = "button";
   section.className = "m320-r3-entry";
   section.dataset.m320R3AutoAssignmentEntry = "";
-  section.innerHTML = `<div class="m320-r3-entry-copy">
+  section.dataset.m320R3Preview = "";
+  section.innerHTML = `<span class="m320-r3-entry-copy">
     <strong>Automatische Buszuordnung</strong>
     <p>Neue Teilnehmer automatisch auf die verfügbaren Busse verteilen.</p>
-  </div>
-  <button class="button primary" type="button" data-m320-r3-preview>Zuordnung berechnen</button>`;
+  </span>
+  <span class="m320-r3-entry-chevron" aria-hidden="true">›</span>`;
 
-  section.querySelector("[data-m320-r3-preview]")?.addEventListener("click", async event => {
-    const button = event.currentTarget;
-    button.disabled = true;
-    const original = button.textContent;
-    button.textContent = "Wird berechnet …";
+  section.addEventListener("click", async () => {
+    section.disabled = true;
+    section.setAttribute("aria-busy", "true");
+    const copy = section.querySelector("p");
+    const original = copy?.textContent || "";
+    if (copy) copy.textContent = "Zuordnung wird berechnet …";
     try {
       await openAssignmentPreview();
     } catch (error) {
       showToast(error?.message || "Zuordnung konnte nicht berechnet werden.", "error", 5200);
     } finally {
-      if (button.isConnected) {
-        button.disabled = false;
-        button.textContent = original;
+      if (section.isConnected) {
+        section.disabled = false;
+        section.removeAttribute("aria-busy");
+        if (copy) copy.textContent = original;
       }
     }
   });
