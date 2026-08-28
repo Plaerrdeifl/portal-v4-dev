@@ -83,6 +83,21 @@ test("M326 composer overview contains information cards, not editable controls",
   assert.match(composerUx, /Buswunsch:/);
 });
 
+test("M326 composer overview uses one full-width card without the legacy outer frame", () => {
+  assert.match(composerUx, /card\.classList\.remove\("v4-m326-composer-card"\)/);
+  assert.match(composerUx, /card\.style\.setProperty\("border", "0", "important"\)/);
+  assert.match(composerUx, /button\.style\.setProperty\("width", "100%", "important"\)/);
+  assert.match(composerUx, /button\.style\.setProperty\("max-width", "none", "important"\)/);
+});
+
+test("M326 composer consent uses the wrapping portal check-row contract", () => {
+  assert.match(composerUx, /classList\.remove\("v4-compact-check"\)/);
+  assert.match(composerUx, /classList\.add\("check-row"\)/);
+  assert.match(composerUx, /checkbox\.style\.setProperty\("width", "18px", "important"\)/);
+  assert.match(composerUx, /text\.style\.setProperty\("white-space", "normal", "important"\)/);
+  assert.match(composerUx, /text\.style\.setProperty\("overflow", "visible", "important"\)/);
+});
+
 test("M326 composer edits a participant only through the detail dialog", () => {
   assert.match(composerUx, /title: name/);
   assert.match(composerUx, /kicker: "Teilnehmer bearbeiten"/);
