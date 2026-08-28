@@ -4,10 +4,15 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const index = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+const apiSource = readFileSync(new URL("../js/api.js", import.meta.url), "utf8");
 const ux = readFileSync(new URL("../js/m326-person-picker-ux.js", import.meta.url), "utf8");
 const composerUx = readFileSync(new URL("../js/m326-manual-composer-ux.js", import.meta.url), "utf8");
 const defaultStopOverlay = readFileSync(
   new URL("../supabase/dev-overlays/20260828_m326_person_default_boarding_stop.sql", import.meta.url),
+  "utf8"
+);
+const bookingModesOverlay = readFileSync(
+  new URL("../supabase/dev-overlays/20260828_m326_manual_booking_modes.sql", import.meta.url),
   "utf8"
 );
 
@@ -16,7 +21,7 @@ test("M326 compact person picker is loaded in the portal", () => {
 });
 
 test("M326 manual composer detail UX is loaded in the portal", () => {
-  assert.match(index, /js\/m326-manual-composer-ux\.js\?v=20260828-m326-composer-r1/);
+  assert.match(index, /js\/m326-manual-composer-ux\.js\?v=20260828-m326-composer-r2/);
 });
 
 test("M326 person picker uses the portal form grid instead of custom layout CSS", () => {
@@ -109,12 +114,50 @@ test("M326 composer edits a participant only through the detail dialog", () => {
   assert.match(composerUx, /dispatchEvent\(new Event\("change", \{ bubbles: true \}\)\)/);
 });
 
-test("M326 composer removes duplicate name summary and uses count-aware submit wording", () => {
-  assert.match(composerUx, /legacySummary\.style\.setProperty\("display", "none", "important"\)/);
+test("M326 composer exposes grouped or atomic individual booking modes only for multi-person selection", () => {
+  assert.match(composerUx, /count < 2/);
+  assert.match(composerUx, /Anmeldeart/);
+  assert.match(composerUx, /Gemeinsame Anmeldung/);
+  assert.match(composerUx, /Einzelanmeldungen/);
+  assert.match(composerUx, /Hauptperson/);
+  assert.match(composerUx, /data-m326-primary-participant/);
+  assert.match(composerUx, /primaryField\.hidden = mode === "INDIVIDUAL"/);
+});
+
+test("M326 grouped booking keeps the selected main person and individual mode has no main person", () => {
+  assert.match(composerUx, /payload\.bookingMode = mode/);
+  assert.match(composerUx, /payload\.primaryParticipantIndex = primaryIndex/);
+  assert.match(composerUx, /delete payload\.primaryParticipantIndex/);
+  assert.match(composerUx, /deriveBookingAttemptKey/);
+  assert.match(composerUx, /pd-api-before-call/);
+  assert.match(apiSource, /pd-api-before-call/);
+  assert.match(apiSource, /pd-api-after-call/);
+});
+
+test("M326 server contract defaults to grouped booking and supports selected primary", () => {
+  assert.match(bookingModesOverlay, /v_booking_mode text:=upper\(coalesce\(nullif\(btrim\(p_payload->>'bookingMode'\),''\),'GROUP'\)\)/);
+  assert.match(bookingModesOverlay, /primaryParticipantIndex/);
+  assert.match(bookingModesOverlay, /v_booking_mode='GROUP' and v_primary_index>0/);
+  assert.match(bookingModesOverlay, /jsonb_agg\(entry\.value order by/);
+  assert.match(bookingModesOverlay, /fanbus_submit_booking_core/);
+});
+
+test("M326 individual booking is server-side atomic and creates independent bookings", () => {
+  assert.match(bookingModesOverlay, /v_booking_mode not in \('GROUP','INDIVIDUAL'\)/);
+  assert.match(bookingModesOverlay, /for v_i in 0\.\.v_participant_count-1 loop/);
+  assert.match(bookingModesOverlay, /'\[\]'::jsonb,true,true,v_item_key,null/);
+  assert.match(bookingModesOverlay, /raise exception 'FANBUS_MANUAL_INDIVIDUAL_FAILED'/);
+  assert.match(bookingModesOverlay, /'bookingMode','INDIVIDUAL'/);
+  assert.match(bookingModesOverlay, /'bookingCount',v_participant_count/);
+  assert.doesNotMatch(composerUx, /for\s*\([^)]*participants[^)]*\)[\s\S]{0,180}call\(/);
+});
+
+test("M326 composer uses booking-mode-aware submit wording", () => {
   assert.match(composerUx, /1 Person ausgewählt/);
   assert.match(composerUx, /\$\{count\} Personen ausgewählt/);
   assert.match(composerUx, /"Person anmelden"/);
-  assert.match(composerUx, /`\$\{count\} Personen anmelden`/);
+  assert.match(composerUx, /`\$\{count\} Personen gemeinsam anmelden`/);
+  assert.match(composerUx, /`\$\{count\} Einzelanmeldungen erstellen`/);
 });
 
 test("M326 compact person picker follows dynamically created dialogs", () => {
