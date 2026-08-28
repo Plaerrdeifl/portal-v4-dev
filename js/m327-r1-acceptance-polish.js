@@ -9,6 +9,18 @@ export function normalizeM327PhoneHref(value) {
   return text.startsWith("+") ? `+${digits}` : digits;
 }
 
+export function m327UserFacingContactText(value) {
+  return String(value || "").replaceAll("BUS_ORGA", "Bus-Orga");
+}
+
+export function m327ContactLabel(configuredLabel, isEmail) {
+  const label = String(configuredLabel || "")
+    .replace(/:\s*$/, "")
+    .trim();
+  if (isEmail && label.toUpperCase() === "BUS_ORGA") return "E-Mail";
+  return label || (isEmail ? "E-Mail" : "Telefon");
+}
+
 function contactValue(li, label) {
   const existingLink = li.querySelector("a");
   if (existingLink) return existingLink.textContent?.trim() || "";
@@ -29,13 +41,13 @@ function polishContact(section) {
   }
 
   const heading = section.querySelector("strong");
-  if (heading?.textContent?.trim() === "BUS_ORGA kontaktieren") {
-    heading.textContent = "Bus-Orga kontaktieren";
+  if (heading?.textContent?.includes("BUS_ORGA")) {
+    heading.textContent = m327UserFacingContactText(heading.textContent);
   }
 
   section.querySelectorAll("p").forEach(paragraph => {
     if (paragraph.textContent?.includes("BUS_ORGA")) {
-      paragraph.textContent = paragraph.textContent.replaceAll("BUS_ORGA", "Bus-Orga");
+      paragraph.textContent = m327UserFacingContactText(paragraph.textContent);
     }
   });
 
@@ -47,12 +59,7 @@ function polishContact(section) {
     if (!value) return;
 
     const isEmail = value.includes("@");
-    const configuredLabel = String(labelElement.textContent || "")
-      .replace(/:\s*$/, "")
-      .trim();
-    const label = isEmail && configuredLabel.toUpperCase() === "BUS_ORGA"
-      ? "E-Mail"
-      : configuredLabel || (isEmail ? "E-Mail" : "Telefon");
+    const label = m327ContactLabel(labelElement.textContent, isEmail);
 
     const link = document.createElement("a");
     link.href = isEmail ? `mailto:${value}` : `tel:${normalizeM327PhoneHref(value)}`;
