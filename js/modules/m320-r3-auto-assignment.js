@@ -265,11 +265,9 @@ function mountEntry() {
     } catch (error) {
       showToast(error?.message || "Zuordnung konnte nicht berechnet werden.", "error", 5200);
     } finally {
-      if (section.isConnected) {
-        section.disabled = false;
-        section.removeAttribute("aria-busy");
-        if (copy) copy.textContent = original;
-      }
+      section.disabled = false;
+      section.removeAttribute("aria-busy");
+      if (copy) copy.textContent = original;
     }
   });
 
