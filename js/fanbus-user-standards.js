@@ -10,6 +10,8 @@ import {
 const BUS_PREFERENCES = new Set(["EGAL", "RUHIG", "PARTY"]);
 const peopleBusDefaults = new Map();
 let selfBusPreference = "EGAL";
+let selfPreferenceLoaded = false;
+let selfPreferenceLoading = false;
 let scanScheduled = false;
 
 function normalizeBusPreference(value) {
@@ -39,6 +41,22 @@ function rememberPeopleDefaults(data) {
   }
 }
 
+async function ensureSelfPreference() {
+  if (selfPreferenceLoaded || selfPreferenceLoading) return;
+  selfPreferenceLoading = true;
+  try {
+    const data = await call("fanbus_user_preference_get", {});
+    selfBusPreference = normalizeBusPreference(data?.defaultBusPreference);
+    selfPreferenceLoaded = true;
+  } catch {
+    // Die eigentliche Fanbus-Anmeldung besitzt ihre eigene Fehlerbehandlung.
+    // Ein optionaler Profilstandard darf den Anmeldeflow niemals blockieren.
+  } finally {
+    selfPreferenceLoading = false;
+    scheduleScan();
+  }
+}
+
 function bindPublicBusPreferenceSelect(select) {
   if (!(select instanceof HTMLSelectElement)) return;
   if (select.dataset.p300BusDefaultBound === "true") return;
@@ -57,6 +75,10 @@ function applyPublicSelfBusDefault() {
 
   bindPublicBusPreferenceSelect(select);
   if (field.hidden || field.closest("[hidden]")) return;
+  if (!selfPreferenceLoaded) {
+    void ensureSelfPreference();
+    return;
+  }
   if (select.dataset.p300BusDefaultApplied === "true"
       || select.dataset.p300BusDefaultTouched === "true") return;
 
@@ -201,6 +223,7 @@ window.addEventListener("pd-api-after-call", event => {
     "fanbus_user_preference_delete"
   ].includes(action)) {
     selfBusPreference = normalizeBusPreference(event.detail?.data?.defaultBusPreference);
+    selfPreferenceLoaded = true;
     scheduleScan();
   }
 });
