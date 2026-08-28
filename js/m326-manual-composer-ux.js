@@ -1,7 +1,10 @@
-import { escapeAttr, escapeHtml, openDialog } from "./modules/common.js";
+import { call, escapeAttr, escapeHtml, openDialog } from "./modules/common.js";
 
 const COMPOSER_SELECTOR = "#m326ManualComposerForm";
 const MANUAL_BULK_ACTION = "fanbus_registration_create_manual_bulk";
+const tripDefaultBoardingStops = new Map();
+const tripBoardingStopLists = new Map();
+let latestTripStopsTripId = "";
 let pendingIndividualToast = null;
 
 function selectOptionsMarkup(select) {
@@ -9,6 +12,74 @@ function selectOptionsMarkup(select) {
   return [...select.options].map(option => (
     `<option value="${escapeAttr(option.value)}"${option.selected ? " selected" : ""}>${escapeHtml(option.textContent || "")}</option>`
   )).join("");
+}
+
+function rememberTripContext(event) {
+  const action = event.detail?.action;
+  if (action === "fanbus_trips_list") {
+    const trips = Array.isArray(event.detail?.data?.trips) ? event.detail.data.trips : [];
+    trips.forEach(trip => {
+      const tripId = String(trip?.id || "");
+      if (!tripId) return;
+      tripDefaultBoardingStops.set(tripId, String(trip?.defaultBoardingStopId || ""));
+    });
+    return;
+  }
+
+  if (action !== "fanbus_trip_boarding_stops_list") return;
+  const tripId = String(event.detail?.payload?.tripId || "");
+  if (!tripId) return;
+  latestTripStopsTripId = tripId;
+  tripBoardingStopLists.set(
+    tripId,
+    Array.isArray(event.detail?.data?.stops) ? event.detail.data.stops : []
+  );
+}
+
+function tripDefaultStopValue(tripId) {
+  const defaultBoardingStopId = tripDefaultBoardingStops.get(tripId) || "";
+  if (!defaultBoardingStopId) return "";
+  const stops = tripBoardingStopLists.get(tripId) || [];
+  const stop = stops.find(item => item?.isActive !== false
+    && String(item?.boardingStopId || "") === defaultBoardingStopId);
+  return String(stop?.tripBoardingStopId || stop?.id || "");
+}
+
+function applyKnownTripDefaultStopFallback(form, cards) {
+  const tripId = String(form.dataset.m326TripId || latestTripStopsTripId || "");
+  if (!tripId) return false;
+  form.dataset.m326TripId = tripId;
+
+  const defaultValue = tripDefaultStopValue(tripId);
+  if (!defaultValue) return false;
+
+  cards.forEach(card => {
+    const select = card.querySelector("[data-m326-person-stop]");
+    if (!(select instanceof HTMLSelectElement) || select.value) return;
+    if (![...select.options].some(option => option.value === defaultValue)) return;
+    select.value = defaultValue;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  return true;
+}
+
+async function ensureTripDefaultStopFallback(form, cards) {
+  if (applyKnownTripDefaultStopFallback(form, cards)) return;
+  const tripId = String(form.dataset.m326TripId || latestTripStopsTripId || "");
+  if (!tripId || tripDefaultBoardingStops.has(tripId)) return;
+
+  try {
+    const data = await call("fanbus_trips_list");
+    const trips = Array.isArray(data?.trips) ? data.trips : [];
+    trips.forEach(trip => {
+      const id = String(trip?.id || "");
+      if (!id) return;
+      tripDefaultBoardingStops.set(id, String(trip?.defaultBoardingStopId || ""));
+    });
+    if (form.isConnected) applyKnownTripDefaultStopFallback(form, cards);
+  } catch {
+    // Fallback enrichment must never block the manual registration composer.
+  }
 }
 
 function participantName(card) {
@@ -274,6 +345,9 @@ function updateComposerPresentation(form) {
   if (!(form instanceof HTMLFormElement)) return;
 
   const cards = [...form.querySelectorAll("[data-m326-composer-person]")];
+  if (!applyKnownTripDefaultStopFallback(form, cards)) {
+    void ensureTripDefaultStopFallback(form, cards);
+  }
   cards.forEach(card => enhanceComposerCard(card, form));
 
   const count = cards.length;
@@ -434,6 +508,7 @@ function scanComposer(root = document) {
 }
 
 window.addEventListener("pd-api-before-call", enhanceManualBulkRequest);
+window.addEventListener("pd-api-after-call", rememberTripContext);
 window.addEventListener("pd-api-after-call", rememberManualBulkResult);
 installToastCorrection();
 scanComposer();
