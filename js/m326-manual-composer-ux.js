@@ -1,6 +1,8 @@
 import { escapeAttr, escapeHtml, openDialog } from "./modules/common.js";
 
 const COMPOSER_SELECTOR = "#m326ManualComposerForm";
+const MANUAL_BULK_ACTION = "fanbus_registration_create_manual_bulk";
+let pendingIndividualToast = null;
 
 function selectOptionsMarkup(select) {
   if (!(select instanceof HTMLSelectElement)) return "";
@@ -17,6 +19,10 @@ function participantName(card) {
 function participantSource(card) {
   return card.querySelector("[data-m326-composer-source] .v4-m326-composer-person small")?.textContent?.trim()
     || "Person";
+}
+
+function participantSignature(card) {
+  return `${participantSource(card)}\u0000${participantName(card)}`;
 }
 
 function participantFacts(card) {
@@ -129,9 +135,6 @@ function enhanceComposerCard(card, composerForm) {
   }
   card.dataset.m326OverviewEnhanced = "true";
 
-  // Die Originalkarte enthält die Editierfelder und zeichnet deshalb selbst
-  // bereits einen Rahmen. In der Übersicht bleibt nur die eine klickbare
-  // Portalkarte sichtbar – ohne zusätzlichen äußeren Containerrahmen.
   card.classList.remove("v4-m326-composer-card");
   card.style.setProperty("width", "100%", "important");
   card.style.setProperty("padding", "0", "important");
@@ -163,6 +166,110 @@ function enhanceComposerCard(card, composerForm) {
   refreshComposerCard(card);
 }
 
+function currentBookingMode(form) {
+  const value = form.querySelector("[data-m326-booking-mode]")?.value
+    || form.dataset.m326BookingMode
+    || "GROUP";
+  return value === "INDIVIDUAL" ? "INDIVIDUAL" : "GROUP";
+}
+
+function syncSubmitLabel(form, count) {
+  const dialog = form.closest("dialog");
+  const submit = dialog?.querySelector("#v4DialogSubmit");
+  if (!(submit instanceof HTMLButtonElement)) return;
+
+  if (count === 0) {
+    submit.textContent = "Anmelden";
+    submit.disabled = true;
+    return;
+  }
+  submit.disabled = false;
+  if (count === 1) {
+    submit.textContent = "Person anmelden";
+    return;
+  }
+  submit.textContent = currentBookingMode(form) === "INDIVIDUAL"
+    ? `${count} Einzelanmeldungen erstellen`
+    : `${count} Personen gemeinsam anmelden`;
+}
+
+function syncBookingOptions(form, cards) {
+  const count = cards.length;
+  const root = form.querySelector("[data-m326-composer]");
+  let section = form.querySelector("[data-m326-booking-options]");
+
+  if (count < 2) {
+    section?.remove();
+    form.dataset.m326BookingMode = "GROUP";
+    form.dataset.m326PrimaryIndex = "0";
+    form.dataset.m326PrimarySignature = cards[0] ? participantSignature(cards[0]) : "";
+    syncSubmitLabel(form, count);
+    return;
+  }
+
+  if (!section && root) {
+    section = document.createElement("section");
+    section.className = "form-grid v4-smart-form";
+    section.dataset.m326BookingOptions = "true";
+    section.innerHTML = `<label class="v4-field-full">Anmeldeart
+      <select data-m326-booking-mode name="bookingMode">
+        <option value="GROUP">Gemeinsame Anmeldung</option>
+        <option value="INDIVIDUAL">Einzelanmeldungen</option>
+      </select>
+    </label>
+    <label class="v4-field-full" data-m326-primary-field>Hauptperson
+      <select data-m326-primary-participant name="primaryParticipantIndex"></select>
+    </label>`;
+    root.insertAdjacentElement("afterend", section);
+
+    section.querySelector("[data-m326-booking-mode]")?.addEventListener("change", event => {
+      form.dataset.m326BookingMode = event.currentTarget.value === "INDIVIDUAL"
+        ? "INDIVIDUAL"
+        : "GROUP";
+      syncBookingOptions(form, [...form.querySelectorAll("[data-m326-composer-person]")]);
+    });
+    section.querySelector("[data-m326-primary-participant]")?.addEventListener("change", event => {
+      const index = Number(event.currentTarget.value || 0);
+      const liveCards = [...form.querySelectorAll("[data-m326-composer-person]")];
+      form.dataset.m326PrimaryIndex = String(index);
+      form.dataset.m326PrimarySignature = liveCards[index]
+        ? participantSignature(liveCards[index])
+        : "";
+    });
+  }
+
+  const modeSelect = section?.querySelector("[data-m326-booking-mode]");
+  const primaryField = section?.querySelector("[data-m326-primary-field]");
+  const primarySelect = section?.querySelector("[data-m326-primary-participant]");
+  if (!(modeSelect instanceof HTMLSelectElement)
+      || !(primarySelect instanceof HTMLSelectElement)) return;
+
+  const mode = form.dataset.m326BookingMode === "INDIVIDUAL" ? "INDIVIDUAL" : "GROUP";
+  form.dataset.m326BookingMode = mode;
+  modeSelect.value = mode;
+  if (primaryField instanceof HTMLElement) primaryField.hidden = mode === "INDIVIDUAL";
+  primarySelect.disabled = mode === "INDIVIDUAL";
+
+  const storedSignature = form.dataset.m326PrimarySignature || "";
+  let selectedIndex = cards.findIndex(card => participantSignature(card) === storedSignature);
+  if (selectedIndex < 0) {
+    selectedIndex = Math.min(Number(form.dataset.m326PrimaryIndex || 0), cards.length - 1);
+  }
+  if (selectedIndex < 0) selectedIndex = 0;
+
+  primarySelect.replaceChildren(...cards.map((card, index) => {
+    const option = document.createElement("option");
+    option.value = String(index);
+    option.textContent = participantName(card);
+    return option;
+  }));
+  primarySelect.value = String(selectedIndex);
+  form.dataset.m326PrimaryIndex = String(selectedIndex);
+  form.dataset.m326PrimarySignature = participantSignature(cards[selectedIndex]);
+
+  syncSubmitLabel(form, count);
+}
+
 function updateComposerPresentation(form) {
   if (!(form instanceof HTMLFormElement)) return;
 
@@ -192,6 +299,8 @@ function updateComposerPresentation(form) {
     legacySummary.setAttribute("aria-hidden", "true");
     legacySummary.style.setProperty("display", "none", "important");
   }
+
+  syncBookingOptions(form, cards);
 
   const consent = form.querySelector("[data-m326-composer-consent], .v4-compact-check");
   if (consent instanceof HTMLElement) {
@@ -229,16 +338,77 @@ function updateComposerPresentation(form) {
       : "Alle Personen haben die Teilnahmebedingungen akzeptiert und wurden auf die Datenschutzhinweise hingewiesen.";
   }
 
-  const dialog = form.closest("dialog");
-  const submit = dialog?.querySelector("#v4DialogSubmit");
-  if (submit instanceof HTMLButtonElement) {
-    submit.textContent = count === 1
-      ? "Person anmelden"
-      : count > 1
-        ? `${count} Personen anmelden`
-        : "Anmelden";
-    submit.disabled = count === 0;
-  }
+  syncSubmitLabel(form, count);
+}
+
+function deriveBookingAttemptKey(value, mode, primaryIndex) {
+  const match = /^([0-9a-f]{8})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{8})([0-9a-f]{4})$/i.exec(String(value || ""));
+  if (!match) return value;
+  const discriminator = (mode === "INDIVIDUAL" ? 0x4000 : 0x2000) | (Number(primaryIndex) & 0x0fff);
+  const suffix = (Number.parseInt(match[6], 16) ^ discriminator).toString(16).padStart(4, "0");
+  return `${match[1]}-${match[2]}-${match[3]}-${match[4]}-${match[5]}${suffix}`;
+}
+
+function enhanceManualBulkRequest(event) {
+  if (event.detail?.action !== MANUAL_BULK_ACTION) return;
+  const form = document.querySelector(COMPOSER_SELECTOR);
+  const payload = event.detail?.payload;
+  const count = Array.isArray(payload?.participants) ? payload.participants.length : 0;
+  if (!(form instanceof HTMLFormElement) || !payload || count < 2) return;
+
+  const mode = currentBookingMode(form);
+  const primaryIndex = mode === "GROUP"
+    ? Number(form.querySelector("[data-m326-primary-participant]")?.value || 0)
+    : 0;
+
+  payload.bookingMode = mode;
+  if (mode === "GROUP") payload.primaryParticipantIndex = primaryIndex;
+  else delete payload.primaryParticipantIndex;
+  payload.idempotencyKey = deriveBookingAttemptKey(payload.idempotencyKey, mode, primaryIndex);
+}
+
+function rememberManualBulkResult(event) {
+  if (event.detail?.action !== MANUAL_BULK_ACTION) return;
+  const result = event.detail?.data;
+  if (result?.bookingMode !== "INDIVIDUAL") return;
+  const count = Number(result.participantCount || result.bookingCount || 0);
+  const created = Number(result.createdCount || 0);
+  const waitlisted = Number(result.waitlistedCount || 0);
+  const message = waitlisted === count && count > 0
+    ? `${count} Einzelanmeldungen wurden auf die Warteliste gesetzt.`
+    : waitlisted > 0
+      ? `${count} Einzelanmeldungen erstellt · ${created} bestätigt · ${waitlisted} Warteliste.`
+      : `${count} Einzelanmeldungen wurden erstellt.`;
+  pendingIndividualToast = {
+    message,
+    warning: waitlisted > 0,
+    expiresAt: Date.now() + 12000
+  };
+}
+
+function installToastCorrection() {
+  const region = document.getElementById("toastRegion");
+  if (!region || region.dataset.m326BookingToastBound === "true") return;
+  region.dataset.m326BookingToastBound = "true";
+  new MutationObserver(mutations => {
+    if (!pendingIndividualToast || pendingIndividualToast.expiresAt < Date.now()) {
+      pendingIndividualToast = null;
+      return;
+    }
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (!(node instanceof HTMLElement) || !node.classList.contains("toast")) continue;
+        if (!/gemeinsam (?:angemeldet|auf die Warteliste gesetzt)/i.test(node.textContent || "")) continue;
+        node.textContent = pendingIndividualToast.message;
+        if (pendingIndividualToast.warning) {
+          node.classList.remove("success");
+          node.classList.add("warning");
+        }
+        pendingIndividualToast = null;
+        return;
+      }
+    }
+  }).observe(region, { childList: true });
 }
 
 function enhanceComposerForm(form) {
@@ -263,6 +433,9 @@ function scanComposer(root = document) {
   root.querySelectorAll?.(COMPOSER_SELECTOR).forEach(enhanceComposerForm);
 }
 
+window.addEventListener("pd-api-before-call", enhanceManualBulkRequest);
+window.addEventListener("pd-api-after-call", rememberManualBulkResult);
+installToastCorrection();
 scanComposer();
 
 const composerObserver = new MutationObserver(mutations => {
