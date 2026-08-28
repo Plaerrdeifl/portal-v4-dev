@@ -1,43 +1,63 @@
 <section id="m310FanbusPage" class="page module-shell v4-compact-page fanbus-page dates-page">
   <div class="v4-module-surface">
-    <div class="v4-heading-row v4-section-heading v4-m310-page-heading">
-      <div class="v4-m310-heading-copy">
-        <div class="v4-m310-heading-title-row">
-          <h3>Fanbusfahrten</h3>
-          <div id="m310FanbusManagement" class="v4-action-menu">
-            <button
-              id="m310FanbusActionToggle"
-              class="icon-button v4-action-menu-toggle"
-              type="button"
-              aria-label="Fanbus-Aktionen öffnen"
-              aria-controls="m310FanbusActionMenu"
-              aria-expanded="false"
-            >⚙️</button>
-            <div id="m310FanbusActionMenu" class="v4-action-menu-panel" role="menu" hidden>
-              <button id="m325UserFanbusStandardsButton" type="button" role="menuitem">Meine Fanbus-Standards</button>
-              <button id="m325CompanionListsButton" type="button" role="menuitem">Meine Mitfahrer</button>
-              <button id="m326RegularRidersButton" type="button" role="menuitem" hidden>Stammfahrer</button>
-              <button id="m326PersonGroupsButton" type="button" role="menuitem" hidden>Personengruppen</button>
-              <button id="m310FanbusSettingsButton" type="button" role="menuitem" hidden>Fanbus-Einstellungen</button>
-              <button id="m310AddTripButton" type="button" role="menuitem" hidden>Fanbusfahrt anlegen</button>
+    <section id="m327TripsPanel" aria-label="Fanbusfahrten">
+      <div class="v4-heading-row v4-section-heading v4-m310-page-heading">
+        <div class="v4-m310-heading-copy">
+          <div class="v4-m310-heading-title-row">
+            <h3>Fanbusfahrten</h3>
+            <div id="m310FanbusManagement" class="v4-action-menu">
+              <button
+                id="m310FanbusActionToggle"
+                class="icon-button v4-action-menu-toggle"
+                type="button"
+                aria-label="Fanbus-Aktionen öffnen"
+                aria-controls="m310FanbusActionMenu"
+                aria-expanded="false"
+              >⚙️</button>
+              <div id="m310FanbusActionMenu" class="v4-action-menu-panel" role="menu" hidden>
+                <button id="m325UserFanbusStandardsButton" type="button" role="menuitem">Meine Fanbus-Standards</button>
+                <button id="m325CompanionListsButton" type="button" role="menuitem">Meine Mitfahrer</button>
+                <button id="m326RegularRidersButton" type="button" role="menuitem" hidden>Stammfahrer</button>
+                <button id="m326PersonGroupsButton" type="button" role="menuitem" hidden>Personengruppen</button>
+                <button id="m310FanbusSettingsButton" type="button" role="menuitem" hidden>Fanbus-Einstellungen</button>
+                <button id="m310AddTripButton" type="button" role="menuitem" hidden>Fanbusfahrt anlegen</button>
+              </div>
             </div>
           </div>
+          <p>Fahrten entdecken und anmelden</p>
+          <div class="m327-fanbus-user-actions">
+            <button
+              id="m327MyBookingsTab"
+              class="button small secondary m327-my-bookings-entry"
+              type="button"
+              aria-controls="m327MyBookingsPanel"
+              aria-selected="false"
+            >🎟️ Meine Buchungen</button>
+          </div>
         </div>
-        <p>Fahrten entdecken und eigene Buchungen verwalten</p>
       </div>
-    </div>
-    <div class="module-tabs m327-fanbus-tabs" role="tablist" aria-label="Fanbus-Bereiche">
-      <button id="m327TripsTab" class="module-tab active" type="button" role="tab" aria-selected="true" aria-controls="m327TripsPanel">Fahrten</button>
-      <button id="m327MyBookingsTab" class="module-tab" type="button" role="tab" aria-selected="false" aria-controls="m327MyBookingsPanel">Meine Buchungen</button>
-    </div>
-    <section id="m327TripsPanel" role="tabpanel" aria-labelledby="m327TripsTab">
       <div class="v4-heading-row v4-subheading-row">
         <p id="m310FanbusSummary" class="subtle">Fanbusfahrten werden geladen …</p>
         <span id="m310FanbusStatus" class="status-pill">Lädt</span>
       </div>
       <div id="m310FanbusList" class="module-panel" aria-live="polite"></div>
     </section>
-    <section id="m327MyBookingsPanel" class="module-panel m327-my-bookings-panel" role="tabpanel" aria-labelledby="m327MyBookingsTab" hidden>
+
+    <section id="m327MyBookingsPanel" class="module-panel m327-my-bookings-panel" aria-label="Meine Fanbus-Buchungen" hidden>
+      <div class="m327-bookings-view-head">
+        <button
+          id="m327TripsTab"
+          class="button small ghost m327-bookings-back"
+          type="button"
+          aria-controls="m327TripsPanel"
+          aria-selected="false"
+        >← Zurück</button>
+        <div class="m327-bookings-view-copy">
+          <span class="m327-bookings-view-kicker">Fanbus</span>
+          <h3>Meine Buchungen</h3>
+          <p>Deine gebuchten Fahrten und Teilnehmer verwalten</p>
+        </div>
+      </div>
       <div class="v4-heading-row v4-subheading-row">
         <p id="m327MyBookingsSummary" class="subtle">Eigene Buchungen werden bei Bedarf geladen.</p>
         <span id="m327MyBookingsStatus" class="status-pill">Bereit</span>
@@ -48,10 +68,67 @@
 </section>
 
 <style>
-  #m327MyBookingsPanel,
+  .m327-fanbus-user-actions{
+    display:flex;
+    align-items:center;
+    margin-top:12px;
+  }
+
+  .m327-my-bookings-entry{
+    width:auto;
+    min-height:40px;
+    padding:8px 12px;
+  }
+
+  #m327MyBookingsPanel{
+    gap:10px;
+  }
+
   #m327MyBookingsPanel .m327-my-bookings-list,
   #m327MyBookingsPanel .m327-booking-group{
     gap:10px;
+  }
+
+  #m327MyBookingsPanel .m327-bookings-view-head{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    padding-bottom:12px;
+    border-bottom:1px solid var(--line);
+  }
+
+  #m327MyBookingsPanel .m327-bookings-back{
+    flex:0 0 auto;
+    width:auto;
+    min-height:38px;
+    padding:7px 10px;
+  }
+
+  #m327MyBookingsPanel .m327-bookings-view-copy{
+    min-width:0;
+  }
+
+  #m327MyBookingsPanel .m327-bookings-view-kicker{
+    display:block;
+    margin-bottom:2px;
+    color:var(--muted);
+    font-size:.68rem;
+    font-weight:800;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+
+  #m327MyBookingsPanel .m327-bookings-view-copy h3{
+    margin:0;
+    font-size:1.25rem;
+    line-height:1.15;
+  }
+
+  #m327MyBookingsPanel .m327-bookings-view-copy p{
+    margin:4px 0 0;
+    color:var(--muted);
+    font-size:.82rem;
+    line-height:1.35;
   }
 
   #m327MyBookingsPanel .v4-subheading-row{
@@ -277,6 +354,24 @@
   }
 
   @media(max-width:700px){
+    .m327-fanbus-user-actions{
+      margin-top:10px;
+    }
+
+    .m327-my-bookings-entry{
+      min-height:38px;
+      padding:7px 10px;
+    }
+
+    #m327MyBookingsPanel .m327-bookings-view-head{
+      gap:10px;
+      padding-bottom:10px;
+    }
+
+    #m327MyBookingsPanel .m327-bookings-view-copy h3{
+      font-size:1.12rem;
+    }
+
     #m327MyBookingsPanel .m327-booking-card{
       padding:10px;
     }
@@ -301,6 +396,14 @@
   }
 
   @media(max-width:390px){
+    #m327MyBookingsPanel .m327-bookings-view-head{
+      align-items:center;
+    }
+
+    #m327MyBookingsPanel .m327-bookings-view-copy p{
+      display:none;
+    }
+
     #m327MyBookingsPanel .m327-booking-head h3{
       font-size:1rem;
     }
