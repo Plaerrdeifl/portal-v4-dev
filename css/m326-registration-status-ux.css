@@ -1,0 +1,21 @@
+.v4-m310-registration-record {
+  transition: background-color .16s ease, border-color .16s ease;
+}
+
+/* Bestätigt: nur ein sehr leichter grüner Flächenton. */
+.v4-m310-registration-record:has(.badge.success) {
+  background: color-mix(in srgb, var(--success) 4%, var(--surface));
+  border-color: color-mix(in srgb, var(--success) 18%, var(--line));
+}
+
+/* Warteliste: warmer Hinweis, bewusst deutlich schwächer als eine Warning-Box. */
+.v4-m310-registration-record:has(.badge.neutral):not(:has(.v4-m310-registration-cancelled)) {
+  background: color-mix(in srgb, var(--warning) 6%, var(--surface));
+  border-color: color-mix(in srgb, var(--warning) 24%, var(--line));
+}
+
+/* Storniert: leichter Rot-/Grauton, ohne Lesbarkeit oder Historie abzuschwächen. */
+.v4-m310-registration-record:has(.v4-m310-registration-cancelled) {
+  background: color-mix(in srgb, var(--danger) 4%, var(--surface-soft));
+  border-color: color-mix(in srgb, var(--danger) 18%, var(--line));
+}
