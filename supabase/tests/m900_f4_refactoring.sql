@@ -6,15 +6,15 @@ select no_plan();
 
 select is(
   pg_catalog.array_length(app_private.pd_api_current_actions(), 1),
-  119,
-  'Current dispatcher inventory contains 119 normalized actions'
+  141,
+  'Current dispatcher inventory contains 141 normalized actions'
 );
 select is(
   (
     select pg_catalog.count(distinct action)::integer
     from pg_catalog.unnest(app_private.pd_api_current_actions()) as item(action)
   ),
-  119,
+  141,
   'Every normalized action is unique'
 );
 select is(
@@ -23,8 +23,8 @@ select is(
     from pg_catalog.unnest(app_private.pd_api_current_actions()) as item(action)
     where app_private.platform_action_classification(item.action) = 'READ'
   ),
-  29,
-  'Exactly 29 current actions are READ'
+  36,
+  'Exactly 36 current actions are READ'
 );
 select is(
   (
@@ -32,8 +32,8 @@ select is(
     from pg_catalog.unnest(app_private.pd_api_current_actions()) as item(action)
     where app_private.platform_action_classification(item.action) = 'USER_MUTATION'
   ),
-  90,
-  'Exactly 90 current actions are USER_MUTATION'
+  105,
+  'Exactly 105 current actions are USER_MUTATION'
 );
 select ok(
   not exists (

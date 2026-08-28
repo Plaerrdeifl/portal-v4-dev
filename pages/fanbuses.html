@@ -23,13 +23,26 @@
             </div>
           </div>
         </div>
-        <p>Abfahrten, Preise und Anmeldestatus zu kommenden Terminen</p>
+        <p>Fahrten entdecken und eigene Buchungen verwalten</p>
       </div>
     </div>
-    <div class="v4-heading-row v4-subheading-row">
-      <p id="m310FanbusSummary" class="subtle">Fanbusfahrten werden geladen …</p>
-      <span id="m310FanbusStatus" class="status-pill">Lädt</span>
+    <div class="module-tabs m327-fanbus-tabs" role="tablist" aria-label="Fanbus-Bereiche">
+      <button id="m327TripsTab" class="module-tab active" type="button" role="tab" aria-selected="true" aria-controls="m327TripsPanel">Fahrten</button>
+      <button id="m327MyBookingsTab" class="module-tab" type="button" role="tab" aria-selected="false" aria-controls="m327MyBookingsPanel">Meine Buchungen</button>
     </div>
-    <div id="m310FanbusList" class="module-panel" aria-live="polite"></div>
+    <section id="m327TripsPanel" role="tabpanel" aria-labelledby="m327TripsTab">
+      <div class="v4-heading-row v4-subheading-row">
+        <p id="m310FanbusSummary" class="subtle">Fanbusfahrten werden geladen …</p>
+        <span id="m310FanbusStatus" class="status-pill">Lädt</span>
+      </div>
+      <div id="m310FanbusList" class="module-panel" aria-live="polite"></div>
+    </section>
+    <section id="m327MyBookingsPanel" class="module-panel m327-my-bookings-panel" role="tabpanel" aria-labelledby="m327MyBookingsTab" hidden>
+      <div class="v4-heading-row v4-subheading-row">
+        <p id="m327MyBookingsSummary" class="subtle">Eigene Buchungen werden bei Bedarf geladen.</p>
+        <span id="m327MyBookingsStatus" class="status-pill">Bereit</span>
+      </div>
+      <div id="m327MyBookingsList" class="m327-my-bookings-list" aria-live="polite"></div>
+    </section>
   </div>
 </section>

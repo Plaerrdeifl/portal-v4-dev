@@ -5,6 +5,16 @@ create extension if not exists pgtap with schema extensions;
 select no_plan();
 
 -- M320-R3 R1 runtime contract. Everything is rolled back.
+insert into auth.users (id, email) values
+  ('32a00000-0000-4000-8000-000000009001', 'm320-r3@example.invalid');
+insert into app_portal.users (
+  id, user_code, email, first_name, last_name, status, role_id
+) values (
+  '32a00000-0000-4000-8000-000000009001', 'U-M320-R3',
+  'm320-r3@example.invalid', 'M320', 'R3', 'ACTIVE',
+  '00000000-0000-4000-8000-000000000001'
+);
+
 select set_config(
   'request.jwt.claim.sub',
   (
@@ -54,7 +64,10 @@ select ok(
 );
 select is(
   (
-    select array_agg(distinct assignment_source order by assignment_source)
+    select coalesce(
+      array_agg(distinct assignment_source order by assignment_source),
+      array[]::text[]
+    )
     from app_modules.fanbus_bus_assignments
   ) <@ array['AUTO','MANUAL']::text[],
   true,
@@ -111,27 +124,6 @@ select
   auth.uid()
 from app_modules.fanbus_boarding_stops;
 
-insert into app_modules.fanbus_trip_boarding_stops(
-  id, trip_id, boarding_stop_id, departure_at, position, is_active,
-  created_by, updated_by
-) values (
-  '32a00000-0000-4000-8000-000000007001',
-  '32a00000-0000-4000-8000-000000001001',
-  '32a00000-0000-4000-8000-000000006001',
-  timestamptz '2030-12-31 12:00:00+01',
-  1,
-  true,
-  auth.uid(),
-  auth.uid()
-);
-
--- The special stop is intentionally not served by RUHIG.
-insert into app_modules.fanbus_bus_boarding_stops(
-  id, trip_id, bus_id, trip_boarding_stop_id, created_by, updated_by
-) values
-  ('32a00000-0000-4000-8000-000000008001','32a00000-0000-4000-8000-000000001001','32a00000-0000-4000-8000-000000002001','32a00000-0000-4000-8000-000000007001',auth.uid(),auth.uid()),
-  ('32a00000-0000-4000-8000-000000008002','32a00000-0000-4000-8000-000000001001','32a00000-0000-4000-8000-000000002003','32a00000-0000-4000-8000-000000007001',auth.uid(),auth.uid());
-
 insert into app_modules.fanbus_bookings(id, trip_id, source, created_by) values
   ('32a00000-0000-4000-8000-000000003001','32a00000-0000-4000-8000-000000001001','MANUAL',auth.uid()),
   ('32a00000-0000-4000-8000-000000003002','32a00000-0000-4000-8000-000000001001','MANUAL',auth.uid()),
@@ -148,11 +140,31 @@ insert into app_modules.fanbus_registrations(
 ) values
   ('32a00000-0000-4000-8000-000000004001','32a00000-0000-4000-8000-000000001001','Booking','Party A','PARTY','ACTIVE','test','test',now(),now(),'MANUAL','32a00000-0000-4000-8000-000000003001','PRIMARY',1,null,null,auth.uid(),auth.uid()),
   ('32a00000-0000-4000-8000-000000004002','32a00000-0000-4000-8000-000000001001','Booking','Party B','PARTY','ACTIVE','test','test',now(),now(),'MANUAL','32a00000-0000-4000-8000-000000003001','COMPANION',2,null,null,auth.uid(),auth.uid()),
-  ('32a00000-0000-4000-8000-000000004003','32a00000-0000-4000-8000-000000001001','Stop','Ruhig','RUHIG','ACTIVE','test','test',now(),now(),'MANUAL','32a00000-0000-4000-8000-000000003002','PRIMARY',1,'32a00000-0000-4000-8000-000000007001',null,auth.uid(),auth.uid()),
+  ('32a00000-0000-4000-8000-000000004003','32a00000-0000-4000-8000-000000001001','Stop','Ruhig','RUHIG','ACTIVE','test','test',now(),now(),'MANUAL','32a00000-0000-4000-8000-000000003002','PRIMARY',1,null,null,auth.uid(),auth.uid()),
   ('32a00000-0000-4000-8000-000000004004','32a00000-0000-4000-8000-000000001001','Egal','Flex','EGAL','ACTIVE','test','test',now(),now(),'MANUAL','32a00000-0000-4000-8000-000000003003','PRIMARY',1,null,null,auth.uid(),auth.uid()),
   ('32a00000-0000-4000-8000-000000004005','32a00000-0000-4000-8000-000000001001','Fixed','Manual','EGAL','ACTIVE','test','test',now(),now(),'MANUAL','32a00000-0000-4000-8000-000000003004','PRIMARY',1,null,null,auth.uid(),auth.uid()),
   ('32a00000-0000-4000-8000-000000004006','32a00000-0000-4000-8000-000000001001','Fixed','Auto','PARTY','ACTIVE','test','test',now(),now(),'MANUAL','32a00000-0000-4000-8000-000000003005','PRIMARY',1,null,null,auth.uid(),auth.uid()),
   ('32a00000-0000-4000-8000-000000004007','32a00000-0000-4000-8000-000000001001','Wait','List','PARTY','WAITLISTED','test','test',now(),now(),'MANUAL','32a00000-0000-4000-8000-000000003006','PRIMARY',1,null,now(),auth.uid(),auth.uid());
+
+insert into app_modules.fanbus_trip_boarding_stops(
+  id, trip_id, boarding_stop_id, departure_at, position, is_active,
+  created_by, updated_by
+) values (
+  '32a00000-0000-4000-8000-000000007001',
+  '32a00000-0000-4000-8000-000000001001',
+  '32a00000-0000-4000-8000-000000006001',
+  timestamptz '2030-12-31 12:00:00+01', 1, true, auth.uid(), auth.uid()
+);
+update app_modules.fanbus_registrations
+set trip_boarding_stop_id = '32a00000-0000-4000-8000-000000007001'
+where id = '32a00000-0000-4000-8000-000000004003';
+
+-- The special stop is intentionally not served by RUHIG.
+insert into app_modules.fanbus_bus_boarding_stops(
+  id, trip_id, bus_id, trip_boarding_stop_id, created_by, updated_by
+) values
+  ('32a00000-0000-4000-8000-000000008001','32a00000-0000-4000-8000-000000001001','32a00000-0000-4000-8000-000000002001','32a00000-0000-4000-8000-000000007001',auth.uid(),auth.uid()),
+  ('32a00000-0000-4000-8000-000000008002','32a00000-0000-4000-8000-000000001001','32a00000-0000-4000-8000-000000002003','32a00000-0000-4000-8000-000000007001',auth.uid(),auth.uid());
 
 insert into app_modules.fanbus_bus_assignments(
   participant_id, trip_id, bus_id, assignment_source, created_by, updated_by

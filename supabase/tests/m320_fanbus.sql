@@ -662,7 +662,7 @@ select ok(not exists (
       'FANBUS_BUS_UNASSIGNED'
     )
     and metadata_key.key not in (
-      'tripId', 'bookingId', 'participantId', 'busId'
+      'tripId', 'bookingId', 'participantId', 'busId', 'assignmentSource'
     )
 ), 'Assignment-Auditmetadaten enthalten ausschließlich technische IDs');
 select ok(not exists (

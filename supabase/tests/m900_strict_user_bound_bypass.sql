@@ -573,14 +573,14 @@ select is(
     select pg_catalog.count(*)::integer
     from pg_catalog.unnest(app_private.pd_api_current_actions()) as item(action)
     where app_private.platform_action_classification(item.action) = 'READ'
-  ), 29, 'Current action contract keeps 29 READ actions'
+  ), 36, 'Current action contract keeps 36 READ actions'
 );
 select is(
   (
     select pg_catalog.count(*)::integer
     from pg_catalog.unnest(app_private.pd_api_current_actions()) as item(action)
     where app_private.platform_action_classification(item.action) = 'USER_MUTATION'
-  ), 90, 'Current action contract keeps 90 USER_MUTATION actions'
+  ), 105, 'Current action contract keeps 105 USER_MUTATION actions'
 );
 
 update app_portal.settings

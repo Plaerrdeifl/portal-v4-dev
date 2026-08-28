@@ -16,6 +16,7 @@ import {
 } from "./common.js";
 import { downloadFanbusRegistrationsXlsx } from "./fanbus-xlsx.js";
 import { groupFanbusTrips } from "./fanbus-trip-groups.js";
+import { setupFanbusMyBookings } from "./fanbus-my-bookings.js";
 
 const BERLIN_TIME_ZONE = "Europe/Berlin";
 const PRIVACY_REFERENCE = "https://plaerrdeifl.de/datenschutzerklaerung/";
@@ -4105,6 +4106,7 @@ export async function hydrateFanbuses(context = {}) {
   const panel = document.getElementById("m310FanbusList");
   const summary = document.getElementById("m310FanbusSummary");
   if (!panel) return;
+  setupFanbusMyBookings();
 
   panel.innerHTML = loading("Fanbusfahrten werden geladen …");
   if (summary) summary.textContent = "Fanbusfahrten werden geladen …";

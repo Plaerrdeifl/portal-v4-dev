@@ -460,6 +460,24 @@ function buildEmail(config: RuntimeConfig, claim: Claim): EmailContent {
   const tripTitle = projectedTripTitle || "der Fanbusfahrt";
   const applicantNotice = asString(data.applicantNotice, 2000).trim();
   const participantCount = Number(data.participantCount || 0);
+  const organizationContact = data.organizationContact && typeof data.organizationContact === "object"
+    ? data.organizationContact as Record<string, unknown>
+    : {};
+  const contactItems = (kind: "emails" | "phones") => (
+    Array.isArray(organizationContact[kind]) ? organizationContact[kind] as unknown[] : []
+  ).flatMap(item => {
+    if (!item || typeof item !== "object") return [];
+    const record = item as Record<string, unknown>;
+    const value = asString(record.value, kind === "emails" ? 320 : 40).trim();
+    if (!value) return [];
+    return [{ label: asString(record.label, 80).trim(), value }];
+  });
+  const publicContacts = [
+    ...contactItems("emails").map(item => ({ ...item, type: "E-Mail" })),
+    ...contactItems("phones").map(item => ({ ...item, type: "Telefon" }))
+  ];
+  const contactText = `\n\nDu möchtest deine Anmeldung ändern oder stornieren? Bitte wende dich an unsere BUS_ORGA.${publicContacts.length ? `\n${publicContacts.map(item => `${item.label || item.type}: ${item.value}`).join("\n")}` : ""}`;
+  const contactHtml = `<section><p><strong>Du möchtest deine Anmeldung ändern oder stornieren?</strong><br>Bitte wende dich an unsere BUS_ORGA.</p>${publicContacts.length ? `<ul>${publicContacts.map(item => `<li>${escapeHtml(item.label || item.type)}: ${escapeHtml(item.value)}</li>`).join("")}</ul>` : ""}</section>`;
   const link = absolutePortalLink(config, claim.deepLink);
   const greetingText = firstName ? `Servus ${firstName},` : "Servus,";
   const greetingHtml = `<p>${escapeHtml(greetingText)}</p>`;
@@ -534,8 +552,8 @@ function buildEmail(config: RuntimeConfig, claim: Claim): EmailContent {
         ? "Deine Anmeldung wurde auf der Warteliste erfasst."
         : "Deine Anmeldung wurde bestätigt.";
       const base = emailShell(
-        `${greetingText}\n\n${stateText}\nFahrt: ${tripTitle}\n\n${closingText}`,
-        `${greetingHtml}<p>${escapeHtml(stateText)}</p><p><strong>Fahrt:</strong> ${escapeHtml(tripTitle)}</p>${closingHtml}`,
+        `${greetingText}\n\n${stateText}\nFahrt: ${tripTitle}${contactText}\n\n${closingText}`,
+        `${greetingHtml}<p>${escapeHtml(stateText)}</p><p><strong>Fahrt:</strong> ${escapeHtml(tripTitle)}</p>${contactHtml}${closingHtml}`,
         link
       );
       return {
@@ -556,6 +574,21 @@ function buildEmail(config: RuntimeConfig, claim: Claim): EmailContent {
         link
       );
       return { ...base, subject: `Fanbus – neue Buchung: ${tripTitle}` };
+    }
+
+    case "fanbus.internal_extended": {
+      const countText = Number.isFinite(participantCount) && participantCount > 0
+        ? `${participantCount} Person(en)`
+        : "Teilnehmer";
+      const outcome = asString(data.status, 20) === "WAITLISTED"
+        ? "Warteliste"
+        : "aktive Teilnahme";
+      const base = emailShell(
+        `Eine bestehende Buchung für ${tripTitle} wurde um ${countText} erweitert. Ergebnis: ${outcome}.`,
+        `<p>Eine bestehende Buchung für <strong>${escapeHtml(tripTitle)}</strong> wurde um <strong>${escapeHtml(countText)}</strong> erweitert.</p><p>Ergebnis: ${escapeHtml(outcome)}</p>`,
+        link
+      );
+      return { ...base, subject: `Fanbus – Buchung erweitert: ${tripTitle}` };
     }
 
     case "fanbus.waitlist_promoted": {
