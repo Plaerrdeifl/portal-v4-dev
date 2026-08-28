@@ -41,16 +41,19 @@ function injectStyles() {
   style.textContent = `
     .m320-r3-entry{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;margin:0 0 14px;padding:13px;border:1px solid var(--line,#d8e2ee);border-radius:14px;background:var(--surface-soft,#f5f7fa)}
     .m320-r3-entry-copy{display:grid;gap:3px;min-width:0}.m320-r3-entry-copy p{margin:0;color:var(--muted,#718096)}
-    .m320-r3-preview{display:grid;gap:14px}.m320-r3-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-    .m320-r3-metric{display:grid;gap:2px;padding:10px;border:1px solid var(--line,#d8e2ee);border-radius:12px;background:var(--surface,#fff)}
-    .m320-r3-metric small{color:var(--muted,#718096)}.m320-r3-metric strong{font-size:1.12rem}
-    .m320-r3-bus-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.m320-r3-bus{display:grid;gap:4px;padding:10px;border:1px solid var(--line,#d8e2ee);border-radius:12px}
-    .m320-r3-bus-head,.m320-r3-person-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.m320-r3-bus small,.m320-r3-person small{color:var(--muted,#718096)}
-    .m320-r3-list{display:grid;gap:8px}.m320-r3-person{display:grid;gap:8px;padding:11px;border:1px solid var(--line,#d8e2ee);border-radius:12px;background:var(--surface,#fff)}
-    .m320-r3-person select{width:100%;min-width:0}.m320-r3-tags{display:flex;flex-wrap:wrap;gap:5px}.m320-r3-tag{display:inline-flex;padding:3px 7px;border-radius:999px;background:var(--surface-soft,#f5f7fa);font-size:.77rem;font-weight:700}
-    .m320-r3-tag.warning{background:rgba(173,115,0,.12);color:#7b5400}.m320-r3-tag.auto{background:rgba(24,118,211,.1);color:var(--primary,#1876d3)}
-    .m320-r3-tag.manual{background:rgba(111,66,193,.1);color:#6941b7}.m320-r3-conflicts{display:grid;gap:6px}.m320-r3-conflicts .notice{margin:0}
-    @media(max-width:620px){.m320-r3-entry{grid-template-columns:1fr}.m320-r3-entry .button{width:100%}.m320-r3-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.m320-r3-bus-grid{grid-template-columns:1fr}}
+    .m320-r3-preview{display:grid;gap:20px}.m320-r3-overview{display:grid;gap:5px;padding:14px 0;border-bottom:1px solid var(--line,#d8e2ee)}
+    .m320-r3-overview strong{font-size:1.14rem}.m320-r3-overview small,.m320-r3-section-head small,.m320-r3-bus-row small,.m320-r3-work-card small,.m320-r3-existing-row small{color:var(--muted,#718096)}
+    .m320-r3-overview-meta{display:flex;flex-wrap:wrap;gap:6px 12px}.m320-r3-overview-warning{color:#7b5400!important;font-weight:700}
+    .m320-r3-section{display:grid;gap:10px}.m320-r3-section-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}.m320-r3-section-head h3{margin:0}
+    .m320-r3-bus-list,.m320-r3-work-list,.m320-r3-existing-list{display:grid;gap:8px}.m320-r3-bus-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line,#d8e2ee)}
+    .m320-r3-bus-row:last-child{border-bottom:0}.m320-r3-bus-copy{display:grid;gap:2px;min-width:0}.m320-r3-bus-stat{text-align:right;white-space:nowrap}
+    .m320-r3-work-card{display:grid;gap:10px;padding:14px;border:1px solid var(--line,#d8e2ee);border-radius:14px;background:var(--surface,#fff)}
+    .m320-r3-work-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.m320-r3-work-card select{width:100%;min-width:0}.m320-r3-tags{display:flex;flex-wrap:wrap;gap:5px}.m320-r3-tag{display:inline-flex;padding:3px 7px;border-radius:999px;background:var(--surface-soft,#f5f7fa);font-size:.77rem;font-weight:700}
+    .m320-r3-tag.warning{background:rgba(173,115,0,.12);color:#7b5400}.m320-r3-tag.auto{background:rgba(24,118,211,.1);color:var(--primary,#1876d3)}.m320-r3-tag.manual{background:rgba(111,66,193,.1);color:#6941b7}
+    .m320-r3-existing-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border:0;border-bottom:1px solid var(--line,#d8e2ee);border-radius:0;background:transparent;color:inherit;text-align:left;font:inherit}
+    .m320-r3-existing-row:last-child{border-bottom:0}.m320-r3-existing-copy{display:grid;gap:2px;min-width:0}.m320-r3-existing-meta{display:flex;align-items:center;gap:8px;flex:0 0 auto}.m320-r3-existing-row .v4-row-chevron{font-size:1.5rem}
+    .m320-r3-conflicts{display:grid;gap:6px}.m320-r3-conflicts .notice{margin:0}.m320-r3-detail{display:grid;gap:14px}.m320-r3-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.m320-r3-detail-grid>div{display:grid;gap:3px}.m320-r3-detail-grid span{color:var(--muted,#718096);font-size:.82rem}.m320-r3-detail-tags{display:grid;gap:8px}
+    @media(max-width:620px){.m320-r3-entry{grid-template-columns:1fr}.m320-r3-entry .button{width:100%}.m320-r3-detail-grid{grid-template-columns:1fr}.m320-r3-bus-row{align-items:flex-start}.m320-r3-bus-stat{font-size:.92rem}}
   `;
   document.head.appendChild(style);
 }
@@ -71,9 +74,9 @@ function outcomeLabel(value) {
 }
 
 function stateLabel(proposal) {
-  if (proposal.assignmentState === "FIXED_MANUAL") return "MANUAL · fixiert";
-  if (proposal.assignmentState === "EXISTING_AUTO") return "AUTO · bestehend";
-  return "AUTO · Vorschlag";
+  if (proposal.assignmentState === "FIXED_MANUAL") return "MANUAL";
+  if (proposal.assignmentState === "EXISTING_AUTO") return "AUTO";
+  return "Vorschlag";
 }
 
 function codesMarkup(codes, labels, type = "") {
@@ -84,8 +87,23 @@ function codesMarkup(codes, labels, type = "") {
 
 function busOptions(buses, selected) {
   return [`<option value="">Nicht zuordnen</option>`, ...buses.map(bus =>
-    `<option value="${escapeAttr(bus.busId)}"${bus.busId === selected ? " selected" : ""}>${escapeHtml(`${bus.label} · ${bus.category} · ${bus.freeAfter} frei nach Vorschlag`)}</option>`
+    `<option value="${escapeAttr(bus.busId)}"${bus.busId === selected ? " selected" : ""}>${escapeHtml(`${bus.label} · ${bus.category} · ${bus.freeAfter} frei`)}</option>`
   )].join("");
+}
+
+function proposalDetailMarkup(proposal, buses) {
+  const warnings = codesMarkup(proposal.warnings, WARNING_LABELS, "warning");
+  const explanations = codesMarkup(proposal.explanations, EXPLANATION_LABELS);
+  return `<div class="m320-r3-detail">
+    <div class="m320-r3-detail-grid">
+      <div><span>Status</span><strong>${escapeHtml(stateLabel(proposal))}</strong></div>
+      <div><span>Bus</span><strong>${escapeHtml(busName(buses, proposal.currentBusId || proposal.proposedBusId))}</strong></div>
+      <div><span>Buswunsch</span><strong>${escapeHtml(proposal.busPreference || "EGAL")}</strong></div>
+      <div><span>Ergebnis</span><strong>${escapeHtml(outcomeLabel(proposal.preferenceOutcome))}</strong></div>
+    </div>
+    ${warnings || explanations ? `<div class="m320-r3-detail-tags"><div class="m320-r3-tags">${warnings}</div><div class="m320-r3-tags">${explanations}</div></div>` : ""}
+    ${proposal.assignmentState !== "PROPOSED_AUTO" ? '<p class="subtle">Diese bestehende Zuordnung bleibt durch den automatischen Lauf unverändert.</p>' : ""}
+  </div>`;
 }
 
 function previewMarkup(preview, registrations) {
@@ -93,30 +111,39 @@ function previewMarkup(preview, registrations) {
   const proposals = Array.isArray(preview?.participantProposals) ? preview.participantProposals : [];
   const conflicts = Array.isArray(preview?.conflicts) ? preview.conflicts : [];
   const summary = preview?.summary || {};
+  const editable = proposals.filter(item => item.assignmentState === "PROPOSED_AUTO");
+  const existing = proposals.filter(item => item.assignmentState !== "PROPOSED_AUTO");
+  const mismatches = Number(summary.preferenceMismatched || 0);
+  const unassigned = Number(summary.unassigned || 0);
 
-  const busCards = buses.map(bus => `<article class="m320-r3-bus">
-    <div class="m320-r3-bus-head"><strong>${escapeHtml(bus.label)}</strong><span class="badge neutral">${escapeHtml(bus.category)}</span></div>
-    <small>${escapeHtml(bus.existingOccupancy)} bestehend · ${escapeHtml(bus.proposedNew)} neu vorgeschlagen</small>
-    <strong>${escapeHtml(bus.afterApply)}/${escapeHtml(bus.capacity)} belegt · ${escapeHtml(bus.freeAfter)} frei</strong>
-    <small>${escapeHtml(bus.matchedSpecific)} Wunsch erfüllt · ${escapeHtml(bus.mismatchedSpecific)} Abweichung</small>
-  </article>`).join("");
+  const busRows = buses.map(bus => `<div class="m320-r3-bus-row">
+    <div class="m320-r3-bus-copy"><strong>${escapeHtml(bus.label)}</strong><small>${escapeHtml(bus.category)} · ${escapeHtml(bus.existingOccupancy)} bereits zugeordnet${Number(bus.proposedNew) ? ` · ${escapeHtml(bus.proposedNew)} neu` : ""}</small></div>
+    <strong class="m320-r3-bus-stat">${escapeHtml(bus.afterApply)}/${escapeHtml(bus.capacity)} · ${escapeHtml(bus.freeAfter)} frei</strong>
+  </div>`).join("");
 
-  const personCards = proposals.map(proposal => {
-    const editable = proposal.assignmentState === "PROPOSED_AUTO";
-    const sourceType = proposal.assignmentState === "FIXED_MANUAL" ? "manual" : "auto";
-    return `<article class="m320-r3-person" data-m320-r3-participant="${escapeAttr(proposal.participantId)}">
-      <div class="m320-r3-person-head">
+  const workCards = editable.map(proposal => {
+    const warnings = codesMarkup(proposal.warnings, WARNING_LABELS, "warning");
+    return `<article class="m320-r3-work-card" data-m320-r3-participant="${escapeAttr(proposal.participantId)}">
+      <div class="m320-r3-work-head">
         <div><strong>${escapeHtml(participantName(registrations, proposal.participantId))}</strong><br><small>Wunsch ${escapeHtml(proposal.busPreference)} · ${escapeHtml(outcomeLabel(proposal.preferenceOutcome))}</small></div>
-        <span class="m320-r3-tag ${sourceType}">${escapeHtml(stateLabel(proposal))}</span>
+        <span class="m320-r3-tag auto">Vorschlag</span>
       </div>
-      ${editable ? `<label>Vorgeschlagener Bus
+      <label>Bus
         <select name="assignment_${escapeAttr(proposal.participantId)}" data-m320-r3-assignment="${escapeAttr(proposal.participantId)}">
           ${busOptions(buses, proposal.proposedBusId)}
         </select>
-        <small>Eine Änderung gegenüber dem Auto-Vorschlag wird beim Apply serverseitig als MANUAL gespeichert. Kapazität und Zustieg werden beim Apply erneut serverseitig geprüft.</small>
-      </label>` : `<div><small>Bestehende Zuordnung</small><br><strong>${escapeHtml(busName(buses, proposal.currentBusId))}</strong></div>`}
-      <div class="m320-r3-tags">${codesMarkup(proposal.warnings, WARNING_LABELS, "warning")}${codesMarkup(proposal.explanations, EXPLANATION_LABELS)}</div>
+      </label>
+      ${warnings ? `<div class="m320-r3-tags">${warnings}</div>` : ""}
+      <small>Änderst du den vorgeschlagenen Bus, wird diese Zuordnung als MANUAL gespeichert.</small>
     </article>`;
+  }).join("");
+
+  const existingRows = existing.map(proposal => {
+    const warning = (Array.isArray(proposal.warnings) ? proposal.warnings : []).includes("PREFERENCE_MISMATCH");
+    return `<button class="m320-r3-existing-row" type="button" data-m320-r3-existing-detail="${escapeAttr(proposal.participantId)}">
+      <span class="m320-r3-existing-copy"><strong>${escapeHtml(participantName(registrations, proposal.participantId))}</strong><small>${escapeHtml(busName(buses, proposal.currentBusId))}${warning ? " · Buswunsch weicht ab" : ""}</small></span>
+      <span class="m320-r3-existing-meta"><span class="m320-r3-tag ${proposal.assignmentState === "FIXED_MANUAL" ? "manual" : "auto"}">${escapeHtml(stateLabel(proposal))}</span><span class="v4-row-chevron" aria-hidden="true">›</span></span>
+    </button>`;
   }).join("");
 
   const conflictMarkup = conflicts.map(conflict => `<div class="notice ${conflict.severity === "BLOCKING" ? "error" : "warning"}">
@@ -124,19 +151,23 @@ function previewMarkup(preview, registrations) {
     <p>${escapeHtml(WARNING_LABELS[conflict.code] || conflict.code)}</p>
   </div>`).join("");
 
+  const newCount = Number(summary.assignedAutomatically ?? editable.length ?? 0);
+  const existingCount = Number(summary.existingAssigned ?? existing.length ?? 0);
+
   return `<form class="m320-r3-preview" data-m320-r3-preview-form>
-    <div class="m320-r3-summary">
-      <div class="m320-r3-metric"><small>Offen</small><strong>${escapeHtml(summary.participantsToAssign ?? 0)}</strong></div>
-      <div class="m320-r3-metric"><small>Auto-Vorschläge</small><strong>${escapeHtml(summary.assignedAutomatically ?? 0)}</strong></div>
-      <div class="m320-r3-metric"><small>Bestehend</small><strong>${escapeHtml(summary.existingAssigned ?? 0)}</strong></div>
-      <div class="m320-r3-metric"><small>MANUAL fixiert</small><strong>${escapeHtml(summary.fixedManual ?? 0)}</strong></div>
-      <div class="m320-r3-metric"><small>Abweichungen</small><strong>${escapeHtml(summary.preferenceMismatched ?? 0)}</strong></div>
-      <div class="m320-r3-metric"><small>Unzugeordnet</small><strong>${escapeHtml(summary.unassigned ?? 0)}</strong></div>
-    </div>
+    <section class="m320-r3-overview">
+      <strong>${escapeHtml(newCount)} ${newCount === 1 ? "neue Zuordnung" : "neue Zuordnungen"} vorgeschlagen</strong>
+      <div class="m320-r3-overview-meta">
+        <small>${escapeHtml(existingCount)} bestehende ${existingCount === 1 ? "Zuordnung bleibt" : "Zuordnungen bleiben"} unverändert</small>
+        ${mismatches ? `<small class="m320-r3-overview-warning">${escapeHtml(mismatches)} ${mismatches === 1 ? "Buswunsch weicht ab" : "Buswünsche weichen ab"}</small>` : ""}
+        ${unassigned ? `<small class="m320-r3-overview-warning">${escapeHtml(unassigned)} ${unassigned === 1 ? "Person bleibt unzugeordnet" : "Personen bleiben unzugeordnet"}</small>` : ""}
+      </div>
+    </section>
     ${conflictMarkup ? `<section class="m320-r3-conflicts">${conflictMarkup}</section>` : ""}
-    <section><h3>Busse</h3><div class="m320-r3-bus-grid">${busCards || "<p>Keine aktiven Busse vorhanden.</p>"}</div></section>
-    <section><h3>Zuordnungen</h3><div class="m320-r3-list">${personCards || "<p>Keine ACTIVE-Teilnehmer vorhanden.</p>"}</div></section>
-    <p class="subtle">Algorithmus ${escapeHtml(preview.algorithmVersion || "–")} · bestehende MANUAL- und AUTO-Zuordnungen werden nicht automatisch verändert.</p>
+    <section class="m320-r3-section"><div class="m320-r3-section-head"><h3>Busse</h3><small>Belegung nach Anwendung</small></div><div class="m320-r3-bus-list">${busRows || "<p>Keine aktiven Busse vorhanden.</p>"}</div></section>
+    ${editable.length ? `<section class="m320-r3-section"><div class="m320-r3-section-head"><h3>Neu zuordnen</h3><small>${editable.length} ${editable.length === 1 ? "Person" : "Personen"}</small></div><div class="m320-r3-work-list">${workCards}</div></section>` : ""}
+    ${existing.length ? `<section class="m320-r3-section"><div class="m320-r3-section-head"><h3>Bereits zugeordnet</h3><small>Antippen für Details</small></div><div class="m320-r3-existing-list">${existingRows}</div></section>` : ""}
+    <p class="subtle">Bestehende MANUAL- und AUTO-Zuordnungen werden nicht automatisch verändert.</p>
   </form>`;
 }
 
@@ -168,7 +199,7 @@ async function openAssignmentPreview() {
   const proposals = Array.isArray(preview?.participantProposals) ? preview.participantProposals : [];
   const editable = proposals.filter(item => item.assignmentState === "PROPOSED_AUTO");
 
-  openDialog({
+  const dialog = openDialog({
     title: "Automatische Buszuordnung",
     kicker: activeTripLabel,
     body: previewMarkup(preview, registrations),
@@ -192,6 +223,18 @@ async function openAssignmentPreview() {
       }
     } : null,
     preserveParentOnSubmit: true
+  });
+
+  dialog.querySelectorAll("[data-m320-r3-existing-detail]").forEach(button => {
+    button.addEventListener("click", () => {
+      const proposal = proposals.find(item => item.participantId === button.dataset.m320R3ExistingDetail);
+      if (!proposal) return;
+      openDialog({
+        title: participantName(registrations, proposal.participantId),
+        kicker: "Buszuordnung",
+        body: proposalDetailMarkup(proposal, Array.isArray(preview?.buses) ? preview.buses : [])
+      });
+    });
   });
 }
 
