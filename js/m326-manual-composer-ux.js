@@ -1,4 +1,4 @@
-import { call, escapeAttr, escapeHtml, openDialog } from "./modules/common.js";
+import { call, closeAllDialogs, escapeAttr, escapeHtml, openDialog } from "./modules/common.js";
 
 const COMPOSER_SELECTOR = "#m326ManualComposerForm";
 const MANUAL_BULK_ACTION = "fanbus_registration_create_manual_bulk";
@@ -6,6 +6,8 @@ const tripDefaultBoardingStops = new Map();
 const tripBoardingStopLists = new Map();
 let latestTripStopsTripId = "";
 let pendingIndividualToast = null;
+let manualListBaseline = null;
+let pendingManualListRefresh = null;
 
 function selectOptionsMarkup(select) {
   if (!(select instanceof HTMLSelectElement)) return "";
@@ -485,6 +487,111 @@ function installToastCorrection() {
   }).observe(region, { childList: true });
 }
 
+function rememberManualListBaseline(event) {
+  const button = event.target.closest?.("[data-m310-add-registration]");
+  if (!button) return;
+  const dialog = document.getElementById("v4Dialog");
+  if (!dialog?.open) return;
+  if (dialog.querySelector("#v4DialogTitle")?.textContent?.trim() !== "Teilnehmer und Anmeldungen") return;
+  const body = dialog.querySelector("#v4DialogBody");
+  manualListBaseline = {
+    parentContextId: String(dialog.dataset.v4DialogContext || ""),
+    count: dialog.querySelectorAll("[data-m320-registration-record]").length,
+    scrollTop: Number(body?.scrollTop || 0)
+  };
+}
+
+function trackManualListRefreshRequest(event) {
+  if (event.detail?.action !== MANUAL_BULK_ACTION) return;
+  const form = document.querySelector(COMPOSER_SELECTOR);
+  const payload = event.detail?.payload;
+  if (!(form instanceof HTMLFormElement) || !payload) return;
+  const dialog = form.closest("dialog");
+  pendingManualListRefresh = {
+    tripId: String(payload.tripId || ""),
+    composerContextId: String(dialog?.dataset.v4DialogContext || ""),
+    parentContextId: String(manualListBaseline?.parentContextId || ""),
+    baselineCount: Number.isInteger(manualListBaseline?.count) ? manualListBaseline.count : null,
+    scrollTop: Number(manualListBaseline?.scrollTop || 0),
+    expectedCount: Array.isArray(payload.participants) ? payload.participants.length : 0
+  };
+}
+
+function freshParticipantsTrigger(tripId) {
+  if (!tripId) return null;
+  return [...document.querySelectorAll(`[data-m310-participants="${CSS.escape(tripId)}"]`)]
+    .find(button => button instanceof HTMLButtonElement && button.isConnected && !button.disabled)
+    || null;
+}
+
+function bindFreshListStackCleanup(dialog, freshContextId, staleContextId) {
+  const handleClose = event => {
+    if (event.detail?.contextId !== freshContextId) return;
+    dialog.removeEventListener("v4dialogclose", handleClose);
+    setTimeout(() => {
+      if (dialog.open && dialog.dataset.v4DialogContext === staleContextId) {
+        closeAllDialogs();
+      }
+    }, 0);
+  };
+  dialog.addEventListener("v4dialogclose", handleClose);
+}
+
+function reopenFreshParticipantList(pending, dialog) {
+  const trigger = freshParticipantsTrigger(pending.tripId);
+  if (!trigger) return;
+  const staleContextId = String(dialog.dataset.v4DialogContext || "");
+  const observer = new MutationObserver(() => {
+    if (!dialog.open) return;
+    const contextId = String(dialog.dataset.v4DialogContext || "");
+    const title = dialog.querySelector("#v4DialogTitle")?.textContent?.trim() || "";
+    if (!contextId || contextId === staleContextId || title !== "Teilnehmer und Anmeldungen") return;
+    observer.disconnect();
+    bindFreshListStackCleanup(dialog, contextId, staleContextId);
+    const body = dialog.querySelector("#v4DialogBody");
+    requestAnimationFrame(() => {
+      if (body?.isConnected) body.scrollTop = pending.scrollTop;
+    });
+  });
+  observer.observe(dialog, {
+    attributes: true,
+    attributeFilter: ["data-v4-dialog-context"],
+    childList: true,
+    subtree: true
+  });
+  trigger.click();
+  setTimeout(() => observer.disconnect(), 5000);
+}
+
+function ensureManualListRefresh(pending) {
+  const dialog = document.getElementById("v4Dialog");
+  if (!dialog?.open) return;
+  if (dialog.querySelector("#v4DialogTitle")?.textContent?.trim() !== "Teilnehmer und Anmeldungen") return;
+  if (pending.parentContextId && dialog.dataset.v4DialogContext !== pending.parentContextId) return;
+
+  const currentCount = dialog.querySelectorAll("[data-m320-registration-record]").length;
+  const expectedCount = Math.max(0, Number(pending.expectedCount || 0));
+  if (pending.baselineCount !== null && currentCount >= pending.baselineCount + expectedCount) return;
+  reopenFreshParticipantList(pending, dialog);
+}
+
+function scheduleManualListRefresh(event) {
+  if (event.detail?.action !== MANUAL_BULK_ACTION || !pendingManualListRefresh) return;
+  const result = event.detail?.data;
+  const pending = pendingManualListRefresh;
+  pendingManualListRefresh = null;
+  pending.expectedCount = Number(result?.participantCount || result?.bookingCount || pending.expectedCount || 0);
+
+  const dialog = document.getElementById("v4Dialog");
+  if (!dialog?.open || !pending.composerContextId) return;
+  const handleClose = closeEvent => {
+    if (closeEvent.detail?.contextId !== pending.composerContextId) return;
+    dialog.removeEventListener("v4dialogclose", handleClose);
+    setTimeout(() => ensureManualListRefresh(pending), 120);
+  };
+  dialog.addEventListener("v4dialogclose", handleClose);
+}
+
 function enhanceComposerForm(form) {
   if (!(form instanceof HTMLFormElement)) return;
   updateComposerPresentation(form);
@@ -507,9 +614,12 @@ function scanComposer(root = document) {
   root.querySelectorAll?.(COMPOSER_SELECTOR).forEach(enhanceComposerForm);
 }
 
+document.addEventListener("click", rememberManualListBaseline, true);
 window.addEventListener("pd-api-before-call", enhanceManualBulkRequest);
+window.addEventListener("pd-api-before-call", trackManualListRefreshRequest);
 window.addEventListener("pd-api-after-call", rememberTripContext);
 window.addEventListener("pd-api-after-call", rememberManualBulkResult);
+window.addEventListener("pd-api-after-call", scheduleManualListRefresh);
 installToastCorrection();
 scanComposer();
 
