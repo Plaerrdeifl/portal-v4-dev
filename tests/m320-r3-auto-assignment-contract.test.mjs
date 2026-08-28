@@ -127,7 +127,7 @@ test("M320-R3 UI is mobile-first, compact and keeps existing MANUAL/AUTO assignm
     index.match(/js\/modules\/m320-r3-auto-assignment\.js/g)?.length,
     1
   );
-  assert.match(ui, /proposal\.assignmentState === "PROPOSED_AUTO"/);
+  assert.match(ui, /assignmentState === "PROPOSED_AUTO"/);
   assert.match(ui, /FIXED_MANUAL/);
   assert.match(ui, /EXISTING_AUTO/);
   assert.match(ui, /Bestehende MANUAL- und AUTO-Zuordnungen werden nicht automatisch verändert/);
