@@ -129,6 +129,16 @@ function enhanceComposerCard(card, composerForm) {
   }
   card.dataset.m326OverviewEnhanced = "true";
 
+  // Die Originalkarte enthält die Editierfelder und zeichnet deshalb selbst
+  // bereits einen Rahmen. In der Übersicht bleibt nur die eine klickbare
+  // Portalkarte sichtbar – ohne zusätzlichen äußeren Containerrahmen.
+  card.classList.remove("v4-m326-composer-card");
+  card.style.setProperty("width", "100%", "important");
+  card.style.setProperty("padding", "0", "important");
+  card.style.setProperty("border", "0", "important");
+  card.style.setProperty("background", "transparent", "important");
+  card.style.setProperty("box-shadow", "none", "important");
+
   const source = document.createElement("div");
   source.dataset.m326ComposerSource = "true";
   source.hidden = true;
@@ -142,6 +152,9 @@ function enhanceComposerCard(card, composerForm) {
   button.type = "button";
   button.className = "v4-compact-record v4-interactive-card v4-m326-composer-overview";
   button.dataset.m326ComposerOpenDetail = "true";
+  button.style.setProperty("width", "100%", "important");
+  button.style.setProperty("max-width", "none", "important");
+  button.style.setProperty("margin", "0", "important");
   card.appendChild(button);
 
   source.addEventListener("change", () => refreshComposerCard(card));
@@ -180,7 +193,36 @@ function updateComposerPresentation(form) {
     legacySummary.style.setProperty("display", "none", "important");
   }
 
-  const consentText = form.querySelector(".v4-compact-check span");
+  const consent = form.querySelector("[data-m326-composer-consent], .v4-compact-check");
+  if (consent instanceof HTMLElement) {
+    consent.dataset.m326ComposerConsent = "true";
+    consent.classList.remove("v4-compact-check");
+    consent.classList.add("check-row");
+    consent.style.setProperty("width", "100%", "important");
+    consent.style.setProperty("white-space", "normal", "important");
+    consent.style.setProperty("align-items", "flex-start", "important");
+
+    const checkbox = consent.querySelector('input[type="checkbox"]');
+    if (checkbox instanceof HTMLInputElement) {
+      checkbox.style.setProperty("width", "18px", "important");
+      checkbox.style.setProperty("height", "18px", "important");
+      checkbox.style.setProperty("min-width", "18px", "important");
+      checkbox.style.setProperty("min-height", "18px", "important");
+      checkbox.style.setProperty("flex", "0 0 18px", "important");
+      checkbox.style.setProperty("margin", "2px 0 0", "important");
+    }
+
+    const text = consent.querySelector("span");
+    if (text instanceof HTMLElement) {
+      text.style.setProperty("min-width", "0", "important");
+      text.style.setProperty("white-space", "normal", "important");
+      text.style.setProperty("overflow", "visible", "important");
+      text.style.setProperty("text-overflow", "clip", "important");
+      text.style.setProperty("line-height", "1.35", "important");
+    }
+  }
+
+  const consentText = consent?.querySelector("span");
   if (consentText) {
     consentText.textContent = count === 1
       ? "Die Person hat die Teilnahmebedingungen akzeptiert und wurde auf die Datenschutzhinweise hingewiesen."
