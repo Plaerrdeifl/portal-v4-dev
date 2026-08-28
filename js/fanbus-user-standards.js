@@ -3,7 +3,8 @@ import {
   escapeAttr,
   escapeHtml,
   openDialog,
-  runWrite
+  runWrite,
+  showToast
 } from "./modules/common.js";
 
 const BUS_PREFERENCES = new Set(["EGAL", "RUHIG", "PARTY"]);
@@ -164,10 +165,11 @@ function bindStandardsButton() {
     try {
       await openFanbusStandards();
     } catch (error) {
-      const message = error?.message || "Fanbus-Standards konnten nicht geladen werden.";
-      window.dispatchEvent(new CustomEvent("pd-ui-toast", {
-        detail: { message, type: "error" }
-      }));
+      showToast(
+        error?.message || "Fanbus-Standards konnten nicht geladen werden.",
+        "error",
+        5200
+      );
     } finally {
       if (button.isConnected) button.disabled = false;
     }
