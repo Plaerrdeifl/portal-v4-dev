@@ -119,7 +119,7 @@ test("M320-R3 keeps the registered DEV greatest fix as an additive migration", a
   assert.match(fix, /'greatest'/);
 });
 
-test("M320-R3 UI is mobile-first and keeps existing MANUAL/AUTO assignments non-editable", async () => {
+test("M320-R3 UI is mobile-first, compact and keeps existing MANUAL/AUTO assignments non-editable", async () => {
   const index = await read("index.html");
   const ui = await read(uiPath);
 
@@ -130,7 +130,13 @@ test("M320-R3 UI is mobile-first and keeps existing MANUAL/AUTO assignments non-
   assert.match(ui, /proposal\.assignmentState === "PROPOSED_AUTO"/);
   assert.match(ui, /FIXED_MANUAL/);
   assert.match(ui, /EXISTING_AUTO/);
-  assert.match(ui, /bestehende MANUAL- und AUTO-Zuordnungen werden nicht automatisch verändert/);
+  assert.match(ui, /Bestehende MANUAL- und AUTO-Zuordnungen werden nicht automatisch verändert/);
+  assert.match(ui, /Neu zuordnen/);
+  assert.match(ui, /Bereits zugeordnet/);
+  assert.match(ui, /data-m320-r3-existing-detail/);
+  assert.match(ui, /Antippen für Details/);
+  assert.doesNotMatch(ui, /m320-r3-summary/);
+  assert.doesNotMatch(ui, /m320-r3-metric/);
   assert.match(ui, /@media\(max-width:620px\)/);
   assert.match(ui, /Daten haben sich geändert\. Bitte Zuordnung neu berechnen\./);
 });
