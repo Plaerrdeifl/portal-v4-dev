@@ -57,14 +57,16 @@ test("Fanbus standards UI uses shared portal dialog and form patterns without a 
   assert.doesNotMatch(ux, /createElement\("style"\)|style\.textContent|injectStyles/);
 });
 
-test("Personal bus defaults are applied only to visible/selectable bus preference controls", () => {
+test("Personal bus defaults are applied only after loading and only to selectable controls", () => {
+  assert.match(ux, /let selfPreferenceLoaded = false;/);
+  assert.match(ux, /if \(!selfPreferenceLoaded\) \{\s+void ensureSelfPreference\(\);\s+return;/);
   assert.match(ux, /if \(field\.hidden \|\| field\.closest\("\[hidden\]"\)\) return;/);
   assert.match(ux, /select\[data-m326-person-preference=/);
   assert.doesNotMatch(ux, /input\[data-m326-person-preference=/);
 });
 
 test("Personal standards module is cache-versioned in portal and public registration", () => {
-  const loader = /\.\/js\/fanbus-user-standards\.js\?v=20260828-p300-user-standards-r1/;
+  const loader = /\.\/js\/fanbus-user-standards\.js\?v=20260828-p300-user-standards-r2/;
   assert.match(index, loader);
   assert.match(registrationPage, loader);
 });
