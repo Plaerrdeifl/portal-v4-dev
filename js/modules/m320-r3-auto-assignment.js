@@ -252,7 +252,7 @@ function mountEntry() {
   section.dataset.m320R3AutoAssignmentEntry = "";
   section.innerHTML = `<div class="m320-r3-entry-copy">
     <strong>Automatische Buszuordnung</strong>
-    <p>Berechnet nur für noch nicht zugeordnete ACTIVE-Teilnehmer einen transparenten Vorschlag. Bestehende Zuordnungen bleiben stabil.</p>
+    <p>Neue Teilnehmer automatisch auf die verfügbaren Busse verteilen.</p>
   </div>
   <button class="button primary" type="button" data-m320-r3-preview>Zuordnung berechnen</button>`;
 
