@@ -34,6 +34,12 @@ function formatDate(value) {
   return Number.isNaN(date.getTime()) ? raw : DATE_FORMAT.format(date);
 }
 
+function formatShortDate(value) {
+  const raw = String(value || "").trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  return match ? `${match[3]}.${match[2]}.` : formatDate(value);
+}
+
 function eventTime(value) {
   const match = /^(\d{2}):(\d{2})/.exec(String(value || ""));
   return match ? `${match[1]}:${match[2]} Uhr` : "Uhrzeit offen";
@@ -87,7 +93,7 @@ function openWorkspace(view, extra = {}) {
 
 function tripOption(trip) {
   const venue = String(trip?.venue || "").trim() || "Ort offen";
-  return `<option value="${escapeAttr(trip.id)}">${escapeHtml(`${formatDate(trip.eventDate)} · ${venue}`)}</option>`;
+  return `<option value="${escapeAttr(trip.id)}">${escapeHtml(`${formatShortDate(trip.eventDate)} · ${venue}`)}</option>`;
 }
 
 function workspaceCard({ id, title, description }) {
