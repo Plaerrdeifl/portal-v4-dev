@@ -150,7 +150,7 @@ export async function hydratePage(key, context = {}) {
   }
   if (key === "bus-orga") {
     return feature(
-      "./modules/bus-orga-v3.js?v=20260829-m328-r1-next-trip-venue1&fix=20260829-m328-r1-next-trip-cancelled1",
+      "./modules/bus-orga-v3.js?v=20260829-m328-r1-next-trip-venue1&fix=20260829-m328-r1-next-trip-cancelled1&ux=20260829-m328-r1-guided-popup1",
       "hydrateBusOrgaV3",
       context
     );
