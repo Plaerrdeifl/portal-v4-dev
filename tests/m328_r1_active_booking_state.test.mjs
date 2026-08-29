@@ -44,10 +44,19 @@ test("M328 active participants are compact editable cards with live summaries", 
   assert.match(nativeSource, /\.m328-reg3-active-person-summary-chevron/);
 });
 
+test("M328 active participant clicks stay inside the person card", () => {
+  const clickHandler = nativeSource.match(/person\.addEventListener\("click", event => \{([\s\S]*?)\n    \}\);/)?.[1] || "";
+  assert.match(clickHandler, /event\.stopPropagation\(\)/);
+  assert.match(clickHandler, /event\.target\.closest\("button,input,select,textarea,a,label"\)/);
+  assert.match(clickHandler, /toggle\(\)/);
+  assert.ok(clickHandler.indexOf("event.stopPropagation()") < clickHandler.indexOf("event.target.closest"));
+});
+
 test("M328 page cache-busts the active participant card UX", () => {
   assert.match(pagesSource, /state=20260829-m328-r1-booking-state2/);
   assert.match(pagesSource, /cards=20260829-m328-r1-active-person-cards2/);
   assert.match(pagesSource, /rows=20260829-m328-r1-participant-row-edit1/);
   assert.match(pagesSource, /prepared=20260829-m328-r1-prepared-density1/);
+  assert.match(pagesSource, /participant-click=20260829-m328-r1-active-person-click1/);
   assert.match(pagesSource, /flow-wording2/);
 });

@@ -418,6 +418,7 @@ function decorateActiveParticipantCards(activeBooking) {
     };
 
     person.addEventListener("click", event => {
+      event.stopPropagation();
       if (event.target.closest("button,input,select,textarea,a,label")) return;
       toggle();
     });
