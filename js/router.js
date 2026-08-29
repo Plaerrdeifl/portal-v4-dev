@@ -56,6 +56,13 @@ const ROUTES = Object.freeze({
     icon: "🚌",
     order: 50
   },
+  "bus-orga": {
+    title: "Bus-Orga",
+    subtitle: "Fanbus-Verwaltungszentrale",
+    page: "bus-orga.html",
+    icon: "🚌",
+    system: true
+  },
   admin: {
     title: "Administration",
     subtitle: "Fanclub- und Portalverwaltung",
