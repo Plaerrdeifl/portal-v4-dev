@@ -155,10 +155,9 @@ function simplifyWorkspaceHeaders(root) {
 
 function ensureRegularRiderReactivate(root) {
   if (!root || !isM328BusOrgaContext()) return;
-  if (m328FanbusRouteParams().get("view") !== "regular-riders") return;
   if (!auth.hasCapability("fanbus.registrations.manage")) return;
 
-  const detail = root.querySelector(".v4-m326-rider-detail");
+  const detail = document.querySelector(".v4-m326-rider-detail");
   const actions = detail?.querySelector(".v4-m326-rider-detail-actions");
   if (!actions) return;
 
