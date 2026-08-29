@@ -1,4 +1,10 @@
 import { auth } from "./auth.js";
+import {
+  call,
+  closeAllDialogs,
+  runWrite,
+  showToast
+} from "./modules/common.js";
 
 export const M328_PENDING_ACTION_KEY = "pd:m328:pendingFanbusAction";
 
@@ -12,6 +18,7 @@ const BUS_ORGA_CAPABILITIES = Object.freeze([
 let observer = null;
 let syncQueued = false;
 let listenersBound = false;
+let lastRegularRiderId = "";
 
 export function hasM328BusOrgaAccess() {
   return BUS_ORGA_CAPABILITIES.some(code => auth.hasCapability(code));
@@ -146,6 +153,59 @@ function simplifyWorkspaceHeaders(root) {
   root.querySelector("[data-m310-fanbus-settings] .v4-m310-settings-section-heading .subtle")?.remove();
 }
 
+function ensureRegularRiderReactivate(root) {
+  if (!root || !isM328BusOrgaContext()) return;
+  if (m328FanbusRouteParams().get("view") !== "regular-riders") return;
+  if (!auth.hasCapability("fanbus.registrations.manage")) return;
+
+  const detail = root.querySelector(".v4-m326-rider-detail");
+  const actions = detail?.querySelector(".v4-m326-rider-detail-actions");
+  if (!actions) return;
+
+  const existing = actions.querySelector("[data-m328-regular-rider-activate]");
+  if (actions.querySelector("[data-m326-detail-deactivate]")) {
+    existing?.remove();
+    return;
+  }
+  if (!lastRegularRiderId || existing) return;
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "button primary";
+  button.dataset.m328RegularRiderActivate = lastRegularRiderId;
+  button.textContent = "Aktivieren";
+  actions.appendChild(button);
+}
+
+async function reactivateRegularRider(id) {
+  const riderId = String(id || "").trim();
+  if (!riderId) return;
+  try {
+    const detail = await call("fanbus_regular_rider_detail", { id: riderId });
+    if (detail?.isActive === true) {
+      showToast("Stammfahrer ist bereits aktiv.", "success", 2200);
+      closeAllDialogs();
+      return;
+    }
+
+    await runWrite(() => call("fanbus_regular_rider_activate", {
+      id: riderId,
+      expectedRevision: detail.revision
+    }), "Stammfahrer aktiviert.");
+
+    const card = document.querySelector(
+      `[data-m326-open-rider="${CSS.escape(riderId)}"]`
+    );
+    const meta = card?.querySelector("small");
+    if (meta) meta.textContent = String(meta.textContent || "").replace(/^Inaktiv\b/, "Aktiv");
+
+    closeAllDialogs();
+    queueSync();
+  } catch (error) {
+    showToast(error?.message || "Stammfahrer konnte nicht aktiviert werden.", "error", 5200);
+  }
+}
+
 function visibleTripTrigger(tripId) {
   const escaped = CSS.escape(tripId);
   const candidates = [...document.querySelectorAll(`[data-m310-open-trip="${escaped}"]`)];
@@ -213,6 +273,7 @@ function sync() {
   ensurePortalEntry(root);
   ensureOrgaReturn(root);
   simplifyWorkspaceHeaders(root);
+  ensureRegularRiderReactivate(root);
   runPendingAction(root);
 }
 
@@ -230,6 +291,19 @@ function bindGlobalListeners() {
   listenersBound = true;
   window.addEventListener("hashchange", queueSync);
   document.addEventListener("click", event => {
+    const riderCard = event.target?.closest?.("[data-m326-open-rider]");
+    if (riderCard && isM328BusOrgaContext()) {
+      lastRegularRiderId = String(riderCard.dataset.m326OpenRider || "");
+    }
+
+    const activate = event.target?.closest?.("[data-m328-regular-rider-activate]");
+    if (activate && isM328BusOrgaContext()) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      void reactivateRegularRider(activate.dataset.m328RegularRiderActivate);
+      return;
+    }
+
     const back = event.target?.closest?.(
       "[data-m325-back],[data-m310-settings-back],[data-m326-back]"
     );
