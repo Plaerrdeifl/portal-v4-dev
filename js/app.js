@@ -8,7 +8,7 @@ import {
 } from "./router.js";
 import {
   hydratePage
-} from "./pages.js?v=20260802-pwa-install-guidance-r1";
+} from "./pages.js?v=20260829-m328-r1-native-actions1";
 import {
   activateUpdate,
   initializeInstall
@@ -69,136 +69,74 @@ function connectionState() {
   const current = auth.current();
 
   if (!navigator.onLine) {
-    return {
-      label: "Offline",
-      type: "error"
-    };
+    return { label: "Offline", type: "error" };
   }
 
   if (!CONFIG.supabase.configured) {
-    return {
-      label: "Fehler",
-      type: "error"
-    };
+    return { label: "Fehler", type: "error" };
   }
 
   if (current.error || apiActivity.error) {
-    return {
-      label: "Fehler",
-      type: "error"
-    };
+    return { label: "Fehler", type: "error" };
   }
 
   if (current.busy || apiActivity.busy) {
-    return {
-      label: "Lädt …",
-      type: "loading"
-    };
+    return { label: "Lädt …", type: "loading" };
   }
 
   if (!current.authenticated) {
-    return {
-      label: "Live",
-      type: "success"
-    };
+    return { label: "Live", type: "success" };
   }
 
   if (current.status === "ACTIVE") {
-    return {
-      label: "Live",
-      type: "success"
-    };
+    return { label: "Live", type: "success" };
   }
 
   if (current.status === "BLOCKED") {
-    return {
-      label: "Fehler",
-      type: "error"
-    };
+    return { label: "Fehler", type: "error" };
   }
 
-  return {
-    label: "Lädt …",
-    type: "loading"
-  };
+  return { label: "Lädt …", type: "loading" };
 }
 
 function afterNextPaint() {
   return new Promise(resolve => {
-    requestAnimationFrame(
-      () => requestAnimationFrame(resolve)
-    );
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
   });
 }
 
 function replaceHash(target) {
-  const normalized = String(
-    target || "#/login"
-  );
-
+  const normalized = String(target || "#/login");
   const hash = normalized.startsWith("#/")
     ? normalized
     : "#/" + normalized.replace(/^#?\/?/, "");
-
   history.replaceState(null, "", hash);
 }
 
 function rememberedTarget(current) {
-  if (current.status !== "ACTIVE") {
-    return "";
-  }
-
+  if (current.status !== "ACTIVE") return "";
   const remembered = auth.consumePostLoginRoute();
+  if (!remembered || !remembered.startsWith("#/")) return "";
 
-  if (
-    !remembered
-    || !remembered.startsWith("#/")
-  ) {
+  const key = remembered.replace(/^#\/?/, "").split(/[?&]/)[0];
+  if (!routes()[key] || routes()[key].public || key === "profile" || !auth.canAccessRoute(key)) {
     return "";
   }
-
-  const key = remembered
-    .replace(/^#\/?/, "")
-    .split(/[?&]/)[0];
-
-  if (
-    !routes()[key]
-    || routes()[key].public
-    || key === "profile"
-    || !auth.canAccessRoute(key)
-  ) {
-    return "";
-  }
-
   return remembered;
 }
 
-function authenticatedTarget(
-  current,
-  consumeRemembered = false
-) {
-  if (current.status !== "ACTIVE") {
-    return "#/profile";
-  }
-
+function authenticatedTarget(current, consumeRemembered = false) {
+  if (current.status !== "ACTIVE") return "#/profile";
   if (consumeRemembered) {
     const remembered = rememberedTarget(current);
-
-    if (remembered) {
-      return remembered;
-    }
+    if (remembered) return remembered;
   }
-
   return "#/dashboard";
 }
 
 function updateConnectionChrome() {
   const connection = connectionState();
-
-  setConnectionStatus(
-    connection.label,
-    connection.type
-  );
+  setConnectionStatus(connection.label, connection.type);
 }
 
 function updateChrome() {
@@ -214,49 +152,33 @@ function enforceRoute(key) {
 
   if (!route) {
     return current.authenticated
-      ? authenticatedTarget(current)
-          .replace(/^#\//, "")
+      ? authenticatedTarget(current).replace(/^#\//, "")
       : "login";
   }
 
   if (key === "login") {
-    if (!current.authenticated) {
-      return "login";
-    }
-
-    return current.status === "ACTIVE"
-      ? "dashboard"
-      : "profile";
+    if (!current.authenticated) return "login";
+    return current.status === "ACTIVE" ? "dashboard" : "profile";
   }
 
   if (!current.authenticated) {
     auth.rememberPostLoginRoute(location.hash);
-
     return "login";
   }
 
-  if (auth.requiresProfile()) {
-    return "profile";
-  }
-
-  if (!auth.canAccessRoute(key)) {
-    return "dashboard";
-  }
-
+  if (auth.requiresProfile()) return "profile";
+  if (!auth.canAccessRoute(key)) return "dashboard";
   return key;
 }
 
 async function renderRoute() {
-  if (legacyRouteRedirect()) {
-    return;
-  }
+  if (legacyRouteRedirect()) return;
 
   const requested = currentRoute();
   const allowed = enforceRoute(requested);
 
   if (allowed !== requested) {
     replaceHash("#/" + allowed);
-
     return renderRoute();
   }
 
@@ -265,149 +187,60 @@ async function renderRoute() {
 
   if (allowed === "login") {
     updateChrome();
-
-    await showLogin({
-      onCredential: signInWithGoogleCredential
-    });
-
+    await showLogin({ onCredential: signInWithGoogleCredential });
     return;
   }
 
   const route = routes()[allowed];
-
   setRouteHeader(route);
-
   const view = document.getElementById("view");
-
-  if (!view) {
-    throw new Error(
-      "Der Portal-Inhaltsbereich fehlt."
-    );
-  }
+  if (!view) throw new Error("Der Portal-Inhaltsbereich fehlt.");
 
   try {
-    const html = await loadFragment(
-      "./pages/" + route.page
-    );
-
-    if (
-      renderId !== renderSequence
-      || currentRoute() !== allowed
-    ) {
-      return;
-    }
+    const html = await loadFragment("./pages/" + route.page);
+    if (renderId !== renderSequence || currentRoute() !== allowed) return;
 
     view.innerHTML = html;
-
     await hydratePage(allowed, {
-      isCurrent: () =>
-        renderId === renderSequence
-        && currentRoute() === allowed
+      isCurrent: () => renderId === renderSequence && currentRoute() === allowed
     });
 
-    if (renderId !== renderSequence) {
-      return;
-    }
-
+    if (renderId !== renderSequence) return;
     syncLegalLinks();
     updateChrome();
-
-    view.focus({
-      preventScroll: true
-    });
-
-    view.scrollTo({
-      top: 0,
-      behavior: "instant"
-    });
-
+    view.focus({ preventScroll: true });
+    view.scrollTo({ top: 0, behavior: "instant" });
     await afterNextPaint();
-
-    showApp({
-      authLayout: allowed === "profile"
-    });
-  }
-  catch (error) {
-    if (renderId !== renderSequence) {
-      return;
-    }
-
-    const message = String(
-      error?.message || error
-    );
-
-    view.innerHTML =
-      '<section class="page">' +
-      '<article class="card notice error">' +
-      '<h2>Seite konnte nicht geladen werden</h2>' +
-      "<p>" + message + "</p>" +
-      "</article>" +
-      "</section>";
-
-    showApp({
-      authLayout: allowed === "profile"
-    });
-
-    showToast(
-      message || "Seite konnte nicht geladen werden.",
-      "error",
-      7000
-    );
+    showApp({ authLayout: allowed === "profile" });
+  } catch (error) {
+    if (renderId !== renderSequence) return;
+    const message = String(error?.message || error);
+    view.innerHTML = '<section class="page"><article class="card notice error"><h2>Seite konnte nicht geladen werden</h2><p>' + message + '</p></article></section>';
+    showApp({ authLayout: allowed === "profile" });
+    showToast(message || "Seite konnte nicht geladen werden.", "error", 7000);
   }
 }
 
 function handleAuthChange() {
-  if (
-    authOperationActive
-    || explicitRefreshActive
-    || authEventQueued
-  ) {
-    return;
-  }
-
+  if (authOperationActive || explicitRefreshActive || authEventQueued) return;
   authEventQueued = true;
 
   queueMicrotask(async () => {
     authEventQueued = false;
-
-    if (
-      authOperationActive
-      || explicitRefreshActive
-    ) {
-      return;
-    }
+    if (authOperationActive || explicitRefreshActive) return;
 
     const current = auth.current();
+    if (current.busy || current.status === "LOADING") return;
 
-    if (
-      current.busy
-      || current.status === "LOADING"
-    ) {
-      return;
-    }
-
-    const renderRelevantChange =
-      Number(current.renderRevision || 0)
-      !== lastAuthRenderRevision;
-
+    const renderRelevantChange = Number(current.renderRevision || 0) !== lastAuthRenderRevision;
     syncAuthRenderRevision(current);
-
     let routeChanged = false;
 
-    if (
-      !current.authenticated
-      && currentRoute() !== "login"
-    ) {
+    if (!current.authenticated && currentRoute() !== "login") {
       replaceHash("#/login");
       routeChanged = true;
-    }
-    else if (
-      current.authenticated
-      && currentRoute() === "login"
-    ) {
-      replaceHash(
-        authenticatedTarget(current)
-      );
+    } else if (current.authenticated && currentRoute() === "login") {
+      replaceHash(authenticatedTarget(current));
       routeChanged = true;
     }
 
@@ -415,139 +248,67 @@ function handleAuthChange() {
       await renderRoute();
       return;
     }
-
     updateConnectionChrome();
   });
 }
 
-async function signInWithGoogleCredential(
-  response,
-  nonce
-) {
-  if (authOperationActive) {
-    throw new Error(
-      "Eine Anmeldung wird bereits verarbeitet."
-    );
-  }
-
+async function signInWithGoogleCredential(response, nonce) {
+  if (authOperationActive) throw new Error("Eine Anmeldung wird bereits verarbeitet.");
   authOperationActive = true;
-
-  showChecking(
-    "Google-Anmeldung wird geprüft …",
-    "Portalstatus und Berechtigungen werden geladen."
-  );
+  showChecking("Google-Anmeldung wird geprüft …", "Portalstatus und Berechtigungen werden geladen.");
 
   try {
-    const current =
-      await auth.signInWithGoogleIdToken(
-        response?.credential,
-        nonce
-      );
-
+    const current = await auth.signInWithGoogleIdToken(response?.credential, nonce);
     syncAuthRenderRevision(current);
-
-    replaceHash(
-      authenticatedTarget(current, true)
-    );
-
+    replaceHash(authenticatedTarget(current, true));
     await renderRoute();
-
-    if (current.status === "ACTIVE") {
-      showToast(
-        "Anmeldung erfolgreich.",
-        "success"
-      );
-    }
-  }
-  catch (error) {
+    if (current.status === "ACTIVE") showToast("Anmeldung erfolgreich.", "success");
+  } catch (error) {
     await showLogin({
       onCredential: signInWithGoogleCredential,
-      errorMessage:
-        error?.message
-        || "Anmeldung konnte nicht abgeschlossen werden."
+      errorMessage: error?.message || "Anmeldung konnte nicht abgeschlossen werden."
     });
-
     throw error;
-  }
-  finally {
+  } finally {
     authOperationActive = false;
   }
 }
 
 async function refreshCurrentView() {
-  if (explicitRefreshActive) {
-    return;
-  }
-
+  if (explicitRefreshActive) return;
   explicitRefreshActive = true;
-
   try {
-    if (auth.isAuthenticated()) {
-      await auth.refresh();
-    }
-
+    if (auth.isAuthenticated()) await auth.refresh();
     syncAuthRenderRevision();
     await renderRoute();
-  }
-  catch (error) {
-    showToast(
-      error?.message
-      || "Aktualisierung fehlgeschlagen.",
-      "error",
-      6500
-    );
-  }
-  finally {
+  } catch (error) {
+    showToast(error?.message || "Aktualisierung fehlgeschlagen.", "error", 6500);
+  } finally {
     explicitRefreshActive = false;
   }
 }
 
 async function logout() {
-  if (authOperationActive) {
-    return;
-  }
-
+  if (authOperationActive) return;
   authOperationActive = true;
-
-  showChecking(
-    "Abmeldung wird abgeschlossen …",
-    "Die lokale Portalsitzung wird sicher beendet."
-  );
-
+  showChecking("Abmeldung wird abgeschlossen …", "Die lokale Portalsitzung wird sicher beendet.");
   try {
     await auth.logout();
     syncAuthRenderRevision();
-
     replaceHash("#/login");
-
     await renderRoute();
-
-    showToast(
-      "Du wurdest abgemeldet.",
-      "success"
-    );
-  }
-  catch (error) {
-    showToast(
-      error?.message || "Abmeldung fehlgeschlagen.",
-      "error",
-      6500
-    );
-
+    showToast("Du wurdest abgemeldet.", "success");
+  } catch (error) {
+    showToast(error?.message || "Abmeldung fehlgeschlagen.", "error", 6500);
     await renderRoute();
-  }
-  finally {
+  } finally {
     authOperationActive = false;
   }
 }
 
 async function bootstrap() {
   initializeAuthGate();
-
-  showOpening(
-    "Portal wird geöffnet …",
-    "Sichere Anmeldung wird vorbereitet."
-  );
+  showOpening("Portal wird geöffnet …", "Sichere Anmeldung wird vorbereitet.");
 
   const platformStatus = await platformMode.refresh();
   renderPlatformMode(platformStatus);
@@ -560,105 +321,44 @@ async function bootstrap() {
   }
 
   await mountComponents();
-
-  bindGlobalUi({
-    onRefresh: refreshCurrentView,
-    onLogout: logout
-  });
-
+  bindGlobalUi({ onRefresh: refreshCurrentView, onLogout: logout });
   initializeInstall();
 
-  window.addEventListener(
-    "pd-update-available",
-    () => {
-      const banner =
-        document.getElementById("updateBanner");
+  window.addEventListener("pd-update-available", () => {
+    const banner = document.getElementById("updateBanner");
+    if (banner) banner.hidden = false;
+  });
 
-      if (banner) {
-        banner.hidden = false;
-      }
-    }
-  );
+  document.getElementById("updateButton")?.addEventListener("click", () => activateUpdate());
+  document.getElementById("updateDismiss")?.addEventListener("click", () => {
+    const banner = document.getElementById("updateBanner");
+    if (banner) banner.hidden = true;
+  });
 
-  document.getElementById("updateButton")
-    ?.addEventListener(
-      "click",
-      () => activateUpdate()
-    );
+  window.addEventListener("hashchange", () => {
+    if (!authOperationActive) void renderRoute();
+  });
 
-  document.getElementById("updateDismiss")
-    ?.addEventListener(
-      "click",
-      () => {
-        const banner =
-          document.getElementById("updateBanner");
+  window.addEventListener("pd-api-state", event => {
+    apiActivity = event.detail || api.activity();
+    const connection = connectionState();
+    setConnectionStatus(connection.label, connection.type);
+  });
 
-        if (banner) {
-          banner.hidden = true;
-        }
-      }
-    );
-
-
-  window.addEventListener(
-    "hashchange",
-    () => {
-      if (!authOperationActive) {
-        void renderRoute();
-      }
-    }
-  );
-
-  window.addEventListener(
-    "pd-api-state",
-    event => {
-      apiActivity =
-        event.detail || api.activity();
-
-      const connection = connectionState();
-
-      setConnectionStatus(
-        connection.label,
-        connection.type
-      );
-    }
-  );
-
-  window.addEventListener(
-    "online",
-    refreshCurrentView
-  );
-
-  window.addEventListener(
-    "offline",
-    updateChrome
-  );
+  window.addEventListener("online", refreshCurrentView);
+  window.addEventListener("offline", updateChrome);
 
   await auth.initialize();
-
-  window.addEventListener(
-    "pd-auth-change",
-    handleAuthChange
-  );
+  window.addEventListener("pd-auth-change", handleAuthChange);
 
   const current = auth.current();
   syncAuthRenderRevision(current);
   const hadInitialHash = Boolean(location.hash);
 
   if (!hadInitialHash) {
-    replaceHash(
-      current.authenticated
-        ? authenticatedTarget(current)
-        : "#/login"
-    );
-  }
-  else if (
-    current.authenticated
-    && currentRoute() === "login"
-  ) {
-    replaceHash(
-      authenticatedTarget(current)
-    );
+    replaceHash(current.authenticated ? authenticatedTarget(current) : "#/login");
+  } else if (current.authenticated && currentRoute() === "login") {
+    replaceHash(authenticatedTarget(current));
   }
 
   await renderRoute();
@@ -666,11 +366,8 @@ async function bootstrap() {
 
 bootstrap().catch(async error => {
   console.error(error);
-
   await showLogin({
     onCredential: signInWithGoogleCredential,
-    errorMessage:
-      error?.message
-      || "Portalstart fehlgeschlagen."
+    errorMessage: error?.message || "Portalstart fehlgeschlagen."
   });
 });
