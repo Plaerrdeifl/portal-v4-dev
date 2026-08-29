@@ -34,6 +34,9 @@ function normalizeBusOrgaHeader() {
   const root = document.getElementById("m328BusOrgaPage");
   if (!root) return;
   root.querySelector(".m328-bus-orga-kicker")?.remove();
+  root.querySelector("#m328BusOrgaClose")?.remove();
+  const head = root.querySelector(".m328-bus-orga-head");
+  if (head) head.style.gridTemplateColumns = "auto minmax(0,1fr)";
   const title = root.querySelector(".m328-bus-orga-head h2");
   if (title) title.textContent = "Bus-Orga";
 }
