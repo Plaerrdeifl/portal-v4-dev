@@ -56,17 +56,21 @@ test("M328 registration header directly shows venue with date and time below", (
   assert.doesNotMatch(registrationSource, /P300/);
 });
 
-test("M328 registration starts with three closed, equal input modes", () => {
+test("M328 registration starts with one concise new-booking heading and three pill modes", () => {
+  assert.match(registrationSource, /<h3>Neue Buchung<\/h3><p id="m328Reg3NewBookingHint"[^>]*>Die nächste ausgewählte Person startet eine Buchung\.<\/p>/);
+  assert.doesNotMatch(registrationSource, /<h3>Person hinzufügen<\/h3>|<strong>Neue Buchung<\/strong>|Die nächste ausgewählte Person startet eine neue Buchung\./);
   assert.match(registrationSource, /data-m328-reg3-special="KNOWN">Bekannte Personen<\/button>/);
-  assert.match(registrationSource, /data-m328-reg3-special="GUEST">Gast hinzufügen<\/button>/);
-  assert.match(registrationSource, /data-m328-reg3-special="GROUP">Gruppe auswählen<\/button>/);
+  assert.match(registrationSource, /data-m328-reg3-special="GUEST">Gast<\/button>/);
+  assert.match(registrationSource, /data-m328-reg3-special="GROUP">Gruppe<\/button>/);
   assert.match(registrationSource, /id="m328Reg3InputPanel" class="m328-reg3-special-panel" hidden/);
   const renderPage = extractedFunction("renderPage");
   assert.doesNotMatch(renderPage, /id="m328Reg3Search"/);
   assert.doesNotMatch(renderPage, /renderSearch\(state\)/);
-  assert.match(registrationSource, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
-  assert.match(nativeSource, /@media\(max-width:520px\)\{[^]*?\.m328-reg3-special-actions\{[^}]*grid-template-columns:1fr!important/);
-  assert.match(nativeSource, /\.m328-reg3-special-actions \.button\{[^}]*white-space:nowrap/);
+  assert.match(registrationSource, /class="m328-reg3-filter m328-reg3-mode-filter"[^>]*data-m328-reg3-special="KNOWN"/);
+  assert.match(nativeSource, /button\.classList\.add\("m328-reg3-filter", "m328-reg3-mode-filter"\)/);
+  assert.match(nativeSource, /\.m328-reg3-special-actions\{[^}]*display:flex!important;[^}]*overflow-x:auto;[^}]*padding:8px 10px 9px 0;[^}]*scroll-padding-right:10px/);
+  assert.match(registrationSource, /\.m328-reg3-filters\{[^}]*padding:8px 10px 9px 0;[^}]*scroll-padding-right:10px/);
+  assert.match(nativeSource, /\.m328-reg3-mode-filter\{[^}]*white-space:nowrap/);
 });
 
 test("M328 known-person mode mounts the unchanged search and source filters on demand", () => {
@@ -80,6 +84,13 @@ test("M328 known-person mode mounts the unchanged search and source filters on d
   assert.match(registrationSource, /label: "Stammfahrer"/);
   assert.match(registrationSource, /\.slice\(0, 50\)/);
   assert.match(registrationSource, /addToTargetOrNew\(state, choiceToParticipant\(state, choice\)\)/);
+});
+
+test("M328 known-person selection opens the decision without a success toast", () => {
+  const paintSearchResults = extractedFunction("paintSearchResults");
+  assert.match(paintSearchResults, /addToTargetOrNew\(state, choiceToParticipant\(state, choice\)\)/);
+  assert.doesNotMatch(paintSearchResults, /showToast\([^)]*"success"|hinzugefügt\./);
+  assert.match(paintSearchResults, /showToast\(error\?\.message \|\| "Person konnte nicht hinzugefügt werden\.", "warning", 4200\)/);
 });
 
 test("M328 input modes replace one shared panel and never render side by side", () => {
@@ -133,6 +144,9 @@ test("M328 guides the first person into a deliberate shared-or-complete decision
   assert.match(registrationSource, /Wie möchtest du fortfahren\?/);
   assert.match(registrationSource, /Personen, die gemeinsam hinzugefügt werden, bilden eine zusammenhängende Buchung und erhalten dieselbe Buchungsnummer\./);
   assert.match(registrationSource, /data-m328-reg3-target-more>Weitere Person hinzufügen<\/button>/);
+  assert.match(nativeSource, /target\.classList\.toggle\("is-decision-modal", decision\)/);
+  assert.match(nativeSource, /target\.setAttribute\("role", "dialog"\)/);
+  assert.match(nativeSource, /ensureRegistrationDecisionBackdrop\(\)/);
 });
 
 test("M328 adds second and third people to the explicitly activated booking", () => {
@@ -163,7 +177,8 @@ test("M328 completing a booking makes the next person start a new booking", () =
   assert.equal(state.bookings[1].participants.length, 1);
   assert.equal(state.targetBookingId, null);
   assert.equal(state.decisionBookingId, "booking-2");
-  assert.match(registrationSource, /<strong>Neue Buchung<\/strong><span>Die nächste ausgewählte Person startet eine neue Buchung\.<\/span>/);
+  assert.match(registrationSource, /target\.hidden = isNewBooking/);
+  assert.match(registrationSource, /newBookingHint\.hidden = !isNewBooking/);
 });
 
 test("M328 reactivates an existing card and activates a new group immediately", () => {
@@ -200,6 +215,8 @@ test("M328 uses only the non-wrapping booking completion action", () => {
   assert.match(registrationSource, /\.m328-reg3-target-action\{[^}]*white-space:nowrap/);
   assert.match(registrationSource, /@media\(max-width:520px\)\{\.m328-reg3-target\{[^}]*flex-direction:column/);
   assert.doesNotMatch(registrationSource, /data-m328-reg3-add-to-booking|＋ Person/);
+  assert.match(nativeSource, /footer\.appendChild\(complete\);\s*activeBooking\.appendChild\(footer\)/);
+  assert.match(nativeSource, /\.m328-reg3-booking-complete\{[^}]*border-top:1px solid var\(--line\)/);
 });
 
 test("M328 renders every prepared participant through one complete compact overview", () => {

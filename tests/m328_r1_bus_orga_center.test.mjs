@@ -45,7 +45,7 @@ test("M328 quick registration stays inside Bus-Orga", () => {
   assert.match(dashboardSource, /view:\s*"registration"/);
   assert.match(nativeSource, /view === "registration"/);
   assert.match(nativeSource, /hydrateBusOrgaRegistrationV3\(context\)/);
-  assert.match(nativeSource, /bus-orga-registration-v3\.js\?v=20260829-m328-r1-person-search1/);
+  assert.match(nativeSource, /bus-orga-registration-v3\.js\?v=20260829-m328-r1-registration-ux-correction1/);
   assert.doesNotMatch(dashboardSource, /openFanbusContext\("add-registration"/);
 });
 
@@ -56,7 +56,7 @@ test("M328 next trip prefers the actual venue over a technical display title", (
   assert.match(block, /escapeHtml\(title\)/);
 });
 
-test("M328 registration starts with closed, explicit known-person, guest and group modes", () => {
+test("M328 registration starts with a concise new-booking heading and pill modes", () => {
   assert.match(registrationSource, /<h2>Anmeldung • \$\{escapeHtml\(venue\)\}<\/h2>/);
   assert.match(registrationSource, /shortDate\(state\.trip\.eventDate\)/);
   assert.match(registrationSource, /eventTime\(state\.trip\.eventTime\)/);
@@ -67,8 +67,10 @@ test("M328 registration starts with closed, explicit known-person, guest and gro
   assert.match(registrationSource, /label: "Portaluser"/);
   assert.match(registrationSource, /label: "Stammfahrer"/);
   assert.match(registrationSource, /data-m328-reg3-special="KNOWN">Bekannte Personen<\/button>/);
-  assert.match(registrationSource, /data-m328-reg3-special="GUEST">Gast hinzufügen<\/button>/);
-  assert.match(registrationSource, /data-m328-reg3-special="GROUP">Gruppe auswählen<\/button>/);
+  assert.match(registrationSource, /<h3>Neue Buchung<\/h3>/);
+  assert.match(registrationSource, /Die nächste ausgewählte Person startet eine Buchung\./);
+  assert.match(registrationSource, /data-m328-reg3-special="GUEST">Gast<\/button>/);
+  assert.match(registrationSource, /data-m328-reg3-special="GROUP">Gruppe<\/button>/);
   assert.match(registrationSource, /id="m328Reg3InputPanel" class="m328-reg3-special-panel" hidden/);
   assert.doesNotMatch(registrationSource, /Ausgewählte Fahrt/);
   assert.doesNotMatch(registrationSource, /\.focus\s*\(/);

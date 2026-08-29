@@ -1,5 +1,5 @@
 import { hydrateBusOrgaV2 } from "./bus-orga-v2.js?v=20260829-m328-r1-next-trip-venue1";
-import { hydrateBusOrgaRegistrationV3 } from "./bus-orga-registration-v3.js?v=20260829-m328-r1-person-search1";
+import { hydrateBusOrgaRegistrationV3 } from "./bus-orga-registration-v3.js?v=20260829-m328-r1-registration-ux-correction1";
 import { hydrateBusOrgaBookings } from "./bus-orga-bookings.js?v=20260829-m328-r1-native-actions1";
 import { hydrateBusOrgaTripEdit } from "./bus-orga-trip-edit.js?v=20260829-m328-r1-native-actions1";
 
@@ -54,14 +54,15 @@ function ensureRegistrationBookingUxStyle() {
       align-items:center;
       gap:6px!important;
       overflow-x:auto;
-      padding:8px 0 9px;
+      padding:8px 10px 9px 0;
+      scroll-padding-right:10px;
       scrollbar-width:none;
       -webkit-overflow-scrolling:touch;
     }
     .m328-reg3-special-actions::-webkit-scrollbar{
       display:none;
     }
-    .m328-reg3-special-actions .button{
+    .m328-reg3-mode-filter{
       white-space:nowrap;
     }
     .m328-reg3-guest-grid{
@@ -232,8 +233,8 @@ function splitRegistrationConsentAndSubmit() {
 function normalizeRegistrationSpecialActions() {
   const actions = [
     [document.querySelector('[data-m328-reg3-special="KNOWN"]'), "Bekannte Personen"],
-    [document.querySelector('[data-m328-reg3-special="GUEST"]'), "Gast hinzufügen"],
-    [document.querySelector('[data-m328-reg3-special="GROUP"]'), "Gruppe auswählen"]
+    [document.querySelector('[data-m328-reg3-special="GUEST"]'), "Gast"],
+    [document.querySelector('[data-m328-reg3-special="GROUP"]'), "Gruppe"]
   ];
   actions.forEach(([button, label]) => {
     if (!button) return;

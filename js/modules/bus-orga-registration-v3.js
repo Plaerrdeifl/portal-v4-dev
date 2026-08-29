@@ -239,9 +239,11 @@ function ensureStyle() {
     .m328-reg3-panel{padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
     .m328-reg3-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px}
     .m328-reg3-panel-head h3{margin:0;font-size:1rem}
+    .m328-reg3-panel-hint{margin:4px 0 0;color:var(--muted);font-size:.73rem;line-height:1.35}
+    .m328-reg3-panel-hint[hidden]{display:none!important}
     .m328-reg3-search-label{display:grid;gap:5px;font-size:.74rem;font-weight:800}
     .m328-reg3-search{width:100%;min-height:46px;font-size:1rem}
-    .m328-reg3-filters{display:flex;gap:6px;overflow-x:auto;padding:8px 0 9px;scrollbar-width:none}
+    .m328-reg3-filters{display:flex;gap:6px;overflow-x:auto;padding:8px 10px 9px 0;scroll-padding-right:10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
     .m328-reg3-filters::-webkit-scrollbar{display:none}
     .m328-reg3-filter{flex:0 0 auto;min-height:34px;padding:5px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:inherit;font-size:.72rem;font-weight:800}
     .m328-reg3-filter.is-active{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--surface));color:var(--accent)}
@@ -253,9 +255,9 @@ function ensureStyle() {
     .m328-reg3-target[hidden]{display:none!important}
     .m328-reg3-target-copy{display:grid;gap:3px}.m328-reg3-target-copy strong{font-size:.78rem}.m328-reg3-target-copy span{color:var(--muted);line-height:1.35}
     .m328-reg3-target-actions{display:flex;flex:0 0 auto;flex-wrap:wrap;justify-content:flex-end;gap:6px}.m328-reg3-target-action{width:auto!important;white-space:nowrap}
-    .m328-reg3-special-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
-    .m328-reg3-special-actions .button{width:100%;min-height:40px;white-space:nowrap}
-    .m328-reg3-special-actions .button.is-active{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--surface));color:var(--accent)}
+    .m328-reg3-special-actions{display:flex;align-items:center;gap:6px;overflow-x:auto;padding:8px 10px 9px 0;scroll-padding-right:10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+    .m328-reg3-special-actions::-webkit-scrollbar{display:none}
+    .m328-reg3-mode-filter{white-space:nowrap}
     .m328-reg3-special-panel{display:grid;gap:8px;margin-top:8px}
     .m328-reg3-special-panel[hidden]{display:none!important}
     .m328-reg3-guest,.m328-reg3-group{display:grid;gap:8px;padding:10px;border-radius:11px;background:var(--surface-2)}
@@ -273,7 +275,7 @@ function ensureStyle() {
     .m328-reg3-submit{display:grid;gap:9px}.m328-reg3-consent{display:flex;align-items:flex-start;gap:8px;font-size:.74rem;line-height:1.35}.m328-reg3-submit>.m328-reg3-panel>.button{width:100%;min-height:46px}
     .m328-reg3-empty{margin:0;color:var(--muted);font-size:.78rem}
     .m328-reg3-group-review{padding:9px;border-radius:10px;background:var(--surface);font-size:.73rem;line-height:1.35}.m328-reg3-group-review p{margin:5px 0}
-    @media(max-width:520px){.m328-reg3-target{align-items:stretch;flex-direction:column}.m328-reg3-target-actions{justify-content:flex-start}.m328-reg3-special-actions,.m328-reg3-guest-grid,.m328-reg3-person{grid-template-columns:1fr}.m328-reg3-guest-grid label:last-child,.m328-reg3-note{grid-column:auto}.m328-reg3-booking-head{align-items:start}.m328-reg3-booking-actions{flex-direction:column;align-items:stretch}.m328-reg3-booking-actions .button{padding:5px 7px;font-size:.68rem}}
+    @media(max-width:520px){.m328-reg3-target{align-items:stretch;flex-direction:column}.m328-reg3-target-actions{justify-content:flex-start}.m328-reg3-guest-grid,.m328-reg3-person{grid-template-columns:1fr}.m328-reg3-guest-grid label:last-child,.m328-reg3-note{grid-column:auto}.m328-reg3-booking-head{align-items:start}.m328-reg3-booking-actions{flex-direction:column;align-items:stretch}.m328-reg3-booking-actions .button{padding:5px 7px;font-size:.68rem}}
   `;
   document.head.appendChild(style);
 }
@@ -354,13 +356,16 @@ function renderTarget(state) {
   const target = document.getElementById("m328Reg3Target");
   if (!target) return;
   const context = bookingFlowContext(state);
-  target.hidden = false;
+  const newBookingHint = document.getElementById("m328Reg3NewBookingHint");
+  const isNewBooking = context.mode === "NEW";
+  if (newBookingHint) newBookingHint.hidden = !isNewBooking;
+  target.hidden = isNewBooking;
   if (context.mode === "DECISION") {
     target.innerHTML = `<div class="m328-reg3-target-copy"><strong>Wie möchtest du fortfahren?</strong><span>Personen, die gemeinsam hinzugefügt werden, bilden eine zusammenhängende Buchung und erhalten dieselbe Buchungsnummer.</span></div><div class="m328-reg3-target-actions"><button class="button tiny primary m328-reg3-target-action" type="button" data-m328-reg3-target-more>Weitere Person hinzufügen</button><button class="button tiny secondary m328-reg3-target-action" type="button" data-m328-reg3-target-complete>Buchung abschließen</button></div>`;
   } else if (context.mode === "ACTIVE") {
     target.innerHTML = `<div class="m328-reg3-target-copy"><strong>Gemeinsame Buchung aktiv · ${context.booking.participants.length} ${context.booking.participants.length === 1 ? "Person" : "Personen"}</strong><span>Weitere ausgewählte Personen werden dieser Buchung hinzugefügt und erhalten dieselbe Buchungsnummer.</span></div><div class="m328-reg3-target-actions"><button class="button tiny secondary m328-reg3-target-action" type="button" data-m328-reg3-target-complete>Buchung abschließen</button></div>`;
   } else {
-    target.innerHTML = '<div class="m328-reg3-target-copy"><strong>Neue Buchung</strong><span>Die nächste ausgewählte Person startet eine neue Buchung.</span></div>';
+    target.innerHTML = "";
   }
   target.querySelector("[data-m328-reg3-target-more]")?.addEventListener("click", () => {
     if (!activateDecisionBooking(state)) return;
@@ -397,7 +402,6 @@ function paintSearchResults(state) {
     if (!choice) return;
     try {
       addToTargetOrNew(state, choiceToParticipant(state, choice));
-      showToast(`${choice.firstName} ${choice.lastName} hinzugefügt.`, "success", 2200);
     } catch (error) {
       showToast(error?.message || "Person konnte nicht hinzugefügt werden.", "warning", 4200);
     }
@@ -722,7 +726,7 @@ function clearUnexpectedFormFocus() {
 function renderPage(root, state) {
   ensureStyle();
   const venue = String(state.trip.venue || "").trim() || "Fahrt";
-  root.innerHTML = `<div class="m328-reg3"><header class="m328-reg3-head"><button class="button small ghost" type="button" id="m328Reg3Back">← Bus-Orga</button><div class="m328-reg3-title"><h2>Anmeldung • ${escapeHtml(venue)}</h2><span>${escapeHtml(shortDate(state.trip.eventDate))} · ${escapeHtml(eventTime(state.trip.eventTime))}</span></div></header><section class="m328-reg3-panel"><div class="m328-reg3-panel-head"><h3>Person hinzufügen</h3></div><div id="m328Reg3Target" class="m328-reg3-target" hidden></div><div class="m328-reg3-special-actions" role="group" aria-label="Art der Personenauswahl"><button class="button secondary" type="button" data-m328-reg3-special="KNOWN">Bekannte Personen</button><button class="button secondary" type="button" data-m328-reg3-special="GUEST">Gast hinzufügen</button><button class="button secondary" type="button" data-m328-reg3-special="GROUP">Gruppe auswählen</button></div><div id="m328Reg3InputPanel" class="m328-reg3-special-panel" hidden></div></section><form id="m328Reg3Submit" class="m328-reg3-submit"><section class="m328-reg3-panel"><div class="m328-reg3-panel-head"><div><h3>Vorbereitete Buchungen</h3></div><div><span id="m328Reg3BookingCount" class="m328-reg3-count">0</span> <span class="subtle">Buchungen</span> · <span id="m328Reg3ParticipantCount" class="m328-reg3-count">0</span> <span class="subtle">Personen</span></div></div><div id="m328Reg3Bookings" class="m328-reg3-stack"></div></section><section class="m328-reg3-panel"><label class="m328-reg3-consent"><input name="consentConfirmed" type="checkbox" required><span>Alle manuell erfassten Personen wurden über die Teilnahmebedingungen und Datenschutzhinweise informiert.</span></label><button class="button primary" type="submit">Alle Buchungen speichern</button></section></form></div>`;
+  root.innerHTML = `<div class="m328-reg3"><header class="m328-reg3-head"><button class="button small ghost" type="button" id="m328Reg3Back">← Bus-Orga</button><div class="m328-reg3-title"><h2>Anmeldung • ${escapeHtml(venue)}</h2><span>${escapeHtml(shortDate(state.trip.eventDate))} · ${escapeHtml(eventTime(state.trip.eventTime))}</span></div></header><section class="m328-reg3-panel"><div class="m328-reg3-panel-head"><div><h3>Neue Buchung</h3><p id="m328Reg3NewBookingHint" class="m328-reg3-panel-hint">Die nächste ausgewählte Person startet eine Buchung.</p></div></div><div id="m328Reg3Target" class="m328-reg3-target" hidden></div><div class="m328-reg3-special-actions" role="group" aria-label="Art der Personenauswahl"><button class="m328-reg3-filter m328-reg3-mode-filter" type="button" data-m328-reg3-special="KNOWN">Bekannte Personen</button><button class="m328-reg3-filter m328-reg3-mode-filter" type="button" data-m328-reg3-special="GUEST">Gast</button><button class="m328-reg3-filter m328-reg3-mode-filter" type="button" data-m328-reg3-special="GROUP">Gruppe</button></div><div id="m328Reg3InputPanel" class="m328-reg3-special-panel" hidden></div></section><form id="m328Reg3Submit" class="m328-reg3-submit"><section class="m328-reg3-panel"><div class="m328-reg3-panel-head"><div><h3>Vorbereitete Buchungen</h3></div><div><span id="m328Reg3BookingCount" class="m328-reg3-count">0</span> <span class="subtle">Buchungen</span> · <span id="m328Reg3ParticipantCount" class="m328-reg3-count">0</span> <span class="subtle">Personen</span></div></div><div id="m328Reg3Bookings" class="m328-reg3-stack"></div></section><section class="m328-reg3-panel"><label class="m328-reg3-consent"><input name="consentConfirmed" type="checkbox" required><span>Alle manuell erfassten Personen wurden über die Teilnahmebedingungen und Datenschutzhinweise informiert.</span></label><button class="button primary" type="submit">Alle Buchungen speichern</button></section></form></div>`;
 
   document.getElementById("m328Reg3Back")?.addEventListener("click", () => {
     location.hash = "#/bus-orga";
