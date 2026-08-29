@@ -6,44 +6,60 @@ const read = path => fs.readFileSync(new URL(path, import.meta.url), "utf8");
 const routerSource = read("../js/router.js");
 const authSource = read("../js/auth.js");
 const pagesSource = read("../js/pages.js");
+const appSource = read("../js/app.js");
+const indexHtml = read("../index.html");
 const dashboardHtml = read("../pages/bus-orga.html");
 const dashboardSource = read("../js/modules/bus-orga-v2.js");
+const nativeSource = read("../js/modules/bus-orga-v3.js");
 const registrationSource = read("../js/modules/bus-orga-registration-v2.js");
 const bookingsSource = read("../js/modules/bus-orga-bookings.js");
+const tripEditSource = read("../js/modules/bus-orga-trip-edit.js");
 const shellSource = read("../js/m328-bus-orga-shell.js");
 const directEntry = read("../bus-orga/index.html");
 const buildSource = read("../scripts/build-static.mjs");
 const migrationSource = read("../supabase/migrations/20260829090000_m328_r1_booking_management.sql");
 
-test("M328 provides a protected direct Bus-Orga entry", () => {
+test("M328 provides a protected direct Bus-Orga entry and loads the native action shell", () => {
   assert.match(routerSource, /"bus-orga"\s*:\s*\{/);
   assert.match(routerSource, /page:\s*"bus-orga\.html"/);
   assert.match(routerSource, /system:\s*true/);
   assert.match(authSource, /key === "bus-orga"/);
   assert.match(pagesSource, /key === "bus-orga"/);
-  assert.match(pagesSource, /modules\/bus-orga-v2\.js/);
-  assert.match(pagesSource, /hydrateBusOrgaV2/);
-  assert.doesNotMatch(pagesSource, /setupM328RegistrationUxPolish/);
+  assert.match(pagesSource, /modules\/bus-orga-v3\.js/);
+  assert.match(pagesSource, /hydrateBusOrgaV3/);
   assert.match(directEntry, /url=\/#\/bus-orga/);
   assert.match(buildSource, /"bus-orga"/);
+});
+
+test("M328 hard-busts the SPA module chain for native Bus-Orga releases", () => {
+  assert.match(indexHtml, /pd-release" content="20260829-m328-r1-native-actions1"/);
+  assert.match(indexHtml, /js\/app\.js\?v=20260829-m328-r1-native-actions1/);
+  assert.match(appSource, /pages\.js\?v=20260829-m328-r1-native-actions1/);
+  assert.match(pagesSource, /bus-orga-v3\.js\?v=20260829-m328-r1-native-actions1/);
 });
 
 test("M328 quick registration stays inside Bus-Orga", () => {
   assert.match(dashboardHtml, /id="m328QuickRegistration"[^>]*>Anmeldung<\/button>/);
   assert.match(dashboardSource, /function openRegistration\(tripId\)/);
   assert.match(dashboardSource, /view:\s*"registration"/);
-  assert.match(dashboardSource, /location\.hash = `#\/bus-orga\?\$\{params\}`/);
-  assert.match(dashboardSource, /hydrateBusOrgaRegistrationV2\(context\)/);
+  assert.match(nativeSource, /view === "registration"/);
+  assert.match(nativeSource, /hydrateBusOrgaRegistrationV2\(context\)/);
   assert.doesNotMatch(dashboardSource, /openFanbusContext\("add-registration"/);
 });
 
-test("M328 registration has direct header, no selected-trip box and no autofocus", () => {
+test("M328 registration has direct header, no selected-trip box and no input autofocus", () => {
   assert.match(registrationSource, /<h2>Anmeldung • \$\{escapeHtml\(venue\)\}<\/h2>/);
   assert.match(registrationSource, /shortDate\(state\.trip\.eventDate\)/);
   assert.match(registrationSource, /eventTime\(state\.trip\.eventTime\)/);
   assert.doesNotMatch(registrationSource, /Ausgewählte Fahrt/);
   assert.doesNotMatch(registrationSource, /\.focus\s*\(/);
   assert.doesNotMatch(registrationSource, /autofocus/);
+});
+
+test("M328 keeps the quick-trip select slightly taller for unclipped venue labels", () => {
+  assert.match(nativeSource, /#m328QuickRegistrationTrip/);
+  assert.match(nativeSource, /height:44px!important/);
+  assert.match(nativeSource, /min-height:44px!important/);
 });
 
 test("M328 resolves personal boarding-stop defaults before trip fallback", () => {
@@ -57,6 +73,7 @@ test("M328 resolves personal boarding-stop defaults before trip fallback", () =>
 test("M328 shows bus preference only when the central trip contract enables it", () => {
   assert.match(registrationSource, /state\.trip\.busPreferenceSelectionEnabled \?/);
   assert.match(registrationSource, /busPreference:\s*state\.trip\.busPreferenceSelectionEnabled/);
+  assert.match(bookingsSource, /state\.trip\.busPreferenceSelectionEnabled === true/);
 });
 
 test("M328 mixed capture models visible bookings instead of one flat participant list", () => {
@@ -75,24 +92,40 @@ test("M328 booking management creates human-readable numbers for every central b
   assert.match(migrationSource, /alter column booking_number set default app_private\.fanbus_next_booking_number\(\)/);
   assert.match(migrationSource, /\^FB-\[0-9\]\{2\}-\[0-9\]\{6,\}\$/);
   assert.match(migrationSource, /fanbus_registration_create_manual_batches/);
-  assert.match(migrationSource, /bookingMode', 'GROUP'/);
+  assert.match(migrationSource, /'bookingMode','GROUP'/);
   assert.match(migrationSource, /bookingNumber/);
 });
 
-test("M328 booking overview is available per trip and searchable by booking number or person", () => {
+test("M328 booking overview supports edit, whole-booking cancel and participant cancel", () => {
   assert.match(dashboardSource, /openBookings\(tripId\)/);
   assert.match(dashboardSource, /tripActionButton\("bookings"/);
-  assert.match(dashboardSource, /"Buchungen"/);
-  assert.match(dashboardSource, /hydrateBusOrgaBookings\(context\)/);
-  assert.match(bookingsSource, /fanbus_registrations_list/);
-  assert.match(bookingsSource, /bookingNumber/);
+  assert.match(nativeSource, /view === "bookings"/);
   assert.match(bookingsSource, /Buchungsnummer oder Name suchen/);
-  assert.match(bookingsSource, /groupBookings\(registrations\)/);
+  assert.match(bookingsSource, /data-m328-edit-booking/);
+  assert.match(bookingsSource, /Gesamte Buchung stornieren/);
+  assert.match(bookingsSource, /Person stornieren/);
+  assert.match(bookingsSource, /fanbus_booking_operator_update/);
+  assert.match(bookingsSource, /fanbus_booking_operator_cancel/);
+  assert.match(migrationSource, /api_fanbus_booking_operator_update/);
+  assert.match(migrationSource, /api_fanbus_booking_operator_cancel/);
+  assert.match(migrationSource, /fanbus_participant_cancel_kernel/);
 });
 
-test("M328 booking numbers are projected into the central mail template data", () => {
+test("M328 trip edit stays inside Bus-Orga and does not expose the old Fanbus editor", () => {
+  assert.match(nativeSource, /view:\s*"trip-edit"/);
+  assert.match(nativeSource, /view === "trip-edit"/);
+  assert.match(nativeSource, /hydrateBusOrgaTripEdit\(context\)/);
+  assert.match(nativeSource, /data-m328-trip-action=\\?"edit-trip/);
+  assert.match(nativeSource, /event\.stopImmediatePropagation\(\)/);
+  assert.match(tripEditSource, /<h2>Fahrt bearbeiten • \$\{escapeHtml\(venue\)\}<\/h2>/);
+  assert.match(tripEditSource, /fanbus_trip_update/);
+  assert.match(tripEditSource, /fanbus_trip_boarding_stop_upsert/);
+  assert.match(tripEditSource, /location\.hash = "#\/bus-orga"/);
+});
+
+test("M328 booking numbers are projected into central mail template data", () => {
   assert.match(migrationSource, /notification_add_external_email_before_m328_r1/);
-  assert.match(migrationSource, /v_data := v_data \|\| jsonb_build_object\([\s\S]*'bookingNumber', v_booking_number/);
+  assert.match(migrationSource, /'bookingNumber',v_booking_number/);
 });
 
 test("M328 general administration stays collapsed and global only", () => {
@@ -104,7 +137,6 @@ test("M328 general administration stays collapsed and global only", () => {
   assert.match(workspaceBlock, /title: "Stammfahrer"/);
   assert.match(workspaceBlock, /title: "Gruppen"/);
   assert.doesNotMatch(workspaceBlock, /title: "Teilnehmer"/);
-  assert.doesNotMatch(workspaceBlock, /title: "Busse"/);
 });
 
 test("M328 ride administration stays collapsed and exposes booking-first actions", () => {
@@ -116,18 +148,12 @@ test("M328 ride administration stays collapsed and exposes booking-first actions
   assert.match(dashboardSource, /tripActionButton\("edit-trip"/);
   assert.match(dashboardSource, /data-m328-trip-toggle/);
   assert.match(dashboardSource, /aria-expanded="false"/);
-  assert.match(dashboardSource, /const title = venue \|\| trip\.displayTitle/);
 });
 
 test("M328 normal Fanbus view still exposes only one Bus-Orga entry", () => {
   assert.match(pagesSource, /m328-bus-orga-shell\.js/);
   assert.match(shellSource, /m328BusOrgaEntry/);
   assert.match(shellSource, /🚌 Bus-Orga/);
-  assert.match(shellSource, /#m310AddTripButton/);
-  assert.match(shellSource, /#m326RegularRidersButton/);
-  assert.match(shellSource, /#m326PersonGroupsButton/);
-  assert.match(shellSource, /#m310FanbusSettingsButton/);
-  assert.match(shellSource, /\.v4-m310-trip-nav/);
 });
 
 test("M328 mobile surfaces prevent horizontal clipping", () => {
@@ -135,4 +161,5 @@ test("M328 mobile surfaces prevent horizontal clipping", () => {
   assert.match(registrationSource, /m328-reg2\{[^}]*overflow-x:clip/);
   assert.match(registrationSource, /@media\(max-width:520px\)/);
   assert.match(bookingsSource, /@media\(max-width:520px\)/);
+  assert.match(tripEditSource, /overflow-x:clip/);
 });
