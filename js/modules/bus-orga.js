@@ -86,7 +86,8 @@ function openWorkspace(view, extra = {}) {
 }
 
 function tripOption(trip) {
-  return `<option value="${escapeAttr(trip.id)}">${escapeHtml(`${formatDate(trip.eventDate)} · ${trip.displayTitle || "Fanbusfahrt"}`)}</option>`;
+  const venue = String(trip?.venue || "").trim() || "Ort offen";
+  return `<option value="${escapeAttr(trip.id)}">${escapeHtml(`${formatDate(trip.eventDate)} · ${venue}`)}</option>`;
 }
 
 function workspaceCard({ id, title, description }) {
