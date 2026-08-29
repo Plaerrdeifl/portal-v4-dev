@@ -135,11 +135,23 @@ test("M328 booking overview supports edit, whole-booking cancel and participant 
   assert.match(migrationSource, /fanbus_participant_cancel_kernel/);
 });
 
-test("M328 trip edit stays inside Bus-Orga and does not expose the old Fanbus editor", () => {
+test("M328 trip edit stays inside Bus-Orga and uses the compact mobile workspace", () => {
   assert.match(nativeSource, /view === "trip-edit"/);
   assert.match(nativeSource, /hydrateBusOrgaTripEdit\(context\)/);
   assert.match(tripDetailSource, /navigate\("trip-edit", trip\.id\)/);
-  assert.match(tripEditSource, /<h2>Fahrt bearbeiten • \$\{escapeHtml\(venue\)\}<\/h2>/);
+  assert.match(tripEditSource, /<h2>\$\{escapeHtml\(venue\)\}<\/h2>/);
+  assert.doesNotMatch(tripEditSource, /<h2>Fahrt bearbeiten •/);
+  assert.doesNotMatch(tripEditSource, /Spieltermin, Gegner und Spielort werden weiterhin zentral im Terminmodul verwaltet\./);
+  assert.match(tripEditSource, /m328-trip-edit-core-grid/);
+  assert.match(tripEditSource, /m328-trip-edit-deadline/);
+  assert.match(tripEditSource, /m328-trip-edit-switch-row/);
+  assert.match(tripEditSource, /data-stop-summary-time[\s\S]*data-stop-summary-label/);
+  assert.match(tripEditSource, /<label>Uhrzeit<input data-stop-time[\s\S]*<label>Zustiegsort<select data-stop-master>/);
+  assert.match(tripEditSource, />Bearbeiten<\/button>/);
+  assert.match(tripEditSource, />Löschen<\/button>/);
+  assert.match(tripEditSource, />Standardzustieg<\/span>/);
+  assert.match(tripEditSource, /m328-trip-edit-savebar/);
+  assert.match(tripEditSource, />Speichern<\/button>/);
   assert.match(tripEditSource, /fanbus_trip_update/);
   assert.match(tripEditSource, /fanbus_trip_boarding_stop_upsert/);
   assert.match(tripEditSource, /location\.hash = "#\/bus-orga"/);
