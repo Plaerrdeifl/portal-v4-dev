@@ -77,11 +77,16 @@ function ensureRegistrationBookingUxStyle() {
       transition:border-color .15s ease,box-shadow .15s ease,background .15s ease;
     }
     .m328-reg3-booking.is-active-booking{
-      border:2px solid var(--accent)!important;
-      box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 10%,transparent);
+      border:3px solid var(--accent)!important;
+      background:color-mix(in srgb,var(--accent) 4%,var(--surface));
+      box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent),0 10px 24px rgba(2,18,35,.08);
     }
     .m328-reg3-booking.is-active-booking .m328-reg3-booking-head{
-      background:color-mix(in srgb,var(--accent) 8%,var(--surface));
+      background:color-mix(in srgb,var(--accent) 14%,var(--surface));
+      border-bottom-color:color-mix(in srgb,var(--accent) 35%,var(--line));
+    }
+    .m328-reg3-booking.is-active-booking .m328-reg3-booking-head strong{
+      color:var(--accent);
     }
     .m328-reg3-booking.is-decision-booking{
       border:2px solid color-mix(in srgb,var(--accent) 55%,var(--line))!important;
@@ -94,6 +99,21 @@ function ensureRegistrationBookingUxStyle() {
     .m328-reg3-booking:not(.is-active-booking) .m328-reg3-booking-head{
       padding-top:8px;
       padding-bottom:8px;
+    }
+    .m328-reg3-booking:not(.is-active-booking):not(.is-decision-booking) .m328-reg3-booking-head>div:first-child::after{
+      content:"Vorbereitet";
+      display:inline-flex;
+      align-items:center;
+      width:max-content;
+      margin-top:5px;
+      padding:3px 7px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      background:var(--surface);
+      color:var(--muted);
+      font-size:.63rem;
+      font-weight:850;
+      line-height:1.15;
     }
     .m328-reg3-booking:not(.is-active-booking) .m328-reg3-person{
       display:none!important;
@@ -186,15 +206,21 @@ function ensureRegistrationBookingUxStyle() {
       overflow:hidden;
     }
     .m328-reg3-booking-complete{
-      display:flex;
-      justify-content:flex-end;
+      display:grid;
+      gap:5px;
       padding:10px;
-      border-top:1px solid var(--line);
-      background:var(--surface);
+      border-top:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));
+      background:color-mix(in srgb,var(--accent) 6%,var(--surface));
     }
-    .m328-reg3-booking-complete .m328-reg3-target-action{
-      width:auto!important;
-      min-height:36px;
+    .m328-reg3-booking-complete-hint{
+      margin:0;
+      color:var(--muted);
+      font-size:.67rem;
+      line-height:1.35;
+    }
+    .m328-reg3-booking-complete .m328-reg3-booking-save{
+      width:100%!important;
+      min-height:40px;
       white-space:nowrap;
     }
     @media(max-width:520px){
@@ -206,12 +232,6 @@ function ensureRegistrationBookingUxStyle() {
       .m328-reg3-booking:not(.is-active-booking) .m328-reg3-booking-actions{
         flex-direction:row;
         align-items:center;
-      }
-      .m328-reg3-booking-complete{
-        justify-content:stretch;
-      }
-      .m328-reg3-booking-complete .m328-reg3-target-action{
-        width:100%!important;
       }
     }
   `;
@@ -293,6 +313,8 @@ function syncRegistrationFlowPresentation() {
 
   target.classList.toggle("is-decision-modal", decision);
   if (decision) {
+    if (more && more.textContent !== "Weitere Person hinzufügen") more.textContent = "Weitere Person hinzufügen";
+    if (complete && complete.textContent !== "Zur Übersicht") complete.textContent = "Zur Übersicht";
     target.setAttribute("role", "dialog");
     target.setAttribute("aria-modal", "true");
     target.setAttribute("aria-label", "Buchung fortsetzen");
@@ -311,9 +333,23 @@ function syncRegistrationFlowPresentation() {
   const activeBooking = document.querySelector(".m328-reg3-booking.is-active-booking");
   if (!complete || !activeBooking) return;
 
+  if (complete.textContent !== "Neue Buchung starten") complete.textContent = "Neue Buchung starten";
+  complete.classList.remove("primary");
+  complete.classList.add("secondary");
+
+  const activeStatus = activeBooking.querySelector(".m328-reg3-booking-status-active");
+  if (activeStatus) activeStatus.textContent = "Offen · wird bearbeitet";
+
+  const participantCount = activeBooking.querySelectorAll(".m328-reg3-person").length;
   const footer = document.createElement("div");
   footer.className = "m328-reg3-booking-complete";
-  footer.appendChild(complete);
+  footer.innerHTML = `<p class="m328-reg3-booking-complete-hint">${participantCount > 1 ? "Diese Buchungsgruppe" : "Diese Buchung"} wird in die vorbereiteten Buchungen übernommen. Endgültig gespeichert wird weiterhin unten.</p>`;
+  const saveButton = document.createElement("button");
+  saveButton.className = "button primary m328-reg3-booking-save";
+  saveButton.type = "button";
+  saveButton.textContent = participantCount > 1 ? "Buchungsgruppe speichern" : "Buchung speichern";
+  saveButton.addEventListener("click", () => complete.click());
+  footer.appendChild(saveButton);
   activeBooking.appendChild(footer);
 }
 
