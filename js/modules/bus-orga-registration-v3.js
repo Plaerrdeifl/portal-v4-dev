@@ -138,7 +138,6 @@ function addToTargetOrNew(state, participant) {
   if (target) {
     target.participants.push({ ...participant, identityKey });
     target.kind = target.participants.length > 1 ? "GROUP" : target.kind;
-    state.targetBookingId = null;
   } else {
     state.bookings.push({
       clientId: crypto.randomUUID(),
@@ -168,16 +167,17 @@ function addManyToTargetOrNew(state, participants) {
       identityKey: participantIdentity(person)
     })));
     target.kind = "GROUP";
-    state.targetBookingId = null;
   } else {
-    state.bookings.push({
+    const booking = {
       clientId: crypto.randomUUID(),
       kind: "GROUP",
       participants: participants.map(person => ({
         ...person,
         identityKey: participantIdentity(person)
       }))
-    });
+    };
+    state.bookings.push(booking);
+    state.targetBookingId = booking.clientId;
   }
   renderBookingStack(state);
   renderTarget(state);
@@ -225,6 +225,7 @@ function ensureStyle() {
     .m328-reg3-choice-action{color:var(--accent);font-size:.7rem;font-weight:850;white-space:nowrap}
     .m328-reg3-target{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px;padding:8px 9px;border-radius:10px;background:var(--surface-2);font-size:.73rem}
     .m328-reg3-target[hidden]{display:none!important}
+    .m328-reg3-target-copy{display:grid;gap:3px}.m328-reg3-target-copy strong{font-size:.78rem}.m328-reg3-target-copy span{color:var(--muted);line-height:1.35}
     .m328-reg3-special-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
     .m328-reg3-special-actions .button{width:100%;min-height:40px}
     .m328-reg3-special-panel{display:grid;gap:8px;margin-top:8px}
@@ -297,24 +298,34 @@ function choiceToParticipant(state, choice) {
   };
 }
 
-function targetLabel(state) {
-  if (!state.targetBookingId) return "";
+function targetBookingContext(state) {
+  if (!state.targetBookingId) return null;
   const index = state.bookings.findIndex(booking => booking.clientId === state.targetBookingId);
-  return index >= 0 ? `Buchung ${index + 1}` : "";
+  if (index < 0) return null;
+  return { booking: state.bookings[index], index };
+}
+
+function updateSpecialPanelSubmitText(state) {
+  const guestSubmit = document.querySelector('[data-m328-reg3-guest-form] button[type="submit"]');
+  const groupSubmit = document.querySelector('[data-m328-reg3-group-form] button[type="submit"]');
+  if (guestSubmit) guestSubmit.textContent = state.targetBookingId ? "Zu Buchung hinzufügen" : "Gast hinzufügen";
+  if (groupSubmit) groupSubmit.textContent = state.targetBookingId ? "Gruppe zu Buchung hinzufügen" : "Gruppe als eine Buchung";
 }
 
 function renderTarget(state) {
   const target = document.getElementById("m328Reg3Target");
   if (!target) return;
-  const label = targetLabel(state);
-  target.hidden = !label;
-  target.innerHTML = label
-    ? `<span>Die nächste Auswahl wird zu <strong>${escapeHtml(label)}</strong> hinzugefügt.</span><button class="button tiny ghost" type="button" data-m328-reg3-target-clear>Abbrechen</button>`
+  const context = targetBookingContext(state);
+  target.hidden = !context;
+  target.innerHTML = context
+    ? `<div class="m328-reg3-target-copy"><strong>Du bearbeitest Buchung ${context.index + 1} · ${context.booking.participants.length} ${context.booking.participants.length === 1 ? "Person" : "Personen"}</strong><span>Weitere ausgewählte Personen werden dieser Buchung hinzugefügt.</span></div><button class="button tiny secondary" type="button" data-m328-reg3-target-done>Fertig</button>`
     : "";
-  target.querySelector("[data-m328-reg3-target-clear]")?.addEventListener("click", () => {
+  target.querySelector("[data-m328-reg3-target-done]")?.addEventListener("click", () => {
     state.targetBookingId = null;
+    renderBookingStack(state);
     renderTarget(state);
   });
+  updateSpecialPanelSubmitText(state);
 }
 
 function filteredChoices(state) {
@@ -490,19 +501,33 @@ function participantFields(state, bookingIndex, personIndex, person) {
   return `<div class="m328-reg3-person" data-booking-index="${bookingIndex}" data-person-index="${personIndex}"><div class="m328-reg3-person-name"><strong>${escapeHtml(personName(person))}</strong><small>${escapeHtml(sourceLabel(person.source))}</small></div><button class="icon-button m328-reg3-remove" type="button" data-m328-reg3-remove="${bookingIndex}:${personIndex}" aria-label="${escapeAttr(`${personName(person)} entfernen`)}">×</button>${activeStops(state).length ? `<label>Zustieg<select required data-m328-reg3-stop="${bookingIndex}:${personIndex}">${stopOptions(state, person.boardingStopId)}</select></label>` : ""}${state.trip.busPreferenceSelectionEnabled ? `<label>Buswunsch<select data-m328-reg3-preference="${bookingIndex}:${personIndex}">${preferenceOptions(person.busPreference || "EGAL")}</select></label>` : ""}<label class="m328-reg3-note">Hinweis (optional)<input maxlength="240" data-m328-reg3-note="${bookingIndex}:${personIndex}" value="${escapeAttr(person.operationalNote || "")}"></label></div>`;
 }
 
-function bookingSummary(state, booking) {
-  const count = booking.participants.length;
-  const people = booking.participants.slice(0, 3).map(person => {
-    const stop = selectedStopLabel(state, person.boardingStopId);
-    return `${personName(person)}${stop ? ` · ${stop}` : ""}`;
-  }).join(", ");
-  return `${count} ${count === 1 ? "Person" : "Personen"}${people ? ` · ${people}${count > 3 ? " …" : ""}` : ""}`;
+function preferenceLabel(value) {
+  return BUS_PREFERENCES.find(option => option.value === value)?.label || "Egal";
+}
+
+function participantOverview(state, person) {
+  const details = [sourceLabel(person.source)];
+  const stop = selectedStopLabel(state, person.boardingStopId);
+  if (stop) details.push(stop);
+  if (state.trip.busPreferenceSelectionEnabled) details.push(preferenceLabel(person.busPreference || "EGAL"));
+  if (person.operationalNote) details.push(`Hinweis: ${person.operationalNote}`);
+  return `<div class="m328-reg3-booking-overview-person"><strong>${escapeHtml(personName(person))}</strong><small>${details.map(escapeHtml).join(" · ")}</small></div>`;
+}
+
+function bookingOverview(state, booking) {
+  return booking.participants.map(person => participantOverview(state, person)).join("");
+}
+
+function refreshBookingOverview(state, target, bookingIndex) {
+  const booking = state.bookings[bookingIndex];
+  const overview = target.querySelector(`[data-m328-reg3-booking-overview="${bookingIndex}"]`);
+  if (booking && overview) overview.innerHTML = bookingOverview(state, booking);
 }
 
 function bookingCard(state, booking, bookingIndex) {
   const count = booking.participants.length;
-  const kind = count > 1 ? "Gemeinsame Buchung" : "Einzelbuchung";
-  return `<article class="m328-reg3-booking"><header class="m328-reg3-booking-head"><div><strong>Buchung ${bookingIndex + 1} · ${escapeHtml(kind)}</strong><small data-m328-reg3-booking-summary="${bookingIndex}">${escapeHtml(bookingSummary(state, booking))}</small></div><div class="m328-reg3-booking-actions"><button class="button tiny secondary" type="button" data-m328-reg3-add-to-booking="${escapeAttr(booking.clientId)}">＋ Person</button><button class="icon-button m328-reg3-remove-booking" type="button" data-m328-reg3-remove-booking="${escapeAttr(booking.clientId)}" aria-label="Buchung entfernen">×</button></div></header>${booking.participants.map((person, personIndex) => participantFields(state, bookingIndex, personIndex, person)).join("")}</article>`;
+  const active = booking.clientId === state.targetBookingId;
+  return `<article class="m328-reg3-booking${active ? " is-active-booking" : ""}" data-m328-reg3-booking-card="${escapeAttr(booking.clientId)}" aria-current="${active}"><header class="m328-reg3-booking-head"><div><strong>Buchung ${bookingIndex + 1} · ${count} ${count === 1 ? "Person" : "Personen"}</strong><span class="m328-reg3-booking-status">Wird bearbeitet</span></div><div class="m328-reg3-booking-actions"><button class="icon-button m328-reg3-remove-booking" type="button" data-m328-reg3-remove-booking="${escapeAttr(booking.clientId)}" aria-label="Buchung entfernen">×</button></div></header><div class="m328-reg3-booking-overview" data-m328-reg3-booking-overview="${bookingIndex}">${bookingOverview(state, booking)}</div>${booking.participants.map((person, personIndex) => participantFields(state, bookingIndex, personIndex, person)).join("")}</article>`;
 }
 
 function parsePair(value) {
@@ -521,11 +546,11 @@ function renderBookingStack(state) {
     ? state.bookings.map((booking, index) => bookingCard(state, booking, index)).join("")
     : '<p class="m328-reg3-empty">Noch keine Buchung vorbereitet. Person suchen oder Gast/Gruppe hinzufügen.</p>';
 
-  target.querySelectorAll("[data-m328-reg3-add-to-booking]").forEach(button => button.addEventListener("click", () => {
-    state.targetBookingId = button.dataset.m328Reg3AddToBooking;
-    closeSpecialPanel(state);
+  target.querySelectorAll("[data-m328-reg3-booking-card]").forEach(card => card.addEventListener("click", event => {
+    if (event.target.closest("button,input,select,textarea,a,label")) return;
+    state.targetBookingId = card.dataset.m328Reg3BookingCard;
+    renderBookingStack(state);
     renderTarget(state);
-    showToast("Nächste Person wird zu dieser Buchung hinzugefügt.", "success", 2200);
   }));
   target.querySelectorAll("[data-m328-reg3-remove-booking]").forEach(button => button.addEventListener("click", () => {
     const id = button.dataset.m328Reg3RemoveBooking;
@@ -551,17 +576,22 @@ function renderBookingStack(state) {
     const booking = state.bookings[bookingIndex];
     if (booking?.participants[personIndex]) {
       booking.participants[personIndex].boardingStopId = select.value;
-      const summary = target.querySelector(`[data-m328-reg3-booking-summary="${bookingIndex}"]`);
-      if (summary) summary.textContent = bookingSummary(state, booking);
+      refreshBookingOverview(state, target, bookingIndex);
     }
   }));
   target.querySelectorAll("[data-m328-reg3-preference]").forEach(select => select.addEventListener("change", () => {
     const { bookingIndex, personIndex } = parsePair(select.dataset.m328Reg3Preference);
-    if (state.bookings[bookingIndex]?.participants[personIndex]) state.bookings[bookingIndex].participants[personIndex].busPreference = select.value;
+    if (state.bookings[bookingIndex]?.participants[personIndex]) {
+      state.bookings[bookingIndex].participants[personIndex].busPreference = select.value;
+      refreshBookingOverview(state, target, bookingIndex);
+    }
   }));
   target.querySelectorAll("[data-m328-reg3-note]").forEach(input => input.addEventListener("input", () => {
     const { bookingIndex, personIndex } = parsePair(input.dataset.m328Reg3Note);
-    if (state.bookings[bookingIndex]?.participants[personIndex]) state.bookings[bookingIndex].participants[personIndex].operationalNote = input.value;
+    if (state.bookings[bookingIndex]?.participants[personIndex]) {
+      state.bookings[bookingIndex].participants[personIndex].operationalNote = input.value;
+      refreshBookingOverview(state, target, bookingIndex);
+    }
   }));
 }
 

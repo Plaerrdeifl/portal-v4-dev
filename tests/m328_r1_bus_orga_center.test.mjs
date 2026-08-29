@@ -96,9 +96,9 @@ test("M328 shows bus preference only when the central trip contract enables it",
 test("M328 mixed capture models visible bookings instead of one flat participant list", () => {
   assert.match(registrationSource, /bookings:\s*\[\]/);
   assert.match(registrationSource, /Buchung \$\{bookingIndex \+ 1\}/);
-  assert.match(registrationSource, /Gemeinsame Buchung/);
-  assert.match(registrationSource, /Einzelbuchung/);
-  assert.match(registrationSource, /data-m328-reg3-add-to-booking/);
+  assert.match(registrationSource, /kind: "GROUP"/);
+  assert.match(registrationSource, /kind: "INDIVIDUAL"/);
+  assert.match(registrationSource, /data-m328-reg3-booking-card/);
   assert.match(registrationSource, /Gruppe als eine Buchung/);
   assert.match(registrationSource, /Alle Buchungen speichern/);
   assert.match(registrationSource, /fanbus_registration_create_manual_batches/);

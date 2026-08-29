@@ -82,14 +82,18 @@ function ensureRegistrationBookingUxStyle() {
     .m328-reg3-booking:not(.is-active-booking) .m328-reg3-booking-head{
       padding-top:8px;
       padding-bottom:8px;
-      border-bottom:0;
     }
     .m328-reg3-booking:not(.is-active-booking) .m328-reg3-person{
       display:none!important;
     }
-    .m328-reg3-booking:not(.is-active-booking) [data-m328-reg3-add-to-booking]{
+    .m328-reg3-booking.is-active-booking .m328-reg3-booking-overview{
       display:none!important;
     }
+    .m328-reg3-booking-overview{display:grid;gap:0}
+    .m328-reg3-booking-overview-person{display:grid;gap:2px;padding:8px 10px;border-bottom:1px solid var(--line)}
+    .m328-reg3-booking-overview-person:last-child{border-bottom:0}
+    .m328-reg3-booking-overview-person strong{font-size:.78rem}
+    .m328-reg3-booking-overview-person small{color:var(--muted);font-size:.67rem;line-height:1.35}
     .m328-reg3-booking-status{
       display:inline-flex;
       align-items:center;
@@ -121,75 +125,8 @@ function ensureRegistrationBookingUxStyle() {
   document.head.appendChild(style);
 }
 
-function registrationBookingId(card) {
-  return card?.querySelector("[data-m328-reg3-add-to-booking]")?.dataset.m328Reg3AddToBooking
-    || card?.querySelector("[data-m328-reg3-remove-booking]")?.dataset.m328Reg3RemoveBooking
-    || "";
-}
-
 function setupRegistrationBookingUx() {
-  const root = document.getElementById("m328BusOrgaPage");
-  const stack = document.getElementById("m328Reg3Bookings");
-  if (!root || !stack || stack.dataset.m328BookingUxBound === "true") return;
-  stack.dataset.m328BookingUxBound = "true";
   ensureRegistrationBookingUxStyle();
-
-  const ui = {
-    activeBookingId: "",
-    syncing: false
-  };
-
-  const sync = () => {
-    if (ui.syncing) return;
-    ui.syncing = true;
-    try {
-      const cards = [...stack.querySelectorAll(".m328-reg3-booking")];
-      const ids = cards.map(registrationBookingId).filter(Boolean);
-
-      if (ui.activeBookingId && !ids.includes(ui.activeBookingId)) {
-        ui.activeBookingId = "";
-      }
-
-      cards.forEach(card => {
-        const id = registrationBookingId(card);
-        const active = Boolean(id) && id === ui.activeBookingId;
-        card.classList.toggle("is-active-booking", active);
-        card.setAttribute("aria-current", active ? "true" : "false");
-
-        const header = card.querySelector(".m328-reg3-booking-head");
-        const copy = header?.firstElementChild;
-        if (copy && !copy.querySelector(".m328-reg3-booking-status")) {
-          const status = document.createElement("span");
-          status.className = "m328-reg3-booking-status";
-          status.textContent = "Wird bearbeitet";
-          copy.appendChild(status);
-        }
-      });
-    } finally {
-      ui.syncing = false;
-    }
-  };
-
-  stack.addEventListener("click", event => {
-    const card = event.target.closest(".m328-reg3-booking");
-    if (!card || !stack.contains(card)) return;
-    const id = registrationBookingId(card);
-    if (!id) return;
-
-    if (event.target.closest("[data-m328-reg3-add-to-booking]")) {
-      ui.activeBookingId = id;
-      sync();
-      return;
-    }
-
-    if (event.target.closest("button,input,select,textarea,a,label")) return;
-    ui.activeBookingId = id;
-    sync();
-  }, true);
-
-  const observer = new MutationObserver(sync);
-  observer.observe(stack, { childList: true, subtree: true });
-  sync();
 }
 
 function splitRegistrationConsentAndSubmit() {
