@@ -26,11 +26,14 @@ function ensurePolishStyle() {
       padding-top:7px!important;
       padding-bottom:7px!important;
     }
+    #m328TripsTitle{
+      font-size:1.15rem!important;
+    }
     .m328-next-trip-title{
-      white-space:nowrap!important;
-      overflow:hidden!important;
-      text-overflow:ellipsis!important;
-      overflow-wrap:normal!important;
+      display:block;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
     }
   `;
   document.head.appendChild(style);
@@ -47,15 +50,34 @@ function normalizeBusOrgaHeader() {
   if (title) title.textContent = "Bus-Orga";
 }
 
-function normalizeNextTripTitle() {
+function normalizeNextTrip() {
   const root = document.getElementById("m328BusOrgaPage");
-  const target = root?.querySelector(".m328-next-trip-title");
-  if (!root || !target) return;
-  const source = [...root.querySelectorAll(".m328-trip-card")]
-    .find(card => card.querySelector(".badge")?.textContent?.trim() !== "Abgesagt")
-    ?.querySelector(".m328-trip-summary-title");
-  const venue = String(source?.textContent || "").trim();
-  if (venue) target.textContent = venue;
+  if (!root) return;
+  const title = root.querySelector(".m328-next-trip-title");
+  if (!title) return;
+  const trips = [...root.querySelectorAll("[data-m328-trip-card]")];
+  const firstTripTitle = trips[0]?.querySelector(".m328-trip-summary-title")?.textContent?.trim();
+  if (firstTripTitle) title.textContent = firstTripTitle;
+}
+
+function normalizeTripManagementOverview() {
+  const root = document.getElementById("m328BusOrgaPage");
+  if (!root) return;
+
+  const heading = root.querySelector("#m328TripsTitle");
+  const headingWrap = heading?.closest(".m328-section-heading");
+  headingWrap?.querySelector(".m328-section-kicker")?.remove();
+
+  root.querySelectorAll(".m328-trip-card-meta span").forEach(item => {
+    const text = String(item.textContent || "").trim();
+    const participantMatch = /^(\d+)\s+TN$/.exec(text);
+    if (participantMatch) {
+      item.textContent = `${participantMatch[1]} Teilnehmer`;
+      return;
+    }
+    const waitlistMatch = /^(\d+)\s+WL$/.exec(text);
+    if (waitlistMatch) item.textContent = `${waitlistMatch[1]} Warteliste`;
+  });
 }
 
 function bindNativeTripEdit() {
@@ -83,7 +105,8 @@ export async function hydrateBusOrgaV3(context = {}) {
   const result = await hydrateBusOrgaV2(context);
   if (context.isCurrent && !context.isCurrent()) return result;
   normalizeBusOrgaHeader();
-  normalizeNextTripTitle();
+  normalizeNextTrip();
+  normalizeTripManagementOverview();
   bindNativeTripEdit();
   return result;
 }
