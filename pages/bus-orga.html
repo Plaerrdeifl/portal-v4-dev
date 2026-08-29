@@ -19,18 +19,19 @@
         <label for="m328QuickRegistrationTrip">Fahrt auswählen</label>
       </div>
       <select id="m328QuickRegistrationTrip" aria-label="Fahrt für neue Anmeldung"></select>
-      <button id="m328QuickRegistration" class="button primary m328-primary-action" type="button">＋ Anmeldung erfassen</button>
+      <button id="m328QuickRegistration" class="button primary m328-primary-action" type="button">Anmeldung</button>
     </section>
 
-    <section class="module-panel m328-workspaces" aria-labelledby="m328WorkspaceTitle">
-      <div class="m328-section-heading">
-        <div>
+    <details class="module-panel m328-workspaces m328-general-details">
+      <summary class="m328-general-summary">
+        <span class="m328-general-summary-copy">
           <span class="m328-section-kicker">Allgemein</span>
-          <h3 id="m328WorkspaceTitle">Allgemeine Verwaltung</h3>
-        </div>
-      </div>
+          <strong id="m328WorkspaceTitle">Allgemeine Verwaltung</strong>
+        </span>
+        <span class="m328-general-chevron" aria-hidden="true">›</span>
+      </summary>
       <div id="m328WorkspaceGrid" class="m328-workspace-grid" aria-live="polite"></div>
-    </section>
+    </details>
 
     <section class="module-panel m328-trips" aria-labelledby="m328TripsTitle">
       <div class="m328-section-heading">
@@ -188,63 +189,96 @@
 
   .m328-primary-action{
     width:auto;
+    min-width:110px;
     min-height:40px;
-    padding:7px 11px;
+    padding:7px 13px;
     white-space:nowrap;
   }
 
   .m328-workspaces,
   .m328-trips{
-    padding:11px;
+    padding:0;
+    overflow:hidden;
   }
 
-  .m328-section-heading{
-    display:flex;
-    justify-content:space-between;
+  .m328-general-details{
+    border:1px solid var(--line);
+    border-radius:15px;
+    background:var(--surface);
+  }
+
+  .m328-general-summary{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
     align-items:center;
-    gap:8px;
-    margin-bottom:8px;
+    gap:10px;
+    min-height:64px;
+    padding:10px 12px;
+    cursor:pointer;
+    list-style:none;
   }
 
-  .m328-section-heading h3{
+  .m328-general-summary::-webkit-details-marker{
+    display:none;
+  }
+
+  .m328-general-summary-copy{
+    display:grid;
+    gap:2px;
+  }
+
+  .m328-general-summary-copy strong{
     font-size:1rem;
     line-height:1.15;
   }
 
+  .m328-general-chevron{
+    color:var(--muted);
+    font-size:1.35rem;
+    line-height:1;
+    transition:transform .16s ease;
+  }
+
+  .m328-general-details[open] .m328-general-chevron{
+    transform:rotate(90deg);
+  }
+
   .m328-workspace-grid{
     display:grid;
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:7px;
+    grid-template-columns:1fr;
+    gap:0;
+    border-top:1px solid var(--line);
   }
 
   .m328-workspace-card{
-    position:relative;
     display:grid;
     grid-template-columns:minmax(0,1fr) auto;
     align-items:center;
-    gap:6px;
+    gap:8px;
     width:100%;
-    min-height:64px;
-    padding:10px 11px;
-    border:1px solid var(--line);
-    border-radius:13px;
-    background:var(--surface);
+    min-height:50px;
+    padding:10px 12px;
+    border:0;
+    border-bottom:1px solid var(--line);
+    border-radius:0;
+    background:transparent;
     color:inherit;
     text-align:left;
-    overflow:hidden;
+  }
+
+  .m328-workspace-card:last-child{
+    border-bottom:0;
   }
 
   .m328-workspace-card-copy{
     display:grid;
     gap:2px;
-    min-width:0;
   }
 
   .m328-workspace-card strong{
     display:block;
-    font-size:.82rem;
+    font-size:.84rem;
     line-height:1.15;
-    overflow-wrap:anywhere;
   }
 
   .m328-workspace-card small{
@@ -263,6 +297,25 @@
     line-height:1;
   }
 
+  .m328-trips{
+    background:transparent;
+    border:0;
+  }
+
+  .m328-section-heading{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    margin-bottom:8px;
+    padding:2px 0;
+  }
+
+  .m328-section-heading h3{
+    font-size:1rem;
+    line-height:1.15;
+  }
+
   .m328-trip-list{
     display:grid;
     gap:7px;
@@ -279,6 +332,7 @@
   .m328-trip-summary{
     display:grid;
     grid-template-columns:minmax(0,1fr) auto;
+    align-items:center;
     gap:8px;
     width:100%;
     padding:10px 11px;
@@ -296,9 +350,12 @@
 
   .m328-trip-summary-title{
     display:block;
+    min-width:0;
     font-size:.88rem;
     line-height:1.18;
-    overflow-wrap:anywhere;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
   }
 
   .m328-trip-card-meta{
@@ -385,22 +442,30 @@
 
     .m328-primary-action{
       min-height:40px;
-      padding-inline:10px;
+      padding-inline:12px;
       font-size:.8rem;
-    }
-
-    .m328-workspace-card{
-      min-height:58px;
-      padding:9px 10px;
     }
 
     .m328-workspace-card small{
       display:none;
     }
 
+    .m328-trip-summary{
+      padding:9px 10px;
+    }
+
+    .m328-trip-summary-title{
+      font-size:.84rem;
+    }
+
+    .m328-trip-summary-side{
+      gap:5px;
+    }
+
     .m328-trip-summary-side .badge{
-      max-width:105px;
-      font-size:.68rem;
+      max-width:92px;
+      padding-inline:8px;
+      font-size:.64rem;
     }
   }
 
@@ -416,27 +481,16 @@
     }
 
     .m328-quick-registration{
-      grid-template-columns:1fr;
-    }
-
-    .m328-quick-copy{
-      grid-column:auto;
+      grid-template-columns:1fr auto;
     }
 
     .m328-primary-action{
-      width:100%;
+      min-width:96px;
+      padding-inline:9px;
     }
 
-    .m328-workspace-grid{
-      gap:6px;
-    }
-
-    .m328-workspace-card{
-      padding:8px;
-    }
-
-    .m328-workspace-card strong{
-      font-size:.76rem;
+    .m328-trip-summary-side .badge{
+      max-width:82px;
     }
   }
 </style>
