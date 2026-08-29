@@ -132,23 +132,19 @@ function setupRegistrationBookingUx() {
 
   const ui = {
     activeBookingId: "",
-    knownBookingIds: new Set(),
     syncing: false
   };
 
-  const sync = ({ preferNewest = false } = {}) => {
+  const sync = () => {
     if (ui.syncing) return;
     ui.syncing = true;
     try {
       const cards = [...stack.querySelectorAll(".m328-reg3-booking")];
       const ids = cards.map(registrationBookingId).filter(Boolean);
-      const newIds = ids.filter(id => !ui.knownBookingIds.has(id));
 
-      if (preferNewest && newIds.length) ui.activeBookingId = newIds[newIds.length - 1];
-      if (!ui.activeBookingId || !ids.includes(ui.activeBookingId)) {
-        ui.activeBookingId = ids.at(-1) || "";
+      if (ui.activeBookingId && !ids.includes(ui.activeBookingId)) {
+        ui.activeBookingId = "";
       }
-      ui.knownBookingIds = new Set(ids);
 
       cards.forEach(card => {
         const id = registrationBookingId(card);
@@ -196,18 +192,12 @@ function setupRegistrationBookingUx() {
     if (event.target.closest("[data-m328-reg3-add-to-booking]")) {
       ui.activeBookingId = id;
       sync();
-      return;
-    }
-
-    if (event.target.closest(".m328-reg3-booking-head") && !event.target.closest("button")) {
-      ui.activeBookingId = id;
-      sync();
     }
   }, true);
 
-  const observer = new MutationObserver(() => sync({ preferNewest: true }));
+  const observer = new MutationObserver(sync);
   observer.observe(stack, { childList: true, subtree: true });
-  sync({ preferNewest: true });
+  sync();
 }
 
 function splitRegistrationConsentAndSubmit() {
