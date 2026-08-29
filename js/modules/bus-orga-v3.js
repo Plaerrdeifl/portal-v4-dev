@@ -48,6 +48,17 @@ function ensureRegistrationBookingUxStyle() {
   const style = document.createElement("style");
   style.id = "m328RegistrationBookingUxStyle";
   style.textContent = `
+    .m328-reg3-special-actions{
+      grid-template-columns:repeat(2,minmax(0,1fr))!important;
+      gap:7px!important;
+    }
+    .m328-reg3-special-actions .button{
+      width:100%;
+      min-height:36px!important;
+      padding:5px 8px!important;
+      font-size:.72rem!important;
+      white-space:nowrap;
+    }
     .m328-reg3-booking{
       transition:border-color .15s ease,box-shadow .15s ease,background .15s ease;
     }
@@ -211,6 +222,13 @@ function splitRegistrationConsentAndSubmit() {
   panel.insertAdjacentElement("afterend", button);
 }
 
+function normalizeRegistrationSpecialActions() {
+  const guest = document.querySelector('[data-m328-reg3-special="GUEST"]');
+  const group = document.querySelector('[data-m328-reg3-special="GROUP"]');
+  if (guest) guest.textContent = "Gast hinzufügen";
+  if (group) group.textContent = "Gruppe auswählen";
+}
+
 function normalizeBusOrgaHeader() {
   const root = document.getElementById("m328BusOrgaPage");
   if (!root) return;
@@ -262,6 +280,7 @@ async function hydrateRegistrationWithoutAutofocus(context) {
   const result = await hydrateBusOrgaRegistrationV3(context);
   setupRegistrationBookingUx();
   splitRegistrationConsentAndSubmit();
+  normalizeRegistrationSpecialActions();
   clearRegistrationEntryFocus();
   requestAnimationFrame(clearRegistrationEntryFocus);
   setTimeout(clearRegistrationEntryFocus, 0);
