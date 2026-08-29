@@ -231,15 +231,11 @@ function collectStopPlan(state) {
 }
 
 function tripPayload(state, values) {
-  const published = state.trip.status === "PUBLISHED";
   return {
     id: state.trip.id,
     expectedRevision: Number(state.trip.revision),
     departureAt: values.departureTime ? tripTimeToBerlinIso(state.trip, values.departureTime, "Die Abfahrt") : null,
     departureInfo: state.trip.departureInfo || null,
-    registrationOpensAt: values.registrationOpensAt
-      ? berlinLocalToIso(values.registrationOpensAt, "Der Anmeldestart")
-      : state.trip.registrationOpensAt || null,
     registrationClosesAt: values.registrationClosesAt
       ? berlinLocalToIso(values.registrationClosesAt, "Das Anmeldeende")
       : null,
@@ -248,8 +244,7 @@ function tripPayload(state, values) {
     defaultBoardingStopId: values.defaultBoardingStopId || null,
     busPreferenceEnabled: values.busPreferenceEnabled === "on",
     privacyReference: state.trip.privacyReference || PRIVACY_REFERENCE,
-    termsReference: state.trip.termsReference || TERMS_REFERENCE,
-    ...(published ? {} : {})
+    termsReference: state.trip.termsReference || TERMS_REFERENCE
   };
 }
 
@@ -276,9 +271,6 @@ function renderPage(root, state) {
   ensureStyle();
   const venue = String(state.trip.venue || "").trim() || "Fahrt";
   const required = state.trip.status === "PUBLISHED" ? " required" : "";
-  const openField = state.trip.status === "DRAFT"
-    ? `<label>Anmeldung beginnt<input name="registrationOpensAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(state.trip.registrationOpensAt))}"></label>`
-    : `<label>Anmeldung geöffnet seit<input type="text" value="${escapeAttr(toBerlinInputValue(state.trip.registrationOpensAt).replace("T", " · "))}" readonly></label>`;
   root.innerHTML = `<div class="m328-trip-edit">
     <header class="m328-trip-edit-head"><button id="m328TripEditBack" class="button small ghost" type="button">← Bus-Orga</button><div class="m328-trip-edit-title"><h2>Fahrt bearbeiten • ${escapeHtml(venue)}</h2><span>${escapeHtml(shortDate(state.trip.eventDate))} · ${escapeHtml(eventTime(state.trip.eventTime))}</span></div></header>
     <form id="m328TripEditForm" class="m328-trip-edit-actions">
@@ -286,7 +278,6 @@ function renderPage(root, state) {
         <label>Abfahrt<input name="departureTime" type="time" step="60" value="${escapeAttr(toBerlinTimeInputValue(state.trip.departureAt))}"${required}></label>
         <label>Fahrtpreis<input name="price" inputmode="decimal" pattern="[0-9]+([,.][0-9]{1,2})?" value="${escapeAttr(centsToEuroInput(state.trip.priceCents))}" placeholder="25,00"${required}></label>
         <label>Anmeldeschluss<input name="registrationClosesAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(state.trip.registrationClosesAt))}"${required}></label>
-        ${openField}
         <label class="m328-trip-edit-toggle"><input name="busPreferenceEnabled" type="checkbox"${state.trip.busPreferenceEnabled === true ? " checked" : ""}><span>Buswunsch erlauben<small>Wird nur wirksam, wenn der zentrale Mehrbus-Vertrag erfüllt ist.</small></span></label>
       </div></section>
       <section class="m328-trip-edit-panel"><div class="m328-trip-edit-panel-head"><div><h3>Zustiegsorte</h3><p class="m328-trip-edit-hint">Zustiege und Uhrzeiten direkt für diese Fahrt bearbeiten.</p></div><button id="m328TripEditAddStop" class="button small secondary" type="button">＋ Zustieg</button></div><div id="m328TripEditStops" class="m328-trip-edit-stops">${state.tripStops.map(stop => stopRow(state, stop)).join("")}</div><label class="m328-trip-edit-default">Standard für diese Fahrt<select id="m328TripEditDefaultStop" name="defaultBoardingStopId"><option value="">Kein Standard</option>${state.tripStops.filter(stop => stop.isActive !== false).map(stop => `<option value="${escapeAttr(stop.boardingStopId)}"${stop.boardingStopId === state.trip.defaultBoardingStopId ? " selected" : ""}>${escapeHtml(stop.label || "Zustiegsort")}</option>`).join("")}</select></label></section>
