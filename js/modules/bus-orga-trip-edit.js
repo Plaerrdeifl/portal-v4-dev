@@ -131,10 +131,24 @@ function stopRow(state, stop = null, isNew = false) {
   const id = stop?.tripBoardingStopId || stop?.id || "";
   const master = stop?.boardingStopId || "";
   const time = toBerlinTimeInputValue(stop?.departureAt) || toBerlinTimeInputValue(state.trip.departureAt) || "";
+  const label = String(stop?.label || "").trim() || (master ? "Zustiegsort" : "Neuer Zustieg");
   return `<div class="m328-trip-edit-stop" data-trip-stop-row data-new="${isNew ? "true" : "false"}" data-trip-stop-id="${escapeAttr(id)}" data-revision="${escapeAttr(stop?.revision || "")}" data-position="${escapeAttr(stop?.position || "")}" data-original-master="${escapeAttr(master)}" data-original-time="${escapeAttr(time)}" data-trip-note="${escapeAttr(stop?.tripNote || "")}">
-    <label>Zustiegsort<select data-stop-master>${masterOptions(state, master)}</select></label>
-    <label>Uhrzeit<input data-stop-time type="time" step="60" value="${escapeAttr(time)}"></label>
-    <button class="button small ghost" type="button" data-stop-remove>${isNew ? "Entfernen" : "Entfernen"}</button>
+    <div class="m328-trip-edit-stop-summary">
+      <button class="m328-trip-edit-stop-main" type="button" data-stop-edit-toggle aria-expanded="${isNew ? "true" : "false"}">
+        <span class="m328-trip-edit-stop-time" data-stop-summary-time>${escapeHtml(time || "--:--")}</span>
+        <span class="m328-trip-edit-stop-label" data-stop-summary-label>${escapeHtml(label)}</span>
+        <span class="m328-trip-edit-stop-chevron" aria-hidden="true">›</span>
+      </button>
+      <button class="m328-trip-edit-stop-more" type="button" data-stop-menu-toggle aria-label="Aktionen für ${escapeAttr(label)}" aria-expanded="false">⋮</button>
+    </div>
+    <div class="m328-trip-edit-stop-menu" data-stop-menu hidden>
+      <button class="button small ghost" type="button" data-stop-edit>Bearbeiten</button>
+      <button class="button small ghost danger" type="button" data-stop-remove>Löschen</button>
+    </div>
+    <div class="m328-trip-edit-stop-editor" data-stop-editor${isNew ? "" : " hidden"}>
+      <label>Uhrzeit<input data-stop-time type="time" step="60" value="${escapeAttr(time)}"></label>
+      <label>Zustiegsort<select data-stop-master>${masterOptions(state, master)}</select></label>
+    </div>
   </div>`;
 }
 
@@ -143,18 +157,55 @@ function ensureStyle() {
   const style = document.createElement("style");
   style.id = "m328NativeTripEditStyle";
   style.textContent = `
-    .m328-trip-edit{display:grid;gap:10px;width:100%;overflow-x:clip}.m328-trip-edit *{box-sizing:border-box;min-width:0}
-    .m328-trip-edit-head{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px;padding:2px 0 10px;border-bottom:1px solid var(--line)}
-    .m328-trip-edit-title{display:grid;gap:2px}.m328-trip-edit-title h2{margin:0;font-size:1.28rem;line-height:1.12;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.m328-trip-edit-title span{color:var(--muted);font-size:.76rem;font-weight:700}
-    .m328-trip-edit-panel{display:grid;gap:10px;padding:11px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
-    .m328-trip-edit-panel h3{margin:0;font-size:1rem}.m328-trip-edit-hint{margin:0;color:var(--muted);font-size:.72rem;line-height:1.35}
-    .m328-trip-edit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.m328-trip-edit-grid label,.m328-trip-edit-default{display:grid;gap:4px;font-size:.72rem;font-weight:750}.m328-trip-edit-grid input,.m328-trip-edit-grid select,.m328-trip-edit-default select{width:100%;min-height:42px}
-    .m328-trip-edit-toggle{display:flex!important;align-items:flex-start;gap:8px;grid-column:1/-1}.m328-trip-edit-toggle input{width:auto;min-height:auto;margin-top:2px}.m328-trip-edit-toggle span{display:grid;gap:2px}.m328-trip-edit-toggle small{color:var(--muted);font-weight:500}
-    .m328-trip-edit-stops{display:grid;gap:7px}.m328-trip-edit-stop{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(110px,.7fr) auto;gap:7px;align-items:end;padding:8px;border:1px solid var(--line);border-radius:11px;background:var(--surface-2)}.m328-trip-edit-stop label{display:grid;gap:3px;font-size:.69rem;font-weight:750}.m328-trip-edit-stop select,.m328-trip-edit-stop input{width:100%;min-height:40px}.m328-trip-edit-stop.is-removed{opacity:.55}.m328-trip-edit-stop.is-removed select,.m328-trip-edit-stop.is-removed input{pointer-events:none}
-    .m328-trip-edit-panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.m328-trip-edit-actions{display:grid;grid-template-columns:1fr;gap:8px}.m328-trip-edit-actions .button{width:100%;min-height:46px}
-    @media(max-width:620px){.m328-trip-edit-grid{grid-template-columns:1fr}.m328-trip-edit-stop{grid-template-columns:1fr 1fr}.m328-trip-edit-stop .button{grid-column:1/-1}.m328-trip-edit-toggle{grid-column:auto}}
+    .m328-trip-edit{display:grid;gap:9px;width:100%;overflow-x:clip}.m328-trip-edit *{box-sizing:border-box;min-width:0}
+    .m328-trip-edit-head{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:9px;padding:1px 0 9px;border-bottom:1px solid var(--line)}
+    .m328-trip-edit-head>.button{width:auto!important;min-height:36px!important;padding:6px 9px!important}
+    .m328-trip-edit-title{display:grid;gap:1px}.m328-trip-edit-title h2{margin:0;font-size:1.22rem;line-height:1.08;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.m328-trip-edit-title span{color:var(--muted);font-size:.74rem;font-weight:700}
+    .m328-trip-edit-panel{display:grid;gap:8px;padding:10px 11px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+    .m328-trip-edit-panel h3{margin:0;font-size:1rem}.m328-trip-edit-hint{margin:0;color:var(--muted);font-size:.7rem;line-height:1.3}
+    .m328-trip-edit-core-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.m328-trip-edit-core-grid label{display:grid;gap:3px;font-size:.7rem;font-weight:750}.m328-trip-edit-core-grid input{width:100%;min-height:40px;padding-top:6px!important;padding-bottom:6px!important}
+    .m328-trip-edit-deadline{grid-column:1/-1}.m328-trip-edit-money{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;border:1px solid var(--line);border-radius:11px;background:var(--surface)}.m328-trip-edit-money input{border:0!important;background:transparent!important;box-shadow:none!important}.m328-trip-edit-money span{padding:0 11px 0 4px;font-size:.9rem;font-weight:750;color:var(--muted)}
+    .m328-trip-edit-switch-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding-top:8px;border-top:1px solid var(--line);cursor:pointer}.m328-trip-edit-switch-copy{display:grid;gap:1px}.m328-trip-edit-switch-copy strong{font-size:.78rem}.m328-trip-edit-switch-copy small{color:var(--muted);font-size:.66rem;font-weight:500;line-height:1.25}
+    .m328-trip-edit-switch{position:relative;width:44px;height:26px;flex:0 0 auto}.m328-trip-edit-switch input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}.m328-trip-edit-switch-slider{position:absolute;inset:0;border-radius:999px;background:var(--line);transition:background .15s ease;pointer-events:none}.m328-trip-edit-switch-slider:after{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;border-radius:50%;background:var(--surface);box-shadow:0 1px 3px rgba(2,18,35,.22);transition:transform .15s ease}.m328-trip-edit-switch input:checked+.m328-trip-edit-switch-slider{background:var(--blue-700)}.m328-trip-edit-switch input:checked+.m328-trip-edit-switch-slider:after{transform:translateX(18px)}.m328-trip-edit-switch input:focus-visible+.m328-trip-edit-switch-slider{outline:2px solid var(--blue-700);outline-offset:2px}
+    .m328-trip-edit-panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.m328-trip-edit-panel-head>.button{width:auto!important;min-height:36px!important;padding:6px 10px!important}
+    .m328-trip-edit-stops{display:grid;border-top:1px solid var(--line)}.m328-trip-edit-stop{display:grid;border-bottom:1px solid var(--line);background:transparent}.m328-trip-edit-stop:last-child{border-bottom:0}
+    .m328-trip-edit-stop-summary{display:grid;grid-template-columns:minmax(0,1fr) 34px;align-items:center;gap:4px}.m328-trip-edit-stop-main{display:grid;grid-template-columns:64px minmax(0,1fr) auto;align-items:center;gap:8px;width:100%;min-height:42px;padding:5px 2px;border:0;background:transparent;color:var(--text);text-align:left;cursor:pointer}.m328-trip-edit-stop-time{font-weight:850;font-variant-numeric:tabular-nums}.m328-trip-edit-stop-label{font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.m328-trip-edit-stop-chevron{font-size:1.25rem;color:var(--muted);transition:transform .15s ease}.m328-trip-edit-stop-main[aria-expanded="true"] .m328-trip-edit-stop-chevron{transform:rotate(90deg)}
+    .m328-trip-edit-stop-more{display:grid;place-items:center;width:34px;height:34px;padding:0;border:0;border-radius:9px;background:transparent;color:var(--text);font-size:1.25rem;font-weight:800;cursor:pointer}.m328-trip-edit-stop-more:focus-visible,.m328-trip-edit-stop-main:focus-visible{outline:2px solid var(--blue-700);outline-offset:2px}
+    .m328-trip-edit-stop-menu{display:flex;justify-content:flex-end;gap:6px;padding:0 0 6px}.m328-trip-edit-stop-menu .button{width:auto!important;min-height:32px!important;padding:4px 9px!important;font-size:.7rem}.m328-trip-edit-stop-menu .danger{color:var(--danger,#b42318)}
+    .m328-trip-edit-stop-editor{display:grid;grid-template-columns:minmax(92px,.72fr) minmax(0,1.55fr);gap:7px;padding:0 0 8px}.m328-trip-edit-stop-editor label{display:grid;gap:3px;font-size:.67rem;font-weight:750}.m328-trip-edit-stop-editor select,.m328-trip-edit-stop-editor input{width:100%;min-height:38px;padding-top:5px!important;padding-bottom:5px!important}
+    .m328-trip-edit-stop.is-removed{opacity:.52}.m328-trip-edit-stop.is-removed .m328-trip-edit-stop-main{cursor:default}.m328-trip-edit-stop.is-removed .m328-trip-edit-stop-label{text-decoration:line-through}.m328-trip-edit-stop.is-removed select,.m328-trip-edit-stop.is-removed input{pointer-events:none}
+    .m328-trip-edit-default{display:grid;grid-template-columns:minmax(0,1fr) minmax(130px,46%);align-items:center;gap:10px;padding-top:7px;border-top:1px solid var(--line);font-size:.72rem;font-weight:800}.m328-trip-edit-default select{width:100%;min-height:38px;padding-top:5px!important;padding-bottom:5px!important}
+    .m328-trip-edit-actions{display:grid;grid-template-columns:1fr;gap:8px}.m328-trip-edit-savebar{position:sticky;bottom:6px;z-index:12;padding:5px;border-radius:14px;background:color-mix(in srgb,var(--surface) 90%,transparent);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}.m328-trip-edit-savebar .button{width:100%;min-height:44px}
+    @media(max-width:390px){.m328-trip-edit-core-grid{gap:6px}.m328-trip-edit-stop-main{grid-template-columns:58px minmax(0,1fr) auto;gap:6px}.m328-trip-edit-default{grid-template-columns:minmax(0,1fr) minmax(120px,48%)}}
   `;
   document.head.appendChild(style);
+}
+
+function syncStopSummary(row) {
+  const master = row.querySelector("[data-stop-master]");
+  const time = row.querySelector("[data-stop-time]")?.value || "--:--";
+  const label = master?.selectedOptions?.[0]?.textContent?.trim() || "Neuer Zustieg";
+  const timeTarget = row.querySelector("[data-stop-summary-time]");
+  const labelTarget = row.querySelector("[data-stop-summary-label]");
+  const menuToggle = row.querySelector("[data-stop-menu-toggle]");
+  if (timeTarget) timeTarget.textContent = time;
+  if (labelTarget) labelTarget.textContent = label;
+  if (menuToggle) menuToggle.setAttribute("aria-label", `Aktionen für ${label}`);
+}
+
+function setStopEditor(row, open) {
+  if (row.dataset.removed === "true") open = false;
+  const editor = row.querySelector("[data-stop-editor]");
+  const toggle = row.querySelector("[data-stop-edit-toggle]");
+  if (editor) editor.hidden = !open;
+  if (toggle) toggle.setAttribute("aria-expanded", open ? "true" : "false");
+}
+
+function setStopMenu(row, open) {
+  const menu = row.querySelector("[data-stop-menu]");
+  const toggle = row.querySelector("[data-stop-menu-toggle]");
+  if (menu) menu.hidden = !open;
+  if (toggle) toggle.setAttribute("aria-expanded", open ? "true" : "false");
 }
 
 function syncDefaultStop(state) {
@@ -180,7 +231,32 @@ function bindStopRows(state) {
   document.querySelectorAll("[data-trip-stop-row]").forEach(row => {
     if (row.dataset.bound === "true") return;
     row.dataset.bound = "true";
-    row.querySelector("[data-stop-master]")?.addEventListener("change", () => syncDefaultStop(state));
+    syncStopSummary(row);
+
+    row.querySelector("[data-stop-edit-toggle]")?.addEventListener("click", () => {
+      if (row.dataset.removed === "true") return;
+      const open = row.querySelector("[data-stop-editor]")?.hidden !== false;
+      setStopMenu(row, false);
+      setStopEditor(row, open);
+    });
+
+    row.querySelector("[data-stop-menu-toggle]")?.addEventListener("click", () => {
+      const open = row.querySelector("[data-stop-menu]")?.hidden !== false;
+      setStopMenu(row, open);
+    });
+
+    row.querySelector("[data-stop-edit]")?.addEventListener("click", () => {
+      setStopMenu(row, false);
+      setStopEditor(row, true);
+      row.querySelector("[data-stop-time]")?.focus();
+    });
+
+    row.querySelector("[data-stop-master]")?.addEventListener("change", () => {
+      syncStopSummary(row);
+      syncDefaultStop(state);
+    });
+    row.querySelector("[data-stop-time]")?.addEventListener("input", () => syncStopSummary(row));
+
     row.querySelector("[data-stop-remove]")?.addEventListener("click", event => {
       if (row.dataset.new === "true") {
         row.remove();
@@ -188,10 +264,14 @@ function bindStopRows(state) {
         const removed = row.dataset.removed === "true";
         row.dataset.removed = removed ? "false" : "true";
         row.classList.toggle("is-removed", !removed);
-        event.currentTarget.textContent = removed ? "Entfernen" : "Rückgängig";
+        event.currentTarget.textContent = removed ? "Löschen" : "Rückgängig";
+        setStopEditor(row, false);
+        setStopMenu(row, false);
       }
       syncDefaultStop(state);
     });
+
+    if (row.dataset.new === "true") setStopEditor(row, true);
   });
 }
 
@@ -272,16 +352,26 @@ function renderPage(root, state) {
   const venue = String(state.trip.venue || "").trim() || "Fahrt";
   const required = state.trip.status === "PUBLISHED" ? " required" : "";
   root.innerHTML = `<div class="m328-trip-edit">
-    <header class="m328-trip-edit-head"><button id="m328TripEditBack" class="button small ghost" type="button">← Bus-Orga</button><div class="m328-trip-edit-title"><h2>Fahrt bearbeiten • ${escapeHtml(venue)}</h2><span>${escapeHtml(shortDate(state.trip.eventDate))} · ${escapeHtml(eventTime(state.trip.eventTime))}</span></div></header>
+    <header class="m328-trip-edit-head"><button id="m328TripEditBack" class="button small ghost" type="button">← Bus-Orga</button><div class="m328-trip-edit-title"><h2>${escapeHtml(venue)}</h2><span>${escapeHtml(shortDate(state.trip.eventDate))} · ${escapeHtml(eventTime(state.trip.eventTime))}</span></div></header>
     <form id="m328TripEditForm" class="m328-trip-edit-actions">
-      <section class="m328-trip-edit-panel"><h3>Fahrt</h3><p class="m328-trip-edit-hint">Spieltermin, Gegner und Spielort werden weiterhin zentral im Terminmodul verwaltet.</p><div class="m328-trip-edit-grid">
-        <label>Abfahrt<input name="departureTime" type="time" step="60" value="${escapeAttr(toBerlinTimeInputValue(state.trip.departureAt))}"${required}></label>
-        <label>Fahrtpreis<input name="price" inputmode="decimal" pattern="[0-9]+([,.][0-9]{1,2})?" value="${escapeAttr(centsToEuroInput(state.trip.priceCents))}" placeholder="25,00"${required}></label>
-        <label>Anmeldeschluss<input name="registrationClosesAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(state.trip.registrationClosesAt))}"${required}></label>
-        <label class="m328-trip-edit-toggle"><input name="busPreferenceEnabled" type="checkbox"${state.trip.busPreferenceEnabled === true ? " checked" : ""}><span>Buswunsch erlauben<small>Wird nur wirksam, wenn der zentrale Mehrbus-Vertrag erfüllt ist.</small></span></label>
-      </div></section>
-      <section class="m328-trip-edit-panel"><div class="m328-trip-edit-panel-head"><div><h3>Zustiegsorte</h3><p class="m328-trip-edit-hint">Zustiege und Uhrzeiten direkt für diese Fahrt bearbeiten.</p></div><button id="m328TripEditAddStop" class="button small secondary" type="button">＋ Zustieg</button></div><div id="m328TripEditStops" class="m328-trip-edit-stops">${state.tripStops.map(stop => stopRow(state, stop)).join("")}</div><label class="m328-trip-edit-default">Standard für diese Fahrt<select id="m328TripEditDefaultStop" name="defaultBoardingStopId"><option value="">Kein Standard</option>${state.tripStops.filter(stop => stop.isActive !== false).map(stop => `<option value="${escapeAttr(stop.boardingStopId)}"${stop.boardingStopId === state.trip.defaultBoardingStopId ? " selected" : ""}>${escapeHtml(stop.label || "Zustiegsort")}</option>`).join("")}</select></label></section>
-      <button class="button primary" type="submit">Änderungen speichern</button>
+      <section class="m328-trip-edit-panel">
+        <h3>Fahrt</h3>
+        <div class="m328-trip-edit-core-grid">
+          <label>Abfahrt<input name="departureTime" type="time" step="60" value="${escapeAttr(toBerlinTimeInputValue(state.trip.departureAt))}"${required}></label>
+          <label>Fahrtpreis<span class="m328-trip-edit-money"><input name="price" inputmode="decimal" pattern="[0-9]+([,.][0-9]{1,2})?" value="${escapeAttr(centsToEuroInput(state.trip.priceCents))}" placeholder="25,00"${required}><span aria-hidden="true">€</span></span></label>
+          <label class="m328-trip-edit-deadline">Anmeldeschluss<input name="registrationClosesAt" type="datetime-local" step="60" value="${escapeAttr(toBerlinInputValue(state.trip.registrationClosesAt))}"${required}></label>
+        </div>
+        <label class="m328-trip-edit-switch-row">
+          <span class="m328-trip-edit-switch-copy"><strong>Buswunsch erlauben</strong><small>Nur relevant, wenn mehrere Busse verfügbar sind.</small></span>
+          <span class="m328-trip-edit-switch"><input name="busPreferenceEnabled" type="checkbox"${state.trip.busPreferenceEnabled === true ? " checked" : ""}><span class="m328-trip-edit-switch-slider" aria-hidden="true"></span></span>
+        </label>
+      </section>
+      <section class="m328-trip-edit-panel">
+        <div class="m328-trip-edit-panel-head"><h3>Zustiegsorte</h3><button id="m328TripEditAddStop" class="button small secondary" type="button">＋ Hinzufügen</button></div>
+        <div id="m328TripEditStops" class="m328-trip-edit-stops">${state.tripStops.map(stop => stopRow(state, stop)).join("")}</div>
+        <label class="m328-trip-edit-default"><span>Standardzustieg</span><select id="m328TripEditDefaultStop" name="defaultBoardingStopId"><option value="">Kein Standard</option>${state.tripStops.filter(stop => stop.isActive !== false).map(stop => `<option value="${escapeAttr(stop.boardingStopId)}"${stop.boardingStopId === state.trip.defaultBoardingStopId ? " selected" : ""}>${escapeHtml(stop.label || "Zustiegsort")}</option>`).join("")}</select></label>
+      </section>
+      <div class="m328-trip-edit-savebar"><button class="button primary" type="submit">Speichern</button></div>
     </form>
   </div>`;
   document.getElementById("m328TripEditBack")?.addEventListener("click", () => { location.hash = "#/bus-orga"; });
