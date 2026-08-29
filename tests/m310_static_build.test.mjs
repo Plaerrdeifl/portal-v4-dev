@@ -26,6 +26,7 @@ const rootFiles = [
 
 const directories = [
   "assets",
+  "bus-orga",
   "components",
   "css",
   "js",
