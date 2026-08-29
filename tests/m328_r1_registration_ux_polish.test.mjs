@@ -7,6 +7,38 @@ const pagesSource = read("../js/pages.js");
 const nativeSource = read("../js/modules/bus-orga-v3.js");
 const registrationSource = read("../js/modules/bus-orga-registration-v3.js");
 
+function extractedFunction(name) {
+  const block = registrationSource.match(new RegExp(`function ${name}\\([^]*?^\\}`, "m"))?.[0];
+  assert.ok(block, `function ${name} must exist`);
+  return block;
+}
+
+function bookingFlowHarness() {
+  let nextId = 0;
+  const source = [
+    "assertBookingDecisionResolved",
+    "activateBooking",
+    "activateDecisionBooking",
+    "completeBookingFlow",
+    "addToTargetOrNew",
+    "addManyToTargetOrNew"
+  ].map(extractedFunction).join("\n");
+  return Function("crypto", `${source}
+    const participantIdentity = person => person.identityKey || person.name;
+    const personName = person => person.name;
+    const allParticipants = state => state.bookings.flatMap(booking => booking.participants);
+    const totalParticipantCount = state => allParticipants(state).length;
+    const assertParticipantAvailable = (state, participant) => {
+      const key = participantIdentity(participant);
+      if (allParticipants(state).some(item => participantIdentity(item) === key)) throw new Error("duplicate");
+      return key;
+    };
+    const renderBookingStack = () => {};
+    const renderTarget = () => {};
+    return { addToTargetOrNew, addManyToTargetOrNew, activateBooking, activateDecisionBooking, completeBookingFlow };
+  `)({ randomUUID: () => `booking-${++nextId}` });
+}
+
 test("M328 registration removes automatic input focus without a DOM overlay", () => {
   assert.match(pagesSource, /bus-orga-v3\.js/);
   assert.match(nativeSource, /hydrateBusOrgaRegistrationV3/);
@@ -54,7 +86,7 @@ test("M328 prepared bookings use compact card interactions and boarding-stop sum
   assert.doesNotMatch(registrationSource, />Entfernen<\/button>/);
   assert.doesNotMatch(nativeSource, /data-m328-booking-activate|activate\.textContent = "Bearbeiten"/);
   assert.match(registrationSource, /event\.target\.closest\("button,input,select,textarea,a,label"\)/);
-  assert.match(registrationSource, /state\.targetBookingId = card\.dataset\.m328Reg3BookingCard/);
+  assert.match(registrationSource, /activateBooking\(state, card\.dataset\.m328Reg3BookingCard\)/);
   assert.match(registrationSource, /function selectedStopLabel\(state, selected = ""\)/);
   assert.match(registrationSource, /refreshBookingOverview\(state, target, bookingIndex\)/);
 });
@@ -64,20 +96,84 @@ test("M328 manual registration consent uses the approved information wording", (
   assert.doesNotMatch(registrationSource, /Für alle erfassten Personen wurden Teilnahmebedingungen und Datenschutzhinweise bestätigt\./);
 });
 
-test("M328 keeps one prepared booking active until the operator finishes", () => {
-  const addOne = registrationSource.match(/function addToTargetOrNew\(state, participant\) \{[\s\S]*?\n\}/)?.[0] || "";
-  const addMany = registrationSource.match(/function addManyToTargetOrNew\(state, participants\) \{[\s\S]*?\n\}/)?.[0] || "";
+test("M328 guides the first person into a deliberate shared-or-complete decision", () => {
+  const flow = bookingFlowHarness();
+  const state = { bookings: [], targetBookingId: null, decisionBookingId: null };
+  flow.addToTargetOrNew(state, { name: "Erste Person" });
+  assert.equal(state.bookings.length, 1);
+  assert.equal(state.bookings[0].participants.length, 1);
+  assert.equal(state.targetBookingId, null);
+  assert.equal(state.decisionBookingId, "booking-1");
+  assert.throws(() => flow.addToTargetOrNew(state, { name: "Zu früh" }), /entscheide zuerst/);
+  assert.match(registrationSource, /Wie möchtest du fortfahren\?/);
+  assert.match(registrationSource, /Personen, die gemeinsam hinzugefügt werden, bilden eine zusammenhängende Buchung und erhalten dieselbe Buchungsnummer\./);
+  assert.match(registrationSource, /data-m328-reg3-target-more>Weitere Person hinzufügen<\/button>/);
+});
+
+test("M328 adds second and third people to the explicitly activated booking", () => {
+  const flow = bookingFlowHarness();
+  const state = { bookings: [], targetBookingId: null, decisionBookingId: null };
+  flow.addToTargetOrNew(state, { name: "Person 1" });
+  assert.equal(flow.activateDecisionBooking(state), true);
+  flow.addToTargetOrNew(state, { name: "Person 2" });
+  flow.addToTargetOrNew(state, { name: "Person 3" });
+  assert.equal(state.bookings.length, 1);
+  assert.equal(state.bookings[0].participants.length, 3);
+  assert.equal(state.targetBookingId, "booking-1");
+  assert.equal(state.decisionBookingId, null);
+  assert.match(registrationSource, /Gemeinsame Buchung aktiv · \$\{context\.booking\.participants\.length\}/);
+  assert.match(registrationSource, /Weitere ausgewählte Personen werden dieser Buchung hinzugefügt und erhalten dieselbe Buchungsnummer\./);
+});
+
+test("M328 completing a booking makes the next person start a new booking", () => {
+  const flow = bookingFlowHarness();
+  const state = { bookings: [], targetBookingId: null, decisionBookingId: null };
+  flow.addToTargetOrNew(state, { name: "Person 1" });
+  flow.activateDecisionBooking(state);
+  flow.addToTargetOrNew(state, { name: "Person 2" });
+  flow.completeBookingFlow(state);
+  flow.addToTargetOrNew(state, { name: "Person 3" });
+  assert.equal(state.bookings.length, 2);
+  assert.equal(state.bookings[0].participants.length, 2);
+  assert.equal(state.bookings[1].participants.length, 1);
+  assert.equal(state.targetBookingId, null);
+  assert.equal(state.decisionBookingId, "booking-2");
+  assert.match(registrationSource, /<strong>Neue Buchung<\/strong><span>Die nächste ausgewählte Person startet eine neue Buchung\.<\/span>/);
+});
+
+test("M328 reactivates an existing card and activates a new group immediately", () => {
+  const flow = bookingFlowHarness();
+  const state = { bookings: [], targetBookingId: null, decisionBookingId: null };
+  flow.addToTargetOrNew(state, { name: "Einzelperson" });
+  flow.completeBookingFlow(state);
+  assert.equal(flow.activateBooking(state, "booking-1"), true);
+  flow.addToTargetOrNew(state, { name: "Weitere Person" });
+  assert.equal(state.bookings[0].participants.length, 2);
+  flow.completeBookingFlow(state);
+  flow.addManyToTargetOrNew(state, [{ name: "Gruppe 1" }, { name: "Gruppe 2" }]);
+  assert.equal(state.bookings.length, 2);
+  assert.equal(state.targetBookingId, "booking-2");
+  assert.equal(state.bookings[1].participants.length, 2);
+});
+
+test("M328 treats a guest consistently in new and active bookings", () => {
+  const flow = bookingFlowHarness();
+  const state = { bookings: [], targetBookingId: null, decisionBookingId: null };
+  flow.addToTargetOrNew(state, { name: "Gast 1", source: "GUEST" });
+  assert.equal(state.decisionBookingId, "booking-1");
+  flow.activateDecisionBooking(state);
+  flow.addToTargetOrNew(state, { name: "Gast 2", source: "GUEST" });
+  assert.equal(state.bookings.length, 1);
+  assert.equal(state.bookings[0].participants.length, 2);
+});
+
+test("M328 uses only the non-wrapping booking completion action", () => {
   const bookingCard = registrationSource.match(/function bookingCard\(state, booking, bookingIndex\) \{[\s\S]*?\n\}/)?.[0] || "";
-  const renderTarget = registrationSource.match(/function renderTarget\(state\) \{[\s\S]*?\n\}/)?.[0] || "";
-  assert.doesNotMatch(addOne, /state\.targetBookingId = null/);
-  assert.doesNotMatch(addMany, /state\.targetBookingId = null/);
-  assert.match(addMany, /state\.targetBookingId = booking\.clientId/);
-  assert.match(bookingCard, /booking\.clientId === state\.targetBookingId/);
   assert.doesNotMatch(bookingCard, /Speichern|verwerfen/i);
-  assert.match(registrationSource, /Du bearbeitest Buchung \$\{context\.index \+ 1\} · \$\{context\.booking\.participants\.length\}/);
-  assert.match(registrationSource, /Weitere ausgewählte Personen werden dieser Buchung hinzugefügt\./);
-  assert.match(registrationSource, /data-m328-reg3-target-done>Fertig<\/button>/);
-  assert.match(renderTarget, /state\.targetBookingId = null;\s*renderBookingStack\(state\)/);
+  assert.match(registrationSource, /data-m328-reg3-target-complete>Buchung abschließen<\/button>/);
+  assert.doesNotMatch(registrationSource, />Fertig<\/button>|data-m328-reg3-target-done/);
+  assert.match(registrationSource, /\.m328-reg3-target-action\{[^}]*white-space:nowrap/);
+  assert.match(registrationSource, /@media\(max-width:520px\)\{\.m328-reg3-target\{[^}]*flex-direction:column/);
   assert.doesNotMatch(registrationSource, /data-m328-reg3-add-to-booking|＋ Person/);
 });
 

@@ -75,6 +75,10 @@ function ensureRegistrationBookingUxStyle() {
     .m328-reg3-booking.is-active-booking .m328-reg3-booking-head{
       background:color-mix(in srgb,var(--accent) 8%,var(--surface));
     }
+    .m328-reg3-booking.is-decision-booking{
+      border:2px solid color-mix(in srgb,var(--accent) 55%,var(--line))!important;
+      background:color-mix(in srgb,var(--accent) 4%,var(--surface));
+    }
     .m328-reg3-booking:not(.is-active-booking){
       background:var(--surface-2);
       cursor:pointer;
@@ -95,7 +99,7 @@ function ensureRegistrationBookingUxStyle() {
     .m328-reg3-booking-overview-person strong{font-size:.78rem}
     .m328-reg3-booking-overview-person small{color:var(--muted);font-size:.67rem;line-height:1.35}
     .m328-reg3-booking-status{
-      display:inline-flex;
+      display:none;
       align-items:center;
       width:max-content;
       margin-top:5px;
@@ -107,8 +111,12 @@ function ensureRegistrationBookingUxStyle() {
       font-weight:850;
       line-height:1.15;
     }
-    .m328-reg3-booking:not(.is-active-booking) .m328-reg3-booking-status{
-      display:none;
+    .m328-reg3-booking.is-active-booking .m328-reg3-booking-status-active,
+    .m328-reg3-booking.is-decision-booking .m328-reg3-booking-status-decision{
+      display:inline-flex;
+    }
+    .m328-reg3-booking-status-decision{
+      background:color-mix(in srgb,var(--accent) 70%,#6b7280);
     }
     .m328-reg3-remove-booking{
       width:28px;

@@ -130,7 +130,30 @@ function assertParticipantAvailable(state, participant) {
   return key;
 }
 
+function assertBookingDecisionResolved(state) {
+  if (state.decisionBookingId && !state.targetBookingId) {
+    throw new Error("Bitte entscheide zuerst, wie du mit der vorbereiteten Buchung fortfahren möchtest.");
+  }
+}
+
+function activateBooking(state, bookingId) {
+  if (!state.bookings.some(booking => booking.clientId === bookingId)) return false;
+  state.targetBookingId = bookingId;
+  state.decisionBookingId = null;
+  return true;
+}
+
+function activateDecisionBooking(state) {
+  return activateBooking(state, state.decisionBookingId);
+}
+
+function completeBookingFlow(state) {
+  state.targetBookingId = null;
+  state.decisionBookingId = null;
+}
+
 function addToTargetOrNew(state, participant) {
+  assertBookingDecisionResolved(state);
   const identityKey = assertParticipantAvailable(state, participant);
   const target = state.targetBookingId
     ? state.bookings.find(booking => booking.clientId === state.targetBookingId)
@@ -139,17 +162,20 @@ function addToTargetOrNew(state, participant) {
     target.participants.push({ ...participant, identityKey });
     target.kind = target.participants.length > 1 ? "GROUP" : target.kind;
   } else {
-    state.bookings.push({
+    const booking = {
       clientId: crypto.randomUUID(),
       kind: "INDIVIDUAL",
       participants: [{ ...participant, identityKey }]
-    });
+    };
+    state.bookings.push(booking);
+    state.decisionBookingId = booking.clientId;
   }
   renderBookingStack(state);
   renderTarget(state);
 }
 
 function addManyToTargetOrNew(state, participants) {
+  assertBookingDecisionResolved(state);
   if (!participants.length) throw new Error("Die Gruppe enthält keine verfügbaren Personen.");
   if (totalParticipantCount(state) + participants.length > 20) {
     throw new Error("Die Auswahl überschreitet das Limit von 20 Personen.");
@@ -177,7 +203,7 @@ function addManyToTargetOrNew(state, participants) {
       }))
     };
     state.bookings.push(booking);
-    state.targetBookingId = booking.clientId;
+    activateBooking(state, booking.clientId);
   }
   renderBookingStack(state);
   renderTarget(state);
@@ -226,6 +252,7 @@ function ensureStyle() {
     .m328-reg3-target{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px;padding:8px 9px;border-radius:10px;background:var(--surface-2);font-size:.73rem}
     .m328-reg3-target[hidden]{display:none!important}
     .m328-reg3-target-copy{display:grid;gap:3px}.m328-reg3-target-copy strong{font-size:.78rem}.m328-reg3-target-copy span{color:var(--muted);line-height:1.35}
+    .m328-reg3-target-actions{display:flex;flex:0 0 auto;flex-wrap:wrap;justify-content:flex-end;gap:6px}.m328-reg3-target-action{width:auto!important;white-space:nowrap}
     .m328-reg3-special-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
     .m328-reg3-special-actions .button{width:100%;min-height:40px}
     .m328-reg3-special-panel{display:grid;gap:8px;margin-top:8px}
@@ -245,7 +272,7 @@ function ensureStyle() {
     .m328-reg3-submit{display:grid;gap:9px}.m328-reg3-consent{display:flex;align-items:flex-start;gap:8px;font-size:.74rem;line-height:1.35}.m328-reg3-submit>.m328-reg3-panel>.button{width:100%;min-height:46px}
     .m328-reg3-empty{margin:0;color:var(--muted);font-size:.78rem}
     .m328-reg3-group-review{padding:9px;border-radius:10px;background:var(--surface);font-size:.73rem;line-height:1.35}.m328-reg3-group-review p{margin:5px 0}
-    @media(max-width:520px){.m328-reg3-special-actions,.m328-reg3-guest-grid,.m328-reg3-person{grid-template-columns:1fr}.m328-reg3-guest-grid label:last-child,.m328-reg3-note{grid-column:auto}.m328-reg3-booking-head{align-items:start}.m328-reg3-booking-actions{flex-direction:column;align-items:stretch}.m328-reg3-booking-actions .button{padding:5px 7px;font-size:.68rem}}
+    @media(max-width:520px){.m328-reg3-target{align-items:stretch;flex-direction:column}.m328-reg3-target-actions{justify-content:flex-start}.m328-reg3-special-actions,.m328-reg3-guest-grid,.m328-reg3-person{grid-template-columns:1fr}.m328-reg3-guest-grid label:last-child,.m328-reg3-note{grid-column:auto}.m328-reg3-booking-head{align-items:start}.m328-reg3-booking-actions{flex-direction:column;align-items:stretch}.m328-reg3-booking-actions .button{padding:5px 7px;font-size:.68rem}}
   `;
   document.head.appendChild(style);
 }
@@ -298,11 +325,12 @@ function choiceToParticipant(state, choice) {
   };
 }
 
-function targetBookingContext(state) {
-  if (!state.targetBookingId) return null;
-  const index = state.bookings.findIndex(booking => booking.clientId === state.targetBookingId);
-  if (index < 0) return null;
-  return { booking: state.bookings[index], index };
+function bookingFlowContext(state) {
+  const targetId = state.targetBookingId || state.decisionBookingId;
+  const index = state.bookings.findIndex(booking => booking.clientId === targetId);
+  if (state.targetBookingId && index >= 0) return { booking: state.bookings[index], index, mode: "ACTIVE" };
+  if (state.decisionBookingId && index >= 0) return { booking: state.bookings[index], index, mode: "DECISION" };
+  return { booking: null, index: -1, mode: "NEW" };
 }
 
 function updateSpecialPanelSubmitText(state) {
@@ -312,20 +340,39 @@ function updateSpecialPanelSubmitText(state) {
   if (groupSubmit) groupSubmit.textContent = state.targetBookingId ? "Gruppe zu Buchung hinzufügen" : "Gruppe als eine Buchung";
 }
 
+function updateSelectionAvailability(state) {
+  const locked = Boolean(state.decisionBookingId && !state.targetBookingId);
+  const search = document.getElementById("m328Reg3Search");
+  if (search) search.disabled = locked;
+  document.querySelectorAll("[data-m328-reg3-choice],[data-m328-reg3-filter],[data-m328-reg3-special]").forEach(control => {
+    control.disabled = locked;
+  });
+}
+
 function renderTarget(state) {
   const target = document.getElementById("m328Reg3Target");
   if (!target) return;
-  const context = targetBookingContext(state);
-  target.hidden = !context;
-  target.innerHTML = context
-    ? `<div class="m328-reg3-target-copy"><strong>Du bearbeitest Buchung ${context.index + 1} · ${context.booking.participants.length} ${context.booking.participants.length === 1 ? "Person" : "Personen"}</strong><span>Weitere ausgewählte Personen werden dieser Buchung hinzugefügt.</span></div><button class="button tiny secondary" type="button" data-m328-reg3-target-done>Fertig</button>`
-    : "";
-  target.querySelector("[data-m328-reg3-target-done]")?.addEventListener("click", () => {
-    state.targetBookingId = null;
+  const context = bookingFlowContext(state);
+  target.hidden = false;
+  if (context.mode === "DECISION") {
+    target.innerHTML = `<div class="m328-reg3-target-copy"><strong>Wie möchtest du fortfahren?</strong><span>Personen, die gemeinsam hinzugefügt werden, bilden eine zusammenhängende Buchung und erhalten dieselbe Buchungsnummer.</span></div><div class="m328-reg3-target-actions"><button class="button tiny primary m328-reg3-target-action" type="button" data-m328-reg3-target-more>Weitere Person hinzufügen</button><button class="button tiny secondary m328-reg3-target-action" type="button" data-m328-reg3-target-complete>Buchung abschließen</button></div>`;
+  } else if (context.mode === "ACTIVE") {
+    target.innerHTML = `<div class="m328-reg3-target-copy"><strong>Gemeinsame Buchung aktiv · ${context.booking.participants.length} ${context.booking.participants.length === 1 ? "Person" : "Personen"}</strong><span>Weitere ausgewählte Personen werden dieser Buchung hinzugefügt und erhalten dieselbe Buchungsnummer.</span></div><div class="m328-reg3-target-actions"><button class="button tiny secondary m328-reg3-target-action" type="button" data-m328-reg3-target-complete>Buchung abschließen</button></div>`;
+  } else {
+    target.innerHTML = '<div class="m328-reg3-target-copy"><strong>Neue Buchung</strong><span>Die nächste ausgewählte Person startet eine neue Buchung.</span></div>';
+  }
+  target.querySelector("[data-m328-reg3-target-more]")?.addEventListener("click", () => {
+    if (!activateDecisionBooking(state)) return;
+    renderBookingStack(state);
+    renderTarget(state);
+  });
+  target.querySelector("[data-m328-reg3-target-complete]")?.addEventListener("click", () => {
+    completeBookingFlow(state);
     renderBookingStack(state);
     renderTarget(state);
   });
   updateSpecialPanelSubmitText(state);
+  updateSelectionAvailability(state);
 }
 
 function filteredChoices(state) {
@@ -527,7 +574,8 @@ function refreshBookingOverview(state, target, bookingIndex) {
 function bookingCard(state, booking, bookingIndex) {
   const count = booking.participants.length;
   const active = booking.clientId === state.targetBookingId;
-  return `<article class="m328-reg3-booking${active ? " is-active-booking" : ""}" data-m328-reg3-booking-card="${escapeAttr(booking.clientId)}" aria-current="${active}"><header class="m328-reg3-booking-head"><div><strong>Buchung ${bookingIndex + 1} · ${count} ${count === 1 ? "Person" : "Personen"}</strong><span class="m328-reg3-booking-status">Wird bearbeitet</span></div><div class="m328-reg3-booking-actions"><button class="icon-button m328-reg3-remove-booking" type="button" data-m328-reg3-remove-booking="${escapeAttr(booking.clientId)}" aria-label="Buchung entfernen">×</button></div></header><div class="m328-reg3-booking-overview" data-m328-reg3-booking-overview="${bookingIndex}">${bookingOverview(state, booking)}</div>${booking.participants.map((person, personIndex) => participantFields(state, bookingIndex, personIndex, person)).join("")}</article>`;
+  const decision = booking.clientId === state.decisionBookingId;
+  return `<article class="m328-reg3-booking${active ? " is-active-booking" : ""}${decision ? " is-decision-booking" : ""}" data-m328-reg3-booking-card="${escapeAttr(booking.clientId)}" aria-current="${active}"><header class="m328-reg3-booking-head"><div><strong>Buchung ${bookingIndex + 1} · ${count} ${count === 1 ? "Person" : "Personen"}</strong><span class="m328-reg3-booking-status m328-reg3-booking-status-active">Gemeinsame Buchung aktiv</span><span class="m328-reg3-booking-status m328-reg3-booking-status-decision">Entscheidung offen</span></div><div class="m328-reg3-booking-actions"><button class="icon-button m328-reg3-remove-booking" type="button" data-m328-reg3-remove-booking="${escapeAttr(booking.clientId)}" aria-label="Buchung entfernen">×</button></div></header><div class="m328-reg3-booking-overview" data-m328-reg3-booking-overview="${bookingIndex}">${bookingOverview(state, booking)}</div>${booking.participants.map((person, personIndex) => participantFields(state, bookingIndex, personIndex, person)).join("")}</article>`;
 }
 
 function parsePair(value) {
@@ -548,7 +596,7 @@ function renderBookingStack(state) {
 
   target.querySelectorAll("[data-m328-reg3-booking-card]").forEach(card => card.addEventListener("click", event => {
     if (event.target.closest("button,input,select,textarea,a,label")) return;
-    state.targetBookingId = card.dataset.m328Reg3BookingCard;
+    if (!activateBooking(state, card.dataset.m328Reg3BookingCard)) return;
     renderBookingStack(state);
     renderTarget(state);
   }));
@@ -556,6 +604,7 @@ function renderBookingStack(state) {
     const id = button.dataset.m328Reg3RemoveBooking;
     state.bookings = state.bookings.filter(booking => booking.clientId !== id);
     if (state.targetBookingId === id) state.targetBookingId = null;
+    if (state.decisionBookingId === id) state.decisionBookingId = null;
     renderBookingStack(state);
     renderTarget(state);
   }));
@@ -566,6 +615,7 @@ function renderBookingStack(state) {
     booking.participants.splice(personIndex, 1);
     if (!booking.participants.length) {
       if (state.targetBookingId === booking.clientId) state.targetBookingId = null;
+      if (state.decisionBookingId === booking.clientId) state.decisionBookingId = null;
       state.bookings.splice(bookingIndex, 1);
     }
     renderBookingStack(state);
@@ -717,7 +767,8 @@ export async function hydrateBusOrgaRegistrationV3(context = {}) {
       searchQuery: "",
       searchFilter: "ALL",
       specialMode: "",
-      targetBookingId: null
+      targetBookingId: null,
+      decisionBookingId: null
     };
     manualAttempt = null;
     renderPage(root, state);
