@@ -207,7 +207,7 @@ test("M328 treats a guest consistently in new and active bookings", () => {
   assert.equal(state.bookings[0].participants.length, 2);
 });
 
-test("M328 uses only the non-wrapping booking completion action", () => {
+test("M328 uses a non-wrapping local booking completion action", () => {
   const bookingCard = registrationSource.match(/function bookingCard\(state, booking, bookingIndex\) \{[\s\S]*?\n\}/)?.[0] || "";
   assert.doesNotMatch(bookingCard, /Speichern|verwerfen/i);
   assert.match(registrationSource, /data-m328-reg3-target-complete>Buchung abschließen<\/button>/);
@@ -215,8 +215,10 @@ test("M328 uses only the non-wrapping booking completion action", () => {
   assert.match(registrationSource, /\.m328-reg3-target-action\{[^}]*white-space:nowrap/);
   assert.match(registrationSource, /@media\(max-width:520px\)\{\.m328-reg3-target\{[^}]*flex-direction:column/);
   assert.doesNotMatch(registrationSource, /data-m328-reg3-add-to-booking|＋ Person/);
-  assert.match(nativeSource, /footer\.appendChild\(complete\);\s*activeBooking\.appendChild\(footer\)/);
-  assert.match(nativeSource, /\.m328-reg3-booking-complete\{[^}]*border-top:1px solid var\(--line\)/);
+  assert.match(nativeSource, /participantCount > 1 \? "Buchungsgruppe speichern" : "Buchung speichern"/);
+  assert.match(nativeSource, /saveButton\.addEventListener\("click", \(\) => complete\.click\(\)\)/);
+  assert.doesNotMatch(nativeSource, /footer\.appendChild\(complete\)/);
+  assert.match(nativeSource, /\.m328-reg3-booking-complete\{[^}]*border-top:1px solid color-mix/);
 });
 
 test("M328 renders every prepared participant through one complete compact overview", () => {
