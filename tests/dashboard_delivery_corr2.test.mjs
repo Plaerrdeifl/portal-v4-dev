@@ -7,6 +7,9 @@ const root = resolve(import.meta.dirname, "..");
 const read = path => readFile(resolve(root, path), "utf8");
 
 const shellRelease =
+  "20260829-m328-r1-native-actions1";
+
+const pwaRelease =
   "20260802-pwa-install-guidance-r1";
 
 const dashboardRelease =
@@ -39,7 +42,7 @@ test("current shell versions every required entry point while retaining dashboar
   assert.match(
     index,
     new RegExp(
-      `css/app\\.css\\?v=${shellRelease}`
+      `css/app\\.css\\?v=${pwaRelease}`
     )
   );
 
@@ -53,7 +56,7 @@ test("current shell versions every required entry point while retaining dashboar
   assert.match(
     config,
     new RegExp(
-      `service-worker\\.js\\?v=${shellRelease}`
+      `service-worker\\.js\\?v=${pwaRelease}`
     )
   );
 
@@ -67,7 +70,7 @@ test("current shell versions every required entry point while retaining dashboar
   assert.match(
     app,
     new RegExp(
-      `install\\.js\\?v=${shellRelease}`
+      `install\\.js\\?v=${pwaRelease}`
     )
   );
 
