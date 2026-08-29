@@ -1,5 +1,5 @@
 import { hydrateBusOrgaV2 } from "./bus-orga-v2.js?v=20260829-m328-r1-next-trip-venue1";
-import { hydrateBusOrgaRegistrationV3 } from "./bus-orga-registration-v3.js?v=20260829-m328-r1-participant-row-edit1";
+import { hydrateBusOrgaRegistrationV3 } from "./bus-orga-registration-v3.js?v=20260829-m328-r1-prepared-density1";
 import { hydrateBusOrgaBookings } from "./bus-orga-bookings.js?v=20260829-m328-r1-native-actions1";
 import { hydrateBusOrgaTripEdit } from "./bus-orga-trip-edit.js?v=20260829-m328-r1-native-actions1";
 
@@ -77,23 +77,23 @@ function ensureRegistrationBookingUxStyle() {
       transition:border-color .15s ease,box-shadow .15s ease,background .15s ease;
     }
     .m328-reg3-booking.is-active-booking{
-      border:3px solid var(--accent)!important;
+      border:3px solid var(--blue-700)!important;
       background:color-mix(in srgb,var(--warning) 9%,var(--surface));
-      box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent),0 10px 24px rgba(2,18,35,.08);
+      box-shadow:0 0 0 3px color-mix(in srgb,var(--blue-700) 16%,transparent),0 10px 24px rgba(2,18,35,.08);
     }
     .m328-reg3-booking.is-active-booking .m328-reg3-booking-head{
       background:color-mix(in srgb,var(--warning) 15%,var(--surface));
       border-bottom-color:color-mix(in srgb,var(--warning) 38%,var(--line));
     }
     .m328-reg3-booking.is-active-booking .m328-reg3-booking-head strong{
-      color:var(--accent);
+      color:var(--blue-700);
     }
     .m328-reg3-booking.is-decision-booking{
       border:2px solid color-mix(in srgb,var(--accent) 55%,var(--line))!important;
       background:color-mix(in srgb,var(--accent) 4%,var(--surface));
     }
     .m328-reg3-booking:not(.is-active-booking){
-      background:var(--surface-2);
+      background:var(--surface);
       cursor:pointer;
     }
     .m328-reg3-booking.is-active-booking + .m328-reg3-booking{
@@ -102,21 +102,7 @@ function ensureRegistrationBookingUxStyle() {
     .m328-reg3-booking:not(.is-active-booking) .m328-reg3-booking-head{
       padding-top:8px;
       padding-bottom:8px;
-    }
-    .m328-reg3-booking:not(.is-active-booking):not(.is-decision-booking) .m328-reg3-booking-head>div:first-child::after{
-      content:"Vorbereitet";
-      display:inline-flex;
-      align-items:center;
-      width:max-content;
-      margin-top:5px;
-      padding:3px 7px;
-      border:1px solid var(--line);
-      border-radius:999px;
-      background:var(--surface);
-      color:var(--muted);
-      font-size:.63rem;
-      font-weight:850;
-      line-height:1.15;
+      background:var(--surface-soft);
     }
     .m328-reg3-booking:not(.is-active-booking) .m328-reg3-person{
       display:none!important;
@@ -195,19 +181,25 @@ function ensureRegistrationBookingUxStyle() {
     .m328-reg3-booking-status{
       display:none;
       align-items:center;
-      width:max-content;
-      margin-top:5px;
+      flex:0 0 auto;
       padding:3px 7px;
       border-radius:999px;
-      background:var(--accent);
+      background:var(--blue-700);
       color:#fff;
       font-size:.63rem;
       font-weight:850;
       line-height:1.15;
+      white-space:nowrap;
     }
+    .m328-reg3-booking:not(.is-active-booking):not(.is-decision-booking) .m328-reg3-booking-status-prepared,
     .m328-reg3-booking.is-active-booking .m328-reg3-booking-status-active,
     .m328-reg3-booking.is-decision-booking .m328-reg3-booking-status-decision{
       display:inline-flex;
+    }
+    .m328-reg3-booking-status-prepared{
+      border:1px solid var(--line);
+      background:var(--surface);
+      color:var(--ink-500);
     }
     .m328-reg3-booking-status-decision{
       background:color-mix(in srgb,var(--accent) 70%,#6b7280);
