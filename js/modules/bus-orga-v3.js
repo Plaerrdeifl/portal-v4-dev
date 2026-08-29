@@ -26,6 +26,12 @@ function ensurePolishStyle() {
       padding-top:7px!important;
       padding-bottom:7px!important;
     }
+    .m328-next-trip-title{
+      white-space:nowrap!important;
+      overflow:hidden!important;
+      text-overflow:ellipsis!important;
+      overflow-wrap:normal!important;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -39,6 +45,17 @@ function normalizeBusOrgaHeader() {
   if (head) head.style.gridTemplateColumns = "auto minmax(0,1fr)";
   const title = root.querySelector(".m328-bus-orga-head h2");
   if (title) title.textContent = "Bus-Orga";
+}
+
+function normalizeNextTripTitle() {
+  const root = document.getElementById("m328BusOrgaPage");
+  const target = root?.querySelector(".m328-next-trip-title");
+  if (!root || !target) return;
+  const source = [...root.querySelectorAll(".m328-trip-card")]
+    .find(card => card.querySelector(".badge")?.textContent?.trim() !== "Abgesagt")
+    ?.querySelector(".m328-trip-summary-title");
+  const venue = String(source?.textContent || "").trim();
+  if (venue) target.textContent = venue;
 }
 
 function bindNativeTripEdit() {
@@ -66,6 +83,7 @@ export async function hydrateBusOrgaV3(context = {}) {
   const result = await hydrateBusOrgaV2(context);
   if (context.isCurrent && !context.isCurrent()) return result;
   normalizeBusOrgaHeader();
+  normalizeNextTripTitle();
   bindNativeTripEdit();
   return result;
 }
