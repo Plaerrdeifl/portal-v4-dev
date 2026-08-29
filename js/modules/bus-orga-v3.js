@@ -126,6 +126,60 @@ function ensureRegistrationBookingUxStyle() {
     .m328-reg3-booking-overview-person:last-child{border-bottom:0}
     .m328-reg3-booking-overview-person strong{font-size:.78rem}
     .m328-reg3-booking-overview-person small{color:var(--muted);font-size:.67rem;line-height:1.35}
+    .m328-reg3-booking.is-active-booking .m328-reg3-person{
+      display:block!important;
+      position:relative;
+      margin:8px 10px 0;
+      padding:0;
+      overflow:hidden;
+      border:1px solid var(--line)!important;
+      border-radius:11px;
+      background:var(--surface);
+      cursor:pointer;
+    }
+    .m328-reg3-booking.is-active-booking .m328-reg3-person:last-of-type{
+      margin-bottom:8px;
+    }
+    .m328-reg3-booking.is-active-booking .m328-reg3-person-name{
+      display:grid;
+      gap:2px;
+      padding:9px 42px 3px 10px;
+    }
+    .m328-reg3-booking.is-active-booking .m328-reg3-person:not(.is-editing)>label{
+      display:none!important;
+    }
+    .m328-reg3-booking.is-active-booking .m328-reg3-person.is-editing{
+      cursor:default;
+      background:color-mix(in srgb,var(--accent) 4%,var(--surface));
+      border-color:color-mix(in srgb,var(--accent) 35%,var(--line))!important;
+    }
+    .m328-reg3-booking.is-active-booking .m328-reg3-person.is-editing>label{
+      display:grid!important;
+      margin:0 10px 8px;
+    }
+    .m328-reg3-active-person-summary{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      align-items:center;
+      gap:8px;
+      padding:0 10px 9px;
+      color:var(--muted);
+      font-size:.67rem;
+      line-height:1.35;
+    }
+    .m328-reg3-active-person-summary-chevron{
+      color:var(--accent);
+      font-size:1rem;
+      font-weight:900;
+      line-height:1;
+    }
+    .m328-reg3-person.is-editing .m328-reg3-active-person-summary{
+      display:none!important;
+    }
+    .m328-reg3-booking.is-active-booking .m328-reg3-remove{
+      top:7px;
+      right:7px;
+    }
     .m328-reg3-booking-status{
       display:none;
       align-items:center;
@@ -152,6 +206,9 @@ function ensureRegistrationBookingUxStyle() {
       height:28px;
     }
     .m328-reg3-target-actions:empty{
+      display:none!important;
+    }
+    .m328-reg3-target-actions[hidden]{
       display:none!important;
     }
     .m328-reg3-decision-backdrop{
@@ -298,6 +355,75 @@ function ensureRegistrationDecisionBackdrop() {
   document.body.classList.add("m328-reg3-decision-open");
 }
 
+function activeParticipantSummaryText(person) {
+  const details = [];
+  const stop = person.querySelector("[data-m328-reg3-stop]");
+  const preference = person.querySelector("[data-m328-reg3-preference]");
+  const note = person.querySelector("[data-m328-reg3-note]");
+  const stopLabel = stop?.selectedOptions?.[0]?.textContent?.trim();
+  const preferenceLabel = preference?.selectedOptions?.[0]?.textContent?.trim();
+  const noteValue = note?.value?.trim();
+  if (stopLabel) details.push(`Zustieg: ${stopLabel}`);
+  if (preferenceLabel) details.push(`Buswunsch: ${preferenceLabel}`);
+  if (noteValue) details.push(`Hinweis: ${noteValue}`);
+  return details.join(" · ") || "Antippen zum Bearbeiten";
+}
+
+function syncActiveParticipantSummary(person) {
+  let summary = person.querySelector(".m328-reg3-active-person-summary");
+  if (!summary) {
+    summary = document.createElement("div");
+    summary.className = "m328-reg3-active-person-summary";
+    const name = person.querySelector(".m328-reg3-person-name");
+    name?.insertAdjacentElement("afterend", summary);
+  }
+  summary.replaceChildren();
+  const text = document.createElement("span");
+  text.textContent = activeParticipantSummaryText(person);
+  const chevron = document.createElement("span");
+  chevron.className = "m328-reg3-active-person-summary-chevron";
+  chevron.setAttribute("aria-hidden", "true");
+  chevron.textContent = "›";
+  summary.append(text, chevron);
+}
+
+function decorateActiveParticipantCards(activeBooking) {
+  if (!activeBooking) return;
+  activeBooking.querySelectorAll(".m328-reg3-person").forEach(person => {
+    syncActiveParticipantSummary(person);
+    if (person.dataset.m328CompactPersonBound === "true") return;
+    person.dataset.m328CompactPersonBound = "true";
+    person.tabIndex = 0;
+    person.setAttribute("aria-expanded", "false");
+
+    const toggle = () => {
+      const opening = !person.classList.contains("is-editing");
+      activeBooking.querySelectorAll(".m328-reg3-person.is-editing").forEach(item => {
+        if (item === person) return;
+        item.classList.remove("is-editing");
+        item.setAttribute("aria-expanded", "false");
+      });
+      person.classList.toggle("is-editing", opening);
+      person.setAttribute("aria-expanded", String(opening));
+      syncActiveParticipantSummary(person);
+    };
+
+    person.addEventListener("click", event => {
+      if (event.target.closest("button,input,select,textarea,a,label")) return;
+      toggle();
+    });
+    person.addEventListener("keydown", event => {
+      if (event.target !== person || !["Enter", " "].includes(event.key)) return;
+      event.preventDefault();
+      toggle();
+    });
+    person.querySelectorAll("select,input").forEach(control => {
+      control.addEventListener("change", () => syncActiveParticipantSummary(person));
+      control.addEventListener("input", () => syncActiveParticipantSummary(person));
+    });
+  });
+}
+
 function syncRegistrationFlowPresentation() {
   const target = document.getElementById("m328Reg3Target");
   if (!target) {
@@ -309,12 +435,17 @@ function syncRegistrationFlowPresentation() {
 
   const more = target.querySelector("[data-m328-reg3-target-more]");
   const complete = target.querySelector("[data-m328-reg3-target-complete]");
+  const actions = target.querySelector(".m328-reg3-target-actions");
   const decision = Boolean(more);
 
   target.classList.toggle("is-decision-modal", decision);
   if (decision) {
     if (more && more.textContent !== "Weitere Person hinzufügen") more.textContent = "Weitere Person hinzufügen";
-    if (complete && complete.textContent !== "Zur Übersicht") complete.textContent = "Zur Übersicht";
+    if (complete) {
+      complete.hidden = false;
+      if (complete.textContent !== "Zur Übersicht") complete.textContent = "Zur Übersicht";
+    }
+    if (actions) actions.hidden = false;
     target.setAttribute("role", "dialog");
     target.setAttribute("aria-modal", "true");
     target.setAttribute("aria-label", "Buchung fortsetzen");
@@ -333,12 +464,13 @@ function syncRegistrationFlowPresentation() {
   const activeBooking = document.querySelector(".m328-reg3-booking.is-active-booking");
   if (!complete || !activeBooking) return;
 
-  if (complete.textContent !== "Neue Buchung starten") complete.textContent = "Neue Buchung starten";
-  complete.classList.remove("primary");
-  complete.classList.add("secondary");
+  complete.hidden = true;
+  if (actions) actions.hidden = true;
 
   const activeStatus = activeBooking.querySelector(".m328-reg3-booking-status-active");
   if (activeStatus) activeStatus.textContent = "Offen · wird bearbeitet";
+
+  decorateActiveParticipantCards(activeBooking);
 
   const participantCount = activeBooking.querySelectorAll(".m328-reg3-person").length;
   const footer = document.createElement("div");
