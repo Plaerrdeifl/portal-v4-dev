@@ -3,6 +3,8 @@ import { hydrateBusOrgaRegistrationV3 } from "./bus-orga-registration-v3.js?v=20
 import { hydrateBusOrgaBookings } from "./bus-orga-bookings.js?v=20260829-m328-r1-native-actions1";
 import { hydrateBusOrgaTripEdit } from "./bus-orga-trip-edit.js?v=20260829-m328-r1-native-actions1";
 
+let registrationDecisionPlaceholder = null;
+
 function routeParams() {
   const hash = String(location.hash || "");
   const query = hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : "";
@@ -136,6 +138,7 @@ function ensureRegistrationBookingUxStyle() {
       position:fixed;
       inset:0;
       z-index:1198;
+      pointer-events:auto;
       background:rgba(2,18,35,.55);
       backdrop-filter:blur(2px);
     }
@@ -157,6 +160,7 @@ function ensureRegistrationBookingUxStyle() {
       box-shadow:0 24px 70px rgba(2,18,35,.28);
       gap:14px;
       align-items:stretch!important;
+      pointer-events:auto;
     }
     .m328-reg3-target.is-decision-modal .m328-reg3-target-copy{
       gap:7px;
@@ -244,6 +248,21 @@ function normalizeRegistrationSpecialActions() {
   });
 }
 
+function portalRegistrationDecisionTarget(target) {
+  if (target.parentElement === document.body) return;
+  if (registrationDecisionPlaceholder?.parentNode) registrationDecisionPlaceholder.remove();
+  registrationDecisionPlaceholder = document.createComment("m328-reg3-target-placeholder");
+  target.parentNode?.insertBefore(registrationDecisionPlaceholder, target);
+  document.body.appendChild(target);
+}
+
+function restoreRegistrationDecisionTarget(target) {
+  if (!registrationDecisionPlaceholder?.parentNode) return;
+  registrationDecisionPlaceholder.parentNode.insertBefore(target, registrationDecisionPlaceholder);
+  registrationDecisionPlaceholder.remove();
+  registrationDecisionPlaceholder = null;
+}
+
 function removeRegistrationDecisionBackdrop() {
   document.querySelector(".m328-reg3-decision-backdrop")?.remove();
   document.body.classList.remove("m328-reg3-decision-open");
@@ -262,6 +281,8 @@ function ensureRegistrationDecisionBackdrop() {
 function syncRegistrationFlowPresentation() {
   const target = document.getElementById("m328Reg3Target");
   if (!target) {
+    if (registrationDecisionPlaceholder?.parentNode) registrationDecisionPlaceholder.remove();
+    registrationDecisionPlaceholder = null;
     removeRegistrationDecisionBackdrop();
     return;
   }
@@ -276,9 +297,11 @@ function syncRegistrationFlowPresentation() {
     target.setAttribute("aria-modal", "true");
     target.setAttribute("aria-label", "Buchung fortsetzen");
     ensureRegistrationDecisionBackdrop();
+    portalRegistrationDecisionTarget(target);
     return;
   }
 
+  restoreRegistrationDecisionTarget(target);
   target.removeAttribute("role");
   target.removeAttribute("aria-modal");
   target.removeAttribute("aria-label");
