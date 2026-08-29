@@ -149,9 +149,11 @@ export async function hydratePage(key, context = {}) {
     return result;
   }
   if (key === "bus-orga") {
-    const result = await feature("./modules/bus-orga.js?v=20260829-m328-r1-registration-ux2", "hydrateBusOrga", context);
-    await feature("./m328-registration-ux-polish.js?v=20260829-m328-r1-registration-ux2", "setupM328RegistrationUxPolish", context);
-    return result;
+    return feature(
+      "./modules/bus-orga-v2.js?v=20260829-m328-r1-booking-management1",
+      "hydrateBusOrgaV2",
+      context
+    );
   }
   if (key === "fanclub") return feature("./modules/fanclub.js", "hydrateFanclub", context);
   if (key === "tasks") return feature("./modules/tasks.js", "hydrateTasks", context);
