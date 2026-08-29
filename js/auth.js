@@ -22,6 +22,12 @@ let renderFingerprint = "";
 let renderRevision = 0;
 
 const PD_PUSH_LOGOUT_RECOVERY_PREFIX = "pdPushLogoutRecovery:";
+const BUS_ORGA_CAPABILITIES = Object.freeze([
+  "fanbus.manage",
+  "fanbus.registrations.manage",
+  "fanbus.operations.manage",
+  "fanbus.payment_marker.manage"
+]);
 
 function stableRenderValue(value) {
   if (Array.isArray(value)) {
@@ -311,6 +317,9 @@ export const auth = Object.freeze({
     if (!this.isActive()) return key === "profile" && this.isAuthenticated();
     if (key === "profile") return false;
     if (["dashboard", "dates"].includes(key)) return true;
+    if (key === "bus-orga") {
+      return BUS_ORGA_CAPABILITIES.some(code => this.hasCapability(code));
+    }
     return Boolean(state.bootstrap?.navigation?.[key]);
   },
 
