@@ -56,15 +56,40 @@ test("M328 registration header directly shows venue with date and time below", (
   assert.doesNotMatch(registrationSource, /P300/);
 });
 
-test("M328 registration starts with person search and source filters", () => {
+test("M328 registration starts with three closed, equal input modes", () => {
+  assert.match(registrationSource, /data-m328-reg3-special="KNOWN">Bekannte Personen<\/button>/);
+  assert.match(registrationSource, /data-m328-reg3-special="GUEST">Gast hinzufügen<\/button>/);
+  assert.match(registrationSource, /data-m328-reg3-special="GROUP">Gruppe auswählen<\/button>/);
+  assert.match(registrationSource, /id="m328Reg3InputPanel" class="m328-reg3-special-panel" hidden/);
+  const renderPage = extractedFunction("renderPage");
+  assert.doesNotMatch(renderPage, /id="m328Reg3Search"/);
+  assert.doesNotMatch(renderPage, /renderSearch\(state\)/);
+  assert.match(registrationSource, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(nativeSource, /@media\(max-width:520px\)\{[^]*?\.m328-reg3-special-actions\{[^}]*grid-template-columns:1fr!important/);
+  assert.match(nativeSource, /\.m328-reg3-special-actions \.button\{[^}]*white-space:nowrap/);
+});
+
+test("M328 known-person mode mounts the unchanged search and source filters on demand", () => {
+  assert.match(registrationSource, /if \(mode === "KNOWN"\) renderKnownPeoplePanel\(state\)/);
+  assert.match(registrationSource, /function renderKnownPeoplePanel\(state\)/);
   assert.match(registrationSource, /Person suchen/);
   assert.match(registrationSource, /Name eingeben …/);
   assert.match(registrationSource, /label: "Alle"/);
   assert.match(registrationSource, /label: "Mitglieder"/);
   assert.match(registrationSource, /label: "Portaluser"/);
   assert.match(registrationSource, /label: "Stammfahrer"/);
-  assert.match(registrationSource, /＋ Gast hinzufügen/);
-  assert.match(registrationSource, /＋ Gruppe auswählen/);
+  assert.match(registrationSource, /\.slice\(0, 50\)/);
+  assert.match(registrationSource, /addToTargetOrNew\(state, choiceToParticipant\(state, choice\)\)/);
+});
+
+test("M328 input modes replace one shared panel and never render side by side", () => {
+  assert.equal((registrationSource.match(/id="m328Reg3InputPanel"/g) || []).length, 1);
+  assert.equal((registrationSource.match(/document\.getElementById\("m328Reg3InputPanel"\)/g) || []).length, 4);
+  assert.doesNotMatch(registrationSource, /m328Reg3SpecialPanel/);
+  assert.match(registrationSource, /if \(state\.specialMode === mode\) \{\s*closeSpecialPanel\(state\)/);
+  assert.match(registrationSource, /item\.classList\.toggle\("is-active", item === button\)/);
+  assert.match(registrationSource, /if \(mode === "GUEST"\) renderGuestPanel\(state\)/);
+  assert.match(registrationSource, /else renderGroupPanel\(state\)/);
 });
 
 test("M328 guest submit text follows the active target booking", () => {

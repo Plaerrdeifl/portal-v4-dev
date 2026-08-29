@@ -253,8 +253,9 @@ function ensureStyle() {
     .m328-reg3-target[hidden]{display:none!important}
     .m328-reg3-target-copy{display:grid;gap:3px}.m328-reg3-target-copy strong{font-size:.78rem}.m328-reg3-target-copy span{color:var(--muted);line-height:1.35}
     .m328-reg3-target-actions{display:flex;flex:0 0 auto;flex-wrap:wrap;justify-content:flex-end;gap:6px}.m328-reg3-target-action{width:auto!important;white-space:nowrap}
-    .m328-reg3-special-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
-    .m328-reg3-special-actions .button{width:100%;min-height:40px}
+    .m328-reg3-special-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+    .m328-reg3-special-actions .button{width:100%;min-height:40px;white-space:nowrap}
+    .m328-reg3-special-actions .button.is-active{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--surface));color:var(--accent)}
     .m328-reg3-special-panel{display:grid;gap:8px;margin-top:8px}
     .m328-reg3-special-panel[hidden]{display:none!important}
     .m328-reg3-guest,.m328-reg3-group{display:grid;gap:8px;padding:10px;border-radius:11px;background:var(--surface-2)}
@@ -427,9 +428,17 @@ function renderSearch(state) {
   paintSearchResults(state);
 }
 
+function renderKnownPeoplePanel(state) {
+  const target = document.getElementById("m328Reg3InputPanel");
+  if (!target) return;
+  target.hidden = false;
+  target.innerHTML = `<div class="m328-reg3-known"><label class="m328-reg3-search-label">Person suchen<input id="m328Reg3Search" class="m328-reg3-search" type="search" autocomplete="off" placeholder="Name eingeben …"></label><div id="m328Reg3Filters" class="m328-reg3-filters" role="group" aria-label="Personenfilter"></div><div id="m328Reg3Results" class="m328-reg3-results"></div></div>`;
+  renderSearch(state);
+}
+
 function closeSpecialPanel(state) {
   state.specialMode = "";
-  const panel = document.getElementById("m328Reg3SpecialPanel");
+  const panel = document.getElementById("m328Reg3InputPanel");
   if (panel) {
     panel.hidden = true;
     panel.innerHTML = "";
@@ -438,7 +447,7 @@ function closeSpecialPanel(state) {
 }
 
 function renderGuestPanel(state) {
-  const target = document.getElementById("m328Reg3SpecialPanel");
+  const target = document.getElementById("m328Reg3InputPanel");
   if (!target) return;
   target.hidden = false;
   target.innerHTML = `<form class="m328-reg3-guest" data-m328-reg3-guest-form><strong>Gast hinzufügen</strong><div class="m328-reg3-guest-grid"><label>Vorname<input name="firstName" maxlength="160" required></label><label>Nachname<input name="lastName" maxlength="160" required></label><label>E-Mail (optional)<input name="email" type="email" maxlength="320"></label></div><button class="button secondary" type="submit">${state.targetBookingId ? "Zu Buchung hinzufügen" : "Gast hinzufügen"}</button></form>`;
@@ -481,7 +490,7 @@ function groupMemberParticipant(state, member) {
 }
 
 function renderGroupPanel(state) {
-  const target = document.getElementById("m328Reg3SpecialPanel");
+  const target = document.getElementById("m328Reg3InputPanel");
   if (!target) return;
   const groups = state.groups.filter(group => group.isActive);
   target.hidden = false;
@@ -539,7 +548,8 @@ function bindSpecialActions(state) {
     }
     state.specialMode = mode;
     document.querySelectorAll("[data-m328-reg3-special]").forEach(item => item.classList.toggle("is-active", item === button));
-    if (mode === "GUEST") renderGuestPanel(state);
+    if (mode === "KNOWN") renderKnownPeoplePanel(state);
+    else if (mode === "GUEST") renderGuestPanel(state);
     else renderGroupPanel(state);
   }));
 }
@@ -712,7 +722,7 @@ function clearUnexpectedFormFocus() {
 function renderPage(root, state) {
   ensureStyle();
   const venue = String(state.trip.venue || "").trim() || "Fahrt";
-  root.innerHTML = `<div class="m328-reg3"><header class="m328-reg3-head"><button class="button small ghost" type="button" id="m328Reg3Back">← Bus-Orga</button><div class="m328-reg3-title"><h2>Anmeldung • ${escapeHtml(venue)}</h2><span>${escapeHtml(shortDate(state.trip.eventDate))} · ${escapeHtml(eventTime(state.trip.eventTime))}</span></div></header><section class="m328-reg3-panel"><div class="m328-reg3-panel-head"><h3>Person hinzufügen</h3></div><div id="m328Reg3Target" class="m328-reg3-target" hidden></div><label class="m328-reg3-search-label">Person suchen<input id="m328Reg3Search" class="m328-reg3-search" type="search" autocomplete="off" placeholder="Name eingeben …"></label><div id="m328Reg3Filters" class="m328-reg3-filters" role="group" aria-label="Personenfilter"></div><div id="m328Reg3Results" class="m328-reg3-results"></div><div class="m328-reg3-special-actions"><button class="button secondary" type="button" data-m328-reg3-special="GUEST">＋ Gast hinzufügen</button><button class="button secondary" type="button" data-m328-reg3-special="GROUP">＋ Gruppe auswählen</button></div><div id="m328Reg3SpecialPanel" class="m328-reg3-special-panel" hidden></div></section><form id="m328Reg3Submit" class="m328-reg3-submit"><section class="m328-reg3-panel"><div class="m328-reg3-panel-head"><div><h3>Vorbereitete Buchungen</h3></div><div><span id="m328Reg3BookingCount" class="m328-reg3-count">0</span> <span class="subtle">Buchungen</span> · <span id="m328Reg3ParticipantCount" class="m328-reg3-count">0</span> <span class="subtle">Personen</span></div></div><div id="m328Reg3Bookings" class="m328-reg3-stack"></div></section><section class="m328-reg3-panel"><label class="m328-reg3-consent"><input name="consentConfirmed" type="checkbox" required><span>Alle manuell erfassten Personen wurden über die Teilnahmebedingungen und Datenschutzhinweise informiert.</span></label><button class="button primary" type="submit">Alle Buchungen speichern</button></section></form></div>`;
+  root.innerHTML = `<div class="m328-reg3"><header class="m328-reg3-head"><button class="button small ghost" type="button" id="m328Reg3Back">← Bus-Orga</button><div class="m328-reg3-title"><h2>Anmeldung • ${escapeHtml(venue)}</h2><span>${escapeHtml(shortDate(state.trip.eventDate))} · ${escapeHtml(eventTime(state.trip.eventTime))}</span></div></header><section class="m328-reg3-panel"><div class="m328-reg3-panel-head"><h3>Person hinzufügen</h3></div><div id="m328Reg3Target" class="m328-reg3-target" hidden></div><div class="m328-reg3-special-actions" role="group" aria-label="Art der Personenauswahl"><button class="button secondary" type="button" data-m328-reg3-special="KNOWN">Bekannte Personen</button><button class="button secondary" type="button" data-m328-reg3-special="GUEST">Gast hinzufügen</button><button class="button secondary" type="button" data-m328-reg3-special="GROUP">Gruppe auswählen</button></div><div id="m328Reg3InputPanel" class="m328-reg3-special-panel" hidden></div></section><form id="m328Reg3Submit" class="m328-reg3-submit"><section class="m328-reg3-panel"><div class="m328-reg3-panel-head"><div><h3>Vorbereitete Buchungen</h3></div><div><span id="m328Reg3BookingCount" class="m328-reg3-count">0</span> <span class="subtle">Buchungen</span> · <span id="m328Reg3ParticipantCount" class="m328-reg3-count">0</span> <span class="subtle">Personen</span></div></div><div id="m328Reg3Bookings" class="m328-reg3-stack"></div></section><section class="m328-reg3-panel"><label class="m328-reg3-consent"><input name="consentConfirmed" type="checkbox" required><span>Alle manuell erfassten Personen wurden über die Teilnahmebedingungen und Datenschutzhinweise informiert.</span></label><button class="button primary" type="submit">Alle Buchungen speichern</button></section></form></div>`;
 
   document.getElementById("m328Reg3Back")?.addEventListener("click", () => {
     location.hash = "#/bus-orga";
@@ -723,7 +733,6 @@ function renderPage(root, state) {
     void submitRegistration(state, form);
   });
   renderTarget(state);
-  renderSearch(state);
   bindSpecialActions(state);
   renderBookingStack(state);
   clearUnexpectedFormFocus();

@@ -56,7 +56,7 @@ test("M328 next trip prefers the actual venue over a technical display title", (
   assert.match(block, /escapeHtml\(title\)/);
 });
 
-test("M328 registration starts with combined person search, filters and explicit guest/group actions", () => {
+test("M328 registration starts with closed, explicit known-person, guest and group modes", () => {
   assert.match(registrationSource, /<h2>Anmeldung • \$\{escapeHtml\(venue\)\}<\/h2>/);
   assert.match(registrationSource, /shortDate\(state\.trip\.eventDate\)/);
   assert.match(registrationSource, /eventTime\(state\.trip\.eventTime\)/);
@@ -66,8 +66,10 @@ test("M328 registration starts with combined person search, filters and explicit
   assert.match(registrationSource, /label: "Mitglieder"/);
   assert.match(registrationSource, /label: "Portaluser"/);
   assert.match(registrationSource, /label: "Stammfahrer"/);
-  assert.match(registrationSource, /＋ Gast hinzufügen/);
-  assert.match(registrationSource, /＋ Gruppe auswählen/);
+  assert.match(registrationSource, /data-m328-reg3-special="KNOWN">Bekannte Personen<\/button>/);
+  assert.match(registrationSource, /data-m328-reg3-special="GUEST">Gast hinzufügen<\/button>/);
+  assert.match(registrationSource, /data-m328-reg3-special="GROUP">Gruppe auswählen<\/button>/);
+  assert.match(registrationSource, /id="m328Reg3InputPanel" class="m328-reg3-special-panel" hidden/);
   assert.doesNotMatch(registrationSource, /Ausgewählte Fahrt/);
   assert.doesNotMatch(registrationSource, /\.focus\s*\(/);
   assert.doesNotMatch(registrationSource, /autofocus/);

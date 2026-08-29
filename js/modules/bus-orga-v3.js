@@ -49,7 +49,7 @@ function ensureRegistrationBookingUxStyle() {
   style.id = "m328RegistrationBookingUxStyle";
   style.textContent = `
     .m328-reg3-special-actions{
-      grid-template-columns:repeat(2,minmax(0,1fr))!important;
+      grid-template-columns:repeat(3,minmax(0,1fr))!important;
       gap:7px!important;
     }
     .m328-reg3-special-actions .button{
@@ -124,6 +124,9 @@ function ensureRegistrationBookingUxStyle() {
       height:28px;
     }
     @media(max-width:520px){
+      .m328-reg3-special-actions{
+        grid-template-columns:1fr!important;
+      }
       .m328-reg3-booking:not(.is-active-booking) .m328-reg3-booking-actions{
         flex-direction:row;
         align-items:center;
@@ -150,8 +153,10 @@ function splitRegistrationConsentAndSubmit() {
 }
 
 function normalizeRegistrationSpecialActions() {
+  const known = document.querySelector('[data-m328-reg3-special="KNOWN"]');
   const guest = document.querySelector('[data-m328-reg3-special="GUEST"]');
   const group = document.querySelector('[data-m328-reg3-special="GROUP"]');
+  if (known) known.textContent = "Bekannte Personen";
   if (guest) guest.textContent = "Gast hinzufügen";
   if (group) group.textContent = "Gruppe auswählen";
 }
