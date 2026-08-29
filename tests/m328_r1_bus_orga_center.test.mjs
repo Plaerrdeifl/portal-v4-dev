@@ -76,3 +76,26 @@ test("M328 recognizes fanbus administration context without changing normal rout
   assert.match(shellSource, /new URLSearchParams\(query\)/);
   assert.match(shellSource, /location\.hash = "#\/bus-orga"/);
 });
+
+test("M328 mobile dashboard is compact and prevents horizontal clipping", () => {
+  assert.match(dashboardHtml, /overflow-x:clip/);
+  assert.match(dashboardHtml, /#m328QuickRegistrationTrip\{[\s\S]*?max-width:100%/);
+  assert.match(dashboardHtml, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(dashboardHtml, /@media\(max-width:700px\)[\s\S]*?\.m328-workspace-card small\{[\s\S]*?display:none/);
+  assert.doesNotMatch(dashboardHtml, /@media\(max-width:390px\)[\s\S]*?\.m328-workspace-grid\{[\s\S]*?grid-template-columns:1fr/);
+  assert.match(dashboardSource, /title: "Fahrten"/);
+  assert.match(dashboardSource, /title: "Teilnehmer"/);
+  assert.match(dashboardSource, /title: "Busse"/);
+  assert.match(dashboardSource, /title: "Gruppen"/);
+});
+
+test("M328 trip management is collapsed by default and expands one ride at a time", () => {
+  assert.match(dashboardSource, /data-m328-trip-toggle/);
+  assert.match(dashboardSource, /aria-expanded="false"/);
+  assert.match(dashboardSource, /data-m328-trip-expanded/);
+  assert.match(dashboardSource, /hidden>/);
+  assert.match(dashboardSource, /function setTripExpanded/);
+  assert.match(dashboardSource, /body\.hidden = !expanded/);
+  assert.match(dashboardHtml, /\.m328-trip-expanded\[hidden\]/);
+  assert.match(dashboardHtml, /\.m328-trip-actions\{[\s\S]*?grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+});
