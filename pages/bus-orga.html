@@ -1,34 +1,28 @@
 <section id="m328BusOrgaPage" class="page module-shell v4-compact-page m328-bus-orga-page">
   <div class="v4-module-surface">
     <header class="m328-bus-orga-head">
-      <button id="m328BusOrgaBack" class="button small ghost" type="button">← Fanbus</button>
+      <button id="m328BusOrgaBack" class="button small ghost m328-back" type="button">← Fanbus</button>
       <div class="m328-bus-orga-head-copy">
         <span class="m328-bus-orga-kicker">P300 · Fanbus</span>
         <h2>Bus-Orga</h2>
-        <p>Verwaltungszentrale für Fahrten, Anmeldungen und Fahrtbetrieb</p>
       </div>
       <button id="m328BusOrgaClose" class="icon-button m328-bus-orga-close" type="button" aria-label="Bus-Orga schließen">×</button>
     </header>
 
-    <section id="m328BusOrgaNextTrip" class="module-panel m328-next-trip" aria-live="polite">
+    <section id="m328BusOrgaNextTrip" class="m328-next-trip" aria-live="polite">
       <p class="subtle">Nächste Fahrt wird geladen …</p>
     </section>
 
-    <section id="m328BusOrgaQuick" class="module-panel m328-quick-registration" hidden>
-      <div class="m328-section-heading">
-        <div>
-          <span class="m328-section-kicker">Schnellzugriff</span>
-          <h3>Anmeldung erfassen</h3>
-        </div>
+    <section id="m328BusOrgaQuick" class="m328-quick-registration" hidden>
+      <div class="m328-quick-copy">
+        <span class="m328-section-kicker">Schnellanmeldung</span>
+        <label for="m328QuickRegistrationTrip">Fahrt auswählen</label>
       </div>
-      <label class="m328-trip-select">Fahrt
-        <select id="m328QuickRegistrationTrip"></select>
-      </label>
+      <select id="m328QuickRegistrationTrip" aria-label="Fahrt für neue Anmeldung"></select>
       <button id="m328QuickRegistration" class="button primary m328-primary-action" type="button">＋ Anmeldung erfassen</button>
-      <p class="subtle">Öffnet die vorhandene Mehrpersonen-Anmeldung mit Portalusern, Mitgliedern, Stammfahrern, Gruppen und Gästen.</p>
     </section>
 
-    <section class="module-panel" aria-labelledby="m328WorkspaceTitle">
+    <section class="module-panel m328-workspaces" aria-labelledby="m328WorkspaceTitle">
       <div class="m328-section-heading">
         <div>
           <span class="m328-section-kicker">Verwaltung</span>
@@ -38,13 +32,13 @@
       <div id="m328WorkspaceGrid" class="m328-workspace-grid" aria-live="polite"></div>
     </section>
 
-    <section class="module-panel" aria-labelledby="m328TripsTitle">
+    <section class="module-panel m328-trips" aria-labelledby="m328TripsTitle">
       <div class="m328-section-heading">
         <div>
-          <span class="m328-section-kicker">Fahrten</span>
-          <h3 id="m328TripsTitle">Direkt verwalten</h3>
+          <span class="m328-section-kicker">Verwalten</span>
+          <h3 id="m328TripsTitle">Fahrten</h3>
         </div>
-        <button id="m328CreateTrip" class="button small primary" type="button" hidden>＋ Fahrt anlegen</button>
+        <button id="m328CreateTrip" class="button small primary m328-create-trip" type="button" hidden>＋ Fahrt</button>
       </div>
       <div id="m328TripsList" class="m328-trip-list" aria-live="polite">
         <p class="subtle">Fahrten werden geladen …</p>
@@ -54,16 +48,29 @@
 </section>
 
 <style>
+  .m328-bus-orga-page{
+    overflow-x:clip;
+  }
+
+  .m328-bus-orga-page *,
+  .m328-bus-orga-page *::before,
+  .m328-bus-orga-page *::after{
+    box-sizing:border-box;
+    min-width:0;
+  }
+
   .m328-bus-orga-page .v4-module-surface{
-    gap:12px;
+    gap:10px;
+    width:100%;
+    max-width:100%;
   }
 
   .m328-bus-orga-head{
     display:grid;
-    grid-template-columns:auto minmax(0,1fr) auto;
-    align-items:start;
-    gap:10px;
-    padding-bottom:12px;
+    grid-template-columns:auto minmax(0,1fr) 38px;
+    align-items:center;
+    gap:9px;
+    padding:2px 0 10px;
     border-bottom:1px solid var(--line);
   }
 
@@ -75,7 +82,7 @@
   .m328-section-kicker{
     display:block;
     color:var(--muted);
-    font-size:.68rem;
+    font-size:.65rem;
     font-weight:800;
     letter-spacing:.07em;
     text-transform:uppercase;
@@ -87,14 +94,8 @@
   }
 
   .m328-bus-orga-head h2{
-    font-size:1.35rem;
-  }
-
-  .m328-bus-orga-head p{
-    margin:4px 0 0;
-    color:var(--muted);
-    font-size:.83rem;
-    line-height:1.35;
+    font-size:1.3rem;
+    line-height:1.1;
   }
 
   .m328-bus-orga-close{
@@ -103,176 +104,339 @@
     height:38px;
   }
 
-  .m328-next-trip,
-  .m328-quick-registration{
-    padding:14px;
+  .m328-next-trip{
+    width:100%;
+    padding:11px 12px;
+    border:1px solid var(--line);
+    border-radius:15px;
+    background:var(--surface);
   }
 
   .m328-next-trip-card{
     display:grid;
-    grid-template-columns:minmax(0,1fr) auto;
-    gap:10px;
+    gap:6px;
+  }
+
+  .m328-next-trip-top{
+    display:flex;
     align-items:center;
+    justify-content:space-between;
+    gap:8px;
   }
 
-  .m328-next-trip-copy{
-    min-width:0;
+  .m328-next-trip-top .badge{
+    width:auto;
+    max-width:45%;
+    flex:0 0 auto;
+    white-space:nowrap;
   }
 
-  .m328-next-trip-copy strong{
+  .m328-next-trip-title{
     display:block;
-    margin-top:2px;
-    font-size:1.04rem;
+    font-size:1rem;
     line-height:1.2;
+    overflow-wrap:anywhere;
   }
 
   .m328-next-trip-meta{
     display:flex;
     flex-wrap:wrap;
-    gap:6px 10px;
-    margin-top:7px;
+    gap:4px 10px;
     color:var(--muted);
-    font-size:.78rem;
+    font-size:.74rem;
+    line-height:1.25;
+  }
+
+  .m328-next-trip-meta .m328-next-trip-date{
+    flex-basis:100%;
+    color:inherit;
+  }
+
+  .m328-quick-registration{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1.35fr) auto;
+    align-items:end;
+    gap:8px;
+    width:100%;
+    padding:10px 11px;
+    border:1px solid var(--line);
+    border-radius:15px;
+    background:var(--surface);
+  }
+
+  .m328-quick-registration[hidden]{
+    display:none !important;
+  }
+
+  .m328-quick-copy{
+    display:grid;
+    gap:2px;
+  }
+
+  .m328-quick-copy label{
+    font-size:.8rem;
+    font-weight:750;
+  }
+
+  #m328QuickRegistrationTrip{
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    height:40px;
+    text-overflow:ellipsis;
+  }
+
+  .m328-primary-action{
+    width:auto;
+    min-height:40px;
+    padding:7px 11px;
+    white-space:nowrap;
+  }
+
+  .m328-workspaces,
+  .m328-trips{
+    padding:11px;
   }
 
   .m328-section-heading{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    gap:10px;
-    margin-bottom:10px;
+    gap:8px;
+    margin-bottom:8px;
   }
 
   .m328-section-heading h3{
     font-size:1rem;
-  }
-
-  .m328-trip-select{
-    display:grid;
-    gap:5px;
-    margin-bottom:9px;
-    font-size:.78rem;
-    font-weight:750;
-  }
-
-  .m328-primary-action{
-    width:100%;
-    min-height:46px;
-    font-size:.95rem;
+    line-height:1.15;
   }
 
   .m328-workspace-grid{
     display:grid;
     grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:8px;
+    gap:7px;
   }
 
   .m328-workspace-card{
-    display:flex;
-    flex-direction:column;
-    align-items:flex-start;
-    gap:4px;
-    min-width:0;
-    min-height:92px;
-    padding:12px;
+    position:relative;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:center;
+    gap:6px;
+    width:100%;
+    min-height:64px;
+    padding:10px 11px;
     border:1px solid var(--line);
-    border-radius:14px;
+    border-radius:13px;
     background:var(--surface);
+    color:inherit;
     text-align:left;
+    overflow:hidden;
+  }
+
+  .m328-workspace-card-copy{
+    display:grid;
+    gap:2px;
+    min-width:0;
   }
 
   .m328-workspace-card strong{
-    font-size:.9rem;
+    display:block;
+    font-size:.82rem;
+    line-height:1.15;
+    overflow-wrap:anywhere;
   }
 
   .m328-workspace-card small{
+    display:block;
     color:var(--muted);
-    font-size:.73rem;
-    line-height:1.3;
+    font-size:.68rem;
+    line-height:1.25;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  .m328-workspace-chevron{
+    color:var(--muted);
+    font-size:1.2rem;
+    line-height:1;
   }
 
   .m328-trip-list{
     display:grid;
-    gap:8px;
+    gap:7px;
   }
 
   .m328-trip-card{
-    display:grid;
-    gap:8px;
-    padding:11px;
+    width:100%;
     border:1px solid var(--line);
-    border-radius:14px;
+    border-radius:13px;
     background:var(--surface);
+    overflow:hidden;
   }
 
-  .m328-trip-card-head{
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
+  .m328-trip-summary{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
     gap:8px;
+    width:100%;
+    padding:10px 11px;
+    border:0;
+    background:transparent;
+    color:inherit;
+    text-align:left;
   }
 
-  .m328-trip-card-copy{
+  .m328-trip-summary-main{
+    display:grid;
+    gap:3px;
     min-width:0;
   }
 
-  .m328-trip-card-copy strong{
+  .m328-trip-summary-title{
     display:block;
-    margin-top:2px;
-    line-height:1.2;
+    font-size:.88rem;
+    line-height:1.18;
+    overflow-wrap:anywhere;
   }
 
   .m328-trip-card-meta{
     display:flex;
     flex-wrap:wrap;
-    gap:5px 9px;
+    gap:3px 8px;
     color:var(--muted);
-    font-size:.73rem;
+    font-size:.68rem;
+    line-height:1.2;
+  }
+
+  .m328-trip-summary-side{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    min-width:auto;
+  }
+
+  .m328-trip-summary-side .badge{
+    width:auto;
+    max-width:120px;
+    flex:0 0 auto;
+    white-space:nowrap;
+  }
+
+  .m328-trip-chevron{
+    color:var(--muted);
+    font-size:1.25rem;
+    line-height:1;
+    transition:transform .16s ease;
+  }
+
+  .m328-trip-summary[aria-expanded="true"] .m328-trip-chevron{
+    transform:rotate(90deg);
+  }
+
+  .m328-trip-expanded{
+    padding:8px 10px 10px;
+    border-top:1px solid var(--line);
+  }
+
+  .m328-trip-expanded[hidden]{
+    display:none !important;
   }
 
   .m328-trip-actions{
-    display:flex;
-    flex-wrap:wrap;
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
     gap:6px;
   }
 
   .m328-trip-actions .button{
-    width:auto;
+    width:100%;
+    min-height:38px;
+    padding:6px 8px;
+    font-size:.72rem;
+    line-height:1.15;
+    white-space:normal;
+  }
+
+  .m328-create-trip{
     min-height:36px;
-    padding:6px 9px;
-    font-size:.74rem;
+    padding:6px 10px;
   }
 
   @media(max-width:700px){
     .m328-bus-orga-head{
-      align-items:center;
-    }
-
-    .m328-bus-orga-head p{
-      display:none;
-    }
-
-    .m328-workspace-grid{
-      grid-template-columns:1fr 1fr;
-    }
-
-    .m328-next-trip-card{
-      grid-template-columns:1fr;
-    }
-  }
-
-  @media(max-width:390px){
-    .m328-bus-orga-head{
-      grid-template-columns:auto minmax(0,1fr) auto;
       gap:7px;
     }
 
-    .m328-bus-orga-head .button{
+    .m328-back{
       padding:6px 8px;
+      font-size:.78rem;
+    }
+
+    .m328-quick-registration{
+      grid-template-columns:minmax(0,1fr) auto;
+      align-items:center;
+    }
+
+    .m328-quick-copy{
+      grid-column:1 / -1;
+    }
+
+    .m328-primary-action{
+      min-height:40px;
+      padding-inline:10px;
+      font-size:.8rem;
+    }
+
+    .m328-workspace-card{
+      min-height:58px;
+      padding:9px 10px;
+    }
+
+    .m328-workspace-card small{
+      display:none;
+    }
+
+    .m328-trip-summary-side .badge{
+      max-width:105px;
+      font-size:.68rem;
+    }
+  }
+
+  @media(max-width:370px){
+    .m328-bus-orga-head{
+      grid-template-columns:auto minmax(0,1fr) 34px;
+    }
+
+    .m328-bus-orga-close{
+      width:34px;
+      min-width:34px;
+      height:34px;
+    }
+
+    .m328-quick-registration{
+      grid-template-columns:1fr;
+    }
+
+    .m328-quick-copy{
+      grid-column:auto;
+    }
+
+    .m328-primary-action{
+      width:100%;
     }
 
     .m328-workspace-grid{
-      grid-template-columns:1fr;
+      gap:6px;
+    }
+
+    .m328-workspace-card{
+      padding:8px;
+    }
+
+    .m328-workspace-card strong{
+      font-size:.76rem;
     }
   }
 </style>
