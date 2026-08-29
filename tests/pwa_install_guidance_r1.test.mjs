@@ -69,20 +69,33 @@ test("PWA installation uses Android and iOS guidance without an install button",
   assert.match(install, /__V4_PWA_INSTALL_GUIDANCE_R1__/);
 });
 
-test("PWA guidance release is consistent across runtime and checks", () => {
-  const release = "20260802-pwa-install-guidance-r1";
+test("PWA guidance remains active under the current shell release", () => {
+  const pwaRelease = "20260802-pwa-install-guidance-r1";
+  const shellRelease = "20260829-m328-r1-native-actions1";
   const cache = "pd-portal-v4-pwa-install-guidance-r1-20260802";
-
-  assert.match(index, new RegExp(release));
-  assert.match(config, new RegExp(release));
-  assert.match(app, new RegExp(release));
-  assert.match(worker, new RegExp(cache));
-  assert.match(foundation, /Android mit Chrome/);
 
   assert.match(
     index,
-    /src="\.\/js\/app\.js\?v=20260802-pwa-install-guidance-r1"/
+    new RegExp(`name="pd-release" content="${shellRelease}"`)
   );
+  assert.match(
+    index,
+    new RegExp(`src="\\./js/app\\.js\\?v=${shellRelease}"`)
+  );
+  assert.match(
+    index,
+    new RegExp(`css/app\\.css\\?v=${pwaRelease}`)
+  );
+  assert.match(
+    config,
+    new RegExp(`service-worker\\.js\\?v=${pwaRelease}`)
+  );
+  assert.match(
+    app,
+    new RegExp(`install\\.js\\?v=${pwaRelease}`)
+  );
+  assert.match(worker, new RegExp(cache));
+  assert.match(foundation, /Android mit Chrome/);
 
   assert.doesNotMatch(
     index,
