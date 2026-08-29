@@ -49,6 +49,13 @@ test("M328 dashboard prioritizes manual registration and existing workspaces", (
   assert.match(dashboardSource, /openWorkspace\("settings"\)/);
 });
 
+test("M328 quick registration labels use only date and venue", () => {
+  assert.match(dashboardSource, /const venue = String\(trip\?\.venue \|\| ""\)\.trim\(\) \|\| "Ort offen"/);
+  assert.match(dashboardSource, /formatDate\(trip\.eventDate\)\}\ · \$\{venue\}/);
+  const tripOptionBlock = dashboardSource.match(/function tripOption\(trip\) \{[\s\S]*?\n\}/)?.[0] || "";
+  assert.doesNotMatch(tripOptionBlock, /displayTitle/);
+});
+
 test("M328 removes administration controls from normal fanbus view", () => {
   assert.match(pagesSource, /m328-bus-orga-shell\.js/);
   assert.match(shellSource, /m328BusOrgaEntry/);
