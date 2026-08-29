@@ -93,6 +93,9 @@ test("M328 final duplicate failures are translated without hiding successful sub
 });
 
 test("M328 correction cache busts pages through V3 to its registration submodule", () => {
-  assert.equal((pagesSource.match(/correction=20260830-m328-c1/g) || []).length, 2);
+  assert.equal((pagesSource.match(/correction=20260830-m328-c1/g) || []).length, 1);
+  assert.match(pagesSource, /bus-orga-v3\.js\?v=[^"\n]*correction=20260830-m328-c2/);
   assert.match(nativeSource, /bus-orga-registration-v3\.js\?v=[^"\n]*correction=20260830-m328-c1/);
+  assert.match(nativeSource, /\.m328-reg3-booking-menu\{[^}]*flex-direction:row!important;[^}]*flex-wrap:nowrap!important;/s);
+  assert.match(nativeSource, /\.m328-reg3-booking-menu \.button\{[^}]*width:auto!important;[^}]*flex:0 0 auto!important;/s);
 });
