@@ -49,11 +49,14 @@ test("M328 dashboard prioritizes manual registration and existing workspaces", (
   assert.match(dashboardSource, /openWorkspace\("settings"\)/);
 });
 
-test("M328 quick registration labels use only date and venue", () => {
+test("M328 quick registration labels use short date and venue only", () => {
+  assert.match(dashboardSource, /function formatShortDate\(value\)/);
+  assert.match(dashboardSource, /return match \? `\$\{match\[3\]\}\.\$\{match\[2\]\}\.`/);
   assert.match(dashboardSource, /const venue = String\(trip\?\.venue \|\| ""\)\.trim\(\) \|\| "Ort offen"/);
-  assert.match(dashboardSource, /formatDate\(trip\.eventDate\)\}\ · \$\{venue\}/);
+  assert.match(dashboardSource, /formatShortDate\(trip\.eventDate\)\}\ · \$\{venue\}/);
   const tripOptionBlock = dashboardSource.match(/function tripOption\(trip\) \{[\s\S]*?\n\}/)?.[0] || "";
   assert.doesNotMatch(tripOptionBlock, /displayTitle/);
+  assert.doesNotMatch(tripOptionBlock, /formatDate\(trip\.eventDate\)/);
 });
 
 test("M328 separates general administration from trip-specific administration", () => {
