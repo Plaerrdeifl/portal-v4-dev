@@ -35,10 +35,7 @@ function hydrateInstall() {
       : "Füge das Plärrdeifl Portal über das Menü deines Smartphones zum Home-Bildschirm hinzu."
   );
 
-  if (instructions) {
-    instructions.hidden = standalone;
-  }
-
+  if (instructions) instructions.hidden = standalone;
   if (result) {
     result.hidden = !standalone;
     result.textContent = standalone
@@ -52,7 +49,6 @@ async function hydrateLogin(context = {}) {
 
   const slot = document.getElementById("googleSignInButton");
   const status = document.getElementById("googleSignInStatus");
-
   const setStatus = value => {
     if (status) status.textContent = value;
   };
@@ -62,49 +58,32 @@ async function hydrateLogin(context = {}) {
     if (!slot) return;
 
     if (!CONFIG.supabase.configured) {
-      setText(
-        "loginMessage",
-        "Die lokale Runtime-Konfiguration wurde noch nicht erzeugt."
-      );
-      slot.innerHTML =
-        '<div class="notice warning">Die Supabase-DEV-Verbindung ist noch nicht verfügbar.</div>';
+      setText("loginMessage", "Die lokale Runtime-Konfiguration wurde noch nicht erzeugt.");
+      slot.innerHTML = '<div class="notice warning">Die Supabase-DEV-Verbindung ist noch nicht verfügbar.</div>';
       return;
     }
 
     if (!state.authenticated) {
-      setText(
-        "loginMessage",
-        "Melde dich sicher mit deinem Google-Konto an."
-      );
-
+      setText("loginMessage", "Melde dich sicher mit deinem Google-Konto an.");
       if (!CONFIG.auth.googleClientId) {
-        slot.innerHTML =
-          '<div class="notice error">Die öffentliche Google Client-ID fehlt.</div>';
+        slot.innerHTML = '<div class="notice error">Die öffentliche Google Client-ID fehlt.</div>';
         setStatus("Die Anmeldung ist noch nicht vollständig konfiguriert.");
         return;
       }
-
       try {
         setStatus("");
-
         await renderGoogleSignInButton(slot, {
           clientId: CONFIG.auth.googleClientId,
           onCredential: async (response, nonce) => {
             slot.setAttribute("aria-busy", "true");
             setStatus("Google-Anmeldung wird sicher geprüft …");
-
             try {
               if (typeof context.onGoogleCredential !== "function") {
                 throw new Error("Der zentrale Anmeldeübergang ist nicht verfügbar.");
               }
               await context.onGoogleCredential(response, nonce);
             } catch (error) {
-              showToast(
-                error?.message
-                  || "Google-Anmeldung konnte nicht abgeschlossen werden.",
-                "error",
-                7000
-              );
+              showToast(error?.message || "Google-Anmeldung konnte nicht abgeschlossen werden.", "error", 7000);
               setStatus("Anmeldung fehlgeschlagen. Bitte erneut versuchen.");
             } finally {
               slot.setAttribute("aria-busy", "false");
@@ -112,44 +91,28 @@ async function hydrateLogin(context = {}) {
           }
         });
       } catch (error) {
-        slot.innerHTML =
-          '<div class="notice error">Google-Anmeldung konnte nicht geladen werden.</div>';
+        slot.innerHTML = '<div class="notice error">Google-Anmeldung konnte nicht geladen werden.</div>';
         setStatus(error?.message || "Google Identity Services ist nicht verfügbar.");
-        showToast(
-          error?.message || "Google-Anmeldung konnte nicht geladen werden.",
-          "error",
-          7000
-        );
+        showToast(error?.message || "Google-Anmeldung konnte nicht geladen werden.", "error", 7000);
       }
-
       return;
     }
 
     if (state.busy || state.status === "LOADING") {
-      setText(
-        "loginMessage",
-        "Portalstatus und Berechtigungen werden geladen …"
-      );
-      slot.innerHTML =
-        '<div class="notice">Anmeldung wird geprüft …</div>';
+      setText("loginMessage", "Portalstatus und Berechtigungen werden geladen …");
+      slot.innerHTML = '<div class="notice">Anmeldung wird geprüft …</div>';
       setStatus("");
       return;
     }
 
     if (state.status === "ACTIVE") {
-      setText(
-        "loginMessage",
-        `Du bist als ${state.user?.name || "Portaluser"} angemeldet.`
-      );
+      setText("loginMessage", `Du bist als ${state.user?.name || "Portaluser"} angemeldet.`);
       slot.innerHTML = '<div class="notice success">Portalzugang ist aktiv.</div>';
       setStatus("");
       return;
     }
 
-    setText(
-      "loginMessage",
-      "Dein Konto ist angemeldet. Die Portalregistrierung wird vorbereitet."
-    );
+    setText("loginMessage", "Dein Konto ist angemeldet. Die Portalregistrierung wird vorbereitet.");
     slot.innerHTML = '<div class="notice">Registrierung wird vorbereitet …</div>';
     setStatus("");
   };
@@ -180,13 +143,12 @@ export async function hydratePage(key, context = {}) {
   if (key === "dashboard") return feature("./modules/dashboard.js?v=20260724-dashboard-delivery-corr2&feature=20260724-personal-dashboard-widgets-r1-fix4&small=20260725-dashboard-small-widgets-r1", "hydrateDashboard", context);
   if (key === "dates") return feature("./modules/dates.js", "hydrateDates", context);
   if (key === "fanbuses") {
-    await feature("./m328-registration-preload.js?v=20260829-m328-r1-direct1", "setupM328RegistrationPreload", context);
-    await feature("./m328-bus-orga-shell.js?v=20260829-m328-r1-flow2", "setupM328BusOrgaShell", context);
     const result = await feature("./modules/fanbuses.js?v=20260826-p800-r2-final-direct-fix&groups=20260828-m310-r1&m327=20260828-m327-r1", "hydrateFanbuses", context);
     await feature("./m327-r1-acceptance-polish.js?v=20260829-m327-r1-acceptance1", "setupM327AcceptancePolish", context);
+    await feature("./m328-bus-orga-shell.js?v=20260829-m328-r1-clean1", "setupM328BusOrgaShell", context);
     return result;
   }
-  if (key === "bus-orga") return feature("./modules/bus-orga.js?v=20260829-m328-r1-flow2", "hydrateBusOrga", context);
+  if (key === "bus-orga") return feature("./modules/bus-orga.js?v=20260829-m328-r1-native-registration", "hydrateBusOrga", context);
   if (key === "fanclub") return feature("./modules/fanclub.js", "hydrateFanclub", context);
   if (key === "tasks") return feature("./modules/tasks.js", "hydrateTasks", context);
   if (key === "teams") return feature("./modules/teams.js", "hydrateTeams", context);
