@@ -8,7 +8,7 @@ import {
 } from "./router.js";
 import {
   hydratePage
-} from "./pages.js?v=20260829-m328-r1-next-trip-venue2";
+} from "./pages.js?v=20260829-m328-r1-native-actions1&venue=2";
 import {
   activateUpdate,
   initializeInstall
