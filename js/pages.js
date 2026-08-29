@@ -180,9 +180,10 @@ export async function hydratePage(key, context = {}) {
   if (key === "dashboard") return feature("./modules/dashboard.js?v=20260724-dashboard-delivery-corr2&feature=20260724-personal-dashboard-widgets-r1-fix4&small=20260725-dashboard-small-widgets-r1", "hydrateDashboard", context);
   if (key === "dates") return feature("./modules/dates.js", "hydrateDates", context);
   if (key === "fanbuses") {
+    await feature("./m328-registration-preload.js?v=20260829-m328-r1-direct1", "setupM328RegistrationPreload", context);
+    await feature("./m328-bus-orga-shell.js?v=20260829-m328-r1-flow2", "setupM328BusOrgaShell", context);
     const result = await feature("./modules/fanbuses.js?v=20260826-p800-r2-final-direct-fix&groups=20260828-m310-r1&m327=20260828-m327-r1", "hydrateFanbuses", context);
     await feature("./m327-r1-acceptance-polish.js?v=20260829-m327-r1-acceptance1", "setupM327AcceptancePolish", context);
-    await feature("./m328-bus-orga-shell.js?v=20260829-m328-r1-flow2", "setupM328BusOrgaShell", context);
     return result;
   }
   if (key === "bus-orga") return feature("./modules/bus-orga.js?v=20260829-m328-r1-flow2", "hydrateBusOrga", context);
