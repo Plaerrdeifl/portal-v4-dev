@@ -80,6 +80,20 @@ function normalizeTripManagementOverview() {
   });
 }
 
+function clearRegistrationEntryFocus() {
+  const active = document.activeElement;
+  if (active instanceof HTMLElement && active !== document.body) active.blur();
+}
+
+async function hydrateRegistrationWithoutAutofocus(context) {
+  clearRegistrationEntryFocus();
+  const result = await hydrateBusOrgaRegistrationV2(context);
+  clearRegistrationEntryFocus();
+  requestAnimationFrame(clearRegistrationEntryFocus);
+  setTimeout(clearRegistrationEntryFocus, 0);
+  return result;
+}
+
 function bindNativeTripEdit() {
   const root = document.getElementById("m328BusOrgaPage");
   if (!root || root.dataset.m328NativeTripEditBound === "true") return;
@@ -97,7 +111,7 @@ function bindNativeTripEdit() {
 export async function hydrateBusOrgaV3(context = {}) {
   ensurePolishStyle();
   const view = routeParams().get("view");
-  if (view === "registration") return hydrateBusOrgaRegistrationV2(context);
+  if (view === "registration") return hydrateRegistrationWithoutAutofocus(context);
   if (view === "bookings") return hydrateBusOrgaBookings(context);
   if (view === "trip-edit") return hydrateBusOrgaTripEdit(context);
 
