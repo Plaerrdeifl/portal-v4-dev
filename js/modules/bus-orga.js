@@ -7,7 +7,7 @@ import {
   hasCapability,
   loading
 } from "./common.js";
-import { queueM328FanbusAction } from "../m328-bus-orga-shell.js?v=20260829-m328-r1";
+import { queueM328FanbusAction } from "../m328-bus-orga-shell.js?v=20260829-m328-r1-flow2";
 
 const DATE_FORMAT = new Intl.DateTimeFormat("de-DE", {
   day: "2-digit",
@@ -220,7 +220,7 @@ function renderTripCard(trip) {
   if (canRegistrations) {
     actions.push(tripActionButton("participants", trip.id, "Teilnehmer", "secondary", "Teilnehmer und Warteliste öffnen"));
     if (trip.status === "PUBLISHED") {
-      actions.push(tripActionButton("add-registration", trip.id, "＋ Anmeldung", "primary", "Neue Anmeldung erfassen"));
+      actions.push(tripActionButton("add-registration", trip.id, "Anmeldung", "primary", "Neue Anmeldung erfassen"));
     }
   }
   if (canManage) {
