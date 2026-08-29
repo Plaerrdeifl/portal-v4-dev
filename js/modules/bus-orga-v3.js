@@ -35,6 +35,10 @@ function ensurePolishStyle() {
       text-overflow:ellipsis;
       white-space:nowrap;
     }
+    .m328-reg3-submit-action{
+      width:100%;
+      min-height:46px;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -195,6 +199,18 @@ function setupRegistrationBookingUx() {
   sync({ preferNewest: true });
 }
 
+function splitRegistrationConsentAndSubmit() {
+  const form = document.getElementById("m328Reg3Submit");
+  if (!form || form.dataset.m328ConsentSubmitSplit === "true") return;
+  const consent = form.querySelector(".m328-reg3-consent");
+  const button = form.querySelector('button[type="submit"]');
+  const panel = consent?.closest(".m328-reg3-panel");
+  if (!consent || !button || !panel || !panel.contains(button)) return;
+  form.dataset.m328ConsentSubmitSplit = "true";
+  button.classList.add("m328-reg3-submit-action");
+  panel.insertAdjacentElement("afterend", button);
+}
+
 function normalizeBusOrgaHeader() {
   const root = document.getElementById("m328BusOrgaPage");
   if (!root) return;
@@ -245,6 +261,7 @@ async function hydrateRegistrationWithoutAutofocus(context) {
   clearRegistrationEntryFocus();
   const result = await hydrateBusOrgaRegistrationV3(context);
   setupRegistrationBookingUx();
+  splitRegistrationConsentAndSubmit();
   clearRegistrationEntryFocus();
   requestAnimationFrame(clearRegistrationEntryFocus);
   setTimeout(clearRegistrationEntryFocus, 0);
