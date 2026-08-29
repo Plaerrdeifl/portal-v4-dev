@@ -117,17 +117,16 @@ test("M328 registration keeps the mixed booking stack below search", () => {
 });
 
 test("M328 prepared bookings use compact card interactions and boarding-stop summaries", () => {
-  assert.match(registrationSource, /class="icon-button m328-reg3-remove-booking"/);
-  assert.match(registrationSource, /aria-label="Buchung entfernen">×/);
-  assert.doesNotMatch(registrationSource, />Entfernen<\/button>/);
-  assert.doesNotMatch(nativeSource, /data-m328-booking-activate|activate\.textContent = "Bearbeiten"/);
-  assert.match(registrationSource, /event\.target\.closest\("button,input,select,textarea,a,label"\)/);
-  assert.match(registrationSource, /activateBooking\(state, card\.dataset\.m328Reg3BookingCard\)/);
-  assert.match(registrationSource, /data-m328-reg3-open-participant="\$\{bookingIndex\}:\$\{personIndex\}"/);
-  assert.match(registrationSource, /function activateParticipant\(state, bookingIndex, personIndex\)/);
-  assert.match(registrationSource, /state\.openParticipant = \{ bookingId: booking\.clientId, personIndex \}/);
-  assert.match(registrationSource, /event\.stopPropagation\(\)/);
-  assert.match(registrationSource, /data-m328-reg3-open-on-render="true"/);
+  assert.match(registrationSource, /class="icon-button m328-reg3-booking-settings"/);
+  assert.match(registrationSource, /aria-label="Buchungsaktionen öffnen"/);
+  assert.match(registrationSource, /data-m328-reg3-edit-booking="\$\{escapeAttr\(booking\.clientId\)\}">Bearbeiten<\/button>/);
+  assert.match(registrationSource, /data-m328-reg3-remove-booking="\$\{escapeAttr\(booking\.clientId\)\}">Löschen<\/button>/);
+  assert.doesNotMatch(registrationSource, /class="icon-button m328-reg3-remove-booking"|aria-label="Buchung entfernen">×/);
+  assert.doesNotMatch(registrationSource, /querySelectorAll\("\[data-m328-reg3-booking-card\]"\).*addEventListener\("click"/s);
+  assert.doesNotMatch(registrationSource, /data-m328-reg3-open-participant|function activateParticipant|state\.openParticipant/);
+  assert.match(registrationSource, /activateBooking\(state, button\.dataset\.m328Reg3EditBooking\)/);
+  assert.match(registrationSource, /data-m328-reg3-booking-settings[\s\S]*?event\.stopPropagation\(\)/);
+  assert.match(nativeSource, /event\.target\.closest\("button,input,select,textarea,a,label"\)/);
   assert.match(registrationSource, /function selectedStopLabel\(state, selected = ""\)/);
   assert.match(registrationSource, /refreshBookingOverview\(state, target, bookingIndex\)/);
 });

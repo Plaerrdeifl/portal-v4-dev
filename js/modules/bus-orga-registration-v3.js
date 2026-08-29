@@ -247,8 +247,8 @@ function ensureStyle() {
     .m328-reg3-filters::-webkit-scrollbar{display:none}
     .m328-reg3-filter{flex:0 0 auto;min-height:34px;padding:5px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:inherit;font-size:.72rem;font-weight:800}
     .m328-reg3-filter.is-active{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--surface));color:var(--accent)}
-    .m328-reg3-results{display:grid;gap:6px;max-height:90px;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
-    .m328-reg3-choice{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:42px;padding:7px 9px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:inherit;text-align:left}
+    .m328-reg3-results{--m328-reg3-result-height:36px;--m328-reg3-result-gap:5px;display:grid;gap:var(--m328-reg3-result-gap);max-height:calc(var(--m328-reg3-result-height) + var(--m328-reg3-result-height) + var(--m328-reg3-result-gap));overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+    .m328-reg3-choice{display:flex;align-items:center;justify-content:space-between;gap:7px;width:100%;height:var(--m328-reg3-result-height);min-height:var(--m328-reg3-result-height);max-height:var(--m328-reg3-result-height);padding:4px 7px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:inherit;text-align:left;line-height:1.1}
     .m328-reg3-choice-copy{display:flex;align-items:baseline;gap:4px;min-width:0;overflow:hidden;white-space:nowrap}
     .m328-reg3-choice-copy strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.82rem}
     .m328-reg3-choice-copy small{flex:0 0 auto;color:var(--ink-500);font-size:.68rem}
@@ -275,7 +275,10 @@ function ensureStyle() {
     .m328-reg3-booking-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;padding:9px 10px;border-bottom:1px solid var(--line)}
     .m328-reg3-booking-head-copy{display:flex;align-items:center;gap:7px;min-width:0;overflow:hidden}
     .m328-reg3-booking-head-copy>strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.82rem}
-    .m328-reg3-booking-actions{display:flex;gap:4px;align-items:center}
+    .m328-reg3-booking-actions{position:relative;display:flex;gap:4px;align-items:center}
+    .m328-reg3-booking-menu{position:absolute;z-index:4;top:calc(100% + 4px);right:0;display:flex;gap:5px;padding:5px;border:1px solid var(--line);border-radius:9px;background:var(--surface);box-shadow:0 8px 22px rgba(2,18,35,.16)}
+    .m328-reg3-booking-menu[hidden]{display:none!important}.m328-reg3-booking-menu .button{min-height:30px;padding:4px 7px;font-size:.66rem;white-space:nowrap}
+    .m328-reg3-booking-settings{width:28px;min-width:28px;height:28px;font-size:.85rem}
     .m328-reg3-person{position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:9px 10px;border-bottom:1px solid var(--line)}
     .m328-reg3-person:last-child{border-bottom:0}.m328-reg3-person-name{grid-column:1/-1;padding-right:30px}.m328-reg3-person-name strong{display:block;font-size:.82rem}.m328-reg3-person-name small{color:var(--muted);font-size:.67rem}
     .m328-reg3-person label{display:grid;gap:3px;font-size:.69rem;font-weight:750}.m328-reg3-note{grid-column:1/-1}.m328-reg3-person select,.m328-reg3-person input{width:100%;min-height:38px}
@@ -283,7 +286,7 @@ function ensureStyle() {
     .m328-reg3-submit{display:grid;gap:9px}.m328-reg3-consent{display:flex;align-items:flex-start;gap:8px;font-size:.74rem;line-height:1.35}.m328-reg3-submit>.m328-reg3-panel>.button{width:100%;min-height:46px}
     .m328-reg3-empty{margin:0;color:var(--muted);font-size:.78rem}
     .m328-reg3-group-review{padding:9px;border-radius:10px;background:var(--surface);font-size:.73rem;line-height:1.35}.m328-reg3-group-review p{margin:5px 0}
-    @media(max-width:520px){.m328-reg3-target{align-items:stretch;flex-direction:column}.m328-reg3-target-actions{justify-content:flex-start}.m328-reg3-guest-grid,.m328-reg3-person{grid-template-columns:1fr}.m328-reg3-guest-grid label:last-child,.m328-reg3-note{grid-column:auto}.m328-reg3-booking-head{align-items:start}.m328-reg3-booking-actions{flex-direction:column;align-items:stretch}.m328-reg3-booking-actions .button{padding:5px 7px;font-size:.68rem}}
+    @media(max-width:520px){.m328-reg3-target{align-items:stretch;flex-direction:column}.m328-reg3-target-actions{justify-content:flex-start}.m328-reg3-guest-grid,.m328-reg3-person{grid-template-columns:1fr}.m328-reg3-guest-grid label:last-child,.m328-reg3-note{grid-column:auto}.m328-reg3-booking-head{align-items:start}.m328-reg3-booking-menu{flex-direction:row;align-items:center}.m328-reg3-booking-menu .button{padding:4px 7px;font-size:.66rem}}
   `;
   document.head.appendChild(style);
 }
@@ -296,6 +299,7 @@ function personChoice(source, item) {
       identityKey: item.portalUserId ? `PORTAL:${item.portalUserId}` : `MEMBER:${item.memberId}`,
       firstName: item.firstName,
       lastName: item.lastName,
+      email: item.email || null,
       defaultBoardingStopId: item.defaultBoardingStopId || null,
       busPreference: item.defaultBusPreference || "EGAL",
       ...(source === "MEMBER" ? { memberId: item.memberId } : { portalUserId: item.portalUserId })
@@ -307,6 +311,7 @@ function personChoice(source, item) {
     identityKey: item.effectiveIdentityKey || `REGULAR_RIDER:${item.id}`,
     firstName: item.effectiveFirstName || item.firstName,
     lastName: item.effectiveLastName || item.lastName,
+    email: item.effectiveEmail || item.email || null,
     regularRiderId: item.id,
     defaultBoardingStopId: item.defaultBoardingStopId || null,
     busPreference: item.defaultBusPreference || "EGAL"
@@ -492,6 +497,7 @@ function groupMemberParticipant(state, member) {
     identityKey: member.identityKey,
     firstName: member.firstName,
     lastName: member.lastName,
+    email: member.email || null,
     ...(member.anchorType === "PORTAL_USER" ? { portalUserId: member.anchorId } : {}),
     ...(member.anchorType === "MEMBER" ? { memberId: member.anchorId } : {}),
     ...(member.anchorType === "REGULAR_RIDER" ? { regularRiderId: member.anchorId } : {}),
@@ -567,10 +573,7 @@ function bindSpecialActions(state) {
 }
 
 function participantFields(state, bookingIndex, personIndex, person) {
-  const bookingId = state.bookings[bookingIndex]?.clientId;
-  const openOnRender = state.openParticipant?.bookingId === bookingId
-    && state.openParticipant?.personIndex === personIndex;
-  return `<div class="m328-reg3-person" data-booking-index="${bookingIndex}" data-person-index="${personIndex}"${openOnRender ? ' data-m328-reg3-open-on-render="true"' : ""}><div class="m328-reg3-person-name"><strong>${escapeHtml(personName(person))}</strong><small>${escapeHtml(sourceLabel(person.source))}</small></div><button class="icon-button m328-reg3-remove" type="button" data-m328-reg3-remove="${bookingIndex}:${personIndex}" aria-label="${escapeAttr(`${personName(person)} entfernen`)}">×</button>${activeStops(state).length ? `<label>Zustieg<select required data-m328-reg3-stop="${bookingIndex}:${personIndex}">${stopOptions(state, person.boardingStopId)}</select></label>` : ""}${state.trip.busPreferenceSelectionEnabled ? `<label>Buswunsch<select data-m328-reg3-preference="${bookingIndex}:${personIndex}">${preferenceOptions(person.busPreference || "EGAL")}</select></label>` : ""}<label class="m328-reg3-note">Hinweis (optional)<input maxlength="240" data-m328-reg3-note="${bookingIndex}:${personIndex}" value="${escapeAttr(person.operationalNote || "")}"></label></div>`;
+  return `<div class="m328-reg3-person" data-booking-index="${bookingIndex}" data-person-index="${personIndex}"><div class="m328-reg3-person-name"><strong>${escapeHtml(personName(person))}</strong><small>${escapeHtml(sourceLabel(person.source))}</small></div><button class="icon-button m328-reg3-remove" type="button" data-m328-reg3-remove="${bookingIndex}:${personIndex}" aria-label="${escapeAttr(`${personName(person)} entfernen`)}">×</button>${activeStops(state).length ? `<label>Zustieg<select required data-m328-reg3-stop="${bookingIndex}:${personIndex}">${stopOptions(state, person.boardingStopId)}</select></label>` : ""}${state.trip.busPreferenceSelectionEnabled ? `<label>Buswunsch<select data-m328-reg3-preference="${bookingIndex}:${personIndex}">${preferenceOptions(person.busPreference || "EGAL")}</select></label>` : ""}<label class="m328-reg3-note">Hinweis (optional)<input maxlength="240" data-m328-reg3-note="${bookingIndex}:${personIndex}" value="${escapeAttr(person.operationalNote || "")}"></label></div>`;
 }
 
 function preferenceLabel(value) {
@@ -583,7 +586,7 @@ function participantOverview(state, person, bookingIndex, personIndex) {
   if (stop) details.push(stop);
   if (state.trip.busPreferenceSelectionEnabled) details.push(preferenceLabel(person.busPreference || "EGAL"));
   if (person.operationalNote) details.push(`Hinweis: ${person.operationalNote}`);
-  return `<button class="m328-reg3-booking-overview-person" type="button" data-m328-reg3-open-participant="${bookingIndex}:${personIndex}" aria-label="${escapeAttr(`${personName(person)} bearbeiten`)}"><strong>${escapeHtml(personName(person))}</strong><small>${details.map(escapeHtml).join(" · ")}</small></button>`;
+  return `<div class="m328-reg3-booking-overview-person" data-booking-index="${bookingIndex}" data-person-index="${personIndex}"><strong>${escapeHtml(personName(person))}</strong><small>${details.map(escapeHtml).join(" · ")}</small></div>`;
 }
 
 function bookingOverview(state, booking, bookingIndex) {
@@ -596,23 +599,25 @@ function refreshBookingOverview(state, target, bookingIndex) {
   if (booking && overview) overview.innerHTML = bookingOverview(state, booking, bookingIndex);
 }
 
-function activateParticipant(state, bookingIndex, personIndex) {
-  const booking = state.bookings[bookingIndex];
-  if (!booking?.participants[personIndex] || !activateBooking(state, booking.clientId)) return false;
-  state.openParticipant = { bookingId: booking.clientId, personIndex };
-  return true;
-}
-
 function bookingCard(state, booking, bookingIndex) {
   const count = booking.participants.length;
   const active = booking.clientId === state.targetBookingId;
   const decision = booking.clientId === state.decisionBookingId;
-  return `<article class="m328-reg3-booking${active ? " is-active-booking" : ""}${decision ? " is-decision-booking" : ""}" data-m328-reg3-booking-card="${escapeAttr(booking.clientId)}" aria-current="${active}"><header class="m328-reg3-booking-head"><div class="m328-reg3-booking-head-copy"><strong>Buchung ${bookingIndex + 1} · ${count} ${count === 1 ? "Person" : "Personen"}</strong><span class="m328-reg3-booking-status m328-reg3-booking-status-prepared">Vorbereitet</span><span class="m328-reg3-booking-status m328-reg3-booking-status-active">Gemeinsame Buchung aktiv</span><span class="m328-reg3-booking-status m328-reg3-booking-status-decision">Entscheidung offen</span></div><div class="m328-reg3-booking-actions"><button class="icon-button m328-reg3-remove-booking" type="button" data-m328-reg3-remove-booking="${escapeAttr(booking.clientId)}" aria-label="Buchung entfernen">×</button></div></header><div class="m328-reg3-booking-overview" data-m328-reg3-booking-overview="${bookingIndex}">${bookingOverview(state, booking, bookingIndex)}</div>${booking.participants.map((person, personIndex) => participantFields(state, bookingIndex, personIndex, person)).join("")}</article>`;
+  const menuId = `m328Reg3BookingMenu-${bookingIndex}`;
+  return `<article class="m328-reg3-booking${active ? " is-active-booking" : ""}${decision ? " is-decision-booking" : ""}" data-m328-reg3-booking-card="${escapeAttr(booking.clientId)}" aria-current="${active}"><header class="m328-reg3-booking-head"><div class="m328-reg3-booking-head-copy"><strong>Buchung ${bookingIndex + 1} · ${count} ${count === 1 ? "Person" : "Personen"}</strong><span class="m328-reg3-booking-status m328-reg3-booking-status-prepared">Vorbereitet</span><span class="m328-reg3-booking-status m328-reg3-booking-status-active">Gemeinsame Buchung aktiv</span><span class="m328-reg3-booking-status m328-reg3-booking-status-decision">Entscheidung offen</span></div><div class="m328-reg3-booking-actions"><button class="icon-button m328-reg3-booking-settings" type="button" data-m328-reg3-booking-settings="${escapeAttr(booking.clientId)}" aria-label="Buchungsaktionen öffnen" aria-expanded="false" aria-controls="${menuId}">⚙</button><div id="${menuId}" class="m328-reg3-booking-menu" data-m328-reg3-booking-menu="${escapeAttr(booking.clientId)}" hidden><button class="button tiny secondary" type="button" data-m328-reg3-edit-booking="${escapeAttr(booking.clientId)}">Bearbeiten</button><button class="button tiny danger" type="button" data-m328-reg3-remove-booking="${escapeAttr(booking.clientId)}">Löschen</button></div></div></header><div class="m328-reg3-booking-overview" data-m328-reg3-booking-overview="${bookingIndex}">${bookingOverview(state, booking, bookingIndex)}</div>${booking.participants.map((person, personIndex) => participantFields(state, bookingIndex, personIndex, person)).join("")}</article>`;
 }
 
 function parsePair(value) {
   const [bookingIndex, personIndex] = String(value || "").split(":").map(Number);
   return { bookingIndex, personIndex };
+}
+
+function removeBooking(state, bookingId) {
+  const previousLength = state.bookings.length;
+  state.bookings = state.bookings.filter(booking => booking.clientId !== bookingId);
+  if (state.targetBookingId === bookingId) state.targetBookingId = null;
+  if (state.decisionBookingId === bookingId) state.decisionBookingId = null;
+  return state.bookings.length !== previousLength;
 }
 
 function renderBookingStack(state) {
@@ -625,27 +630,31 @@ function renderBookingStack(state) {
   target.innerHTML = state.bookings.length
     ? state.bookings.map((booking, index) => bookingCard(state, booking, index)).join("")
     : '<p class="m328-reg3-empty">Noch keine Buchung vorbereitet. Person suchen oder Gast/Gruppe hinzufügen.</p>';
-  state.openParticipant = null;
-
-  target.querySelectorAll("[data-m328-reg3-open-participant]").forEach(button => button.addEventListener("click", event => {
+  target.querySelectorAll("[data-m328-reg3-booking-settings]").forEach(button => button.addEventListener("click", event => {
     event.stopPropagation();
-    const { bookingIndex, personIndex } = parsePair(button.dataset.m328Reg3OpenParticipant);
-    if (!activateParticipant(state, bookingIndex, personIndex)) return;
+    const id = button.dataset.m328Reg3BookingSettings;
+    const menu = target.querySelector(`[data-m328-reg3-booking-menu="${CSS.escape(id)}"]`);
+    const opening = Boolean(menu?.hidden);
+    target.querySelectorAll("[data-m328-reg3-booking-menu]").forEach(item => {
+      item.hidden = true;
+    });
+    target.querySelectorAll("[data-m328-reg3-booking-settings]").forEach(item => {
+      item.setAttribute("aria-expanded", "false");
+    });
+    if (!menu || !opening) return;
+    menu.hidden = false;
+    button.setAttribute("aria-expanded", "true");
+  }));
+  target.querySelectorAll("[data-m328-reg3-edit-booking]").forEach(button => button.addEventListener("click", event => {
+    event.stopPropagation();
+    if (!activateBooking(state, button.dataset.m328Reg3EditBooking)) return;
     renderBookingStack(state);
     renderTarget(state);
   }));
-
-  target.querySelectorAll("[data-m328-reg3-booking-card]").forEach(card => card.addEventListener("click", event => {
-    if (event.target.closest("button,input,select,textarea,a,label")) return;
-    if (!activateBooking(state, card.dataset.m328Reg3BookingCard)) return;
-    renderBookingStack(state);
-    renderTarget(state);
-  }));
-  target.querySelectorAll("[data-m328-reg3-remove-booking]").forEach(button => button.addEventListener("click", () => {
+  target.querySelectorAll("[data-m328-reg3-remove-booking]").forEach(button => button.addEventListener("click", event => {
+    event.stopPropagation();
     const id = button.dataset.m328Reg3RemoveBooking;
-    state.bookings = state.bookings.filter(booking => booking.clientId !== id);
-    if (state.targetBookingId === id) state.targetBookingId = null;
-    if (state.decisionBookingId === id) state.decisionBookingId = null;
+    if (!removeBooking(state, id)) return;
     renderBookingStack(state);
     renderTarget(state);
   }));
@@ -703,6 +712,81 @@ function participantPayload(state, person) {
   };
 }
 
+function normalizedDuplicateValue(value) {
+  return String(value || "").trim().toLocaleLowerCase("de-DE");
+}
+
+function participantDuplicateKeys(person) {
+  return new Set([
+    person?.identityKey,
+    person?.portalUserId ? `PORTAL:${person.portalUserId}` : "",
+    person?.memberId ? `MEMBER:${person.memberId}` : "",
+    person?.regularRiderId ? `REGULAR_RIDER:${person.regularRiderId}` : "",
+    person?.email ? `EMAIL:${normalizedDuplicateValue(person.email)}` : ""
+  ].filter(Boolean));
+}
+
+function registrationDuplicateKeys(registration) {
+  return new Set([
+    registration?.portalUserId ? `PORTAL:${registration.portalUserId}` : "",
+    registration?.memberId ? `MEMBER:${registration.memberId}` : "",
+    registration?.regularRiderId ? `REGULAR_RIDER:${registration.regularRiderId}` : "",
+    registration?.email ? `EMAIL:${normalizedDuplicateValue(registration.email)}` : ""
+  ].filter(Boolean));
+}
+
+function duplicateConflicts(participants, registrations) {
+  const activeRegistrations = registrations.filter(registration =>
+    ["ACTIVE", "WAITLISTED"].includes(String(registration?.status || "").toUpperCase())
+  );
+  return participants.flatMap(participant => {
+    const participantKeys = participantDuplicateKeys(participant);
+    const existing = activeRegistrations.find(registration => {
+      const registrationKeys = registrationDuplicateKeys(registration);
+      return Array.from(participantKeys).some(key => registrationKeys.has(key));
+    });
+    return existing ? [{
+      name: personName(participant),
+      bookingNumber: String(existing.bookingNumber || "").trim()
+    }] : [];
+  });
+}
+
+function duplicateBookingMessage(conflicts, participants = []) {
+  if (conflicts.length === 1) {
+    const conflict = conflicts[0];
+    return `Für ${conflict.name} besteht für diese Fahrt bereits eine Buchung${conflict.bookingNumber ? ` (${conflict.bookingNumber})` : ""}.`;
+  }
+  if (conflicts.length > 1) {
+    const entries = conflicts.map(conflict =>
+      `${conflict.name}${conflict.bookingNumber ? ` (${conflict.bookingNumber})` : ""}`
+    );
+    return `Für folgende Personen besteht für diese Fahrt bereits eine Buchung: ${entries.join(", ")}.`;
+  }
+  const names = Array.from(new Set(participants.map(personName)));
+  return names.length
+    ? `Mindestens eine der folgenden Personen besitzt für diese Fahrt bereits eine Buchung: ${names.join(", ")}.`
+    : "Mindestens eine Person besitzt für diese Fahrt bereits eine Buchung.";
+}
+
+function isDuplicateSubmissionError(error) {
+  const diagnostic = [
+    error?.message,
+    error?.details?.message,
+    error?.details?.details,
+    error?.details?.hint
+  ].filter(Boolean).join(" ");
+  if (error?.code === "P3201" || /FANBUS_BATCH_DUPLICATE/i.test(diagnostic)) return true;
+  return error?.code === "23505"
+    && /fanbus_registrations_(?:active|live)|trip_id[^.\n]*(?:portal|member|regular|email)/i.test(diagnostic);
+}
+
+async function currentDuplicateConflicts(state, participants) {
+  const result = await call("fanbus_registrations_list", { tripId: state.trip.id });
+  const registrations = Array.isArray(result?.registrations) ? result.registrations : [];
+  return duplicateConflicts(participants, registrations);
+}
+
 async function submitRegistration(state, form) {
   if (!state.bookings.length) {
     showToast("Füge mindestens eine Buchung hinzu.", "warning", 4200);
@@ -721,8 +805,20 @@ async function submitRegistration(state, form) {
     manualAttempt = { fingerprint, key: crypto.randomUUID() };
   }
   const button = form.querySelector("button[type=submit]");
+  const participants = allParticipants(state);
   button.disabled = true;
   try {
+    let preflightConflicts = [];
+    try {
+      preflightConflicts = await currentDuplicateConflicts(state, participants);
+    } catch {
+      // The atomic server-side duplicate guard remains authoritative if the read-only preflight is unavailable.
+    }
+    if (preflightConflicts.length) {
+      showToast(duplicateBookingMessage(preflightConflicts), "error", 6800);
+      button.disabled = false;
+      return;
+    }
     const result = await call("fanbus_registration_create_manual_batches", {
       ...payload,
       idempotencyKey: manualAttempt.key
@@ -740,7 +836,17 @@ async function submitRegistration(state, form) {
     );
     location.hash = "#/bus-orga";
   } catch (error) {
-    showToast(error?.message || "Buchungen konnten nicht gespeichert werden.", "error", 5600);
+    if (isDuplicateSubmissionError(error)) {
+      let conflicts = [];
+      try {
+        conflicts = await currentDuplicateConflicts(state, participants);
+      } catch {
+        // Use the selected names below when the refreshed list cannot be loaded.
+      }
+      showToast(duplicateBookingMessage(conflicts, participants), "error", 6800);
+    } else {
+      showToast(error?.message || "Buchungen konnten nicht gespeichert werden.", "error", 5600);
+    }
     button.disabled = false;
   }
 }

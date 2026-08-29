@@ -766,7 +766,8 @@ function tripMobileList(items) {
   </div>`;
 }
 
-function tripGroup(key, title, items, emptyMessage) {
+function tripGroup(key, title, items) {
+  if (!items.length) return "";
   const headingId = `m310TripGroup-${key}`;
   const countLabel = items.length === 1 ? "1 Fahrt" : `${items.length} Fahrten`;
   return `<section class="module-panel v4-m310-trip-group" aria-labelledby="${headingId}">
@@ -774,9 +775,7 @@ function tripGroup(key, title, items, emptyMessage) {
       <h3 id="${headingId}">${escapeHtml(title)}</h3>
       <span class="badge neutral">${escapeHtml(countLabel)}</span>
     </div>
-    ${items.length
-      ? `${tripTable(items)}${tripMobileList(items)}`
-      : empty(emptyMessage)}
+    ${tripTable(items)}${tripMobileList(items)}
   </section>`;
 }
 
@@ -922,9 +921,9 @@ function render() {
   }
 
   panel.innerHTML = items.length
-    ? `${tripGroup("active", "Aktive Fahrten", groupedTrips.active, "Keine aktiven Fahrten vorhanden.")}
-       ${tripGroup("planned", "Geplante Fahrten", groupedTrips.planned, "Keine geplanten Fahrten vorhanden.")}
-       ${tripGroup("history", "Vergangene / abgesagte Fahrten", groupedTrips.history, "Keine vergangenen oder abgesagten Fahrten vorhanden.")}`
+    ? `${tripGroup("active", "Aktive Fahrten", groupedTrips.active)}
+       ${tripGroup("planned", "Geplante Fahrten", groupedTrips.planned)}
+       ${tripGroup("history", "Vergangene / abgesagte Fahrten", groupedTrips.history)}`
     : empty("Aktuell sind keine kommenden Fanbusfahrten verfügbar.");
 
   panel.querySelectorAll("[data-m310-open-trip]").forEach(record => {

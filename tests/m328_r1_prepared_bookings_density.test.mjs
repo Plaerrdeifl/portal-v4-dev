@@ -18,7 +18,8 @@ test("M328 prepared bookings heading stays on one line with counters directly be
 test("M328 prepared booking header keeps status inline and the participant area separate", () => {
   assert.match(registrationSource, /class="m328-reg3-booking-head-copy"><strong>Buchung \$\{bookingIndex \+ 1\} · \$\{count\}/);
   assert.match(registrationSource, /m328-reg3-booking-status-prepared">Vorbereitet<\/span>/);
-  assert.match(registrationSource, /class="m328-reg3-booking-actions"><button class="icon-button m328-reg3-remove-booking"/);
+  assert.match(registrationSource, /class="m328-reg3-booking-actions"><button class="icon-button m328-reg3-booking-settings"/);
+  assert.match(registrationSource, /class="m328-reg3-booking-menu"[^>]*hidden><button[^>]*>Bearbeiten<\/button><button[^>]*>Löschen<\/button>/);
   assert.match(nativeSource, /\.m328-reg3-booking:not\(\.is-active-booking\) \.m328-reg3-booking-head\{[^}]*background:var\(--surface-soft\)/);
   assert.match(nativeSource, /\.m328-reg3-booking:not\(\.is-active-booking\)\{[^}]*background:var\(--surface\)/);
   assert.doesNotMatch(nativeSource, /content:"Vorbereitet"/);
@@ -38,7 +39,7 @@ test("M328 person search renders name and type on one compact line", () => {
 });
 
 test("M328 person search shows two compact results and scrolls beyond them", () => {
-  assert.match(registrationSource, /\.m328-reg3-results\{[^}]*gap:6px;[^}]*max-height:90px;[^}]*overflow-y:auto/);
-  assert.match(registrationSource, /\.m328-reg3-choice\{[^}]*min-height:42px;[^}]*padding:7px 9px/);
+  assert.match(registrationSource, /\.m328-reg3-results\{--m328-reg3-result-height:36px;--m328-reg3-result-gap:5px;[^}]*max-height:calc\(var\(--m328-reg3-result-height\) \+ var\(--m328-reg3-result-height\) \+ var\(--m328-reg3-result-gap\)\);[^}]*overflow-y:auto/);
+  assert.match(registrationSource, /\.m328-reg3-choice\{[^}]*height:var\(--m328-reg3-result-height\);[^}]*min-height:var\(--m328-reg3-result-height\);[^}]*max-height:var\(--m328-reg3-result-height\);[^}]*padding:4px 7px/);
   assert.match(registrationSource, /\.slice\(0, 50\)/);
 });

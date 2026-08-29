@@ -48,13 +48,15 @@ test("the current date follows Europe/Berlin at UTC day boundaries", () => {
   assert.equal(currentBerlinDate(new Date("2026-08-27T22:30:00.000Z")), "2026-08-28");
 });
 
-test("fanbus list renders all three responsive sections in the requested order", async () => {
+test("fanbus list keeps the section order but omits groups without trips", async () => {
   const source = await readFile(new URL("../js/modules/fanbuses.js", import.meta.url), "utf8");
   const active = source.indexOf('tripGroup("active", "Aktive Fahrten"');
   const planned = source.indexOf('tripGroup("planned", "Geplante Fahrten"');
   const history = source.indexOf('tripGroup("history", "Vergangene / abgesagte Fahrten"');
 
   assert.ok(active >= 0 && planned > active && history > planned);
+  assert.match(source, /function tripGroup\(key, title, items\) \{\s*if \(!items\.length\) return "";/);
+  assert.doesNotMatch(source, /0 Fahrten|Keine geplanten Fahrten vorhanden\.|Keine vergangenen oder abgesagten Fahrten vorhanden\./);
   assert.match(source, /tripTable\(items\).*tripMobileList\(items\)/s);
   assert.match(source, /groupFanbusTrips\(items\)/);
 });
