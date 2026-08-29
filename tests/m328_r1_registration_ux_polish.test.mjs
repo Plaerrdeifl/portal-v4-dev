@@ -35,6 +35,11 @@ test("M328 registration starts with person search and source filters", () => {
   assert.match(registrationSource, /＋ Gruppe auswählen/);
 });
 
+test("M328 guest submit text follows the active target booking", () => {
+  assert.match(registrationSource, /state\.targetBookingId \? "Zu Buchung hinzufügen" : "Gast hinzufügen"/);
+  assert.doesNotMatch(registrationSource, /Gast als Einzelbuchung|Gast zu Buchung hinzufügen/);
+});
+
 test("M328 registration keeps the mixed booking stack below search", () => {
   assert.match(registrationSource, /Vorbereitete Buchungen/);
   assert.match(registrationSource, /Gemeinsame Buchung/);

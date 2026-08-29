@@ -378,7 +378,7 @@ function renderGuestPanel(state) {
   const target = document.getElementById("m328Reg3SpecialPanel");
   if (!target) return;
   target.hidden = false;
-  target.innerHTML = `<form class="m328-reg3-guest" data-m328-reg3-guest-form><strong>Gast hinzufügen</strong><div class="m328-reg3-guest-grid"><label>Vorname<input name="firstName" maxlength="160" required></label><label>Nachname<input name="lastName" maxlength="160" required></label><label>E-Mail (optional)<input name="email" type="email" maxlength="320"></label></div><button class="button secondary" type="submit">${state.targetBookingId ? "Gast zu Buchung hinzufügen" : "Gast als Einzelbuchung"}</button></form>`;
+  target.innerHTML = `<form class="m328-reg3-guest" data-m328-reg3-guest-form><strong>Gast hinzufügen</strong><div class="m328-reg3-guest-grid"><label>Vorname<input name="firstName" maxlength="160" required></label><label>Nachname<input name="lastName" maxlength="160" required></label><label>E-Mail (optional)<input name="email" type="email" maxlength="320"></label></div><button class="button secondary" type="submit">${state.targetBookingId ? "Zu Buchung hinzufügen" : "Gast hinzufügen"}</button></form>`;
   const form = target.querySelector("[data-m328-reg3-guest-form]");
   form?.addEventListener("submit", event => {
     event.preventDefault();
