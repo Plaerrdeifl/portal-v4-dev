@@ -39,6 +39,162 @@ function ensurePolishStyle() {
   document.head.appendChild(style);
 }
 
+function ensureRegistrationBookingUxStyle() {
+  if (document.getElementById("m328RegistrationBookingUxStyle")) return;
+  const style = document.createElement("style");
+  style.id = "m328RegistrationBookingUxStyle";
+  style.textContent = `
+    .m328-reg3-booking{
+      transition:border-color .15s ease,box-shadow .15s ease,background .15s ease;
+    }
+    .m328-reg3-booking.is-active-booking{
+      border:2px solid var(--accent)!important;
+      box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 10%,transparent);
+    }
+    .m328-reg3-booking.is-active-booking .m328-reg3-booking-head{
+      background:color-mix(in srgb,var(--accent) 8%,var(--surface));
+    }
+    .m328-reg3-booking:not(.is-active-booking){
+      background:var(--surface-2);
+    }
+    .m328-reg3-booking:not(.is-active-booking) .m328-reg3-booking-head{
+      padding-top:8px;
+      padding-bottom:8px;
+      border-bottom:0;
+    }
+    .m328-reg3-booking:not(.is-active-booking) .m328-reg3-person{
+      display:none!important;
+    }
+    .m328-reg3-booking:not(.is-active-booking) [data-m328-reg3-add-to-booking]{
+      display:none!important;
+    }
+    .m328-reg3-booking-status{
+      display:inline-flex;
+      align-items:center;
+      width:max-content;
+      margin-top:5px;
+      padding:3px 7px;
+      border-radius:999px;
+      background:var(--accent);
+      color:#fff;
+      font-size:.63rem;
+      font-weight:850;
+      line-height:1.15;
+    }
+    .m328-reg3-booking:not(.is-active-booking) .m328-reg3-booking-status{
+      display:none;
+    }
+    .m328-reg3-booking-activate{
+      min-height:30px!important;
+      padding:4px 7px!important;
+      font-size:.68rem!important;
+    }
+    .m328-reg3-booking.is-active-booking .m328-reg3-booking-activate{
+      display:none!important;
+    }
+    @media(max-width:520px){
+      .m328-reg3-booking:not(.is-active-booking) .m328-reg3-booking-actions{
+        flex-direction:row;
+        align-items:center;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function registrationBookingId(card) {
+  return card?.querySelector("[data-m328-reg3-add-to-booking]")?.dataset.m328Reg3AddToBooking
+    || card?.querySelector("[data-m328-reg3-remove-booking]")?.dataset.m328Reg3RemoveBooking
+    || "";
+}
+
+function setupRegistrationBookingUx() {
+  const root = document.getElementById("m328BusOrgaPage");
+  const stack = document.getElementById("m328Reg3Bookings");
+  if (!root || !stack || stack.dataset.m328BookingUxBound === "true") return;
+  stack.dataset.m328BookingUxBound = "true";
+  ensureRegistrationBookingUxStyle();
+
+  const ui = {
+    activeBookingId: "",
+    knownBookingIds: new Set(),
+    syncing: false
+  };
+
+  const sync = ({ preferNewest = false } = {}) => {
+    if (ui.syncing) return;
+    ui.syncing = true;
+    try {
+      const cards = [...stack.querySelectorAll(".m328-reg3-booking")];
+      const ids = cards.map(registrationBookingId).filter(Boolean);
+      const newIds = ids.filter(id => !ui.knownBookingIds.has(id));
+
+      if (preferNewest && newIds.length) ui.activeBookingId = newIds[newIds.length - 1];
+      if (!ui.activeBookingId || !ids.includes(ui.activeBookingId)) {
+        ui.activeBookingId = ids.at(-1) || "";
+      }
+      ui.knownBookingIds = new Set(ids);
+
+      cards.forEach(card => {
+        const id = registrationBookingId(card);
+        const active = Boolean(id) && id === ui.activeBookingId;
+        card.classList.toggle("is-active-booking", active);
+        card.setAttribute("aria-current", active ? "true" : "false");
+
+        const header = card.querySelector(".m328-reg3-booking-head");
+        const copy = header?.firstElementChild;
+        const actions = header?.querySelector(".m328-reg3-booking-actions");
+        if (copy && !copy.querySelector(".m328-reg3-booking-status")) {
+          const status = document.createElement("span");
+          status.className = "m328-reg3-booking-status";
+          status.textContent = "Wird bearbeitet";
+          copy.appendChild(status);
+        }
+        if (actions && !actions.querySelector("[data-m328-booking-activate]")) {
+          const activate = document.createElement("button");
+          activate.className = "button tiny secondary m328-reg3-booking-activate";
+          activate.type = "button";
+          activate.dataset.m328BookingActivate = id;
+          activate.textContent = "Bearbeiten";
+          actions.prepend(activate);
+        }
+      });
+    } finally {
+      ui.syncing = false;
+    }
+  };
+
+  stack.addEventListener("click", event => {
+    const activate = event.target.closest("[data-m328-booking-activate]");
+    if (activate && stack.contains(activate)) {
+      event.preventDefault();
+      ui.activeBookingId = activate.dataset.m328BookingActivate || "";
+      sync();
+      return;
+    }
+
+    const card = event.target.closest(".m328-reg3-booking");
+    if (!card || !stack.contains(card)) return;
+    const id = registrationBookingId(card);
+    if (!id) return;
+
+    if (event.target.closest("[data-m328-reg3-add-to-booking]")) {
+      ui.activeBookingId = id;
+      sync();
+      return;
+    }
+
+    if (event.target.closest(".m328-reg3-booking-head") && !event.target.closest("button")) {
+      ui.activeBookingId = id;
+      sync();
+    }
+  }, true);
+
+  const observer = new MutationObserver(() => sync({ preferNewest: true }));
+  observer.observe(stack, { childList: true, subtree: true });
+  sync({ preferNewest: true });
+}
+
 function normalizeBusOrgaHeader() {
   const root = document.getElementById("m328BusOrgaPage");
   if (!root) return;
@@ -88,6 +244,7 @@ function clearRegistrationEntryFocus() {
 async function hydrateRegistrationWithoutAutofocus(context) {
   clearRegistrationEntryFocus();
   const result = await hydrateBusOrgaRegistrationV3(context);
+  setupRegistrationBookingUx();
   clearRegistrationEntryFocus();
   requestAnimationFrame(clearRegistrationEntryFocus);
   setTimeout(clearRegistrationEntryFocus, 0);
