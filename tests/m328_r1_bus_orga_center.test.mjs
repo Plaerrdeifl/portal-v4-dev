@@ -2,11 +2,6 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 
-import {
-  isM328BusOrgaContext,
-  m328FanbusRouteParams
-} from "../js/m328-bus-orga-shell.js";
-
 const read = path => fs.readFileSync(new URL(path, import.meta.url), "utf8");
 const routerSource = read("../js/router.js");
 const authSource = read("../js/auth.js");
@@ -46,8 +41,9 @@ test("M328 dashboard prioritizes manual registration and existing workspaces", (
   assert.match(dashboardHtml, /m328BusOrgaBack/);
   assert.match(dashboardHtml, /m328BusOrgaClose/);
   assert.match(dashboardSource, /call\("fanbus_trips_list"\)/);
-  assert.match(dashboardSource, /queueM328FanbusAction\("add-registration"/);
-  assert.match(dashboardSource, /view:\s*"operations"|openWorkspace\("operations"/);
+  assert.match(dashboardSource, /openFanbusContext\("add-registration"/);
+  assert.match(dashboardSource, /queueM328FanbusAction\(action, tripId\)/);
+  assert.match(dashboardSource, /openWorkspace\("operations"/);
   assert.match(dashboardSource, /openWorkspace\("regular-riders"\)/);
   assert.match(dashboardSource, /openWorkspace\("person-groups"\)/);
   assert.match(dashboardSource, /openWorkspace\("settings"\)/);
@@ -74,8 +70,9 @@ test("M328 reuses the existing participant composer for quick registration", () 
 });
 
 test("M328 recognizes fanbus administration context without changing normal routes", () => {
-  assert.equal(isM328BusOrgaContext("#/fanbuses?orga=1&from=bus-orga"), true);
-  assert.equal(isM328BusOrgaContext("#/fanbuses?view=settings&from=bus-orga"), true);
-  assert.equal(isM328BusOrgaContext("#/fanbuses"), false);
-  assert.equal(m328FanbusRouteParams("#/fanbuses?orga=1&x=2").get("x"), "2");
+  assert.match(shellSource, /function isM328BusOrgaContext/);
+  assert.match(shellSource, /params\.get\("orga"\) === "1"/);
+  assert.match(shellSource, /params\.get\("from"\) === "bus-orga"/);
+  assert.match(shellSource, /new URLSearchParams\(query\)/);
+  assert.match(shellSource, /location\.hash = "#\/bus-orga"/);
 });
