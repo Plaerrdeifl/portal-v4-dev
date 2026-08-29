@@ -56,6 +56,23 @@ test("M328 quick registration labels use only date and venue", () => {
   assert.doesNotMatch(tripOptionBlock, /displayTitle/);
 });
 
+test("M328 separates general administration from trip-specific administration", () => {
+  assert.match(dashboardHtml, />Allgemeine Verwaltung</);
+  assert.match(dashboardHtml, />Fahrtenverwaltung</);
+  const workspaceBlock = dashboardSource.match(/function renderWorkspaces\(\) \{[\s\S]*?\n\}/)?.[0] || "";
+  assert.match(workspaceBlock, /title: "Zustiege"/);
+  assert.match(workspaceBlock, /title: "Stammfahrer"/);
+  assert.match(workspaceBlock, /title: "Gruppen"/);
+  assert.doesNotMatch(workspaceBlock, /title: "Fahrten"/);
+  assert.doesNotMatch(workspaceBlock, /title: "Teilnehmer"/);
+  assert.doesNotMatch(workspaceBlock, /title: "Busse"/);
+  assert.doesNotMatch(workspaceBlock, /title: "Fahrtbetrieb"/);
+  assert.match(dashboardSource, /tripActionButton\("participants"/);
+  assert.match(dashboardSource, /tripActionButton\("occupancy"/);
+  assert.match(dashboardSource, /tripActionButton\("operations"/);
+  assert.match(dashboardSource, /tripActionButton\("edit-trip"/);
+});
+
 test("M328 removes administration controls from normal fanbus view", () => {
   assert.match(pagesSource, /m328-bus-orga-shell\.js/);
   assert.match(shellSource, /m328BusOrgaEntry/);
@@ -90,9 +107,8 @@ test("M328 mobile dashboard is compact and prevents horizontal clipping", () => 
   assert.match(dashboardHtml, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(dashboardHtml, /@media\(max-width:700px\)[\s\S]*?\.m328-workspace-card small\{[\s\S]*?display:none/);
   assert.doesNotMatch(dashboardHtml, /@media\(max-width:390px\)[\s\S]*?\.m328-workspace-grid\{[\s\S]*?grid-template-columns:1fr/);
-  assert.match(dashboardSource, /title: "Fahrten"/);
-  assert.match(dashboardSource, /title: "Teilnehmer"/);
-  assert.match(dashboardSource, /title: "Busse"/);
+  assert.match(dashboardSource, /title: "Zustiege"/);
+  assert.match(dashboardSource, /title: "Stammfahrer"/);
   assert.match(dashboardSource, /title: "Gruppen"/);
 });
 
