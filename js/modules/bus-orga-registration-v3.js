@@ -559,37 +559,47 @@ function bindSpecialActions(state) {
 }
 
 function participantFields(state, bookingIndex, personIndex, person) {
-  return `<div class="m328-reg3-person" data-booking-index="${bookingIndex}" data-person-index="${personIndex}"><div class="m328-reg3-person-name"><strong>${escapeHtml(personName(person))}</strong><small>${escapeHtml(sourceLabel(person.source))}</small></div><button class="icon-button m328-reg3-remove" type="button" data-m328-reg3-remove="${bookingIndex}:${personIndex}" aria-label="${escapeAttr(`${personName(person)} entfernen`)}">×</button>${activeStops(state).length ? `<label>Zustieg<select required data-m328-reg3-stop="${bookingIndex}:${personIndex}">${stopOptions(state, person.boardingStopId)}</select></label>` : ""}${state.trip.busPreferenceSelectionEnabled ? `<label>Buswunsch<select data-m328-reg3-preference="${bookingIndex}:${personIndex}">${preferenceOptions(person.busPreference || "EGAL")}</select></label>` : ""}<label class="m328-reg3-note">Hinweis (optional)<input maxlength="240" data-m328-reg3-note="${bookingIndex}:${personIndex}" value="${escapeAttr(person.operationalNote || "")}"></label></div>`;
+  const bookingId = state.bookings[bookingIndex]?.clientId;
+  const openOnRender = state.openParticipant?.bookingId === bookingId
+    && state.openParticipant?.personIndex === personIndex;
+  return `<div class="m328-reg3-person" data-booking-index="${bookingIndex}" data-person-index="${personIndex}"${openOnRender ? ' data-m328-reg3-open-on-render="true"' : ""}><div class="m328-reg3-person-name"><strong>${escapeHtml(personName(person))}</strong><small>${escapeHtml(sourceLabel(person.source))}</small></div><button class="icon-button m328-reg3-remove" type="button" data-m328-reg3-remove="${bookingIndex}:${personIndex}" aria-label="${escapeAttr(`${personName(person)} entfernen`)}">×</button>${activeStops(state).length ? `<label>Zustieg<select required data-m328-reg3-stop="${bookingIndex}:${personIndex}">${stopOptions(state, person.boardingStopId)}</select></label>` : ""}${state.trip.busPreferenceSelectionEnabled ? `<label>Buswunsch<select data-m328-reg3-preference="${bookingIndex}:${personIndex}">${preferenceOptions(person.busPreference || "EGAL")}</select></label>` : ""}<label class="m328-reg3-note">Hinweis (optional)<input maxlength="240" data-m328-reg3-note="${bookingIndex}:${personIndex}" value="${escapeAttr(person.operationalNote || "")}"></label></div>`;
 }
 
 function preferenceLabel(value) {
   return BUS_PREFERENCES.find(option => option.value === value)?.label || "Egal";
 }
 
-function participantOverview(state, person) {
+function participantOverview(state, person, bookingIndex, personIndex) {
   const details = [sourceLabel(person.source)];
   const stop = selectedStopLabel(state, person.boardingStopId);
   if (stop) details.push(stop);
   if (state.trip.busPreferenceSelectionEnabled) details.push(preferenceLabel(person.busPreference || "EGAL"));
   if (person.operationalNote) details.push(`Hinweis: ${person.operationalNote}`);
-  return `<div class="m328-reg3-booking-overview-person"><strong>${escapeHtml(personName(person))}</strong><small>${details.map(escapeHtml).join(" · ")}</small></div>`;
+  return `<button class="m328-reg3-booking-overview-person" type="button" data-m328-reg3-open-participant="${bookingIndex}:${personIndex}" aria-label="${escapeAttr(`${personName(person)} bearbeiten`)}"><strong>${escapeHtml(personName(person))}</strong><small>${details.map(escapeHtml).join(" · ")}</small></button>`;
 }
 
-function bookingOverview(state, booking) {
-  return booking.participants.map(person => participantOverview(state, person)).join("");
+function bookingOverview(state, booking, bookingIndex) {
+  return booking.participants.map((person, personIndex) => participantOverview(state, person, bookingIndex, personIndex)).join("");
 }
 
 function refreshBookingOverview(state, target, bookingIndex) {
   const booking = state.bookings[bookingIndex];
   const overview = target.querySelector(`[data-m328-reg3-booking-overview="${bookingIndex}"]`);
-  if (booking && overview) overview.innerHTML = bookingOverview(state, booking);
+  if (booking && overview) overview.innerHTML = bookingOverview(state, booking, bookingIndex);
+}
+
+function activateParticipant(state, bookingIndex, personIndex) {
+  const booking = state.bookings[bookingIndex];
+  if (!booking?.participants[personIndex] || !activateBooking(state, booking.clientId)) return false;
+  state.openParticipant = { bookingId: booking.clientId, personIndex };
+  return true;
 }
 
 function bookingCard(state, booking, bookingIndex) {
   const count = booking.participants.length;
   const active = booking.clientId === state.targetBookingId;
   const decision = booking.clientId === state.decisionBookingId;
-  return `<article class="m328-reg3-booking${active ? " is-active-booking" : ""}${decision ? " is-decision-booking" : ""}" data-m328-reg3-booking-card="${escapeAttr(booking.clientId)}" aria-current="${active}"><header class="m328-reg3-booking-head"><div><strong>Buchung ${bookingIndex + 1} · ${count} ${count === 1 ? "Person" : "Personen"}</strong><span class="m328-reg3-booking-status m328-reg3-booking-status-active">Gemeinsame Buchung aktiv</span><span class="m328-reg3-booking-status m328-reg3-booking-status-decision">Entscheidung offen</span></div><div class="m328-reg3-booking-actions"><button class="icon-button m328-reg3-remove-booking" type="button" data-m328-reg3-remove-booking="${escapeAttr(booking.clientId)}" aria-label="Buchung entfernen">×</button></div></header><div class="m328-reg3-booking-overview" data-m328-reg3-booking-overview="${bookingIndex}">${bookingOverview(state, booking)}</div>${booking.participants.map((person, personIndex) => participantFields(state, bookingIndex, personIndex, person)).join("")}</article>`;
+  return `<article class="m328-reg3-booking${active ? " is-active-booking" : ""}${decision ? " is-decision-booking" : ""}" data-m328-reg3-booking-card="${escapeAttr(booking.clientId)}" aria-current="${active}"><header class="m328-reg3-booking-head"><div><strong>Buchung ${bookingIndex + 1} · ${count} ${count === 1 ? "Person" : "Personen"}</strong><span class="m328-reg3-booking-status m328-reg3-booking-status-active">Gemeinsame Buchung aktiv</span><span class="m328-reg3-booking-status m328-reg3-booking-status-decision">Entscheidung offen</span></div><div class="m328-reg3-booking-actions"><button class="icon-button m328-reg3-remove-booking" type="button" data-m328-reg3-remove-booking="${escapeAttr(booking.clientId)}" aria-label="Buchung entfernen">×</button></div></header><div class="m328-reg3-booking-overview" data-m328-reg3-booking-overview="${bookingIndex}">${bookingOverview(state, booking, bookingIndex)}</div>${booking.participants.map((person, personIndex) => participantFields(state, bookingIndex, personIndex, person)).join("")}</article>`;
 }
 
 function parsePair(value) {
@@ -607,6 +617,15 @@ function renderBookingStack(state) {
   target.innerHTML = state.bookings.length
     ? state.bookings.map((booking, index) => bookingCard(state, booking, index)).join("")
     : '<p class="m328-reg3-empty">Noch keine Buchung vorbereitet. Person suchen oder Gast/Gruppe hinzufügen.</p>';
+  state.openParticipant = null;
+
+  target.querySelectorAll("[data-m328-reg3-open-participant]").forEach(button => button.addEventListener("click", event => {
+    event.stopPropagation();
+    const { bookingIndex, personIndex } = parsePair(button.dataset.m328Reg3OpenParticipant);
+    if (!activateParticipant(state, bookingIndex, personIndex)) return;
+    renderBookingStack(state);
+    renderTarget(state);
+  }));
 
   target.querySelectorAll("[data-m328-reg3-booking-card]").forEach(card => card.addEventListener("click", event => {
     if (event.target.closest("button,input,select,textarea,a,label")) return;

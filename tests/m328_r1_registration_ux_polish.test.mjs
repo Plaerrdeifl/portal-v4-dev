@@ -123,6 +123,11 @@ test("M328 prepared bookings use compact card interactions and boarding-stop sum
   assert.doesNotMatch(nativeSource, /data-m328-booking-activate|activate\.textContent = "Bearbeiten"/);
   assert.match(registrationSource, /event\.target\.closest\("button,input,select,textarea,a,label"\)/);
   assert.match(registrationSource, /activateBooking\(state, card\.dataset\.m328Reg3BookingCard\)/);
+  assert.match(registrationSource, /data-m328-reg3-open-participant="\$\{bookingIndex\}:\$\{personIndex\}"/);
+  assert.match(registrationSource, /function activateParticipant\(state, bookingIndex, personIndex\)/);
+  assert.match(registrationSource, /state\.openParticipant = \{ bookingId: booking\.clientId, personIndex \}/);
+  assert.match(registrationSource, /event\.stopPropagation\(\)/);
+  assert.match(registrationSource, /data-m328-reg3-open-on-render="true"/);
   assert.match(registrationSource, /function selectedStopLabel\(state, selected = ""\)/);
   assert.match(registrationSource, /refreshBookingOverview\(state, target, bookingIndex\)/);
 });
@@ -222,8 +227,8 @@ test("M328 uses a non-wrapping local booking completion action", () => {
 });
 
 test("M328 renders every prepared participant through one complete compact overview", () => {
-  assert.match(registrationSource, /function participantOverview\(state, person\)/);
-  assert.match(registrationSource, /booking\.participants\.map\(person => participantOverview\(state, person\)\)\.join\(""\)/);
+  assert.match(registrationSource, /function participantOverview\(state, person, bookingIndex, personIndex\)/);
+  assert.match(registrationSource, /booking\.participants\.map\(\(person, personIndex\) => participantOverview\(state, person, bookingIndex, personIndex\)\)\.join\(""\)/);
   assert.doesNotMatch(registrationSource, /booking\.participants\.slice\(0, 3\)/);
   assert.match(registrationSource, /details = \[sourceLabel\(person\.source\)\]/);
   assert.match(registrationSource, /selectedStopLabel\(state, person\.boardingStopId\)/);

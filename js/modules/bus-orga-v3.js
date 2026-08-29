@@ -1,5 +1,5 @@
 import { hydrateBusOrgaV2 } from "./bus-orga-v2.js?v=20260829-m328-r1-next-trip-venue1";
-import { hydrateBusOrgaRegistrationV3 } from "./bus-orga-registration-v3.js?v=20260829-m328-r1-registration-ux-correction1";
+import { hydrateBusOrgaRegistrationV3 } from "./bus-orga-registration-v3.js?v=20260829-m328-r1-participant-row-edit1";
 import { hydrateBusOrgaBookings } from "./bus-orga-bookings.js?v=20260829-m328-r1-native-actions1";
 import { hydrateBusOrgaTripEdit } from "./bus-orga-trip-edit.js?v=20260829-m328-r1-native-actions1";
 
@@ -78,12 +78,12 @@ function ensureRegistrationBookingUxStyle() {
     }
     .m328-reg3-booking.is-active-booking{
       border:3px solid var(--accent)!important;
-      background:color-mix(in srgb,var(--accent) 4%,var(--surface));
+      background:color-mix(in srgb,var(--warning) 9%,var(--surface));
       box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent),0 10px 24px rgba(2,18,35,.08);
     }
     .m328-reg3-booking.is-active-booking .m328-reg3-booking-head{
-      background:color-mix(in srgb,var(--accent) 14%,var(--surface));
-      border-bottom-color:color-mix(in srgb,var(--accent) 35%,var(--line));
+      background:color-mix(in srgb,var(--warning) 15%,var(--surface));
+      border-bottom-color:color-mix(in srgb,var(--warning) 38%,var(--line));
     }
     .m328-reg3-booking.is-active-booking .m328-reg3-booking-head strong{
       color:var(--accent);
@@ -95,6 +95,9 @@ function ensureRegistrationBookingUxStyle() {
     .m328-reg3-booking:not(.is-active-booking){
       background:var(--surface-2);
       cursor:pointer;
+    }
+    .m328-reg3-booking.is-active-booking + .m328-reg3-booking{
+      margin-top:8px;
     }
     .m328-reg3-booking:not(.is-active-booking) .m328-reg3-booking-head{
       padding-top:8px;
@@ -122,10 +125,16 @@ function ensureRegistrationBookingUxStyle() {
       display:none!important;
     }
     .m328-reg3-booking-overview{display:grid;gap:0}
-    .m328-reg3-booking-overview-person{display:grid;gap:2px;padding:8px 10px;border-bottom:1px solid var(--line)}
+    .m328-reg3-booking-overview-person{display:grid;gap:2px;width:100%;padding:8px 10px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
     .m328-reg3-booking-overview-person:last-child{border-bottom:0}
     .m328-reg3-booking-overview-person strong{font-size:.78rem}
     .m328-reg3-booking-overview-person small{color:var(--muted);font-size:.67rem;line-height:1.35}
+    .m328-reg3-booking:not(.is-active-booking) .m328-reg3-booking-overview-person:hover,
+    .m328-reg3-booking:not(.is-active-booking) .m328-reg3-booking-overview-person:focus-visible{
+      background:color-mix(in srgb,var(--accent) 7%,var(--surface));
+      outline:2px solid color-mix(in srgb,var(--accent) 35%,transparent);
+      outline-offset:-2px;
+    }
     .m328-reg3-booking.is-active-booking .m328-reg3-person{
       display:block!important;
       position:relative;
@@ -144,6 +153,9 @@ function ensureRegistrationBookingUxStyle() {
       display:grid;
       gap:2px;
       padding:9px 42px 3px 10px;
+    }
+    .m328-reg3-booking.is-active-booking .m328-reg3-person:not(.is-editing) .m328-reg3-person-name small{
+      display:none;
     }
     .m328-reg3-booking.is-active-booking .m328-reg3-person:not(.is-editing)>label{
       display:none!important;
@@ -357,13 +369,15 @@ function ensureRegistrationDecisionBackdrop() {
 
 function activeParticipantSummaryText(person) {
   const details = [];
+  const sourceLabel = person.querySelector(".m328-reg3-person-name small")?.textContent?.trim();
   const stop = person.querySelector("[data-m328-reg3-stop]");
   const preference = person.querySelector("[data-m328-reg3-preference]");
   const note = person.querySelector("[data-m328-reg3-note]");
   const stopLabel = stop?.selectedOptions?.[0]?.textContent?.trim();
   const preferenceLabel = preference?.selectedOptions?.[0]?.textContent?.trim();
   const noteValue = note?.value?.trim();
-  if (stopLabel) details.push(`Zustieg: ${stopLabel}`);
+  if (sourceLabel) details.push(sourceLabel);
+  if (stopLabel) details.push(stopLabel);
   if (preferenceLabel) details.push(`Buswunsch: ${preferenceLabel}`);
   if (noteValue) details.push(`Hinweis: ${noteValue}`);
   return details.join(" · ") || "Antippen zum Bearbeiten";
@@ -394,7 +408,10 @@ function decorateActiveParticipantCards(activeBooking) {
     if (person.dataset.m328CompactPersonBound === "true") return;
     person.dataset.m328CompactPersonBound = "true";
     person.tabIndex = 0;
-    person.setAttribute("aria-expanded", "false");
+    const openOnRender = person.dataset.m328Reg3OpenOnRender === "true";
+    person.classList.toggle("is-editing", openOnRender);
+    person.setAttribute("aria-expanded", String(openOnRender));
+    delete person.dataset.m328Reg3OpenOnRender;
 
     const toggle = () => {
       const opening = !person.classList.contains("is-editing");

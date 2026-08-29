@@ -45,7 +45,7 @@ test("M328 quick registration stays inside Bus-Orga", () => {
   assert.match(dashboardSource, /view:\s*"registration"/);
   assert.match(nativeSource, /view === "registration"/);
   assert.match(nativeSource, /hydrateBusOrgaRegistrationV3\(context\)/);
-  assert.match(nativeSource, /bus-orga-registration-v3\.js\?v=20260829-m328-r1-registration-ux-correction1/);
+  assert.match(nativeSource, /bus-orga-registration-v3\.js\?v=20260829-m328-r1-participant-row-edit1/);
   assert.doesNotMatch(dashboardSource, /openFanbusContext\("add-registration"/);
 });
 
