@@ -148,7 +148,11 @@ export async function hydratePage(key, context = {}) {
     await feature("./m328-bus-orga-shell.js?v=20260829-m328-r1-clean1", "setupM328BusOrgaShell", context);
     return result;
   }
-  if (key === "bus-orga") return feature("./modules/bus-orga.js?v=20260829-m328-r1-native-registration", "hydrateBusOrga", context);
+  if (key === "bus-orga") {
+    const result = await feature("./modules/bus-orga.js?v=20260829-m328-r1-registration-ux2", "hydrateBusOrga", context);
+    await feature("./m328-registration-ux-polish.js?v=20260829-m328-r1-registration-ux2", "setupM328RegistrationUxPolish", context);
+    return result;
+  }
   if (key === "fanclub") return feature("./modules/fanclub.js", "hydrateFanclub", context);
   if (key === "tasks") return feature("./modules/tasks.js", "hydrateTasks", context);
   if (key === "teams") return feature("./modules/teams.js", "hydrateTeams", context);
