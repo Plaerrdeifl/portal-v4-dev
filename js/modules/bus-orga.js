@@ -100,42 +100,18 @@ function workspaceCard({ id, title, description }) {
   </button>`;
 }
 
-function renderWorkspaces(items) {
+function renderWorkspaces() {
   const target = document.getElementById("m328WorkspaceGrid");
   if (!target) return;
   const cards = [];
-  const nearest = nextTrip(items);
   const canManage = hasCapability("fanbus.manage");
   const canRegistrations = hasCapability("fanbus.registrations.manage");
-  const canOperations = hasCapability("fanbus.operations.manage");
-  const canPaid = hasCapability("fanbus.payment_marker.manage");
 
   if (canManage) {
     cards.push(workspaceCard({
-      id: "trips",
-      title: "Fahrten",
-      description: "Fahrten anlegen, bearbeiten und veröffentlichen"
-    }));
-    cards.push(workspaceCard({
-      id: "buses",
-      title: "Busse",
-      description: nearest ? `Zuordnung für ${nearest.displayTitle || "die nächste Fahrt"}` : "Busverwaltung öffnen"
-    }));
-  }
-
-  if (canRegistrations) {
-    cards.push(workspaceCard({
-      id: "participants",
-      title: "Teilnehmer",
-      description: nearest ? `Teilnehmerliste für ${nearest.displayTitle || "die nächste Fahrt"}` : "Teilnehmerverwaltung öffnen"
-    }));
-  }
-
-  if (canOperations || canPaid || canRegistrations) {
-    cards.push(workspaceCard({
-      id: "operations",
-      title: "Fahrtbetrieb",
-      description: nearest ? `Check-in für ${nearest.displayTitle || "die nächste Fahrt"}` : "Operative Fahrtansicht öffnen"
+      id: "settings",
+      title: "Zustiege",
+      description: "Zustiegsorte und Fanbus-Grundeinstellungen"
     }));
   }
 
@@ -152,23 +128,11 @@ function renderWorkspaces(items) {
     }));
   }
 
-  if (canManage) {
-    cards.push(workspaceCard({
-      id: "settings",
-      title: "Einstellungen",
-      description: "Zustiegsorte und Fanbus-Grundeinstellungen"
-    }));
-  }
-
-  target.innerHTML = cards.length ? cards.join("") : empty("Keine Verwaltungsbereiche freigeschaltet.");
+  target.innerHTML = cards.length ? cards.join("") : empty("Keine allgemeinen Verwaltungsbereiche freigeschaltet.");
 
   target.querySelectorAll("[data-m328-workspace]").forEach(button => {
     button.addEventListener("click", () => {
       const action = button.dataset.m328Workspace;
-      if (action === "trips") {
-        document.getElementById("m328TripsTitle")?.scrollIntoView({ behavior: "smooth", block: "start" });
-        return;
-      }
       if (action === "settings") {
         openWorkspace("settings");
         return;
@@ -179,19 +143,6 @@ function renderWorkspaces(items) {
       }
       if (action === "person-groups") {
         openWorkspace("person-groups");
-        return;
-      }
-      if (!nearest) return;
-      if (action === "participants") {
-        openFanbusContext("participants", nearest.id);
-        return;
-      }
-      if (action === "buses") {
-        openFanbusContext("occupancy", nearest.id);
-        return;
-      }
-      if (action === "operations") {
-        openWorkspace("operations", { trip: nearest.id, fromTrip: nearest.id });
       }
     });
   });
@@ -267,7 +218,7 @@ function renderTripCard(trip) {
     }
   }
   if (canManage) {
-    actions.push(tripActionButton("occupancy", trip.id, "Busse", "secondary", "Busse und Zuordnung öffnen"));
+    actions.push(tripActionButton("occupancy", trip.id, "Busse & Zuordnung", "secondary", "Busse und Zuordnung öffnen"));
     if (["DRAFT", "PUBLISHED"].includes(trip.status)) {
       actions.push(tripActionButton("edit-trip", trip.id, "Bearbeiten"));
     }
@@ -368,7 +319,7 @@ export async function hydrateBusOrga(context = {}) {
     const items = Array.isArray(data?.trips) ? data.trips : [];
     renderNextTrip(items);
     renderQuickRegistration(items);
-    renderWorkspaces(items);
+    renderWorkspaces();
     renderTrips(items);
   } catch (error) {
     if (context.isCurrent && !context.isCurrent()) return;
