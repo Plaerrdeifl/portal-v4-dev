@@ -49,15 +49,36 @@ function ensureRegistrationBookingUxStyle() {
   style.id = "m328RegistrationBookingUxStyle";
   style.textContent = `
     .m328-reg3-special-actions{
-      grid-template-columns:repeat(3,minmax(0,1fr))!important;
-      gap:7px!important;
+      display:flex!important;
+      flex-wrap:nowrap!important;
+      align-items:center;
+      gap:6px!important;
+      overflow-x:auto;
+      padding:8px 0 9px;
+      scrollbar-width:none;
+      -webkit-overflow-scrolling:touch;
+    }
+    .m328-reg3-special-actions::-webkit-scrollbar{
+      display:none;
     }
     .m328-reg3-special-actions .button{
-      width:100%;
-      min-height:36px!important;
-      padding:5px 8px!important;
+      flex:0 0 auto;
+      width:auto!important;
+      min-height:34px!important;
+      padding:5px 10px!important;
+      border:1px solid var(--line)!important;
+      border-radius:999px!important;
+      background:var(--surface)!important;
+      color:inherit!important;
       font-size:.72rem!important;
+      font-weight:800!important;
+      line-height:1.2!important;
       white-space:nowrap;
+    }
+    .m328-reg3-special-actions .button.is-active{
+      border-color:var(--accent)!important;
+      background:color-mix(in srgb,var(--accent) 12%,var(--surface))!important;
+      color:var(--accent)!important;
     }
     .m328-reg3-guest-grid{
       grid-template-columns:repeat(2,minmax(0,1fr))!important;
@@ -126,6 +147,8 @@ function ensureRegistrationBookingUxStyle() {
     @media(max-width:520px){
       .m328-reg3-special-actions{
         grid-template-columns:1fr!important;
+        display:flex!important;
+        flex-wrap:nowrap!important;
       }
       .m328-reg3-booking:not(.is-active-booking) .m328-reg3-booking-actions{
         flex-direction:row;
