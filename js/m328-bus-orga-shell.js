@@ -127,6 +127,25 @@ function ensureOrgaReturn(root) {
   heading.prepend(button);
 }
 
+function simplifyWorkspaceHeaders(root) {
+  if (!root || !isM328BusOrgaContext()) return;
+  const titles = new Map([
+    ["Personengruppen", "Gruppenverwaltung"],
+    ["Stammfahrer", "Stammfahrerverwaltung"],
+    ["Fanbus-Einstellungen", "Zustiegsverwaltung"]
+  ]);
+
+  root.querySelectorAll(".v4-m325-workspace-header").forEach(header => {
+    const heading = header.querySelector("h2");
+    const replacement = titles.get(String(heading?.textContent || "").trim());
+    if (!replacement) return;
+    if (heading.textContent !== replacement) heading.textContent = replacement;
+    header.querySelector(":scope > div > p")?.remove();
+  });
+
+  root.querySelector("[data-m310-fanbus-settings] .v4-m310-settings-section-heading .subtle")?.remove();
+}
+
 function visibleTripTrigger(tripId) {
   const escaped = CSS.escape(tripId);
   const candidates = [...document.querySelectorAll(`[data-m310-open-trip="${escaped}"]`)];
@@ -193,6 +212,7 @@ function sync() {
   root.dataset.m328OrgaContext = isM328BusOrgaContext() ? "true" : "false";
   ensurePortalEntry(root);
   ensureOrgaReturn(root);
+  simplifyWorkspaceHeaders(root);
   runPendingAction(root);
 }
 
