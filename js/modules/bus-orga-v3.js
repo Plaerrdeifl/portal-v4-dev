@@ -1,7 +1,8 @@
-import { hydrateBusOrgaV2 } from "./bus-orga-v2.js?v=20260829-m328-r1-next-trip-venue1";
+import { hydrateBusOrgaV2 } from "./bus-orga-v2.js?v=20260829-m328-r1-next-trip-venue1&completion=20260829-m328-final1";
 import { hydrateBusOrgaRegistrationV3 } from "./bus-orga-registration-v3.js?v=20260829-m328-r1-prepared-density1";
 import { hydrateBusOrgaBookings } from "./bus-orga-bookings.js?v=20260829-m328-r1-native-actions1";
-import { hydrateBusOrgaTripEdit } from "./bus-orga-trip-edit.js?v=20260829-m328-r1-native-actions1";
+import { hydrateBusOrgaTripDetail } from "./bus-orga-trip-detail.js?v=20260829-m328-completion1";
+import { hydrateBusOrgaTripEdit } from "./bus-orga-trip-edit.js?v=20260829-m328-r1-native-actions1&completion=20260829-m328-final1";
 
 let registrationDecisionPlaceholder = null;
 
@@ -9,11 +10,6 @@ function routeParams() {
   const hash = String(location.hash || "");
   const query = hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : "";
   return new URLSearchParams(query);
-}
-
-function openTripEdit(tripId) {
-  const params = new URLSearchParams({ view: "trip-edit", trip: String(tripId || "") });
-  location.hash = `#/bus-orga?${params}`;
 }
 
 function ensurePolishStyle() {
@@ -558,25 +554,12 @@ async function hydrateRegistrationWithoutAutofocus(context) {
   return result;
 }
 
-function bindNativeTripEdit() {
-  const root = document.getElementById("m328BusOrgaPage");
-  if (!root || root.dataset.m328NativeTripEditBound === "true") return;
-  root.dataset.m328NativeTripEditBound = "true";
-  root.addEventListener("click", event => {
-    const button = event.target.closest('[data-m328-trip-action="edit-trip"]');
-    if (!button || !root.contains(button)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-    openTripEdit(button.dataset.tripId);
-  }, true);
-}
-
 export async function hydrateBusOrgaV3(context = {}) {
   ensurePolishStyle();
   const view = routeParams().get("view");
   if (view === "registration") return hydrateRegistrationWithoutAutofocus(context);
   if (view === "bookings") return hydrateBusOrgaBookings(context);
+  if (view === "trip-detail") return hydrateBusOrgaTripDetail(context);
   if (view === "trip-edit") return hydrateBusOrgaTripEdit(context);
 
   normalizeBusOrgaHeader();
@@ -585,7 +568,6 @@ export async function hydrateBusOrgaV3(context = {}) {
   normalizeBusOrgaHeader();
   normalizeNextTrip();
   normalizeTripManagementOverview();
-  bindNativeTripEdit();
   return result;
 }
 

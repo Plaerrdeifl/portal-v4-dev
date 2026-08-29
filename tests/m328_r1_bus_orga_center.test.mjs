@@ -13,6 +13,7 @@ const dashboardSource = read("../js/modules/bus-orga-v2.js");
 const nativeSource = read("../js/modules/bus-orga-v3.js");
 const registrationSource = read("../js/modules/bus-orga-registration-v3.js");
 const bookingsSource = read("../js/modules/bus-orga-bookings.js");
+const tripDetailSource = read("../js/modules/bus-orga-trip-detail.js");
 const tripEditSource = read("../js/modules/bus-orga-trip-edit.js");
 const shellSource = read("../js/m328-bus-orga-shell.js");
 const directEntry = read("../bus-orga/index.html");
@@ -37,6 +38,8 @@ test("M328 hard-busts the SPA module chain for native Bus-Orga releases", () => 
   assert.match(appSource, /pages\.js\?v=20260829-m328-r1-native-actions1/);
   assert.match(pagesSource, /bus-orga-v3\.js\?v=20260829-m328-r1-next-trip-venue1/);
   assert.match(nativeSource, /bus-orga-v2\.js\?v=20260829-m328-r1-next-trip-venue1/);
+  assert.match(nativeSource, /bus-orga-trip-detail\.js\?v=20260829-m328-completion1/);
+  assert.match(pagesSource, /completion=20260829-m328-final1/);
 });
 
 test("M328 quick registration stays inside Bus-Orga", () => {
@@ -118,8 +121,8 @@ test("M328 booking management creates human-readable numbers for every central b
 });
 
 test("M328 booking overview supports edit, whole-booking cancel and participant cancel", () => {
-  assert.match(dashboardSource, /openBookings\(tripId\)/);
-  assert.match(dashboardSource, /tripActionButton\("bookings"/);
+  assert.match(tripDetailSource, /actionButton\("bookings", "Buchungen"/);
+  assert.match(tripDetailSource, /navigate\("bookings", trip\.id\)/);
   assert.match(nativeSource, /view === "bookings"/);
   assert.match(bookingsSource, /Buchungsnummer oder Name suchen/);
   assert.match(bookingsSource, /data-m328-edit-booking/);
@@ -133,11 +136,9 @@ test("M328 booking overview supports edit, whole-booking cancel and participant 
 });
 
 test("M328 trip edit stays inside Bus-Orga and does not expose the old Fanbus editor", () => {
-  assert.match(nativeSource, /view:\s*"trip-edit"/);
   assert.match(nativeSource, /view === "trip-edit"/);
   assert.match(nativeSource, /hydrateBusOrgaTripEdit\(context\)/);
-  assert.match(nativeSource, /data-m328-trip-action=\\?"edit-trip/);
-  assert.match(nativeSource, /event\.stopImmediatePropagation\(\)/);
+  assert.match(tripDetailSource, /navigate\("trip-edit", trip\.id\)/);
   assert.match(tripEditSource, /<h2>Fahrt bearbeiten • \$\{escapeHtml\(venue\)\}<\/h2>/);
   assert.match(tripEditSource, /fanbus_trip_update/);
   assert.match(tripEditSource, /fanbus_trip_boarding_stop_upsert/);
@@ -160,15 +161,19 @@ test("M328 general administration stays collapsed and global only", () => {
   assert.doesNotMatch(workspaceBlock, /title: "Teilnehmer"/);
 });
 
-test("M328 ride administration stays collapsed and exposes booking-first actions", () => {
+test("M328 ride administration opens a dedicated detail view with all existing actions", () => {
   assert.match(dashboardHtml, />Fahrtenverwaltung</);
-  assert.match(dashboardSource, /tripActionButton\("bookings"/);
-  assert.match(dashboardSource, /tripActionButton\("participants"/);
-  assert.match(dashboardSource, /tripActionButton\("occupancy"/);
-  assert.match(dashboardSource, /tripActionButton\("operations"/);
-  assert.match(dashboardSource, /tripActionButton\("edit-trip"/);
-  assert.match(dashboardSource, /data-m328-trip-toggle/);
-  assert.match(dashboardSource, /aria-expanded="false"/);
+  assert.match(dashboardSource, /data-m328-trip-open/);
+  assert.match(dashboardSource, /view:\s*"trip-detail"/);
+  assert.doesNotMatch(dashboardSource, /data-m328-trip-toggle/);
+  assert.doesNotMatch(dashboardSource, /m328-trip-expanded/);
+  assert.match(nativeSource, /view === "trip-detail"/);
+  assert.match(tripDetailSource, /← Bus-Orga/);
+  assert.match(tripDetailSource, /actionButton\("bookings", "Buchungen"/);
+  assert.match(tripDetailSource, /actionButton\("participants", "Teilnehmer"/);
+  assert.match(tripDetailSource, /actionButton\("occupancy", "Busse & Zuordnung"/);
+  assert.match(tripDetailSource, /actionButton\("operations", "Fahrtbetrieb"/);
+  assert.match(tripDetailSource, /actionButton\("edit", "Bearbeiten"/);
 });
 
 test("M328 normal Fanbus view still exposes only one Bus-Orga entry", () => {
@@ -183,4 +188,6 @@ test("M328 mobile surfaces prevent horizontal clipping", () => {
   assert.match(registrationSource, /@media\(max-width:520px\)/);
   assert.match(bookingsSource, /@media\(max-width:520px\)/);
   assert.match(tripEditSource, /overflow-x:clip/);
+  assert.match(tripDetailSource, /overflow-x:clip/);
+  assert.match(tripDetailSource, /@media\(max-width:620px\)/);
 });

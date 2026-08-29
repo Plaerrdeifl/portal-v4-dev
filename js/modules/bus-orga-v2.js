@@ -114,8 +114,8 @@ function openRegistration(tripId) {
   location.hash = `#/bus-orga?${params}`;
 }
 
-function openBookings(tripId) {
-  const params = new URLSearchParams({ view: "bookings", trip: String(tripId || "") });
+function openTripDetail(tripId) {
+  const params = new URLSearchParams({ view: "trip-detail", trip: String(tripId || "") });
   location.hash = `#/bus-orga?${params}`;
 }
 
@@ -189,42 +189,13 @@ function renderQuickRegistration(items) {
   };
 }
 
-function tripActionButton(action, tripId, label, className = "secondary", ariaLabel = label) {
-  return `<button class="button small ${className}" type="button" data-m328-trip-action="${escapeAttr(action)}" data-trip-id="${escapeAttr(tripId)}" aria-label="${escapeAttr(ariaLabel)}">${escapeHtml(label)}</button>`;
-}
-
 function renderTripCard(trip) {
-  const canManage = hasCapability("fanbus.manage") && trip.canManage !== false;
-  const canRegistrations = hasCapability("fanbus.registrations.manage") && trip.canManageRegistrations !== false;
-  const canOperations = hasCapability("fanbus.operations.manage") || hasCapability("fanbus.payment_marker.manage") || canRegistrations;
-  const actions = [];
-  if (canRegistrations) {
-    actions.push(tripActionButton("bookings", trip.id, "Buchungen", "primary", "Buchungen dieser Fahrt öffnen"));
-    if (trip.status === "PUBLISHED") actions.push(tripActionButton("add-registration", trip.id, "Anmeldung", "secondary", "Neue Anmeldung"));
-    actions.push(tripActionButton("participants", trip.id, "Teilnehmer", "secondary", "Teilnehmer und Warteliste öffnen"));
-  }
-  if (canManage) {
-    actions.push(tripActionButton("occupancy", trip.id, "Busse & Zuordnung", "secondary", "Busse und Zuordnung öffnen"));
-    if (["DRAFT", "PUBLISHED"].includes(trip.status)) actions.push(tripActionButton("edit-trip", trip.id, "Bearbeiten"));
-  }
-  if (canOperations) actions.push(tripActionButton("operations", trip.id, "Fahrtbetrieb"));
-
   const active = Number(trip.activeRegistrationCount || 0);
   const waiting = Number(trip.waitlistedRegistrationCount || 0);
   const remaining = Number(trip.remainingCapacity || 0);
-  const bodyId = `m328TripActions-${escapeAttr(trip.id)}`;
   const venue = String(trip.venue || "").trim();
   const title = venue || trip.displayTitle || "Fanbusfahrt";
-  return `<article class="m328-trip-card" data-m328-trip-card="${escapeAttr(trip.id)}"><button class="m328-trip-summary" type="button" data-m328-trip-toggle="${escapeAttr(trip.id)}" aria-expanded="false" aria-controls="${bodyId}"><span class="m328-trip-summary-main"><span class="m328-section-kicker">${escapeHtml(formatDate(trip.eventDate))} · ${escapeHtml(eventTime(trip.eventTime))}</span><strong class="m328-trip-summary-title">${escapeHtml(title)}</strong><span class="m328-trip-card-meta"><span>${active} TN</span><span>${waiting} WL</span><span>${remaining} frei</span></span></span><span class="m328-trip-summary-side">${lifecycleBadge(trip.status)}<span class="m328-trip-chevron" aria-hidden="true">›</span></span></button><div id="${bodyId}" class="m328-trip-expanded" data-m328-trip-expanded="${escapeAttr(trip.id)}" hidden>${actions.length ? `<div class="m328-trip-actions">${actions.join("")}</div>` : '<p class="subtle">Für diese Fahrt sind keine Aktionen verfügbar.</p>'}</div></article>`;
-}
-
-function setTripExpanded(target, tripId) {
-  target.querySelectorAll("[data-m328-trip-toggle]").forEach(toggle => {
-    const expanded = toggle.dataset.m328TripToggle === tripId && toggle.getAttribute("aria-expanded") !== "true";
-    toggle.setAttribute("aria-expanded", String(expanded));
-    const body = target.querySelector(`[data-m328-trip-expanded="${CSS.escape(toggle.dataset.m328TripToggle)}"]`);
-    if (body) body.hidden = !expanded;
-  });
+  return `<article class="m328-trip-card" data-m328-trip-card="${escapeAttr(trip.id)}"><button class="m328-trip-summary" type="button" data-m328-trip-open="${escapeAttr(trip.id)}" aria-label="${escapeAttr(`${title} öffnen`)}"><span class="m328-trip-summary-main"><span class="m328-section-kicker">${escapeHtml(formatDate(trip.eventDate))} · ${escapeHtml(eventTime(trip.eventTime))}</span><strong class="m328-trip-summary-title">${escapeHtml(title)}</strong><span class="m328-trip-card-meta"><span>${active} TN</span><span>${waiting} WL</span><span>${remaining} frei</span></span></span><span class="m328-trip-summary-side">${lifecycleBadge(trip.status)}<span class="m328-trip-chevron" aria-hidden="true">›</span></span></button></article>`;
 }
 
 function renderTrips(items) {
@@ -237,16 +208,8 @@ function renderTrips(items) {
     create.hidden = !hasCapability("fanbus.manage");
     create.onclick = () => openFanbusContext("new-trip");
   }
-  target.querySelectorAll("[data-m328-trip-toggle]").forEach(button => button.addEventListener("click", () => setTripExpanded(target, button.dataset.m328TripToggle)));
-  target.querySelectorAll("[data-m328-trip-action]").forEach(button => {
-    button.addEventListener("click", () => {
-      const action = button.dataset.m328TripAction;
-      const tripId = button.dataset.tripId;
-      if (action === "add-registration") return openRegistration(tripId);
-      if (action === "bookings") return openBookings(tripId);
-      if (action === "operations") return openWorkspace("operations", { trip: tripId, fromTrip: tripId });
-      openFanbusContext(action, tripId);
-    });
+  target.querySelectorAll("[data-m328-trip-open]").forEach(button => {
+    button.addEventListener("click", () => openTripDetail(button.dataset.m328TripOpen));
   });
 }
 

@@ -143,14 +143,14 @@ export async function hydratePage(key, context = {}) {
   if (key === "dashboard") return feature("./modules/dashboard.js?v=20260724-dashboard-delivery-corr2&feature=20260724-personal-dashboard-widgets-r1-fix4&small=20260725-dashboard-small-widgets-r1", "hydrateDashboard", context);
   if (key === "dates") return feature("./modules/dates.js", "hydrateDates", context);
   if (key === "fanbuses") {
-    const result = await feature("./modules/fanbuses.js?v=20260826-p800-r2-final-direct-fix&groups=20260828-m310-r1&m327=20260828-m327-r1", "hydrateFanbuses", context);
+    const result = await feature("./modules/fanbuses.js?v=20260826-p800-r2-final-direct-fix&groups=20260828-m310-r1&m327=20260828-m327-r1&completion=20260829-m328-final1", "hydrateFanbuses", context);
     await feature("./m327-r1-acceptance-polish.js?v=20260829-m327-r1-acceptance1", "setupM327AcceptancePolish", context);
-    await feature("./m328-bus-orga-shell.js?v=20260829-m328-r1-rider-reactivate2", "setupM328BusOrgaShell", context);
+    await feature("./m328-bus-orga-shell.js?v=20260829-m328-r1-rider-reactivate2&completion=20260829-m328-final1", "setupM328BusOrgaShell", context);
     return result;
   }
   if (key === "bus-orga") {
     const result = await feature(
-      "./modules/bus-orga-v3.js?v=20260829-m328-r1-next-trip-venue1&fix=20260829-m328-r1-next-trip-cancelled1&ux=20260829-m328-r1-registration-ux-correction1&modal=20260829-m328-r1-decision-click1&state=20260829-m328-r1-booking-state2&cards=20260829-m328-r1-active-person-cards2&rows=20260829-m328-r1-participant-row-edit1&prepared=20260829-m328-r1-prepared-density1&participant-click=20260829-m328-r1-active-person-click1",
+      "./modules/bus-orga-v3.js?v=20260829-m328-r1-next-trip-venue1&fix=20260829-m328-r1-next-trip-cancelled1&ux=20260829-m328-r1-registration-ux-correction1&modal=20260829-m328-r1-decision-click1&state=20260829-m328-r1-booking-state2&cards=20260829-m328-r1-active-person-cards2&rows=20260829-m328-r1-participant-row-edit1&prepared=20260829-m328-r1-prepared-density1&participant-click=20260829-m328-r1-active-person-click1&completion=20260829-m328-final1",
       "hydrateBusOrgaV3",
       context
     );

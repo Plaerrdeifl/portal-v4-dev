@@ -69,6 +69,14 @@ function trips() {
   return Array.isArray(snapshot?.trips) ? snapshot.trips : [];
 }
 
+function publicFanbusTrips(items) {
+  return (Array.isArray(items) ? items : []).filter(trip => (
+    trip?.status === "PUBLISHED"
+    && trip?.visibility === "PUBLIC"
+    && trip?.registrationStatus !== "UNAVAILABLE"
+  ));
+}
+
 function formatCalendarDate(value) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ""));
   if (!match) return String(value || "–");
@@ -902,7 +910,7 @@ function render() {
 
   setWorkspaceShell(false);
 
-  const items = trips();
+  const items = publicFanbusTrips(trips());
   const groupedTrips = groupFanbusTrips(items);
   const canManage = hasCapability("fanbus.manage");
   setupFanbusActionMenu(canManage);
@@ -1963,7 +1971,7 @@ async function renderFanbusSettingsWorkspace(panel, summary) {
         <button class="button small secondary" type="button" data-m310-settings-back>← Zurück</button>
         <div><h2>Fanbus-Einstellungen</h2><p>Zentrale Zustiegsorte einmalig pflegen. In einer Fahrt werden anschließend nur Zustiegsort und Uhrzeit gewählt.</p></div>
       </header>
-      <div class="v4-m310-settings-section-heading"><div><h3>Zentrale Zustiegsorte</h3><p class="subtle">Diese Liste steht allen Fanbusfahrten zur Auswahl.</p></div><button class="button small primary" type="button" data-m310-master-stop-settings-add>+ Zustiegsort</button></div>
+      <div class="v4-m310-settings-section-heading"><div><h3>Zentrale Zustiegsorte</h3><p class="subtle">Hier werden die Zustiegsorte angelegt, die später in den Bus-Einstellungen ausgewählt werden können.</p></div><button class="button small primary" type="button" data-m310-master-stop-settings-add>+ Zustiegsort</button></div>
       <div class="v4-m310-master-stop-settings-list">${stops.length ? stops.map(fanbusMasterStopSettingsCard).join("") : '<p class="empty-state">Noch keine Zustiegsorte angelegt.</p>'}</div>
     </section>`;
     panel.querySelector("[data-m310-settings-back]")?.addEventListener("click", () => returnToFanbuses());

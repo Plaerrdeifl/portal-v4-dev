@@ -150,7 +150,6 @@ function simplifyWorkspaceHeaders(root) {
     header.querySelector(":scope > div > p")?.remove();
   });
 
-  root.querySelector("[data-m310-fanbus-settings] .v4-m310-settings-section-heading .subtle")?.remove();
 }
 
 function ensureRegularRiderReactivate(root) {
