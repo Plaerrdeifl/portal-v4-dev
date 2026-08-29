@@ -13,9 +13,9 @@ function applyFlowWording() {
     target.querySelector("[data-m328-reg3-target-complete]")
     || document.querySelector(".m328-reg3-booking-complete [data-m328-reg3-target-complete]");
 
-  if (!completeAction) return;
+  if (!completeAction || !decisionAction) return;
 
-  const label = decisionAction ? "Zur Übersicht" : "Neue Buchung starten";
+  const label = "Zur Übersicht";
   if (completeAction.textContent !== label) completeAction.textContent = label;
   if (completeAction.getAttribute("aria-label") !== label) completeAction.setAttribute("aria-label", label);
 }
