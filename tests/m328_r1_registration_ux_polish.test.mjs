@@ -47,3 +47,20 @@ test("M328 registration keeps the mixed booking stack below search", () => {
   assert.match(registrationSource, /data-m328-reg3-add-to-booking/);
   assert.match(registrationSource, /Alle Buchungen speichern/);
 });
+
+test("M328 prepared bookings use compact card interactions and boarding-stop summaries", () => {
+  assert.match(registrationSource, /class="icon-button m328-reg3-remove-booking"/);
+  assert.match(registrationSource, /aria-label="Buchung entfernen">×/);
+  assert.doesNotMatch(registrationSource, />Entfernen<\/button>/);
+  assert.doesNotMatch(nativeSource, /data-m328-booking-activate|activate\.textContent = "Bearbeiten"/);
+  assert.match(nativeSource, /event\.target\.closest\("button,input,select,textarea,a,label"\)/);
+  assert.match(nativeSource, /ui\.activeBookingId = id;\s*sync\(\);/);
+  assert.match(registrationSource, /function selectedStopLabel\(state, selected = ""\)/);
+  assert.match(registrationSource, /return `\$\{personName\(person\)\}\$\{stop \? ` · \$\{stop\}` : ""\}`/);
+  assert.match(registrationSource, /summary\.textContent = bookingSummary\(state, booking\)/);
+});
+
+test("M328 manual registration consent uses the approved information wording", () => {
+  assert.match(registrationSource, /Alle manuell erfassten Personen wurden über die Teilnahmebedingungen und Datenschutzhinweise informiert\./);
+  assert.doesNotMatch(registrationSource, /Für alle erfassten Personen wurden Teilnahmebedingungen und Datenschutzhinweise bestätigt\./);
+});

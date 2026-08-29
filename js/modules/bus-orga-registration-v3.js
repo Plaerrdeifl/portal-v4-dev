@@ -194,6 +194,11 @@ function stopOptions(state, selected = "") {
   }).join("")}`;
 }
 
+function selectedStopLabel(state, selected = "") {
+  const stop = activeStops(state).find(item => stopOptionId(item) === selected);
+  return stop ? stopLabel(stop) : "";
+}
+
 function ensureStyle() {
   if (document.getElementById("m328PersonSearchRegistrationStyle")) return;
   const style = document.createElement("style");
@@ -485,11 +490,19 @@ function participantFields(state, bookingIndex, personIndex, person) {
   return `<div class="m328-reg3-person" data-booking-index="${bookingIndex}" data-person-index="${personIndex}"><div class="m328-reg3-person-name"><strong>${escapeHtml(personName(person))}</strong><small>${escapeHtml(sourceLabel(person.source))}</small></div><button class="icon-button m328-reg3-remove" type="button" data-m328-reg3-remove="${bookingIndex}:${personIndex}" aria-label="${escapeAttr(`${personName(person)} entfernen`)}">×</button>${activeStops(state).length ? `<label>Zustieg<select required data-m328-reg3-stop="${bookingIndex}:${personIndex}">${stopOptions(state, person.boardingStopId)}</select></label>` : ""}${state.trip.busPreferenceSelectionEnabled ? `<label>Buswunsch<select data-m328-reg3-preference="${bookingIndex}:${personIndex}">${preferenceOptions(person.busPreference || "EGAL")}</select></label>` : ""}<label class="m328-reg3-note">Hinweis (optional)<input maxlength="240" data-m328-reg3-note="${bookingIndex}:${personIndex}" value="${escapeAttr(person.operationalNote || "")}"></label></div>`;
 }
 
+function bookingSummary(state, booking) {
+  const count = booking.participants.length;
+  const people = booking.participants.slice(0, 3).map(person => {
+    const stop = selectedStopLabel(state, person.boardingStopId);
+    return `${personName(person)}${stop ? ` · ${stop}` : ""}`;
+  }).join(", ");
+  return `${count} ${count === 1 ? "Person" : "Personen"}${people ? ` · ${people}${count > 3 ? " …" : ""}` : ""}`;
+}
+
 function bookingCard(state, booking, bookingIndex) {
   const count = booking.participants.length;
   const kind = count > 1 ? "Gemeinsame Buchung" : "Einzelbuchung";
-  const names = booking.participants.slice(0, 3).map(personName).join(", ");
-  return `<article class="m328-reg3-booking"><header class="m328-reg3-booking-head"><div><strong>Buchung ${bookingIndex + 1} · ${escapeHtml(kind)}</strong><small>${count} ${count === 1 ? "Person" : "Personen"}${names ? ` · ${escapeHtml(names)}${count > 3 ? " …" : ""}` : ""}</small></div><div class="m328-reg3-booking-actions"><button class="button tiny secondary" type="button" data-m328-reg3-add-to-booking="${escapeAttr(booking.clientId)}">＋ Person</button><button class="button tiny ghost" type="button" data-m328-reg3-remove-booking="${escapeAttr(booking.clientId)}">Entfernen</button></div></header>${booking.participants.map((person, personIndex) => participantFields(state, bookingIndex, personIndex, person)).join("")}</article>`;
+  return `<article class="m328-reg3-booking"><header class="m328-reg3-booking-head"><div><strong>Buchung ${bookingIndex + 1} · ${escapeHtml(kind)}</strong><small data-m328-reg3-booking-summary="${bookingIndex}">${escapeHtml(bookingSummary(state, booking))}</small></div><div class="m328-reg3-booking-actions"><button class="button tiny secondary" type="button" data-m328-reg3-add-to-booking="${escapeAttr(booking.clientId)}">＋ Person</button><button class="icon-button m328-reg3-remove-booking" type="button" data-m328-reg3-remove-booking="${escapeAttr(booking.clientId)}" aria-label="Buchung entfernen">×</button></div></header>${booking.participants.map((person, personIndex) => participantFields(state, bookingIndex, personIndex, person)).join("")}</article>`;
 }
 
 function parsePair(value) {
@@ -535,7 +548,12 @@ function renderBookingStack(state) {
   }));
   target.querySelectorAll("[data-m328-reg3-stop]").forEach(select => select.addEventListener("change", () => {
     const { bookingIndex, personIndex } = parsePair(select.dataset.m328Reg3Stop);
-    if (state.bookings[bookingIndex]?.participants[personIndex]) state.bookings[bookingIndex].participants[personIndex].boardingStopId = select.value;
+    const booking = state.bookings[bookingIndex];
+    if (booking?.participants[personIndex]) {
+      booking.participants[personIndex].boardingStopId = select.value;
+      const summary = target.querySelector(`[data-m328-reg3-booking-summary="${bookingIndex}"]`);
+      if (summary) summary.textContent = bookingSummary(state, booking);
+    }
   }));
   target.querySelectorAll("[data-m328-reg3-preference]").forEach(select => select.addEventListener("change", () => {
     const { bookingIndex, personIndex } = parsePair(select.dataset.m328Reg3Preference);
@@ -614,7 +632,7 @@ function clearUnexpectedFormFocus() {
 function renderPage(root, state) {
   ensureStyle();
   const venue = String(state.trip.venue || "").trim() || "Fahrt";
-  root.innerHTML = `<div class="m328-reg3"><header class="m328-reg3-head"><button class="button small ghost" type="button" id="m328Reg3Back">← Bus-Orga</button><div class="m328-reg3-title"><h2>Anmeldung • ${escapeHtml(venue)}</h2><span>${escapeHtml(shortDate(state.trip.eventDate))} · ${escapeHtml(eventTime(state.trip.eventTime))}</span></div></header><section class="m328-reg3-panel"><div class="m328-reg3-panel-head"><h3>Person hinzufügen</h3></div><div id="m328Reg3Target" class="m328-reg3-target" hidden></div><label class="m328-reg3-search-label">Person suchen<input id="m328Reg3Search" class="m328-reg3-search" type="search" autocomplete="off" placeholder="Name eingeben …"></label><div id="m328Reg3Filters" class="m328-reg3-filters" role="group" aria-label="Personenfilter"></div><div id="m328Reg3Results" class="m328-reg3-results"></div><div class="m328-reg3-special-actions"><button class="button secondary" type="button" data-m328-reg3-special="GUEST">＋ Gast hinzufügen</button><button class="button secondary" type="button" data-m328-reg3-special="GROUP">＋ Gruppe auswählen</button></div><div id="m328Reg3SpecialPanel" class="m328-reg3-special-panel" hidden></div></section><form id="m328Reg3Submit" class="m328-reg3-submit"><section class="m328-reg3-panel"><div class="m328-reg3-panel-head"><div><h3>Vorbereitete Buchungen</h3></div><div><span id="m328Reg3BookingCount" class="m328-reg3-count">0</span> <span class="subtle">Buchungen</span> · <span id="m328Reg3ParticipantCount" class="m328-reg3-count">0</span> <span class="subtle">Personen</span></div></div><div id="m328Reg3Bookings" class="m328-reg3-stack"></div></section><section class="m328-reg3-panel"><label class="m328-reg3-consent"><input name="consentConfirmed" type="checkbox" required><span>Für alle erfassten Personen wurden Teilnahmebedingungen und Datenschutzhinweise bestätigt.</span></label><button class="button primary" type="submit">Alle Buchungen speichern</button></section></form></div>`;
+  root.innerHTML = `<div class="m328-reg3"><header class="m328-reg3-head"><button class="button small ghost" type="button" id="m328Reg3Back">← Bus-Orga</button><div class="m328-reg3-title"><h2>Anmeldung • ${escapeHtml(venue)}</h2><span>${escapeHtml(shortDate(state.trip.eventDate))} · ${escapeHtml(eventTime(state.trip.eventTime))}</span></div></header><section class="m328-reg3-panel"><div class="m328-reg3-panel-head"><h3>Person hinzufügen</h3></div><div id="m328Reg3Target" class="m328-reg3-target" hidden></div><label class="m328-reg3-search-label">Person suchen<input id="m328Reg3Search" class="m328-reg3-search" type="search" autocomplete="off" placeholder="Name eingeben …"></label><div id="m328Reg3Filters" class="m328-reg3-filters" role="group" aria-label="Personenfilter"></div><div id="m328Reg3Results" class="m328-reg3-results"></div><div class="m328-reg3-special-actions"><button class="button secondary" type="button" data-m328-reg3-special="GUEST">＋ Gast hinzufügen</button><button class="button secondary" type="button" data-m328-reg3-special="GROUP">＋ Gruppe auswählen</button></div><div id="m328Reg3SpecialPanel" class="m328-reg3-special-panel" hidden></div></section><form id="m328Reg3Submit" class="m328-reg3-submit"><section class="m328-reg3-panel"><div class="m328-reg3-panel-head"><div><h3>Vorbereitete Buchungen</h3></div><div><span id="m328Reg3BookingCount" class="m328-reg3-count">0</span> <span class="subtle">Buchungen</span> · <span id="m328Reg3ParticipantCount" class="m328-reg3-count">0</span> <span class="subtle">Personen</span></div></div><div id="m328Reg3Bookings" class="m328-reg3-stack"></div></section><section class="m328-reg3-panel"><label class="m328-reg3-consent"><input name="consentConfirmed" type="checkbox" required><span>Alle manuell erfassten Personen wurden über die Teilnahmebedingungen und Datenschutzhinweise informiert.</span></label><button class="button primary" type="submit">Alle Buchungen speichern</button></section></form></div>`;
 
   document.getElementById("m328Reg3Back")?.addEventListener("click", () => {
     location.hash = "#/bus-orga";

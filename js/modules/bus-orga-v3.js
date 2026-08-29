@@ -77,6 +77,7 @@ function ensureRegistrationBookingUxStyle() {
     }
     .m328-reg3-booking:not(.is-active-booking){
       background:var(--surface-2);
+      cursor:pointer;
     }
     .m328-reg3-booking:not(.is-active-booking) .m328-reg3-booking-head{
       padding-top:8px;
@@ -105,13 +106,10 @@ function ensureRegistrationBookingUxStyle() {
     .m328-reg3-booking:not(.is-active-booking) .m328-reg3-booking-status{
       display:none;
     }
-    .m328-reg3-booking-activate{
-      min-height:30px!important;
-      padding:4px 7px!important;
-      font-size:.68rem!important;
-    }
-    .m328-reg3-booking.is-active-booking .m328-reg3-booking-activate{
-      display:none!important;
+    .m328-reg3-remove-booking{
+      width:28px;
+      min-width:28px;
+      height:28px;
     }
     @media(max-width:520px){
       .m328-reg3-booking:not(.is-active-booking) .m328-reg3-booking-actions{
@@ -160,20 +158,11 @@ function setupRegistrationBookingUx() {
 
         const header = card.querySelector(".m328-reg3-booking-head");
         const copy = header?.firstElementChild;
-        const actions = header?.querySelector(".m328-reg3-booking-actions");
         if (copy && !copy.querySelector(".m328-reg3-booking-status")) {
           const status = document.createElement("span");
           status.className = "m328-reg3-booking-status";
           status.textContent = "Wird bearbeitet";
           copy.appendChild(status);
-        }
-        if (actions && !actions.querySelector("[data-m328-booking-activate]")) {
-          const activate = document.createElement("button");
-          activate.className = "button tiny secondary m328-reg3-booking-activate";
-          activate.type = "button";
-          activate.dataset.m328BookingActivate = id;
-          activate.textContent = "Bearbeiten";
-          actions.prepend(activate);
         }
       });
     } finally {
@@ -182,14 +171,6 @@ function setupRegistrationBookingUx() {
   };
 
   stack.addEventListener("click", event => {
-    const activate = event.target.closest("[data-m328-booking-activate]");
-    if (activate && stack.contains(activate)) {
-      event.preventDefault();
-      ui.activeBookingId = activate.dataset.m328BookingActivate || "";
-      sync();
-      return;
-    }
-
     const card = event.target.closest(".m328-reg3-booking");
     if (!card || !stack.contains(card)) return;
     const id = registrationBookingId(card);
@@ -198,7 +179,12 @@ function setupRegistrationBookingUx() {
     if (event.target.closest("[data-m328-reg3-add-to-booking]")) {
       ui.activeBookingId = id;
       sync();
+      return;
     }
+
+    if (event.target.closest("button,input,select,textarea,a,label")) return;
+    ui.activeBookingId = id;
+    sync();
   }, true);
 
   const observer = new MutationObserver(sync);
