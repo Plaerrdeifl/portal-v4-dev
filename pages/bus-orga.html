@@ -1,0 +1,278 @@
+<section id="m328BusOrgaPage" class="page module-shell v4-compact-page m328-bus-orga-page">
+  <div class="v4-module-surface">
+    <header class="m328-bus-orga-head">
+      <button id="m328BusOrgaBack" class="button small ghost" type="button">← Fanbus</button>
+      <div class="m328-bus-orga-head-copy">
+        <span class="m328-bus-orga-kicker">P300 · Fanbus</span>
+        <h2>Bus-Orga</h2>
+        <p>Verwaltungszentrale für Fahrten, Anmeldungen und Fahrtbetrieb</p>
+      </div>
+      <button id="m328BusOrgaClose" class="icon-button m328-bus-orga-close" type="button" aria-label="Bus-Orga schließen">×</button>
+    </header>
+
+    <section id="m328BusOrgaNextTrip" class="module-panel m328-next-trip" aria-live="polite">
+      <p class="subtle">Nächste Fahrt wird geladen …</p>
+    </section>
+
+    <section id="m328BusOrgaQuick" class="module-panel m328-quick-registration" hidden>
+      <div class="m328-section-heading">
+        <div>
+          <span class="m328-section-kicker">Schnellzugriff</span>
+          <h3>Anmeldung erfassen</h3>
+        </div>
+      </div>
+      <label class="m328-trip-select">Fahrt
+        <select id="m328QuickRegistrationTrip"></select>
+      </label>
+      <button id="m328QuickRegistration" class="button primary m328-primary-action" type="button">＋ Anmeldung erfassen</button>
+      <p class="subtle">Öffnet die vorhandene Mehrpersonen-Anmeldung mit Portalusern, Mitgliedern, Stammfahrern, Gruppen und Gästen.</p>
+    </section>
+
+    <section class="module-panel" aria-labelledby="m328WorkspaceTitle">
+      <div class="m328-section-heading">
+        <div>
+          <span class="m328-section-kicker">Verwaltung</span>
+          <h3 id="m328WorkspaceTitle">Arbeitsbereiche</h3>
+        </div>
+      </div>
+      <div id="m328WorkspaceGrid" class="m328-workspace-grid" aria-live="polite"></div>
+    </section>
+
+    <section class="module-panel" aria-labelledby="m328TripsTitle">
+      <div class="m328-section-heading">
+        <div>
+          <span class="m328-section-kicker">Fahrten</span>
+          <h3 id="m328TripsTitle">Direkt verwalten</h3>
+        </div>
+        <button id="m328CreateTrip" class="button small primary" type="button" hidden>＋ Fahrt anlegen</button>
+      </div>
+      <div id="m328TripsList" class="m328-trip-list" aria-live="polite">
+        <p class="subtle">Fahrten werden geladen …</p>
+      </div>
+    </section>
+  </div>
+</section>
+
+<style>
+  .m328-bus-orga-page .v4-module-surface{
+    gap:12px;
+  }
+
+  .m328-bus-orga-head{
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    align-items:start;
+    gap:10px;
+    padding-bottom:12px;
+    border-bottom:1px solid var(--line);
+  }
+
+  .m328-bus-orga-head-copy{
+    min-width:0;
+  }
+
+  .m328-bus-orga-kicker,
+  .m328-section-kicker{
+    display:block;
+    color:var(--muted);
+    font-size:.68rem;
+    font-weight:800;
+    letter-spacing:.07em;
+    text-transform:uppercase;
+  }
+
+  .m328-bus-orga-head h2,
+  .m328-section-heading h3{
+    margin:2px 0 0;
+  }
+
+  .m328-bus-orga-head h2{
+    font-size:1.35rem;
+  }
+
+  .m328-bus-orga-head p{
+    margin:4px 0 0;
+    color:var(--muted);
+    font-size:.83rem;
+    line-height:1.35;
+  }
+
+  .m328-bus-orga-close{
+    width:38px;
+    min-width:38px;
+    height:38px;
+  }
+
+  .m328-next-trip,
+  .m328-quick-registration{
+    padding:14px;
+  }
+
+  .m328-next-trip-card{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:10px;
+    align-items:center;
+  }
+
+  .m328-next-trip-copy{
+    min-width:0;
+  }
+
+  .m328-next-trip-copy strong{
+    display:block;
+    margin-top:2px;
+    font-size:1.04rem;
+    line-height:1.2;
+  }
+
+  .m328-next-trip-meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px 10px;
+    margin-top:7px;
+    color:var(--muted);
+    font-size:.78rem;
+  }
+
+  .m328-section-heading{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin-bottom:10px;
+  }
+
+  .m328-section-heading h3{
+    font-size:1rem;
+  }
+
+  .m328-trip-select{
+    display:grid;
+    gap:5px;
+    margin-bottom:9px;
+    font-size:.78rem;
+    font-weight:750;
+  }
+
+  .m328-primary-action{
+    width:100%;
+    min-height:46px;
+    font-size:.95rem;
+  }
+
+  .m328-workspace-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+
+  .m328-workspace-card{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:4px;
+    min-width:0;
+    min-height:92px;
+    padding:12px;
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:var(--surface);
+    text-align:left;
+  }
+
+  .m328-workspace-card strong{
+    font-size:.9rem;
+  }
+
+  .m328-workspace-card small{
+    color:var(--muted);
+    font-size:.73rem;
+    line-height:1.3;
+  }
+
+  .m328-trip-list{
+    display:grid;
+    gap:8px;
+  }
+
+  .m328-trip-card{
+    display:grid;
+    gap:8px;
+    padding:11px;
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:var(--surface);
+  }
+
+  .m328-trip-card-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:8px;
+  }
+
+  .m328-trip-card-copy{
+    min-width:0;
+  }
+
+  .m328-trip-card-copy strong{
+    display:block;
+    margin-top:2px;
+    line-height:1.2;
+  }
+
+  .m328-trip-card-meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap:5px 9px;
+    color:var(--muted);
+    font-size:.73rem;
+  }
+
+  .m328-trip-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+
+  .m328-trip-actions .button{
+    width:auto;
+    min-height:36px;
+    padding:6px 9px;
+    font-size:.74rem;
+  }
+
+  @media(max-width:700px){
+    .m328-bus-orga-head{
+      align-items:center;
+    }
+
+    .m328-bus-orga-head p{
+      display:none;
+    }
+
+    .m328-workspace-grid{
+      grid-template-columns:1fr 1fr;
+    }
+
+    .m328-next-trip-card{
+      grid-template-columns:1fr;
+    }
+  }
+
+  @media(max-width:390px){
+    .m328-bus-orga-head{
+      grid-template-columns:auto minmax(0,1fr) auto;
+      gap:7px;
+    }
+
+    .m328-bus-orga-head .button{
+      padding:6px 8px;
+    }
+
+    .m328-workspace-grid{
+      grid-template-columns:1fr;
+    }
+  }
+</style>
