@@ -199,6 +199,21 @@ function ensureRegistrationBookingUxStyle() {
       min-width:28px;
       height:28px;
     }
+    .m328-reg3-booking-menu{
+      display:flex!important;
+      flex-direction:row!important;
+      flex-wrap:nowrap!important;
+      align-items:center!important;
+      gap:5px!important;
+      width:max-content;
+    }
+    .m328-reg3-booking-menu .button{
+      width:auto!important;
+      flex:0 0 auto!important;
+    }
+    .m328-reg3-booking-menu[hidden]{
+      display:none!important;
+    }
     .m328-reg3-target-actions:empty{
       display:none!important;
     }
@@ -538,6 +553,7 @@ function clearRegistrationEntryFocus() {
 async function hydrateRegistrationWithoutAutofocus(context) {
   clearRegistrationEntryFocus();
   const result = await hydrateBusOrgaRegistrationV3(context);
+  if (context.isCurrent && !context.isCurrent()) return result;
   setupRegistrationBookingUx();
   splitRegistrationConsentAndSubmit();
   normalizeRegistrationSpecialActions();
