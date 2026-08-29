@@ -30,6 +30,14 @@ function ensurePolishStyle() {
   document.head.appendChild(style);
 }
 
+function normalizeBusOrgaHeader() {
+  const root = document.getElementById("m328BusOrgaPage");
+  if (!root) return;
+  root.querySelector(".m328-bus-orga-kicker")?.remove();
+  const title = root.querySelector(".m328-bus-orga-head h2");
+  if (title) title.textContent = "Bus-Orga";
+}
+
 function bindNativeTripEdit() {
   const root = document.getElementById("m328BusOrgaPage");
   if (!root || root.dataset.m328NativeTripEditBound === "true") return;
@@ -51,8 +59,10 @@ export async function hydrateBusOrgaV3(context = {}) {
   if (view === "bookings") return hydrateBusOrgaBookings(context);
   if (view === "trip-edit") return hydrateBusOrgaTripEdit(context);
 
+  normalizeBusOrgaHeader();
   const result = await hydrateBusOrgaV2(context);
   if (context.isCurrent && !context.isCurrent()) return result;
+  normalizeBusOrgaHeader();
   bindNativeTripEdit();
   return result;
 }
