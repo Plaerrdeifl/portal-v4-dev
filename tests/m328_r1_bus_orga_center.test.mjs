@@ -82,7 +82,7 @@ test("M328 booking management creates human-readable numbers for every central b
 test("M328 booking overview is available per trip and searchable by booking number or person", () => {
   assert.match(dashboardSource, /openBookings\(tripId\)/);
   assert.match(dashboardSource, /tripActionButton\("bookings"/);
-  assert.match(dashboardSource, />Buchungen</);
+  assert.match(dashboardSource, /"Buchungen"/);
   assert.match(dashboardSource, /hydrateBusOrgaBookings\(context\)/);
   assert.match(bookingsSource, /fanbus_registrations_list/);
   assert.match(bookingsSource, /bookingNumber/);
