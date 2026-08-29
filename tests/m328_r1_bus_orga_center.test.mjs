@@ -11,7 +11,7 @@ const indexHtml = read("../index.html");
 const dashboardHtml = read("../pages/bus-orga.html");
 const dashboardSource = read("../js/modules/bus-orga-v2.js");
 const nativeSource = read("../js/modules/bus-orga-v3.js");
-const registrationSource = read("../js/modules/bus-orga-registration-v2.js");
+const registrationSource = read("../js/modules/bus-orga-registration-v3.js");
 const bookingsSource = read("../js/modules/bus-orga-bookings.js");
 const tripEditSource = read("../js/modules/bus-orga-trip-edit.js");
 const shellSource = read("../js/m328-bus-orga-shell.js");
@@ -43,14 +43,23 @@ test("M328 quick registration stays inside Bus-Orga", () => {
   assert.match(dashboardSource, /function openRegistration\(tripId\)/);
   assert.match(dashboardSource, /view:\s*"registration"/);
   assert.match(nativeSource, /view === "registration"/);
-  assert.match(nativeSource, /hydrateBusOrgaRegistrationV2\(context\)/);
+  assert.match(nativeSource, /hydrateBusOrgaRegistrationV3\(context\)/);
+  assert.match(nativeSource, /bus-orga-registration-v3\.js\?v=20260829-m328-r1-person-search1/);
   assert.doesNotMatch(dashboardSource, /openFanbusContext\("add-registration"/);
 });
 
-test("M328 registration has direct header, no selected-trip box and no input autofocus", () => {
+test("M328 registration starts with combined person search, filters and explicit guest/group actions", () => {
   assert.match(registrationSource, /<h2>Anmeldung • \$\{escapeHtml\(venue\)\}<\/h2>/);
   assert.match(registrationSource, /shortDate\(state\.trip\.eventDate\)/);
   assert.match(registrationSource, /eventTime\(state\.trip\.eventTime\)/);
+  assert.match(registrationSource, /Person suchen/);
+  assert.match(registrationSource, /Name eingeben …/);
+  assert.match(registrationSource, /label: "Alle"/);
+  assert.match(registrationSource, /label: "Mitglieder"/);
+  assert.match(registrationSource, /label: "Portaluser"/);
+  assert.match(registrationSource, /label: "Stammfahrer"/);
+  assert.match(registrationSource, /＋ Gast hinzufügen/);
+  assert.match(registrationSource, /＋ Gruppe auswählen/);
   assert.doesNotMatch(registrationSource, /Ausgewählte Fahrt/);
   assert.doesNotMatch(registrationSource, /\.focus\s*\(/);
   assert.doesNotMatch(registrationSource, /autofocus/);
@@ -81,7 +90,7 @@ test("M328 mixed capture models visible bookings instead of one flat participant
   assert.match(registrationSource, /Buchung \$\{bookingIndex \+ 1\}/);
   assert.match(registrationSource, /Gemeinsame Buchung/);
   assert.match(registrationSource, /Einzelbuchung/);
-  assert.match(registrationSource, /data-m328-reg2-add-to-booking/);
+  assert.match(registrationSource, /data-m328-reg3-add-to-booking/);
   assert.match(registrationSource, /Gruppe als eine Buchung/);
   assert.match(registrationSource, /Alle Buchungen speichern/);
   assert.match(registrationSource, /fanbus_registration_create_manual_batches/);
@@ -158,7 +167,7 @@ test("M328 normal Fanbus view still exposes only one Bus-Orga entry", () => {
 
 test("M328 mobile surfaces prevent horizontal clipping", () => {
   assert.match(dashboardHtml, /overflow-x:clip/);
-  assert.match(registrationSource, /m328-reg2\{[^}]*overflow-x:clip/);
+  assert.match(registrationSource, /m328-reg3\{[^}]*overflow-x:clip/);
   assert.match(registrationSource, /@media\(max-width:520px\)/);
   assert.match(bookingsSource, /@media\(max-width:520px\)/);
   assert.match(tripEditSource, /overflow-x:clip/);
