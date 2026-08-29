@@ -35,7 +35,8 @@ test("M328 hard-busts the SPA module chain for native Bus-Orga releases", () => 
   assert.match(indexHtml, /pd-release" content="20260829-m328-r1-native-actions1"/);
   assert.match(indexHtml, /js\/app\.js\?v=20260829-m328-r1-native-actions1/);
   assert.match(appSource, /pages\.js\?v=20260829-m328-r1-native-actions1/);
-  assert.match(pagesSource, /bus-orga-v3\.js\?v=20260829-m328-r1-native-actions1/);
+  assert.match(pagesSource, /bus-orga-v3\.js\?v=20260829-m328-r1-next-trip-venue1/);
+  assert.match(nativeSource, /bus-orga-v2\.js\?v=20260829-m328-r1-next-trip-venue1/);
 });
 
 test("M328 quick registration stays inside Bus-Orga", () => {
@@ -46,6 +47,13 @@ test("M328 quick registration stays inside Bus-Orga", () => {
   assert.match(nativeSource, /hydrateBusOrgaRegistrationV3\(context\)/);
   assert.match(nativeSource, /bus-orga-registration-v3\.js\?v=20260829-m328-r1-person-search1/);
   assert.doesNotMatch(dashboardSource, /openFanbusContext\("add-registration"/);
+});
+
+test("M328 next trip prefers the actual venue over a technical display title", () => {
+  const block = dashboardSource.match(/function renderNextTrip\(items\) \{[\s\S]*?\n\}/)?.[0] || "";
+  assert.match(block, /const venue = String\(trip\.venue \|\| ""\)\.trim\(\)/);
+  assert.match(block, /const title = venue \|\| trip\.displayTitle \|\| "Fanbusfahrt"/);
+  assert.match(block, /escapeHtml\(title\)/);
 });
 
 test("M328 registration starts with combined person search, filters and explicit guest/group actions", () => {
