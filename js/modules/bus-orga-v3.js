@@ -59,6 +59,12 @@ function ensureRegistrationBookingUxStyle() {
       font-size:.72rem!important;
       white-space:nowrap;
     }
+    .m328-reg3-guest-grid{
+      grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    }
+    .m328-reg3-guest-grid label:last-child{
+      grid-column:1/-1!important;
+    }
     .m328-reg3-booking{
       transition:border-color .15s ease,box-shadow .15s ease,background .15s ease;
     }
