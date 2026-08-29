@@ -231,13 +231,8 @@ function normalizeBusOrgaHeader() {
 }
 
 function normalizeNextTrip() {
-  const root = document.getElementById("m328BusOrgaPage");
-  if (!root) return;
-  const title = root.querySelector(".m328-next-trip-title");
-  if (!title) return;
-  const trips = [...root.querySelectorAll("[data-m328-trip-card]")];
-  const firstTripTitle = trips[0]?.querySelector(".m328-trip-summary-title")?.textContent?.trim();
-  if (firstTripTitle) title.textContent = firstTripTitle;
+  // renderNextTrip() in V2 is authoritative: it already skips cancelled trips
+  // and renders the selected trip's venue. Do not overwrite it from the list below.
 }
 
 function normalizeTripManagementOverview() {
