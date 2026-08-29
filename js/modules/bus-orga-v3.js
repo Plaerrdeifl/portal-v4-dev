@@ -62,23 +62,7 @@ function ensureRegistrationBookingUxStyle() {
       display:none;
     }
     .m328-reg3-special-actions .button{
-      flex:0 0 auto;
-      width:auto!important;
-      min-height:34px!important;
-      padding:5px 10px!important;
-      border:1px solid var(--line)!important;
-      border-radius:999px!important;
-      background:var(--surface)!important;
-      color:inherit!important;
-      font-size:.72rem!important;
-      font-weight:800!important;
-      line-height:1.2!important;
       white-space:nowrap;
-    }
-    .m328-reg3-special-actions .button.is-active{
-      border-color:var(--accent)!important;
-      background:color-mix(in srgb,var(--accent) 12%,var(--surface))!important;
-      color:var(--accent)!important;
     }
     .m328-reg3-guest-grid{
       grid-template-columns:repeat(2,minmax(0,1fr))!important;
@@ -144,6 +128,70 @@ function ensureRegistrationBookingUxStyle() {
       min-width:28px;
       height:28px;
     }
+    .m328-reg3-target-actions:empty{
+      display:none!important;
+    }
+    .m328-reg3-decision-backdrop{
+      position:fixed;
+      inset:0;
+      z-index:1198;
+      background:rgba(2,18,35,.55);
+      backdrop-filter:blur(2px);
+    }
+    .m328-reg3-target.is-decision-modal{
+      position:fixed!important;
+      left:50%;
+      top:50%;
+      z-index:1199;
+      display:grid!important;
+      width:min(460px,calc(100vw - 28px));
+      max-height:calc(100dvh - 56px);
+      margin:0!important;
+      padding:18px!important;
+      overflow:auto;
+      transform:translate(-50%,-50%);
+      border:1px solid var(--line);
+      border-radius:16px;
+      background:var(--surface)!important;
+      box-shadow:0 24px 70px rgba(2,18,35,.28);
+      gap:14px;
+      align-items:stretch!important;
+    }
+    .m328-reg3-target.is-decision-modal .m328-reg3-target-copy{
+      gap:7px;
+    }
+    .m328-reg3-target.is-decision-modal .m328-reg3-target-copy strong{
+      font-size:1rem;
+    }
+    .m328-reg3-target.is-decision-modal .m328-reg3-target-copy span{
+      font-size:.8rem;
+      line-height:1.45;
+    }
+    .m328-reg3-target.is-decision-modal .m328-reg3-target-actions{
+      display:grid!important;
+      grid-template-columns:1fr;
+      gap:8px;
+      width:100%;
+    }
+    .m328-reg3-target.is-decision-modal .m328-reg3-target-action{
+      width:100%!important;
+      min-height:42px;
+    }
+    body.m328-reg3-decision-open{
+      overflow:hidden;
+    }
+    .m328-reg3-booking-complete{
+      display:flex;
+      justify-content:flex-end;
+      padding:10px;
+      border-top:1px solid var(--line);
+      background:var(--surface);
+    }
+    .m328-reg3-booking-complete .m328-reg3-target-action{
+      width:auto!important;
+      min-height:36px;
+      white-space:nowrap;
+    }
     @media(max-width:520px){
       .m328-reg3-special-actions{
         grid-template-columns:1fr!important;
@@ -153,6 +201,12 @@ function ensureRegistrationBookingUxStyle() {
       .m328-reg3-booking:not(.is-active-booking) .m328-reg3-booking-actions{
         flex-direction:row;
         align-items:center;
+      }
+      .m328-reg3-booking-complete{
+        justify-content:stretch;
+      }
+      .m328-reg3-booking-complete .m328-reg3-target-action{
+        width:100%!important;
       }
     }
   `;
@@ -176,12 +230,76 @@ function splitRegistrationConsentAndSubmit() {
 }
 
 function normalizeRegistrationSpecialActions() {
-  const known = document.querySelector('[data-m328-reg3-special="KNOWN"]');
-  const guest = document.querySelector('[data-m328-reg3-special="GUEST"]');
-  const group = document.querySelector('[data-m328-reg3-special="GROUP"]');
-  if (known) known.textContent = "Bekannte Personen";
-  if (guest) guest.textContent = "Gast hinzufügen";
-  if (group) group.textContent = "Gruppe auswählen";
+  const actions = [
+    [document.querySelector('[data-m328-reg3-special="KNOWN"]'), "Bekannte Personen"],
+    [document.querySelector('[data-m328-reg3-special="GUEST"]'), "Gast hinzufügen"],
+    [document.querySelector('[data-m328-reg3-special="GROUP"]'), "Gruppe auswählen"]
+  ];
+  actions.forEach(([button, label]) => {
+    if (!button) return;
+    button.textContent = label;
+    button.classList.remove("button", "secondary");
+    button.classList.add("m328-reg3-filter", "m328-reg3-mode-filter");
+  });
+}
+
+function removeRegistrationDecisionBackdrop() {
+  document.querySelector(".m328-reg3-decision-backdrop")?.remove();
+  document.body.classList.remove("m328-reg3-decision-open");
+}
+
+function ensureRegistrationDecisionBackdrop() {
+  if (!document.querySelector(".m328-reg3-decision-backdrop")) {
+    const backdrop = document.createElement("div");
+    backdrop.className = "m328-reg3-decision-backdrop";
+    backdrop.setAttribute("aria-hidden", "true");
+    document.body.appendChild(backdrop);
+  }
+  document.body.classList.add("m328-reg3-decision-open");
+}
+
+function syncRegistrationFlowPresentation() {
+  const target = document.getElementById("m328Reg3Target");
+  if (!target) {
+    removeRegistrationDecisionBackdrop();
+    return;
+  }
+
+  const more = target.querySelector("[data-m328-reg3-target-more]");
+  const complete = target.querySelector("[data-m328-reg3-target-complete]");
+  const decision = Boolean(more);
+
+  target.classList.toggle("is-decision-modal", decision);
+  if (decision) {
+    target.setAttribute("role", "dialog");
+    target.setAttribute("aria-modal", "true");
+    target.setAttribute("aria-label", "Buchung fortsetzen");
+    ensureRegistrationDecisionBackdrop();
+    return;
+  }
+
+  target.removeAttribute("role");
+  target.removeAttribute("aria-modal");
+  target.removeAttribute("aria-label");
+  removeRegistrationDecisionBackdrop();
+
+  document.querySelectorAll(".m328-reg3-booking-complete").forEach(footer => footer.remove());
+  const activeBooking = document.querySelector(".m328-reg3-booking.is-active-booking");
+  if (!complete || !activeBooking) return;
+
+  const footer = document.createElement("div");
+  footer.className = "m328-reg3-booking-complete";
+  footer.appendChild(complete);
+  activeBooking.appendChild(footer);
+}
+
+function setupRegistrationFlowPresentation() {
+  const target = document.getElementById("m328Reg3Target");
+  if (!target || target.dataset.m328FlowPresentationBound === "true") return;
+  target.dataset.m328FlowPresentationBound = "true";
+  const observer = new MutationObserver(() => queueMicrotask(syncRegistrationFlowPresentation));
+  observer.observe(target, { childList: true, subtree: true });
+  syncRegistrationFlowPresentation();
 }
 
 function normalizeBusOrgaHeader() {
@@ -231,6 +349,7 @@ async function hydrateRegistrationWithoutAutofocus(context) {
   setupRegistrationBookingUx();
   splitRegistrationConsentAndSubmit();
   normalizeRegistrationSpecialActions();
+  setupRegistrationFlowPresentation();
   clearRegistrationEntryFocus();
   requestAnimationFrame(clearRegistrationEntryFocus);
   setTimeout(clearRegistrationEntryFocus, 0);
