@@ -2,7 +2,7 @@ import { hydrateBusOrgaV2 } from "./bus-orga-v2.js?v=20260829-m328-r1-next-trip-
 import { hydrateBusOrgaRegistrationV3 } from "./bus-orga-registration-v3.js?v=20260829-m328-r1-prepared-density1&correction=20260830-m328-c1";
 import { hydrateBusOrgaBookings } from "./bus-orga-bookings.js?v=20260829-m328-r1-native-actions1";
 import { hydrateBusOrgaTripDetail } from "./bus-orga-trip-detail.js?v=20260829-m328-completion1";
-import { hydrateBusOrgaTripEdit } from "./bus-orga-trip-edit.js?v=20260829-m328-r1-native-actions1&completion=20260829-m328-final1";
+import { hydrateBusOrgaTripEdit } from "./bus-orga-trip-edit.js?v=20260829-m328-r1-native-actions1&completion=20260829-m328-final1&defaults=20260830-m328-draft-defaults1";
 
 let registrationDecisionPlaceholder = null;
 
