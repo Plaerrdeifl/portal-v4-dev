@@ -168,7 +168,9 @@ function renderNextTrip(items) {
   const active = Number(trip.activeRegistrationCount || 0);
   const waiting = Number(trip.waitlistedRegistrationCount || 0);
   const remaining = Number(trip.remainingCapacity || 0);
-  target.innerHTML = `<div class="m328-next-trip-card"><div class="m328-next-trip-top"><span class="m328-section-kicker">Nächste Fahrt</span>${lifecycleBadge(trip.status)}</div><strong class="m328-next-trip-title">${escapeHtml(trip.displayTitle || "Fanbusfahrt")}</strong><div class="m328-next-trip-meta"><span class="m328-next-trip-date">${escapeHtml(formatDate(trip.eventDate))} · ${escapeHtml(eventTime(trip.eventTime))}</span><span>${active} Teilnehmer</span><span>${waiting} Warteliste</span><span>${remaining} frei</span></div></div>`;
+  const venue = String(trip.venue || "").trim();
+  const title = venue || trip.displayTitle || "Fanbusfahrt";
+  target.innerHTML = `<div class="m328-next-trip-card"><div class="m328-next-trip-top"><span class="m328-section-kicker">Nächste Fahrt</span>${lifecycleBadge(trip.status)}</div><strong class="m328-next-trip-title">${escapeHtml(title)}</strong><div class="m328-next-trip-meta"><span class="m328-next-trip-date">${escapeHtml(formatDate(trip.eventDate))} · ${escapeHtml(eventTime(trip.eventTime))}</span><span>${active} Teilnehmer</span><span>${waiting} Warteliste</span><span>${remaining} frei</span></div></div>`;
 }
 
 function renderQuickRegistration(items) {
