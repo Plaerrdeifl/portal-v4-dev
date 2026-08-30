@@ -19,5 +19,5 @@ test("M020 central push IDs resolve to the projected user notification", () => {
 test("M020 push deep links still acknowledge through the central mark-read API", () => {
   assert.match(pushConsumer, /api\.call\("mark_notification_read"/);
   assert.match(pushConsumer, /notificationId,/);
-  assert.match(pushConsumer, /applyBadge\(result\?\.unreadNotificationCount \|\| 0\)/);
+  assert.match(pushConsumer, /await synchronizeAuthoritativeBadge\(\)/);
 });
