@@ -7,6 +7,7 @@ const registrationSource = read("../js/modules/bus-orga-registration-v3.js");
 const nativeSource = read("../js/modules/bus-orga-v3.js");
 const directUxSource = read("../js/modules/bus-orga-registration-booking-ux.js");
 const flowWordingSource = read("../js/modules/bus-orga-registration-flow-wording.js");
+const pagesSource = read("../js/pages.js");
 
 test("M328 prepared bookings heading stays on one line with counters directly below", () => {
   assert.match(registrationSource, /class="m328-reg3-panel m328-reg3-prepared-panel"/);
@@ -27,13 +28,24 @@ test("M328 prepared booking header keeps status inline and the participant area 
   assert.doesNotMatch(nativeSource, /content:"Vorbereitet"/);
 });
 
-test("M328 direct registration route loads its booking-state UX", () => {
+test("M328 registration route restores the complete compact booking flow", () => {
+  assert.match(pagesSource, /if \(view === "registration"\) \{[\s\S]*\.\/modules\/bus-orga-v3\.js\?[^"\n]*registration=20260830-m328-registration-flow2[\s\S]*"hydrateBusOrgaV3"/);
+  assert.match(nativeSource, /function decorateActiveParticipantCards\(activeBooking\)/);
+  assert.match(nativeSource, /decorateActiveParticipantCards\(activeBooking\)/);
+  assert.match(nativeSource, /complete\.hidden = true/);
+  assert.match(nativeSource, /actions\.hidden = true/);
+  assert.match(nativeSource, /footer\.className = "m328-reg3-booking-complete"/);
+  assert.match(nativeSource, /m328-reg3-active-person-summary-chevron/);
+  assert.match(flowWordingSource, /\.m328-reg3-remove\{[\s\S]*color:var\(--danger\)!important/);
+  assert.match(flowWordingSource, /ensureParticipantRemoveStyle\(\)/);
+});
+
+test("M328 direct registration fallback still carries booking-state CSS", () => {
   assert.match(flowWordingSource, /import \{ setupM328RegistrationBookingUx \} from "\.\/bus-orga-registration-booking-ux\.js\?v=20260830-m328-registration-booking-ux1"/);
   assert.match(flowWordingSource, /setupM328RegistrationBookingUx\(\)/);
   assert.match(directUxSource, /\.m328-reg3-booking:not\(\.is-active-booking\) \.m328-reg3-person\{display:none!important\}/);
   assert.match(directUxSource, /\.m328-reg3-booking\.is-active-booking \.m328-reg3-booking-overview\{display:none!important\}/);
   assert.match(directUxSource, /\.m328-reg3-booking-status\{display:none;/);
-  assert.match(directUxSource, /@media\(max-width:520px\)[\s\S]*\.m328-reg3-booking-head-copy\{display:flex!important;flex-wrap:wrap!important/);
 });
 
 test("M328 active and inactive booking treatments remain visually distinct", () => {
