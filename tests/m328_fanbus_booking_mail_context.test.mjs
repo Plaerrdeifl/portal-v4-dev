@@ -6,11 +6,12 @@ import test from "node:test";
 const root = path.resolve(import.meta.dirname, "..");
 const read = relative => fs.readFile(path.join(root, relative), "utf8");
 
-const [worker, bookingMigration, contactMigration, contactCorrection] = await Promise.all([
+const [worker, bookingMigration, contactMigration, contactCorrection, contactRestore] = await Promise.all([
   read("supabase/functions/notification-dispatch/index.ts"),
   read("supabase/migrations/20260829090000_m328_r1_booking_management.sql"),
   read("supabase/migrations/20260830214500_m328_booking_mail_contact_context.sql"),
-  read("supabase/migrations/20260830223000_m328_booking_contact_receipt_correction.sql")
+  read("supabase/migrations/20260830223000_m328_booking_contact_receipt_correction.sql"),
+  read("supabase/migrations/20260830223500_m328_restore_verified_whatsapp_contact.sql")
 ]);
 
 test("M328 keeps readable booking-number enrichment in the central email wrapper", () => {
@@ -45,11 +46,12 @@ test("one central fanbus organization contact owns booking-mail contact values",
   assert.match(contactMigration, /grant execute on function app_private\.notification_add_external_email\([\s\S]*?to postgres;/);
 });
 
-test("M328 correction removes the unverified WhatsApp placeholder without inventing a replacement", () => {
+test("M328 additive correction is followed by the confirmed WhatsApp restore", () => {
   assert.match(contactCorrection, /jsonb_build_object\('whatsapp', '\{\}'::jsonb\)/);
-  assert.doesNotMatch(contactCorrection, /@plaerrdeifl/);
-  assert.doesNotMatch(contactCorrection, /wa\.me\/plaerrdeifl/);
   assert.match(contactCorrection, /where key = 'fanbus\.organization_contact'/);
+  assert.match(contactRestore, /'username', '@plaerrdeifl'/);
+  assert.match(contactRestore, /'url', 'https:\/\/wa\.me\/plaerrdeifl'/);
+  assert.match(contactRestore, /where key = 'fanbus\.organization_contact'/);
 });
 
 test("fanbus booking emails render the reference and help block only from payload contacts", () => {
