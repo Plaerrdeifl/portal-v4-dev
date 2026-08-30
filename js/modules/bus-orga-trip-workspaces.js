@@ -6,7 +6,7 @@ import {
 } from "./bus-orga-workspace-base.js";
 import { hydrateOccupancy } from "./bus-orga-occupancy.js";
 import { hydrateOperations } from "./bus-orga-operations.js";
-import { hydrateParticipants } from "./bus-orga-participants.js";
+import { hydrateParticipants } from "./bus-orga-participants.js?v=20260830-m328-participant-mobile1";
 
 export async function hydrateBusOrgaTripWorkspace(context = {}) {
   ensureWorkspaceStyle();
