@@ -32,8 +32,8 @@ test("M327 personal companion lists keep the stable tap and menu base", () => {
 });
 
 test("M327 final companion polish is isolated from the stable observer", () => {
-  assert.match(wrapper, /m327-companion-lists-tap-base\.js\?v=20260830-m327-companion-stable1/);
-  assert.match(wrapper, /m327-companion-lists-final-polish\.js\?v=20260830-m327-companion-final2/);
+  assert.match(wrapper, /m327-companion-lists-tap-base\.js\?v=20260830-m327-companion-stable2/);
+  assert.match(wrapper, /m327-companion-lists-final-polish\.js\?v=20260830-m327-companion-final3/);
   assert.match(wrapper, /setupM327CompanionListsTapBase\(\)/);
   assert.match(wrapper, /setupM327CompanionListsFinalPolish\(\)/);
 });
@@ -67,7 +67,7 @@ test("M327 linked portal companions show identity instead of readonly name field
 test("M327 companion wrapper remains loaded from the fanbus page", () => {
   assert.match(
     pages,
-    /\.\/m327-companion-lists-polish\.js\?v=20260830-m327-companion-tap1/
+    /\.\/m327-companion-lists-polish\.js\?v=20260830-m327-companion-tap2/
   );
   assert.match(pages, /"setupM327CompanionListsPolish"/);
 });
