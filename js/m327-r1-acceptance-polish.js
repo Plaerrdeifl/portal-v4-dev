@@ -108,6 +108,21 @@ function ensureAccordionStyles() {
     #m327MyBookingsPanel .m327-booking-card[data-m327-expanded="true"] .m327-booking-chevron{
       transform:rotate(90deg);
     }
+    #m327MyBookingsPanel .m327-booking-overview{
+      display:block;
+      min-width:0;
+      margin-top:4px;
+      overflow:hidden;
+      color:var(--ink-500);
+      font-size:.76rem;
+      font-weight:750;
+      line-height:1.25;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    #m327MyBookingsPanel .m327-booking-card[data-m327-booking-cancelled="true"] .m327-booking-overview{
+      color:var(--danger);
+    }
     #m327MyBookingsPanel .m327-booking-expanded{
       display:grid;
       gap:8px;
@@ -117,6 +132,117 @@ function ensureAccordionStyles() {
     #m327MyBookingsPanel .m327-booking-expanded[hidden]{
       display:none!important;
     }
+
+    #m310FanbusActionMenu.m327-personal-fanbus-panel{
+      left:0!important;
+      right:auto!important;
+      width:min(250px,calc(100vw - 32px))!important;
+      max-width:min(250px,calc(100vw - 32px));
+      padding:5px;
+      border-radius:14px;
+    }
+    #m310FanbusActionMenu.m327-personal-fanbus-panel > button{
+      min-height:39px;
+      padding:8px 10px;
+      border-radius:9px;
+      font-size:.84rem;
+      line-height:1.2;
+    }
+
+    .v4-m325-companion-workspace{
+      gap:10px;
+    }
+    .v4-m325-companion-workspace > .v4-m325-workspace-header{
+      align-items:flex-start;
+      gap:9px;
+    }
+    .v4-m325-companion-workspace > .v4-m325-workspace-header > .button{
+      flex:0 0 auto;
+      width:auto!important;
+      min-height:34px;
+      padding:6px 9px;
+      margin:0;
+      line-height:1.1;
+    }
+    .v4-m325-companion-workspace > .v4-m325-workspace-header h2{
+      margin:0;
+      font-size:1.18rem;
+      line-height:1.08;
+    }
+    .v4-m325-companion-workspace > .v4-m325-workspace-header p{
+      margin:3px 0 0;
+      font-size:.79rem;
+      line-height:1.28;
+    }
+    .v4-m325-companion-workspace .v4-m325-workspace-section{
+      gap:7px;
+    }
+    .v4-m325-companion-workspace .v4-m325-workspace-section > h3{
+      font-size:1.02rem;
+      line-height:1.15;
+    }
+    .v4-m325-companion-workspace .v4-m325-list-card{
+      gap:7px;
+      padding:10px!important;
+      border-radius:14px;
+    }
+    .v4-m325-companion-workspace .v4-m325-record-copy{
+      gap:2px;
+    }
+    .v4-m325-companion-workspace .v4-m325-record-copy > strong,
+    .v4-m325-companion-workspace .v4-m325-person-title > strong{
+      font-size:.94rem;
+      line-height:1.15;
+    }
+    .v4-m325-companion-workspace .v4-m325-record-copy > small{
+      font-size:.76rem;
+      line-height:1.25;
+    }
+    .v4-m325-companion-workspace .v4-m325-list-actions,
+    .v4-m325-companion-workspace .v4-m325-member-actions{
+      display:grid;
+      width:100%;
+      gap:6px;
+    }
+    .v4-m325-companion-workspace .v4-m325-list-actions{
+      grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+    .v4-m325-companion-workspace .v4-m325-member{
+      gap:7px;
+      padding-top:9px;
+    }
+    .v4-m325-companion-workspace .v4-m325-member-actions{
+      grid-template-columns:40px 40px minmax(0,1fr);
+    }
+    .v4-m325-companion-workspace .v4-m325-list-actions .button,
+    .v4-m325-companion-workspace .v4-m325-member-actions .button{
+      width:100%!important;
+      min-width:0;
+      min-height:35px;
+      padding:6px 8px;
+      font-size:.75rem;
+      line-height:1.15;
+    }
+    .v4-m325-companion-workspace .v4-m325-member-actions [data-m325-move-member]{
+      padding-inline:0;
+    }
+    .v4-m325-companion-workspace .v4-m325-member-actions [data-m325-unlink-person],
+    .v4-m325-companion-workspace .v4-m325-member-actions [data-m325-link-person]{
+      grid-column:1 / span 2;
+    }
+    .v4-m325-companion-workspace .v4-m325-new-list{
+      padding:10px 0 0;
+      border-top:1px solid var(--line);
+    }
+    .v4-m325-companion-workspace .v4-m325-new-list form{
+      gap:7px;
+    }
+    .v4-m325-companion-workspace .v4-m325-new-list .button{
+      width:auto!important;
+      min-height:36px;
+      padding:7px 10px;
+    }
+
     @media(max-width:700px){
       #m327MyBookingsPanel .m327-booking-toggle{
         padding:9px 10px;
@@ -127,6 +253,21 @@ function ensureAccordionStyles() {
       }
       #m327MyBookingsPanel .m327-booking-group{
         gap:7px;
+      }
+      #m310FanbusActionMenu.m327-personal-fanbus-panel{
+        width:min(238px,calc(100vw - 30px))!important;
+      }
+    }
+
+    @media(max-width:430px){
+      .v4-m325-companion-workspace > .v4-m325-workspace-header{
+        align-items:flex-start;
+      }
+      .v4-m325-companion-workspace .v4-m325-list-actions .button,
+      .v4-m325-companion-workspace .v4-m325-member-actions .button{
+        flex:none;
+        width:100%!important;
+        padding-inline:7px;
       }
     }
   `;
@@ -142,11 +283,77 @@ function setBookingExpanded(card, expanded) {
   body.hidden = !expanded;
 }
 
+function bookingParticipantOverview(card) {
+  const participants = [...card.querySelectorAll(":scope > .m327-participants > .m327-participant")]
+    .map(row => {
+      const header = row.querySelector(":scope > header");
+      const badges = [...(header?.querySelectorAll("div .badge") || [])];
+      return {
+        name: String(header?.querySelector("strong")?.textContent || "").trim(),
+        status: String(header?.querySelector(":scope > .badge")?.textContent || "").trim(),
+        primary: badges.some(badge => badge.textContent?.trim() === "Hauptperson"),
+        self: badges.some(badge => badge.textContent?.trim() === "Du")
+      };
+    });
+
+  if (!participants.length) return null;
+
+  const current = participants.filter(item => item.status !== "Storniert");
+  const cancelled = participants.filter(item => item.status === "Storniert");
+  const allCancelled = current.length === 0 && cancelled.length === participants.length;
+  const source = current.length ? current : participants;
+  const lead = source.find(item => item.self)
+    || source.find(item => item.primary)
+    || source[0];
+  const companions = current.length
+    ? current.filter(item => item !== lead)
+    : [];
+
+  let text = lead?.name || `${source.length} ${source.length === 1 ? "Person" : "Personen"}`;
+  if (companions.length === 1 && companions[0].name) {
+    text += ` + ${companions[0].name}`;
+  } else if (companions.length > 1) {
+    text += ` + ${companions.length} Mitfahrer`;
+  }
+  if (cancelled.length) {
+    text += ` · ${cancelled.length} storniert`;
+  }
+
+  return { text, allCancelled };
+}
+
+function ensureBookingOverview(card, header) {
+  const content = header?.firstElementChild;
+  if (!(content instanceof HTMLElement)) return;
+  const overview = bookingParticipantOverview(card);
+  if (!overview) return;
+
+  let summary = content.querySelector(":scope > .m327-booking-overview");
+  if (!summary) {
+    summary = document.createElement("small");
+    summary.className = "m327-booking-overview";
+    content.append(summary);
+  }
+  summary.textContent = overview.text;
+  card.dataset.m327BookingCancelled = overview.allCancelled ? "true" : "false";
+
+  const statusBadge = header.querySelector(":scope > .badge");
+  if (
+    overview.allCancelled
+    && statusBadge
+    && statusBadge.textContent?.trim() !== "Abgesagt"
+  ) {
+    statusBadge.textContent = "Buchung storniert";
+    statusBadge.className = "badge danger m327-booking-cancelled";
+  }
+}
+
 function ensureBookingAccordion(card) {
   if (!card || card.dataset.m327Accordion === "true") return;
   const header = card.querySelector(":scope > .m327-booking-head");
   if (!header) return;
 
+  ensureBookingOverview(card, header);
   card.dataset.m327Accordion = "true";
   card.dataset.m327Expanded = "false";
 
