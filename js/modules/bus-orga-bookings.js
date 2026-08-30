@@ -22,6 +22,10 @@ function routeParams() {
   return new URLSearchParams(query);
 }
 
+function tripDetailHash(tripId) {
+  return `#/bus-orga?${new URLSearchParams({ view: "trip-detail", trip: String(tripId || "") })}`;
+}
+
 function shortDate(value) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ""));
   return match ? `${match[3]}.${match[2]}.` : String(value || "Termin offen");
@@ -89,6 +93,7 @@ function ensureStyle() {
     .m328-bookings-title h2{margin:0;font-size:1.28rem;line-height:1.12;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.m328-bookings-title span{display:block;margin-top:2px;color:var(--muted);font-size:.76rem;font-weight:700}
     .m328-bookings-tools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
     .m328-bookings-tools input{width:100%;min-height:42px}.m328-bookings-count{align-self:center;color:var(--muted);font-size:.74rem;white-space:nowrap}
+    .m328-bookings-filter{grid-column:1/-1;margin:0}.m328-bookings-filter>summary{width:max-content;min-height:34px;padding:6px 10px;font-size:.72rem;list-style:none}.m328-bookings-filter>summary::-webkit-details-marker{display:none}.m328-bookings-filter-body{display:grid;grid-template-columns:minmax(0,220px);gap:7px;margin-top:7px;padding:9px;border:1px solid var(--line);border-radius:11px;background:var(--surface-2)}.m328-bookings-filter-body label{display:grid;gap:3px;font-size:.68rem;font-weight:750}.m328-bookings-filter-body select{width:100%;min-height:38px}
     .m328-booking-list{display:grid;gap:7px}.m328-booking-card{border:1px solid var(--line);border-radius:13px;background:var(--surface);overflow:hidden}
     .m328-booking-card summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:10px 11px;cursor:pointer;list-style:none}.m328-booking-card summary::-webkit-details-marker{display:none}
     .m328-booking-main{display:grid;gap:3px}.m328-booking-number{font-size:.9rem;font-weight:900;letter-spacing:.02em}.m328-booking-meta{display:flex;flex-wrap:wrap;gap:3px 8px;color:var(--muted);font-size:.68rem}.m328-booking-primary{font-size:.79rem;font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -138,7 +143,11 @@ function statusBadge(value) {
   return `<span class="badge ${type}">${escapeHtml(statusLabel(value))}</span>`;
 }
 
-function bookingMatches(booking, query) {
+function bookingMatches(booking, query, statusFilter) {
+  const status = bookingStatus(booking);
+  const statusMatches = statusFilter === "ALL"
+    || (statusFilter === "CURRENT" ? status !== "CANCELLED" : status === statusFilter);
+  if (!statusMatches) return false;
   if (!query) return true;
   const haystack = [
     booking.number,
@@ -148,12 +157,22 @@ function bookingMatches(booking, query) {
   return haystack.includes(query.toLocaleLowerCase("de-DE"));
 }
 
+function bookingPersonRole(person, booking) {
+  if (booking.participants.length <= 1) {
+    return person.bookingRole === "COMPANION" ? "Mitfahrer" : "Einzelbuchung";
+  }
+  if (person.bookingRole === "COMPANION") {
+    return `Mitfahrer · Gruppe ${booking.primary ? personName(booking.primary) : "Hauptperson"}`;
+  }
+  return `Gruppenbuchung · ${booking.participants.length} Personen`;
+}
+
 function personRow(person, booking) {
   const bus = person.busLabel ? ` · ${person.busLabel}` : "";
   const waitlist = person.waitlistPosition ? ` · WL ${person.waitlistPosition}` : "";
   const stop = person.boardingStopLabel ? ` · ${person.boardingStopLabel}` : "";
   const canCancel = cancellable(person);
-  return `<div class="m328-booking-person"><div><strong>${escapeHtml(personName(person))}</strong><small>${escapeHtml(`${person.bookingRole === "PRIMARY" ? "Hauptperson" : "Mitfahrer"}${person.email ? ` · ${person.email}` : ""}${stop}${bus}${waitlist}`)}</small></div><div class="m328-booking-person-actions"><span class="m328-booking-person-status">${escapeHtml(statusLabel(person.status))}</span>${canCancel && booking.participants.length > 1 ? `<button class="button small danger" type="button" data-m328-cancel-person="${escapeAttr(person.id)}" data-booking-id="${escapeAttr(booking.id)}">Person stornieren</button>` : ""}</div></div>`;
+  return `<div class="m328-booking-person"><div><strong>${escapeHtml(personName(person))}</strong><small>${escapeHtml(`${bookingPersonRole(person, booking)}${person.email ? ` · ${person.email}` : ""}${stop}${bus}${waitlist}`)}</small></div><div class="m328-booking-person-actions"><span class="m328-booking-person-status">${escapeHtml(statusLabel(person.status))}</span>${canCancel && booking.participants.length > 1 ? `<button class="button small danger" type="button" data-m328-cancel-person="${escapeAttr(person.id)}" data-booking-id="${escapeAttr(booking.id)}">Person stornieren</button>` : ""}</div></div>`;
 }
 
 function editPerson(state, person) {
@@ -282,7 +301,7 @@ function renderList(state) {
   const target = document.getElementById("m328BookingList");
   const count = document.getElementById("m328BookingCount");
   if (!target) return;
-  const visible = state.bookings.filter(booking => bookingMatches(booking, state.query));
+  const visible = state.bookings.filter(booking => bookingMatches(booking, state.query, state.statusFilter));
   if (count) count.textContent = `${visible.length} von ${state.bookings.length} Buchungen`;
   target.innerHTML = visible.length ? visible.map(booking => bookingCard(state, booking)).join("") : empty("Keine passende Buchung gefunden.");
   bindList(state);
@@ -291,10 +310,15 @@ function renderList(state) {
 function renderPage(root, state) {
   ensureStyle();
   const venue = String(state.trip.venue || "").trim() || "Fahrt";
-  root.innerHTML = `<div class="m328-bookings"><header class="m328-bookings-head"><button id="m328BookingsBack" class="button small ghost" type="button">← Bus-Orga</button><div class="m328-bookings-title"><h2>Buchungen • ${escapeHtml(venue)}</h2><span>${escapeHtml(shortDate(state.trip.eventDate))} · ${escapeHtml(eventTime(state.trip.eventTime))}</span></div></header><section class="m328-bookings-tools"><input id="m328BookingSearch" type="search" autocomplete="off" placeholder="Buchungsnummer oder Name suchen …" aria-label="Buchungen durchsuchen"><span id="m328BookingCount" class="m328-bookings-count"></span></section><section id="m328BookingList" class="m328-booking-list" aria-live="polite"></section></div>`;
-  document.getElementById("m328BookingsBack")?.addEventListener("click", () => { location.hash = "#/bus-orga"; });
+  root.innerHTML = `<div class="m328-bookings"><header class="m328-bookings-head"><button id="m328BookingsBack" class="button small ghost" type="button">← Fahrt</button><div class="m328-bookings-title"><h2>Buchungen • ${escapeHtml(venue)}</h2><span>${escapeHtml(shortDate(state.trip.eventDate))} · ${escapeHtml(eventTime(state.trip.eventTime))}</span></div></header><section class="m328-bookings-tools"><input id="m328BookingSearch" type="search" autocomplete="off" placeholder="Buchungsnummer oder Name suchen …" aria-label="Buchungen durchsuchen"><span id="m328BookingCount" class="m328-bookings-count"></span><details class="m328-bookings-filter"><summary class="button small secondary">Filter</summary><div class="m328-bookings-filter-body"><label>Status<select id="m328BookingStatusFilter"><option value="ALL">Alle</option><option value="CURRENT">Nicht storniert</option><option value="ACTIVE">Aktiv</option><option value="WAITLISTED">Warteliste</option><option value="CANCELLED">Storniert</option></select></label></div></details></section><section id="m328BookingList" class="m328-booking-list" aria-live="polite"></section></div>`;
+  document.getElementById("m328BookingsBack")?.addEventListener("click", () => { location.hash = tripDetailHash(state.trip.id); });
   document.getElementById("m328BookingSearch")?.addEventListener("input", event => {
     state.query = event.currentTarget.value || "";
+    state.editingBookingId = null;
+    renderList(state);
+  });
+  document.getElementById("m328BookingStatusFilter")?.addEventListener("change", event => {
+    state.statusFilter = event.currentTarget.value || "ALL";
     state.editingBookingId = null;
     renderList(state);
   });
@@ -329,12 +353,13 @@ export async function hydrateBusOrgaBookings(context = {}) {
       stops: Array.isArray(stopData?.stops) ? stopData.stops : [],
       bookings: groupBookings(registrations),
       query: "",
+      statusFilter: "ALL",
       editingBookingId: null
     });
   } catch (error) {
     if (context.isCurrent && !context.isCurrent()) return;
-    root.innerHTML = `<div class="notice error">${escapeHtml(error?.message || "Buchungen konnten nicht geladen werden.")}</div><button id="m328BookingsLoadBack" class="button secondary" type="button">← Bus-Orga</button>`;
-    document.getElementById("m328BookingsLoadBack")?.addEventListener("click", () => { location.hash = "#/bus-orga"; });
+    root.innerHTML = `<div class="notice error">${escapeHtml(error?.message || "Buchungen konnten nicht geladen werden.")}</div><button id="m328BookingsLoadBack" class="button secondary" type="button">← Fahrt</button>`;
+    document.getElementById("m328BookingsLoadBack")?.addEventListener("click", () => { location.hash = tripDetailHash(tripId); });
     showToast(error?.message || "Buchungen konnten nicht geladen werden.", "error", 5200);
   }
 }
