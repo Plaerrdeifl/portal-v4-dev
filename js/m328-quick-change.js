@@ -91,9 +91,7 @@ function ensureStyle() {
     .m328-quick-change[hidden]{display:none!important}
     .m328-quick-change .m328-workspace-grid{border-top:1px solid var(--line)}
     .m328-quick-picker{display:grid;gap:10px;padding:10px 11px}
-    .m328-quick-picker-head{display:flex;align-items:center;gap:8px;min-width:0}
-    .m328-quick-picker-head strong{min-width:0;font-size:.82rem;line-height:1.2}
-    .m328-quick-picker-head .button{flex:0 0 auto;min-height:34px;padding:5px 8px;font-size:.68rem}
+    .m328-quick-picker-title{font-size:.82rem;line-height:1.2}
     .m328-quick-game-row{
       display:grid;
       grid-template-columns:46px minmax(0,1fr);
@@ -187,10 +185,7 @@ function renderTripPicker(section, items, action) {
   const placeholder = trips.length ? "Spiel auswählen …" : "Kein passendes Spiel verfügbar";
   body.innerHTML = `
     <div class="m328-quick-picker">
-      <div class="m328-quick-picker-head">
-        <button class="button small ghost" type="button" data-m328-quick-back>← Schnelländerung</button>
-        <strong>${escapeHtml(config.title)}</strong>
-      </div>
+      <strong class="m328-quick-picker-title">${escapeHtml(config.title)}</strong>
       <label class="m328-quick-game-row">
         <span>Spiel</span>
         <select data-m328-quick-game aria-label="Spiel auswählen"${disabled}>
@@ -200,10 +195,6 @@ function renderTripPicker(section, items, action) {
       </label>
     </div>
   `;
-  body.querySelector("[data-m328-quick-back]")?.addEventListener("click", () => {
-    clearQuickRouteWithoutNavigation();
-    renderActionList(section, items, allowedActions());
-  });
   const select = body.querySelector("[data-m328-quick-game]");
   select?.addEventListener("change", () => {
     if (select.value) openTarget(action, select.value);
@@ -234,6 +225,11 @@ async function mountQuickChange() {
     if (!actions.length) return true;
     const items = Array.isArray(data?.trips) ? data.trips : [];
     const requested = routeState().quick;
+    section.ontoggle = () => {
+      if (section.open) return;
+      clearQuickRouteWithoutNavigation();
+      renderActionList(section, items, actions);
+    };
     if (requested && actions.includes(requested)) {
       section.open = true;
       renderTripPicker(section, items, requested);
