@@ -29,7 +29,7 @@ function registrationCard(registration, buses, readOnly) {
     registration.status === "ACTIVE" ? `Bus: ${bus?.label || "Nicht zugeordnet"}` : "",
     registration.status === "WAITLISTED" ? `Warteliste ${registration.waitlistPosition || "–"}` : ""
   ].filter(Boolean);
-  return `<article class="v4-m310-registration-record m328-participant-card" data-m328-participant-id="${escapeAttr(registration.id)}"${canAct ? ` role="button" tabindex="0" aria-label="${escapeAttr(`${registration.firstName} ${registration.lastName} verwalten`)}"` : ""}>
+  return `<article class="m328-participant-card" data-m328-participant-id="${escapeAttr(registration.id)}"${canAct ? ` role="button" tabindex="0" aria-label="${escapeAttr(`${registration.firstName} ${registration.lastName} verwalten`)}"` : ""}>
     <div class="m328-card-head"><strong>${escapeHtml(`${registration.firstName} ${registration.lastName}`)}</strong>${statusBadge(registration.status)}</div>
     <div class="m328-card-meta">${meta.map(value => `<span>${escapeHtml(value)}</span>`).join("")}</div>
     ${canAct ? '<span class="m328-card-chevron" aria-hidden="true">›</span>' : ""}
@@ -69,7 +69,7 @@ function renderParticipants(state) {
     <section class="m328-workspace-panel">
       <div class="m328-workspace-toolbar">
         <strong>Teilnehmer</strong>
-        <div class="m328-workspace-toolbar">
+        <div class="button-row m328-participant-toolbar-actions">
           <button class="button small secondary" type="button" data-m328-participant-export>Excel</button>
           ${readOnly ? "" : '<button class="button small primary" type="button" data-m328-participant-add>＋ Teilnehmer</button>'}
         </div>
