@@ -2,12 +2,13 @@ import {
   call,
   escapeAttr,
   escapeHtml,
-  openDialog,
   runWrite,
   showToast
 } from "./modules/common.js";
 
 const BUS_PREFERENCES = new Set(["EGAL", "RUHIG", "PARTY"]);
+const STANDARDS_PANEL_ID = "m327FanbusStandardsPanel";
+const STANDARDS_STYLE_ID = "m327FanbusStandardsStyles";
 const peopleBusDefaults = new Map();
 let selfBusPreference = "EGAL";
 let selfPreferenceLoaded = false;
@@ -49,8 +50,7 @@ async function ensureSelfPreference() {
     selfBusPreference = normalizeBusPreference(data?.defaultBusPreference);
     selfPreferenceLoaded = true;
   } catch {
-    // Die eigentliche Fanbus-Anmeldung besitzt ihre eigene Fehlerbehandlung.
-    // Ein optionaler Profilstandard darf den Anmeldeflow niemals blockieren.
+    // Ein optionaler Profilstandard darf den eigentlichen Anmeldeflow nicht blockieren.
   } finally {
     selfPreferenceLoading = false;
     scheduleScan();
@@ -129,50 +129,147 @@ function preferenceOptions(selected) {
   )).join("");
 }
 
-async function openFanbusStandards() {
-  const preference = await call("fanbus_user_preference_get", {});
-  const selectedBus = normalizeBusPreference(preference?.defaultBusPreference);
-  const stops = Array.isArray(preference?.availableBoardingStops)
-    ? preference.availableBoardingStops
-    : [];
-
-  openDialog({
-    title: "Meine Fanbus-Standards",
-    kicker: "Fanbus",
-    submitLabel: "Standards speichern",
-    body: `<form class="form-grid v4-smart-form" data-p300-fanbus-standards-form>
-      <p class="subtle v4-field-full">Diese Vorgaben werden bei neuen Fanbus-Anmeldungen vorausgewählt. Der Buswunsch wird nur bei Fahrten mit aktivierter Buswahl verwendet; bei allen anderen Fahrten bleibt er unsichtbar und ohne Wirkung.</p>
-      <label class="v4-field-half">Standard-Zustieg
-        <select name="defaultBoardingStopId">
-          <option value="">Kein Standard</option>
-          ${stops.map(stop => `<option value="${escapeAttr(stop.id)}"${stop.id === preference?.defaultBoardingStopId ? " selected" : ""}>${escapeHtml(stop.label)}</option>`).join("")}
-        </select>
-      </label>
-      <label class="v4-field-half">Standard-Buswunsch
-        <select name="defaultBusPreference" required>${preferenceOptions(selectedBus)}</select>
-      </label>
-    </form>`,
-    onSubmit: async values => {
-      const payload = {
-        defaultBoardingStopId: String(values.defaultBoardingStopId || "") || null,
-        defaultBusPreference: normalizeBusPreference(values.defaultBusPreference)
-      };
-      if (Number(preference?.revision) > 0) {
-        payload.expectedRevision = Number(preference.revision);
-      }
-      await runWrite(
-        () => call("fanbus_user_preference_set", payload),
-        "Fanbus-Standards gespeichert."
-      );
-    }
-  });
-}
-
 function closeActionMenu() {
   const menu = document.getElementById("m310FanbusActionMenu");
   const toggle = document.getElementById("m310FanbusActionToggle");
   if (menu) menu.hidden = true;
   if (toggle) toggle.setAttribute("aria-expanded", "false");
+}
+
+function injectStandardsStyles() {
+  if (document.getElementById(STANDARDS_STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = STANDARDS_STYLE_ID;
+  style.textContent = `
+    #${STANDARDS_PANEL_ID}{display:grid;gap:14px}
+    #${STANDARDS_PANEL_ID} .m327-standards-head{display:flex;align-items:flex-start;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+    #${STANDARDS_PANEL_ID} .m327-standards-back{flex:0 0 auto;width:auto;min-height:38px;padding:7px 10px}
+    #${STANDARDS_PANEL_ID} .m327-standards-head-copy{min-width:0}
+    #${STANDARDS_PANEL_ID} .m327-standards-kicker{display:block;margin-bottom:2px;color:var(--muted);font-size:.68rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+    #${STANDARDS_PANEL_ID} .m327-standards-head h3{margin:0;font-size:1.25rem;line-height:1.15}
+    #${STANDARDS_PANEL_ID} .m327-standards-head p{margin:4px 0 0;color:var(--muted);font-size:.82rem;line-height:1.35}
+    #${STANDARDS_PANEL_ID} .m327-standards-card{display:grid;gap:12px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--surface,#fff)}
+    #${STANDARDS_PANEL_ID} .m327-standards-note{margin:0;color:var(--muted);font-size:.82rem;line-height:1.4}
+    #${STANDARDS_PANEL_ID} .m327-standards-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    #${STANDARDS_PANEL_ID} .m327-standards-field{display:grid;gap:5px;min-width:0;font-weight:800}
+    #${STANDARDS_PANEL_ID} .m327-standards-field select{width:100%;min-width:0}
+    #${STANDARDS_PANEL_ID} .m327-standards-actions{display:flex;justify-content:flex-end;padding-top:2px}
+    #${STANDARDS_PANEL_ID} .m327-standards-actions .button{width:auto;min-width:180px}
+    @media(max-width:620px){
+      #${STANDARDS_PANEL_ID}{gap:10px}
+      #${STANDARDS_PANEL_ID} .m327-standards-head{gap:9px;padding-bottom:10px}
+      #${STANDARDS_PANEL_ID} .m327-standards-back{min-height:36px;padding:6px 9px;font-size:.78rem}
+      #${STANDARDS_PANEL_ID} .m327-standards-head h3{font-size:1.08rem}
+      #${STANDARDS_PANEL_ID} .m327-standards-head p{font-size:.76rem;line-height:1.3}
+      #${STANDARDS_PANEL_ID} .m327-standards-card{gap:10px;padding:11px;border-radius:14px}
+      #${STANDARDS_PANEL_ID} .m327-standards-note{font-size:.76rem}
+      #${STANDARDS_PANEL_ID} .m327-standards-fields{grid-template-columns:1fr;gap:9px}
+      #${STANDARDS_PANEL_ID} .m327-standards-field{font-size:.78rem}
+      #${STANDARDS_PANEL_ID} .m327-standards-actions .button{width:100%;min-width:0}
+    }
+  `;
+  document.head.append(style);
+}
+
+function restoreTripsPanel() {
+  const panel = document.getElementById(STANDARDS_PANEL_ID);
+  panel?.remove();
+  const tripsPanel = document.getElementById("m327TripsPanel");
+  if (tripsPanel instanceof HTMLElement) tripsPanel.hidden = false;
+  const bookingsPanel = document.getElementById("m327MyBookingsPanel");
+  if (bookingsPanel instanceof HTMLElement) bookingsPanel.hidden = true;
+  document.getElementById("m310FanbusActionToggle")?.focus({ preventScroll: true });
+}
+
+function buildStandardsPanel(preference) {
+  const selectedBus = normalizeBusPreference(preference?.defaultBusPreference);
+  const stops = Array.isArray(preference?.availableBoardingStops)
+    ? preference.availableBoardingStops
+    : [];
+  const panel = document.createElement("section");
+  panel.id = STANDARDS_PANEL_ID;
+  panel.className = "module-panel m327-fanbus-standards-panel";
+  panel.setAttribute("aria-label", "Meine Fanbus-Standards");
+  panel.innerHTML = `
+    <div class="m327-standards-head">
+      <button class="button small ghost m327-standards-back" type="button" data-m327-standards-back>← Zurück</button>
+      <div class="m327-standards-head-copy">
+        <span class="m327-standards-kicker">Fanbus</span>
+        <h3>Meine Fanbus-Standards</h3>
+        <p>Vorgaben für neue Fanbus-Anmeldungen festlegen</p>
+      </div>
+    </div>
+    <form class="m327-standards-card" data-p300-fanbus-standards-form>
+      <p class="m327-standards-note">Diese Werte werden bei neuen Anmeldungen vorausgewählt. Der Buswunsch wird nur bei Fahrten mit aktivierter Buswahl verwendet.</p>
+      <div class="m327-standards-fields">
+        <label class="m327-standards-field">Standard-Zustieg
+          <select name="defaultBoardingStopId">
+            <option value="">Kein Standard</option>
+            ${stops.map(stop => `<option value="${escapeAttr(stop.id)}"${stop.id === preference?.defaultBoardingStopId ? " selected" : ""}>${escapeHtml(stop.label)}</option>`).join("")}
+          </select>
+        </label>
+        <label class="m327-standards-field">Standard-Buswunsch
+          <select name="defaultBusPreference" required>${preferenceOptions(selectedBus)}</select>
+        </label>
+      </div>
+      <div class="m327-standards-actions">
+        <button class="button primary" type="submit">Standards speichern</button>
+      </div>
+    </form>`;
+
+  panel.querySelector("[data-m327-standards-back]")?.addEventListener("click", restoreTripsPanel);
+  const form = panel.querySelector("[data-p300-fanbus-standards-form]");
+  form?.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!(form instanceof HTMLFormElement) || !form.reportValidity()) return;
+    const submit = form.querySelector('button[type="submit"]');
+    if (submit instanceof HTMLButtonElement) submit.disabled = true;
+    const values = Object.fromEntries(new FormData(form).entries());
+    const payload = {
+      defaultBoardingStopId: String(values.defaultBoardingStopId || "") || null,
+      defaultBusPreference: normalizeBusPreference(values.defaultBusPreference)
+    };
+    if (Number(preference?.revision) > 0) payload.expectedRevision = Number(preference.revision);
+    try {
+      const result = await runWrite(
+        () => call("fanbus_user_preference_set", payload),
+        "Fanbus-Standards gespeichert."
+      );
+      preference.revision = result?.revision ?? preference.revision;
+      preference.defaultBoardingStopId = result?.defaultBoardingStopId ?? payload.defaultBoardingStopId;
+      preference.defaultBusPreference = result?.defaultBusPreference ?? payload.defaultBusPreference;
+      selfBusPreference = normalizeBusPreference(preference.defaultBusPreference);
+      selfPreferenceLoaded = true;
+    } catch (error) {
+      showToast(error?.message || "Fanbus-Standards konnten nicht gespeichert werden.", "error", 5200);
+    } finally {
+      if (submit instanceof HTMLButtonElement && submit.isConnected) submit.disabled = false;
+    }
+  });
+  return panel;
+}
+
+async function openFanbusStandards() {
+  const surface = document.querySelector("#m310FanbusPage .v4-module-surface");
+  const tripsPanel = document.getElementById("m327TripsPanel");
+  if (!(surface instanceof HTMLElement) || !(tripsPanel instanceof HTMLElement)) {
+    throw new Error("Fanbus-Bereich ist nicht verfügbar.");
+  }
+
+  const existing = document.getElementById(STANDARDS_PANEL_ID);
+  if (existing) {
+    tripsPanel.hidden = true;
+    existing.hidden = false;
+    return;
+  }
+
+  const preference = await call("fanbus_user_preference_get", {});
+  const panel = buildStandardsPanel(preference || {});
+  const bookingsPanel = document.getElementById("m327MyBookingsPanel");
+  if (bookingsPanel instanceof HTMLElement) bookingsPanel.hidden = true;
+  tripsPanel.hidden = true;
+  surface.append(panel);
+  panel.querySelector("select")?.focus({ preventScroll: true });
 }
 
 function bindStandardsButton() {
@@ -199,6 +296,7 @@ function bindStandardsButton() {
 }
 
 function scan() {
+  injectStandardsStyles();
   bindStandardsButton();
   applyPublicSelfBusDefault();
 }
