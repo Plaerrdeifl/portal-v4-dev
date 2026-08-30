@@ -1,3 +1,5 @@
+import "./m328-final-acceptance.js?v=20260830-m328-final-acceptance1";
+
 function installM328TripEditIosFieldFix() {
   if (document.getElementById("m328TripEditIosFieldFix")) return;
 
