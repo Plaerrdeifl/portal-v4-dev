@@ -74,6 +74,7 @@ test("PWA guidance remains active under the current shell release", () => {
   const shellRelease = "20260829-m328-r1-native-actions1";
   const workspaceRelease = "20260830-m328-native-workspaces1";
   const participantRelease = "20260830-m328-participant-mobile1";
+  const finalM328Release = "20260830-m328-final-bus-management1";
   const cache = "pd-portal-v4-pwa-install-guidance-r1-20260802";
 
   assert.match(
@@ -82,7 +83,7 @@ test("PWA guidance remains active under the current shell release", () => {
   );
   assert.match(
     index,
-    new RegExp(`src="\\./js/app\\.js\\?v=${shellRelease}&venue=2&m328workspaces=${workspaceRelease}&participants=${participantRelease}"`)
+    new RegExp(`src="\\./js/app\\.js\\?v=${shellRelease}&venue=2&m328workspaces=${workspaceRelease}&participants=${participantRelease}&m328final=${finalM328Release}"`)
   );
   assert.match(
     index,
