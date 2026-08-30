@@ -26,14 +26,20 @@ test("fanbus booking emails render a consistent booking reference and help block
   assert.match(worker, /const FANBUS_CONTACT_EMAIL = "fanbus@plaerrdeifl\.de"/);
   assert.match(worker, /const FANBUS_WHATSAPP_USERNAME = "@plaerrdeifl"/);
   assert.match(worker, /const FANBUS_WHATSAPP_URL = "https:\/\/wa\.me\/plaerrdeifl"/);
+  assert.match(worker, /const FANBUS_LUCA_PHONE = "0174 6681046"/);
+  assert.match(worker, /const FANBUS_PASCAL_PHONE = "0172 9744908"/);
   assert.match(worker, /function fanbusBookingContext\(/);
   assert.match(worker, /Buchungsnummer: \$\{bookingNumber\}/);
   assert.match(worker, /Bitte gib diese Buchungsnummer bei Rückfragen mit an\./);
   assert.match(worker, /Fragen zu deiner Buchung\?/);
-  assert.match(worker, /Oder melde dich direkt bei Luca oder Pascal\./);
   assert.match(worker, /WhatsApp: \$\{FANBUS_WHATSAPP_USERNAME\}/);
+  assert.match(worker, /Luca: \$\{FANBUS_LUCA_PHONE\}/);
+  assert.match(worker, /Pascal: \$\{FANBUS_PASCAL_PHONE\}/);
+  assert.match(worker, /Oder melde dich direkt bei Luca oder Pascal\./);
   assert.match(worker, /href="\$\{FANBUS_WHATSAPP_URL\}"/);
   assert.match(worker, /mailto:\$\{FANBUS_CONTACT_EMAIL\}/);
+  assert.match(worker, /tel:\+491746681046/);
+  assert.match(worker, /tel:\+491729744908/);
   assert.match(worker, /\^\(\?:FB\|DEV\)-\[0-9\]\{2\}-\[0-9\]\{6,\}\$/);
 });
 
