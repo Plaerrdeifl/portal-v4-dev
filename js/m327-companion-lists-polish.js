@@ -1,9 +1,9 @@
 import {
   setupM327CompanionListsPolish as setupM327CompanionListsTapBase
-} from "./m327-companion-lists-tap-base.js?v=20260830-m327-companion-stable1";
+} from "./m327-companion-lists-tap-base.js?v=20260830-m327-companion-stable2";
 import {
   setupM327CompanionListsFinalPolish
-} from "./m327-companion-lists-final-polish.js?v=20260830-m327-companion-final2";
+} from "./m327-companion-lists-final-polish.js?v=20260830-m327-companion-final3";
 
 export function setupM327CompanionListsPolish() {
   setupM327CompanionListsTapBase();
