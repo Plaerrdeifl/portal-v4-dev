@@ -26,11 +26,6 @@ function formatTime(value) {
   return match ? `${match[1]}:${match[2]} Uhr` : "Uhrzeit offen";
 }
 
-function eventLabel(event) {
-  const venue = String(event?.venue || "").trim() || "Spielort noch offen";
-  return `${formatDate(event?.eventDate)} · ${formatTime(event?.eventTime)} · ${venue}`;
-}
-
 function ensureStyle() {
   if (document.getElementById("m328TripCreateStyle")) return;
   const style = document.createElement("style");
@@ -62,8 +57,8 @@ function render(root, events) {
     <form class="m328-trip-create-panel" data-m328-trip-create-form>
       <h3>Termin auswählen</h3>
       <div class="m328-trip-create-events">
-        ${events.map((event, index) => `<label class="m328-trip-create-event">
-          <input type="radio" name="eventId" value="${escapeAttr(event.id)}"${index === 0 ? " checked" : ""}>
+        ${events.map(event => `<label class="m328-trip-create-event">
+          <input type="radio" name="eventId" value="${escapeAttr(event.id)}" required>
           <span><strong>${escapeHtml(String(event.venue || "Spielort noch offen"))}</strong><small>${escapeHtml(`${formatDate(event.eventDate)} · ${formatTime(event.eventTime)}`)}</small></span>
           <span class="m328-trip-create-event-mark" aria-hidden="true"></span>
         </label>`).join("")}
