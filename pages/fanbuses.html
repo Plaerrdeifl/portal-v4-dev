@@ -5,16 +5,27 @@
         <div class="v4-m310-heading-copy">
           <div class="v4-m310-heading-title-row">
             <h3>Fanbusfahrten</h3>
-            <div id="m310FanbusManagement" class="v4-action-menu">
+          </div>
+          <p>Fahrten entdecken und anmelden</p>
+          <div class="m327-fanbus-user-actions">
+            <div id="m310FanbusManagement" class="v4-action-menu m327-personal-fanbus-menu">
               <button
                 id="m310FanbusActionToggle"
-                class="icon-button v4-action-menu-toggle"
+                class="button small secondary m327-personal-fanbus-toggle"
                 type="button"
-                aria-label="Fanbus-Aktionen öffnen"
+                aria-label="Buchungen und Einstellungen öffnen"
+                aria-haspopup="menu"
                 aria-controls="m310FanbusActionMenu"
                 aria-expanded="false"
-              >⚙️</button>
-              <div id="m310FanbusActionMenu" class="v4-action-menu-panel" role="menu" hidden>
+              ><span aria-hidden="true">🎟️</span><span>Buchungen &amp; Einstellungen</span></button>
+              <div id="m310FanbusActionMenu" class="v4-action-menu-panel m327-personal-fanbus-panel" role="menu" hidden>
+                <button
+                  id="m327MyBookingsTab"
+                  type="button"
+                  role="menuitem"
+                  aria-controls="m327MyBookingsPanel"
+                  aria-selected="false"
+                >Meine Buchungen</button>
                 <button id="m325UserFanbusStandardsButton" type="button" role="menuitem">Meine Fanbus-Standards</button>
                 <button id="m325CompanionListsButton" type="button" role="menuitem">Meine Mitfahrer</button>
                 <button id="m326RegularRidersButton" type="button" role="menuitem" hidden>Stammfahrer</button>
@@ -23,16 +34,6 @@
                 <button id="m310AddTripButton" type="button" role="menuitem" hidden>Fanbusfahrt anlegen</button>
               </div>
             </div>
-          </div>
-          <p>Fahrten entdecken und anmelden</p>
-          <div class="m327-fanbus-user-actions">
-            <button
-              id="m327MyBookingsTab"
-              class="button small secondary m327-my-bookings-entry"
-              type="button"
-              aria-controls="m327MyBookingsPanel"
-              aria-selected="false"
-            >🎟️ Meine Buchungen</button>
           </div>
         </div>
       </div>
@@ -70,14 +71,38 @@
 <style>
   .m327-fanbus-user-actions{
     display:flex;
-    align-items:center;
+    align-items:stretch;
+    gap:8px;
     margin-top:12px;
   }
 
-  .m327-my-bookings-entry{
-    width:auto;
-    min-height:40px;
-    padding:8px 12px;
+  .m327-personal-fanbus-menu{
+    position:relative;
+    flex:1 1 auto;
+    min-width:0;
+  }
+
+  .m327-personal-fanbus-toggle{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    width:100%;
+    min-height:44px;
+    padding:8px 11px;
+    white-space:nowrap;
+  }
+
+  .m327-personal-fanbus-panel{
+    top:calc(100% + 8px);
+    right:auto;
+    left:0;
+    width:min(320px,calc(100vw - 42px));
+  }
+
+  .m327-fanbus-user-actions>.m328-bus-orga-entry{
+    flex:0 0 auto;
+    min-height:44px;
   }
 
   #m327MyBookingsPanel{
@@ -358,9 +383,9 @@
       margin-top:10px;
     }
 
-    .m327-my-bookings-entry{
-      min-height:38px;
-      padding:7px 10px;
+    .m327-personal-fanbus-toggle,
+    .m327-fanbus-user-actions>.m328-bus-orga-entry{
+      min-height:42px;
     }
 
     #m327MyBookingsPanel .m327-bookings-view-head{
@@ -396,6 +421,16 @@
   }
 
   @media(max-width:390px){
+    .m327-fanbus-user-actions{
+      gap:6px;
+    }
+
+    .m327-personal-fanbus-toggle{
+      gap:4px;
+      padding-inline:8px;
+      font-size:.72rem;
+    }
+
     #m327MyBookingsPanel .m327-bookings-view-head{
       align-items:center;
     }
