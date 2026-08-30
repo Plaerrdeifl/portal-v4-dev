@@ -18,8 +18,10 @@ function tripDetailHash(tripId) {
 function relabelBackButtons() {
   if (!routeState()) return;
   document.querySelectorAll(BACK_SELECTOR).forEach(button => {
-    button.textContent = "← Fahrt";
-    button.setAttribute("aria-label", "Zur Fahrt zurück");
+    if (button.textContent !== "← Fahrt") button.textContent = "← Fahrt";
+    if (button.getAttribute("aria-label") !== "Zur Fahrt zurück") {
+      button.setAttribute("aria-label", "Zur Fahrt zurück");
+    }
   });
 }
 
