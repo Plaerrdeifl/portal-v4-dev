@@ -8,6 +8,7 @@ const MAX_EMAIL_HEADER_LENGTH = 998;
 const MAX_SMTP_RESPONSE_BYTES = 256 * 1024;
 const PROVIDER_TIMEOUT_MS = 15_000;
 const BATCH_LIMIT = 5;
+const FANBUS_CONTACT_EMAIL = "fanbus@plaerrdeifl.de";
 
 type Channel = "EMAIL" | "PUSH";
 
@@ -441,6 +442,53 @@ function emailShell(textBody: string, htmlBody: string, link: string): EmailCont
     text: `${textBody}${linkText}`,
     html: `${htmlBody}${linkHtml}`
   };
+}
+
+function fanbusBookingContext(data: Record<string, unknown>) {
+  const bookingNumber = asString(data.bookingNumber, 40).trim();
+  if (!/^(?:FB|DEV)-[0-9]{2}-[0-9]{6,}$/.test(bookingNumber)) return null;
+
+  return {
+    text: `\n\nBuchungsnummer: ${bookingNumber}\nBitte gib diese Buchungsnummer bei Rückfragen mit an.\n\nFragen zu deiner Buchung?\nE-Mail: ${FANBUS_CONTACT_EMAIL}\nOder melde dich direkt bei Luca oder Pascal.`,
+    html: `<section><p><strong>Buchungsnummer:</strong> ${escapeHtml(bookingNumber)}<br><small>Bitte gib diese Buchungsnummer bei Rückfragen mit an.</small></p><p><strong>Fragen zu deiner Buchung?</strong><br>E-Mail: <a href="mailto:${FANBUS_CONTACT_EMAIL}">${FANBUS_CONTACT_EMAIL}</a><br>Oder melde dich direkt bei Luca oder Pascal.</p></section>`
+  };
+}
+
+function withFanbusBookingContext(claim: Claim, email: EmailContent): EmailContent {
+  const key = asString(claim.payload.templateKey, 120);
+  if (!key.startsWith("fanbus.")) return email;
+
+  const context = fanbusBookingContext(templateData(claim));
+  if (!context) return email;
+
+  const legacyContactText = /\n\nDu möchtest deine Anmeldung ändern oder stornieren\? Bitte wende dich an unsere BUS_ORGA\.(?:\n[^\n]+)*(?=\n\nViele Grüße)/;
+  const legacyContactHtml = /<section><p><strong>Du möchtest deine Anmeldung ändern oder stornieren\?<\/strong><br>Bitte wende dich an unsere BUS_ORGA\.<\/p>(?:<ul>[\s\S]*?<\/ul>)?<\/section>/;
+  let text = email.text.replace(legacyContactText, "");
+  let html = email.html.replace(legacyContactHtml, "");
+
+  const textClosing = "\n\nViele Grüße\nDeine Plärrdeifl";
+  const htmlClosing = "<p>Viele Grüße<br>Deine Plärrdeifl</p>";
+  const textLink = "\n\nIm Portal öffnen:";
+  const htmlLink = '<p><a href="';
+
+  if (text.includes(textClosing)) {
+    text = text.replace(textClosing, `${context.text}${textClosing}`);
+  } else if (text.includes(textLink)) {
+    text = text.replace(textLink, `${context.text}${textLink}`);
+  } else {
+    text += context.text;
+  }
+
+  if (html.includes(htmlClosing)) {
+    html = html.replace(htmlClosing, `${context.html}${htmlClosing}`);
+  } else {
+    const linkIndex = html.indexOf(htmlLink);
+    html = linkIndex >= 0
+      ? `${html.slice(0, linkIndex)}${context.html}${html.slice(linkIndex)}`
+      : `${html}${context.html}`;
+  }
+
+  return { ...email, text, html };
 }
 
 function buildEmail(config: RuntimeConfig, claim: Claim): EmailContent {
@@ -1109,7 +1157,8 @@ async function sendWithWebPush(
 async function deliver(config: RuntimeConfig, claim: Claim): Promise<DeliveryResult> {
   if (claim.channel === "EMAIL") {
     try {
-      return await sendWithSmtp(config, claim, buildEmail(config, claim));
+      const email = withFanbusBookingContext(claim, buildEmail(config, claim));
+      return await sendWithSmtp(config, claim, email);
     } catch (error) {
       if (error instanceof DispatchError) {
         return { success: false, retryable: false, errorCode: error.code };
