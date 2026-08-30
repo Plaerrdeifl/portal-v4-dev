@@ -157,12 +157,25 @@ export async function hydratePage(key, context = {}) {
   }
   if (key === "bus-orga") {
     const view = currentBusOrgaView();
-    if (view === "trip-detail") {
+    if (view === "trip-create") {
       return feature(
+        "./modules/bus-orga-trip-create.js?v=20260830-m328-trip-create-native1",
+        "hydrateBusOrgaTripCreate",
+        context
+      );
+    }
+    if (view === "trip-detail") {
+      const result = await feature(
         "./modules/bus-orga-trip-detail.js?v=20260830-m328-final-bus-management1",
         "hydrateBusOrgaTripDetail",
         context
       );
+      await feature(
+        "./modules/m328-bus-orga-final-fixes.js?v=20260830-m328-create-publish1",
+        "setupM328BusOrgaFinalFixes",
+        context
+      );
+      return result;
     }
     if (view === "bookings") {
       return feature(
@@ -206,6 +219,11 @@ export async function hydratePage(key, context = {}) {
     await feature(
       "./modules/bus-orga-registration-flow-wording.js?v=20260829-m328-r1-flow-wording2",
       "setupM328RegistrationFlowWording",
+      context
+    );
+    await feature(
+      "./modules/m328-bus-orga-final-fixes.js?v=20260830-m328-create-publish1",
+      "setupM328BusOrgaFinalFixes",
       context
     );
     return result;
