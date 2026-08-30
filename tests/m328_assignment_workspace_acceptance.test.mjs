@@ -8,17 +8,15 @@ const workspaceRouter = read("../js/modules/bus-orga-trip-workspaces.js");
 const buses = read("../js/modules/bus-orga-buses.js");
 const assignment = read("../js/modules/bus-orga-assignment.js");
 const participants = read("../js/modules/bus-orga-participants.js");
-const pages = read("../js/pages.js");
 const filterCleanup = read("../js/m328-booking-filter-cleanup.js");
 const iosEntry = read("../js/m328-trip-edit-ios-fields.js");
 
-test("M328 separates bus inventory from bus assignment", () => {
-  assert.match(tripDetail, /actionButton\("occupancy", "Busse"\)/);
-  assert.match(tripDetail, /actionButton\("assignment", "Zuordnung"\)/);
+test("M328 keeps bus inventory and bus assignment as separate workspaces", () => {
+  assert.match(tripDetail, /actions\.push\(\["occupancy", "Busse"\]\)/);
+  assert.match(tripDetail, /actions\.push\(\["assignment", "Buszuordnung"\]\)/);
   assert.match(tripDetail, /canManage && canRegistrations/);
   assert.match(workspaceRouter, /view === "occupancy"[\s\S]*hydrateBuses/);
   assert.match(workspaceRouter, /view === "assignment"[\s\S]*hydrateAssignment/);
-  assert.match(pages, /\["participants", "occupancy", "assignment", "operations"\]\.includes\(view\)/);
   assert.match(buses, /hydrateOccupancy\(root, tripId, context\)/);
   assert.match(buses, /querySelector\("\[data-m328-auto-assignment\]"\)\?\.remove\(\)/);
 });

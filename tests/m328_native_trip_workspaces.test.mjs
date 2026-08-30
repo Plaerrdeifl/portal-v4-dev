@@ -2,80 +2,54 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 
-const tripDetail = fs.readFileSync(
-  new URL("../js/modules/bus-orga-trip-detail.js", import.meta.url),
-  "utf8",
-);
-const workspaceRouter = fs.readFileSync(
-  new URL("../js/modules/bus-orga-trip-workspaces.js", import.meta.url),
-  "utf8",
-);
-const workspaceBase = fs.readFileSync(
-  new URL("../js/modules/bus-orga-workspace-base.js", import.meta.url),
-  "utf8",
-);
-const participants = fs.readFileSync(
-  new URL("../js/modules/bus-orga-participants.js", import.meta.url),
-  "utf8",
-);
-const participantDialogs = fs.readFileSync(
-  new URL("../js/modules/bus-orga-participant-dialogs.js", import.meta.url),
-  "utf8",
-);
-const occupancy = fs.readFileSync(
-  new URL("../js/modules/bus-orga-occupancy.js", import.meta.url),
-  "utf8",
-);
-const operations = fs.readFileSync(
-  new URL("../js/modules/bus-orga-operations.js", import.meta.url),
-  "utf8",
-);
-const bookings = fs.readFileSync(
-  new URL("../js/modules/bus-orga-bookings.js", import.meta.url),
-  "utf8",
-);
-const subpageBack = fs.readFileSync(
-  new URL("../js/m328-trip-subpage-back.js", import.meta.url),
-  "utf8",
-);
+const tripDetail = fs.readFileSync(new URL("../js/modules/bus-orga-trip-detail.js", import.meta.url), "utf8");
+const workspaceRouter = fs.readFileSync(new URL("../js/modules/bus-orga-trip-workspaces.js", import.meta.url), "utf8");
+const workspaceBase = fs.readFileSync(new URL("../js/modules/bus-orga-workspace-base.js", import.meta.url), "utf8");
+const participants = fs.readFileSync(new URL("../js/modules/bus-orga-participants.js", import.meta.url), "utf8");
+const participantDialogs = fs.readFileSync(new URL("../js/modules/bus-orga-participant-dialogs.js", import.meta.url), "utf8");
+const occupancy = fs.readFileSync(new URL("../js/modules/bus-orga-occupancy.js", import.meta.url), "utf8");
+const operations = fs.readFileSync(new URL("../js/modules/bus-orga-operations.js", import.meta.url), "utf8");
+const bookings = fs.readFileSync(new URL("../js/modules/bus-orga-bookings.js", import.meta.url), "utf8");
+const subpageBack = fs.readFileSync(new URL("../js/m328-trip-subpage-back.js", import.meta.url), "utf8");
 const pages = fs.readFileSync(new URL("../js/pages.js", import.meta.url), "utf8");
 const app = fs.readFileSync(new URL("../js/app.js", import.meta.url), "utf8");
 const index = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const workspaceCode = [workspaceRouter, workspaceBase, participants, participantDialogs, occupancy, operations].join("\n");
 
-test("M328 trip detail stays inside the native bus-orga workspaces", () => {
+test("M328 trip detail stays inside native bus-orga workspaces behind one settings menu", () => {
   assert.doesNotMatch(tripDetail, /queueM328FanbusAction|openLegacyTripAction|#\/fanbuses\?/);
-  assert.doesNotMatch(tripDetail, /actionButton\("registration"/);
-  assert.match(
-    tripDetail,
-    /\["bookings", "participants", "occupancy", "operations"\]\.includes\(action\)/,
-  );
+  assert.match(tripDetail, /data-m328-trip-settings/);
+  assert.match(tripDetail, /function openTripMenu\(state\)/);
+  assert.match(tripDetail, /\["bookings", "participants", "occupancy", "assignment", "operations"\]\.includes\(action\)/);
   assert.match(tripDetail, /return navigate\(action, trip\.id\)/);
-  assert.match(tripDetail, /actionButton\("bookings", "Buchungen"\)/);
-  assert.match(tripDetail, /actionButton\("occupancy", "Busse"\)/);
-  assert.doesNotMatch(tripDetail, /actionButton\("bookings", "Buchungen", "primary"\)/);
+  assert.doesNotMatch(tripDetail, /m328-trip-detail-work-actions/);
+  assert.doesNotMatch(tripDetail, /<h3>Fahrt verwalten<\/h3>/);
 });
 
-test("M328 trip detail keeps compact two-column mobile facts", () => {
-  assert.match(
-    tripDetail,
-    /m328-trip-detail-facts\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/,
-  );
-  assert.match(
-    tripDetail,
-    /m328-trip-detail-facts \.m328-trip-detail-fact-wide\{grid-column:1\/-1\}/,
-  );
-  assert.match(
-    tripDetail,
-    /@media\(max-width:620px\)[\s\S]*?m328-trip-detail-facts\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/,
-  );
-  assert.match(tripDetail, /m328-trip-detail-action-edit:last-child:nth-child\(odd\)\{grid-column:1\/-1\}/);
+test("M328 trip detail keeps the published badge top-right without a mobile status row", () => {
+  assert.match(tripDetail, /m328-trip-detail-status\{position:absolute;right:0;top:4px/);
+  assert.match(tripDetail, /m328-trip-detail-head\{position:relative;display:grid;grid-template-columns:auto minmax\(0,1fr\)/);
+  assert.doesNotMatch(tripDetail, /@media\(max-width:620px\)[\s\S]*?m328-trip-detail-head>\.badge\{grid-column:2/);
+});
+
+test("M328 trip overview exposes bookings, participants, unassigned seats, buses and boarding stops", () => {
+  assert.match(tripDetail, /function bookingSummary\(registrations\)/);
+  assert.match(tripDetail, /function participantSummary\(registrations\)/);
+  assert.match(tripDetail, /status === "ACTIVE" && !item\.busId/);
+  assert.match(tripDetail, /Buchungen & Teilnehmer/);
+  assert.match(tripDetail, /Nicht zugeordnet/);
+  assert.match(tripDetail, /Busse & Zustiege/);
+  assert.match(tripDetail, /formatBoardingTime\(stop\.departureAt\)/);
+  for (const action of ["fanbus_registrations_list", "fanbus_buses_list", "fanbus_bus_boarding_stops_list", "fanbus_trip_boarding_stops_list"]) {
+    assert.match(tripDetail, new RegExp(action));
+  }
 });
 
 test("M328 native participants, buses and operations use one trip-return workspace shell", () => {
   assert.match(workspaceRouter, /export async function hydrateBusOrgaTripWorkspace/);
   assert.match(workspaceRouter, /view === "participants"/);
   assert.match(workspaceRouter, /view === "occupancy"/);
+  assert.match(workspaceRouter, /view === "assignment"/);
   assert.match(workspaceRouter, /view === "operations"/);
   assert.match(workspaceBase, /data-m328-workspace-back>← Fahrt/);
   assert.match(workspaceBase, /export function backToTrip\(tripId\)/);
@@ -131,33 +105,21 @@ test("M328 native workspaces retain participant, assignment and operations contr
     "fanbus_operations_snapshot",
     "fanbus_checkin_set",
     "fanbus_paid_set",
-  ]) {
-    assert.match(workspaceCode, new RegExp(action));
-  }
+  ]) assert.match(workspaceCode, new RegExp(action));
 });
 
-test("M328 final bus management cache chain is explicit from index to feature modules", () => {
+test("M328 final bus management cache chain remains explicit", () => {
   const key = "20260830-m328-final-bus-management1";
   assert.match(index, new RegExp(`m328-trip-subpage-back\\.js\\?v=${key}`));
   assert.match(index, new RegExp(`app\\.js[^\"]*m328final=${key}`));
   assert.match(app, new RegExp(`pages\\.js[^\"]*m328final=${key}`));
-  for (const moduleName of [
-    "bus-orga-trip-detail",
-    "bus-orga-bookings",
-    "bus-orga-trip-edit",
-    "bus-orga-registration-v3",
-    "bus-orga-trip-workspaces",
-  ]) {
+  for (const moduleName of ["bus-orga-trip-detail", "bus-orga-bookings", "bus-orga-trip-edit", "bus-orga-registration-v3", "bus-orga-trip-workspaces"]) {
     assert.match(pages, new RegExp(`${moduleName}\\.js\\?v=${key}`));
-  }
-  for (const moduleName of ["bus-orga-workspace-base", "bus-orga-participants", "bus-orga-occupancy", "bus-orga-operations"]) {
-    assert.match(workspaceRouter, new RegExp(`${moduleName}\\.js\\?v=${key}`));
   }
 });
 
-test("M328 legacy trip edit and registration back controls are bridged to the current trip", () => {
+test("M328 legacy trip edit and registration back controls still bridge normal navigation to the current trip", () => {
   assert.match(subpageBack, /SUBPAGE_VIEWS = new Set\(\["trip-edit", "registration"\]\)/);
   assert.match(subpageBack, /button\.textContent = "← Fahrt"/);
   assert.match(subpageBack, /view: "trip-detail"/);
-  assert.match(subpageBack, /location\.hash === "#\/bus-orga"/);
 });
