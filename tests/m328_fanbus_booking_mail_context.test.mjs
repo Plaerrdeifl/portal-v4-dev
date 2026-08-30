@@ -23,13 +23,15 @@ test("M328 keeps readable booking-number enrichment in the central email wrapper
   assert.match(wrapper, /jsonb_build_object\('bookingNumber',v_booking_number\)/);
 });
 
-test("one central fanbus organization contact owns every booking-mail contact value", () => {
+test("one central fanbus organization contact owns verified booking-mail contact values", () => {
   assert.match(contactMigration, /'fanbus\.organization_contact'/);
   assert.match(contactMigration, /'fanbus@plaerrdeifl\.de'/);
   assert.match(contactMigration, /'Luca'[\s\S]*?'0174 6681046'[\s\S]*?'tel:\+491746681046'/);
   assert.match(contactMigration, /'Pascal'[\s\S]*?'0172 9744908'[\s\S]*?'tel:\+491729744908'/);
-  assert.match(contactMigration, /'username', '@plaerrdeifl'/);
-  assert.match(contactMigration, /'url', 'https:\/\/wa\.me\/plaerrdeifl'/);
+  assert.match(contactMigration, /'whatsapp', '\{\}'::jsonb/);
+  assert.doesNotMatch(contactMigration, /'username', '@plaerrdeifl'/);
+  assert.doesNotMatch(contactMigration, /'url', 'https:\/\/wa\.me\/plaerrdeifl'/);
+  assert.match(contactMigration, /Kein WhatsApp-Wert wird geraten/);
   assert.match(contactMigration, /create or replace function app_private\.fanbus_public_organization_contact\(\)/);
   assert.match(contactMigration, /'whatsapp', coalesce\(normalized\.whatsapp, '\{\}'::jsonb\)/);
 
