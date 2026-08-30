@@ -55,36 +55,12 @@ function eventTime(value) {
   return match ? `${match[1]}:${match[2]} Uhr` : "Uhrzeit offen";
 }
 
-function lifecycleLabel(value) {
-  return {
-    DRAFT: "Entwurf",
-    PUBLISHED: "Veröffentlicht",
-    CLOSED: "Geschlossen",
-    CANCELLED: "Abgesagt"
-  }[value] || value || "–";
-}
-
-function lifecycleBadge(value) {
-  const type = value === "PUBLISHED"
-    ? "success"
-    : value === "DRAFT"
-      ? "warning"
-      : value === "CANCELLED"
-        ? "danger"
-        : "neutral";
-  return `<span class="badge ${type}">${escapeHtml(lifecycleLabel(value))}</span>`;
-}
-
 function relevantTrips(items) {
   const today = new Date();
   const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   return items
     .filter(trip => String(trip?.eventDate || "") >= localToday || ["DRAFT", "PUBLISHED"].includes(trip?.status))
     .sort((left, right) => `${left.eventDate || ""} ${left.eventTime || ""}`.localeCompare(`${right.eventDate || ""} ${right.eventTime || ""}`));
-}
-
-function nextTrip(items) {
-  return relevantTrips(items).find(trip => trip.status !== "CANCELLED") || null;
 }
 
 function allowedActions() {
@@ -112,9 +88,33 @@ function ensureStyle() {
   const style = document.createElement("style");
   style.id = "m328QuickChangeStyle";
   style.textContent = `
-    .m328-quick-change[hidden]{display:none!important}.m328-quick-change .m328-workspace-grid{border-top:1px solid var(--line)}
-    .m328-quick-picker-head{display:flex;align-items:center;gap:8px;padding:9px 11px;border-bottom:1px solid var(--line)}.m328-quick-picker-head strong{font-size:.82rem;line-height:1.2}.m328-quick-picker-head .button{min-height:34px;padding:5px 8px;font-size:.68rem}
-    .m328-quick-trip-list{display:grid}.m328-quick-trip{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;width:100%;min-height:55px;padding:9px 12px;border:0;border-bottom:1px solid var(--line);background:transparent;color:inherit;text-align:left}.m328-quick-trip:last-child{border-bottom:0}.m328-quick-trip-copy{display:grid;gap:2px}.m328-quick-trip-copy strong{font-size:.8rem;line-height:1.2}.m328-quick-trip-copy small{color:var(--muted);font-size:.66rem}.m328-quick-trip-side{display:flex;align-items:center;gap:6px}.m328-quick-trip-side .badge{font-size:.6rem;padding-inline:7px}.m328-quick-trip-next{color:var(--blue-700);font-size:.6rem;font-weight:850;text-transform:uppercase;letter-spacing:.04em}
+    .m328-quick-change[hidden]{display:none!important}
+    .m328-quick-change .m328-workspace-grid{border-top:1px solid var(--line)}
+    .m328-quick-picker{display:grid;gap:10px;padding:10px 11px}
+    .m328-quick-picker-head{display:flex;align-items:center;gap:8px;min-width:0}
+    .m328-quick-picker-head strong{min-width:0;font-size:.82rem;line-height:1.2}
+    .m328-quick-picker-head .button{flex:0 0 auto;min-height:34px;padding:5px 8px;font-size:.68rem}
+    .m328-quick-game-row{
+      display:grid;
+      grid-template-columns:46px minmax(0,1fr);
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
+    .m328-quick-game-row>span{
+      font-size:.74rem;
+      font-weight:850;
+      color:var(--ink);
+    }
+    .m328-quick-game-row select{
+      display:block;
+      width:100%;
+      min-width:0;
+      min-height:42px;
+      margin:0;
+      box-sizing:border-box;
+      font-size:.76rem;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -166,19 +166,39 @@ function renderActionList(section, actions) {
   });
 }
 
+function tripOption(trip) {
+  const venue = String(trip.venue || "").trim() || trip.displayTitle || "Fanbusfahrt";
+  return `<option value="${escapeAttr(trip.id)}">${escapeHtml(`${formatShortDate(trip.eventDate)} · ${venue} · ${eventTime(trip.eventTime)}`)}</option>`;
+}
+
 function renderTripPicker(section, items, action) {
   const body = section.querySelector("#m328QuickChangeBody");
   const config = QUICK_ACTIONS[action];
   if (!body || !config) return;
   const trips = tripsForAction(items, action);
-  const next = nextTrip(trips);
-  body.innerHTML = `<div class="m328-quick-picker-head"><button class="button small ghost" type="button" data-m328-quick-back>← Schnelländerung</button><strong>${escapeHtml(config.title)}</strong></div><div class="m328-quick-trip-list">${trips.length ? trips.map(trip => {
-    const venue = String(trip.venue || "").trim() || trip.displayTitle || "Fanbusfahrt";
-    return `<button class="m328-quick-trip" type="button" data-m328-quick-trip="${escapeAttr(trip.id)}"><span class="m328-quick-trip-copy">${next?.id === trip.id ? '<span class="m328-quick-trip-next">Nächste Fahrt</span>' : ""}<strong>${escapeHtml(`${formatShortDate(trip.eventDate)} · ${venue}`)}</strong><small>${escapeHtml(eventTime(trip.eventTime))}</small></span><span class="m328-quick-trip-side">${lifecycleBadge(trip.status)}<span class="m328-workspace-chevron" aria-hidden="true">›</span></span></button>`;
-  }).join("") : empty("Für diese Schnelländerung ist aktuell keine passende Fahrt verfügbar.")}</div>`;
-  body.querySelector("[data-m328-quick-back]")?.addEventListener("click", () => { location.hash = "#/bus-orga"; });
-  body.querySelectorAll("[data-m328-quick-trip]").forEach(button => {
-    button.addEventListener("click", () => openTarget(action, button.dataset.m328QuickTrip));
+  const disabled = trips.length ? "" : " disabled";
+  const placeholder = trips.length ? "Spiel auswählen …" : "Kein passendes Spiel verfügbar";
+  body.innerHTML = `
+    <div class="m328-quick-picker">
+      <div class="m328-quick-picker-head">
+        <button class="button small ghost" type="button" data-m328-quick-back>← Schnelländerung</button>
+        <strong>${escapeHtml(config.title)}</strong>
+      </div>
+      <label class="m328-quick-game-row">
+        <span>Spiel</span>
+        <select data-m328-quick-game aria-label="Spiel auswählen"${disabled}>
+          <option value="">${escapeHtml(placeholder)}</option>
+          ${trips.map(tripOption).join("")}
+        </select>
+      </label>
+    </div>
+  `;
+  body.querySelector("[data-m328-quick-back]")?.addEventListener("click", () => {
+    location.hash = "#/bus-orga";
+  });
+  const select = body.querySelector("[data-m328-quick-game]");
+  select?.addEventListener("change", () => {
+    if (select.value) openTarget(action, select.value);
   });
 }
 
