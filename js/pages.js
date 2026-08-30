@@ -150,7 +150,7 @@ export async function hydratePage(key, context = {}) {
   if (key === "fanbuses") {
     const result = await feature("./modules/fanbuses.js?v=20260826-p800-r2-final-direct-fix&groups=20260828-m310-r1&m327=20260828-m327-r1&completion=20260829-m328-final1&correction=20260830-m328-c1", "hydrateFanbuses", context);
     await feature("./m327-r1-acceptance-polish.js?v=20260829-m327-r1-acceptance1", "setupM327AcceptancePolish", context);
-    await feature("./m327-companion-lists-polish.js?v=20260830-m327-companion-tap1", "setupM327CompanionListsPolish", context);
+    await feature("./m327-companion-lists-polish.js?v=20260830-m327-companion-tap2", "setupM327CompanionListsPolish", context);
     await feature("./m327-boarding-stop-details.js?v=20260830-m327-stop-details1", "setupM327BoardingStopDetails", context);
     await feature("./m328-bus-orga-shell.js?v=20260829-m328-r1-rider-reactivate2&completion=20260829-m328-final1", "setupM328BusOrgaShell", context);
     return result;
@@ -159,7 +159,7 @@ export async function hydratePage(key, context = {}) {
     const view = currentBusOrgaView();
     if (view === "trip-create") {
       return feature(
-        "./modules/bus-orga-trip-create.js?v=20260830-m328-trip-create-native1",
+        "./modules/bus-orga-trip-create.js?v=20260830-m328-trip-create-native2",
         "hydrateBusOrgaTripCreate",
         context
       );
