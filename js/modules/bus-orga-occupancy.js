@@ -33,7 +33,7 @@ function occupancyCard(state, bus) {
   const stops = (mapping?.tripBoardingStopIds || []).map(id => stopLabels.get(id)).filter(Boolean);
   const canAct = state.canManage && !state.readOnly;
   return `<article class="m328-occupancy-card" data-m328-bus-id="${escapeAttr(bus.id)}"${canAct ? ` role="button" tabindex="0" aria-label="${escapeAttr(`${bus.label} verwalten`)}"` : ""}>
-    <div class="m328-card-head"><div><strong>${escapeHtml(bus.label)}</strong><div class="m328-card-meta"><span>${escapeHtml(busCategoryLabel(bus.category))}${bus.isActive === false ? " · inaktiv" : ""}</span></div></div><span>${escapeHtml(occupancy)} / ${escapeHtml(bus.capacity)} belegt</span></div>
+    <div class="m328-card-head"><div><strong>${escapeHtml(bus.label)}</strong><div class="m328-card-meta"><span>${escapeHtml(busCategoryLabel(bus.category))}${bus.isActive === false ? " · inaktiv" : ""}</span></div></div><span>${escapeHtml(String(occupancy))} / ${escapeHtml(String(bus.capacity ?? 0))} belegt</span></div>
     <p class="m328-occupancy-stops"><strong>Zustiege:</strong> ${escapeHtml(stops.length ? stops.join(" · ") : "Keine zugeordnet")}</p>
     ${canAct ? '<span class="m328-card-chevron" aria-hidden="true">›</span>' : ""}
   </article>`;
@@ -49,7 +49,7 @@ function renderOccupancy(state) {
       ${hasCapability("fanbus.registrations.manage") && !state.readOnly ? '<button class="m328-auto-assignment" type="button" data-m328-auto-assignment><span><strong>Automatische Buszuordnung</strong><small>Neue Teilnehmer anhand Kapazität, Zustieg und Buswunsch verteilen.</small></span><span aria-hidden="true">›</span></button>' : ""}
     </section>
     <section class="m328-occupancy-list" aria-label="Busse">${visibleBuses.map(bus => occupancyCard(state, bus)).join("") || empty("Für diese Fahrt sind noch keine Busse angelegt.")}</section>`;
-  state.root.innerHTML = workspacePage("Busse & Zuordnung", state.trip, content, { className: "m328-occupancy" });
+  state.root.innerHTML = workspacePage("Busse", state.trip, content, { className: "m328-occupancy" });
   bindWorkspaceBack(state.root, state.trip.id);
   state.root.querySelector("[data-m328-bus-create]")?.addEventListener("click", () => openBusForm(state));
   state.root.querySelector("[data-m328-auto-assignment]")?.addEventListener("click", () => void openAssignmentPreview(state));
@@ -138,7 +138,7 @@ function openBusActions(state, bus) {
   const mapping = state.mappings.find(item => item.busId === bus.id);
   const dialog = openDialog({
     title: bus.label,
-    kicker: "Busse & Zuordnung",
+    kicker: "Busse",
     body: `<div class="m328-dialog-actions"><button class="button secondary" type="button" data-m328-bus-edit>Bus bearbeiten</button><button class="button secondary" type="button" data-m328-bus-stops${mapping ? "" : " disabled"}>Zustiege verwalten</button><button class="button danger" type="button" data-m328-bus-delete>Bus löschen</button></div>`
   });
   dialog.querySelector("[data-m328-bus-edit]")?.addEventListener("click", () => openBusForm(state, bus));
@@ -241,7 +241,7 @@ async function openAssignmentPreview(state) {
 }
 
 export async function hydrateOccupancy(root, tripId, context) {
-  if (!hasCapability("fanbus.manage")) throw new Error("Für Busse und Zuordnung fehlt die erforderliche Berechtigung.");
+  if (!hasCapability("fanbus.manage")) throw new Error("Für die Busverwaltung fehlt die erforderliche Berechtigung.");
   const [trip, busData, mappingData, stopData] = await Promise.all([
     loadTrip(tripId),
     call("fanbus_buses_list", { tripId }),
