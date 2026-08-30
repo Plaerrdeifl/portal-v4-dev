@@ -130,7 +130,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260829162000_m328_r1_regular_rider_reactivate.sql",
     "20260829213946_m328_completion_public_trips_dev_booking_numbers.sql",
     "20260829225223_m328_fanbus_draft_defaults.sql",
-    "20260830083113_m020_push_read_outbox_compat.sql"
+    "20260830083113_m020_push_read_outbox_compat.sql",
+    "20260830172000_m327_boarding_stop_public_details.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
@@ -517,7 +518,6 @@ test("archived tasks remain restorable through an audited action", async () => {
     migration,
     /task_can_reopen_or_archive\(v_actor, v_id\)/
   );
-
   assert.match(tasks, /async function restoreTask\(task\)/);
   assert.match(tasks, /call\("restore_task"/);
   assert.match(tasks, /data-restore-task=/);
