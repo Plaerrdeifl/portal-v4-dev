@@ -158,20 +158,47 @@ export async function hydratePage(key, context = {}) {
     const view = currentBusOrgaView();
     if (view === "trip-detail") {
       return feature(
-        "./modules/bus-orga-trip-detail.js?v=20260830-m328-native-workspaces1",
+        "./modules/bus-orga-trip-detail.js?v=20260830-m328-final-bus-management1",
         "hydrateBusOrgaTripDetail",
         context
       );
     }
+    if (view === "bookings") {
+      return feature(
+        "./modules/bus-orga-bookings.js?v=20260830-m328-final-bus-management1",
+        "hydrateBusOrgaBookings",
+        context
+      );
+    }
+    if (view === "trip-edit") {
+      return feature(
+        "./modules/bus-orga-trip-edit.js?v=20260830-m328-final-bus-management1",
+        "hydrateBusOrgaTripEdit",
+        context
+      );
+    }
+    if (view === "registration") {
+      const result = await feature(
+        "./modules/bus-orga-registration-v3.js?v=20260830-m328-final-bus-management1",
+        "hydrateBusOrgaRegistrationV3",
+        context
+      );
+      await feature(
+        "./modules/bus-orga-registration-flow-wording.js?v=20260829-m328-r1-flow-wording2",
+        "setupM328RegistrationFlowWording",
+        context
+      );
+      return result;
+    }
     if (["participants", "occupancy", "operations"].includes(view)) {
       return feature(
-        "./modules/bus-orga-trip-workspaces.js?v=20260830-m328-native-workspaces1&participants=20260830-m328-participant-mobile1",
+        "./modules/bus-orga-trip-workspaces.js?v=20260830-m328-final-bus-management1",
         "hydrateBusOrgaTripWorkspace",
         context
       );
     }
     const result = await feature(
-      "./modules/bus-orga-v3.js?v=20260829-m328-r1-next-trip-venue1&fix=20260829-m328-r1-next-trip-cancelled1&ux=20260829-m328-r1-registration-ux-correction1&modal=20260829-m328-r1-decision-click1&state=20260829-m328-r1-booking-state2&cards=20260829-m328-r1-active-person-cards2&rows=20260829-m328-r1-participant-row-edit1&prepared=20260829-m328-r1-prepared-density1&participant-click=20260829-m328-r1-active-person-click1&completion=20260829-m328-final1&correction=20260830-m328-c2&defaults=20260830-m328-draft-defaults1&tripedit=20260830-m328-trip-edit-compact1&workspaces=20260830-m328-native-workspaces1",
+      "./modules/bus-orga-v3.js?v=20260829-m328-r1-next-trip-venue1&fix=20260829-m328-r1-next-trip-cancelled1&ux=20260829-m328-r1-registration-ux-correction1&modal=20260829-m328-r1-decision-click1&state=20260829-m328-r1-booking-state2&cards=20260829-m328-r1-active-person-cards2&rows=20260829-m328-r1-participant-row-edit1&prepared=20260829-m328-r1-prepared-density1&participant-click=20260829-m328-r1-active-person-click1&completion=20260829-m328-final1&correction=20260830-m328-c2&defaults=20260830-m328-draft-defaults1&tripedit=20260830-m328-trip-edit-compact1&workspaces=20260830-m328-native-workspaces1&final=20260830-m328-final-bus-management1",
       "hydrateBusOrgaV3",
       context
     );
