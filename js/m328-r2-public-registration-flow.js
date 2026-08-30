@@ -244,29 +244,10 @@ function currentUserCanReturnToApp() {
   const current = auth.current();
   if (!current.authenticated || current.status !== "ACTIVE") return false;
   if (window.top !== window.self) return false;
-  if (window.matchMedia?.("(display-mode: standalone)")?.matches) return true;
-  if (!document.referrer) return false;
-  try {
-    const referrer = new URL(document.referrer);
-    if (referrer.origin !== window.location.origin) return false;
-    const appRoot = new URL("./", window.location.href).pathname;
-    return referrer.pathname === appRoot
-      || referrer.pathname === `${appRoot}index.html`;
-  } catch {
-    return false;
-  }
+  return new URLSearchParams(window.location.search).get("source") === "app";
 }
 
 function returnToApp() {
-  try {
-    const referrer = document.referrer ? new URL(document.referrer) : null;
-    if (referrer?.origin === window.location.origin && window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-  } catch {
-    // Fall through to the stable Fanbus route.
-  }
   window.location.assign("./#/fanbuses");
 }
 
