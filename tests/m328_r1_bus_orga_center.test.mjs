@@ -183,7 +183,7 @@ test("M328 ride administration opens a dedicated detail view with all existing a
   assert.match(tripDetailSource, /← Bus-Orga/);
   assert.match(tripDetailSource, /actionButton\("bookings", "Buchungen"/);
   assert.match(tripDetailSource, /actionButton\("participants", "Teilnehmer"/);
-  assert.match(tripDetailSource, /actionButton\("occupancy", "Busse & Zuordnung"/);
+  assert.match(tripDetailSource, /actionButton\("occupancy", "Busse"/);
   assert.match(tripDetailSource, /actionButton\("operations", "Fahrtbetrieb"/);
   assert.match(tripDetailSource, /actionButton\("edit", "Bearbeiten"/);
 });
