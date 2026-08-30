@@ -18,6 +18,7 @@ test("M327 personal companion lists use tap driven list and member rows", () => 
   assert.match(polish, /data-m325-edit-member/);
   assert.match(polish, /role", "button"/);
   assert.match(polish, /event\.key !== "Enter" && event\.key !== " "/);
+  assert.doesNotMatch(polish, /m327-companion-row-chevron";\s*chevron/);
   assert.match(polish, /@media\(max-width:700px\)/);
 });
 
@@ -43,10 +44,21 @@ test("M327 companion polish forwards existing actions instead of adding business
   assert.doesNotMatch(polish, /fanbus_companion_|fanbus_selfservice/);
 });
 
-test("M327 new companion list form stays compact", () => {
-  assert.match(polish, /\.v4-m325-new-list form\{[\s\S]*?grid-template-columns:minmax\(0,1fr\) auto!important/);
-  assert.match(polish, /\.v4-m325-new-list \.button\{[\s\S]*?width:auto!important/);
-  assert.match(polish, /@media\(max-width:350px\)/);
+test("M327 new companion list starts collapsed behind a compact plus action", () => {
+  assert.match(polish, /m327-new-list-toggle/);
+  assert.match(polish, /toggle\.textContent = "\+ Liste"/);
+  assert.match(polish, /newList\.hidden = true/);
+  assert.match(polish, /m327-new-list-panel\[hidden\]\{display:none!important\}/);
+  assert.match(polish, /grid-template-columns:minmax\(0,1fr\) auto!important/);
+});
+
+test("M327 linked portal companions show identity instead of readonly name fields", () => {
+  assert.match(polish, /first\.readOnly/);
+  assert.match(polish, /last\.readOnly/);
+  assert.match(polish, /m327-linked-name-field/);
+  assert.match(polish, /m327-linked-person-summary/);
+  assert.match(polish, /Portaluser · Name wird aus dem Profil übernommen/);
+  assert.match(polish, /textarea\.rows = 3/);
 });
 
 test("M327 companion polish is explicitly versioned from the fanbus page loader", () => {
