@@ -36,6 +36,43 @@ function createLine(className, text) {
   return line;
 }
 
+function appendStructuredNote(item, className, text, prefix = "") {
+  const clean = cleanText(text);
+  if (!clean) return;
+
+  const line = document.createElement("span");
+  line.className = className;
+  const match = /^(Fragen\s*&\s*Anmeldung:)\s*(.*)$/i.exec(clean);
+
+  if (prefix) {
+    const prefixLine = document.createElement("span");
+    prefixLine.className = "m327-trip-stop-note-prefix";
+    prefixLine.textContent = prefix;
+    line.append(prefixLine);
+  }
+
+  if (match) {
+    const label = document.createElement("span");
+    label.className = "m327-trip-stop-note-label";
+    label.textContent = match[1];
+    line.append(label);
+
+    if (match[2]) {
+      const value = document.createElement("span");
+      value.className = "m327-trip-stop-note-value";
+      value.textContent = match[2];
+      line.append(value);
+    }
+  } else {
+    const value = document.createElement("span");
+    value.className = "m327-trip-stop-note-value";
+    value.textContent = clean;
+    line.append(value);
+  }
+
+  item.append(line);
+}
+
 function renderStops(container, stops) {
   if (!(container instanceof HTMLElement) || !Array.isArray(stops) || !stops.length) return;
 
@@ -60,11 +97,9 @@ function renderStops(container, stops) {
 
     const defaultNote = cleanText(stop?.defaultNote);
     const tripNote = cleanText(stop?.tripNote);
-    if (defaultNote) {
-      item.append(createLine("m327-trip-stop-note", `Hinweis: ${defaultNote}`));
-    }
+    appendStructuredNote(item, "m327-trip-stop-note", defaultNote);
     if (tripNote && normalizedText(tripNote) !== normalizedText(defaultNote)) {
-      item.append(createLine("m327-trip-stop-note m327-trip-stop-trip-note", `Fahrthinweis: ${tripNote}`));
+      appendStructuredNote(item, "m327-trip-stop-note m327-trip-stop-trip-note", tripNote, "Fahrthinweis");
     }
 
     list.append(item);
@@ -122,9 +157,11 @@ function injectStyles() {
     .m327-trip-stop-detail{display:grid;gap:2px;padding:9px 11px;min-width:0}
     .m327-trip-stop-detail+.m327-trip-stop-detail{border-top:1px solid var(--line,#d8e2ee)}
     .m327-trip-stop-main{font-size:.96rem;line-height:1.28;overflow-wrap:anywhere}
-    .m327-trip-stop-address,.m327-trip-stop-note{font-size:.78rem;line-height:1.32;overflow-wrap:anywhere}
+    .m327-trip-stop-address,.m327-trip-stop-note{font-size:.78rem;line-height:1.32;overflow-wrap:anywhere;text-transform:none}
     .m327-trip-stop-address{color:var(--muted,#718096)}
-    .m327-trip-stop-note{color:var(--text,#102a43)}
+    .m327-trip-stop-note{display:grid;gap:1px;color:var(--text,#102a43)}
+    .m327-trip-stop-note-label,.m327-trip-stop-note-prefix{display:block;font-weight:750}
+    .m327-trip-stop-note-value{display:block;font-weight:550}
     .m327-trip-stop-trip-note{font-weight:650}
     @media(max-width:620px){
       .v4-m325-trip-stops.m327-trip-stops-enhanced{gap:5px}
