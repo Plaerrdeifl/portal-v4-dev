@@ -37,6 +37,13 @@ test("M328 quick action expands locally without router navigation", () => {
   assert.doesNotMatch(quick, /m328-quick-trip-list/);
 });
 
+test("M328 quick selection closes through the details control instead of an internal back button", () => {
+  assert.doesNotMatch(quick, /data-m328-quick-back/);
+  assert.match(quick, /section\.ontoggle = \(\) => \{/);
+  assert.match(quick, /if \(section\.open\) return;[\s\S]*?clearQuickRouteWithoutNavigation\(\);[\s\S]*?renderActionList\(section, items, actions\);/);
+  assert.match(quick, /m328-quick-picker-title/);
+});
+
 test("M328 quick game selection navigates only after a concrete game was chosen", () => {
   assert.match(quick, /select\?\.addEventListener\("change"/);
   assert.match(quick, /if \(select\.value\) openTarget\(action, select\.value\)/);
@@ -51,7 +58,7 @@ test("M328 quick targets return one step to the selected quick action", () => {
 });
 
 test("M328 quick modules are loaded before the legacy acceptance back interceptor", () => {
-  const quickIndex = iosEntry.indexOf('m328-quick-change.js?v=20260830-m328-quick-change3');
+  const quickIndex = iosEntry.indexOf('m328-quick-change.js?v=20260830-m328-quick-change4');
   const backIndex = iosEntry.indexOf('m328-quick-back.js?v=20260830-m328-quick-back1');
   const acceptanceIndex = iosEntry.indexOf('m328-final-acceptance.js?v=20260830-m328-final-acceptance2');
   assert.ok(quickIndex >= 0);
