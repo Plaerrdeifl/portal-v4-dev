@@ -34,9 +34,9 @@ test("M020 R6 stale push payloads are followed by server-authoritative sync", ()
   );
 });
 
-test("PROD R6 rotates the service-worker shell cache while retaining compatibility markers", () => {
+test("PROD R6 rotates the final service-worker shell cache while retaining compatibility markers", () => {
   assert.match(worker, /const CACHE_VERSION = "pd-portal-v4-m900-platform-mode-r1-20260823"/);
-  assert.match(worker, /const R6_CACHE_VERSION = "pd-portal-v4-prod-r6-readiness-20260830"/);
+  assert.match(worker, /const R6_CACHE_VERSION = "pd-portal-v4-prod-r6-final-20260830"/);
   assert.match(worker, /const APP_CACHE = `\$\{R6_CACHE_VERSION\}-shell`/);
   assert.match(
     worker,
