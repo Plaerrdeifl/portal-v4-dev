@@ -11,10 +11,23 @@ test("M327 collapsed bookings summarize participants and cancellations", () => {
   assert.match(polish, /function bookingParticipantOverview\(card\)/);
   assert.match(polish, /\.m327-participants > \.m327-participant/);
   assert.match(polish, /item\.status !== "Storniert"/);
-  assert.match(polish, /\+ \$\{companions\[0\]\.name\}/);
-  assert.match(polish, /\+ \$\{companions\.length\} Mitfahrer/);
+  assert.match(polish, /companions\.length === 1/);
+  assert.match(polish, /\$\{leadText\} \+ \$\{companions\[0\]\.name\}/);
+  assert.match(polish, /companions\.length > 1/);
+  assert.match(polish, /`Mitfahrer: \$\{item\.name\}`/);
+  assert.match(polish, /summary\.replaceChildren\(\.\.\.rows\)/);
+  assert.match(polish, /m327-booking-overview-line/);
+  assert.match(polish, /data-tone="cancelled"/);
   assert.match(polish, /Buchung storniert/);
   assert.match(polish, /data-m327-booking-cancelled|m327BookingCancelled/);
+});
+
+test("M327 expanded active booking is only subtly highlighted", () => {
+  assert.match(polish, /data-m327-expanded="true"/);
+  assert.match(polish, /:not\(\[data-m327-booking-cancelled="true"\]\)/);
+  assert.match(polish, /background:#f7fbff/);
+  assert.match(polish, /border-color:color-mix\(in srgb,var\(--blue-700\) 20%,var\(--line\)\)/);
+  assert.match(polish, /box-shadow:0 0 0 1px color-mix\(in srgb,var\(--blue-700\) 7%,transparent\)/);
 });
 
 test("M327 personal Fanbus dropdown is compact on mobile", () => {
