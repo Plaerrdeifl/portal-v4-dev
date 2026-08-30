@@ -33,8 +33,11 @@ test("M327 expanded trip cards render address, central hint and optional trip hi
   assert.match(details, /stop\?\.address/);
   assert.match(details, /stop\?\.defaultNote/);
   assert.match(details, /stop\?\.tripNote/);
-  assert.match(details, /Hinweis:/);
-  assert.match(details, /Fahrthinweis:/);
+  assert.doesNotMatch(details, /`Hinweis: \$\{defaultNote\}`/);
+  assert.match(details, /Fragen\\s\*&\\s\*Anmeldung:/);
+  assert.match(details, /m327-trip-stop-note-label/);
+  assert.match(details, /m327-trip-stop-note-value/);
+  assert.match(details, /Fahrthinweis/);
   assert.match(details, /normalizedText\(tripNote\) !== normalizedText\(defaultNote\)/);
 });
 
