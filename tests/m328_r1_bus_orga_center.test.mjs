@@ -122,7 +122,7 @@ test("M328 booking management creates human-readable numbers for every central b
 
 test("M328 booking overview supports edit, whole-booking cancel and participant cancel", () => {
   assert.match(tripDetailSource, /actionButton\("bookings", "Buchungen"/);
-  assert.match(tripDetailSource, /navigate\("bookings", trip\.id\)/);
+  assert.match(tripDetailSource, /return navigate\(action, trip\.id\)/);
   assert.match(nativeSource, /view === "bookings"/);
   assert.match(bookingsSource, /Buchungsnummer oder Name suchen/);
   assert.match(bookingsSource, /data-m328-edit-booking/);
