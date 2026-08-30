@@ -165,7 +165,7 @@ export async function hydratePage(key, context = {}) {
     }
     if (["participants", "occupancy", "operations"].includes(view)) {
       return feature(
-        "./modules/bus-orga-trip-workspaces.js?v=20260830-m328-native-workspaces1",
+        "./modules/bus-orga-trip-workspaces.js?v=20260830-m328-native-workspaces1&participants=20260830-m328-participant-mobile1",
         "hydrateBusOrgaTripWorkspace",
         context
       );
