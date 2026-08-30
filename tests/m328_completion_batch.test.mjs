@@ -66,11 +66,12 @@ test("native detail reuses the existing server actions and all workspaces", () =
     "fanbus_trip_delete",
     "fanbus_trip_cancel"
   ]) assert.match(detail, new RegExp(action));
-  for (const label of ["Buchungen", "Anmeldung", "Teilnehmer", "Busse & Zuordnung", "Bearbeiten", "Fahrtbetrieb"]) {
+  for (const label of ["Buchungen", "Teilnehmer", "Busse & Zuordnung", "Bearbeiten", "Fahrtbetrieb"]) {
     assert.match(detail, new RegExp(label));
   }
+  assert.doesNotMatch(detail, /actionButton\("registration"|>Anmeldung</);
   assert.match(detail, /expectedRevision: Number\(trip\.revision\)/);
-  assert.match(detail, /queueM328FanbusAction\(action, tripId\)/);
+  assert.match(detail, /return navigate\(action, trip\.id\)/);
   assert.match(detail, /@media\(max-width:620px\)/);
 });
 
