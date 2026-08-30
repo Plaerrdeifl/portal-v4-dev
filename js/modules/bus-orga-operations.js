@@ -71,13 +71,17 @@ function renderOperations(state) {
     <div class="v4-m325-counters m328-operation-counters"><span><strong>${Number(summary.expected || 0)}</strong>Angemeldet</span><span><strong>${Number(summary.present || 0)}</strong>Anwesend</span><span><strong>${paidCount}</strong>Bezahlt</span><span><strong>${Number(summary.noShow || 0)}</strong>Fehlt</span></div>
     ${warning}
     <section class="m328-workspace-panel">
-      <form class="form-grid v4-smart-form v4-m325-operation-filters m328-operation-filters" data-m328-operation-filters>
-        <label>Suche<input name="search" type="search" autocomplete="off" placeholder="Teilnehmer suchen" value="${escapeAttr(filters.search)}"></label>
-        <label>Status<select name="status"><option value="ALL">Alle</option><option value="PRESENT"${filters.status === "PRESENT" ? " selected" : ""}>Anwesend</option><option value="NO_SHOW"${filters.status === "NO_SHOW" ? " selected" : ""}>Fehlt</option></select></label>
-        <label>Bus<select name="bus"><option value="ALL">Alle</option>${(state.data.buses || []).map(bus => `<option value="${escapeAttr(bus.busId)}"${filters.bus === bus.busId ? " selected" : ""}>${escapeHtml(bus.label)}</option>`).join("")}</select></label>
-        <label>Zustiegsort<select name="stop"><option value="ALL">Alle</option>${(state.data.stops || []).map(stop => `<option value="${escapeAttr(stop.tripBoardingStopId)}"${filters.stop === stop.tripBoardingStopId ? " selected" : ""}>${escapeHtml(stop.label)}</option>`).join("")}</select></label>
+      <form class="m328-operation-filter-form" data-m328-operation-filters>
+        <div class="m328-workspace-search"><input name="search" type="search" autocomplete="off" placeholder="Teilnehmer suchen" value="${escapeAttr(filters.search)}"><span class="m328-workspace-count" data-m328-operation-count>${state.participants.length} von ${state.participants.length}</span></div>
+        <details class="m328-participant-filters m328-operation-filter-details">
+          <summary class="button small secondary">Filter</summary>
+          <div class="m328-participant-filter-body m328-operation-filter-body">
+            <label>Status<select name="status"><option value="ALL">Alle</option><option value="OPEN"${filters.status === "OPEN" ? " selected" : ""}>Offen</option><option value="PRESENT"${filters.status === "PRESENT" ? " selected" : ""}>Anwesend</option><option value="NO_SHOW"${filters.status === "NO_SHOW" ? " selected" : ""}>Fehlt</option></select></label>
+            <label>Bus<select name="bus"><option value="ALL">Alle</option>${(state.data.buses || []).map(bus => `<option value="${escapeAttr(bus.busId)}"${filters.bus === bus.busId ? " selected" : ""}>${escapeHtml(bus.label)}</option>`).join("")}</select></label>
+            <label>Zustiegsort<select name="stop"><option value="ALL">Alle</option>${(state.data.stops || []).map(stop => `<option value="${escapeAttr(stop.tripBoardingStopId)}"${filters.stop === stop.tripBoardingStopId ? " selected" : ""}>${escapeHtml(stop.label)}</option>`).join("")}</select></label>
+          </div>
+        </details>
       </form>
-      <span class="m328-workspace-count" data-m328-operation-count>${state.participants.length} von ${state.participants.length}</span>
     </section>
     <section class="m328-operation-list">${state.participants.map(person => operationCard(person, state)).join("") || empty("Keine aktiven Teilnehmer.")}<p class="subtle" data-m328-operation-empty hidden>Keine Teilnehmer entsprechen den Filtern.</p></section>`;
   state.root.innerHTML = workspacePage("Fahrtbetrieb", state.trip, content, { className: "m328-operations", subtitle: `${tripVenue(state.trip)} · Check-in` });
