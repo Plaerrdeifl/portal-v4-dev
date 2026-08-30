@@ -6,7 +6,7 @@ const read = path => fs.readFileSync(new URL(path, import.meta.url), "utf8");
 const registration = read("../js/fanbus-registration.js");
 const overlay = read("../js/m328-r2-public-registration-flow.js");
 const loader = read("../js/m327-r1-guest-contact-polish.js");
-const migration = read("../supabase/migrations/20260830223000_m328_public_registration_receipt.sql");
+const migration = read("../supabase/migrations/20260830214500_m328_booking_mail_contact_context.sql");
 
 test("boarding stop priority stays personal then trip then required selection", () => {
   assert.match(registration, /userBoardingPreference\?\.effectiveTripBoardingStopId\s*\|\|\s*trip\?\.defaultTripBoardingStopId/);
@@ -39,14 +39,18 @@ test("receipt lookup uses only the concrete submission key", () => {
   assert.match(overlay, /window\.addEventListener\("pd-api-before-call", capturePortalSubmission\)/);
   assert.match(overlay, /\/functions\/v1\/m310-fanbus-register/);
   assert.match(overlay, /rememberSubmission\(payload\?\.tripId, payload\?\.idempotencyKey\)/);
-  assert.match(migration, /public\.pd_public_fanbus_booking_reference/);
-  assert.match(migration, /app_private\.fanbus_registration_idempotency/);
-  assert.match(migration, /app_modules\.fanbus_bookings/);
-  assert.match(migration, /idempotency\.trip_id = p_trip_id/);
-  assert.match(migration, /idempotency\.idempotency_key = p_idempotency_key/);
-  assert.doesNotMatch(migration, /first_name|last_name|email|phone/i);
-  assert.match(migration, /from public, anon, authenticated, service_role/i);
-  assert.match(migration, /to anon, authenticated/i);
+
+  const receiptStart = migration.indexOf("create or replace function public.pd_public_fanbus_booking_reference(");
+  const receiptEnd = migration.indexOf("comment on function public.pd_public_fanbus_booking_reference", receiptStart);
+  const receipt = migration.slice(receiptStart, receiptEnd);
+  assert.ok(receiptStart >= 0 && receiptEnd > receiptStart);
+  assert.match(receipt, /app_private\.fanbus_registration_idempotency/);
+  assert.match(receipt, /app_modules\.fanbus_bookings/);
+  assert.match(receipt, /idempotency\.trip_id = p_trip_id/);
+  assert.match(receipt, /idempotency\.idempotency_key = p_idempotency_key/);
+  assert.doesNotMatch(receipt, /first_name|last_name|email|phone/i);
+  assert.match(receipt, /from public, anon, authenticated, service_role/i);
+  assert.match(receipt, /to anon, authenticated/i);
 });
 
 test("success renders the real booking number", () => {
