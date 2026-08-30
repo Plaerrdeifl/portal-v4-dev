@@ -58,7 +58,7 @@ test("ride cards navigate to an authenticated native detail page instead of expa
   assert.match(detail, /location\.hash = "#\/bus-orga"/);
 });
 
-test("native detail reuses the existing server actions and all workspaces", () => {
+test("native detail reuses the existing server actions behind the overview gear menu", () => {
   for (const action of [
     "fanbus_trip_publish",
     "fanbus_trip_close",
@@ -66,13 +66,16 @@ test("native detail reuses the existing server actions and all workspaces", () =
     "fanbus_trip_delete",
     "fanbus_trip_cancel"
   ]) assert.match(detail, new RegExp(action));
-  for (const label of ["Buchungen", "Teilnehmer", "Busse", "Bearbeiten", "Fahrtbetrieb"]) {
+  for (const label of ["Buchungen", "Teilnehmer", "Busse", "Buszuordnung", "Fahrtbetrieb", "Fahrtdaten bearbeiten"]) {
     assert.match(detail, new RegExp(label));
   }
+  assert.match(detail, /data-m328-trip-settings/);
+  assert.match(detail, /function openTripMenu\(state\)/);
+  assert.doesNotMatch(detail, /m328-trip-detail-work-actions/);
   assert.doesNotMatch(detail, /actionButton\("registration"|>Anmeldung/);
   assert.match(detail, /expectedRevision: Number\(trip\.revision\)/);
   assert.match(detail, /return navigate\(action, trip\.id\)/);
-  assert.match(detail, /@media\(max-width:620px\)/);
+  assert.match(detail, /@media\(max-width:420px\)/);
 });
 
 test("new booking numbers use the central environment contract and preserve race safety", () => {
