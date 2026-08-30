@@ -26,5 +26,5 @@ test("Personal Fanbus menu keeps bookings, standards and companions together", (
 test("Bus-Orga remains a separate action in the same header row", () => {
   assert.match(page, /class="m327-fanbus-user-actions"/);
   assert.match(busOrgaShell, /querySelector\("\.m327-fanbus-user-actions"\)/);
-  assert.match(busOrgaShell, /<span>Bus-Orga<\/span>/);
+  assert.match(busOrgaShell, /button\.textContent = "🚌 Bus-Orga"/);
 });
