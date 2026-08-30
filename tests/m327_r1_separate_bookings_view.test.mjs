@@ -20,9 +20,11 @@ test("M327 keeps trip discovery and booking management as separate views", () =>
   assert.match(page, /id="m327TripsTab"[\s\S]*?← Zurück<\/button>/);
 });
 
-test("M327 exposes booking management as a compact action instead of a full-width tab", () => {
-  assert.match(page, /class="button small secondary m327-my-bookings-entry"/);
-  assert.match(page, /\.m327-my-bookings-entry\{[\s\S]*?width:auto;/);
+test("M327 exposes booking management inside one compact personal action", () => {
+  assert.match(page, /class="button small secondary m327-personal-fanbus-toggle"/);
+  assert.match(page, /Buchungen &amp; Einstellungen/);
+  assert.match(page, /id="m310FanbusActionMenu"[\s\S]*?id="m327MyBookingsTab"/);
+  assert.match(page, /\.m327-personal-fanbus-toggle\{[\s\S]*?width:100%;/);
   assert.match(page, /Fahrten entdecken und anmelden/);
   assert.match(page, /Deine gebuchten Fahrten und Teilnehmer verwalten/);
 });
