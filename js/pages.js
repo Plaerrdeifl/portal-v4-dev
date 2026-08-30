@@ -190,7 +190,7 @@ export async function hydratePage(key, context = {}) {
       );
       return result;
     }
-    if (["participants", "occupancy", "operations"].includes(view)) {
+    if (["participants", "occupancy", "assignment", "operations"].includes(view)) {
       return feature(
         "./modules/bus-orga-trip-workspaces.js?v=20260830-m328-final-bus-management1",
         "hydrateBusOrgaTripWorkspace",

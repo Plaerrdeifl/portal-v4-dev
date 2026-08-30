@@ -1,4 +1,5 @@
 import "./m328-final-acceptance.js?v=20260830-m328-final-acceptance2";
+import "./m328-booking-filter-cleanup.js?v=20260830-m328-booking-filter-cleanup1";
 
 function installM328TripEditIosFieldFix() {
   if (document.getElementById("m328TripEditIosFieldFix")) return;

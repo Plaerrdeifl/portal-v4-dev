@@ -4,7 +4,9 @@ import {
   ensureWorkspaceStyle,
   routeParams
 } from "./bus-orga-workspace-base.js?v=20260830-m328-final-bus-management1";
-import { hydrateOccupancy } from "./bus-orga-occupancy.js?v=20260830-m328-final-bus-management1";
+import "./bus-orga-occupancy.js?v=20260830-m328-final-bus-management1";
+import { hydrateAssignment } from "./bus-orga-assignment.js?v=20260830-m328-final-bus-management1";
+import { hydrateBuses } from "./bus-orga-buses.js?v=20260830-m328-final-bus-management1";
 import { hydrateOperations } from "./bus-orga-operations.js?v=20260830-m328-final-bus-management1";
 import { hydrateParticipants } from "./bus-orga-participants.js?v=20260830-m328-final-bus-management1";
 
@@ -24,7 +26,8 @@ export async function hydrateBusOrgaTripWorkspace(context = {}) {
   root.innerHTML = loading("Arbeitsbereich wird geladen …");
   try {
     if (view === "participants") return await hydrateParticipants(root, tripId, context);
-    if (view === "occupancy") return await hydrateOccupancy(root, tripId, context);
+    if (view === "occupancy") return await hydrateBuses(root, tripId, context);
+    if (view === "assignment") return await hydrateAssignment(root, tripId, context);
     if (view === "operations") return await hydrateOperations(root, tripId, context);
     throw new Error("Dieser Bus-Orga-Arbeitsbereich ist nicht verfügbar.");
   } catch (error) {

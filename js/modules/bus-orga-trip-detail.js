@@ -137,6 +137,9 @@ function renderPage(root, trip) {
   if (canManage) {
     workingActions.push(actionButton("occupancy", "Busse"));
   }
+  if (canManage && canRegistrations) {
+    workingActions.push(actionButton("assignment", "Zuordnung"));
+  }
   if (canOperations) {
     workingActions.push(actionButton("operations", "Fahrtbetrieb"));
   }
@@ -241,6 +244,7 @@ async function handleAction(action, trip) {
   if (["bookings", "participants", "occupancy", "operations"].includes(action)) {
     return navigate(action, trip.id);
   }
+  if (action === "assignment") return navigate(action, trip.id);
   if (action === "edit") return navigate("trip-edit", trip.id);
   if (action === "cancel") return openCancellation(trip);
 

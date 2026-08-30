@@ -55,6 +55,12 @@ function bookingRoleLabel(registration, contexts) {
   return `Gruppenbuchung · ${context.count} Personen`;
 }
 
+function groupMarker(registration, contexts) {
+  const context = contexts.get(bookingKey(registration));
+  if (!context || context.count <= 1) return "";
+  return `<div class="m328-participant-group"><span class="badge neutral">${escapeHtml(`Gruppe ${context.primaryName} · ${context.count} Personen`)}</span></div>`;
+}
+
 function registrationCard(registration, buses, contexts, readOnly) {
   const bus = buses.find(item => item.id === registration.busId);
   const canAct = !readOnly && registration.status !== "CANCELLED";
@@ -67,6 +73,7 @@ function registrationCard(registration, buses, contexts, readOnly) {
   ].filter(Boolean);
   return `<article class="m328-participant-card" data-m328-participant-id="${escapeAttr(registration.id)}"${canAct ? ` role="button" tabindex="0" aria-label="${escapeAttr(`${registration.firstName} ${registration.lastName} verwalten`)}"` : ""}>
     <div class="m328-card-head"><strong>${escapeHtml(`${registration.firstName} ${registration.lastName}`)}</strong>${statusBadge(registration.status)}</div>
+    ${groupMarker(registration, contexts)}
     <div class="m328-card-meta">${meta.map(value => `<span>${escapeHtml(value)}</span>`).join("")}</div>
     ${canAct ? '<span class="m328-card-chevron" aria-hidden="true">›</span>' : ""}
   </article>`;
