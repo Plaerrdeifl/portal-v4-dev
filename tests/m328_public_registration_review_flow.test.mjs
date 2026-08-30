@@ -6,7 +6,7 @@ const read = path => fs.readFileSync(new URL(path, import.meta.url), "utf8");
 const registration = read("../js/fanbus-registration.js");
 const overlay = read("../js/m328-r2-public-registration-flow.js");
 const loader = read("../js/m327-r1-guest-contact-polish.js");
-const migration = read("../supabase/migrations/20260830214500_m328_booking_mail_contact_context.sql");
+const migration = read("../supabase/migrations/20260830223000_m328_booking_contact_receipt_correction.sql");
 
 test("boarding stop priority stays personal then trip then required selection", () => {
   assert.match(registration, /userBoardingPreference\?\.effectiveTripBoardingStopId\s*\|\|\s*trip\?\.defaultTripBoardingStopId/);
