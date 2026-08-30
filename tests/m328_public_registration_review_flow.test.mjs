@@ -5,6 +5,8 @@ import test from "node:test";
 const read = path => fs.readFileSync(new URL(path, import.meta.url), "utf8");
 const registration = read("../js/fanbus-registration.js");
 const overlay = read("../js/m328-r2-public-registration-flow.js");
+const appEntry = read("../js/m328-public-registration-app-entry.js");
+const pages = read("../js/pages.js");
 const loader = read("../js/m327-r1-guest-contact-polish.js");
 const migration = read("../supabase/migrations/20260830223000_m328_booking_contact_receipt_correction.sql");
 
@@ -61,13 +63,23 @@ test("success renders the real booking number", () => {
   assert.match(overlay, /"Anmeldung bestätigt", "Auf Warteliste eingetragen", "Bereits angemeldet"/);
 });
 
-test("back to app is shown only for an authenticated top-level app entry", () => {
+test("the app marks only its fanbus registration entry links", () => {
+  assert.match(pages, /m328-public-registration-app-entry\.js/);
+  assert.match(pages, /setupM328PublicRegistrationAppEntry/);
+  assert.match(appEntry, /fanbus-anmeldung\.html\?trip=/);
+  assert.match(appEntry, /url\.origin !== window\.location\.origin/);
+  assert.match(appEntry, /url\.searchParams\.set\("source", "app"\)/);
+  assert.match(appEntry, /new MutationObserver/);
+  assert.match(appEntry, /observer\.observe\(root, \{ childList: true, subtree: true \}\)/);
+});
+
+test("back to app is shown only for an authenticated top-level explicit app entry", () => {
   assert.match(overlay, /!current\.authenticated \|\| current\.status !== "ACTIVE"/);
   assert.match(overlay, /window\.top !== window\.self/);
-  assert.match(overlay, /display-mode: standalone/);
-  assert.match(overlay, /referrer\.origin !== window\.location\.origin/);
-  assert.match(overlay, /referrer\.pathname === appRoot/);
+  assert.match(overlay, /new URLSearchParams\(window\.location\.search\)\.get\("source"\) === "app"/);
+  assert.doesNotMatch(overlay, /display-mode: standalone/);
+  assert.doesNotMatch(overlay, /document\.referrer/);
+  assert.doesNotMatch(overlay, /history\.back/);
   assert.match(overlay, /button\.textContent = "← Zurück zur App"/);
-  assert.match(overlay, /window\.history\.back\(\)/);
   assert.match(overlay, /window\.location\.assign\("\.\/#\/fanbuses"\)/);
 });
