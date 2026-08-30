@@ -1,5 +1,6 @@
 -- Plärrdeifl Digitalplattform V4
 -- P300 / M328 – Zentrale Buchungsreferenz- und Kontaktprojektion für Fanbus-E-Mails
+-- sowie sichere Buchungsnummer-Projektion für den unmittelbaren Public-Receipt.
 -- Additive DEV migration. Keine PROD-Aktion.
 
 begin;
@@ -26,11 +27,9 @@ values (
         'href', 'tel:+491729744908'
       )
     ),
-    'whatsapp', jsonb_build_object(
-      'label', 'WhatsApp',
-      'username', '@plaerrdeifl',
-      'url', 'https://wa.me/plaerrdeifl'
-    )
+    -- Kein WhatsApp-Wert wird geraten. Der offizielle Kontakt wird erst nach
+    -- fachlicher Bestätigung zentral in diesem Setting ergänzt.
+    'whatsapp', '{}'::jsonb
   ),
   'Öffentliche BUS_ORGA-Kontaktdaten für Fanbus-Success, E-Mail und Selfservice.'
 )
@@ -97,12 +96,12 @@ as $function$
         ) with ordinality as item(value, ordinality)
         where jsonb_typeof(item.value) = 'object'
           and length(btrim(coalesce(item.value ->> 'value', ''))) between 3 and 40
-          and (item.value ->> 'value') !~ E'[\\r\\n]'
+          and (item.value ->> 'value') !~ E'[\r\n]'
       ), '[]'::jsonb) as phones,
       case
         when jsonb_typeof(source.value -> 'whatsapp') = 'object'
           and length(btrim(coalesce(source.value #>> '{whatsapp,username}', ''))) between 2 and 80
-          and (source.value #>> '{whatsapp,username}') !~ E'[\\r\\n]'
+          and (source.value #>> '{whatsapp,username}') !~ E'[\r\n]'
           and btrim(coalesce(source.value #>> '{whatsapp,url}', '')) ~ '^https://wa\.me/[A-Za-z0-9._-]+$'
         then jsonb_strip_nulls(jsonb_build_object(
           'label', nullif(btrim(source.value #>> '{whatsapp,label}'), ''),
@@ -189,5 +188,39 @@ revoke all on function app_private.notification_add_external_email(
 grant execute on function app_private.notification_add_external_email(
   app_private.notification_events,text,text,text,text,jsonb,text,boolean
 ) to postgres;
+
+create or replace function public.pd_public_fanbus_booking_reference(
+  p_trip_id uuid,
+  p_idempotency_key uuid
+)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select coalesce((
+    select jsonb_build_object(
+      'bookingNumber', booking.booking_number
+    )
+    from app_private.fanbus_registration_idempotency as idempotency
+    join app_modules.fanbus_bookings as booking
+      on booking.id = idempotency.booking_id
+    where idempotency.trip_id = p_trip_id
+      and idempotency.idempotency_key = p_idempotency_key
+      and idempotency.outcome in ('CREATED', 'WAITLISTED', 'ALREADY_ACTIVE')
+      and booking.booking_number ~ '^(FB|DEV)-[0-9]{2}-[0-9]{6,}$'
+    limit 1
+  ), '{}'::jsonb);
+$function$;
+
+revoke all on function public.pd_public_fanbus_booking_reference(uuid, uuid)
+from public, anon, authenticated, service_role;
+
+grant execute on function public.pd_public_fanbus_booking_reference(uuid, uuid)
+to anon, authenticated;
+
+comment on function public.pd_public_fanbus_booking_reference(uuid, uuid) is
+  'M328: liefert ausschließlich die Buchungsnummer zum exakten Trip-/Idempotency-Key einer erfolgreichen Fanbus-Anmeldung.';
 
 commit;
