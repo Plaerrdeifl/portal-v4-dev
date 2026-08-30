@@ -116,7 +116,8 @@ function applyParticipantFilters() {
   }
   const count = document.querySelector("[data-m328-participant-count]");
   const total = participantCards().length;
-  if (count) count.textContent = `${visible} von ${total}`;
+  const nextCount = `${visible} von ${total}`;
+  if (count && count.textContent !== nextCount) count.textContent = nextCount;
   const empty = document.querySelector("[data-m328-participant-empty]");
   if (empty) empty.hidden = visible > 0;
 }

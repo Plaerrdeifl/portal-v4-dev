@@ -28,6 +28,12 @@ test("M328 final acceptance adds compact cancelled filters to participants and b
   assert.match(acceptance, /selected === "OPEN" \? status !== "CANCELLED"/);
 });
 
+test("M328 participant filter does not retrigger the global child-list observer when count is unchanged", () => {
+  assert.match(acceptance, /const nextCount = `\$\{visible\} von \$\{total\}`;/);
+  assert.match(acceptance, /if \(count && count\.textContent !== nextCount\) count\.textContent = nextCount;/);
+  assert.doesNotMatch(acceptance, /if \(count\) count\.textContent = `\$\{visible\} von \$\{total\}`;/);
+});
+
 test("M328 final acceptance repairs operations and bus presentation without changing domain actions", () => {
   assert.match(acceptance, /classList\.remove\("form-grid", "v4-smart-form", "v4-m325-operation-filters"\)/);
   assert.match(acceptance, /m328-final-operation-filters/);
@@ -42,5 +48,5 @@ test("M328 final acceptance repairs operations and bus presentation without chan
 });
 
 test("M328 final acceptance is versioned from the existing M328 entry module", () => {
-  assert.match(iosLoader, /m328-final-acceptance\.js\?v=20260830-m328-final-acceptance1/);
+  assert.match(iosLoader, /m328-final-acceptance\.js\?v=20260830-m328-final-acceptance2/);
 });
