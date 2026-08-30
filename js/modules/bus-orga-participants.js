@@ -18,12 +18,48 @@ import {
   workspacePage
 } from "./bus-orga-workspace-base.js";
 
-function registrationCard(registration, buses, readOnly) {
+function bookingKey(registration) {
+  return String(registration?.bookingId || registration?.id || "");
+}
+
+function participantBookingContexts(registrations) {
+  const grouped = new Map();
+  for (const registration of registrations) {
+    const key = bookingKey(registration);
+    if (!key) continue;
+    const group = grouped.get(key) || [];
+    group.push(registration);
+    grouped.set(key, group);
+  }
+  const contexts = new Map();
+  for (const [key, group] of grouped) {
+    const primary = group.find(item => item.bookingRole === "PRIMARY") || group[0] || null;
+    contexts.set(key, {
+      count: group.length,
+      primaryName: primary
+        ? `${primary.firstName || ""} ${primary.lastName || ""}`.trim() || "Hauptperson"
+        : "Hauptperson"
+    });
+  }
+  return contexts;
+}
+
+function bookingRoleLabel(registration, contexts) {
+  const context = contexts.get(bookingKey(registration));
+  if (!context || context.count <= 1) {
+    return registration.bookingRole === "COMPANION" ? "Mitfahrer" : "Einzelbuchung";
+  }
+  if (registration.bookingRole === "COMPANION") {
+    return `Mitfahrer · Gruppe ${context.primaryName}`;
+  }
+  return `Gruppenbuchung · ${context.count} Personen`;
+}
+
+function registrationCard(registration, buses, contexts, readOnly) {
   const bus = buses.find(item => item.id === registration.busId);
   const canAct = !readOnly && registration.status !== "CANCELLED";
-  const bookingRole = registration.bookingRole === "COMPANION" ? "Mitfahrer" : "Hauptperson";
   const meta = [
-    bookingRole,
+    bookingRoleLabel(registration, contexts),
     sourceLabel(registration.source),
     `Buswunsch: ${busPreferenceLabel(registration.busPreference)}`,
     registration.status === "ACTIVE" ? `Bus: ${bus?.label || "Nicht zugeordnet"}` : "",
@@ -48,8 +84,10 @@ function filterParticipantCards(state) {
     const card = state.root.querySelector(`[data-m328-participant-id="${CSS.escape(registration.id)}"]`);
     if (!card) continue;
     const haystack = `${registration.firstName || ""} ${registration.lastName || ""} ${registration.email || ""}`.toLocaleLowerCase("de-DE");
+    const statusMatches = status === "ALL"
+      || (status === "CURRENT" ? registration.status !== "CANCELLED" : registration.status === status);
     const show = (!query || haystack.includes(query))
-      && (status === "ALL" || registration.status === status)
+      && statusMatches
       && (preference === "ALL" || registration.busPreference === preference)
       && (bus === "ALL" || (bus === "UNASSIGNED" ? !registration.busId : registration.busId === bus));
     card.hidden = !show;
@@ -64,6 +102,7 @@ function filterParticipantCards(state) {
 function renderParticipants(state) {
   const readOnly = state.trip.status === "CANCELLED";
   const busOptions = state.buses.map(bus => `<option value="${escapeAttr(bus.id)}">${escapeHtml(bus.label)}</option>`).join("");
+  const contexts = participantBookingContexts(state.registrations);
   const content = `
     ${readOnly ? '<div class="notice error">Die Fahrt ist abgesagt. Teilnehmer bleiben lesbar, können aber nicht mehr geändert werden.</div>' : ""}
     <section class="m328-workspace-panel">
@@ -79,7 +118,7 @@ function renderParticipants(state) {
         <details class="m328-participant-filters">
           <summary class="button small secondary">Filter</summary>
           <div class="m328-participant-filter-body">
-            <label>Status<select name="status"><option value="ALL">Alle</option><option value="ACTIVE">Bestätigt</option><option value="WAITLISTED">Warteliste</option><option value="CANCELLED">Storniert</option></select></label>
+            <label>Status<select name="status"><option value="ALL">Alle</option><option value="CURRENT">Nicht storniert</option><option value="ACTIVE">Bestätigt</option><option value="WAITLISTED">Warteliste</option><option value="CANCELLED">Storniert</option></select></label>
             <label>Buswunsch<select name="preference"><option value="ALL">Alle</option><option value="RUHIG">Ruhig</option><option value="PARTY">Party</option><option value="EGAL">Egal</option></select></label>
             <label>Bus<select name="bus"><option value="ALL">Alle</option><option value="UNASSIGNED">Nicht zugeordnet</option>${busOptions}</select></label>
           </div>
@@ -87,7 +126,7 @@ function renderParticipants(state) {
       </form>
     </section>
     <section class="v4-m310-registration-list m328-participant-list" aria-label="Teilnehmerliste">
-      ${state.registrations.map(registration => registrationCard(registration, state.buses, readOnly)).join("") || empty("Für diese Fahrt liegen noch keine Anmeldungen vor.")}
+      ${state.registrations.map(registration => registrationCard(registration, state.buses, contexts, readOnly)).join("") || empty("Für diese Fahrt liegen noch keine Anmeldungen vor.")}
       <p class="subtle" data-m328-participant-empty hidden>Keine Teilnehmer entsprechen den Filtern.</p>
     </section>`;
   state.root.innerHTML = workspacePage("Teilnehmer", state.trip, content, { className: "m328-participants" });
