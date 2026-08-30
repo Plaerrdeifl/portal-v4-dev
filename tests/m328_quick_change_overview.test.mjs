@@ -24,15 +24,23 @@ test("M328 quick registration becomes an expandable quick change workflow", () =
   assert.doesNotMatch(quick, /Fahrt absagen|Entwurf löschen|Veröffentlichen/);
 });
 
-test("M328 quick action keeps the user in one compact game-select row", () => {
+test("M328 quick action expands locally without router navigation", () => {
   assert.match(quick, /class="m328-quick-game-row"/);
   assert.match(quick, /<span>Spiel<\/span>/);
   assert.match(quick, /<select data-m328-quick-game aria-label="Spiel auswählen"/);
   assert.match(quick, /Spiel auswählen …/);
-  assert.match(quick, /select\?\.addEventListener\("change"/);
-  assert.match(quick, /if \(select\.value\) openTarget\(action, select\.value\)/);
+  assert.match(quick, /renderTripPicker\(section, items, action\)/);
+  assert.match(quick, /clearQuickRouteWithoutNavigation/);
+  assert.match(quick, /history\.replaceState\(history\.state, "", "#\/bus-orga"\)/);
+  assert.doesNotMatch(quick, /function openActionSelection/);
   assert.doesNotMatch(quick, /data-m328-quick-trip=/);
   assert.doesNotMatch(quick, /m328-quick-trip-list/);
+});
+
+test("M328 quick game selection navigates only after a concrete game was chosen", () => {
+  assert.match(quick, /select\?\.addEventListener\("change"/);
+  assert.match(quick, /if \(select\.value\) openTarget\(action, select\.value\)/);
+  assert.match(quick, /function openTarget\(action, tripId\)[\s\S]*?location\.hash = `#\/bus-orga\?\$\{params\}`/);
 });
 
 test("M328 quick targets return one step to the selected quick action", () => {
@@ -43,7 +51,7 @@ test("M328 quick targets return one step to the selected quick action", () => {
 });
 
 test("M328 quick modules are loaded before the legacy acceptance back interceptor", () => {
-  const quickIndex = iosEntry.indexOf('m328-quick-change.js?v=20260830-m328-quick-change2');
+  const quickIndex = iosEntry.indexOf('m328-quick-change.js?v=20260830-m328-quick-change3');
   const backIndex = iosEntry.indexOf('m328-quick-back.js?v=20260830-m328-quick-back1');
   const acceptanceIndex = iosEntry.indexOf('m328-final-acceptance.js?v=20260830-m328-final-acceptance2');
   assert.ok(quickIndex >= 0);
