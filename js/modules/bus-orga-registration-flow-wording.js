@@ -1,3 +1,5 @@
+import { setupM328RegistrationBookingUx } from "./bus-orga-registration-booking-ux.js?v=20260830-m328-registration-booking-ux1";
+
 let flowWordingObserver = null;
 
 function applyFlowWording() {
@@ -21,6 +23,7 @@ function applyFlowWording() {
 }
 
 export function setupM328RegistrationFlowWording() {
+  setupM328RegistrationBookingUx();
   if (!document.getElementById("m328Reg3Target")) return;
 
   flowWordingObserver?.disconnect();
