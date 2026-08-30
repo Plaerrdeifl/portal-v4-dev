@@ -131,11 +131,11 @@ function renderPage(root, trip) {
   const workingActions = [];
 
   if (canRegistrations) {
-    workingActions.push(actionButton("bookings", "Buchungen", "primary"));
+    workingActions.push(actionButton("bookings", "Buchungen"));
     workingActions.push(actionButton("participants", "Teilnehmer"));
   }
   if (canManage) {
-    workingActions.push(actionButton("occupancy", "Busse & Zuordnung"));
+    workingActions.push(actionButton("occupancy", "Busse"));
   }
   if (canOperations) {
     workingActions.push(actionButton("operations", "Fahrtbetrieb"));
