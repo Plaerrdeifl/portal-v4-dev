@@ -81,6 +81,12 @@ function ensureAccordionStyles() {
     #m327MyBookingsPanel .m327-booking-card[data-m327-accordion="true"]{
       gap:0;
       padding:0;
+      transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease;
+    }
+    #m327MyBookingsPanel .m327-booking-card[data-m327-expanded="true"]:not([data-m327-booking-cancelled="true"]){
+      background:#f7fbff;
+      border-color:color-mix(in srgb,var(--blue-700) 20%,var(--line));
+      box-shadow:0 0 0 1px color-mix(in srgb,var(--blue-700) 7%,transparent);
     }
     #m327MyBookingsPanel .m327-booking-toggle{
       cursor:pointer;
@@ -109,16 +115,24 @@ function ensureAccordionStyles() {
       transform:rotate(90deg);
     }
     #m327MyBookingsPanel .m327-booking-overview{
-      display:block;
+      display:grid;
+      gap:2px;
       min-width:0;
       margin-top:4px;
-      overflow:hidden;
       color:var(--ink-500);
       font-size:.76rem;
       font-weight:750;
       line-height:1.25;
+    }
+    #m327MyBookingsPanel .m327-booking-overview-line{
+      display:block;
+      min-width:0;
+      overflow:hidden;
       text-overflow:ellipsis;
       white-space:nowrap;
+    }
+    #m327MyBookingsPanel .m327-booking-overview-line[data-tone="cancelled"]{
+      color:var(--danger);
     }
     #m327MyBookingsPanel .m327-booking-card[data-m327-booking-cancelled="true"] .m327-booking-overview{
       color:var(--danger);
@@ -308,18 +322,31 @@ function bookingParticipantOverview(card) {
   const companions = current.length
     ? current.filter(item => item !== lead)
     : [];
+  const leadText = lead?.name || `${source.length} ${source.length === 1 ? "Person" : "Personen"}`;
 
-  let text = lead?.name || `${source.length} ${source.length === 1 ? "Person" : "Personen"}`;
+  if (allCancelled) {
+    return {
+      lines: [{ text: `${leadText} · ${cancelled.length} storniert`, tone: "cancelled" }],
+      allCancelled
+    };
+  }
+
+  const lines = [];
   if (companions.length === 1 && companions[0].name) {
-    text += ` + ${companions[0].name}`;
-  } else if (companions.length > 1) {
-    text += ` + ${companions.length} Mitfahrer`;
+    lines.push({ text: `${leadText} + ${companions[0].name}`, tone: "normal" });
+  } else {
+    lines.push({ text: leadText, tone: "normal" });
+    if (companions.length > 1) {
+      companions.forEach(item => {
+        if (item.name) lines.push({ text: `Mitfahrer: ${item.name}`, tone: "normal" });
+      });
+    }
   }
   if (cancelled.length) {
-    text += ` · ${cancelled.length} storniert`;
+    lines.push({ text: `${cancelled.length} storniert`, tone: "cancelled" });
   }
 
-  return { text, allCancelled };
+  return { lines, allCancelled };
 }
 
 function ensureBookingOverview(card, header) {
@@ -334,7 +361,15 @@ function ensureBookingOverview(card, header) {
     summary.className = "m327-booking-overview";
     content.append(summary);
   }
-  summary.textContent = overview.text;
+
+  const rows = overview.lines.map(line => {
+    const row = document.createElement("span");
+    row.className = "m327-booking-overview-line";
+    row.dataset.tone = line.tone;
+    row.textContent = line.text;
+    return row;
+  });
+  summary.replaceChildren(...rows);
   card.dataset.m327BookingCancelled = overview.allCancelled ? "true" : "false";
 
   const statusBadge = header.querySelector(":scope > .badge");
