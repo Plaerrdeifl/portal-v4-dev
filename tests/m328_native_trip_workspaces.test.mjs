@@ -113,9 +113,11 @@ test("M328 final bus management cache chain remains explicit", () => {
   assert.match(index, new RegExp(`m328-trip-subpage-back\\.js\\?v=${key}`));
   assert.match(index, new RegExp(`app\\.js[^\"]*m328final=${key}`));
   assert.match(app, new RegExp(`pages\\.js[^\"]*m328final=${key}`));
-  for (const moduleName of ["bus-orga-trip-detail", "bus-orga-bookings", "bus-orga-trip-edit", "bus-orga-registration-v3", "bus-orga-trip-workspaces"]) {
+  for (const moduleName of ["bus-orga-trip-detail", "bus-orga-bookings", "bus-orga-trip-edit", "bus-orga-trip-workspaces"]) {
     assert.match(pages, new RegExp(`${moduleName}\\.js\\?v=${key}`));
   }
+  assert.match(pages, /bus-orga-v3\.js\?[^"\n]*final=20260830-m328-final-bus-management1&registration=20260830-m328-registration-flow2/);
+  assert.match(pages, /if \(view === "registration"\)[\s\S]*"hydrateBusOrgaV3"/);
 });
 
 test("M328 legacy trip edit and registration back controls still bridge normal navigation to the current trip", () => {
