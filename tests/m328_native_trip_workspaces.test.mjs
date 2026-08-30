@@ -71,6 +71,12 @@ test("M328 native participants, occupancy and operations use one workspace shell
   assert.doesNotMatch(workspaceCode, /#\/fanbuses/);
 });
 
+test("M328 participant cards do not inherit the legacy M310 grid on mobile", () => {
+  assert.match(participants, /class="m328-participant-card"/);
+  assert.doesNotMatch(participants, /class="v4-m310-registration-record m328-participant-card"/);
+  assert.match(participants, /button-row m328-participant-toolbar-actions/);
+});
+
 test("M328 native workspaces retain participant, assignment and operations contracts", () => {
   for (const action of [
     "fanbus_registrations_list",
@@ -90,10 +96,12 @@ test("M328 native workspaces retain participant, assignment and operations contr
   }
 });
 
-test("M328 native workspace cache chain is explicit from index to feature modules", () => {
-  const key = "20260830-m328-native-workspaces1";
-  assert.match(index, new RegExp(`app\\.js[^\"]*m328workspaces=${key}`));
-  assert.match(app, new RegExp(`pages\\.js[^\"]*m328workspaces=${key}`));
-  assert.match(pages, new RegExp(`bus-orga-trip-detail\\.js\\?v=${key}`));
-  assert.match(pages, new RegExp(`bus-orga-trip-workspaces\\.js\\?v=${key}`));
+test("M328 native workspace cache chain is explicit from index to participant module", () => {
+  const workspaceKey = "20260830-m328-native-workspaces1";
+  const participantKey = "20260830-m328-participant-mobile1";
+  assert.match(index, new RegExp(`app\\.js[^\"]*m328workspaces=${workspaceKey}[^\"]*participants=${participantKey}`));
+  assert.match(app, new RegExp(`pages\\.js[^\"]*m328workspaces=${workspaceKey}[^\"]*participants=${participantKey}`));
+  assert.match(pages, new RegExp(`bus-orga-trip-detail\\.js\\?v=${workspaceKey}`));
+  assert.match(pages, new RegExp(`bus-orga-trip-workspaces\\.js\\?v=${workspaceKey}&participants=${participantKey}`));
+  assert.match(workspaceRouter, new RegExp(`bus-orga-participants\\.js\\?v=${participantKey}`));
 });
