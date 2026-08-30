@@ -153,6 +153,7 @@ export async function hydratePage(key, context = {}) {
     await feature("./m327-companion-lists-polish.js?v=20260830-m327-companion-tap2", "setupM327CompanionListsPolish", context);
     await feature("./m327-boarding-stop-details.js?v=20260830-m327-stop-details1", "setupM327BoardingStopDetails", context);
     await feature("./m328-bus-orga-shell.js?v=20260829-m328-r1-rider-reactivate2&completion=20260829-m328-final1", "setupM328BusOrgaShell", context);
+    await feature("./m328-public-registration-app-entry.js?v=20260830-m328-app-entry1", "setupM328PublicRegistrationAppEntry", context);
     return result;
   }
   if (key === "bus-orga") {
