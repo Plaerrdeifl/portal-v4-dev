@@ -6,10 +6,11 @@ import test from "node:test";
 const root = path.resolve(import.meta.dirname, "..");
 const read = relative => fs.readFile(path.join(root, relative), "utf8");
 
-const [worker, bookingMigration, contactMigration] = await Promise.all([
+const [worker, bookingMigration, contactMigration, contactCorrection] = await Promise.all([
   read("supabase/functions/notification-dispatch/index.ts"),
   read("supabase/migrations/20260829090000_m328_r1_booking_management.sql"),
-  read("supabase/migrations/20260830214500_m328_booking_mail_contact_context.sql")
+  read("supabase/migrations/20260830214500_m328_booking_mail_contact_context.sql"),
+  read("supabase/migrations/20260830223000_m328_booking_contact_receipt_correction.sql")
 ]);
 
 test("M328 keeps readable booking-number enrichment in the central email wrapper", () => {
@@ -23,15 +24,11 @@ test("M328 keeps readable booking-number enrichment in the central email wrapper
   assert.match(wrapper, /jsonb_build_object\('bookingNumber',v_booking_number\)/);
 });
 
-test("one central fanbus organization contact owns verified booking-mail contact values", () => {
+test("one central fanbus organization contact owns booking-mail contact values", () => {
   assert.match(contactMigration, /'fanbus\.organization_contact'/);
   assert.match(contactMigration, /'fanbus@plaerrdeifl\.de'/);
   assert.match(contactMigration, /'Luca'[\s\S]*?'0174 6681046'[\s\S]*?'tel:\+491746681046'/);
   assert.match(contactMigration, /'Pascal'[\s\S]*?'0172 9744908'[\s\S]*?'tel:\+491729744908'/);
-  assert.match(contactMigration, /'whatsapp', '\{\}'::jsonb/);
-  assert.doesNotMatch(contactMigration, /'username', '@plaerrdeifl'/);
-  assert.doesNotMatch(contactMigration, /'url', 'https:\/\/wa\.me\/plaerrdeifl'/);
-  assert.match(contactMigration, /Kein WhatsApp-Wert wird geraten/);
   assert.match(contactMigration, /create or replace function app_private\.fanbus_public_organization_contact\(\)/);
   assert.match(contactMigration, /'whatsapp', coalesce\(normalized\.whatsapp, '\{\}'::jsonb\)/);
 
@@ -46,6 +43,13 @@ test("one central fanbus organization contact owns verified booking-mail contact
   assert.match(wrapper, /notification_add_external_email_before_m328_booking_contact_context/);
   assert.match(contactMigration, /revoke all on function app_private\.notification_add_external_email\([\s\S]*?from public, anon, authenticated, service_role;/);
   assert.match(contactMigration, /grant execute on function app_private\.notification_add_external_email\([\s\S]*?to postgres;/);
+});
+
+test("M328 correction removes the unverified WhatsApp placeholder without inventing a replacement", () => {
+  assert.match(contactCorrection, /jsonb_build_object\('whatsapp', '\{\}'::jsonb\)/);
+  assert.doesNotMatch(contactCorrection, /@plaerrdeifl/);
+  assert.doesNotMatch(contactCorrection, /wa\.me\/plaerrdeifl/);
+  assert.match(contactCorrection, /where key = 'fanbus\.organization_contact'/);
 });
 
 test("fanbus booking emails render the reference and help block only from payload contacts", () => {
