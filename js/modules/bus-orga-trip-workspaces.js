@@ -1,12 +1,12 @@
 import { errorPanel, loading } from "./common.js";
 import {
-  backToBusOrga,
+  backToTrip,
   ensureWorkspaceStyle,
   routeParams
-} from "./bus-orga-workspace-base.js";
-import { hydrateOccupancy } from "./bus-orga-occupancy.js";
-import { hydrateOperations } from "./bus-orga-operations.js";
-import { hydrateParticipants } from "./bus-orga-participants.js?v=20260830-m328-participant-mobile1";
+} from "./bus-orga-workspace-base.js?v=20260830-m328-final-bus-management1";
+import { hydrateOccupancy } from "./bus-orga-occupancy.js?v=20260830-m328-final-bus-management1";
+import { hydrateOperations } from "./bus-orga-operations.js?v=20260830-m328-final-bus-management1";
+import { hydrateParticipants } from "./bus-orga-participants.js?v=20260830-m328-final-bus-management1";
 
 export async function hydrateBusOrgaTripWorkspace(context = {}) {
   ensureWorkspaceStyle();
@@ -29,8 +29,8 @@ export async function hydrateBusOrgaTripWorkspace(context = {}) {
     throw new Error("Dieser Bus-Orga-Arbeitsbereich ist nicht verfügbar.");
   } catch (error) {
     if (context.isCurrent && !context.isCurrent()) return;
-    root.innerHTML = `${errorPanel(error, "Arbeitsbereich konnte nicht geladen werden")}<button class="button secondary" type="button" data-m328-workspace-load-back>← Bus-Orga</button>`;
-    root.querySelector("[data-m328-workspace-load-back]")?.addEventListener("click", backToBusOrga);
+    root.innerHTML = `${errorPanel(error, "Arbeitsbereich konnte nicht geladen werden")}<button class="button secondary" type="button" data-m328-workspace-load-back>← Fahrt</button>`;
+    root.querySelector("[data-m328-workspace-load-back]")?.addEventListener("click", () => backToTrip(tripId));
   }
 }
 
