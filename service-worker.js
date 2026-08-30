@@ -1,4 +1,5 @@
-const CACHE_VERSION = "pd-portal-v4-prod-r6-readiness-20260830";
+const CACHE_VERSION = "pd-portal-v4-m900-platform-mode-r1-20260823";
+const R6_CACHE_VERSION = "pd-portal-v4-prod-r6-readiness-20260830";
 const M010_CENTRAL_CAPABILITIES_CACHE_VERSION = "pd-portal-v4-m010-central-capabilities-r1-20260810";
 const PREVIOUS_CACHE_VERSION = "pd-portal-v4-m150-withdrawn-r1-20260810";
 const PWA_INSTALL_GUIDANCE_CACHE_VERSION = "pd-portal-v4-pwa-install-guidance-r1-20260802";
@@ -12,7 +13,7 @@ const ADMIN_TASK_ACCESS_CACHE_VERSION = "pd-portal-v4-admin-task-access-r1-20260
 const OFFICES_CACHE_VERSION = "pd-portal-v4-offices-save-corr1-20260724";
 const TASK_ACCESS_CACHE_VERSION = "pd-portal-v4-task-access-push-r3-20260724";
 const LEGACY_CACHE_VERSION = "pd-portal-v4-push-newtasks-quiettime-r1-20260723";
-const APP_CACHE = `${CACHE_VERSION}-shell`;
+const APP_CACHE = `${R6_CACHE_VERSION}-shell`;
 const SHELL = [
   "./",
   "./index.html",
