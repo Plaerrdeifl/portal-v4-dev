@@ -8,11 +8,6 @@ const MAX_EMAIL_HEADER_LENGTH = 998;
 const MAX_SMTP_RESPONSE_BYTES = 256 * 1024;
 const PROVIDER_TIMEOUT_MS = 15_000;
 const BATCH_LIMIT = 5;
-const FANBUS_CONTACT_EMAIL = "fanbus@plaerrdeifl.de";
-const FANBUS_WHATSAPP_USERNAME = "@plaerrdeifl";
-const FANBUS_WHATSAPP_URL = "https://wa.me/plaerrdeifl";
-const FANBUS_LUCA_PHONE = "0174 6681046";
-const FANBUS_PASCAL_PHONE = "0172 9744908";
 
 type Channel = "EMAIL" | "PUSH";
 
@@ -452,9 +447,71 @@ function fanbusBookingContext(data: Record<string, unknown>) {
   const bookingNumber = asString(data.bookingNumber, 40).trim();
   if (!/^(?:FB|DEV)-[0-9]{2}-[0-9]{6,}$/.test(bookingNumber)) return null;
 
+  const organizationContact = data.organizationContact
+    && typeof data.organizationContact === "object"
+    && !Array.isArray(data.organizationContact)
+    ? data.organizationContact as Record<string, unknown>
+    : {};
+
+  const contactItems = (kind: "emails" | "phones") => (
+    Array.isArray(organizationContact[kind]) ? organizationContact[kind] as unknown[] : []
+  ).flatMap(item => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const record = item as Record<string, unknown>;
+    const value = asString(record.value, kind === "emails" ? 320 : 40).trim();
+    if (!value || hasCrlf(value)) return [];
+    const label = asString(record.label, 80).trim();
+    const href = asString(record.href, 360).trim();
+    return [{ label, value, href }];
+  });
+
+  const emails = contactItems("emails").filter(item => parseMailbox(item.value, false));
+  const phones = contactItems("phones");
+  const whatsappRaw = organizationContact.whatsapp
+    && typeof organizationContact.whatsapp === "object"
+    && !Array.isArray(organizationContact.whatsapp)
+    ? organizationContact.whatsapp as Record<string, unknown>
+    : {};
+  const whatsappUsername = asString(whatsappRaw.username, 80).trim();
+  const whatsappUrl = asString(whatsappRaw.url, 360).trim();
+  const whatsappLabel = asString(whatsappRaw.label, 80).trim() || "WhatsApp";
+  const whatsapp = whatsappUsername
+    && !hasCrlf(whatsappUsername)
+    && /^https:\/\/wa\.me\/[A-Za-z0-9._-]+$/.test(whatsappUrl)
+    ? { label: whatsappLabel, username: whatsappUsername, url: whatsappUrl }
+    : null;
+
+  const textContacts = [
+    ...emails.map(item => `E-Mail: ${item.value}`),
+    ...phones.map(item => `${item.label || "Telefon"}: ${item.value}`),
+    ...(whatsapp ? [`${whatsapp.label}: ${whatsapp.username}`] : [])
+  ];
+
+  const htmlContacts = [
+    ...emails.map(item => `E-Mail: <a href="mailto:${escapeHtml(item.value)}">${escapeHtml(item.value)}</a>`),
+    ...phones.map(item => {
+      const label = escapeHtml(item.label || "Telefon");
+      const value = escapeHtml(item.value);
+      const href = /^tel:\+[0-9]{7,15}$/.test(item.href) ? item.href : "";
+      return href
+        ? `${label}: <a href="${escapeHtml(href)}">${value}</a>`
+        : `${label}: ${value}`;
+    }),
+    ...(whatsapp
+      ? [`${escapeHtml(whatsapp.label)}: <a href="${escapeHtml(whatsapp.url)}">${escapeHtml(whatsapp.username)}</a>`]
+      : [])
+  ];
+
+  const contactText = textContacts.length
+    ? `\n\nFragen zu deiner Buchung?\n${textContacts.join("\n")}\nOder melde dich direkt bei einem der oben genannten Ansprechpartner.`
+    : "";
+  const contactHtml = htmlContacts.length
+    ? `<p><strong>Fragen zu deiner Buchung?</strong><br>${htmlContacts.join("<br>")}<br>Oder melde dich direkt bei einem der oben genannten Ansprechpartner.</p>`
+    : "";
+
   return {
-    text: `\n\nBuchungsnummer: ${bookingNumber}\nBitte gib diese Buchungsnummer bei Rückfragen mit an.\n\nFragen zu deiner Buchung?\nE-Mail: ${FANBUS_CONTACT_EMAIL}\nWhatsApp: ${FANBUS_WHATSAPP_USERNAME}\nLuca: ${FANBUS_LUCA_PHONE}\nPascal: ${FANBUS_PASCAL_PHONE}\nOder melde dich direkt bei Luca oder Pascal.`,
-    html: `<section><p><strong>Buchungsnummer:</strong> ${escapeHtml(bookingNumber)}<br><small>Bitte gib diese Buchungsnummer bei Rückfragen mit an.</small></p><p><strong>Fragen zu deiner Buchung?</strong><br>E-Mail: <a href="mailto:${FANBUS_CONTACT_EMAIL}">${FANBUS_CONTACT_EMAIL}</a><br>WhatsApp: <a href="${FANBUS_WHATSAPP_URL}">${FANBUS_WHATSAPP_USERNAME}</a><br>Luca: <a href="tel:+491746681046">${FANBUS_LUCA_PHONE}</a><br>Pascal: <a href="tel:+491729744908">${FANBUS_PASCAL_PHONE}</a><br>Oder melde dich direkt bei Luca oder Pascal.</p></section>`
+    text: `\n\nBuchungsnummer: ${bookingNumber}\nBitte gib diese Buchungsnummer bei Rückfragen mit an.${contactText}`,
+    html: `<section><p><strong>Buchungsnummer:</strong> ${escapeHtml(bookingNumber)}<br><small>Bitte gib diese Buchungsnummer bei Rückfragen mit an.</small></p>${contactHtml}</section>`
   };
 }
 
