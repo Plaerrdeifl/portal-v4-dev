@@ -9,6 +9,10 @@ const MAX_SMTP_RESPONSE_BYTES = 256 * 1024;
 const PROVIDER_TIMEOUT_MS = 15_000;
 const BATCH_LIMIT = 5;
 const FANBUS_CONTACT_EMAIL = "fanbus@plaerrdeifl.de";
+const FANBUS_WHATSAPP_USERNAME = "@plaerrdeifl";
+const FANBUS_WHATSAPP_URL = "https://wa.me/plaerrdeifl";
+const FANBUS_LUCA_PHONE = "0174 6681046";
+const FANBUS_PASCAL_PHONE = "0172 9744908";
 
 type Channel = "EMAIL" | "PUSH";
 
@@ -449,8 +453,8 @@ function fanbusBookingContext(data: Record<string, unknown>) {
   if (!/^(?:FB|DEV)-[0-9]{2}-[0-9]{6,}$/.test(bookingNumber)) return null;
 
   return {
-    text: `\n\nBuchungsnummer: ${bookingNumber}\nBitte gib diese Buchungsnummer bei Rückfragen mit an.\n\nFragen zu deiner Buchung?\nE-Mail: ${FANBUS_CONTACT_EMAIL}\nOder melde dich direkt bei Luca oder Pascal.`,
-    html: `<section><p><strong>Buchungsnummer:</strong> ${escapeHtml(bookingNumber)}<br><small>Bitte gib diese Buchungsnummer bei Rückfragen mit an.</small></p><p><strong>Fragen zu deiner Buchung?</strong><br>E-Mail: <a href="mailto:${FANBUS_CONTACT_EMAIL}">${FANBUS_CONTACT_EMAIL}</a><br>Oder melde dich direkt bei Luca oder Pascal.</p></section>`
+    text: `\n\nBuchungsnummer: ${bookingNumber}\nBitte gib diese Buchungsnummer bei Rückfragen mit an.\n\nFragen zu deiner Buchung?\nE-Mail: ${FANBUS_CONTACT_EMAIL}\nWhatsApp: ${FANBUS_WHATSAPP_USERNAME}\nLuca: ${FANBUS_LUCA_PHONE}\nPascal: ${FANBUS_PASCAL_PHONE}\nOder melde dich direkt bei Luca oder Pascal.`,
+    html: `<section><p><strong>Buchungsnummer:</strong> ${escapeHtml(bookingNumber)}<br><small>Bitte gib diese Buchungsnummer bei Rückfragen mit an.</small></p><p><strong>Fragen zu deiner Buchung?</strong><br>E-Mail: <a href="mailto:${FANBUS_CONTACT_EMAIL}">${FANBUS_CONTACT_EMAIL}</a><br>WhatsApp: <a href="${FANBUS_WHATSAPP_URL}">${FANBUS_WHATSAPP_USERNAME}</a><br>Luca: <a href="tel:+491746681046">${FANBUS_LUCA_PHONE}</a><br>Pascal: <a href="tel:+491729744908">${FANBUS_PASCAL_PHONE}</a><br>Oder melde dich direkt bei Luca oder Pascal.</p></section>`
   };
 }
 
