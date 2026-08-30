@@ -129,7 +129,8 @@ test("organization contact has one sanitized public projection and guest mail/su
 
 test("frontend stays inside Fanbus and implements creator/non-creator mobile cards", () => {
   assert.match(page, /id="m327TripsPanel"/);
-  assert.match(page, />🎟️ Meine Buchungen</);
+  assert.match(page, /Buchungen &amp; Einstellungen/);
+  assert.match(page, /id="m327MyBookingsTab"[\s\S]*?>Meine Buchungen<\/button>/);
   assert.doesNotMatch(page, /main-navigation|nav-item/);
   assert.match(ui, /booking\.isCreator && trip\.canMutate/);
   assert.match(ui, /booking\.isCreator \|\| participant\.isSelf/);
