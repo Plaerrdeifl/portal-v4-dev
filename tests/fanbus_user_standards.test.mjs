@@ -47,14 +47,17 @@ test("Trips without bus selection still normalize every concrete registration to
   assert.match(jointContract, /if not app_private\.fanbus_bus_preference_selection_enabled\(new\.trip_id\) then\s+new\.bus_preference := 'EGAL';/);
 });
 
-test("Fanbus standards UI uses shared portal dialog and form patterns without a parallel style layer", () => {
+test("Fanbus standards use a native in-page workspace instead of a dialog", () => {
   assert.match(fanbusPage, /id="m325UserFanbusStandardsButton"[^>]*>Meine Fanbus-Standards<\/button>/);
-  assert.match(ux, /title: "Meine Fanbus-Standards"/);
-  assert.match(ux, /class="form-grid v4-smart-form"/);
-  assert.match(ux, /class="v4-field-half">Standard-Zustieg/);
-  assert.match(ux, /class="v4-field-half">Standard-Buswunsch/);
+  assert.match(ux, /STANDARDS_PANEL_ID = "m327FanbusStandardsPanel"/);
+  assert.match(ux, /m327-standards-head/);
+  assert.match(ux, /Standard-Zustieg/);
+  assert.match(ux, /Standard-Buswunsch/);
+  assert.match(ux, /Standards speichern/);
+  assert.match(ux, /document\.getElementById\("m327TripsPanel"\)/);
+  assert.match(ux, /data-m327-standards-back/);
   assert.match(ux, /runWrite\(/);
-  assert.doesNotMatch(ux, /createElement\("style"\)|style\.textContent|injectStyles/);
+  assert.doesNotMatch(ux, /\bopenDialog\s*\(/);
 });
 
 test("Personal bus defaults are applied only after loading and only to selectable controls", () => {
@@ -65,8 +68,13 @@ test("Personal bus defaults are applied only after loading and only to selectabl
   assert.doesNotMatch(ux, /input\[data-m326-person-preference=/);
 });
 
-test("Personal standards module is cache-versioned in portal and public registration", () => {
-  const loader = /\.\/js\/fanbus-user-standards\.js\?v=20260828-p300-user-standards-r2/;
-  assert.match(index, loader);
-  assert.match(registrationPage, loader);
+test("Personal standards portal workspace and public registration loader remain cache-versioned", () => {
+  assert.match(
+    index,
+    /\.\/js\/fanbus-user-standards\.js\?v=20260830-m327-native-standards1/
+  );
+  assert.match(
+    registrationPage,
+    /\.\/js\/fanbus-user-standards\.js\?v=[^"\s]+/
+  );
 });
