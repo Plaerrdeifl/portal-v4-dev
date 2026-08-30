@@ -141,10 +141,6 @@ function actionCard(action) {
   return `<button class="m328-workspace-card" type="button" data-m328-quick-action="${escapeAttr(action)}"><span class="m328-workspace-card-copy"><strong>${escapeHtml(config.title)}</strong><small>${escapeHtml(config.description)}</small></span><span class="m328-workspace-chevron" aria-hidden="true">›</span></button>`;
 }
 
-function openActionSelection(action) {
-  location.hash = `#/bus-orga?${new URLSearchParams({ quick: action })}`;
-}
-
 function openTarget(action, tripId) {
   const config = QUICK_ACTIONS[action];
   if (!config) return;
@@ -157,12 +153,23 @@ function openTarget(action, tripId) {
   location.hash = `#/bus-orga?${params}`;
 }
 
-function renderActionList(section, actions) {
+function clearQuickRouteWithoutNavigation() {
+  const route = routeState();
+  if (route.path !== "#/bus-orga" || route.view || !route.quick) return;
+  history.replaceState(history.state, "", "#/bus-orga");
+}
+
+function renderActionList(section, items, actions) {
   const body = section.querySelector("#m328QuickChangeBody");
   if (!body) return;
   body.innerHTML = actions.map(actionCard).join("") || empty("Keine Schnelländerungen freigeschaltet.");
   body.querySelectorAll("[data-m328-quick-action]").forEach(button => {
-    button.addEventListener("click", () => openActionSelection(button.dataset.m328QuickAction));
+    button.addEventListener("click", () => {
+      const action = button.dataset.m328QuickAction;
+      if (!action) return;
+      section.open = true;
+      renderTripPicker(section, items, action);
+    });
   });
 }
 
@@ -194,7 +201,8 @@ function renderTripPicker(section, items, action) {
     </div>
   `;
   body.querySelector("[data-m328-quick-back]")?.addEventListener("click", () => {
-    location.hash = "#/bus-orga";
+    clearQuickRouteWithoutNavigation();
+    renderActionList(section, items, allowedActions());
   });
   const select = body.querySelector("[data-m328-quick-game]");
   select?.addEventListener("change", () => {
@@ -224,12 +232,13 @@ async function mountQuickChange() {
     const actions = allowedActions();
     section.hidden = actions.length === 0;
     if (!actions.length) return true;
+    const items = Array.isArray(data?.trips) ? data.trips : [];
     const requested = routeState().quick;
     if (requested && actions.includes(requested)) {
       section.open = true;
-      renderTripPicker(section, Array.isArray(data?.trips) ? data.trips : [], requested);
+      renderTripPicker(section, items, requested);
     } else {
-      renderActionList(section, actions);
+      renderActionList(section, items, actions);
     }
     return true;
   } catch (error) {
