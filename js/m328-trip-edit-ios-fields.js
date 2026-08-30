@@ -8,7 +8,6 @@ function installM328TripEditIosFieldFix() {
     .m328-trip-edit .m328-trip-edit-stop-editor > label{
       min-width:0!important;
       max-width:100%!important;
-      overflow:hidden!important;
     }
 
     .m328-trip-edit .m328-trip-edit-core-grid input[type="time"],
@@ -22,24 +21,28 @@ function installM328TripEditIosFieldFix() {
       max-inline-size:100%!important;
       min-inline-size:0!important;
       box-sizing:border-box!important;
-      overflow:hidden!important;
+      padding:0!important;
+    }
+
+    .m328-trip-edit .m328-trip-edit-stop-editor select{
+      width:100%!important;
+      max-width:100%!important;
+      min-width:0!important;
+      box-sizing:border-box!important;
     }
 
     .m328-trip-edit .m328-trip-edit-core-grid{
       min-width:0!important;
-      overflow:hidden!important;
     }
 
     .m328-trip-edit .m328-trip-edit-deadline{
       min-width:0!important;
       max-width:100%!important;
-      overflow:hidden!important;
     }
 
     .m328-trip-edit .m328-trip-edit-stop-editor{
       min-width:0!important;
       max-width:100%!important;
-      overflow:hidden!important;
     }
 
     @media (max-width:430px){
