@@ -40,7 +40,7 @@ test("public fanbus APIs expose the same organization contact projection", () =>
 });
 
 test("shared contact UI only accepts numeric wa.me links and derives board WhatsApp from member phone links", () => {
-  assert.match(actions, /\^https:\\\/\\\/wa\\\.me\\\/[1-9]\[0-9\]\{6,14\}\$/);
+  assert.ok(actions.includes('return /^https:\\/\\/wa\\.me\\/[1-9][0-9]{6,14}$/u.test(raw) ? raw : "";'));
   assert.match(actions, /function numericWhatsAppHref\(value\)/);
   assert.match(actions, /`https:\/\/wa\.me\/\$\{raw\}`/);
   assert.match(actions, /a\.v4-board-phone/);
