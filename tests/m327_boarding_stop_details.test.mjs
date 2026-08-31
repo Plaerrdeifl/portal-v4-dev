@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+import {
+  isM327SemanticDuplicateTripNote,
+  m327StructuredNoteParts
+} from "../js/m327-boarding-stop-details.js";
+
 const migration = readFileSync(
   new URL("../supabase/migrations/20260830172000_m327_boarding_stop_public_details.sql", import.meta.url),
   "utf8"
@@ -11,6 +16,18 @@ const details = readFileSync(
   "utf8"
 );
 const pages = readFileSync(new URL("../js/pages.js", import.meta.url), "utf8");
+
+const muennerstadtStop = {
+  label: "Pendlerparkplatz",
+  address: "Münnerstadt",
+  defaultNote: "Infos & telefonische Anmeldung:\n\nLuca: 0174 6681046"
+};
+
+const schweinfurtStop = {
+  label: "Icedome",
+  address: "Schweinfurt",
+  defaultNote: "Infos & telefonische Anmeldung:\nPascal: 0172 9744908"
+};
 
 test("M327 trip boarding stop readers expose central address and default note", () => {
   assert.match(migration, /create or replace function app_private\.api_fanbus_trip_boarding_stops_list/);
@@ -27,18 +44,65 @@ test("M327 public boarding stop reader remains limited to published public trips
   assert.match(migration, /grant execute on function public\.pd_public_fanbus_trip_boarding_stops\(uuid\)/);
 });
 
-test("M327 expanded trip cards render address, central hint and optional trip hint", () => {
+test("M327 recognizes current PROD contact notes for Luca and Pascal", () => {
+  assert.deepEqual(m327StructuredNoteParts(muennerstadtStop.defaultNote), {
+    label: "Infos & telefonische Anmeldung:",
+    value: "Luca: 0174 6681046",
+    contact: { name: "Luca", phone: "0174 6681046" }
+  });
+  assert.deepEqual(m327StructuredNoteParts(schweinfurtStop.defaultNote), {
+    label: "Infos & telefonische Anmeldung:",
+    value: "Pascal: 0172 9744908",
+    contact: { name: "Pascal", phone: "0172 9744908" }
+  });
+});
+
+test("M327 suppresses semantic boarding-stop duplicates but preserves real trip information", () => {
+  assert.equal(
+    isM327SemanticDuplicateTripNote(
+      muennerstadtStop,
+      "Münnerstadt (Infos bei Luca: 0174 6681046)"
+    ),
+    true
+  );
+  assert.equal(
+    isM327SemanticDuplicateTripNote(muennerstadtStop, "Pendlerparkplatz Münnerstadt"),
+    true
+  );
+  assert.equal(
+    isM327SemanticDuplicateTripNote(
+      muennerstadtStop,
+      "Bitte 10 Minuten früher da sein. Infos bei Luca: 0174 6681046"
+    ),
+    false
+  );
+  assert.equal(
+    isM327SemanticDuplicateTripNote(schweinfurtStop, "Treffpunkt an Tor 2"),
+    false
+  );
+});
+
+test("M327 expanded trip cards render compact contacts and optional genuine trip hints", () => {
   assert.match(details, /data-m310-inline-trip-detail/);
   assert.match(details, /\.v4-m325-trip-stops/);
   assert.match(details, /stop\?\.address/);
   assert.match(details, /stop\?\.defaultNote/);
   assert.match(details, /stop\?\.tripNote/);
   assert.doesNotMatch(details, /`Hinweis: \$\{defaultNote\}`/);
-  assert.match(details, /Fragen\\s\*&\\s\*Anmeldung:/);
+  assert.match(details, /Infos\\s\*&\\s\*telefonische\\s\+Anmeldung/);
+  assert.match(details, /Fragen\\s\*&\\s\*Anmeldung/);
   assert.match(details, /m327-trip-stop-note-label/);
-  assert.match(details, /m327-trip-stop-note-value/);
+  assert.match(details, /m327-trip-stop-contact-line/);
+  assert.match(details, /m327-trip-stop-contact-name/);
+  assert.match(details, /m327-trip-stop-contact-phone/);
   assert.match(details, /Fahrthinweis/);
-  assert.match(details, /normalizedText\(tripNote\) !== normalizedText\(defaultNote\)/);
+  assert.match(details, /!isM327SemanticDuplicateTripNote\(stop, tripNote\)/);
+});
+
+test("M327 mobile contact layout keeps phone numbers readable without forced user-text caps", () => {
+  assert.match(details, /m327-trip-stop-contact-line\{display:flex;flex-wrap:wrap/);
+  assert.match(details, /m327-trip-stop-contact-phone\{white-space:nowrap;overflow-wrap:normal;word-break:normal/);
+  assert.match(details, /m327-trip-stop-address,.m327-trip-stop-note\{[^}]*overflow-wrap:break-word;word-break:normal;text-transform:none/);
 });
 
 test("M327 boarding stop detail enhancement only uses existing read contracts", () => {
@@ -51,7 +115,7 @@ test("M327 boarding stop detail enhancement only uses existing read contracts", 
 test("M327 boarding stop detail enhancement is explicitly versioned", () => {
   assert.match(
     pages,
-    /\.\/m327-boarding-stop-details\.js\?v=20260830-m327-stop-details1/
+    /\.\/m327-boarding-stop-details\.js\?v=20260901-m327-stop-details-hotfix1/
   );
   assert.match(pages, /"setupM327BoardingStopDetails"/);
 });
