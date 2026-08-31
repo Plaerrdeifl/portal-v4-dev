@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="de" data-route="liveticker-prototype">
+<head>
+  <meta charset="utf-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+  <meta name="theme-color" content="#041c33">
+  <meta name="color-scheme" content="light">
+  <meta name="referrer" content="no-referrer">
+  <meta
+    name="description"
+    content="Öffentlicher DEV-Prototyp für den Mighty-Dogs-Liveticker."
+  >
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'none'; form-action 'none'"
+  >
+
+  <link rel="icon" type="image/x-icon" href="../favicon.ico">
+  <link
+    rel="icon"
+    type="image/png"
+    sizes="32x32"
+    href="../assets/icons/icon-32.png"
+  >
+
+  <style>
+    :root{
+      color-scheme:light;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      color:#0a2038;
+      background:#eef2f7;
+      font-synthesis:none;
+      text-rendering:optimizeLegibility;
+      --blue-950:#03182d;
+      --blue-900:#04233f;
+      --blue-800:#073c68;
+      --blue-700:#0d79e8;
+      --blue-050:#eef6ff;
+      --red-700:#e22b39;
+      --ink-900:#0a2038;
+      --ink-700:#3f5269;
+      --ink-500:#718096;
+      --surface:#fff;
+      --line:#dbe4ef;
+      --success:#087747;
+      --shadow:0 12px 38px rgba(4,28,51,.11);
+      --radius:22px;
+    }
+    *{box-sizing:border-box}
+    html{min-height:100%;background:#eef2f7;-webkit-text-size-adjust:100%}
+    body{min-width:320px;min-height:100%;margin:0;background:linear-gradient(180deg,#e6f1ff 0,#eef2f7 270px);overscroll-behavior-y:none}
+    fieldset{min-width:0;margin:0;padding:0;border:0}
+    button,input,select,textarea{font:inherit}
+    button,label,input,select,textarea{-webkit-tap-highlight-color:transparent}
+    button{touch-action:manipulation}
+    [hidden]{display:none!important}
+    .shell{width:min(620px,100%);margin:0 auto;padding:max(16px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(32px,calc(22px + env(safe-area-inset-bottom))) max(14px,env(safe-area-inset-left));display:grid;gap:14px}
+    .topline{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .brand{display:flex;align-items:center;gap:10px;min-width:0;color:var(--ink-900)}
+    .brand img{width:46px;height:46px;border-radius:14px;box-shadow:0 5px 15px rgba(4,28,51,.14)}
+    .brand-copy{display:grid;min-width:0;line-height:1.05}
+    .brand-copy strong{font-size:1.02rem;letter-spacing:-.01em}
+    .brand-copy small{margin-top:5px;color:var(--ink-500);font-size:.67rem;font-weight:850;letter-spacing:.12em}
+    .dev-badge{flex:none;padding:7px 9px;border:1px solid rgba(13,121,232,.24);border-radius:999px;background:rgba(255,255,255,.72);color:var(--blue-800);font-size:.7rem;font-weight:900;letter-spacing:.06em}
+    .intro{padding:4px 2px 2px}
+    .intro h1{margin:0;font-size:clamp(1.55rem,7vw,2.15rem);line-height:1.05;letter-spacing:-.035em}
+    .intro p{margin:7px 0 0;color:var(--ink-700);font-size:.9rem;line-height:1.45}
+    .card{border:1px solid rgba(219,228,239,.95);border-radius:var(--radius);background:rgba(255,255,255,.96);box-shadow:var(--shadow)}
+    .composer{padding:16px;display:grid;gap:19px}
+    .field-group{display:grid;gap:8px;min-width:0}
+    .field-label{display:flex;align-items:baseline;justify-content:space-between;gap:10px;color:var(--ink-900);font-size:.88rem;font-weight:850}
+    .field-label small{color:var(--ink-500);font-size:.7rem;font-weight:700}
+    .segmented{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:7px;padding:5px;border:1px solid var(--line);border-radius:16px;background:#f2f6fa}
+    .segmented input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+    .segmented label{min-height:48px;padding:10px 8px;border:1px solid transparent;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--ink-700);font-weight:850;text-align:center;cursor:pointer;user-select:none}
+    .segmented input:checked+label{border-color:rgba(13,121,232,.18);background:#fff;color:var(--blue-800);box-shadow:0 4px 12px rgba(4,28,51,.1)}
+    .segmented input:focus-visible+label{outline:3px solid rgba(13,121,232,.3);outline-offset:1px}
+    .action-choice input[value="GOAL"]:checked+label{color:var(--success)}
+    .action-choice input[value="PENALTY"]:checked+label{color:#9c211f}
+    .minute-control{display:grid;grid-template-columns:52px minmax(0,1fr) 52px;gap:8px}
+    .minute-button,.copy-button{border:1px solid var(--line);background:#f7faff;color:var(--blue-900);font-weight:900;cursor:pointer}
+    .minute-button{min-height:54px;border-radius:14px;font-size:1.35rem}
+    .minute-input{width:100%;min-height:54px;padding:8px 12px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--ink-900);font-size:1.35rem;font-weight:900;text-align:center;appearance:textfield}
+    .minute-input::-webkit-outer-spin-button,.minute-input::-webkit-inner-spin-button{margin:0;appearance:none}
+    select,textarea{width:100%;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--ink-900)}
+    select{min-height:54px;padding:0 42px 0 13px;background-image:linear-gradient(45deg,transparent 50%,#55708a 50%),linear-gradient(135deg,#55708a 50%,transparent 50%);background-position:calc(100% - 19px) 23px,calc(100% - 14px) 23px;background-size:5px 5px,5px 5px;background-repeat:no-repeat;appearance:none}
+    input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid rgba(13,121,232,.28);outline-offset:2px}
+    .primary-button{width:100%;min-height:58px;border:0;border-radius:16px;background:linear-gradient(135deg,var(--blue-800),var(--blue-700));color:#fff;font-size:1.02rem;font-weight:900;box-shadow:0 9px 20px rgba(13,121,232,.25);cursor:pointer}
+    .primary-button:active,.minute-button:active,.copy-button:active{transform:translateY(1px)}
+    .output{padding:16px;display:grid;gap:10px}
+    .output-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .output-head h2{margin:0;font-size:1rem}
+    .copy-button{min-height:44px;padding:8px 13px;border-radius:12px}
+    .copy-button[data-copied="true"]{border-color:#b7ddca;background:#eaf8f0;color:var(--success)}
+    textarea{min-height:142px;padding:13px;resize:vertical;font-size:1rem;line-height:1.5}
+    textarea::placeholder{color:#8b9bad}
+    .output-hint{margin:0;color:var(--ink-500);font-size:.76rem;line-height:1.4}
+    .error{margin:0;padding:10px 12px;border:1px solid #f1c8ca;border-radius:12px;background:#fff1f1;color:#8a1d25;font-size:.82rem;font-weight:750;line-height:1.4}
+    .privacy-note{margin:0 4px;color:var(--ink-500);font-size:.73rem;line-height:1.45;text-align:center}
+    @media (min-width:560px){.shell{padding-top:26px}.composer,.output{padding:20px}.context-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:end}}
+    @media (prefers-reduced-motion:no-preference){.field-panel{animation:reveal .18s ease-out}@keyframes reveal{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}}
+  </style>
+
+  <title>Liveticker-Test · Plärrdeifl</title>
+</head>
+<body>
+  <noscript>Für den Liveticker-Test muss JavaScript aktiviert sein.</noscript>
+
+  <main class="shell">
+    <div class="topline">
+      <div class="brand" aria-label="Plärrdeifl Liveticker">
+        <img src="../assets/icons/icon-192.png" alt="">
+        <span class="brand-copy">
+          <strong>Plärrdeifl</strong>
+          <small>LIVETICKER</small>
+        </span>
+      </div>
+      <span class="dev-badge">DEV · PROTOTYP</span>
+    </div>
+
+    <header class="intro">
+      <h1>Was ist passiert?</h1>
+      <p>Aktion erfassen und als fertigen WhatsApp-Text kopieren.</p>
+    </header>
+
+    <form id="tickerForm" class="card composer" novalidate>
+      <div class="context-grid">
+        <fieldset class="field-group">
+          <legend class="field-label">Aktuelles Drittel</legend>
+          <div class="segmented">
+            <input id="period1" name="period" type="radio" value="1" checked>
+            <label for="period1">1.</label>
+            <input id="period2" name="period" type="radio" value="2">
+            <label for="period2">2.</label>
+            <input id="period3" name="period" type="radio" value="3">
+            <label for="period3">3.</label>
+          </div>
+        </fieldset>
+
+        <div class="field-group">
+          <label class="field-label" for="gameMinute">Spielminute</label>
+          <div class="minute-control">
+            <button class="minute-button" type="button" data-minute-step="-1" aria-label="Eine Minute zurück">−</button>
+            <input
+              id="gameMinute"
+              class="minute-input"
+              name="gameMinute"
+              type="number"
+              inputmode="numeric"
+              min="1"
+              max="60"
+              step="1"
+              value="1"
+              required
+            >
+            <button class="minute-button" type="button" data-minute-step="1" aria-label="Eine Minute weiter">+</button>
+          </div>
+        </div>
+      </div>
+
+      <fieldset class="field-group">
+        <legend class="field-label">Aktion</legend>
+        <div class="segmented action-choice">
+          <input id="actionGoal" name="action" type="radio" value="GOAL" checked>
+          <label for="actionGoal">🥅 Tor</label>
+          <input id="actionPenalty" name="action" type="radio" value="PENALTY">
+          <label for="actionPenalty">⏱ Strafe</label>
+        </div>
+      </fieldset>
+
+      <section id="goalFields" class="field-group field-panel" aria-labelledby="goalPlayerLabel">
+        <label id="goalPlayerLabel" class="field-label" for="goalPlayer">Torschütze</label>
+        <select id="goalPlayer" name="goalPlayer" required>
+          <option value="">Spieler wählen …</option>
+        </select>
+      </section>
+
+      <section id="penaltyFields" class="field-panel" hidden>
+        <div class="field-group">
+          <fieldset class="field-group">
+            <legend class="field-label">Strafdauer</legend>
+            <div class="segmented">
+              <input id="duration2" name="penaltyDuration" type="radio" value="2" checked>
+              <label for="duration2">2 Min.</label>
+              <input id="duration5" name="penaltyDuration" type="radio" value="5">
+              <label for="duration5">5 Min.</label>
+              <input id="duration10" name="penaltyDuration" type="radio" value="10">
+              <label for="duration10">10 Min.</label>
+            </div>
+          </fieldset>
+
+          <div class="field-group">
+            <label class="field-label" for="penaltyReason">Strafgrund</label>
+            <select id="penaltyReason" name="penaltyReason"></select>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="penaltyPlayer">
+              Spieler
+              <small>optional</small>
+            </label>
+            <select id="penaltyPlayer" name="penaltyPlayer">
+              <option value="">Ohne Spieler / Bankstrafe</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <p id="formError" class="error" role="alert" hidden></p>
+      <button class="primary-button" type="submit">Text erstellen</button>
+    </form>
+
+    <section class="card output" aria-labelledby="outputTitle">
+      <div class="output-head">
+        <h2 id="outputTitle">WhatsApp-Text</h2>
+        <button id="copyButton" class="copy-button" type="button">Kopieren</button>
+      </div>
+      <textarea
+        id="tickerOutput"
+        aria-describedby="outputHint"
+        placeholder="Hier erscheint dein fertiger Text …"
+        spellcheck="true"
+      ></textarea>
+      <p id="outputHint" class="output-hint">Der Text bleibt vor dem Kopieren frei bearbeitbar.</p>
+    </section>
+
+    <p class="privacy-note">Keine Anmeldung · keine Speicherung · keine Datenübertragung</p>
+  </main>
+
+  <script type="module" src="../js/liveticker-prototype.js"></script>
+</body>
+</html>

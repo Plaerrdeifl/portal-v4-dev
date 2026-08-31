@@ -24,6 +24,7 @@ const directories = [
   "components",
   "css",
   "js",
+  "liveticker",
   "pages"
 ];
 
