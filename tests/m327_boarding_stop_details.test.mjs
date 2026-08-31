@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
+import { Buffer } from "node:buffer";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-
-import {
-  isM327SemanticDuplicateTripNote,
-  m327StructuredNoteParts
-} from "../js/m327-boarding-stop-details.js";
 
 const migration = readFileSync(
   new URL("../supabase/migrations/20260830172000_m327_boarding_stop_public_details.sql", import.meta.url),
@@ -16,6 +12,18 @@ const details = readFileSync(
   "utf8"
 );
 const pages = readFileSync(new URL("../js/pages.js", import.meta.url), "utf8");
+
+const testableDetails = details.replace(
+  'import { call, hasCapability } from "./modules/common.js";',
+  "const call = async () => ({});\nconst hasCapability = () => false;"
+);
+const detailsModule = await import(
+  `data:text/javascript;base64,${Buffer.from(testableDetails).toString("base64")}`
+);
+const {
+  isM327SemanticDuplicateTripNote,
+  m327StructuredNoteParts
+} = detailsModule;
 
 const muennerstadtStop = {
   label: "Pendlerparkplatz",
