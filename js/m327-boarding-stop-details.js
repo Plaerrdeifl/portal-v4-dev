@@ -3,6 +3,17 @@ import { call, hasCapability } from "./modules/common.js";
 const STYLE_ID = "m327BoardingStopDetailsStyles";
 const DETAIL_SELECTOR = "[data-m310-inline-trip-detail]";
 const STOP_SELECTOR = ".v4-m325-trip-stops";
+const NOTE_BOILERPLATE_TOKENS = new Set([
+  "anmeldung",
+  "bei",
+  "fragen",
+  "info",
+  "infos",
+  "kontakt",
+  "telefonisch",
+  "telefonische",
+  "und"
+]);
 const TIME_FORMAT = new Intl.DateTimeFormat("de-DE", {
   timeZone: "Europe/Berlin",
   hour: "2-digit",
@@ -15,8 +26,58 @@ function cleanText(value) {
   return String(value || "").trim();
 }
 
-function normalizedText(value) {
-  return cleanText(value).replace(/\s+/g, " ").toLocaleLowerCase("de-DE");
+function normalizedComparableText(value) {
+  return cleanText(value)
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ß/g, "ss")
+    .toLocaleLowerCase("de-DE")
+    .replace(/(\d)[\s./()-]+(?=\d)/g, "$1")
+    .replace(/[^a-z0-9+]+/g, " ")
+    .trim();
+}
+
+function meaningfulNoteTokens(value) {
+  const normalized = normalizedComparableText(value);
+  if (!normalized) return [];
+  return normalized
+    .split(/\s+/)
+    .filter(token => token && !NOTE_BOILERPLATE_TOKENS.has(token));
+}
+
+export function isM327SemanticDuplicateTripNote(stop, value = stop?.tripNote) {
+  const tripNote = cleanText(value);
+  if (!tripNote) return false;
+
+  const tripTokens = meaningfulNoteTokens(tripNote);
+  if (!tripTokens.length) return true;
+
+  const referenceTokens = new Set(meaningfulNoteTokens([
+    stop?.label,
+    stop?.address,
+    stop?.defaultNote
+  ].map(cleanText).filter(Boolean).join(" ")));
+
+  return referenceTokens.size > 0
+    && tripTokens.every(token => referenceTokens.has(token));
+}
+
+export function m327StructuredNoteParts(value) {
+  const clean = cleanText(value);
+  if (!clean) return null;
+
+  const match = /^(Infos\s*&\s*telefonische\s+Anmeldung|Fragen\s*&\s*Anmeldung)\s*:\s*([\s\S]*)$/i.exec(clean);
+  if (!match) return { label: "", value: clean, contact: null };
+
+  const noteValue = cleanText(match[2]);
+  const contactMatch = /^([^:\n]{1,80})\s*:\s*(\+?\d[\d\s()/.-]{5,}\d)$/.exec(noteValue);
+  return {
+    label: `${cleanText(match[1])}:`,
+    value: noteValue,
+    contact: contactMatch
+      ? { name: cleanText(contactMatch[1]), phone: cleanText(contactMatch[2]) }
+      : null
+  };
 }
 
 function timeLabel(value) {
@@ -37,12 +98,11 @@ function createLine(className, text) {
 }
 
 function appendStructuredNote(item, className, text, prefix = "") {
-  const clean = cleanText(text);
-  if (!clean) return;
+  const parts = m327StructuredNoteParts(text);
+  if (!parts) return;
 
   const line = document.createElement("span");
   line.className = className;
-  const match = /^(Fragen\s*&\s*Anmeldung:)\s*(.*)$/i.exec(clean);
 
   if (prefix) {
     const prefixLine = document.createElement("span");
@@ -51,22 +111,31 @@ function appendStructuredNote(item, className, text, prefix = "") {
     line.append(prefixLine);
   }
 
-  if (match) {
+  if (parts.label) {
     const label = document.createElement("span");
     label.className = "m327-trip-stop-note-label";
-    label.textContent = match[1];
+    label.textContent = parts.label;
     line.append(label);
+  }
 
-    if (match[2]) {
-      const value = document.createElement("span");
-      value.className = "m327-trip-stop-note-value";
-      value.textContent = match[2];
-      line.append(value);
-    }
-  } else {
+  if (parts.contact) {
+    const contact = document.createElement("span");
+    contact.className = "m327-trip-stop-contact-line";
+
+    const name = document.createElement("span");
+    name.className = "m327-trip-stop-contact-name";
+    name.textContent = `${parts.contact.name} ·`;
+    contact.append(name);
+
+    const phone = document.createElement("span");
+    phone.className = "m327-trip-stop-contact-phone";
+    phone.textContent = parts.contact.phone;
+    contact.append(phone);
+    line.append(contact);
+  } else if (parts.value) {
     const value = document.createElement("span");
     value.className = "m327-trip-stop-note-value";
-    value.textContent = clean;
+    value.textContent = parts.value;
     line.append(value);
   }
 
@@ -98,8 +167,13 @@ function renderStops(container, stops) {
     const defaultNote = cleanText(stop?.defaultNote);
     const tripNote = cleanText(stop?.tripNote);
     appendStructuredNote(item, "m327-trip-stop-note", defaultNote);
-    if (tripNote && normalizedText(tripNote) !== normalizedText(defaultNote)) {
-      appendStructuredNote(item, "m327-trip-stop-note m327-trip-stop-trip-note", tripNote, "Fahrthinweis");
+    if (tripNote && !isM327SemanticDuplicateTripNote(stop, tripNote)) {
+      appendStructuredNote(
+        item,
+        "m327-trip-stop-note m327-trip-stop-trip-note",
+        tripNote,
+        "Fahrthinweis"
+      );
     }
 
     list.append(item);
@@ -117,6 +191,7 @@ async function hydrateDetail(detail) {
 
   detail.dataset.m327StopDetailsState = "loading";
   const internal = hasCapability("fanbus.manage") || hasCapability("fanbus.registrations.manage");
+
   try {
     const data = internal
       ? await call("fanbus_trip_boarding_stops_list", { tripId })
@@ -157,11 +232,14 @@ function injectStyles() {
     .m327-trip-stop-detail{display:grid;gap:2px;padding:9px 11px;min-width:0}
     .m327-trip-stop-detail+.m327-trip-stop-detail{border-top:1px solid var(--line,#d8e2ee)}
     .m327-trip-stop-main{font-size:.96rem;line-height:1.28;overflow-wrap:anywhere}
-    .m327-trip-stop-address,.m327-trip-stop-note{font-size:.78rem;line-height:1.32;overflow-wrap:anywhere;text-transform:none}
+    .m327-trip-stop-address,.m327-trip-stop-note{font-size:.78rem;line-height:1.32;overflow-wrap:break-word;word-break:normal;text-transform:none}
     .m327-trip-stop-address{color:var(--muted,#718096)}
     .m327-trip-stop-note{display:grid;gap:1px;color:var(--text,#102a43)}
     .m327-trip-stop-note-label,.m327-trip-stop-note-prefix{display:block;font-weight:750}
-    .m327-trip-stop-note-value{display:block;font-weight:550}
+    .m327-trip-stop-note-value{display:block;font-weight:550;white-space:pre-line}
+    .m327-trip-stop-contact-line{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:.35em;font-weight:550;min-width:0}
+    .m327-trip-stop-contact-name{white-space:nowrap}
+    .m327-trip-stop-contact-phone{white-space:nowrap;overflow-wrap:normal;word-break:normal;font-variant-numeric:tabular-nums}
     .m327-trip-stop-trip-note{font-weight:650}
     @media(max-width:620px){
       .v4-m325-trip-stops.m327-trip-stops-enhanced{gap:5px}
