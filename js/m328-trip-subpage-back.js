@@ -1,3 +1,5 @@
+import "./m329-contact-actions.js?v=20260831-m329-contact-actions1";
+
 const SUBPAGE_VIEWS = new Set(["trip-edit", "registration"]);
 const BACK_SELECTOR = "#m328TripEditBack,#m328TripEditLoadBack,#m328Reg3Back,#m328Reg3LoadBack";
 
