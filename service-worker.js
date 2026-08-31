@@ -207,12 +207,14 @@ async function openPushRouteInExistingClient(
   targetUrl,
   message
 ) {
+  let destination = client;
+
   if (typeof client.navigate === "function") {
     try {
       const navigated = await client.navigate(targetUrl);
 
       if (navigated) {
-        return navigated.focus();
+        destination = navigated;
       }
     } catch (error) {
       console.debug(
@@ -222,8 +224,8 @@ async function openPushRouteInExistingClient(
     }
   }
 
-  client.postMessage(message);
-  return client.focus();
+  destination.postMessage(message);
+  return destination.focus();
 }
 
 self.addEventListener("notificationclick", event => {

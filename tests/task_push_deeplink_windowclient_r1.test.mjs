@@ -17,19 +17,21 @@ test("task notifications carry a concrete route end to end", async () => {
   assert.ok(sender.includes("notificationId: item.notificationId"));
 });
 
-test("existing PWA windows are navigated persistently before focus", async () => {
+test("existing PWA windows always receive the route fallback after navigate", async () => {
   const worker = await read("service-worker.js");
 
   assert.ok(worker.includes("async function openPushRouteInExistingClient"));
+  assert.ok(worker.includes("let destination = client"));
   assert.ok(worker.includes("const navigated = await client.navigate(targetUrl)"));
-  assert.ok(worker.includes("return navigated.focus()"));
-  assert.ok(worker.includes("client.postMessage(message)"));
-  assert.ok(worker.includes("return client.focus()"));
+  assert.ok(worker.includes("destination = navigated"));
+  assert.ok(worker.includes("destination.postMessage(message)"));
+  assert.ok(worker.includes("return destination.focus()"));
+  assert.ok(!worker.includes("return navigated.focus()"));
   assert.ok(worker.includes("return self.clients.openWindow(targetUrl)"));
   assert.ok(worker.includes("routeWithNotification"));
 });
 
-test("only task-push-r3 handles OPEN_PUSH_ROUTE in the page", async () => {
+test("task-push-r3 owns the OPEN_PUSH_ROUTE page fallback", async () => {
   const push = await read("js/push.js");
   const bridge = await read("js/task-push-r3.js");
 
