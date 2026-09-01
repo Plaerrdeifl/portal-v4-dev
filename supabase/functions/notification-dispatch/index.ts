@@ -465,53 +465,126 @@ function fanbusBookingContext(data: Record<string, unknown>) {
     return [{ label, value, href }];
   });
 
-  const emails = contactItems("emails").filter(item => parseMailbox(item.value, false));
-  const phones = contactItems("phones");
+  const safeMailHref = (value: unknown) => {
+    const href = asString(value, 360).trim();
+    if (!href.startsWith("mailto:") || hasCrlf(href)) return "";
+    const address = href.slice(7);
+    return parseMailbox(address, false) ? `mailto:${address}` : "";
+  };
+  const safeTelHref = (value: unknown) => {
+    const href = asString(value, 80).trim();
+    return /^tel:\+[1-9][0-9]{6,14}$/.test(href) ? href : "";
+  };
+  const safeWhatsAppHref = (value: unknown) => {
+    const href = asString(value, 360).trim();
+    return /^https:\/\/wa\.me\/[1-9][0-9]{6,14}$/.test(href) ? href : "";
+  };
+  const phoneTextFromHref = (href: string) => href.startsWith("tel:") ? href.slice(4) : "";
+
+  const primaryRaw = organizationContact.primary
+    && typeof organizationContact.primary === "object"
+    && !Array.isArray(organizationContact.primary)
+    ? organizationContact.primary as Record<string, unknown>
+    : {};
+  const legacyEmails = contactItems("emails").filter(item => parseMailbox(item.value, false));
+  const legacyPhones = contactItems("phones");
   const whatsappRaw = organizationContact.whatsapp
     && typeof organizationContact.whatsapp === "object"
     && !Array.isArray(organizationContact.whatsapp)
     ? organizationContact.whatsapp as Record<string, unknown>
     : {};
-  const whatsappUsername = asString(whatsappRaw.username, 80).trim();
-  const whatsappUrl = asString(whatsappRaw.url, 360).trim();
-  const whatsappLabel = asString(whatsappRaw.label, 80).trim() || "WhatsApp";
-  const whatsapp = whatsappUsername
-    && !hasCrlf(whatsappUsername)
-    && /^https:\/\/wa\.me\/[A-Za-z0-9._-]+$/.test(whatsappUrl)
-    ? { label: whatsappLabel, username: whatsappUsername, url: whatsappUrl }
-    : null;
 
-  const textContacts = [
-    ...emails.map(item => `E-Mail: ${item.value}`),
-    ...phones.map(item => `${item.label || "Telefon"}: ${item.value}`),
-    ...(whatsapp ? [`${whatsapp.label}: ${whatsapp.username}`] : [])
-  ];
+  const primaryEmailHref = safeMailHref(primaryRaw.emailHref)
+    || safeMailHref(legacyEmails[0]?.href)
+    || (legacyEmails[0] ? safeMailHref(`mailto:${legacyEmails[0].value}`) : "");
+  const primaryWhatsappHref = safeWhatsAppHref(primaryRaw.whatsappHref)
+    || safeWhatsAppHref(whatsappRaw.url);
 
-  const htmlContacts = [
-    ...emails.map(item => `E-Mail: <a href="mailto:${escapeHtml(item.value)}">${escapeHtml(item.value)}</a>`),
-    ...phones.map(item => {
-      const label = escapeHtml(item.label || "Telefon");
-      const value = escapeHtml(item.value);
-      const href = /^tel:\+[0-9]{7,15}$/.test(item.href) ? item.href : "";
-      return href
-        ? `${label}: <a href="${escapeHtml(href)}">${value}</a>`
-        : `${label}: ${value}`;
-    }),
-    ...(whatsapp
-      ? [`${escapeHtml(whatsapp.label)}: <a href="${escapeHtml(whatsapp.url)}">${escapeHtml(whatsapp.username)}</a>`]
-      : [])
-  ];
+  const structuredContacts = Array.isArray(organizationContact.contacts)
+    ? organizationContact.contacts as unknown[]
+    : [];
+  const people = structuredContacts.flatMap(item => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const record = item as Record<string, unknown>;
+    const name = asString(record.name, 80).trim();
+    if (!name || hasCrlf(name)) return [];
+    const phoneHref = safeTelHref(record.phoneHref);
+    const whatsappHref = safeWhatsAppHref(record.whatsappHref);
+    if (!phoneHref && !whatsappHref) return [];
+    return [{
+      name,
+      phoneHref,
+      whatsappHref,
+      phoneText: asString(record.phone, 40).trim() || phoneTextFromHref(phoneHref)
+    }];
+  });
 
-  const contactText = textContacts.length
-    ? `\n\nFragen zu deiner Buchung?\n${textContacts.join("\n")}\nOder melde dich direkt bei einem der oben genannten Ansprechpartner.`
+  if (!people.length) {
+    for (const item of legacyPhones) {
+      const name = item.label.trim();
+      const phoneHref = safeTelHref(item.href);
+      if (!name || !phoneHref || name.toLowerCase() === "plärrdeifl") continue;
+      people.push({
+        name,
+        phoneHref,
+        whatsappHref: safeWhatsAppHref(`https://wa.me/${phoneHref.slice(5)}`),
+        phoneText: item.value || phoneTextFromHref(phoneHref)
+      });
+    }
+  }
+
+  const buttonHtml = (
+    href: string,
+    label: string,
+    background: string,
+    color: string,
+    border: string
+  ) => `<a href="${escapeHtml(href)}" style="display:block;padding:12px 10px;border:${border};border-radius:10px;background:${background};color:${color};font-weight:700;text-align:center;text-decoration:none;line-height:1.2;">${escapeHtml(label)}</a>`;
+
+  const pairedButtonsHtml = (left: string, right: string) => {
+    if (left && right) {
+      return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td width="50%" style="padding-right:5px;vertical-align:top;">${left}</td><td width="50%" style="padding-left:5px;vertical-align:top;">${right}</td></tr></table>`;
+    }
+    return left || right;
+  };
+
+  const primaryWhatsappButton = primaryWhatsappHref
+    ? buttonHtml(primaryWhatsappHref, "WhatsApp", "#25D366", "#ffffff", "1px solid #25D366")
     : "";
-  const contactHtml = htmlContacts.length
-    ? `<p><strong>Fragen zu deiner Buchung?</strong><br>${htmlContacts.join("<br>")}<br>Oder melde dich direkt bei einem der oben genannten Ansprechpartner.</p>`
+  const primaryEmailButton = primaryEmailHref
+    ? buttonHtml(primaryEmailHref, "E-Mail", "#ffffff", "#17324d", "1px solid #cbd5e1")
     : "";
+  const primaryActionsHtml = pairedButtonsHtml(primaryWhatsappButton, primaryEmailButton);
+
+  const peopleHtml = people.map(person => {
+    const whatsappButton = person.whatsappHref
+      ? buttonHtml(person.whatsappHref, "WhatsApp", "#25D366", "#ffffff", "1px solid #25D366")
+      : "";
+    const phoneButton = person.phoneHref
+      ? buttonHtml(person.phoneHref, "Anrufen", "#ffffff", "#17324d", "1px solid #cbd5e1")
+      : "";
+    return `<div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;"><div style="margin:0 0 7px;font-weight:700;color:#102a43;">${escapeHtml(person.name)}</div>${pairedButtonsHtml(whatsappButton, phoneButton)}</div>`;
+  }).join("");
+
+  const contactHtml = primaryActionsHtml || peopleHtml
+    ? `<section style="margin:18px 0 0;padding:16px;border:1px solid #d8e2ee;border-radius:14px;background:#f8fafc;"><div style="margin:0 0 12px;text-align:center;font-size:18px;font-weight:800;color:#102a43;">Kontakt zur Bus-Orga</div>${primaryActionsHtml}${peopleHtml}<div style="margin-top:14px;color:#64748b;font-size:12px;line-height:1.45;text-align:center;">Bitte gib bei Rückfragen deine Buchungsnummer an.</div></section>`
+    : "";
+
+  const textLines = ["Kontakt zur Bus-Orga"];
+  if (primaryWhatsappHref) textLines.push(`WhatsApp: ${primaryWhatsappHref}`);
+  if (primaryEmailHref) textLines.push(`E-Mail: ${primaryEmailHref.slice(7)}`);
+  for (const person of people) {
+    const actions = [];
+    if (person.whatsappHref) actions.push(`WhatsApp ${person.whatsappHref}`);
+    if (person.phoneHref) actions.push(`Anrufen ${person.phoneText || phoneTextFromHref(person.phoneHref)}`);
+    if (actions.length) textLines.push(`${person.name}: ${actions.join(" | ")}`);
+  }
+  if (textLines.length > 1) textLines.push("Bitte gib bei Rückfragen deine Buchungsnummer an.");
+  const contactText = textLines.length > 1 ? `\n\n${textLines.join("\n")}` : "";
 
   return {
-    text: `\n\nBuchungsnummer: ${bookingNumber}\nBitte gib diese Buchungsnummer bei Rückfragen mit an.${contactText}`,
-    html: `<section><p><strong>Buchungsnummer:</strong> ${escapeHtml(bookingNumber)}<br><small>Bitte gib diese Buchungsnummer bei Rückfragen mit an.</small></p>${contactHtml}</section>`
+    text: `\n\nBuchungsnummer: ${bookingNumber}${contactText}`,
+    html: `<section><p><strong>Buchungsnummer:</strong> ${escapeHtml(bookingNumber)}</p>${contactHtml}</section>`
   };
 }
 
