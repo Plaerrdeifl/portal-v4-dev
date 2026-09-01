@@ -539,11 +539,11 @@ function fanbusBookingContext(data: Record<string, unknown>) {
     background: string,
     color: string,
     border: string
-  ) => `<a href="${escapeHtml(href)}" style="display:block;padding:12px 10px;border:${border};border-radius:10px;background:${background};color:${color};font-weight:700;text-align:center;text-decoration:none;line-height:1.2;">${escapeHtml(label)}</a>`;
+  ) => `<a href="${escapeHtml(href)}" style="display:block;padding:8px 8px;border:${border};border-radius:8px;background:${background};color:${color};font-size:13px;font-weight:700;text-align:center;text-decoration:none;line-height:1.2;">${escapeHtml(label)}</a>`;
 
   const pairedButtonsHtml = (left: string, right: string) => {
     if (left && right) {
-      return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td width="50%" style="padding-right:5px;vertical-align:top;">${left}</td><td width="50%" style="padding-left:5px;vertical-align:top;">${right}</td></tr></table>`;
+      return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td width="50%" style="padding-right:4px;vertical-align:middle;">${left}</td><td width="50%" style="padding-left:4px;vertical-align:middle;">${right}</td></tr></table>`;
     }
     return left || right;
   };
@@ -552,7 +552,7 @@ function fanbusBookingContext(data: Record<string, unknown>) {
     ? buttonHtml(primaryWhatsappHref, "WhatsApp", "#25D366", "#ffffff", "1px solid #25D366")
     : "";
   const primaryEmailButton = primaryEmailHref
-    ? buttonHtml(primaryEmailHref, "E-Mail", "#ffffff", "#17324d", "1px solid #cbd5e1")
+    ? buttonHtml(primaryEmailHref, "E-Mail", "transparent", "#17324d", "1px solid #cbd5e1")
     : "";
   const primaryActionsHtml = pairedButtonsHtml(primaryWhatsappButton, primaryEmailButton);
 
@@ -561,13 +561,19 @@ function fanbusBookingContext(data: Record<string, unknown>) {
       ? buttonHtml(person.whatsappHref, "WhatsApp", "#25D366", "#ffffff", "1px solid #25D366")
       : "";
     const phoneButton = person.phoneHref
-      ? buttonHtml(person.phoneHref, "Anrufen", "#ffffff", "#17324d", "1px solid #cbd5e1")
+      ? buttonHtml(person.phoneHref, "Anrufen", "transparent", "#17324d", "1px solid #cbd5e1")
       : "";
-    return `<div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;"><div style="margin:0 0 7px;font-weight:700;color:#102a43;">${escapeHtml(person.name)}</div>${pairedButtonsHtml(whatsappButton, phoneButton)}</div>`;
+
+    if (whatsappButton && phoneButton) {
+      return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-top:1px solid #e2e8f0;"><tr><td width="28%" style="padding:10px 8px 10px 0;vertical-align:middle;font-size:14px;font-weight:700;color:#102a43;">${escapeHtml(person.name)}</td><td width="36%" style="padding:7px 4px;vertical-align:middle;">${whatsappButton}</td><td width="36%" style="padding:7px 0 7px 4px;vertical-align:middle;">${phoneButton}</td></tr></table>`;
+    }
+
+    const singleAction = whatsappButton || phoneButton;
+    return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-top:1px solid #e2e8f0;"><tr><td width="40%" style="padding:10px 8px 10px 0;vertical-align:middle;font-size:14px;font-weight:700;color:#102a43;">${escapeHtml(person.name)}</td><td width="60%" style="padding:7px 0;vertical-align:middle;">${singleAction}</td></tr></table>`;
   }).join("");
 
   const contactHtml = primaryActionsHtml || peopleHtml
-    ? `<section style="margin:18px 0 0;padding:16px;border:1px solid #d8e2ee;border-radius:14px;background:#f8fafc;"><div style="margin:0 0 12px;text-align:center;font-size:18px;font-weight:800;color:#102a43;">Kontakt zur Bus-Orga</div>${primaryActionsHtml}${peopleHtml}<div style="margin-top:14px;color:#64748b;font-size:12px;line-height:1.45;text-align:center;">Bitte gib bei Rückfragen deine Buchungsnummer an.</div></section>`
+    ? `<section style="margin:16px 0 0;padding-top:12px;border-top:1px solid #d8e2ee;"><div style="margin:0 0 9px;text-align:center;font-size:16px;font-weight:800;color:#102a43;">Kontakt zur Bus-Orga</div>${primaryActionsHtml}<div style="margin-top:8px;">${peopleHtml}</div><div style="margin-top:8px;color:#64748b;font-size:11px;line-height:1.4;text-align:center;">Bitte gib bei Rückfragen deine Buchungsnummer an.</div></section>`
     : "";
 
   const textLines = ["Kontakt zur Bus-Orga"];
