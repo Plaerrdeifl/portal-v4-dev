@@ -41,7 +41,8 @@ test("push R3 refreshes deep links and clears read badges", async () => {
   const index = await read("index.html");
 
   assert.match(bridge, /api\.call\("mark_notification_read"/);
-  assert.match(bridge, /await auth\.refresh\(\)/);
+  assert.match(bridge, /window\.addEventListener\("pd-api-after-call"/);
+  assert.match(bridge, /acknowledgeActivatedArea/);
   assert.match(bridge, /notificationId/);
   assert.match(bridge, /\[data-open-task\]/);
   assert.match(bridge, /\[data-request-transfer\]/);
@@ -52,8 +53,9 @@ test("push R3 refreshes deep links and clears read badges", async () => {
   assert.match(worker, /pd-portal-v4-push-newtasks-quiettime-r1-20260723/);
   assert.match(worker, /routeWithNotification/);
   assert.match(worker, /notificationId/);
-  assert.match(worker, /Math\.max\(0, previousBadgeCount - 1\)/);
   assert.match(worker, /client\.navigate\(targetUrl\)/);
+  assert.doesNotMatch(worker, /previousBadgeCount\s*-\s*1/);
+  assert.doesNotMatch(worker, /OPEN_PUSH_ROUTE/);
   assert.match(worker, /\.\/js\/task-push-r3\.js/);
 
   assert.match(index, /js\/task-push-r3\.js/);
