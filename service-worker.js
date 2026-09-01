@@ -129,8 +129,12 @@ function routeWithNotification(route, notificationId) {
 async function setBadgeCount(count) {
   const next = Math.max(0, Number(count || 0));
 
-  if (next > 0 && self.registration.setAppBadge) {
+  if (next > 0 && self.navigator?.setAppBadge) {
+    await self.navigator.setAppBadge(next);
+  } else if (next > 0 && self.registration.setAppBadge) {
     await self.registration.setAppBadge(next);
+  } else if (self.navigator?.clearAppBadge) {
+    await self.navigator.clearAppBadge();
   } else if (self.registration.clearAppBadge) {
     await self.registration.clearAppBadge();
   }

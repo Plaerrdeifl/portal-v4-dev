@@ -188,6 +188,23 @@ test("T16 Auto-Reconcile auf iOS verlangt die Standalone-PWA", () => {
   assert.doesNotMatch(block, /requestPermission/);
 });
 
+test("T19 Service Worker nutzt iOS-Badging mit Registration-Fallback", () => {
+  const start = serviceWorker.indexOf("async function setBadgeCount");
+  const end = serviceWorker.indexOf('self.addEventListener("push"', start);
+  assert.ok(start >= 0 && end > start, "setBadgeCount konnte nicht isoliert werden");
+
+  const block = serviceWorker.slice(start, end);
+  const navigatorSet = block.indexOf("self.navigator?.setAppBadge");
+  const registrationSet = block.indexOf("self.registration.setAppBadge");
+  const navigatorClear = block.indexOf("self.navigator?.clearAppBadge");
+  const registrationClear = block.indexOf("self.registration.clearAppBadge");
+
+  assert.ok(navigatorSet >= 0 && registrationSet > navigatorSet);
+  assert.ok(navigatorClear >= 0 && registrationClear > navigatorClear);
+  assert.match(block, /self\.navigator\.setAppBadge\(next\)/);
+  assert.match(block, /self\.navigator\.clearAppBadge\(\)/);
+});
+
 test("T17 erfolgreiches manuelles enablePush löscht den Marker erst nach Server-Save", () => {
   const block = javascriptFunction(push, "enablePush", "disablePush");
   const serverSave = block.indexOf('api.call("save_push_subscription"');
