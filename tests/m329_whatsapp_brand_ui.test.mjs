@@ -22,9 +22,26 @@ test("M329 WhatsApp actions use the white brand mark on WhatsApp green", () => {
   assert.doesNotMatch(brandUi, /currentColor/);
 });
 
-test("WhatsApp brand UI loads in public and portal Fanbus entry points", () => {
-  assert.match(publicBootstrap, /m329-whatsapp-brand-ui\.js/);
-  assert.match(portalBootstrap, /m329-whatsapp-brand-ui\.js/);
+test("board WhatsApp action is centered without positional icon hacks", () => {
+  assert.match(brandUi, /display:grid!important/);
+  assert.match(brandUi, /place-items:center!important/);
+  assert.match(brandUi, /padding:0!important/);
+  assert.match(brandUi, /line-height:0!important/);
+  assert.match(brandUi, /transform:none!important/);
+});
+
+test("board cards hide the standalone phone number and center their content", () => {
+  assert.match(brandUi, /m329-board-contact-number/);
+  assert.match(brandUi, /\.remove\(\)/);
+  assert.match(brandUi, /m329-board-card-centered/);
+  assert.match(brandUi, /text-align:center!important/);
+  assert.match(brandUi, /justify-content:center!important/);
+  assert.match(brandUi, /margin-left:0!important/);
+});
+
+test("WhatsApp brand UI loads in public and portal Fanbus entry points with refreshed cache key", () => {
+  assert.match(publicBootstrap, /m329-whatsapp-brand-ui\.js\?v=20260901-m329-whatsapp-brand2/);
+  assert.match(portalBootstrap, /m329-whatsapp-brand-ui\.js\?v=20260901-m329-whatsapp-brand2/);
 });
 
 test("WhatsApp brand UI stays isolated from the frozen Liveticker", () => {
