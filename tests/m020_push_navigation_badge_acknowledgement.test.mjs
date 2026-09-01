@@ -6,7 +6,7 @@ const read = path => fs.readFileSync(new URL(path, import.meta.url), "utf8");
 const worker = read("../service-worker.js");
 const bridge = read("../js/task-push-r3.js");
 const migration = read(
-  "../supabase/migrations/20260901120000_m020_push_navigation_badge_acknowledgement.sql"
+  "../supabase/migrations/20260901220000_m020_push_navigation_badge_acknowledgement.sql"
 );
 
 test("closed, background and running PWA states share one URL-based navigation contract", () => {
