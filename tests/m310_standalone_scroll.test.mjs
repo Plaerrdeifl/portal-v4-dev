@@ -201,7 +201,7 @@ test("M310 portal and WordPress use the same canonical registration deep link", 
     /new URLSearchParams\(window\.location\.search\)\.get\("trip"\) \|\| ""/
   );
   assert.match(initialize, /if \(!UUID_PATTERN\.test\(tripId\)\)/);
-  assert.match(initialize, /trip = await loadTrip\(tripId\)/);
+  assert.match(initialize, /\[platformStatus, trip\] = await Promise\.all\(\[[\s\S]*?platformMode\.refresh\(\)[\s\S]*?loadTrip\(tripId\)/);
 });
 
 test("M310 canonical navigation keeps the existing service-worker safety contract", async () => {
@@ -240,8 +240,8 @@ test("M310 WordPress presentation is portal-scoped, readable and mobile-safe", a
     readFile(resolve(pluginRoot, "assets", "m310-fanbus.css"), "utf8")
   ]);
 
-  assert.match(plugin, /^ \* Version: 1\.0\.4$/m);
-  assert.match(plugin, /private const VERSION = '1\.0\.4'/);
+  assert.match(plugin, /^ \* Version: 1\.0\.5$/m);
+  assert.match(plugin, /private const VERSION = '1\.0\.5'/);
   assert.match(style, /\.pd-m310-fanbus\s*\{[\s\S]+color:\s*var\(--pd-m310-ink\)/);
   assert.match(style, /\.pd-m310-fanbus \.pd-m310-title\s*\{[\s\S]+color:\s*var\(--pd-m310-ink\)[\s\S]+white-space:\s*normal/);
   assert.match(style, /\.pd-m310-fanbus \.pd-m310-meta-item dd\s*\{[\s\S]+color:\s*var\(--pd-m310-ink\)/);
@@ -287,8 +287,9 @@ test("M310 WordPress presentation is portal-scoped, readable and mobile-safe", a
   );
   assert.equal(
     (plugin.match(/\/rest\/v1\/rpc\/[a-z0-9_]+/g) || []).length,
-    2
+    3
   );
+  assert.match(plugin, /private const STATUS_RPC_PATH = '\/rest\/v1\/rpc\/pd_public_platform_status'/);
   assert.match(plugin, /private static function load_public_trip_stops/);
   assert.match(plugin, /private static function validated_stop/);
   assert.match(

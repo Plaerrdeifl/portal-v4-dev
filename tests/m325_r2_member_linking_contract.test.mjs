@@ -219,7 +219,7 @@ test("D-055 UI uses Portaluser identity and capability-gated admin controls", as
   assert.match(ui, /registration\.source === "PORTAL"[\s\S]*registration\.bookingRole === "PRIMARY"/);
   assert.match(ui, /\["PUBLISHED", "CLOSED"\]\.includes\(trip\.status\)/);
   assert.match(ui, /&& !portalPrimaryIdentity/);
-  assert.match(ui, /query\.length < 3/);
+  assert.match(ui, /query\.length < 5/);
   assert.match(ui, /\}, 300\)/);
   assert.match(ui, /data\.people\.slice\(0, 8\)/);
   assert.match(ui, /linked \? " readonly"/);

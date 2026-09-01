@@ -255,7 +255,7 @@ test("M325 F5 Round 2 keeps workspace navigation, mobile cards and dialog forms 
   const detail = sourceBetween(ui, "function tripDetailMarkup", "function openTripDetail");
   assert.match(detail, /v4-m325-trip-detail/);
   assert.match(detail, /eventTimeCompact\(trip\.eventTime\)/);
-  assert.match(detail, /registrationWindowText\(trip\)/);
+  assert.match(detail, /tripRegistrationDeadlineMarkup\(trip\)/);
   assert.match(detail, /v4-m325-trip-travel/);
   assert.match(detail, /<span>Abfahrt<\/span>/);
   assert.match(detail, /<span>Fahrtpreis<\/span>/);
@@ -266,11 +266,9 @@ test("M325 F5 Round 2 keeps workspace navigation, mobile cards and dialog forms 
   assert.doesNotMatch(tripEditor, /name="capacity"/);
   const occupancy = sourceBetween(ui, "function occupancyMarkup", "async function occupancyData");
   assert.match(occupancy, /canManageBuses/);
-  assert.match(occupancy, /canManageRegistrations/);
   assert.match(occupancy, /data-m310-create-bus/);
-  assert.match(occupancy, /data-m310-manage-participants/);
-  assert.match(occupancy, /v4-m310-occupancy-counters/);
-  assert.match(occupancy, /data-m310-occupancy-assignment/);
+  assert.match(occupancy, /bus\.occupancy \?\? bus\.occupied/);
+  assert.doesNotMatch(occupancy, /data-m310-manage-participants|data-m310-occupancy-assignment/);
 
   const busForm = formContaining(ui, "data-m325-bus-form");
   assert.match(busForm, /class="v4-field-full">Busname/);
@@ -299,7 +297,7 @@ test("M325 F5 Round 2 keeps workspace navigation, mobile cards and dialog forms 
   assert.match(tripStopForm, /name="departureTime" type="time"/);
   assert.doesNotMatch(tripStopForm, /datetime-local/);
   assert.match(tripStopForm, /dialog-actions v4-detail-actions v4-field-full/);
-  assert.match(boarding, /formatBerlinTime\(stop\.departureAt\)/);
+  assert.match(boarding, /boardingStopDisplay\(stop\)/);
 
   assert.match(css, /\.v4-m325-list-card,[\s\S]*\.v4-m325-operation-card/);
   assert.match(css, /\[data-m325-bus-form\] > \.v4-field-half/);

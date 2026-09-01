@@ -169,7 +169,9 @@ function card({
   description = "",
   size = "standard",
   body = "",
-  className = ""
+  className = "",
+  targetRoute = "",
+  targetTab = ""
 }) {
   const normalizedSize = sizeClass(size);
   const visibleTitle = normalizedSize === "small"
@@ -179,9 +181,10 @@ function card({
       : title;
 
   return `<article
-    class="card dashboard-widget widget-size-${escapeAttr(normalizedSize)} ${escapeAttr(className)}"
+    class="card dashboard-widget widget-size-${escapeAttr(normalizedSize)} ${escapeAttr(className)}${targetRoute ? " is-clickable" : ""}"
     data-dashboard-widget="${escapeAttr(key)}"
     data-widget-size="${escapeAttr(normalizedSize)}"
+    ${targetRoute ? `data-dashboard-route="${escapeAttr(targetRoute)}"${targetTab ? ` data-dashboard-tab="${escapeAttr(targetTab)}"` : ""} tabindex="0" role="button" aria-label="${escapeAttr(`${visibleTitle} öffnen`)}"` : ""}
   >
     <div class="v4-dashboard-card-layout">
       <div class="v4-dashboard-card-meta">
@@ -194,6 +197,7 @@ function card({
       <div class="v4-dashboard-card-content">
         ${body}
       </div>
+      ${targetRoute ? '<span class="v4-dashboard-card-chevron" aria-hidden="true">›</span>' : ""}
     </div>
   </article>`;
 }
@@ -237,6 +241,8 @@ function contributionCard(definition, contribution, size) {
     description: contribution?.seasonName || "Laufende Saison",
     size: normalizedSize,
     className: `v4-dashboard-contribution is-${escapeAttr(status.type)}`,
+    targetRoute: "fanclub",
+    targetTab: "contributions",
     body: `<div class="v4-dashboard-topline">
       <span class="badge ${escapeAttr(status.type)}">${escapeHtml(status.label)}</span>
     </div>
@@ -323,15 +329,14 @@ function taskCard(definition, taskData, size, options = {}) {
         ${taskRows(taskData?.items || [], itemLimit)}
       </div>
       <button
-        class="button link small v4-dashboard-open-module"
+        class="v4-dashboard-task-row v4-dashboard-open-module"
         type="button"
         data-dashboard-open-tasks
       >
-        ${escapeHtml(
-          count > itemLimit
-            ? `Alle ${count} Aufgaben öffnen`
-            : "Aufgaben öffnen"
-        )}
+        <span class="v4-dashboard-task-main"><strong>${escapeHtml(
+          count > itemLimit ? `Alle ${count} Aufgaben` : "Aufgabenübersicht"
+        )}</strong></span>
+        <span class="v4-dashboard-task-arrow" aria-hidden="true">›</span>
       </button>`
   });
 }
@@ -350,6 +355,7 @@ function birthdaysCard(definition, birthdays, size) {
     title: definition.title,
     shortTitle: definition.shortTitle,
     description: "Kommende Termine",
+    targetRoute: "dates",
     size: normalizedSize,
     className: "v4-dashboard-birthdays",
     body: `<div class="v4-dashboard-birthday-list">
@@ -373,6 +379,8 @@ function memberCountCard(definition, count, size) {
     title: definition.title,
     shortTitle: definition.shortTitle,
     description: "Aktueller Fanclub-Bestand",
+    targetRoute: "fanclub",
+    targetTab: "members",
     size,
     className: "v4-dashboard-metric-card",
     body: `<div class="v4-dashboard-primary-value">${Number(count || 0)}</div>`
@@ -393,6 +401,8 @@ function financeCard(definition, finance, size) {
     title: definition.title,
     shortTitle: definition.shortTitle,
     description: "Aktuelle Kontostände",
+    targetRoute: "fanclub",
+    targetTab: "cashbook",
     size: normalizedSize,
     className: "v4-dashboard-finance",
     body: `<div class="v4-dashboard-primary-value">${money(finance.totalBalance)}</div>
@@ -414,6 +424,8 @@ function openContributionsCard(definition, finance, size) {
     title: definition.title,
     shortTitle: definition.shortTitle,
     description: finance.seasonName || "Laufende Saison",
+    targetRoute: "fanclub",
+    targetTab: "contributions",
     size,
     className: "v4-dashboard-metric-card",
     body: `<div class="v4-dashboard-inline-metric">
@@ -573,6 +585,23 @@ function renderDashboard() {
 }
 
 function bindDashboardNavigation(panel) {
+  panel.querySelectorAll("[data-dashboard-route]").forEach(card => {
+    const open = event => {
+      if (event?.target?.closest?.("button, a, input, select, textarea, label")) return;
+      const route = card.dataset.dashboardRoute;
+      if (!route) return;
+      const params = new URLSearchParams();
+      if (card.dataset.dashboardTab) params.set("tab", card.dataset.dashboardTab);
+      navigate(route, params);
+    };
+    card.addEventListener("click", open);
+    card.addEventListener("keydown", event => {
+      if (event.target !== card || (event.key !== "Enter" && event.key !== " ")) return;
+      event.preventDefault();
+      open(event);
+    });
+  });
+
   panel.querySelectorAll("[data-dashboard-task-id]").forEach(button => {
     button.addEventListener("click", () => {
       const taskId = button.dataset.dashboardTaskId;

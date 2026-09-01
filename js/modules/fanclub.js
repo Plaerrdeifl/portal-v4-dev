@@ -36,6 +36,11 @@ function requestedMembershipApplicationId() {
   return new URLSearchParams(query).get("applicationId") || "";
 }
 
+function requestedFanclubTab() {
+  const query = String(location.hash || "").split("?")[1] || "";
+  return new URLSearchParams(query).get("tab") || "";
+}
+
 const MONEY = new Intl.NumberFormat("de-DE", {
   style: "currency",
   currency: "EUR"
@@ -1792,6 +1797,10 @@ export async function hydrateFanclub(context = {}) {
   try {
     snapshot = await call("fanclub_snapshot");
     if (context.isCurrent && !context.isCurrent()) return;
+    const requestedTab = requestedFanclubTab();
+    if (["members", "offices", "contributions", "cashbook"].includes(requestedTab)) {
+      activeTab = requestedTab;
+    }
     if (requestedMembershipApplicationId() && canViewMembershipApplications()) {
       activeTab = "membership-applications";
     }

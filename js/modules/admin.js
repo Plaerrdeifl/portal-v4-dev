@@ -12,6 +12,11 @@ import {
   showToast,
   statusBadge
 } from "./common.js";
+import {
+  auditActionLabel,
+  auditActor,
+  auditEntityLabel
+} from "./audit-labels.js";
 
 let snapshot = null;
 let activeTab = "requests";
@@ -980,8 +985,28 @@ function renderProfileChanges(panel) {
 
 function renderAudit(panel) {
   const events = snapshot.audit || [];
+  const users = snapshot.users || [];
+  const desktopRows = events.map(event => {
+    const actor = auditActor(event, users);
+    return `<tr>
+      <td>${escapeHtml(fmtDateTime(event.occurredAt))}</td>
+      <td><strong>${escapeHtml(auditActionLabel(event.action))}</strong></td>
+      <td>${escapeHtml(auditEntityLabel(event.entityType))}${event.entityId ? `<small class="v4-audit-technical-id">${escapeHtml(event.entityId)}</small>` : ""}</td>
+      <td>${escapeHtml(actor.primary)}${actor.technical ? `<small class="v4-audit-technical-id">${escapeHtml(actor.technical)}</small>` : ""}</td>
+    </tr>`;
+  }).join("");
+  const mobileRows = events.map(event => {
+    const actor = auditActor(event, users);
+    return `<article class="v4-audit-card">
+      <header><time>${escapeHtml(fmtDateTime(event.occurredAt))}</time><strong>${escapeHtml(actor.primary)}</strong></header>
+      <p>${escapeHtml(auditActionLabel(event.action))}</p>
+      <small>${escapeHtml(auditEntityLabel(event.entityType))}</small>
+      ${(actor.technical || event.entityId) ? `<details class="v4-audit-technical"><summary>Technische Details</summary>${actor.technical ? `<code>Akteur: ${escapeHtml(actor.technical)}</code>` : ""}${event.entityId ? `<code>Objekt: ${escapeHtml(event.entityId)}</code>` : ""}</details>` : ""}
+    </article>`;
+  }).join("");
+
   panel.innerHTML = `<div class="v4-toolbar"><div><h3>Audit-Protokoll</h3><p>Die letzten ${events.length} sicherheits- und fachrelevanten Ereignisse.</p></div></div>
-    ${events.length ? `<div class="v4-table-wrap"><table class="v4-table"><thead><tr><th>Zeit</th><th>Aktion</th><th>Objekt</th><th>Akteur</th></tr></thead><tbody>${events.map(event => `<tr><td>${escapeHtml(fmtDateTime(event.occurredAt))}</td><td><code>${escapeHtml(event.action)}</code></td><td>${escapeHtml(event.entityType)}<small>${escapeHtml(event.entityId || "")}</small></td><td>${escapeHtml(event.actorUserId || "System")}</td></tr>`).join("")}</tbody></table></div>` : empty("Noch keine Audit-Ereignisse.")}`;
+    ${events.length ? `<div class="v4-table-wrap v4-audit-desktop"><table class="v4-table"><thead><tr><th>Zeit</th><th>Aktion</th><th>Objekt</th><th>Akteur</th></tr></thead><tbody>${desktopRows}</tbody></table></div><div class="v4-audit-mobile">${mobileRows}</div>` : empty("Noch keine Audit-Ereignisse.")}`;
 }
 
 function render() {

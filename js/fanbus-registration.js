@@ -43,6 +43,7 @@ let userBoardingPreference = null;
 let portalBoardingStopTouched = false;
 let googleSignInReady = false;
 let registrationComplete = false;
+let organizationContact = { emails: [], phones: [] };
 let modeRenderSequence = 0;
 let platformStatus = platformMode.current();
 
@@ -345,21 +346,54 @@ function safeOutcomeMessage(outcome) {
   }[outcome] || "Die Anmeldung konnte nicht verarbeitet werden.";
 }
 
-function finishRegistration(outcome = "CREATED") {
+function organizationContactMarkup() {
+  const emails = Array.isArray(organizationContact?.emails) ? organizationContact.emails : [];
+  const phones = Array.isArray(organizationContact?.phones) ? organizationContact.phones : [];
+  const items = [
+    ...emails.map(item => ({ ...item, kind: "E-Mail" })),
+    ...phones.map(item => ({ ...item, kind: "Telefon" }))
+  ].filter(item => String(item?.value || "").trim());
+  return `<section id="m327GuestOrganizationContact" class="notice m327-organization-contact" aria-label="BUS_ORGA-Kontakt">
+    <strong>Du möchtest deine Anmeldung ändern oder stornieren?</strong>
+    <p>Bitte wende dich an unsere BUS_ORGA.</p>
+    ${items.length ? `<ul>${items.map(item => `<li><span>${escapeHtml(item.label || item.kind)}:</span> ${escapeHtml(item.value)}</li>`).join("")}</ul>` : ""}
+  </section>`;
+}
+
+function finishRegistration(outcome = "CREATED", mode = "portal") {
   registrationComplete = true;
   const waitlisted = outcome === "WAITLISTED";
-  elements.title.textContent = waitlisted ? "Auf Warteliste eingetragen" : "Anmeldung bestätigt";
+  const alreadyActive = outcome === "ALREADY_ACTIVE";
+  elements.title.textContent = alreadyActive
+    ? "Bereits angemeldet"
+    : waitlisted
+      ? "Auf Warteliste eingetragen"
+      : "Anmeldung bestätigt";
   elements.intro.hidden = false;
-  elements.intro.textContent = waitlisted
-    ? "Die gesamte gemeinsame Anmeldung wurde auf die Warteliste gesetzt."
-    : "Deine gemeinsame Anmeldung wurde erfolgreich entgegengenommen.";
+  elements.intro.textContent = alreadyActive
+    ? "Für diese Fahrt besteht bereits eine aktive Anmeldung. Es wurde keine weitere Anmeldung angelegt."
+    : waitlisted
+      ? "Die gesamte gemeinsame Anmeldung wurde auf die Warteliste gesetzt."
+      : "Deine gemeinsame Anmeldung wurde erfolgreich entgegengenommen.";
   elements.portalForm.hidden = true;
   elements.guestForm.hidden = true;
   elements.memberLogin.hidden = true;
   elements.memberLoginPanel.hidden = true;
   elements.google.hidden = true;
   removeTurnstile();
-  setStatus(waitlisted ? "Die gesamte Anmeldung ist auf der Warteliste." : "Die Fanbus-Anmeldung wurde bestätigt.", waitlisted ? "warning" : "success");
+  setStatus(
+    alreadyActive
+      ? "Du bist für diese Fanbusfahrt bereits angemeldet."
+      : waitlisted
+        ? "Die gesamte Anmeldung ist auf der Warteliste."
+        : "Die Fanbus-Anmeldung wurde bestätigt.",
+    alreadyActive || waitlisted ? "warning" : "success"
+  );
+  document.getElementById("m327GuestOrganizationContact")?.remove();
+  if (mode === "guest") {
+    const contact = organizationContactMarkup();
+    elements.intro.insertAdjacentHTML("afterend", contact);
+  }
 }
 
 function busPreferenceLabel(value) {
@@ -395,7 +429,7 @@ function resolvedBoardingStopValue(value) {
 
 function boardingStopOptions(selected = "") {
   const resolved = resolvedBoardingStopValue(selected);
-  return `<option value="">Bitte wählen</option>${(trip?.boardingStops || []).map(stop => `<option value="${escapeHtml(stop.id)}"${String(stop.id) === resolved ? " selected" : ""}>${escapeHtml(`${stop.label} · ${formatBerlinTime(stop.departureAt)}`)}</option>`).join("")}`;
+  return `<option value="">Bitte wählen</option>${(trip?.boardingStops || []).map(stop => `<option value="${escapeHtml(stop.id)}"${String(stop.id) === resolved ? " selected" : ""}>${escapeHtml(`${formatBerlinTime(stop.departureAt)} · ${stop.label}`)}</option>`).join("")}`;
 }
 
 function companionValues(member = {}) {
@@ -911,7 +945,7 @@ async function submitPortal(event) {
         previewBox.hidden = true;
         previewBox.replaceChildren();
       }
-      finishRegistration(result.outcome);
+      finishRegistration(result.outcome, "portal");
       void refreshTripAfterSuccess();
       return;
     }
@@ -984,7 +1018,12 @@ async function submitGuest(event) {
 
     if (response.ok && result?.ok === true && result?.code === "ACCEPTED") {
       succeeded = true;
-      finishRegistration(result?.outcome === "WAITLISTED" ? "WAITLISTED" : "CREATED");
+      finishRegistration(
+        ["WAITLISTED", "ALREADY_ACTIVE"].includes(result?.outcome)
+          ? result.outcome
+          : "CREATED",
+        "guest"
+      );
       void refreshTripAfterSuccess();
       return;
     }
@@ -1122,6 +1161,16 @@ async function loadTrip(tripId) {
   }
 }
 
+async function loadOrganizationContact() {
+  if (!CONFIG.supabase.configured) return { emails: [], phones: [] };
+  try {
+    const { data, error } = await getSupabaseClient().rpc("pd_public_fanbus_contact");
+    return error || !data ? { emails: [], phones: [] } : data;
+  } catch {
+    return { emails: [], phones: [] };
+  }
+}
+
 async function refreshTripAfterSuccess() {
   const tripId = trip?.tripId;
   if (!tripId) return;
@@ -1142,10 +1191,12 @@ async function initialize() {
     return;
   }
 
+  const organizationContactPromise = loadOrganizationContact();
   [platformStatus, trip] = await Promise.all([
     platformMode.refresh(),
     loadTrip(tripId)
   ]);
+  organizationContact = await organizationContactPromise;
   if (!trip?.available) {
     unavailableTrip();
     return;

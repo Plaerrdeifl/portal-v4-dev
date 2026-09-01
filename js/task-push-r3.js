@@ -2,8 +2,15 @@ import { api } from "./api.js";
 import { auth } from "./auth.js";
 
 const NOTIFICATION_PARAM = "notificationId";
+const FANBUS_D073_VIEW_ACTIONS = new Set([
+  "fanbus_registrations_list",
+  "fanbus_buses_list"
+]);
 let pendingHashWork = null;
 let lastPreparedTaskId = "";
+let badgeAuthUserId = "";
+let badgeSyncRevision = 0;
+const fanbusAckInFlight = new Set();
 
 function normalizedHashRoute(route = "#/dashboard") {
   const value = String(route || "#/dashboard").trim();
@@ -50,18 +57,86 @@ function removeNotificationParam() {
   history.replaceState(null, "", query ? `${path}?${query}` : path);
 }
 
-async function applyBadge(count) {
-  const next = Math.max(0, Number(count || 0));
+function currentAuthUserId(authState = auth.current()) {
+  return authState?.authenticated === true
+    ? String(authState.session?.user?.id || "")
+    : "";
+}
 
-  if (window.plaerrdeiflPush?.syncBadge) {
-    await window.plaerrdeiflPush.syncBadge(next);
-    return;
-  }
+async function setLocalBadge(count) {
+  const next = Math.max(0, Number(count || 0));
 
   if (next > 0 && "setAppBadge" in navigator) {
     await navigator.setAppBadge(next);
   } else if ("clearAppBadge" in navigator) {
     await navigator.clearAppBadge();
+  }
+}
+
+async function applyAuthoritativeBadgeSnapshot(snapshot, userId) {
+  if (!userId || currentAuthUserId() !== userId) return;
+
+  await setLocalBadge(
+    snapshot?.preferences?.badgeEnabled === false
+      ? 0
+      : Number(snapshot?.unreadNotificationCount || 0)
+  );
+}
+
+async function synchronizeAuthoritativeBadge(authState = auth.current()) {
+  const revision = ++badgeSyncRevision;
+  const userId = currentAuthUserId(authState);
+
+  if (userId !== badgeAuthUserId) {
+    badgeAuthUserId = userId;
+    await setLocalBadge(0);
+  }
+
+  if (
+    authState?.authenticated !== true
+    || authState?.status !== "ACTIVE"
+    || !userId
+  ) {
+    return;
+  }
+
+  try {
+    const snapshot = await api.call("push_snapshot");
+    if (
+      revision !== badgeSyncRevision
+      || currentAuthUserId() !== userId
+    ) {
+      return;
+    }
+
+    await applyAuthoritativeBadgeSnapshot(snapshot, userId);
+  } catch (error) {
+    console.debug("App-Badge konnte nicht autoritativ synchronisiert werden", error);
+  }
+}
+
+async function acknowledgeFanbusD073(action, payload = {}) {
+  if (!FANBUS_D073_VIEW_ACTIONS.has(String(action || ""))) return;
+  if (!auth.current().authenticated || !auth.isActive()) return;
+
+  const tripId = String(payload?.tripId || "").trim();
+  const userId = currentAuthUserId();
+  if (!tripId || !userId) return;
+
+  const key = `${userId}:${tripId}`;
+  if (fanbusAckInFlight.has(key)) return;
+  fanbusAckInFlight.add(key);
+
+  try {
+    const snapshot = await api.call("mark_notification_read", {
+      entityType: "fanbus_trip_operational",
+      entityId: tripId
+    });
+    await applyAuthoritativeBadgeSnapshot(snapshot, userId);
+  } catch (error) {
+    console.debug("Fanbusmeldungen konnten nicht selektiv quittiert werden", error);
+  } finally {
+    fanbusAckInFlight.delete(key);
   }
 }
 
@@ -75,7 +150,7 @@ async function markNotificationRead({ notificationId = "", taskId = "" } = {}) {
     entityId: taskId
   });
 
-  await applyBadge(result?.unreadNotificationCount || 0);
+  await synchronizeAuthoritativeBadge();
   return result;
 }
 
@@ -191,7 +266,7 @@ navigator.serviceWorker?.addEventListener(
   "message",
   event => {
     if (event.data?.type === "PUSH_STATE_CHANGED") {
-      void applyBadge(event.data.badgeCount || 0);
+      void synchronizeAuthoritativeBadge();
 
       if (String(event.data.eventType || "").startsWith("TASK_")) {
         void auth.refresh().catch(error => {
@@ -223,29 +298,31 @@ document.addEventListener(
 );
 
 window.addEventListener("pd-api-state", normalizeSoon);
+window.addEventListener("pd-api-after-call", event => {
+  void acknowledgeFanbusD073(event.detail?.action, event.detail?.payload);
+});
 window.addEventListener("hashchange", normalizeSoon);
 
-window.addEventListener("pd-auth-change", () => {
-  if (!auth.current().authenticated) {
-    if ("clearAppBadge" in navigator) {
-      void navigator.clearAppBadge();
-    }
-    return;
-  }
+window.addEventListener("pd-auth-change", event => {
+  void synchronizeAuthoritativeBadge(event.detail);
 
+  if (!event.detail?.authenticated) return;
   void prepareHashDestination({ forceRender: true });
 });
 
 window.addEventListener("pageshow", () => {
   normalizeSoon();
+  void synchronizeAuthoritativeBadge();
   void prepareHashDestination({ forceRender: true });
 });
 
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible") return;
   normalizeTransferUi();
+  void synchronizeAuthoritativeBadge();
   void prepareHashDestination({ forceRender: true });
 });
 
 normalizeTransferUi();
+void synchronizeAuthoritativeBadge();
 void prepareHashDestination();

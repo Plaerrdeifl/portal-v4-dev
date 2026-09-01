@@ -6,7 +6,7 @@ select plan(1);
 
 do $m150_communication_verification$
 declare
-  v_role_member constant uuid := '00000000-0000-4000-8000-000000000002';
+  v_role_member constant uuid := '00000000-0000-4000-8000-000000000003';
   v_u1 constant uuid := '16000000-0000-4000-8000-000000000001';
   v_u2 constant uuid := '16000000-0000-4000-8000-000000000002';
   v_u3 constant uuid := '16000000-0000-4000-8000-000000000003';

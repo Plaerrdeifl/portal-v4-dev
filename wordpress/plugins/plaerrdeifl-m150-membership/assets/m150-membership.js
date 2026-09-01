@@ -314,6 +314,24 @@
         }
     }
 
+    function releaseBypassHeaders() {
+        const context = window.__PD_RELEASE_TEST_CONTEXT__;
+        if (!context || typeof context !== 'object' || Array.isArray(context)) return {};
+        const token = String(context.token || '').trim();
+        const runId = String(context.runId || '').trim();
+        const environment = String(context.environment || '').trim().toUpperCase();
+        if (
+            !/^[0-9a-f]{64}$/.test(token)
+            || !/^[A-Za-z0-9][A-Za-z0-9._:-]{2,95}$/.test(runId)
+            || !/^[A-Z][A-Z0-9_-]{1,31}$/.test(environment)
+        ) return {};
+        return {
+            'X-PD-Release-Bypass': token,
+            'X-PD-Release-Run': runId,
+            'X-PD-Environment': environment,
+        };
+    }
+
     function validateBirthDate(
         form,
         showIncomplete,
@@ -483,7 +501,10 @@
         try {
             const response = await fetch(form.dataset.restUrl || '', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...releaseBypassHeaders(),
+                },
                 body: JSON.stringify(payload),
                 credentials: 'same-origin',
             });
@@ -506,6 +527,7 @@
                 input: 'Bitte prüfe deine Eingaben.',
                 security: 'Bitte führe die Sicherheitsprüfung erneut durch.',
                 rate_limit: 'Zu viele Versuche. Bitte versuche es später erneut.',
+                platform: 'Mitgliedsanträge sind aktuell vorübergehend pausiert.',
                 technical: 'Der Mitgliedsantrag ist derzeit technisch nicht möglich.',
             };
             const message = result && allowedMessages[result.category]

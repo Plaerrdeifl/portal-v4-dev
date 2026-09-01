@@ -133,6 +133,8 @@
     border-left: 0.25rem solid #8b1f2d;
 }
 
+.pd-m150-platform-notice strong,.pd-m150-platform-notice small{display:block}.pd-m150-platform-notice p{margin:.4rem 0}.pd-m150-platform-notice small{color:#65758b}
+
 .pd-m150-admin .pd-m150-admin-media {
     display: flex;
     flex-wrap: wrap;

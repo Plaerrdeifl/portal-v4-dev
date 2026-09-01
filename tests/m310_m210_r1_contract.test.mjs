@@ -62,22 +62,25 @@ test("M310 mobile card exposes one primary status without internal capacity valu
 
 test("M310 registrations use compact operational records without empty cancellation metadata", () => {
   const start = fanbuses.indexOf("function registrationCard(registration, buses = [], readOnly = false)");
-  const end = fanbuses.indexOf("function registrationsMarkup(data, trip)", start);
+  const end = fanbuses.indexOf("async function cancelRegistrationFromActions", start);
   assert.notEqual(start, -1);
   assert.notEqual(end, -1);
   const card = fanbuses.slice(start, end);
 
-  assert.match(card, /class="v4-m310-registration-record v4-interactive-card"/);
+  assert.match(card, /class="v4-m310-registration-record\$\{canAct \? " v4-interactive-card" : ""\}"/);
   assert.doesNotMatch(card, /card entity-card|entity-head|meta-grid|meta-item|v4-card-actions/);
   assert.match(card, /class="badge \$\{registration\.status === "ACTIVE" \? "success" : "neutral"\}"/);
   assert.match(card, /sourceText\(registration\.source\)/);
   assert.match(card, /busPreferenceText\(registration\.busPreference\)/);
-  assert.match(card, /const email = registration\.email[\s\S]+v4-m310-registration-email/);
+  assert.doesNotMatch(card, /registration\.email|v4-m310-registration-email/);
   assert.match(card, /formatBerlinDateTime\(registration\.registeredAt\)/);
   assert.match(card, /registration\.status === "CANCELLED" && registration\.cancelledAt/);
   assert.doesNotMatch(card, /cancelledAt\s*\|\|\s*"–"/);
+  assert.match(card, /const canAct = !readOnly && registration\.status !== "CANCELLED"/);
   assert.match(card, /data-m320-open-registration/);
-  assert.doesNotMatch(card, /data-m320-edit-registration|data-m310-cancel-registration/);
+  assert.match(card, /role="button" tabindex="0"/);
+  assert.match(card, /v4-m310-registration-chevron/);
+  assert.doesNotMatch(card, /data-m320-edit-registration|data-m320-more-registration|data-m310-occupancy-assignment/);
 
   const cancellationStart = fanbuses.indexOf("async function cancelRegistrationFromActions");
   const cancellationEnd = fanbuses.indexOf("function busCategoryLabel", cancellationStart);
@@ -88,7 +91,7 @@ test("M310 registrations use compact operational records without empty cancellat
   assert.match(cancellation, /renderRegistrationsDialog\(registrationsDialog, trip, nextData\)/);
   assert.doesNotMatch(cancellation, /showRegistrationsDialog\(/);
 
-  const registrationFlowEnd = fanbuses.indexOf("function manualPersonLabel(person)", end);
+  const registrationFlowEnd = fanbuses.indexOf("function manualPersonKey(person)", end);
   const registrationFlow = fanbuses.slice(end, registrationFlowEnd);
   assert.match(registrationFlow, /hasCapability\("fanbus\.registrations\.manage"\)/);
 
@@ -103,7 +106,7 @@ test("M310 registrations use compact operational records without empty cancellat
   assert.match(recordRule, /max-width:\s*100%/);
   assert.match(toolbarActionsRule, /display:\s*flex/);
   assert.match(toolbarActionsRule, /flex-wrap:\s*wrap/);
-  assert.match(css, /\.v4-m310-registration-email\{[\s\S]{0,80}overflow-wrap:anywhere/);
+  assert.doesNotMatch(css, /\.v4-m310-registration-email\{/);
   assert.match(
     css,
     /@media\(max-width:620px\)\{[\s\S]{0,500}\.v4-m310-registration-record\{[^}]*grid-template-columns:minmax\(0,1fr\)[^}]*\}/
@@ -111,7 +114,7 @@ test("M310 registrations use compact operational records without empty cancellat
 });
 
 test("M310 central editor keeps the registration window without the legacy meeting field", () => {
-  const tripFormStart = fanbuses.indexOf("function tripForm(trip)");
+  const tripFormStart = fanbuses.indexOf("function tripForm(");
   const tripFormEnd = fanbuses.indexOf("function tripUpdatePayload", tripFormStart);
   const tripForm = fanbuses.slice(tripFormStart, tripFormEnd);
   assert.notEqual(tripFormStart, -1);
@@ -122,7 +125,7 @@ test("M310 central editor keeps the registration window without the legacy meeti
   assert.match(fanbuses, /function defaultRegistrationClosesInput\(departureAt\)/);
   assert.match(fanbuses, /Number\(match\[3\]\) - 3/);
   assert.match(fanbuses, /T20:00/);
-  assert.match(fanbuses, /registrationOpensAt: berlinLocalToIso/);
+  assert.match(fanbuses, /registrationOpensAt: values\.registrationOpensAt[\s\S]+berlinLocalToIso/);
 });
 
 test("M210 and M310 editors use the shared member and finance dialog contract", () => {
@@ -143,7 +146,8 @@ test("M210 and M310 editors use the shared member and finance dialog contract", 
   assert.match(shell, /height:\s*auto!important/);
   assert.match(shell, /min-height:\s*0!important/);
   assert.match(shell, /max-height:\s*calc\(100dvh - 24px\)!important/);
-  assert.match(body, /flex:\s*0 1 auto!important/);
+  assert.match(body, /flex:\s*1 1 auto!important/);
+  assert.match(body, /touch-action:\s*pan-y/);
   assert.match(body, /height:\s*auto!important/);
   assert.match(body, /min-height:\s*0!important/);
   assert.match(body, /overflow-x:\s*hidden!important/);
@@ -171,9 +175,10 @@ test("cash, M210 and M310 retain their intended responsive smart-form tracks on 
   assert.notEqual(tripFormStart, -1, "Fahrteditor-Formular fehlt");
   assert.notEqual(tripFormEnd, -1, "Ende des Fahrteditor-Formulars fehlt");
   const tripFormSource = fanbuses.slice(tripFormStart, tripFormEnd);
-  assert.match(tripFormSource, /v4-field-full">Abfahrt/);
+  assert.match(tripFormSource, /<label>Abfahrt[\s\S]+name="departureTime" type="time"/);
   assert.doesNotMatch(tripFormSource, /name="capacity"/);
-  assert.match(tripFormSource, /v4-field-seven">Anmeldung beginnt[\s\S]+v4-field-seven">Anmeldung endet[\s\S]+v4-field-five">Fahrtpreis/);
+  assert.match(tripFormSource, /Fahrtpreis[\s\S]+Anmeldeschluss[\s\S]+Anmeldung beginnt/);
+  assert.match(tripFormSource, /v4-m310-editor-fields/);
 
   assert.doesNotMatch(
     css,
@@ -208,7 +213,7 @@ test("M310 keeps an unsaved default auto-managed until the close field is edited
   );
   assert.match(
     fanbuses,
-    /registrationCloses\.value = defaultRegistrationClosesInput\([\s\S]+berlinLocalToIso\(departure\.value/
+    /registrationCloses\.value = defaultRegistrationClosesInput\(departureIso\)/
   );
 });
 

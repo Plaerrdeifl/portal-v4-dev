@@ -34,19 +34,26 @@ test("U5.1 detail uses normal stop styling, lifecycle status and right-aligned r
 
 test("U5.1 moves trip edit into management menu and removes legacy meeting field", () => {
   const management = section(fanbuses, "function tripManagementActions", "function registrationWindowText");
+  const navigation = section(fanbuses, "function tripNavigation", "function normalizedTripDetailStops");
   const form = section(fanbuses, "function tripForm", "function tripUpdatePayload");
-  assert.match(management, /data-m310-edit-mode/);
+  assert.doesNotMatch(management, /data-m310-edit-mode/);
+  assert.match(navigation, /data-m310-edit-mode/);
   assert.doesNotMatch(form, /Treffpunkt \/ Abfahrtsort|name="departureInfo"/);
   assert.match(fanbuses, /departureInfo:\s*trip\.departureInfo \|\| null/);
 });
 
-test("U5.1 participant filters are a two by two grid and cards own their actions", () => {
+test("U5.1 participant filters remain two by two while active cards open participant detail actions", () => {
   assert.equal((fanbuses.match(/class="v4-m320-filter-half"/g) || []).length, 4);
   assert.match(css, /v4-m320-filter-half[\s\S]*grid-column:\s*span 6/);
-  assert.match(fanbuses, /data-m320-open-registration/);
-  assert.match(fanbuses, /function openRegistrationActions/);
   const card = section(fanbuses, "function registrationCard", "async function cancelRegistrationFromActions");
-  assert.doesNotMatch(card, /data-m320-edit-registration|data-m310-cancel-registration/);
+  assert.match(card, /data-m320-open-registration/);
+  assert.match(card, /role="button" tabindex="0"/);
+  assert.match(card, /v4-m310-registration-chevron/);
+  assert.doesNotMatch(card, /data-m320-edit-registration|data-m320-more-registration|data-m310-occupancy-assignment/);
+  assert.match(fanbuses, /function openRegistrationDetail/);
+  assert.match(fanbuses, /data-m320-detail-assignment/);
+  assert.match(fanbuses, /data-m320-detail-edit/);
+  assert.match(fanbuses, /data-m320-detail-more/);
 });
 
 test("U5.1 bus cards are clickable and expose edit plus boarding-stop actions", () => {
@@ -55,6 +62,7 @@ test("U5.1 bus cards are clickable and expose edit plus boarding-stop actions", 
   assert.match(occupancy, /function openBusActions/);
   assert.match(occupancy, />Bus bearbeiten</);
   assert.match(occupancy, />Zustiege verwalten</);
+  assert.match(occupancy, />Bus löschen</);
 });
 
 test("U5.1 normalizes Fanbus gear title alignment and bus checkboxes", () => {
@@ -90,6 +98,6 @@ test("U5.1 WordPress accepts legacy departureInfo only as optional transport dat
   );
   assert.doesNotMatch(wordpressFanbus, /<strong>Abfahrtsinfo<\/strong>/);
   assert.doesNotMatch(wordpressFanbus, /pd-m310-departure-info/);
-  assert.match(wordpressFanbus, /Version: 1\.0\.4/);
-  assert.match(wordpressFanbus, /private const VERSION = '1\.0\.4'/);
+  assert.match(wordpressFanbus, /Version: 1\.0\.5/);
+  assert.match(wordpressFanbus, /private const VERSION = '1\.0\.5'/);
 });

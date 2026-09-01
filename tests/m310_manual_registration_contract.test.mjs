@@ -229,17 +229,18 @@ test("manual registration requires both stored consent confirmations", () => {
 test("M310 UI exposes manual registration only through the registration capability", () => {
   assert.match(
     ui,
-    /hasCapability\("fanbus\.registrations\.manage"\)[\s\S]+data-m310-add-registration>Mitfahrer hinzufügen/
+    /hasCapability\("fanbus\.registrations\.manage"\)[\s\S]+data-m310-add-registration>Teilnehmer hinzufügen/
   );
   assert.match(ui, /call\("fanbus_registration_people_list"\)/);
-  assert.match(
-    ui,
-    /call\("fanbus_registration_create_manual", \{[\s\S]+\.\.\.payload,[\s\S]+idempotencyKey: manualAttempt\.key[\s\S]+\}\)/
-  );
+  assert.match(ui, /call\("fanbus_registration_create_manual_bulk", \{ \.\.\.payload, idempotencyKey: manualAttempt\.key \}\)/);
   assert.match(ui, /call\("fanbus_registrations_list", \{ tripId: trip\.id \}\)/);
   assert.match(ui, /call\("fanbus_trips_list"\)/);
   assert.match(ui, /MANUAL: "Manuell"/);
-  assert.match(ui, /const email = registration\.email[\s\S]+v4-m310-registration-email/);
+  const registrationCard = ui.slice(
+    ui.indexOf("function registrationCard"),
+    ui.indexOf("async function cancelRegistrationFromActions")
+  );
+  assert.doesNotMatch(registrationCard, /registration\.email|v4-m310-registration-email/);
 });
 
 test("manual UI idempotency attempt is bound to the complete business payload", () => {
@@ -248,23 +249,18 @@ test("manual UI idempotency attempt is bound to the complete business payload", 
     /function manualAttemptFor\(currentAttempt, fingerprint\)[\s\S]+currentAttempt\?\.fingerprint === fingerprint[\s\S]+crypto\.randomUUID\(\)/
   );
   assert.match(ui, /let manualAttempt = null/);
-  assert.match(
-    ui,
-    /const payload = \{[\s\S]+tripId: trip\.id,[\s\S]+mode: values\.mode,[\s\S]+busPreference: trip\.busPreferenceSelectionEnabled[\s\S]+values\.busPreference[\s\S]+: "EGAL",[\s\S]+privacyConfirmed:[\s\S]+termsConfirmed:/
-  );
-  assert.match(ui, /payload\.personType = person\.personType/);
-  assert.match(ui, /payload\.memberId = person\.memberId/);
-  assert.match(ui, /payload\.portalUserId = person\.portalUserId/);
-  assert.match(ui, /payload\.firstName = values\.firstName/);
-  assert.match(ui, /payload\.lastName = values\.lastName/);
-  assert.match(ui, /payload\.email = values\.email \|\| null/);
+  assert.match(ui, /const payload = \{[\s\S]+tripId: trip\.id,[\s\S]+participants: state\.participants\.map[\s\S]+termsConfirmed: values\.consentConfirmed === "on"/);
+  assert.match(ui, /person\.portalUserId \? \{ portalUserId: person\.portalUserId \}/);
+  assert.match(ui, /person\.memberId \? \{ memberId: person\.memberId \}/);
+  assert.match(ui, /person\.regularRiderId \? \{ regularRiderId: person\.regularRiderId \}/);
+  assert.match(ui, /person\.source === "GUEST" \? \{ firstName: person\.firstName, lastName: person\.lastName, email: person\.email \|\| null \}/);
   assert.match(
     ui,
     /const fingerprint = JSON\.stringify\(payload\);[\s\S]+manualAttempt = manualAttemptFor\(manualAttempt, fingerprint\)/
   );
   assert.match(
     ui,
-    /fanbus_registration_create_manual", \{[\s\S]+\.\.\.payload,[\s\S]+idempotencyKey: manualAttempt\.key/
+    /fanbus_registration_create_manual_bulk", \{ \.\.\.payload, idempotencyKey: manualAttempt\.key/
   );
   assert.doesNotMatch(
     ui,

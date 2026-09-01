@@ -35,10 +35,7 @@ function hydrateInstall() {
       : "Füge das Plärrdeifl Portal über das Menü deines Smartphones zum Home-Bildschirm hinzu."
   );
 
-  if (instructions) {
-    instructions.hidden = standalone;
-  }
-
+  if (instructions) instructions.hidden = standalone;
   if (result) {
     result.hidden = !standalone;
     result.textContent = standalone
@@ -52,7 +49,6 @@ async function hydrateLogin(context = {}) {
 
   const slot = document.getElementById("googleSignInButton");
   const status = document.getElementById("googleSignInStatus");
-
   const setStatus = value => {
     if (status) status.textContent = value;
   };
@@ -62,49 +58,32 @@ async function hydrateLogin(context = {}) {
     if (!slot) return;
 
     if (!CONFIG.supabase.configured) {
-      setText(
-        "loginMessage",
-        "Die lokale Runtime-Konfiguration wurde noch nicht erzeugt."
-      );
-      slot.innerHTML =
-        '<div class="notice warning">Die Supabase-DEV-Verbindung ist noch nicht verfügbar.</div>';
+      setText("loginMessage", "Die lokale Runtime-Konfiguration wurde noch nicht erzeugt.");
+      slot.innerHTML = '<div class="notice warning">Die Supabase-DEV-Verbindung ist noch nicht verfügbar.</div>';
       return;
     }
 
     if (!state.authenticated) {
-      setText(
-        "loginMessage",
-        "Melde dich sicher mit deinem Google-Konto an."
-      );
-
+      setText("loginMessage", "Melde dich sicher mit deinem Google-Konto an.");
       if (!CONFIG.auth.googleClientId) {
-        slot.innerHTML =
-          '<div class="notice error">Die öffentliche Google Client-ID fehlt.</div>';
+        slot.innerHTML = '<div class="notice error">Die öffentliche Google Client-ID fehlt.</div>';
         setStatus("Die Anmeldung ist noch nicht vollständig konfiguriert.");
         return;
       }
-
       try {
         setStatus("");
-
         await renderGoogleSignInButton(slot, {
           clientId: CONFIG.auth.googleClientId,
           onCredential: async (response, nonce) => {
             slot.setAttribute("aria-busy", "true");
             setStatus("Google-Anmeldung wird sicher geprüft …");
-
             try {
               if (typeof context.onGoogleCredential !== "function") {
                 throw new Error("Der zentrale Anmeldeübergang ist nicht verfügbar.");
               }
               await context.onGoogleCredential(response, nonce);
             } catch (error) {
-              showToast(
-                error?.message
-                  || "Google-Anmeldung konnte nicht abgeschlossen werden.",
-                "error",
-                7000
-              );
+              showToast(error?.message || "Google-Anmeldung konnte nicht abgeschlossen werden.", "error", 7000);
               setStatus("Anmeldung fehlgeschlagen. Bitte erneut versuchen.");
             } finally {
               slot.setAttribute("aria-busy", "false");
@@ -112,49 +91,38 @@ async function hydrateLogin(context = {}) {
           }
         });
       } catch (error) {
-        slot.innerHTML =
-          '<div class="notice error">Google-Anmeldung konnte nicht geladen werden.</div>';
+        slot.innerHTML = '<div class="notice error">Google-Anmeldung konnte nicht geladen werden.</div>';
         setStatus(error?.message || "Google Identity Services ist nicht verfügbar.");
-        showToast(
-          error?.message || "Google-Anmeldung konnte nicht geladen werden.",
-          "error",
-          7000
-        );
+        showToast(error?.message || "Google-Anmeldung konnte nicht geladen werden.", "error", 7000);
       }
-
       return;
     }
 
     if (state.busy || state.status === "LOADING") {
-      setText(
-        "loginMessage",
-        "Portalstatus und Berechtigungen werden geladen …"
-      );
-      slot.innerHTML =
-        '<div class="notice">Anmeldung wird geprüft …</div>';
+      setText("loginMessage", "Portalstatus und Berechtigungen werden geladen …");
+      slot.innerHTML = '<div class="notice">Anmeldung wird geprüft …</div>';
       setStatus("");
       return;
     }
 
     if (state.status === "ACTIVE") {
-      setText(
-        "loginMessage",
-        `Du bist als ${state.user?.name || "Portaluser"} angemeldet.`
-      );
+      setText("loginMessage", `Du bist als ${state.user?.name || "Portaluser"} angemeldet.`);
       slot.innerHTML = '<div class="notice success">Portalzugang ist aktiv.</div>';
       setStatus("");
       return;
     }
 
-    setText(
-      "loginMessage",
-      "Dein Konto ist angemeldet. Die Portalregistrierung wird vorbereitet."
-    );
+    setText("loginMessage", "Dein Konto ist angemeldet. Die Portalregistrierung wird vorbereitet.");
     slot.innerHTML = '<div class="notice">Registrierung wird vorbereitet …</div>';
-    setStatus("");
   };
 
   await render();
+}
+
+function currentBusOrgaView() {
+  const hash = String(location.hash || "");
+  const query = hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : "";
+  return new URLSearchParams(query).get("view") || "";
 }
 
 export function preloadAuthenticatedModules(keys = ["dashboard", "dates", "fanclub", "tasks", "teams", "admin"]) {
@@ -179,7 +147,88 @@ export async function hydratePage(key, context = {}) {
   if (key === "profile") return feature("./modules/profile.js", "hydrateProfile", context);
   if (key === "dashboard") return feature("./modules/dashboard.js?v=20260724-dashboard-delivery-corr2&feature=20260724-personal-dashboard-widgets-r1-fix4&small=20260725-dashboard-small-widgets-r1", "hydrateDashboard", context);
   if (key === "dates") return feature("./modules/dates.js", "hydrateDates", context);
-  if (key === "fanbuses") return feature("./modules/fanbuses.js", "hydrateFanbuses", context);
+  if (key === "fanbuses") {
+    const result = await feature("./modules/fanbuses.js?v=20260826-p800-r2-final-direct-fix&groups=20260828-m310-r1&m327=20260828-m327-r1&completion=20260829-m328-final1&correction=20260830-m328-c1", "hydrateFanbuses", context);
+    await feature("./m327-r1-acceptance-polish.js?v=20260829-m327-r1-acceptance1", "setupM327AcceptancePolish", context);
+    await feature("./m327-companion-lists-polish.js?v=20260830-m327-companion-tap2", "setupM327CompanionListsPolish", context);
+    await feature("./m327-boarding-stop-details.js?v=20260901-m327-stop-details-hotfix1", "setupM327BoardingStopDetails", context);
+    await feature("./m328-bus-orga-shell.js?v=20260829-m328-r1-rider-reactivate2&completion=20260829-m328-final1", "setupM328BusOrgaShell", context);
+    await feature("./m328-public-registration-app-entry.js?v=20260830-m328-app-entry1", "setupM328PublicRegistrationAppEntry", context);
+    return result;
+  }
+  if (key === "bus-orga") {
+    const view = currentBusOrgaView();
+    if (view === "trip-create") {
+      return feature(
+        "./modules/bus-orga-trip-create.js?v=20260830-m328-trip-create-native2",
+        "hydrateBusOrgaTripCreate",
+        context
+      );
+    }
+    if (view === "trip-detail") {
+      const result = await feature(
+        "./modules/bus-orga-trip-detail.js?v=20260830-m328-final-bus-management1",
+        "hydrateBusOrgaTripDetail",
+        context
+      );
+      await feature(
+        "./modules/m328-bus-orga-final-fixes.js?v=20260830-m328-create-publish1",
+        "setupM328BusOrgaFinalFixes",
+        context
+      );
+      return result;
+    }
+    if (view === "bookings") {
+      return feature(
+        "./modules/bus-orga-bookings.js?v=20260830-m328-final-bus-management1",
+        "hydrateBusOrgaBookings",
+        context
+      );
+    }
+    if (view === "trip-edit") {
+      return feature(
+        "./modules/bus-orga-trip-edit.js?v=20260830-m328-final-bus-management1",
+        "hydrateBusOrgaTripEdit",
+        context
+      );
+    }
+    if (view === "registration") {
+      const result = await feature(
+        "./modules/bus-orga-v3.js?v=20260829-m328-r1-next-trip-venue1&fix=20260829-m328-r1-next-trip-cancelled1&ux=20260829-m328-r1-registration-ux-correction1&modal=20260829-m328-r1-decision-click1&state=20260829-m328-r1-booking-state2&cards=20260829-m328-r1-active-person-cards2&rows=20260829-m328-r1-participant-row-edit1&prepared=20260829-m328-r1-prepared-density1&participant-click=20260829-m328-r1-active-person-click1&completion=20260829-m328-final1&correction=20260830-m328-c2&defaults=20260830-m328-draft-defaults1&tripedit=20260830-m328-trip-edit-compact1&workspaces=20260830-m328-native-workspaces1&final=20260830-m328-final-bus-management1&registration=20260830-m328-registration-flow2",
+        "hydrateBusOrgaV3",
+        context
+      );
+      await feature(
+        "./modules/bus-orga-registration-flow-wording.js?v=20260829-m328-r1-flow-wording2",
+        "setupM328RegistrationFlowWording",
+        context
+      );
+      return result;
+    }
+    if (["participants", "occupancy", "assignment", "operations"].includes(view)) {
+      return feature(
+        "./modules/bus-orga-trip-workspaces.js?v=20260830-m328-final-bus-management1",
+        "hydrateBusOrgaTripWorkspace",
+        context
+      );
+    }
+    const result = await feature(
+      "./modules/bus-orga-v3.js?v=20260829-m328-r1-next-trip-venue1&fix=20260829-m328-r1-next-trip-cancelled1&ux=20260829-m328-r1-registration-ux-correction1&modal=20260829-m328-r1-decision-click1&state=20260829-m328-r1-booking-state2&cards=20260829-m328-r1-active-person-cards2&rows=20260829-m328-r1-participant-row-edit1&prepared=20260829-m328-r1-prepared-density1&participant-click=20260829-m328-r1-active-person-click1&completion=20260829-m328-final1&correction=20260830-m328-c2&defaults=20260830-m328-draft-defaults1&tripedit=20260830-m328-trip-edit-compact1&workspaces=20260830-m328-native-workspaces1&final=20260830-m328-final-bus-management1",
+      "hydrateBusOrgaV3",
+      context
+    );
+    await feature(
+      "./modules/bus-orga-registration-flow-wording.js?v=20260829-m328-r1-flow-wording2",
+      "setupM328RegistrationFlowWording",
+      context
+    );
+    await feature(
+      "./modules/m328-bus-orga-final-fixes.js?v=20260830-m328-create-publish1",
+      "setupM328BusOrgaFinalFixes",
+      context
+    );
+    return result;
+  }
   if (key === "fanclub") return feature("./modules/fanclub.js", "hydrateFanclub", context);
   if (key === "tasks") return feature("./modules/tasks.js", "hydrateTasks", context);
   if (key === "teams") return feature("./modules/teams.js", "hydrateTeams", context);

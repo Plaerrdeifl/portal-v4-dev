@@ -84,7 +84,7 @@ test("dashboard corr3 remains active under the current shell release", async () 
 
   assert.match(
     index,
-    /name="pd-release" content="20260802-pwa-install-guidance-r1"/
+    /name="pd-release" content="20260829-m328-r1-native-actions1"/
   );
 
   assert.match(

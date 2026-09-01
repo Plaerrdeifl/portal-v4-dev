@@ -24,6 +24,21 @@ function emitActivity() {
   }));
 }
 
+function prepareCall(action, payload) {
+  const detail = {
+    action: String(action || ""),
+    payload: payload && typeof payload === "object" ? { ...payload } : {}
+  };
+  window.dispatchEvent(new CustomEvent("pd-api-before-call", { detail }));
+  return detail;
+}
+
+function emitCallResult(action, payload, data) {
+  window.dispatchEvent(new CustomEvent("pd-api-after-call", {
+    detail: { action, payload, data }
+  }));
+}
+
 function unwrap(payload) {
   if (!payload || payload.ok !== true) {
     const error = payload?.error || {};
@@ -40,6 +55,9 @@ export const api = Object.freeze({
   async call(action, payload = {}) {
     const client = getSupabaseClient();
     let transportFailure = false;
+    const prepared = prepareCall(action, payload);
+    const actionName = prepared.action;
+    const requestPayload = prepared.payload;
 
     pendingRequests += 1;
     lastError = null;
@@ -67,7 +85,7 @@ export const api = Object.freeze({
                 "Content-Type": "application/json",
                 ...bypassHeaders
               },
-              body: JSON.stringify({ p_action: String(action || ""), p_payload: payload || {} })
+              body: JSON.stringify({ p_action: actionName, p_payload: requestPayload })
             }
           );
           const directData = await directResponse.json().catch(() => null);
@@ -76,8 +94,8 @@ export const api = Object.freeze({
             : { data: null, error: directData || { message: "Supabase-Anfrage fehlgeschlagen." } };
         } else {
           response = await client.rpc("pd_api", {
-            p_action: String(action || ""),
-            p_payload: payload || {}
+            p_action: actionName,
+            p_payload: requestPayload
           });
         }
       } catch (error) {
@@ -96,7 +114,9 @@ export const api = Object.freeze({
         );
       }
 
-      return unwrap(data);
+      const result = unwrap(data);
+      emitCallResult(actionName, requestPayload, result);
+      return result;
     } catch (error) {
       lastError = transportFailure ? error : null;
       throw error;

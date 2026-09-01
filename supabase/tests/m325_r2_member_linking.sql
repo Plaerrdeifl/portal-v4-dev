@@ -263,7 +263,7 @@ select throws_ok(
 select throws_ok(
   $$select app_private.api_fanbus_companion_person_search('{"query":"Ta"}'::jsonb)$$,
   '22023', 'FANBUS_PERSON_SEARCH_INVALID_QUERY',
-  'Suche unter drei Zeichen wird abgewiesen'
+  'Unspezifische Suche unter fuenf Zeichen wird abgewiesen'
 );
 select is(
   jsonb_array_length(
@@ -281,18 +281,23 @@ select is(
   0,
   'BLOCKED Portaluser ist nicht auffindbar'
 );
+select is(
+  jsonb_array_length(
+    app_private.api_fanbus_companion_person_search('{"query":"arget"}'::jsonb)
+      -> 'people'
+  ),
+  0,
+  'Beliebige Infixsuche findet keinen Portaluser'
+);
 select ok(
   not (
     app_private.api_fanbus_companion_person_search('{"query":"Target"}'::jsonb)
       -> 'people' -> 0
-  ) ?| array['email', 'phone', 'address', 'birthDate', 'notes', 'role', 'capabilities'],
-  'Portalusersuche liefert keine zusaetzliche PII'
-);
-select is(
-  (app_private.api_fanbus_companion_person_search('{"query":"Target"}'::jsonb)
-    -> 'people' -> 0 ->> 'isMember')::boolean,
-  true,
-  'Optionales Mitglied-Badge wird aus aktueller ACTIVE-Mitgliedschaft abgeleitet'
+  ) ?| array[
+    'email', 'phone', 'address', 'birthDate', 'notes', 'role', 'capabilities',
+    'isMember', 'memberStatus'
+  ],
+  'Portalusersuche liefert weder PII noch Mitgliedschaft'
 );
 
 create temporary table d055_result(name text primary key, result jsonb)

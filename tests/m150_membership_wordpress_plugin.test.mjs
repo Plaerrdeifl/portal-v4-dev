@@ -327,11 +327,11 @@ test('CSS and documentation preserve the F1.5A boundaries', () => {
 test('M150 Turnstile browser failures are visible and token reads are fail-safe', () => {
   assert.match(
     pluginSource,
-    /Version:\s*1\.0\.4/,
+    /Version:\s*1\.0\.5/,
   );
   assert.match(
     pluginSource,
-    /private const VERSION\s*=\s*'1\.0\.4'/,
+    /private const VERSION\s*=\s*'1\.0\.5'/,
   );
 
   assert.match(
@@ -398,12 +398,12 @@ test('M150 Turnstile browser failures are visible and token reads are fail-safe'
 test('M150 birth date UI is browser-independent and keeps one server value', () => {
   assert.match(
     pluginSource,
-    /Version:\s*1\.0\.4/,
+    /Version:\s*1\.0\.5/,
   );
 
   assert.match(
     pluginSource,
-    /private const VERSION\s*=\s*'1\.0\.4'/,
+    /private const VERSION\s*=\s*'1\.0\.5'/,
   );
 
   assert.match(

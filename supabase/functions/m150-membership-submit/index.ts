@@ -29,7 +29,7 @@ type BodyReadResult =
   | { status: "ok"; bytes: Uint8Array }
   | { status: "too_large" | "read_error" };
 
-function jsonResponse(status: number, body: typeof SUCCESS_RESPONSE | typeof ERROR_RESPONSE) {
+function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
@@ -143,6 +143,19 @@ async function verifySignature(
 
 function isInputRpcError(responseText: string) {
   return INPUT_ERROR_CODES.some(code => responseText.includes(code));
+}
+
+function platformRpcError(responseText: string) {
+  if (responseText.includes('"code":"P0902"')) {
+    return jsonResponse(423, { ok: false, code: "PLATFORM_READ_ONLY", message: "Anträge sind aktuell vorübergehend pausiert." });
+  }
+  if (responseText.includes('"code":"P0903"')) {
+    return jsonResponse(503, { ok: false, code: "PLATFORM_MAINTENANCE", message: "Die Plattform befindet sich aktuell im Wartungsmodus." });
+  }
+  if (responseText.includes('"code":"P0901"')) {
+    return jsonResponse(503, { ok: false, code: "PLATFORM_WRITE_UNAVAILABLE", message: "Anträge sind aktuell nicht verfügbar." });
+  }
+  return null;
 }
 
 Deno.serve(async request => {
@@ -279,6 +292,8 @@ Deno.serve(async request => {
   }
 
   if (!rpcResponse.ok) {
+    const platformError = platformRpcError(rpcText);
+    if (platformError) return platformError;
     return errorResponse(isInputRpcError(rpcText) ? 400 : 500);
   }
 

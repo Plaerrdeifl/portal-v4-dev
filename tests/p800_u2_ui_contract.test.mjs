@@ -63,7 +63,7 @@ test("trip detail is compact and exposes capability-gated occupancy, operations 
   assert.match(detailSource, /eventTimeCompact\(trip\.eventTime\)/);
   assert.doesNotMatch(detailSource, /v4-m310-trip-status|tripBadges\\(trip\\)/);
   assert.match(detailSource, /v4-m325-trip-travel/);
-  assert.match(detailSource, /registrationWindowText\(trip\)/);
+  assert.match(detailSource, /tripRegistrationDeadlineMarkup\(trip\)/);
   assert.match(detailSource, /\$\{tripNavigation\(trip\)\}/);
   assert.doesNotMatch(detailSource, /Anmeldungen \/ Kapazität/);
   assert.doesNotMatch(detailSource, /Meine Mitfahrer/);
@@ -73,31 +73,30 @@ test("trip detail is compact and exposes capability-gated occupancy, operations 
   assert.match(detailSource, />Änderungen speichern</);
 
   assert.doesNotMatch(navigationSource, />Übersicht</);
-  assert.match(navigationSource, />Belegung</);
+  assert.match(navigationSource, />Teilnehmerliste</);
+  assert.match(navigationSource, /Busverwaltung/);
   assert.match(navigationSource, />Fahrtbetrieb</);
-  assert.match(navigationSource, /data-m310-trip-settings/);
+  assert.doesNotMatch(navigationSource, /data-m310-trip-settings|⚙️/);
+  assert.match(navigationSource, /data-m310-edit-mode/);
   assert.match(navigationSource, /operationsAccess\.canManageRegistrations/);
-  assert.match(
-    navigationSource,
-    /canOpenOccupancy\s*=\s*canManage\s*\|\|\s*operationsAccess\.canManageRegistrations/
-  );
+  assert.match(navigationSource, /canManage \? `[\s\S]*data-m310-occupancy/);
   assert.match(navigationSource, /operationsAccess\.canRead/);
 });
 
 test("occupancy remains bus-centered and preserves per-bus stop mapping", () => {
   assert.match(fanbuses, /function occupancyMarkup\(data, busMappings, tripStops, access\)/);
-  assert.match(fanbuses, /<\/strong>Teilnehmer<\/span>/);
-  assert.match(fanbuses, /<\/strong>Gesamtplätze<\/span>/);
-  assert.match(fanbuses, /<\/strong>Warteliste<\/span>/);
-  assert.match(fanbuses, /<\/strong>Ohne Bus<\/span>/);
   assert.match(fanbuses, /mapping\.tripBoardingStopIds/);
   assert.match(fanbuses, /fanbus_bus_boarding_stops_set/);
-  assert.match(fanbuses, /data-m310-occupancy-assignment/);
   assert.match(fanbuses, /fanbus_bus_assignment_set/);
-  assert.match(fanbuses, /data-m310-occupancy-promote/);
+  const occupancy = fanbuses.slice(
+    fanbuses.indexOf("function occupancyMarkup"),
+    fanbuses.indexOf("function showOccupiedBusDeleteBlock")
+  );
+  assert.doesNotMatch(occupancy, /Teilnehmer \(|Ohne Bus|Warteliste|data-m310-occupancy-assignment/);
   assert.match(fanbuses, /Die Auswahl gilt ausschließlich für diesen Bus/);
   assert.match(fanbuses, /data-m310-create-bus/);
-  assert.match(fanbuses, /data-m320-edit-bus/);
+  assert.match(fanbuses, /data-m310-bus-action-edit/);
+  assert.match(fanbuses, /data-m310-bus-action-delete/);
 });
 
 test("calendar links only published existing fanbus snapshots by eventId", () => {

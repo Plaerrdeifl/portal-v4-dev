@@ -1,5 +1,6 @@
 import {
   call,
+  closeAllDialogs,
   confirmAction,
   currentUser,
   empty,
@@ -17,11 +18,11 @@ import { navigate } from "../router.js";
 let snapshot = null;
 
 function teamForm(team = {}) {
-  return `<form class="form-grid">
+  return `<form class="form-grid v4-smart-form">
     <input type="hidden" name="id" value="${escapeAttr(team.id || "")}">
-    <label class="full">Name<input name="name" required maxlength="160" value="${escapeAttr(team.name || "")}"></label>
-    <label class="full">Beschreibung<textarea name="description" maxlength="2000" rows="4">${escapeHtml(team.description || "")}</textarea></label>
-    <label class="checkbox-row full"><input name="active" type="checkbox" ${team.active !== false ? "checked" : ""}> Team ist aktiv</label>
+    <label class="v4-field-full">Name<input name="name" required maxlength="160" value="${escapeAttr(team.name || "")}"></label>
+    <label class="v4-field-full">Beschreibung<textarea name="description" maxlength="2000" rows="4">${escapeHtml(team.description || "")}</textarea></label>
+    <label class="checkbox-row v4-field-full"><input name="active" type="checkbox" ${team.active !== false ? "checked" : ""}> Team ist aktiv</label>
   </form>`;
 }
 
@@ -63,10 +64,10 @@ function membershipForm(team, membership = {}) {
         { value: "MEMBER", label: "Mitglied" }
       ];
 
-  return `<form class="form-grid">
+  return `<form class="form-grid v4-smart-form">
     <input type="hidden" name="teamId" value="${escapeAttr(team.id)}">
-    <label class="full">Portalbenutzer<select name="userId" required ${membership.userId ? "disabled" : ""}>${optionList(users.map(user => ({ value: user.id, label: user.name })), membership.userId || "", "Benutzer auswählen")}</select>${membership.userId ? `<input type="hidden" name="userId" value="${escapeAttr(membership.userId)}">` : ""}</label>
-    <label class="full">Teamrolle<select name="role">${optionList(roles, membership.role || "MEMBER")}</select></label>
+    <label class="v4-field-full">Portalbenutzer<select name="userId" required ${membership.userId ? "disabled" : ""}>${optionList(users.map(user => ({ value: user.id, label: user.name })), membership.userId || "", "Benutzer auswählen")}</select>${membership.userId ? `<input type="hidden" name="userId" value="${escapeAttr(membership.userId)}">` : ""}</label>
+    <label class="v4-field-full">Teamrolle<select name="role">${optionList(roles, membership.role || "MEMBER")}</select></label>
   </form>`;
 }
 
@@ -98,7 +99,7 @@ function teamFunctionForm(team, membership) {
   );
 
   const functionRows = availableFunctions.map((item, index) => `
-    <label class="checkbox-row full">
+    <label class="checkbox-row v4-field-full">
       <input
         name="function_${index}"
         type="checkbox"
@@ -113,8 +114,8 @@ function teamFunctionForm(team, membership) {
     </label>
   `).join("");
 
-  return `<form class="form-grid">
-    <div class="full">
+  return `<form class="form-grid v4-smart-form">
+    <div class="v4-field-full">
       <p class="subtle">
         Fachfunktionen vergeben konkrete Berechtigungen innerhalb dieses Teams.
         Die organisatorische Teamrolle bleibt davon unabhängig.
@@ -122,7 +123,7 @@ function teamFunctionForm(team, membership) {
     </div>
 
     ${functionRows || `
-      <div class="notice neutral full">
+      <div class="notice neutral v4-field-full">
         Für dieses Team sind keine Fachfunktionen konfiguriert.
       </div>
     `}
@@ -172,7 +173,7 @@ function openTeamFunctions(team, membership) {
 
 async function removeMembership(team, membership) {
   if (!await confirmAction(`${membership.name} aus dem Team entfernen?`)) {
-    return;
+    return false;
   }
 
   snapshot = await runWrite(
@@ -184,31 +185,33 @@ async function removeMembership(team, membership) {
     "Teammitglied wurde entfernt."
   );
   render();
+  return true;
 }
 
 async function deleteTeam(team) {
-  if (Number(team.taskCount || 0) > 0) {
-    const details = [
-      Number(team.activeTaskCount || 0) > 0
-        ? `${team.activeTaskCount} nicht archivierte`
-        : "",
-      Number(team.archivedTaskCount || 0) > 0
-        ? `${team.archivedTaskCount} archivierte`
-        : ""
-    ].filter(Boolean).join(" und ");
-
-    showToast(
-      `Team „${team.name}“ kann noch nicht gelöscht werden. ${details} Aufgabe(n) sind zugeordnet.`,
-      "error",
-      5200
-    );
-    return;
+  const active = Number(team.activeTaskCount || 0);
+  const archived = Number(team.archivedTaskCount || 0);
+  if (active + archived > 0) {
+    const dialog = openDialog({
+      title: "Team löschen",
+      kicker: team.name,
+      body: `<div class="notice warning v4-team-delete-block" role="status">
+        <strong>Team kann noch nicht gelöscht werden.</strong>
+        <p>Es sind noch ${escapeHtml(active)} aktive und ${escapeHtml(archived)} archivierte Aufgaben zugeordnet.</p>
+        ${archived ? `<button class="button small secondary" type="button" data-open-team-archive="${escapeAttr(team.id)}">Archivierte Aufgaben anzeigen</button>` : ""}
+      </div>`
+    });
+    dialog.querySelector("[data-open-team-archive]")?.addEventListener("click", () => {
+      closeAllDialogs();
+      openTeamArchive(team);
+    });
+    return false;
   }
 
   if (!await confirmAction(
     `Team „${team.name}“ endgültig löschen? Mitgliedschaften und Teamfunktionen werden dabei entfernt.`
   )) {
-    return;
+    return false;
   }
 
   snapshot = await runWrite(
@@ -216,6 +219,7 @@ async function deleteTeam(team) {
     "Team wurde gelöscht."
   );
   render();
+  return true;
 }
 
 function openTeamArchive(team) {
@@ -234,41 +238,40 @@ function roleLabel(role) {
   }[role] || role;
 }
 
-function taskDependencyNotice(team) {
-  const active = Number(team.activeTaskCount || 0);
-  const archived = Number(team.archivedTaskCount || 0);
-
-  if (!active && !archived) return "";
-
-  return `<div class="notice warning v4-team-task-dependency">
-    <strong>Team kann noch nicht gelöscht werden</strong>
-    <p>
-      ${active ? `${active} nicht archivierte Aufgabe(n).` : ""}
-      ${archived ? `${archived} archivierte Aufgabe(n).` : ""}
-    </p>
-    ${archived ? `<button class="button small secondary" type="button" data-open-team-archive="${escapeAttr(team.id)}">Archivierte Aufgaben anzeigen</button>` : ""}
-  </div>`;
+function ownTeamRole(team) {
+  const userId = currentUser().id;
+  const membership = (team.members || []).find(member => member.userId === userId);
+  return membership ? roleLabel(membership.role) : "";
 }
 
-function ownTeamRole(team){const userId=currentUser().id;const membership=(team.members||[]).find(member=>member.userId===userId);return membership?roleLabel(membership.role):"";}
-function teamListRow(team){const role=ownTeamRole(team);return `<button class="v4-team-list-row" type="button" data-open-team="${escapeAttr(team.id)}"><span><strong>${escapeHtml(team.name)}</strong><small>${escapeHtml(role||`${(team.members||[]).filter(member=>member.active).length} Mitglieder`)}</small></span><span class="v4-row-chevron" aria-hidden="true">›</span></button>`;}
-function memberFunctionsMarkup(team, member) {
-  if (!team.canManageFunctions) return "";
+function teamListRow(team) {
+  const role = ownTeamRole(team);
+  const memberCount = (team.members || []).filter(member => member.active).length;
+  return `<button class="v4-team-list-row" type="button" data-open-team="${escapeAttr(team.id)}">
+    <span><strong>${escapeHtml(team.name)}</strong><small>${escapeHtml(role || `${memberCount} Mitglieder`)}</small></span>
+    <span class="v4-row-chevron" aria-hidden="true">›</span>
+  </button>`;
+}
 
+function memberFunctionsMarkup(member) {
   const functions = member.functions || [];
+  if (!functions.length) return "Keine Fachfunktionen";
+  return functions.length === 1 ? "1 Fachfunktion" : `${functions.length} Fachfunktionen`;
+}
 
-  return functions.length
-    ? `<div class="v4-team-member-functions">
-        <small>Fachfunktionen</small>
-        <span class="v4-team-function-list">
-          ${functions.map(item => `
-            <span class="badge neutral v4-team-function-badge">
-              ${escapeHtml(item.name)}
-            </span>
-          `).join("")}
-        </span>
-      </div>`
-    : '<small class="v4-team-member-no-functions">Keine Fachfunktionen</small>';
+function teamMemberRow(team, member) {
+  const canOpen = team.canManage || team.canManageFunctions;
+  const tag = canOpen ? "button" : "div";
+  const attributes = canOpen
+    ? `type="button" data-open-team-member="${escapeAttr(member.userId)}" aria-label="${escapeAttr(`${member.name} verwalten`)}"`
+    : "";
+  return `<${tag} class="v4-team-member-row${canOpen ? " is-actionable" : ""}" ${attributes}>
+    <span class="v4-team-member-copy">
+      <strong>${escapeHtml(member.name)}</strong>
+      <small>${escapeHtml(roleLabel(member.role))} · ${escapeHtml(memberFunctionsMarkup(member))}</small>
+    </span>
+    ${canOpen ? '<span class="v4-row-chevron" aria-hidden="true">›</span>' : ""}
+  </${tag}>`;
 }
 
 function teamDetailMarkup(team) {
@@ -277,101 +280,35 @@ function teamDetailMarkup(team) {
 
   const taskCount = Number(team.taskCount || 0);
 
+  const summary = [
+    ownTeamRole(team) ? `Eigene Rolle: ${ownTeamRole(team)}` : "",
+    `${activeMembers.length} ${activeMembers.length === 1 ? "Mitglied" : "Mitglieder"}`,
+    `${taskCount} ${taskCount === 1 ? "Aufgabe" : "Aufgaben"}`,
+    team.active ? "" : "Inaktiv"
+  ].filter(Boolean).join(" · ");
+
   return `
-    <div class="v4-detail-grid v4-team-detail-grid">
-      <div class="v4-detail-wide">
-        <span>Beschreibung</span>
-        <strong class="v4-preserve-lines">
-          ${escapeHtml(team.description || "Keine Beschreibung")}
-        </strong>
-      </div>
-
-      <div>
-        <span>Eigene Rolle</span>
-        <strong>${escapeHtml(ownTeamRole(team) || "–")}</strong>
-      </div>
-
-      <div>
-        <span>Status</span>
-        <strong>${team.active ? "Aktiv" : "Inaktiv"}</strong>
-      </div>
-
-      <div>
-        <span>Mitglieder</span>
-        <strong>${activeMembers.length}</strong>
-      </div>
-
-      <div>
-        <span>Aufgaben</span>
-        <strong>${taskCount}</strong>
-      </div>
-    </div>
+    <section class="v4-team-summary">
+      <p class="v4-team-summary-meta">${escapeHtml(summary)}</p>
+      ${team.description ? `<p class="v4-team-description">${escapeHtml(team.description)}</p>` : ""}
+    </section>
 
     <section class="v4-team-detail-members">
       <div class="v4-dialog-section-title">
         <h3>Mitglieder</h3>
+        ${team.canManage ? `<button class="button small secondary" data-add-team-member="${escapeAttr(team.id)}" type="button">+ Mitglied</button>` : ""}
       </div>
 
       ${activeMembers.length
         ? `<div class="v4-team-member-list">
-            ${activeMembers.map(member => `
-              <div class="v4-team-member-row">
-                <div class="v4-team-member-copy">
-                  <strong>${escapeHtml(member.name)}</strong>
-                  <small class="v4-team-member-role">${escapeHtml(roleLabel(member.role))}</small>
-                  ${memberFunctionsMarkup(team, member)}
-                </div>
-
-                ${
-                  team.canManage || team.canManageFunctions
-                    ? `<div class="v4-row-actions v4-team-member-actions">
-                        ${
-                          team.canManageFunctions
-                            ? `<button
-                                class="button small secondary"
-                                data-edit-team-functions="${escapeAttr(team.id)}:${escapeAttr(member.userId)}"
-                                type="button"
-                              >Funktionen</button>`
-                            : ""
-                        }
-
-                        ${
-                          team.canManage
-                            ? `<button
-                                class="button small secondary"
-                                data-edit-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}"
-                                type="button"
-                              >Rolle</button>
-
-                              <button
-                                class="button small ghost v4-team-member-remove"
-                                data-remove-team-member="${escapeAttr(team.id)}:${escapeAttr(member.userId)}"
-                                type="button"
-                              >Entfernen</button>`
-                            : ""
-                        }
-                      </div>`
-                    : ""
-                }
-              </div>
-            `).join("")}
+            ${activeMembers.map(member => teamMemberRow(team, member)).join("")}
           </div>`
         : '<p class="subtle">Noch keine aktiven Teammitglieder.</p>'
       }
     </section>
 
-    ${taskDependencyNotice(team)}
-
     ${team.canManage
-      ? `<div class="dialog-actions v4-detail-actions v4-team-detail-actions">
-          <button
-            class="button primary"
-            data-add-team-member="${escapeAttr(team.id)}"
-            type="button"
-          >
-            Mitglied hinzufügen
-          </button>
-
+      ? `<div class="v4-team-detail-actions">
           ${snapshot.canCreateTeam
             ? `<button
                 class="button secondary"
@@ -380,25 +317,39 @@ function teamDetailMarkup(team) {
               >
                 Team bearbeiten
               </button>
-
-              <button
-                class="button danger"
-                data-delete-team="${escapeAttr(team.id)}"
-                type="button"
-                ${
-                  taskCount > 0
-                    ? 'title="Vor der Löschung müssen alle Teamaufgaben endgültig entfernt werden."'
-                    : ""
-                }
-              >
-                Team löschen
-              </button>`
+              <details class="v4-team-more-actions">
+                <summary class="button ghost">Weitere Aktionen</summary>
+                <div><button class="button danger" data-delete-team="${escapeAttr(team.id)}" type="button">Team löschen</button></div>
+              </details>`
             : ""
           }
         </div>`
       : ""
     }
   `;
+}
+
+function openTeamMemberActions(team, membership) {
+  const dialog = openDialog({
+    title: membership.name,
+    kicker: "Teammitglied verwalten",
+    body: `<div class="v4-card-action-menu">
+      ${team.canManageFunctions ? '<button class="button secondary" data-member-action-functions type="button">Fachfunktionen bearbeiten</button>' : ""}
+      ${team.canManage ? '<button class="button secondary" data-member-action-role type="button">Rolle bearbeiten</button><button class="button danger" data-member-action-remove type="button">Aus Team entfernen</button>' : ""}
+    </div>`
+  });
+
+  dialog.querySelector("[data-member-action-functions]")?.addEventListener("click", () => {
+    dialog.close();
+    openTeamFunctions(team, membership);
+  });
+  dialog.querySelector("[data-member-action-role]")?.addEventListener("click", () => {
+    dialog.close();
+    openMembership(team, membership);
+  });
+  dialog.querySelector("[data-member-action-remove]")?.addEventListener("click", async () => {
+    if (await removeMembership(team, membership)) closeAllDialogs();
+  });
 }
 
 function openTeamDetails(team) {
@@ -418,16 +369,8 @@ function openTeamDetails(team) {
     ?.addEventListener(
       "click",
       async event => {
-        event.currentTarget.disabled = true;
-        await deleteTeam(team);
-        dialog.close();
+        if (await deleteTeam(team)) closeAllDialogs();
       }
-    );
-
-  dialog.querySelector("[data-open-team-archive]")
-    ?.addEventListener(
-      "click",
-      () => openTeamArchive(team)
     );
 
   dialog.querySelector("[data-add-team-member]")
@@ -436,68 +379,14 @@ function openTeamDetails(team) {
       () => openMembership(team)
     );
 
-  dialog.querySelectorAll("[data-edit-team-functions]")
+  dialog.querySelectorAll("[data-open-team-member]")
     .forEach(button => {
       button.addEventListener("click", () => {
-        const [, userId] =
-          button.dataset.editTeamFunctions.split(":");
-
         const membership = team.members.find(
-          item => item.userId === userId
+          item => item.userId === button.dataset.openTeamMember
         );
-
-        if (membership) {
-          openTeamFunctions(
-            team,
-            membership
-          );
-        }
+        if (membership) openTeamMemberActions(team, membership);
       });
-    });
-
-  dialog.querySelectorAll("[data-edit-team-member]")
-    .forEach(button => {
-      button.addEventListener("click", () => {
-        const [, userId] =
-          button.dataset.editTeamMember.split(":");
-
-        const membership = team.members.find(
-          item => item.userId === userId
-        );
-
-        if (membership) {
-          openMembership(
-            team,
-            membership
-          );
-        }
-      });
-    });
-
-  dialog.querySelectorAll("[data-remove-team-member]")
-    .forEach(button => {
-      button.addEventListener(
-        "click",
-        async event => {
-          const [, userId] =
-            button.dataset.removeTeamMember.split(":");
-
-          const membership = team.members.find(
-            item => item.userId === userId
-          );
-
-          if (!membership) return;
-
-          event.currentTarget.disabled = true;
-
-          await removeMembership(
-            team,
-            membership
-          );
-
-          dialog.close();
-        }
-      );
     });
 }
 

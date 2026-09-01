@@ -69,20 +69,41 @@ test("PWA installation uses Android and iOS guidance without an install button",
   assert.match(install, /__V4_PWA_INSTALL_GUIDANCE_R1__/);
 });
 
-test("PWA guidance release is consistent across runtime and checks", () => {
-  const release = "20260802-pwa-install-guidance-r1";
+test("PWA guidance remains active under the current shell release", () => {
+  const pwaRelease = "20260802-pwa-install-guidance-r1";
+  const shellRelease = "20260829-m328-r1-native-actions1";
+  const workspaceRelease = "20260830-m328-native-workspaces1";
+  const participantRelease = "20260830-m328-participant-mobile1";
+  const finalM328Release = "20260830-m328-final-bus-management1";
+  const m327PersonalRelease = "20260830-m327-personal-final1";
   const cache = "pd-portal-v4-pwa-install-guidance-r1-20260802";
-
-  assert.match(index, new RegExp(release));
-  assert.match(config, new RegExp(release));
-  assert.match(app, new RegExp(release));
-  assert.match(worker, new RegExp(cache));
-  assert.match(foundation, /Android mit Chrome/);
 
   assert.match(
     index,
-    /src="\.\/js\/app\.js\?v=20260802-pwa-install-guidance-r1"/
+    new RegExp(`name="pd-release" content="${shellRelease}"`)
   );
+  assert.match(
+    index,
+    new RegExp(`src="\\./js/app\\.js\\?v=${shellRelease}&venue=2&m328workspaces=${workspaceRelease}&participants=${participantRelease}&m328final=${finalM328Release}&m327personal=${m327PersonalRelease}"`)
+  );
+  assert.match(
+    app,
+    new RegExp(`pages\\.js\\?v=${shellRelease}&venue=2&m328workspaces=${workspaceRelease}&participants=${participantRelease}&m328final=${finalM328Release}&m327personal=${m327PersonalRelease}`)
+  );
+  assert.match(
+    index,
+    new RegExp(`css/app\\.css\\?v=${pwaRelease}`)
+  );
+  assert.match(
+    config,
+    new RegExp(`service-worker\\.js\\?v=${pwaRelease}`)
+  );
+  assert.match(
+    app,
+    new RegExp(`install\\.js\\?v=${pwaRelease}`)
+  );
+  assert.match(worker, new RegExp(cache));
+  assert.match(foundation, /Android mit Chrome/);
 
   assert.doesNotMatch(
     index,

@@ -108,7 +108,7 @@ test("M310 visible editor labels contain neither Berlin qualifier nor Euro quali
   assert.doesNotMatch(ui, />Anmeldung endet in Berlin/);
   assert.doesNotMatch(ui, />Fahrtpreis in Euro/);
   assert.match(ui, /const BERLIN_TIME_ZONE = "Europe\/Berlin"/);
-  assert.match(ui, /berlinLocalToIso\(values\.departureAt/);
+  assert.match(ui, /tripTimeToBerlinIso\(trip, values\.departureTime/);
 });
 
 test("M310 reopen UI is capability-gated and uses the required confirmation", () => {

@@ -57,6 +57,7 @@ let searchQuery = "";
 let typeFilter = "ALL";
 let visibilityFilter = "ALL";
 let homeAwayFilter = "ALL";
+let mobileFiltersOpen = false;
 
 function events() {
   return Array.isArray(snapshot?.events) ? snapshot.events : [];
@@ -189,8 +190,10 @@ function openEventDetail(event) {
 
 function renderEventDetailDialog(dialog, event) {
   const canManage = hasCapability("events.manage") && event.canManage !== false;
-  document.getElementById("v4DialogTitle").textContent = event.displayTitle || event.title || "Termin";
-  document.getElementById("v4DialogKicker").textContent = `${formatCalendarDate(event.eventDate)} · ${timeLabel(event.eventTime)}`;
+  const title = dialog.querySelector("#v4DialogTitle");
+  const kicker = dialog.querySelector("#v4DialogKicker");
+  if (title) title.textContent = event.displayTitle || event.title || "Termin";
+  if (kicker) kicker.textContent = `${formatCalendarDate(event.eventDate)} · ${timeLabel(event.eventTime)}`;
   const body = dialog.querySelector("#v4DialogBody");
   if (!body) return;
   body.innerHTML = eventDetailMarkup(event, canManage);
@@ -240,8 +243,15 @@ function eventMobileList(items) {
 function setStatus(label, type = "") {
   const status = document.getElementById("m210DatesStatus");
   if (!status) return;
+  status.hidden = !label;
   status.textContent = label;
   status.className = `status-pill${type ? ` ${type}` : ""}`;
+}
+
+function activeFilterCount() {
+  return [typeFilter, visibilityFilter, homeAwayFilter]
+    .filter(value => value !== "ALL")
+    .length;
 }
 
 function render() {
@@ -276,28 +286,44 @@ function render() {
       <span class="sr-only">Termine durchsuchen</span>
       <input id="m210EventSearch" type="search" placeholder="Termine durchsuchen …" autocomplete="off" value="${escapeAttr(searchQuery)}">
     </label>
-    <label class="v4-filter-field">Typ
-      <select id="m210EventTypeFilter">
-        <option value="ALL" ${typeFilter === "ALL" ? "selected" : ""}>Alle</option>
-        ${EVENT_TYPES.map(item => `<option value="${escapeAttr(item.value)}" ${typeFilter === item.value ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
-      </select>
-    </label>
-    <label class="v4-filter-field">Sichtbarkeit
-      <select id="m210EventVisibilityFilter">
-        <option value="ALL" ${visibilityFilter === "ALL" ? "selected" : ""}>Alle</option>
-        ${VISIBILITIES.map(item => `<option value="${escapeAttr(item.value)}" ${visibilityFilter === item.value ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
-      </select>
-    </label>
-    <label class="v4-filter-field">Heim/Auswärts
-      <select id="m210EventHomeAwayFilter">
-        <option value="ALL" ${homeAwayFilter === "ALL" ? "selected" : ""}>Alle</option>
-        ${HOME_AWAY.map(item => `<option value="${escapeAttr(item.value)}" ${homeAwayFilter === item.value ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
-      </select>
-    </label>
+    <details class="v4-m210-filter-disclosure" data-m210-filter-details>
+      <summary class="button secondary v4-m210-filter-summary">Filter${activeFilterCount() ? ` · ${activeFilterCount()}` : ""}</summary>
+      <div class="v4-m210-filter-fields">
+        <label class="v4-filter-field">Typ
+          <select id="m210EventTypeFilter">
+            <option value="ALL" ${typeFilter === "ALL" ? "selected" : ""}>Alle</option>
+            ${EVENT_TYPES.map(item => `<option value="${escapeAttr(item.value)}" ${typeFilter === item.value ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
+          </select>
+        </label>
+        <label class="v4-filter-field">Sichtbarkeit
+          <select id="m210EventVisibilityFilter">
+            <option value="ALL" ${visibilityFilter === "ALL" ? "selected" : ""}>Alle</option>
+            ${VISIBILITIES.map(item => `<option value="${escapeAttr(item.value)}" ${visibilityFilter === item.value ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
+          </select>
+        </label>
+        <label class="v4-filter-field">Heim/Auswärts
+          <select id="m210EventHomeAwayFilter">
+            <option value="ALL" ${homeAwayFilter === "ALL" ? "selected" : ""}>Alle</option>
+            ${HOME_AWAY.map(item => `<option value="${escapeAttr(item.value)}" ${homeAwayFilter === item.value ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
+          </select>
+        </label>
+      </div>
+    </details>
   </div>
   ${items.length
     ? `${eventTable(items)}${eventMobileList(items)}`
     : empty(allItems.length ? "Keine Termine entsprechen der Suche oder den gewählten Filtern." : "Aktuell sind keine kommenden Termine eingetragen.")}`;
+
+  const filterDetails = panel.querySelector("[data-m210-filter-details]");
+  if (filterDetails) {
+    const mobile = window.matchMedia("(max-width: 700px)").matches;
+    filterDetails.open = mobile ? mobileFiltersOpen : true;
+    filterDetails.addEventListener("toggle", () => {
+      if (window.matchMedia("(max-width: 700px)").matches) {
+        mobileFiltersOpen = filterDetails.open;
+      }
+    });
+  }
 
   panel.querySelector("#m210EventSearch")?.addEventListener("input", inputEvent => {
     searchQuery = inputEvent.currentTarget.value;
@@ -345,7 +371,7 @@ function render() {
     });
   });
 
-  setStatus("Aktuell", "success");
+  setStatus("");
 }
 
 function eventForm(event = {}) {

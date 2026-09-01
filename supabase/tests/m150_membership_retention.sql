@@ -6,7 +6,7 @@ select plan(1);
 
 do $m150_retention_verification$
 declare
-  v_role_member constant uuid := '00000000-0000-4000-8000-000000000002';
+  v_role_member constant uuid := '00000000-0000-4000-8000-000000000003';
   v_actor constant uuid := '17000000-0000-4000-8000-000000000001';
   v_member constant uuid := '17000000-0000-4001-8000-000000000001';
   v_pending_old constant uuid := '17000000-0000-4002-8000-000000000001';

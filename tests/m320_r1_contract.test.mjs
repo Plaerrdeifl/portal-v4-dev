@@ -54,7 +54,7 @@ test("M320 mobile forms keep guest preference, edit fields and filters in respon
   assert.match(editForm, /class="v4-field-half">Vorname/);
   assert.match(editForm, /class="v4-field-half">Nachname/);
   assert.match(editForm, /class="v4-field-full">E-Mail/);
-  assert.match(editForm, /class="v4-field-full">Buspräferenz/);
+  assert.match(editForm, /class="v4-field-full">Buswunsch/);
 
   const filtersStart = fanbuses.indexOf('data-m320-registration-filters');
   const filtersEnd = fanbuses.indexOf("</form>`;", filtersStart);

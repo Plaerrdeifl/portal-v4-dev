@@ -382,7 +382,8 @@ test("M150 UI does not add unrelated writes or browser-native dialogs", () => {
 });
 
 test("service worker cache and responsive M150 styling are extended", () => {
-  assert.match(worker, /const CACHE_VERSION = "pd-portal-v4-m010-central-capabilities-r1-20260810"/);
+  assert.match(worker, /const CACHE_VERSION = "pd-portal-v4-m900-platform-mode-r1-20260823"/);
+  assert.match(worker, /const M010_CENTRAL_CAPABILITIES_CACHE_VERSION = "pd-portal-v4-m010-central-capabilities-r1-20260810"/);
   assert.match(worker, /const PREVIOUS_CACHE_VERSION = "pd-portal-v4-m150-withdrawn-r1-20260810"/);
   assert.match(worker, /"\.\/js\/modules\/membership-applications\.js"/);
   assert.match(worker, /"\.\/js\/modules\/membership-application-pdf\.js"/);

@@ -530,6 +530,15 @@ Deno.serve(async request => {
 
   if (!rpcResponse.ok) {
     const rpcError = isPlainObject(rpcResult) ? rpcResult : {};
+    if (rpcError.code === "P0902") {
+      return errorResponse(423, "PLATFORM_READ_ONLY", "Fanbus-Anmeldungen sind aktuell pausiert.", origin);
+    }
+    if (rpcError.code === "P0903") {
+      return errorResponse(503, "PLATFORM_MAINTENANCE", "Die Plattform befindet sich aktuell im Wartungsmodus.", origin);
+    }
+    if (rpcError.code === "P0901") {
+      return errorResponse(503, "PLATFORM_WRITE_UNAVAILABLE", "Fanbus-Anmeldungen sind aktuell nicht verfügbar.", origin);
+    }
     if (rpcError.code === "P3101") {
       return errorResponse(429, "RATE_LIMITED", "Bitte versuche es später erneut.", origin);
     }

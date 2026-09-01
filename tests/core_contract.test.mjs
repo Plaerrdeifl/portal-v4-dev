@@ -103,7 +103,39 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260820074500_manage_team_functions_m010_r2.sql",
     "20260820080000_dynamic_fanbus_org_recipients_m010_r2.sql",
     "20260820120000_add_m325_r2_member_linking.sql",
-    "20260822074900_add_joint_fanbus_preferences_and_bus_control.sql"
+    "20260822074900_add_joint_fanbus_preferences_and_bus_control.sql",
+    "20260823002244_add_platform_mode_core_m900_r1.sql",
+    "20260823004248_harden_platform_mode_user_boundaries_m900_r1.sql",
+    "20260823073847_harden_security_boundaries_m900_r1.sql",
+    "20260823084306_consolidate_pd_api_and_targeted_indexes_m900_r1_f4.sql",
+    "20260823154611_harden_release_bypass_strict_user_bound_m900_r1.sql",
+    "20260823202816_m020_push_subscription_lifecycle_hotfix.sql",
+    "20260824044603_m020_access_request_actor_projection_hotfix.sql",
+    "20260824222500_m020_access_request_badge_actionability_hotfix.sql",
+    "20260826200358_p800_r2_fanbus_available_away_events_polish4.sql",
+    "20260827063627_m326_r1_f1_f2_people_groups_identity.sql",
+    "20260827063630_m326_r1_f3_manual_bulk.sql",
+    "20260827063633_m326_r1_f4_mail_label.sql",
+    "20260827083330_m326_r1_f45_review_corrections.sql",
+    "20260827184505_hotfix_member_list_for_active_members.sql",
+    "20260827195421_hotfix_fanbus_org_admin_push_recipient.sql",
+    "20260827203217_m320_r3_auto_bus_assignment.sql",
+    "20260827203255_m320_r3_planner_greatest_fix.sql",
+    "20260827223113_m326_person_default_boarding_stop.sql",
+    "20260828052514_m326_manual_booking_modes.sql",
+    "20260828140655_fanbus_user_default_bus_preference.sql",
+    "20260828161808_m326_manual_registration_before_public_open.sql",
+    "20260828194202_m327_r1_fanbus_booking_selfservice.sql",
+    "20260829090000_m328_r1_booking_management.sql",
+    "20260829162000_m328_r1_regular_rider_reactivate.sql",
+    "20260829213946_m328_completion_public_trips_dev_booking_numbers.sql",
+    "20260829225223_m328_fanbus_draft_defaults.sql",
+    "20260830083113_m020_push_read_outbox_compat.sql",
+    "20260830172000_m327_boarding_stop_public_details.sql",
+    "20260830214500_m328_booking_mail_contact_context.sql",
+    "20260830223000_m328_booking_contact_receipt_correction.sql",
+    "20260830223500_m328_restore_verified_whatsapp_contact.sql",
+    "20260830230000_m020_fanbus_d073_acknowledge_r6.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
@@ -146,6 +178,49 @@ test("database migrations are ordered and contain the core contract", async () =
     publicDefaultPrivileges,
     /alter\s+default\s+privileges\s+for\s+role\s+postgres\s+in\s+schema\s+public\s+revoke\s+all\s+on\s+functions\s+from\s+anon\s*,\s*authenticated\s*,\s*service_role\s*;/i
   );
+});
+
+test("M900-R1 centralizes the fail-closed platform mode contract", async () => {
+  const migration = await read(
+    "supabase/migrations/20260823002244_add_platform_mode_core_m900_r1.sql"
+  );
+  const sqlTest = await read("supabase/tests/m900_platform_mode_core.sql");
+  const readAllowlist = migration.match(
+    /platform_action_classification[\s\S]+?= any \(array\[([\s\S]+?)\]::text\[\]\)/
+  );
+
+  assert.ok(readAllowlist);
+  assert.equal([...readAllowlist[1].matchAll(/'([^']+)'/g)].length, 29);
+  assert.match(migration, /insert into app_portal\.settings[\s\S]+?'platform\.mode'/);
+  assert.match(migration, /create function app_private\.platform_runtime_state\(\)/);
+  assert.match(migration, /create function app_private\.require_platform_user_write_allowed\(\)/);
+  assert.match(migration, /create function public\.pd_public_platform_status\(\)/);
+  assert.match(migration, /rename to pd_api_before_platform_mode_m900_r1/);
+  assert.match(migration, /else 'USER_MUTATION'::text/);
+  assert.match(migration, /PLATFORM_WRITE_UNAVAILABLE/);
+  assert.match(migration, /PLATFORM_READ_ONLY/);
+  assert.match(migration, /PLATFORM_MAINTENANCE/);
+  assert.doesNotMatch(migration, /execute\s+format|\bexecute\s+v_/i);
+  assert.match(
+    migration,
+    /grant execute on function public\.pd_public_platform_status\(\)\s+to anon, authenticated;/
+  );
+  assert.match(
+    migration,
+    /grant execute on function public\.pd_api\(text, jsonb\)\s+to authenticated;/
+  );
+  for (const requiredCase of [
+    "NORMAL",
+    "READ_ONLY",
+    "MAINTENANCE",
+    "Fehlendes Setting",
+    "Fehlender mode",
+    "Unbekannter mode",
+    "Ungueltige Struktur",
+    "Public-Status-Vertrag"
+  ]) {
+    assert.ok(sqlTest.includes(requiredCase), `SQL-Vertragstest fehlt: ${requiredCase}`);
+  }
 });
 
 test("M150 conversion remains behind the authenticated additive RPC boundary", async () => {
@@ -281,15 +356,15 @@ test("admins can delete unused teams safely", async () => {
   );
 });
 
-test("Vercel DEV deployment publishes only the static build", async () => {
+test("Cloudflare Pages DEV deployment publishes only the static build", async () => {
   const pkg = JSON.parse(await read("package.json"));
-  const vercel = JSON.parse(await read("vercel.json"));
   const build = await read("scripts/build-static.mjs");
   const ignore = await read(".gitignore");
+  const readme = await read("README.md");
 
   assert.equal(pkg.scripts.build, "node scripts/build-static.mjs");
-  assert.equal(vercel.buildCommand, "npm run build");
-  assert.equal(vercel.outputDirectory, "dist");
+  assert.match(readme, /DEV-Hosting:\*\* Cloudflare Pages/);
+  assert.match(readme, /Hosting\/Deployment: Cloudflare Pages über die GitHub-Integration/);
 
   for (const directory of [
     "assets",
@@ -417,12 +492,12 @@ test("task workflow remains revision-safe and archived without hard delete", asy
   assert.match(tasks, /call\("archive_task"/);
   assert.match(tasks, /revision: task\.revision/);
   assert.match(tasks, /Aufgabenverlauf/);
-    assert.match(tasks, /operation: "LIST"/);
-    assert.match(tasks, /operation: "ADD"/);
-    assert.match(tasks, /operation: "EDIT"/);
-    assert.match(tasks, /operation: "HIDE"/);
-    assert.match(tasks, /30 Minuten lang korrigiert/);
-    assert.doesNotMatch(tasks, /ownNoteRevision/);
+  assert.match(tasks, /operation: "LIST"/);
+  assert.match(tasks, /operation: "ADD"/);
+  assert.match(tasks, /operation: "EDIT"/);
+  assert.match(tasks, /operation: "HIDE"/);
+  assert.match(tasks, /30 Minuten lang korrigiert/);
+  assert.doesNotMatch(tasks, /ownNoteRevision/);
   assert.match(tasks, /value: "WAITING"[\s\S]{0,80}label: "Wartet"/);
   assert.doesNotMatch(common, /"WAITING"/);
 });
@@ -447,7 +522,6 @@ test("archived tasks remain restorable through an audited action", async () => {
     migration,
     /task_can_reopen_or_archive\(v_actor, v_id\)/
   );
-
   assert.match(tasks, /async function restoreTask\(task\)/);
   assert.match(tasks, /call\("restore_task"/);
   assert.match(tasks, /data-restore-task=/);

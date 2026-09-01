@@ -443,15 +443,150 @@ function emailShell(textBody: string, htmlBody: string, link: string): EmailCont
   };
 }
 
+function fanbusBookingContext(data: Record<string, unknown>) {
+  const bookingNumber = asString(data.bookingNumber, 40).trim();
+  if (!/^(?:FB|DEV)-[0-9]{2}-[0-9]{6,}$/.test(bookingNumber)) return null;
+
+  const organizationContact = data.organizationContact
+    && typeof data.organizationContact === "object"
+    && !Array.isArray(data.organizationContact)
+    ? data.organizationContact as Record<string, unknown>
+    : {};
+
+  const contactItems = (kind: "emails" | "phones") => (
+    Array.isArray(organizationContact[kind]) ? organizationContact[kind] as unknown[] : []
+  ).flatMap(item => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const record = item as Record<string, unknown>;
+    const value = asString(record.value, kind === "emails" ? 320 : 40).trim();
+    if (!value || hasCrlf(value)) return [];
+    const label = asString(record.label, 80).trim();
+    const href = asString(record.href, 360).trim();
+    return [{ label, value, href }];
+  });
+
+  const emails = contactItems("emails").filter(item => parseMailbox(item.value, false));
+  const phones = contactItems("phones");
+  const whatsappRaw = organizationContact.whatsapp
+    && typeof organizationContact.whatsapp === "object"
+    && !Array.isArray(organizationContact.whatsapp)
+    ? organizationContact.whatsapp as Record<string, unknown>
+    : {};
+  const whatsappUsername = asString(whatsappRaw.username, 80).trim();
+  const whatsappUrl = asString(whatsappRaw.url, 360).trim();
+  const whatsappLabel = asString(whatsappRaw.label, 80).trim() || "WhatsApp";
+  const whatsapp = whatsappUsername
+    && !hasCrlf(whatsappUsername)
+    && /^https:\/\/wa\.me\/[A-Za-z0-9._-]+$/.test(whatsappUrl)
+    ? { label: whatsappLabel, username: whatsappUsername, url: whatsappUrl }
+    : null;
+
+  const textContacts = [
+    ...emails.map(item => `E-Mail: ${item.value}`),
+    ...phones.map(item => `${item.label || "Telefon"}: ${item.value}`),
+    ...(whatsapp ? [`${whatsapp.label}: ${whatsapp.username}`] : [])
+  ];
+
+  const htmlContacts = [
+    ...emails.map(item => `E-Mail: <a href="mailto:${escapeHtml(item.value)}">${escapeHtml(item.value)}</a>`),
+    ...phones.map(item => {
+      const label = escapeHtml(item.label || "Telefon");
+      const value = escapeHtml(item.value);
+      const href = /^tel:\+[0-9]{7,15}$/.test(item.href) ? item.href : "";
+      return href
+        ? `${label}: <a href="${escapeHtml(href)}">${value}</a>`
+        : `${label}: ${value}`;
+    }),
+    ...(whatsapp
+      ? [`${escapeHtml(whatsapp.label)}: <a href="${escapeHtml(whatsapp.url)}">${escapeHtml(whatsapp.username)}</a>`]
+      : [])
+  ];
+
+  const contactText = textContacts.length
+    ? `\n\nFragen zu deiner Buchung?\n${textContacts.join("\n")}\nOder melde dich direkt bei einem der oben genannten Ansprechpartner.`
+    : "";
+  const contactHtml = htmlContacts.length
+    ? `<p><strong>Fragen zu deiner Buchung?</strong><br>${htmlContacts.join("<br>")}<br>Oder melde dich direkt bei einem der oben genannten Ansprechpartner.</p>`
+    : "";
+
+  return {
+    text: `\n\nBuchungsnummer: ${bookingNumber}\nBitte gib diese Buchungsnummer bei Rückfragen mit an.${contactText}`,
+    html: `<section><p><strong>Buchungsnummer:</strong> ${escapeHtml(bookingNumber)}<br><small>Bitte gib diese Buchungsnummer bei Rückfragen mit an.</small></p>${contactHtml}</section>`
+  };
+}
+
+function withFanbusBookingContext(claim: Claim, email: EmailContent): EmailContent {
+  const key = asString(claim.payload.templateKey, 120);
+  if (!key.startsWith("fanbus.")) return email;
+
+  const context = fanbusBookingContext(templateData(claim));
+  if (!context) return email;
+
+  const legacyContactText = /\n\nDu möchtest deine Anmeldung ändern oder stornieren\? Bitte wende dich an unsere BUS_ORGA\.(?:\n[^\n]+)*(?=\n\nViele Grüße)/;
+  const legacyContactHtml = /<section><p><strong>Du möchtest deine Anmeldung ändern oder stornieren\?<\/strong><br>Bitte wende dich an unsere BUS_ORGA\.<\/p>(?:<ul>[\s\S]*?<\/ul>)?<\/section>/;
+  let text = email.text.replace(legacyContactText, "");
+  let html = email.html.replace(legacyContactHtml, "");
+
+  const textClosing = "\n\nViele Grüße\nDeine Plärrdeifl";
+  const htmlClosing = "<p>Viele Grüße<br>Deine Plärrdeifl</p>";
+  const textLink = "\n\nIm Portal öffnen:";
+  const htmlLink = '<p><a href="';
+
+  if (text.includes(textClosing)) {
+    text = text.replace(textClosing, `${context.text}${textClosing}`);
+  } else if (text.includes(textLink)) {
+    text = text.replace(textLink, `${context.text}${textLink}`);
+  } else {
+    text += context.text;
+  }
+
+  if (html.includes(htmlClosing)) {
+    html = html.replace(htmlClosing, `${context.html}${htmlClosing}`);
+  } else {
+    const linkIndex = html.indexOf(htmlLink);
+    html = linkIndex >= 0
+      ? `${html.slice(0, linkIndex)}${context.html}${html.slice(linkIndex)}`
+      : `${html}${context.html}`;
+  }
+
+  return { ...email, text, html };
+}
+
 function buildEmail(config: RuntimeConfig, claim: Claim): EmailContent {
   const key = asString(claim.payload.templateKey, 120);
   const data = templateData(claim);
   const firstName = asString(data.firstName, 120);
   const name = asString(data.name, 240) || firstName || "Mitglied";
   const affectedName = asString(data.affectedName, 240) || name;
-  const tripTitle = asString(data.tripTitle, 240) || "der Fanbusfahrt";
+  const projectedTripTitle = asString(data.tripTitle, 240).trim();
+  if (key.startsWith("fanbus.") && (
+    !projectedTripTitle || [
+      "fanbusfahrt", "die fanbusfahrt", "der fanbusfahrt", "eine fanbusfahrt"
+    ].includes(projectedTripTitle.toLowerCase())
+  )) {
+    throw new DispatchError("FANBUS_MAIL_LABEL_MISSING");
+  }
+  const tripTitle = projectedTripTitle || "der Fanbusfahrt";
   const applicantNotice = asString(data.applicantNotice, 2000).trim();
   const participantCount = Number(data.participantCount || 0);
+  const organizationContact = data.organizationContact && typeof data.organizationContact === "object"
+    ? data.organizationContact as Record<string, unknown>
+    : {};
+  const contactItems = (kind: "emails" | "phones") => (
+    Array.isArray(organizationContact[kind]) ? organizationContact[kind] as unknown[] : []
+  ).flatMap(item => {
+    if (!item || typeof item !== "object") return [];
+    const record = item as Record<string, unknown>;
+    const value = asString(record.value, kind === "emails" ? 320 : 40).trim();
+    if (!value) return [];
+    return [{ label: asString(record.label, 80).trim(), value }];
+  });
+  const publicContacts = [
+    ...contactItems("emails").map(item => ({ ...item, type: "E-Mail" })),
+    ...contactItems("phones").map(item => ({ ...item, type: "Telefon" }))
+  ];
+  const contactText = `\n\nDu möchtest deine Anmeldung ändern oder stornieren? Bitte wende dich an unsere BUS_ORGA.${publicContacts.length ? `\n${publicContacts.map(item => `${item.label || item.type}: ${item.value}`).join("\n")}` : ""}`;
+  const contactHtml = `<section><p><strong>Du möchtest deine Anmeldung ändern oder stornieren?</strong><br>Bitte wende dich an unsere BUS_ORGA.</p>${publicContacts.length ? `<ul>${publicContacts.map(item => `<li>${escapeHtml(item.label || item.type)}: ${escapeHtml(item.value)}</li>`).join("")}</ul>` : ""}</section>`;
   const link = absolutePortalLink(config, claim.deepLink);
   const greetingText = firstName ? `Servus ${firstName},` : "Servus,";
   const greetingHtml = `<p>${escapeHtml(greetingText)}</p>`;
@@ -526,8 +661,8 @@ function buildEmail(config: RuntimeConfig, claim: Claim): EmailContent {
         ? "Deine Anmeldung wurde auf der Warteliste erfasst."
         : "Deine Anmeldung wurde bestätigt.";
       const base = emailShell(
-        `${greetingText}\n\n${stateText}\nFahrt: ${tripTitle}\n\n${closingText}`,
-        `${greetingHtml}<p>${escapeHtml(stateText)}</p><p><strong>Fahrt:</strong> ${escapeHtml(tripTitle)}</p>${closingHtml}`,
+        `${greetingText}\n\n${stateText}\nFahrt: ${tripTitle}${contactText}\n\n${closingText}`,
+        `${greetingHtml}<p>${escapeHtml(stateText)}</p><p><strong>Fahrt:</strong> ${escapeHtml(tripTitle)}</p>${contactHtml}${closingHtml}`,
         link
       );
       return {
@@ -548,6 +683,21 @@ function buildEmail(config: RuntimeConfig, claim: Claim): EmailContent {
         link
       );
       return { ...base, subject: `Fanbus – neue Buchung: ${tripTitle}` };
+    }
+
+    case "fanbus.internal_extended": {
+      const countText = Number.isFinite(participantCount) && participantCount > 0
+        ? `${participantCount} Person(en)`
+        : "Teilnehmer";
+      const outcome = asString(data.status, 20) === "WAITLISTED"
+        ? "Warteliste"
+        : "aktive Teilnahme";
+      const base = emailShell(
+        `Eine bestehende Buchung für ${tripTitle} wurde um ${countText} erweitert. Ergebnis: ${outcome}.`,
+        `<p>Eine bestehende Buchung für <strong>${escapeHtml(tripTitle)}</strong> wurde um <strong>${escapeHtml(countText)}</strong> erweitert.</p><p>Ergebnis: ${escapeHtml(outcome)}</p>`,
+        link
+      );
+      return { ...base, subject: `Fanbus – Buchung erweitert: ${tripTitle}` };
     }
 
     case "fanbus.waitlist_promoted": {
@@ -1068,7 +1218,8 @@ async function sendWithWebPush(
 async function deliver(config: RuntimeConfig, claim: Claim): Promise<DeliveryResult> {
   if (claim.channel === "EMAIL") {
     try {
-      return await sendWithSmtp(config, claim, buildEmail(config, claim));
+      const email = withFanbusBookingContext(claim, buildEmail(config, claim));
+      return await sendWithSmtp(config, claim, email);
     } catch (error) {
       if (error instanceof DispatchError) {
         return { success: false, retryable: false, errorCode: error.code };

@@ -99,8 +99,8 @@ function blurDialogFocus(dialog) {
   if (active instanceof HTMLElement && dialog.contains(active)) active.blur();
 }
 
-function dialogBody() {
-  return document.getElementById("v4DialogBody");
+function dialogBody(dialog) {
+  return dialog?.querySelector("#v4DialogBody") || null;
 }
 
 function dispatchDialogContextClose(dialog, contextId) {
@@ -110,7 +110,7 @@ function dispatchDialogContextClose(dialog, contextId) {
 }
 
 function saveDialogContext(dialog) {
-  const body = dialogBody();
+  const body = dialogBody(dialog);
   if (!body) return;
 
   const active = document.activeElement;
@@ -121,8 +121,8 @@ function saveDialogContext(dialog) {
 
   dialogContexts.push({
     contextId: dialog.dataset.v4DialogContext || "",
-    title: document.getElementById("v4DialogTitle")?.textContent || "Dialog",
-    kicker: document.getElementById("v4DialogKicker")?.textContent || "",
+    title: dialog.querySelector("#v4DialogTitle")?.textContent || "Dialog",
+    kicker: dialog.querySelector("#v4DialogKicker")?.textContent || "",
     content,
     focus,
     scrollTop
@@ -131,11 +131,13 @@ function saveDialogContext(dialog) {
 
 function restoreDialogContext(dialog) {
   const previous = dialogContexts.pop();
-  const body = dialogBody();
+  const body = dialogBody(dialog);
   if (!previous || !body) return false;
 
-  document.getElementById("v4DialogTitle").textContent = previous.title;
-  document.getElementById("v4DialogKicker").textContent = previous.kicker;
+  const title = dialog.querySelector("#v4DialogTitle");
+  const kicker = dialog.querySelector("#v4DialogKicker");
+  if (title) title.textContent = previous.title;
+  if (kicker) kicker.textContent = previous.kicker;
   body.replaceChildren(previous.content);
   dialog.dataset.v4DialogContext = previous.contextId;
 
@@ -211,6 +213,12 @@ function ensureDialog() {
     closeDialog(dialog);
   });
 
+  window.addEventListener("keydown", event => {
+    if (event.key !== "Escape" || !dialog.open) return;
+    event.preventDefault();
+    closeDialog(dialog);
+  });
+
   dialog.addEventListener("close", () => {
     blurDialogFocus(dialog);
     dialogContexts.length = 0;
@@ -223,6 +231,10 @@ function ensureDialog() {
     if (returnTarget instanceof HTMLElement && returnTarget.isConnected) {
       returnTarget.focus({ preventScroll: true });
     }
+  });
+
+  window.addEventListener("hashchange", () => {
+    if (dialog.open) closeAllDialogs();
   });
 
   return dialog;
@@ -371,11 +383,12 @@ export function openDialog({
   submitLabel = "Speichern",
   onSubmit = null,
   danger = false,
-  preserveParentOnSubmit = false
+  preserveParentOnSubmit = false,
+  replaceCurrent = false
 }) {
   const dialog = ensureDialog();
 
-  if (dialog.open) saveDialogContext(dialog);
+  if (dialog.open && !replaceCurrent) saveDialogContext(dialog);
 
   if (!dialog.open) {
     dialogReturnFocus = document.activeElement instanceof HTMLElement
@@ -386,10 +399,13 @@ export function openDialog({
   const contextId = String(++dialogContextSequence);
   dialog.dataset.v4DialogContext = contextId;
 
-  document.getElementById("v4DialogTitle").textContent = title || "Dialog";
-  document.getElementById("v4DialogKicker").textContent = kicker || "";
+  const titleNode = dialog.querySelector("#v4DialogTitle");
+  const kickerNode = dialog.querySelector("#v4DialogKicker");
+  if (titleNode) titleNode.textContent = title || "Dialog";
+  if (kickerNode) kickerNode.textContent = kicker || "";
 
-  const bodyNode = document.getElementById("v4DialogBody");
+  const bodyNode = dialogBody(dialog);
+  if (!bodyNode) throw new Error("DIALOG_BODY_MISSING");
   bodyNode.replaceChildren(safeDialogFragment(body));
   if (onSubmit) appendDialogActions(bodyNode, { submitLabel, danger });
 
@@ -397,25 +413,31 @@ export function openDialog({
   bindInlineValidation(form);
 
   if (onSubmit) {
-    document.getElementById("v4DialogSubmit")?.addEventListener("click", async () => {
+    bodyNode.querySelector("#v4DialogSubmit")?.addEventListener("click", async () => {
       if (form && !form.checkValidity()) {
         form.querySelector(":invalid")?.focus({ preventScroll: true });
         form.reportValidity();
         return;
       }
 
-      const button = document.getElementById("v4DialogSubmit");
+      const button = bodyNode.querySelector("#v4DialogSubmit");
+      if (!button) return;
       button.disabled = true;
       const original = button.textContent;
       button.textContent = "Wird ausgeführt …";
 
       try {
         await onSubmit(form ? formDataObject(form) : {});
+        if (!dialog.open || dialog.dataset.v4DialogContext !== contextId) return;
         closeDialog(dialog, "", { restoreParent: preserveParentOnSubmit });
       } catch (error) {
         showToast(error?.message || "Aktion fehlgeschlagen.", "error", 5200);
-        button.disabled = false;
-        button.textContent = original;
+        if (dialog.open
+            && dialog.dataset.v4DialogContext === contextId
+            && button.isConnected) {
+          button.disabled = false;
+          button.textContent = original;
+        }
       }
     });
   }
