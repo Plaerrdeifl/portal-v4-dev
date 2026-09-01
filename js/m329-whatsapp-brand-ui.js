@@ -17,6 +17,14 @@ function ensureStyles() {
       border-color:#25D366!important;
       color:#fff!important;
     }
+    .m329-contact-action.m329-whatsapp{
+      display:grid!important;
+      place-items:center!important;
+      box-sizing:border-box!important;
+      padding:0!important;
+      line-height:0!important;
+      text-align:center!important;
+    }
     .m329-contact-action.m329-whatsapp:hover,
     .m329-contact-action.m329-whatsapp:active,
     .m329-primary-whatsapp:hover,
@@ -31,27 +39,59 @@ function ensureStyles() {
       outline-offset:2px;
     }
     ${BRAND_SELECTOR} .m329-whatsapp-brand-mark{
-      display:block;
+      display:block!important;
       width:21px!important;
       height:21px!important;
-      flex:none;
+      margin:0!important;
+      padding:0!important;
+      position:static!important;
+      transform:none!important;
+      flex:none!important;
       fill:#FFFFFF!important;
+      pointer-events:none;
     }
     .m329-primary-whatsapp .m329-whatsapp-brand-mark{
       width:22px!important;
       height:22px!important;
     }
+    .m329-board-card-centered{
+      text-align:center!important;
+    }
+    .m329-board-card-centered>*{
+      text-align:center!important;
+    }
+    .m329-board-card-centered .m329-board-contact{
+      width:100%;
+      justify-content:center!important;
+      align-items:center!important;
+      margin-top:8px!important;
+    }
+    .m329-board-card-centered .m329-board-contact .m329-contact-actions{
+      justify-content:center!important;
+      margin-left:0!important;
+    }
   `;
   document.head.appendChild(style);
 }
 
+function polishBoardContacts() {
+  document.querySelectorAll(".m329-board-contact").forEach(wrapper => {
+    wrapper.querySelector(".m329-board-contact-number")?.remove();
+    wrapper.closest(".v4-office-card")?.classList.add("m329-board-card-centered");
+  });
+}
+
 function applyBrandMark() {
   ensureStyles();
+  polishBoardContacts();
   document.querySelectorAll(BRAND_SELECTOR).forEach(button => {
-    if (!(button instanceof HTMLElement) || button.dataset.m329WhatsAppBrand === "true") return;
+    if (!(button instanceof HTMLElement)) return;
     const existing = button.querySelector("svg");
-    if (existing) existing.outerHTML = WHATSAPP_MARK;
-    else button.insertAdjacentHTML("afterbegin", WHATSAPP_MARK);
+    if (existing && !existing.classList.contains("m329-whatsapp-brand-mark")) {
+      existing.outerHTML = WHATSAPP_MARK;
+    } else if (!existing) {
+      button.insertAdjacentHTML("afterbegin", WHATSAPP_MARK);
+    }
     button.dataset.m329WhatsAppBrand = "true";
   });
 }
