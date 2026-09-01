@@ -12,15 +12,17 @@ const [responsive, publicBootstrap, portalBootstrap] = await Promise.all([
   read("js/m328-trip-subpage-back.js")
 ]);
 
-test("narrow Vorstand cards stack the labeled contact buttons", () => {
+test("narrow Vorstand cards keep both labeled contact buttons side by side", () => {
   assert.match(responsive, /container-type:inline-size/);
   assert.match(responsive, /container-name:m329-board-card/);
   assert.match(responsive, /@container m329-board-card \(max-width:16rem\)/);
-  assert.match(responsive, /grid-template-columns:1fr!important/);
+  assert.match(responsive, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)!important/);
+  assert.match(responsive, /font-size:\.61rem!important/);
   assert.match(responsive, /m329-v2-board-actions/);
+  assert.doesNotMatch(responsive, /grid-template-columns:1fr!important/);
 });
 
-test("wide Vorstand cards keep the existing two-column button layout", () => {
+test("Vorstand-only responsive polish does not change the Fanbus contact card", () => {
   assert.doesNotMatch(responsive, /m329-contact-panel/);
   assert.doesNotMatch(responsive, /m329PortalFanbusContacts/);
 });
