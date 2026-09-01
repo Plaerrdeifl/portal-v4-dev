@@ -27,6 +27,13 @@ test("public Liveticker prototype stays isolated and ships in the static build",
   assert.match(build, /"liveticker"/);
 });
 
+test("period controls belong to the action form although they stay in the score card", async () => {
+  const html = await read("liveticker/index.html");
+  for (const period of [1, 2, 3]) {
+    assert.match(html, new RegExp(`id="period${period}" name="period" form="tickerForm"`));
+  }
+});
+
 test("2026/27 Mighty Dogs roster remains complete and grouped", () => {
   assert.equal(MIGHTY_ROSTER.length, 18);
   assert.deepEqual(
