@@ -12,12 +12,14 @@ const [responsive, publicBootstrap, portalBootstrap] = await Promise.all([
   read("js/m328-trip-subpage-back.js")
 ]);
 
-test("narrow Vorstand cards keep both labeled contact buttons side by side", () => {
+test("narrow Vorstand cards keep both labeled contact buttons side by side without icon overflow", () => {
   assert.match(responsive, /container-type:inline-size/);
   assert.match(responsive, /container-name:m329-board-card/);
   assert.match(responsive, /@container m329-board-card \(max-width:16rem\)/);
-  assert.match(responsive, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)!important/);
-  assert.match(responsive, /font-size:\.61rem!important/);
+  assert.match(responsive, /grid-template-columns:minmax\(0,1\.18fr\) minmax\(0,\.82fr\)!important/);
+  assert.match(responsive, /overflow:hidden!important/);
+  assert.match(responsive, /position:static!important/);
+  assert.match(responsive, /transform:none!important/);
   assert.match(responsive, /m329-v2-board-actions/);
   assert.doesNotMatch(responsive, /grid-template-columns:1fr!important/);
 });
@@ -28,8 +30,8 @@ test("Vorstand-only responsive polish does not change the Fanbus contact card", 
 });
 
 test("responsive Vorstand polish loads in both existing portal entry points", () => {
-  assert.match(publicBootstrap, /m329-board-contact-responsive\.js\?v=20260901-m329-board-responsive2/);
-  assert.match(portalBootstrap, /m329-board-contact-responsive\.js\?v=20260901-m329-board-responsive2/);
+  assert.match(publicBootstrap, /m329-board-contact-responsive\.js\?v=20260901-m329-board-responsive3/);
+  assert.match(portalBootstrap, /m329-board-contact-responsive\.js\?v=20260901-m329-board-responsive3/);
 });
 
 test("responsive Vorstand polish stays isolated from Liveticker", () => {
