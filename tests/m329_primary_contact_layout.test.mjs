@@ -25,10 +25,12 @@ test("primary WhatsApp and email actions use a 50-50 grid", () => {
   assert.match(layout, /<span>E-Mail<\/span>/);
 });
 
-test("primary WhatsApp action is forced to WhatsApp green", () => {
+test("primary WhatsApp action is forced green and labeled WhatsApp", () => {
   assert.match(layout, /#25D366/);
   assert.match(layout, /background:#25D366!important/);
-  assert.match(layout, /border-color:#25D366!important/);
+  assert.match(layout, /classList\.remove\("primary"\)/);
+  assert.match(layout, /style\.setProperty\("background", "#25D366", "important"\)/);
+  assert.match(layout, /whatsappLabel\.textContent = "WhatsApp"/);
 });
 
 test("primary email is derived from the public central Fanbus contact", () => {
@@ -37,9 +39,9 @@ test("primary email is derived from the public central Fanbus contact", () => {
   assert.doesNotMatch(layout, /fanbus@plaerrdeifl\.de/);
 });
 
-test("primary contact layout loads in public and portal entry points", () => {
-  assert.match(publicBootstrap, /m329-primary-contact-layout\.js\?v=20260901-m329-primary-contact1/);
-  assert.match(portalBootstrap, /m329-primary-contact-layout\.js\?v=20260901-m329-primary-contact1/);
+test("primary contact layout loads in public and portal entry points with refreshed cache key", () => {
+  assert.match(publicBootstrap, /m329-primary-contact-layout\.js\?v=20260901-m329-primary-contact2/);
+  assert.match(portalBootstrap, /m329-primary-contact-layout\.js\?v=20260901-m329-primary-contact2/);
 });
 
 test("primary contact polish stays isolated from frozen Liveticker", () => {
