@@ -11,16 +11,22 @@ function ensureStyles() {
     }
     @container m329-board-card (max-width:16rem){
       .m329-v2-board-actions{
-        grid-template-columns:1fr!important;
-        width:min(100%,11.5rem)!important;
-        max-width:11.5rem!important;
-        gap:.38rem!important;
+        grid-template-columns:repeat(2,minmax(0,1fr))!important;
+        width:100%!important;
+        max-width:none!important;
+        gap:.24rem!important;
         margin-inline:auto!important;
       }
       .m329-v2-board-actions .m329-v2-contact-button{
-        min-height:2.3rem!important;
-        padding:.4rem .55rem!important;
-        font-size:.68rem!important;
+        min-height:2.2rem!important;
+        padding:.34rem .22rem!important;
+        gap:.18rem!important;
+        font-size:.61rem!important;
+        white-space:nowrap!important;
+      }
+      .m329-v2-board-actions .m329-v2-contact-button svg{
+        width:.86rem!important;
+        height:.86rem!important;
       }
     }
   `;
