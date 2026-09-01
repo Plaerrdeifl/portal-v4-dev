@@ -1,5 +1,6 @@
 const CACHE_VERSION = "pd-portal-v4-m900-platform-mode-r1-20260823";
 const R6_CACHE_VERSION = "pd-portal-v4-prod-r6-final-20260830";
+const M020_PUSH_NAVIGATION_CACHE_VERSION = "pd-portal-v4-m020-push-navigation-badge-r1-20260901";
 const M010_CENTRAL_CAPABILITIES_CACHE_VERSION = "pd-portal-v4-m010-central-capabilities-r1-20260810";
 const PREVIOUS_CACHE_VERSION = "pd-portal-v4-m150-withdrawn-r1-20260810";
 const PWA_INSTALL_GUIDANCE_CACHE_VERSION = "pd-portal-v4-pwa-install-guidance-r1-20260802";
@@ -13,7 +14,7 @@ const ADMIN_TASK_ACCESS_CACHE_VERSION = "pd-portal-v4-admin-task-access-r1-20260
 const OFFICES_CACHE_VERSION = "pd-portal-v4-offices-save-corr1-20260724";
 const TASK_ACCESS_CACHE_VERSION = "pd-portal-v4-task-access-push-r3-20260724";
 const LEGACY_CACHE_VERSION = "pd-portal-v4-push-newtasks-quiettime-r1-20260723";
-const APP_CACHE = `${R6_CACHE_VERSION}-shell`;
+const APP_CACHE = `${M020_PUSH_NAVIGATION_CACHE_VERSION}-shell`;
 const SHELL = [
   "./",
   "./index.html",
@@ -139,8 +140,7 @@ self.addEventListener("push", event => {
   const fallback = {
     title: "Plärrdeifl Portal",
     body: "Es gibt eine neue Portal-Meldung.",
-    route: "#/dashboard",
-    badgeCount: 1
+    route: "#/dashboard"
   };
 
   let payload = fallback;
@@ -164,7 +164,11 @@ self.addEventListener("push", event => {
   ).href;
 
   event.waitUntil((async () => {
-    if (Number.isFinite(Number(payload.badgeCount))) {
+    if (
+      payload.badgeCount !== undefined
+      && payload.badgeCount !== null
+      && Number.isFinite(Number(payload.badgeCount))
+    ) {
       await setBadgeCount(payload.badgeCount);
     }
 
@@ -202,20 +206,11 @@ self.addEventListener("push", event => {
   })());
 });
 
-async function openPushRouteInExistingClient(
-  client,
-  targetUrl,
-  message
-) {
-  let destination = client;
-
+async function openPushRouteInExistingClient(client, targetUrl) {
   if (typeof client.navigate === "function") {
     try {
       const navigated = await client.navigate(targetUrl);
-
-      if (navigated) {
-        destination = navigated;
-      }
+      if (navigated) return navigated.focus();
     } catch (error) {
       console.debug(
         "Push-Ziel konnte nicht per WindowClient.navigate geöffnet werden",
@@ -224,8 +219,7 @@ async function openPushRouteInExistingClient(
     }
   }
 
-  destination.postMessage(message);
-  return destination.focus();
+  return self.clients.openWindow(targetUrl);
 }
 
 self.addEventListener("notificationclick", event => {
@@ -237,14 +231,7 @@ self.addEventListener("notificationclick", event => {
     notificationId
   );
   const targetUrl = new URL(route, self.registration.scope).href;
-  const previousBadgeCount = Math.max(
-    0,
-    Number(event.notification.data?.badgeCount || 0)
-  );
-
   event.waitUntil((async () => {
-    await setBadgeCount(Math.max(0, previousBadgeCount - 1));
-
     const windows = await self.clients.matchAll({
       type: "window",
       includeUncontrolled: true
@@ -254,15 +241,7 @@ self.addEventListener("notificationclick", event => {
       || windows[0];
 
     if (target) {
-      return openPushRouteInExistingClient(
-        target,
-        targetUrl,
-        {
-          type: "OPEN_PUSH_ROUTE",
-          route,
-          notificationId
-        }
-      );
+      return openPushRouteInExistingClient(target, targetUrl);
     }
 
     return self.clients.openWindow(targetUrl);

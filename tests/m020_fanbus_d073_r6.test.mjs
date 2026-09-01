@@ -8,7 +8,7 @@ const migration = read(
 );
 const pushConsumer = read("../js/task-push-r3.js");
 
-test("D-073 selects only booking-created and registration-cancelled notifications through the registration-to-trip relation", () => {
+test("existing D-073 selects booking-created and cancelled notifications through the registration-to-trip relation", () => {
   assert.match(migration, /v_entity_type = 'fanbus_trip_operational'/);
   assert.match(migration, /'FANBUS_BOOKING_CREATED'/);
   assert.match(migration, /'FANBUS_REGISTRATION_CANCELLED'/);

@@ -6,41 +6,44 @@ const FANBUS_D073_VIEW_ACTIONS = new Set([
   "fanbus_registrations_list",
   "fanbus_buses_list"
 ]);
-let pendingHashWork = null;
-let lastPreparedTaskId = "";
 let badgeAuthUserId = "";
 let badgeSyncRevision = 0;
+let pendingPushDestination = null;
 const fanbusAckInFlight = new Set();
+const scopeAckInFlight = new Set();
 
-function normalizedHashRoute(route = "#/dashboard") {
-  const value = String(route || "#/dashboard").trim();
-  if (value.startsWith("#/")) return value;
-  return `#/${value.replace(/^#?\/?/, "")}`;
-}
-
-function routeWithNotification(route, notificationId = "") {
-  const normalized = normalizedHashRoute(route);
-  const [path, query = ""] = normalized.split("?", 2);
-  const params = new URLSearchParams(query);
-  const id = String(notificationId || "").trim();
-
-  if (id) params.set(NOTIFICATION_PARAM, id);
-
-  const suffix = params.toString();
-  return suffix ? `${path}?${suffix}` : path;
-}
-
-function hashContext() {
-  const hash = String(location.hash || "");
-  const query = hash.includes("?")
-    ? hash.slice(hash.indexOf("?") + 1)
+function hashContext(hash = location.hash) {
+  const value = String(hash || "#/dashboard");
+  const normalized = value.startsWith("#/")
+    ? value
+    : `#/${value.replace(/^#?\/?/, "")}`;
+  const query = normalized.includes("?")
+    ? normalized.slice(normalized.indexOf("?") + 1)
     : "";
   const params = new URLSearchParams(query);
+  const path = normalized.slice(2).split("?", 1)[0] || "dashboard";
 
   return {
+    path,
+    params,
     notificationId: params.get(NOTIFICATION_PARAM) || "",
     taskId: params.get("taskId") || ""
   };
+}
+
+function capturePushDestination(hash = location.hash) {
+  const context = hashContext(hash);
+  if (context.notificationId) {
+    pendingPushDestination = {
+      path: context.path,
+      notificationId: context.notificationId,
+      taskId: context.params.get("taskId") || "",
+      applicationId: context.params.get("applicationId") || "",
+      accessRequestId: context.params.get("accessRequest") || "",
+      fanbusTripId: context.params.get("detail") || context.params.get("trip") || ""
+    };
+  }
+  return context;
 }
 
 function removeNotificationParam() {
@@ -129,10 +132,12 @@ async function acknowledgeFanbusD073(action, payload = {}) {
 
   try {
     const snapshot = await api.call("mark_notification_read", {
+      notificationId: pendingNotificationForRoute("bus-orga"),
       entityType: "fanbus_trip_operational",
       entityId: tripId
     });
     await applyAuthoritativeBadgeSnapshot(snapshot, userId);
+    clearPendingNotification("bus-orga");
   } catch (error) {
     console.debug("Fanbusmeldungen konnten nicht selektiv quittiert werden", error);
   } finally {
@@ -150,58 +155,105 @@ async function markNotificationRead({ notificationId = "", taskId = "" } = {}) {
     entityId: taskId
   });
 
-  await synchronizeAuthoritativeBadge();
+  await applyAuthoritativeBadgeSnapshot(result, currentAuthUserId());
   return result;
 }
 
-async function prepareHashDestination({ forceRender = false } = {}) {
-  if (pendingHashWork) return pendingHashWork;
-
-  const context = hashContext();
-  if (!context.notificationId && !context.taskId) return null;
-  if (!context.notificationId && context.taskId === lastPreparedTaskId) return null;
-
-  pendingHashWork = (async () => {
-    await auth.initialize();
-
-    if (!auth.current().authenticated) return null;
-
-    await auth.refresh();
-    await markNotificationRead(context);
-    if (context.taskId) lastPreparedTaskId = context.taskId;
-    removeNotificationParam();
-
-    if (forceRender) {
-      window.dispatchEvent(new HashChangeEvent("hashchange"));
-    }
-
-    return context;
-  })().catch(error => {
-    console.error("Push-Ziel konnte nicht vollständig vorbereitet werden", error);
-    return null;
-  }).finally(() => {
-    pendingHashWork = null;
-  });
-
-  return pendingHashWork;
+function pendingNotificationForRoute(path) {
+  return pendingPushDestination?.path === path
+    ? pendingPushDestination.notificationId
+    : "";
 }
 
-async function openPushDestination(route, notificationId = "") {
-  const next = routeWithNotification(route, notificationId);
+function pendingDestinationForRoute(path) {
+  return pendingPushDestination?.path === path
+    ? pendingPushDestination
+    : null;
+}
 
-  await auth.initialize();
-
-  if (auth.current().authenticated) {
-    await auth.refresh();
+function clearPendingNotification(path) {
+  if (pendingPushDestination?.path === path) {
+    pendingPushDestination = null;
+    removeNotificationParam();
   }
+}
 
-  if (location.hash === next) {
-    await prepareHashDestination({ forceRender: true });
-    return;
+function areaIsActive(path, selector) {
+  if (hashContext().path !== path) return false;
+  const area = document.querySelector(selector);
+  return Boolean(area && !area.querySelector(".notice.error"));
+}
+
+async function acknowledgeScope(scope, path, entityId = "") {
+  if (!auth.current().authenticated || !auth.isActive()) return;
+
+  const notificationId = pendingNotificationForRoute(path);
+  const userId = currentAuthUserId();
+  const key = `${userId}:${scope}:${entityId}`;
+  if (!userId || scopeAckInFlight.has(key)) return;
+  scopeAckInFlight.add(key);
+
+  try {
+    const snapshot = await api.call("mark_notification_read", {
+      notificationId,
+      scope,
+      entityId
+    });
+    await applyAuthoritativeBadgeSnapshot(snapshot, userId);
+    clearPendingNotification(path);
+  } catch (error) {
+    console.debug("Benachrichtigungsbereich konnte nicht quittiert werden", error);
+  } finally {
+    scopeAckInFlight.delete(key);
   }
+}
 
-  location.hash = next;
-  await prepareHashDestination();
+function hasItem(items, id) {
+  return !id || (Array.isArray(items) && items.some(item => String(item?.id || "") === id));
+}
+
+function acknowledgeActivatedArea(action, data = null) {
+  const context = hashContext();
+  const pending = pendingDestinationForRoute(context.path);
+
+  if (action === "dashboard" && areaIsActive("dashboard", "#dashboardWidgets")) {
+    void acknowledgeScope("dashboard", "dashboard");
+  } else if (action === "events_list" && areaIsActive("dates", "#m210DatesList")) {
+    void acknowledgeScope("dates", "dates");
+  } else if (
+    action === "tasks_snapshot"
+    && areaIsActive("tasks", "#tasksPanel")
+    && hasItem(data?.tasks, pending?.taskId || "")
+  ) {
+    void acknowledgeScope("tasks", "tasks");
+  } else if (
+    action === "fanbus_trips_list"
+    && areaIsActive("fanbuses", "#m310FanbusList")
+    && hasItem(data?.trips, pending?.fanbusTripId || "")
+  ) {
+    void acknowledgeScope("fanbuses", "fanbuses");
+  } else if (
+    action === "membership_applications_list"
+    && context.path === "fanclub"
+    && document.querySelector('[data-tab="membership-applications"].active')
+    && !pending?.applicationId
+  ) {
+    void acknowledgeScope("membership_applications", "fanclub");
+  } else if (
+    action === "membership_application_detail"
+    && context.path === "fanclub"
+    && pending?.applicationId
+    && String(data?.application?.id || data?.id || "") === pending.applicationId
+  ) {
+    void acknowledgeScope("membership_applications", "fanclub");
+  } else if (
+    action === "admin_snapshot"
+    && context.path === "admin"
+    && document.querySelector('[data-admin-tab="requests"].active')
+    && hasItem(data?.requests, pending?.accessRequestId || "")
+  ) {
+    void acknowledgeScope("access_requests", "admin");
+  }
 }
 
 function normalizeTransferUi() {
@@ -274,16 +326,7 @@ navigator.serviceWorker?.addEventListener(
         });
         normalizeSoon();
       }
-      return;
     }
-
-    if (event.data?.type !== "OPEN_PUSH_ROUTE") return;
-
-    event.stopImmediatePropagation();
-    void openPushDestination(
-      event.data.route || "#/dashboard",
-      event.data.notificationId || ""
-    );
   },
   { capture: true }
 );
@@ -292,6 +335,17 @@ document.addEventListener(
   "click",
   event => {
     void markTaskFromInteraction(event.target);
+    if (event.target?.closest?.('[data-admin-tab="requests"]')) {
+      window.setTimeout(() => {
+        if (
+          hashContext().path === "admin"
+          && document.querySelector('[data-admin-tab="requests"].active')
+          && areaIsActive("admin", "#adminPanel")
+        ) {
+          void acknowledgeScope("access_requests", "admin");
+        }
+      }, 0);
+    }
     normalizeSoon();
   },
   true
@@ -300,29 +354,34 @@ document.addEventListener(
 window.addEventListener("pd-api-state", normalizeSoon);
 window.addEventListener("pd-api-after-call", event => {
   void acknowledgeFanbusD073(event.detail?.action, event.detail?.payload);
+  window.setTimeout(
+    () => acknowledgeActivatedArea(
+      event.detail?.action || "",
+      event.detail?.data
+    ),
+    0
+  );
 });
-window.addEventListener("hashchange", normalizeSoon);
+window.addEventListener("hashchange", () => {
+  capturePushDestination();
+  normalizeSoon();
+});
 
 window.addEventListener("pd-auth-change", event => {
   void synchronizeAuthoritativeBadge(event.detail);
-
-  if (!event.detail?.authenticated) return;
-  void prepareHashDestination({ forceRender: true });
 });
 
 window.addEventListener("pageshow", () => {
   normalizeSoon();
   void synchronizeAuthoritativeBadge();
-  void prepareHashDestination({ forceRender: true });
 });
 
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible") return;
   normalizeTransferUi();
   void synchronizeAuthoritativeBadge();
-  void prepareHashDestination({ forceRender: true });
 });
 
+capturePushDestination();
 normalizeTransferUi();
 void synchronizeAuthoritativeBadge();
-void prepareHashDestination();

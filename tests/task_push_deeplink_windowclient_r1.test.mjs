@@ -17,28 +17,27 @@ test("task notifications carry a concrete route end to end", async () => {
   assert.ok(sender.includes("notificationId: item.notificationId"));
 });
 
-test("existing PWA windows always receive the route fallback after navigate", async () => {
+test("existing PWA windows use one navigation path without a message race", async () => {
   const worker = await read("service-worker.js");
 
   assert.ok(worker.includes("async function openPushRouteInExistingClient"));
-  assert.ok(worker.includes("let destination = client"));
   assert.ok(worker.includes("const navigated = await client.navigate(targetUrl)"));
-  assert.ok(worker.includes("destination = navigated"));
-  assert.ok(worker.includes("destination.postMessage(message)"));
-  assert.ok(worker.includes("return destination.focus()"));
-  assert.ok(!worker.includes("return navigated.focus()"));
+  assert.ok(worker.includes("if (navigated) return navigated.focus()"));
   assert.ok(worker.includes("return self.clients.openWindow(targetUrl)"));
   assert.ok(worker.includes("routeWithNotification"));
+  assert.ok(!worker.includes("OPEN_PUSH_ROUTE"));
+  assert.ok(!worker.includes("destination.postMessage"));
 });
 
-test("task-push-r3 owns the OPEN_PUSH_ROUTE page fallback", async () => {
+test("task-push-r3 consumes the URL only after a target area was loaded", async () => {
   const push = await read("js/push.js");
   const bridge = await read("js/task-push-r3.js");
 
   assert.ok(!push.includes("OPEN_PUSH_ROUTE"));
-  assert.ok(bridge.includes("OPEN_PUSH_ROUTE"));
-  assert.ok(bridge.includes("openPushDestination"));
-  assert.ok(bridge.includes("location.hash = next"));
+  assert.ok(!bridge.includes("OPEN_PUSH_ROUTE"));
+  assert.ok(bridge.includes("capturePushDestination"));
+  assert.ok(bridge.includes("acknowledgeActivatedArea"));
+  assert.ok(bridge.includes('window.addEventListener("pd-api-after-call"'));
   assert.ok(push.includes("const __V4_TASK_PUSH_DEEPLINK_WINDOWCLIENT_R1__ = true;"));
 });
 
@@ -60,6 +59,7 @@ test("cache retains previous compatibility markers", async () => {
     "pd-portal-v4-admin-task-access-r1-20260724",
     "pd-portal-v4-offices-save-corr1-20260724",
     "pd-portal-v4-task-access-push-r3-20260724",
-    "pd-portal-v4-push-newtasks-quiettime-r1-20260723"
+    "pd-portal-v4-push-newtasks-quiettime-r1-20260723",
+    "pd-portal-v4-m020-push-navigation-badge-r1-20260901"
   ]) assert.ok(worker.includes(marker));
 });

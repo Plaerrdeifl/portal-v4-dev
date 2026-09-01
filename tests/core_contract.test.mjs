@@ -137,6 +137,7 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260830223500_m328_restore_verified_whatsapp_contact.sql",
     "20260830230000_m020_fanbus_d073_acknowledge_r6.sql",
     "20260831234000_m329_fanbus_contact_management.sql",
+    "20260901120000_m020_push_navigation_badge_acknowledgement.sql",
     "20260901133530_hotfix_public_fanbus_homepage_alignment.sql"
   ]);
 
