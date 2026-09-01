@@ -28,8 +28,8 @@ test("Vorstand-only responsive polish does not change the Fanbus contact card", 
 });
 
 test("responsive Vorstand polish loads in both existing portal entry points", () => {
-  assert.match(publicBootstrap, /m329-board-contact-responsive\.js\?v=20260901-m329-board-responsive1/);
-  assert.match(portalBootstrap, /m329-board-contact-responsive\.js\?v=20260901-m329-board-responsive1/);
+  assert.match(publicBootstrap, /m329-board-contact-responsive\.js\?v=20260901-m329-board-responsive2/);
+  assert.match(portalBootstrap, /m329-board-contact-responsive\.js\?v=20260901-m329-board-responsive2/);
 });
 
 test("responsive Vorstand polish stays isolated from Liveticker", () => {
