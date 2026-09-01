@@ -20,10 +20,7 @@ const testableDetails = details.replace(
 const detailsModule = await import(
   `data:text/javascript;base64,${Buffer.from(testableDetails).toString("base64")}`
 );
-const {
-  isM327SemanticDuplicateTripNote,
-  m327StructuredNoteParts
-} = detailsModule;
+const { m327StructuredNoteParts } = detailsModule;
 
 const muennerstadtStop = {
   label: "Pendlerparkplatz",
@@ -42,6 +39,7 @@ test("M327 trip boarding stop readers expose central address and default note", 
   assert.match(migration, /create or replace function public\.pd_public_fanbus_trip_boarding_stops/);
   assert.equal((migration.match(/'address', stop\.address/g) || []).length, 2);
   assert.equal((migration.match(/'defaultNote', stop\.default_note/g) || []).length, 2);
+  // R6 keeps the legacy field in the read contract for compatibility; the UI no longer consumes it.
   assert.match(migration, /'tripNote', trip_stop\.trip_note/);
 });
 
@@ -65,37 +63,14 @@ test("M327 recognizes current PROD contact notes for Luca and Pascal", () => {
   });
 });
 
-test("M327 suppresses semantic boarding-stop duplicates but preserves real trip information", () => {
-  assert.equal(
-    isM327SemanticDuplicateTripNote(
-      muennerstadtStop,
-      "Münnerstadt (Infos bei Luca: 0174 6681046)"
-    ),
-    true
-  );
-  assert.equal(
-    isM327SemanticDuplicateTripNote(muennerstadtStop, "Pendlerparkplatz Münnerstadt"),
-    true
-  );
-  assert.equal(
-    isM327SemanticDuplicateTripNote(
-      muennerstadtStop,
-      "Bitte 10 Minuten früher da sein. Infos bei Luca: 0174 6681046"
-    ),
-    false
-  );
-  assert.equal(
-    isM327SemanticDuplicateTripNote(schweinfurtStop, "Treffpunkt an Tor 2"),
-    false
-  );
-});
-
-test("M327 expanded trip cards render compact contacts and optional genuine trip hints", () => {
+test("M327 expanded trip cards use the central boarding-stop note as the single note source", () => {
   assert.match(details, /data-m310-inline-trip-detail/);
   assert.match(details, /\.v4-m325-trip-stops/);
   assert.match(details, /stop\?\.address/);
   assert.match(details, /stop\?\.defaultNote/);
-  assert.match(details, /stop\?\.tripNote/);
+  assert.doesNotMatch(details, /stop\?\.tripNote/);
+  assert.doesNotMatch(details, /Fahrthinweis/);
+  assert.doesNotMatch(details, /SemanticDuplicateTripNote/);
   assert.doesNotMatch(details, /`Hinweis: \$\{defaultNote\}`/);
   assert.match(details, /Infos\\s\*&\\s\*telefonische\\s\+Anmeldung/);
   assert.match(details, /Fragen\\s\*&\\s\*Anmeldung/);
@@ -103,8 +78,6 @@ test("M327 expanded trip cards render compact contacts and optional genuine trip
   assert.match(details, /m327-trip-stop-contact-line/);
   assert.match(details, /m327-trip-stop-contact-name/);
   assert.match(details, /m327-trip-stop-contact-phone/);
-  assert.match(details, /Fahrthinweis/);
-  assert.match(details, /!isM327SemanticDuplicateTripNote\(stop, tripNote\)/);
 });
 
 test("M327 mobile contact layout keeps phone numbers readable without forced user-text caps", () => {
