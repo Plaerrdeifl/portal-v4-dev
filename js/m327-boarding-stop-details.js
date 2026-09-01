@@ -3,17 +3,6 @@ import { call, hasCapability } from "./modules/common.js";
 const STYLE_ID = "m327BoardingStopDetailsStyles";
 const DETAIL_SELECTOR = "[data-m310-inline-trip-detail]";
 const STOP_SELECTOR = ".v4-m325-trip-stops";
-const NOTE_BOILERPLATE_TOKENS = new Set([
-  "anmeldung",
-  "bei",
-  "fragen",
-  "info",
-  "infos",
-  "kontakt",
-  "telefonisch",
-  "telefonische",
-  "und"
-]);
 const TIME_FORMAT = new Intl.DateTimeFormat("de-DE", {
   timeZone: "Europe/Berlin",
   hour: "2-digit",
@@ -24,42 +13,6 @@ let scanScheduled = false;
 
 function cleanText(value) {
   return String(value || "").trim();
-}
-
-function normalizedComparableText(value) {
-  return cleanText(value)
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/ß/g, "ss")
-    .toLocaleLowerCase("de-DE")
-    .replace(/(\d)[\s./()-]+(?=\d)/g, "$1")
-    .replace(/[^a-z0-9+]+/g, " ")
-    .trim();
-}
-
-function meaningfulNoteTokens(value) {
-  const normalized = normalizedComparableText(value);
-  if (!normalized) return [];
-  return normalized
-    .split(/\s+/)
-    .filter(token => token && !NOTE_BOILERPLATE_TOKENS.has(token));
-}
-
-export function isM327SemanticDuplicateTripNote(stop, value = stop?.tripNote) {
-  const tripNote = cleanText(value);
-  if (!tripNote) return false;
-
-  const tripTokens = meaningfulNoteTokens(tripNote);
-  if (!tripTokens.length) return true;
-
-  const referenceTokens = new Set(meaningfulNoteTokens([
-    stop?.label,
-    stop?.address,
-    stop?.defaultNote
-  ].map(cleanText).filter(Boolean).join(" ")));
-
-  return referenceTokens.size > 0
-    && tripTokens.every(token => referenceTokens.has(token));
 }
 
 export function m327StructuredNoteParts(value) {
@@ -97,19 +50,12 @@ function createLine(className, text) {
   return line;
 }
 
-function appendStructuredNote(item, className, text, prefix = "") {
+function appendStructuredNote(item, className, text) {
   const parts = m327StructuredNoteParts(text);
   if (!parts) return;
 
   const line = document.createElement("span");
   line.className = className;
-
-  if (prefix) {
-    const prefixLine = document.createElement("span");
-    prefixLine.className = "m327-trip-stop-note-prefix";
-    prefixLine.textContent = prefix;
-    line.append(prefixLine);
-  }
 
   if (parts.label) {
     const label = document.createElement("span");
@@ -164,17 +110,7 @@ function renderStops(container, stops) {
     const address = cleanText(stop?.address);
     if (address) item.append(createLine("m327-trip-stop-address", address));
 
-    const defaultNote = cleanText(stop?.defaultNote);
-    const tripNote = cleanText(stop?.tripNote);
-    appendStructuredNote(item, "m327-trip-stop-note", defaultNote);
-    if (tripNote && !isM327SemanticDuplicateTripNote(stop, tripNote)) {
-      appendStructuredNote(
-        item,
-        "m327-trip-stop-note m327-trip-stop-trip-note",
-        tripNote,
-        "Fahrthinweis"
-      );
-    }
+    appendStructuredNote(item, "m327-trip-stop-note", cleanText(stop?.defaultNote));
 
     list.append(item);
   }
@@ -235,12 +171,11 @@ function injectStyles() {
     .m327-trip-stop-address,.m327-trip-stop-note{font-size:.78rem;line-height:1.32;overflow-wrap:break-word;word-break:normal;text-transform:none}
     .m327-trip-stop-address{color:var(--muted,#718096)}
     .m327-trip-stop-note{display:grid;gap:1px;color:var(--text,#102a43)}
-    .m327-trip-stop-note-label,.m327-trip-stop-note-prefix{display:block;font-weight:750}
+    .m327-trip-stop-note-label{display:block;font-weight:750}
     .m327-trip-stop-note-value{display:block;font-weight:550;white-space:pre-line}
     .m327-trip-stop-contact-line{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:.35em;font-weight:550;min-width:0}
     .m327-trip-stop-contact-name{white-space:nowrap}
     .m327-trip-stop-contact-phone{white-space:nowrap;overflow-wrap:normal;word-break:normal;font-variant-numeric:tabular-nums}
-    .m327-trip-stop-trip-note{font-weight:650}
     @media(max-width:620px){
       .v4-m325-trip-stops.m327-trip-stops-enhanced{gap:5px}
       .m327-trip-stop-details{border-radius:11px}
