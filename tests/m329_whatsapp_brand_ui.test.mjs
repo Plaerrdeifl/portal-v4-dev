@@ -22,12 +22,22 @@ test("M329 WhatsApp actions use the white brand mark on WhatsApp green", () => {
   assert.doesNotMatch(brandUi, /currentColor/);
 });
 
-test("board WhatsApp action is centered without positional icon hacks", () => {
-  assert.match(brandUi, /display:grid!important/);
-  assert.match(brandUi, /place-items:center!important/);
-  assert.match(brandUi, /padding:0!important/);
-  assert.match(brandUi, /line-height:0!important/);
-  assert.match(brandUi, /transform:none!important/);
+test("small WhatsApp action is hard-centered inside the clickable anchor", () => {
+  assert.match(brandUi, /position:relative!important/);
+  assert.match(brandUi, /position:absolute!important/);
+  assert.match(brandUi, /left:50%!important/);
+  assert.match(brandUi, /top:50%!important/);
+  assert.match(brandUi, /translate\(-50%,-50%\)/);
+  assert.match(brandUi, /pointer-events:none!important/);
+  assert.match(brandUi, /pointer-events:auto!important/);
+});
+
+test("WhatsApp anchors use direct same-context navigation for iPhone PWA", () => {
+  assert.match(brandUi, /button\.removeAttribute\("target"\)/);
+  assert.match(brandUi, /window\.location\.assign\(href\)/);
+  assert.match(brandUi, /event\.preventDefault\(\)/);
+  assert.match(brandUi, /event\.stopPropagation\(\)/);
+  assert.match(brandUi, /https:\\\/\\\/wa\\\.me/);
 });
 
 test("board cards hide the standalone phone number and center their content", () => {
@@ -40,8 +50,8 @@ test("board cards hide the standalone phone number and center their content", ()
 });
 
 test("WhatsApp brand UI loads in public and portal Fanbus entry points with refreshed cache key", () => {
-  assert.match(publicBootstrap, /m329-whatsapp-brand-ui\.js\?v=20260901-m329-whatsapp-brand2/);
-  assert.match(portalBootstrap, /m329-whatsapp-brand-ui\.js\?v=20260901-m329-whatsapp-brand2/);
+  assert.match(publicBootstrap, /m329-whatsapp-brand-ui\.js\?v=20260901-m329-whatsapp-brand3/);
+  assert.match(portalBootstrap, /m329-whatsapp-brand-ui\.js\?v=20260901-m329-whatsapp-brand3/);
 });
 
 test("WhatsApp brand UI stays isolated from the frozen Liveticker", () => {
