@@ -117,6 +117,15 @@ function decoratePrimaryActions(embedded, emailHref) {
   const whatsapp = embedded.querySelector(".m329-primary-whatsapp");
   if (!(whatsapp instanceof HTMLAnchorElement)) return;
 
+  whatsapp.classList.remove("primary");
+  whatsapp.style.setProperty("background", "#25D366", "important");
+  whatsapp.style.setProperty("border-color", "#25D366", "important");
+  whatsapp.style.setProperty("color", "#fff", "important");
+  const whatsappLabel = whatsapp.querySelector("span");
+  if (whatsappLabel) whatsappLabel.textContent = "WhatsApp";
+  whatsapp.setAttribute("aria-label", "Plärrdeifl per WhatsApp kontaktieren");
+  whatsapp.setAttribute("title", "WhatsApp");
+
   let wrapper = embedded.querySelector(".m329-primary-contact-actions");
   if (!(wrapper instanceof HTMLElement)) {
     wrapper = document.createElement("div");
