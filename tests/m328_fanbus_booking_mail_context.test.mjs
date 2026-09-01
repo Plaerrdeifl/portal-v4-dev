@@ -54,24 +54,40 @@ test("M328 additive correction is followed by the confirmed WhatsApp restore", (
   assert.match(contactRestore, /where key = 'fanbus\.organization_contact'/);
 });
 
-test("fanbus booking emails render the reference and help block only from payload contacts", () => {
+test("fanbus booking emails render the reference and action block only from payload contacts", () => {
   assert.doesNotMatch(worker, /const FANBUS_(?:CONTACT|WHATSAPP|LUCA|PASCAL)/);
   assert.doesNotMatch(worker, /fanbus@plaerrdeifl\.de/);
   assert.doesNotMatch(worker, /0174 6681046/);
   assert.doesNotMatch(worker, /0172 9744908/);
   assert.doesNotMatch(worker, /@plaerrdeifl/);
 
-  assert.match(worker, /function fanbusBookingContext\(/);
-  assert.match(worker, /data\.organizationContact/);
-  assert.match(worker, /contactItems\("emails"\)/);
-  assert.match(worker, /contactItems\("phones"\)/);
-  assert.match(worker, /organizationContact\.whatsapp/);
-  assert.match(worker, /Buchungsnummer: \$\{bookingNumber\}/);
-  assert.match(worker, /Bitte gib diese Buchungsnummer bei Rückfragen mit an\./);
-  assert.match(worker, /Fragen zu deiner Buchung\?/);
-  assert.match(worker, /mailto:\$\{escapeHtml\(item\.value\)\}/);
-  assert.match(worker, /\^https:\\\/\\\/wa\\\.me/);
-  assert.match(worker, /\^\(\?:FB\|DEV\)-\[0-9\]\{2\}-\[0-9\]\{6,\}\$/);
+  const contextStart = worker.indexOf("function fanbusBookingContext(");
+  const contextEnd = worker.indexOf("function withFanbusBookingContext", contextStart);
+  const context = worker.slice(contextStart, contextEnd);
+
+  assert.ok(contextStart >= 0 && contextEnd > contextStart);
+  assert.match(context, /data\.organizationContact/);
+  assert.match(context, /organizationContact\.primary/);
+  assert.match(context, /organizationContact\.contacts/);
+  assert.match(context, /contactItems\("emails"\)/);
+  assert.match(context, /contactItems\("phones"\)/);
+  assert.match(context, /organizationContact\.whatsapp/);
+  assert.match(context, /safeMailHref/);
+  assert.match(context, /safeTelHref/);
+  assert.match(context, /safeWhatsAppHref/);
+  assert.match(context, /Buchungsnummer: \$\{bookingNumber\}/);
+  assert.match(context, /Kontakt zur Bus-Orga/);
+  assert.match(context, /Bitte gib bei Rückfragen deine Buchungsnummer an\./);
+  assert.match(context, /role=\"presentation\"/);
+  assert.match(context, /width=\"50%\"/);
+  assert.match(context, /#25D366/);
+  assert.match(context, /buttonHtml\(primaryWhatsappHref, \"WhatsApp\"/);
+  assert.match(context, /buttonHtml\(primaryEmailHref, \"E-Mail\"/);
+  assert.match(context, /buttonHtml\(person\.phoneHref, \"Anrufen\"/);
+  assert.match(context, /\^https:\\\/\\\/wa\\\.me\\\/\[1-9\]/);
+  assert.match(context, /\^\(\?:FB\|DEV\)-\[0-9\]\{2\}-\[0-9\]\{6,\}\$/);
+  assert.doesNotMatch(context, /whatsappUsername/);
+  assert.doesNotMatch(context, /Oder melde dich direkt bei einem der oben genannten Ansprechpartner/);
 });
 
 test("booking context is applied centrally to fanbus mail delivery only", () => {
