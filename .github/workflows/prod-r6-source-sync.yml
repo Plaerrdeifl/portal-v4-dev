@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   sync:
-    if: github.event.head_commit.message != 'release: sync PROD R6 fanbus boarding-stop hotfix'
+    if: "${{ github.event.head_commit.message != 'release: sync PROD R6 fanbus boarding-stop hotfix' }}"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PROD release repository
