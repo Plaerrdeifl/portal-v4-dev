@@ -6,7 +6,9 @@ import test from "node:test";
 import { MIGHTY_ROSTER } from "../js/liveticker-prototype.js";
 import {
   findPlayerByNumber,
+  GOAL_POSITION_ORDER,
   normalizeJerseyNumber,
+  PENALTY_POSITION_ORDER,
   stripUnknownGoalPlaceholders
 } from "../js/liveticker-manual-scorer.js";
 
@@ -46,4 +48,9 @@ test("number inputs are wired for scorer, both assists and every penalty player"
   assert.match(source, /assist2NumberDirect/);
   assert.match(source, /\[data-field='player'\]/);
   assert.match(source, /grid-template-columns:74px minmax\(0,1fr\)/);
+});
+
+test("roster groups are prioritized by action context", () => {
+  assert.deepEqual([...GOAL_POSITION_ORDER], ["Sturm", "Verteidigung", "Tor"]);
+  assert.deepEqual([...PENALTY_POSITION_ORDER], ["Verteidigung", "Sturm", "Tor"]);
 });
