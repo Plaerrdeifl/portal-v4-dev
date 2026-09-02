@@ -50,7 +50,13 @@ test("number inputs are wired for scorer, both assists and every penalty player"
   assert.match(source, /grid-template-columns:74px minmax\(0,1fr\)/);
 });
 
-test("roster groups are prioritized by action context", () => {
-  assert.deepEqual([...GOAL_POSITION_ORDER], ["Sturm", "Verteidigung", "Tor"]);
-  assert.deepEqual([...PENALTY_POSITION_ORDER], ["Verteidigung", "Sturm", "Tor"]);
+test("player dropdowns use context-specific position ordering", () => {
+  assert.deepEqual(GOAL_POSITION_ORDER, ["Sturm", "Verteidigung", "Tor"]);
+  assert.deepEqual(PENALTY_POSITION_ORDER, ["Verteidigung", "Sturm", "Tor"]);
+});
+
+test("penalty observer watches only direct rows and cannot recurse on option reordering", async () => {
+  const source = await readFile(resolve(root, "js/liveticker-manual-scorer.js"), "utf8");
+  assert.match(source, /observer\.observe\(penaltyRows, \{ childList: true \}\)/);
+  assert.doesNotMatch(source, /observer\.observe\(penaltyRows, \{ childList: true, subtree: true \}\)/);
 });
