@@ -1,5 +1,8 @@
 import { MIGHTY_ROSTER, OPPONENTS } from "./liveticker-engine-v3.js";
 
+export const GOAL_POSITION_ORDER = Object.freeze(["Sturm", "Verteidigung", "Tor"]);
+export const PENALTY_POSITION_ORDER = Object.freeze(["Verteidigung", "Sturm", "Tor"]);
+
 export function normalizeJerseyNumber(value) {
   return String(value ?? "").trim().replace(/^#/, "").trim();
 }
@@ -33,6 +36,8 @@ function initializeManualScorer() {
   const goalPlayer = document.querySelector("#goalPlayer");
   const assist1 = document.querySelector("#assist1");
   const assist2 = document.querySelector("#assist2");
+  const shootoutPlayer = document.querySelector("#shootoutPlayer");
+  const shootoutTeam = document.querySelector("#shootoutTeam");
   const opponentSelect = document.querySelector("#opponentSelect");
   const penaltyRows = document.querySelector("#penaltyRows");
   const output = document.querySelector("#tickerOutput");
@@ -66,6 +71,22 @@ function initializeManualScorer() {
 
   function currentGoalRoster() {
     return rosterForTeam(selectedGoalTeam());
+  }
+
+  function reorderPlayerGroups(select, order) {
+    if (!select) return;
+    const groups = [...select.querySelectorAll("optgroup")];
+    for (const position of order) {
+      const group = groups.find(item => item.label === position);
+      if (group) select.append(group);
+    }
+  }
+
+  function reorderGoalAndShootout() {
+    reorderPlayerGroups(goalPlayer, GOAL_POSITION_ORDER);
+    reorderPlayerGroups(assist1, GOAL_POSITION_ORDER);
+    reorderPlayerGroups(assist2, GOAL_POSITION_ORDER);
+    reorderPlayerGroups(shootoutPlayer, GOAL_POSITION_ORDER);
   }
 
   function buildInlineNumberField(select, { id, getRoster, label = "Nr." }) {
@@ -146,15 +167,21 @@ function initializeManualScorer() {
   const goalPairs = [goalPair, assist1Pair, assist2Pair].filter(Boolean);
 
   function syncGoalPairs() {
+    reorderGoalAndShootout();
     goalPairs.forEach(pair => pair.sync());
   }
 
   function enhancePenaltyRow(row) {
-    if (!row || row.dataset.numberEnhanced === "true") return;
+    if (!row || row.dataset.numberEnhanced === "true") {
+      const existingPlayer = row?.querySelector("[data-field='player']");
+      reorderPlayerGroups(existingPlayer, PENALTY_POSITION_ORDER);
+      return;
+    }
     const teamSelect = row.querySelector("[data-field='team']");
     const playerSelect = row.querySelector("[data-field='player']");
     if (!teamSelect || !playerSelect) return;
 
+    reorderPlayerGroups(playerSelect, PENALTY_POSITION_ORDER);
     penaltyNumberCounter += 1;
     const pair = buildInlineNumberField(playerSelect, {
       id: `penaltyPlayerNumber${penaltyNumberCounter}`,
@@ -165,7 +192,10 @@ function initializeManualScorer() {
 
     row.dataset.numberEnhanced = "true";
     row._numberPair = pair;
-    teamSelect.addEventListener("change", () => queueMicrotask(pair.sync));
+    teamSelect.addEventListener("change", () => queueMicrotask(() => {
+      reorderPlayerGroups(playerSelect, PENALTY_POSITION_ORDER);
+      pair.sync();
+    }));
   }
 
   function enhanceAllPenaltyRows() {
@@ -173,11 +203,14 @@ function initializeManualScorer() {
   }
 
   function syncAllPenaltyNumbers() {
-    penaltyRows.querySelectorAll(".penalty-row").forEach(row => row._numberPair?.sync());
+    penaltyRows.querySelectorAll(".penalty-row").forEach(row => {
+      reorderPlayerGroups(row.querySelector("[data-field='player']"), PENALTY_POSITION_ORDER);
+      row._numberPair?.sync();
+    });
   }
 
   const observer = new MutationObserver(() => queueMicrotask(enhanceAllPenaltyRows));
-  observer.observe(penaltyRows, { childList: true });
+  observer.observe(penaltyRows, { childList: true, subtree: true });
   enhanceAllPenaltyRows();
 
   function cleanOutput() {
@@ -191,6 +224,7 @@ function initializeManualScorer() {
     queueMicrotask(syncGoalPairs);
     queueMicrotask(syncAllPenaltyNumbers);
   });
+  shootoutTeam?.addEventListener("change", () => queueMicrotask(reorderGoalAndShootout));
   form.addEventListener("submit", () => queueMicrotask(cleanOutput));
   periodSummaryButton?.addEventListener("click", () => queueMicrotask(cleanOutput));
   finalSummaryButton?.addEventListener("click", () => queueMicrotask(cleanOutput));
@@ -201,6 +235,7 @@ function initializeManualScorer() {
     queueMicrotask(syncAllPenaltyNumbers);
   });
 
+  reorderGoalAndShootout();
   syncGoalPairs();
 }
 
