@@ -110,11 +110,14 @@ function initializeManualScorer() {
       const raw = normalizeJerseyNumber(numberInput.value);
       if (!raw) {
         select.value = "";
-        select.dispatchEvent(new Event("change", { bubbles: true }));
         return;
       }
       const player = findPlayerByNumber(getRoster(), raw);
-      select.value = player?.name || "";
+      if (!player) {
+        select.value = "";
+        return;
+      }
+      select.value = player.name;
       select.dispatchEvent(new Event("change", { bubbles: true }));
     }
 
