@@ -27,11 +27,22 @@ test("public Liveticker prototype stays isolated and ships in the static build",
   assert.match(build, /"liveticker"/);
 });
 
-test("period controls belong to the action form although they stay in the score card", async () => {
+test("manual period controls are gone and minute driven status is visible", async () => {
   const html = await read("liveticker/index.html");
-  for (const period of [1, 2, 3]) {
-    assert.match(html, new RegExp(`id="period${period}" name="period" form="tickerForm"`));
-  }
+  assert.doesNotMatch(html, /name="period"/);
+  assert.doesNotMatch(html, /id="period[123]"/);
+  assert.match(html, /id="segmentLabel"/);
+  assert.match(html, /ab 61 = Overtime/);
+  assert.doesNotMatch(html, /max="60"/);
+});
+
+test("goal editor exposes two optional assists and shootout as a separate action", async () => {
+  const html = await read("liveticker/index.html");
+  assert.match(html, /id="assist1"/);
+  assert.match(html, /id="assist2"/);
+  assert.match(html, /id="actionShootout" name="action" type="radio" value="SHOOTOUT"/);
+  assert.match(html, /id="shootoutScored"/);
+  assert.match(html, /id="shootoutMissed"/);
 });
 
 test("2026/27 Mighty Dogs roster remains complete and grouped", () => {
