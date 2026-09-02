@@ -210,7 +210,7 @@ function initializeManualScorer() {
   }
 
   const observer = new MutationObserver(() => queueMicrotask(enhanceAllPenaltyRows));
-  observer.observe(penaltyRows, { childList: true, subtree: true });
+  observer.observe(penaltyRows, { childList: true });
   enhanceAllPenaltyRows();
 
   function cleanOutput() {
