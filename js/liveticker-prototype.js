@@ -53,7 +53,17 @@ export const PENALTY_REASONS = Object.freeze([
 ]);
 
 export const PENALTY_DURATIONS = Object.freeze(["2", "2+2", "5", "10", "2+10", "5+10", "5+20", "20"]);
-const STORAGE_KEY = "plaerrdeifl.livetickerPrototype.v2";
+
+export const SEGMENTS = Object.freeze({
+  P1: Object.freeze({ key: "P1", label: "1. Drittel", order: 1 }),
+  P2: Object.freeze({ key: "P2", label: "2. Drittel", order: 2 }),
+  P3: Object.freeze({ key: "P3", label: "3. Drittel", order: 3 }),
+  OT: Object.freeze({ key: "OT", label: "Overtime", order: 4 }),
+  SO: Object.freeze({ key: "SO", label: "Penaltyschießen", order: 5 })
+});
+
+const STORAGE_KEY = "plaerrdeifl.livetickerPrototype.v3";
+const LEGACY_STORAGE_KEY = "plaerrdeifl.livetickerPrototype.v2";
 
 function uid() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -63,6 +73,15 @@ function uid() {
 export function playerText(player) {
   if (!player) return "";
   return player.number ? `#${player.number} ${player.name}` : player.name;
+}
+
+export function segmentForMinute(value) {
+  const minute = Number.parseInt(value, 10);
+  if (!Number.isInteger(minute) || minute < 1) throw new Error("Bitte eine gültige Spielminute ab 1 eingeben.");
+  if (minute <= 20) return SEGMENTS.P1;
+  if (minute <= 40) return SEGMENTS.P2;
+  if (minute <= 60) return SEGMENTS.P3;
+  return SEGMENTS.OT;
 }
 
 export function parsePenaltyDuration(value) {
@@ -77,11 +96,34 @@ export function isMajorPenalty(duration) {
 
 export function calculateScore(history) {
   return history.reduce((score, event) => {
-    if (event.type !== "goal") return score;
-    if (event.team === "mighty") score.mighty += 1;
-    if (event.team === "opponent") score.opponent += 1;
+    if (event.type === "goal" && (event.team === "mighty" || event.team === "opponent")) score[event.team] += 1;
     return score;
   }, { mighty: 0, opponent: 0 });
+}
+
+export function calculateShootout(history) {
+  return history.reduce((score, event) => {
+    if (event.type === "shootout" && event.result === "scored" && (event.team === "mighty" || event.team === "opponent")) score[event.team] += 1;
+    return score;
+  }, { mighty: 0, opponent: 0 });
+}
+
+export function calculateOfficialFinalScore(history) {
+  const regular = calculateScore(history);
+  const shootoutEvents = history.filter(event => event.type === "shootout");
+  if (shootoutEvents.length) {
+    const shootout = calculateShootout(history);
+    if (shootout.mighty !== shootout.opponent) {
+      return {
+        mighty: regular.mighty + (shootout.mighty > shootout.opponent ? 1 : 0),
+        opponent: regular.opponent + (shootout.opponent > shootout.mighty ? 1 : 0),
+        suffix: "n. P."
+      };
+    }
+    return { ...regular, suffix: "Penaltyschießen läuft" };
+  }
+  if (history.some(event => event.type === "goal" && Number(event.minute) > 60)) return { ...regular, suffix: "n. V." };
+  return { ...regular, suffix: "" };
 }
 
 export function scoreAtEvent(history, eventId) {
@@ -101,23 +143,39 @@ function goalPlayerLine(event) {
   return event.player ? playerText(event.player) : "Torschütze noch offen";
 }
 
+function assistPlayers(event) {
+  return Array.isArray(event.assists) ? event.assists.filter(Boolean).slice(0, 2) : [];
+}
+
+function assistLine(event) {
+  const assists = assistPlayers(event);
+  return assists.length ? `Assists: ${assists.map(playerText).join(" · ")}` : "";
+}
+
+function eventSegment(event) {
+  if (event.type === "shootout") return SEGMENTS.SO;
+  return segmentForMinute(event.minute);
+}
+
 export function formatGoalText(event, history, opponent) {
   const score = scoreAtEvent(history, event.id);
   const minute = `${event.minute} Spielminute`;
   const scorer = goalPlayerLine(event);
+  const assists = assistLine(event);
+  const details = assists ? [scorer, assists] : [scorer];
 
   if (event.team === "opponent") {
-    if (event.style === "short") return [minute, `Tor ${opponent.shortName}`, "", `*${score.mighty}:${score.opponent}*`].join("\n");
-    return [minute, `Tor ${opponent.shortName}`, event.player ? scorer : "Torschütze folgt", "", `Neuer Spielstand`, `*${score.mighty}:${score.opponent}*`].join("\n");
+    if (event.style === "short") return [minute, `Tor ${opponent.shortName}`, ...details, "", `*${score.mighty}:${score.opponent}*`].join("\n");
+    return [minute, `Tor ${opponent.shortName}`, ...details, "", "Neuer Spielstand", `*${score.mighty}:${score.opponent}*`].join("\n");
   }
 
   if (event.style === "emotional") {
-    return [minute, "🔥 *TOOOOOOOR MIGHTY DOGS!* 🔥", "", scorer, "", "Neuer Spielstand", `*${score.mighty}:${score.opponent}*`].join("\n");
+    return [minute, "🔥 *TOOOOOOOR MIGHTY DOGS!* 🔥", "", ...details, "", "Neuer Spielstand", `*${score.mighty}:${score.opponent}*`].join("\n");
   }
   if (event.style === "short") {
-    return [minute, "*TOOOOOR SCHWEINFURT!*", scorer, "", `*${score.mighty}:${score.opponent}*`].join("\n");
+    return [minute, "*TOOOOOR SCHWEINFURT!*", ...details, "", `*${score.mighty}:${score.opponent}*`].join("\n");
   }
-  return [minute, "*Tooooooor für unsere Schweinfurter Mighty Dogs*", "", `Torschütze mit der ${scorer}`, "", "Neuer Spielstand", `*${score.mighty}:${score.opponent}*`].join("\n");
+  return [minute, "*Tooooooor für unsere Schweinfurter Mighty Dogs*", "", `Torschütze: ${scorer}`, ...(assists ? [assists] : []), "", "Neuer Spielstand", `*${score.mighty}:${score.opponent}*`].join("\n");
 }
 
 function formatPenaltyEntry(penalty, opponent) {
@@ -134,29 +192,39 @@ export function formatPenaltyText(event, opponent) {
   return lines.join("\n");
 }
 
+export function formatShootoutText(event, opponent) {
+  const result = event.result === "scored" ? "✅ verwandelt" : "❌ vergeben";
+  const shooter = event.player ? playerText(event.player) : "Schütze noch offen";
+  return ["*Penaltyschießen*", `${teamName(event.team, opponent)} · ${shooter}`, result].join("\n");
+}
+
 export function formatEventText(event, history, opponent) {
   if (event.type === "goal") return formatGoalText(event, history, opponent);
   if (event.type === "penalty") return formatPenaltyText(event, opponent);
+  if (event.type === "shootout") return formatShootoutText(event, opponent);
   throw new Error("Unbekannte Aktion.");
 }
 
-function goalSummaryLines(history, team, period = null) {
+function goalSummaryLines(history, team, segmentKey = null) {
   return history
-    .filter(event => event.type === "goal" && event.team === team && (period === null || event.period === period))
+    .filter(event => event.type === "goal" && event.team === team && (!segmentKey || eventSegment(event).key === segmentKey))
     .map(event => `${event.minute} Spielminute – ${goalPlayerLine(event)}`);
 }
 
-export function formatPeriodSummary(history, period, opponent) {
-  const currentPeriod = Number.parseInt(period, 10);
-  if (![1, 2, 3].includes(currentPeriod)) throw new Error("Ungültiges Drittel.");
+export function formatSegmentSummary(history, segmentKey, opponent) {
+  const segment = SEGMENTS[segmentKey];
+  if (!segment || segment.key === "SO") throw new Error("Für diesen Abschnitt gibt es keine Drittelzusammenfassung.");
   const score = history.reduce((result, event) => {
-    if (event.type === "goal" && event.period <= currentPeriod) result[event.team] += 1;
+    if (event.type === "goal" && eventSegment(event).order <= segment.order) result[event.team] += 1;
     return result;
   }, { mighty: 0, opponent: 0 });
-  const mighty = goalSummaryLines(history, "mighty", currentPeriod);
-  const away = goalSummaryLines(history, "opponent", currentPeriod);
+  const mighty = goalSummaryLines(history, "mighty", segment.key);
+  const away = goalSummaryLines(history, "opponent", segment.key);
+  const headline = segment.key === "OT"
+    ? `*Ende Overtime – ${score.mighty}:${score.opponent}*`
+    : `*Ende ${segment.label} – ${score.mighty}:${score.opponent}*`;
   return [
-    `*Ende ${currentPeriod}. Drittel – ${score.mighty}:${score.opponent}*`,
+    headline,
     "",
     "🥅 *Mighty Dogs*",
     ...(mighty.length ? mighty : ["Keine Tore"]),
@@ -166,7 +234,13 @@ export function formatPeriodSummary(history, period, opponent) {
   ].join("\n");
 }
 
-function penaltySummaryLines(history, team, opponent) {
+export function formatPeriodSummary(history, period, opponent) {
+  const key = { 1: "P1", 2: "P2", 3: "P3" }[Number.parseInt(period, 10)];
+  if (!key) throw new Error("Ungültiges Drittel.");
+  return formatSegmentSummary(history, key, opponent);
+}
+
+function penaltySummaryLines(history, team) {
   const lines = [];
   for (const event of history) {
     if (event.type !== "penalty") continue;
@@ -178,13 +252,26 @@ function penaltySummaryLines(history, team, opponent) {
   return lines.length ? lines : ["Keine Strafen"];
 }
 
+function shootoutSummaryLines(history, opponent) {
+  const attempts = history.filter(event => event.type === "shootout");
+  if (!attempts.length) return [];
+  const score = calculateShootout(history);
+  return [
+    "",
+    "🏒 *Penaltyschießen*",
+    `Treffer: Mighty Dogs ${score.mighty}:${score.opponent} ${opponent.shortName}`,
+    ...attempts.map(event => `${teamName(event.team, opponent)} · ${event.player ? playerText(event.player) : "Schütze offen"} · ${event.result === "scored" ? "verwandelt" : "vergeben"}`)
+  ];
+}
+
 export function formatFinalSummary(history, opponent) {
-  const score = calculateScore(history);
+  const finalScore = calculateOfficialFinalScore(history);
+  const suffix = finalScore.suffix ? ` ${finalScore.suffix}` : "";
   const mightyGoals = goalSummaryLines(history, "mighty");
   const opponentGoals = goalSummaryLines(history, "opponent");
   return [
     "*ENDSTAND*",
-    `Mighty Dogs ${score.mighty}:${score.opponent} ${opponent.shortName}`,
+    `Mighty Dogs ${finalScore.mighty}:${finalScore.opponent} ${opponent.shortName}${suffix}`,
     "",
     "🥅 *Tore Mighty Dogs*",
     ...(mightyGoals.length ? mightyGoals : ["Keine Tore"]),
@@ -193,61 +280,62 @@ export function formatFinalSummary(history, opponent) {
     ...(opponentGoals.length ? opponentGoals : ["Keine Tore"]),
     "",
     "🚨 *Strafen Mighty Dogs*",
-    ...penaltySummaryLines(history, "mighty", opponent),
+    ...penaltySummaryLines(history, "mighty"),
     "",
     `🚨 *Strafen ${opponent.shortName}*`,
-    ...penaltySummaryLines(history, "opponent", opponent)
+    ...penaltySummaryLines(history, "opponent"),
+    ...shootoutSummaryLines(history, opponent)
   ].join("\n");
 }
 
 function defaultState() {
-  return { opponentId: "erfurt", period: 1, minute: 1, history: [] };
+  return { opponentId: "erfurt", minute: 1, history: [] };
+}
+
+function normalizeLoadedState(parsed) {
+  if (!parsed || !Array.isArray(parsed.history) || !OPPONENTS[parsed.opponentId]) return null;
+  return {
+    opponentId: parsed.opponentId,
+    minute: Math.max(1, Number(parsed.minute) || 1),
+    history: parsed.history
+      .filter(event => event && ["goal", "penalty", "shootout"].includes(event.type))
+      .map(event => event.type === "goal" ? { ...event, assists: Array.isArray(event.assists) ? event.assists.slice(0, 2) : [] } : event)
+  };
 }
 
 function loadState() {
   if (typeof localStorage === "undefined") return defaultState();
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-    if (!parsed || !Array.isArray(parsed.history) || !OPPONENTS[parsed.opponentId]) return defaultState();
-    return {
-      opponentId: parsed.opponentId,
-      period: [1, 2, 3].includes(Number(parsed.period)) ? Number(parsed.period) : 1,
-      minute: Math.min(60, Math.max(1, Number(parsed.minute) || 1)),
-      history: parsed.history.filter(event => event && ["goal", "penalty"].includes(event.type))
-    };
+    const current = normalizeLoadedState(JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"));
+    if (current) return current;
+    const legacy = normalizeLoadedState(JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY) || "null"));
+    return legacy || defaultState();
   } catch {
     return defaultState();
   }
 }
 
 function saveState(state) {
-  if (typeof localStorage === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (typeof localStorage !== "undefined") localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 function rosterForTeam(team, opponent) {
   return team === "mighty" ? MIGHTY_ROSTER : opponent.roster;
 }
 
-function fillPlayerSelect(select, roster, selected = "") {
-  select.replaceChildren(new Option("Torschütze / Spieler noch unbekannt", ""));
-  const positions = ["Tor", "Verteidigung", "Sturm"];
-  for (const position of positions) {
+function fillPlayerSelect(select, roster, selected = "", placeholder = "Spieler noch unbekannt") {
+  select.replaceChildren(new Option(placeholder, ""));
+  for (const position of ["Tor", "Verteidigung", "Sturm"]) {
     const group = document.createElement("optgroup");
     group.label = position;
-    for (const player of roster.filter(item => item.position === position)) {
-      const option = new Option(playerText(player), player.name);
-      option.dataset.number = player.number;
-      group.append(option);
-    }
+    for (const player of roster.filter(item => item.position === position)) group.append(new Option(playerText(player), player.name));
     if (group.children.length) select.append(group);
   }
   select.value = selected;
 }
 
 function playerFromSelect(select, roster) {
-  if (!select.value) return null;
-  return roster.find(player => player.name === select.value) || null;
+  return select.value ? roster.find(player => player.name === select.value) || null : null;
 }
 
 function initialize() {
@@ -256,119 +344,132 @@ function initialize() {
 
   let state = loadState();
   let editingId = null;
-  const opponentSelect = document.querySelector("#opponentSelect");
-  const opponentScoreName = document.querySelector("#opponentScoreName");
-  const opponentGoalLabel = document.querySelector("#actionGoalOpponentLabel");
-  const mightyScore = document.querySelector("#mightyScore");
-  const opponentScore = document.querySelector("#opponentScore");
-  const minuteInput = document.querySelector("#gameMinute");
-  const goalFields = document.querySelector("#goalFields");
-  const penaltyFields = document.querySelector("#penaltyFields");
-  const goalPlayer = document.querySelector("#goalPlayer");
-  const goalPlayerLabel = document.querySelector("#goalPlayerLabel");
-  const goalStyleFields = document.querySelector("#goalStyleFields");
-  const penaltyRows = document.querySelector("#penaltyRows");
-  const output = document.querySelector("#tickerOutput");
-  const copyButton = document.querySelector("#copyButton");
-  const errorBox = document.querySelector("#formError");
-  const submitButton = document.querySelector("#submitButton");
-  const editingBanner = document.querySelector("#editingBanner");
-  const historyList = document.querySelector("#historyList");
-  const historyEmpty = document.querySelector("#historyEmpty");
+  const $ = selector => document.querySelector(selector);
+  const opponentSelect = $("#opponentSelect");
+  const minuteInput = $("#gameMinute");
+  const segmentLabel = $("#segmentLabel");
+  const mightyScore = $("#mightyScore");
+  const opponentScore = $("#opponentScore");
+  const opponentScoreName = $("#opponentScoreName");
+  const shootoutStatus = $("#shootoutStatus");
+  const goalFields = $("#goalFields");
+  const penaltyFields = $("#penaltyFields");
+  const shootoutFields = $("#shootoutFields");
+  const goalPlayer = $("#goalPlayer");
+  const assist1 = $("#assist1");
+  const assist2 = $("#assist2");
+  const goalPlayerLabel = $("#goalPlayerLabel");
+  const penaltyRows = $("#penaltyRows");
+  const shootoutTeam = $("#shootoutTeam");
+  const shootoutPlayer = $("#shootoutPlayer");
+  const output = $("#tickerOutput");
+  const errorBox = $("#formError");
+  const copyButton = $("#copyButton");
+  const submitButton = $("#submitButton");
+  const editingBanner = $("#editingBanner");
+  const historyList = $("#historyList");
+  const historyEmpty = $("#historyEmpty");
 
-  for (const opponent of Object.values(OPPONENTS)) opponentSelect.append(new Option(opponent.shortName, opponent.id));
+  Object.values(OPPONENTS).forEach(item => opponentSelect.append(new Option(item.shortName, item.id)));
   opponentSelect.value = state.opponentId;
   minuteInput.value = String(state.minute);
-  document.querySelector(`#period${state.period}`).checked = true;
 
   function opponent() { return OPPONENTS[state.opponentId]; }
   function selectedAction() { return new FormData(form).get("action"); }
   function selectedGoalTeam() { return selectedAction() === "GOAL_OPPONENT" ? "opponent" : "mighty"; }
-  function selectedPeriod() { return Number.parseInt(new FormData(form).get("period"), 10); }
   function selectedMinute() { return Number.parseInt(minuteInput.value, 10); }
+
+  function syncContext() {
+    const minute = Math.max(1, selectedMinute() || 1);
+    state.minute = minute;
+    minuteInput.value = String(minute);
+    segmentLabel.textContent = segmentForMinute(minute).label;
+    saveState(state);
+  }
 
   function syncScore() {
     const score = calculateScore(state.history);
     mightyScore.textContent = String(score.mighty);
     opponentScore.textContent = String(score.opponent);
     opponentScoreName.textContent = opponent().shortName;
-    opponentGoalLabel.innerHTML = `🥅 Tor<br>${opponent().shortName}`;
+    $("#actionGoalOpponentLabel").innerHTML = `🥅 Tor<br>${opponent().shortName}`;
+    const opponentShootoutOption = shootoutTeam.querySelector("option[value='opponent']");
+    if (opponentShootoutOption) opponentShootoutOption.textContent = opponent().shortName;
+    const shootout = calculateShootout(state.history);
+    const hasShootout = state.history.some(event => event.type === "shootout");
+    shootoutStatus.hidden = !hasShootout;
+    shootoutStatus.textContent = hasShootout ? `Penaltyschießen · Treffer ${shootout.mighty}:${shootout.opponent}` : "";
   }
 
-  function syncContext() {
-    state.period = selectedPeriod();
-    state.minute = Math.min(60, Math.max(1, selectedMinute() || 1));
-    minuteInput.value = String(state.minute);
-    saveState(state);
+  function syncGoalRoster() {
+    const team = selectedGoalTeam();
+    const roster = rosterForTeam(team, opponent());
+    goalPlayerLabel.textContent = team === "mighty" ? "Torschütze Mighty Dogs" : `Torschütze ${opponent().shortName}`;
+    const values = [goalPlayer.value, assist1.value, assist2.value];
+    fillPlayerSelect(goalPlayer, roster, values[0], "Torschütze noch unbekannt");
+    fillPlayerSelect(assist1, roster, values[1], "Kein / 1. Assist noch unbekannt");
+    fillPlayerSelect(assist2, roster, values[2], "Kein / 2. Assist noch unbekannt");
+  }
+
+  function syncShootoutRoster(selected = shootoutPlayer.value) {
+    fillPlayerSelect(shootoutPlayer, rosterForTeam(shootoutTeam.value, opponent()), selected, "Schütze noch unbekannt");
   }
 
   function syncActionFields() {
     const action = selectedAction();
-    const isPenalty = action === "PENALTY";
-    goalFields.hidden = isPenalty;
-    penaltyFields.hidden = !isPenalty;
-    if (!isPenalty) {
-      const team = selectedGoalTeam();
-      goalPlayerLabel.textContent = team === "mighty" ? "Torschütze Mighty Dogs" : `Torschütze ${opponent().shortName}`;
-      const currentValue = goalPlayer.value;
-      fillPlayerSelect(goalPlayer, rosterForTeam(team, opponent()), currentValue);
-      goalStyleFields.hidden = false;
-    }
+    goalFields.hidden = !["GOAL_MIGHTY", "GOAL_OPPONENT"].includes(action);
+    penaltyFields.hidden = action !== "PENALTY";
+    shootoutFields.hidden = action !== "SHOOTOUT";
+    if (!goalFields.hidden) syncGoalRoster();
+    if (!shootoutFields.hidden) syncShootoutRoster();
     errorBox.hidden = true;
-  }
-
-  function penaltyRowData(row) {
-    const team = row.querySelector("[data-field='team']").value;
-    const roster = rosterForTeam(team, opponent());
-    return {
-      team,
-      player: playerFromSelect(row.querySelector("[data-field='player']"), roster),
-      duration: row.querySelector("[data-field='duration']").value,
-      reason: row.querySelector("[data-field='reason']").value
-    };
   }
 
   function createPenaltyRow(initial = {}) {
     const row = document.createElement("div");
     row.className = "penalty-row";
-    row.innerHTML = `
-      <div class="penalty-row-head"><strong>Strafe</strong><button class="remove-penalty" type="button">Entfernen</button></div>
-      <div class="penalty-grid">
-        <div class="field"><label class="label">Team</label><select data-field="team"><option value="mighty">Mighty Dogs</option><option value="opponent">${opponent().shortName}</option></select></div>
-        <div class="field"><label class="label">Strafzeit</label><select data-field="duration"></select></div>
-        <div class="field wide"><label class="label">Spieler</label><select data-field="player"></select></div>
-        <div class="field wide"><label class="label">Strafgrund</label><select data-field="reason"></select></div>
-      </div>`;
-    const teamSelect = row.querySelector("[data-field='team']");
-    const durationSelect = row.querySelector("[data-field='duration']");
-    const reasonSelect = row.querySelector("[data-field='reason']");
-    const playerSelect = row.querySelector("[data-field='player']");
-    teamSelect.value = initial.team || "mighty";
-    for (const value of PENALTY_DURATIONS) durationSelect.append(new Option(`${value} Min.`, value));
-    durationSelect.value = initial.duration || "2";
-    for (const reason of PENALTY_REASONS) reasonSelect.append(new Option(reason, reason));
-    reasonSelect.value = initial.reason || PENALTY_REASONS[0];
-    fillPlayerSelect(playerSelect, rosterForTeam(teamSelect.value, opponent()), initial.player?.name || "");
-    teamSelect.addEventListener("change", () => fillPlayerSelect(playerSelect, rosterForTeam(teamSelect.value, opponent())));
-    row.querySelector(".remove-penalty").addEventListener("click", () => {
-      if (penaltyRows.children.length > 1) row.remove();
-    });
+    row.innerHTML = `<div class="penalty-row-head"><strong>Strafe</strong><button class="remove-penalty" type="button">Entfernen</button></div><div class="penalty-grid"><div class="field"><label class="label">Team</label><select data-field="team"><option value="mighty">Mighty Dogs</option><option value="opponent">${opponent().shortName}</option></select></div><div class="field"><label class="label">Strafzeit</label><select data-field="duration"></select></div><div class="field wide"><label class="label">Spieler</label><select data-field="player"></select></div><div class="field wide"><label class="label">Strafgrund</label><select data-field="reason"></select></div></div>`;
+    const team = row.querySelector("[data-field='team']");
+    const duration = row.querySelector("[data-field='duration']");
+    const player = row.querySelector("[data-field='player']");
+    const reason = row.querySelector("[data-field='reason']");
+    team.value = initial.team || "mighty";
+    PENALTY_DURATIONS.forEach(value => duration.append(new Option(`${value} Min.`, value)));
+    duration.value = initial.duration || "2";
+    PENALTY_REASONS.forEach(value => reason.append(new Option(value, value)));
+    reason.value = initial.reason || PENALTY_REASONS[0];
+    fillPlayerSelect(player, rosterForTeam(team.value, opponent()), initial.player?.name || "");
+    team.addEventListener("change", () => fillPlayerSelect(player, rosterForTeam(team.value, opponent())));
+    row.querySelector(".remove-penalty").addEventListener("click", () => { if (penaltyRows.children.length > 1) row.remove(); });
     penaltyRows.append(row);
   }
 
-  function ensurePenaltyRow() {
-    if (!penaltyRows.children.length) createPenaltyRow();
+  function ensurePenaltyRow() { if (!penaltyRows.children.length) createPenaltyRow(); }
+
+  function penaltyRowData(row) {
+    const team = row.querySelector("[data-field='team']").value;
+    return {
+      team,
+      duration: row.querySelector("[data-field='duration']").value,
+      reason: row.querySelector("[data-field='reason']").value,
+      player: playerFromSelect(row.querySelector("[data-field='player']"), rosterForTeam(team, opponent()))
+    };
   }
 
   function historyTitle(event) {
     if (event.type === "goal") return `${event.minute}' Tor ${teamName(event.team, opponent())}`;
+    if (event.type === "shootout") return `Penalty ${teamName(event.team, opponent())} · ${event.result === "scored" ? "verwandelt" : "vergeben"}`;
     const teams = [...new Set(event.penalties.map(item => teamName(item.team, opponent())))].join(" + ");
     return `${event.minute}' Strafe(n) ${teams}`;
   }
 
   function historyDetail(event) {
-    if (event.type === "goal") return `${event.period}. Drittel · ${goalPlayerLine(event)}`;
-    return `${event.period}. Drittel · ${event.penalties.map(item => `${item.duration} min ${item.reason}`).join(" · ")}`;
+    if (event.type === "goal") {
+      const assists = assistLine(event);
+      return `${eventSegment(event).label} · ${goalPlayerLine(event)}${assists ? ` · ${assists}` : ""}`;
+    }
+    if (event.type === "shootout") return event.player ? playerText(event.player) : "Schütze offen";
+    return `${eventSegment(event).label} · ${event.penalties.map(item => `${item.duration} min ${item.reason}`).join(" · ")}`;
   }
 
   function renderHistory() {
@@ -388,8 +489,6 @@ function initialize() {
     output.value = text;
     copyButton.dataset.copied = "false";
     copyButton.textContent = "Kopieren";
-    output.focus();
-    output.setSelectionRange(output.value.length, output.value.length);
   }
 
   function cancelEdit() {
@@ -407,34 +506,46 @@ function initialize() {
     editingId = id;
     editingBanner.hidden = false;
     submitButton.textContent = "Änderung speichern & Text erstellen";
-    document.querySelector(`#period${event.period}`).checked = true;
-    minuteInput.value = String(event.minute);
+    if (event.type !== "shootout") minuteInput.value = String(event.minute);
     if (event.type === "goal") {
-      document.querySelector(event.team === "mighty" ? "#actionGoalMighty" : "#actionGoalOpponent").checked = true;
+      $(event.team === "mighty" ? "#actionGoalMighty" : "#actionGoalOpponent").checked = true;
       syncActionFields();
-      fillPlayerSelect(goalPlayer, rosterForTeam(event.team, opponent()), event.player?.name || "");
-      const style = document.querySelector(`input[name='goalStyle'][value='${event.style || "classic"}']`);
+      const roster = rosterForTeam(event.team, opponent());
+      fillPlayerSelect(goalPlayer, roster, event.player?.name || "", "Torschütze noch unbekannt");
+      fillPlayerSelect(assist1, roster, event.assists?.[0]?.name || "", "Kein / 1. Assist noch unbekannt");
+      fillPlayerSelect(assist2, roster, event.assists?.[1]?.name || "", "Kein / 2. Assist noch unbekannt");
+      const style = $(`input[name='goalStyle'][value='${event.style || "classic"}']`);
       if (style) style.checked = true;
-    } else {
-      document.querySelector("#actionPenalty").checked = true;
+    } else if (event.type === "penalty") {
+      $("#actionPenalty").checked = true;
       syncActionFields();
       penaltyRows.replaceChildren();
       event.penalties.forEach(createPenaltyRow);
+    } else {
+      $("#actionShootout").checked = true;
+      syncActionFields();
+      shootoutTeam.value = event.team;
+      syncShootoutRoster(event.player?.name || "");
+      const result = $(`input[name='shootoutResult'][value='${event.result}']`);
+      if (result) result.checked = true;
     }
+    syncContext();
     window.scrollTo({ top: form.offsetTop - 10, behavior: "smooth" });
   }
 
-  function validateContext() {
+  function validateMinute() {
     const minute = selectedMinute();
-    const period = selectedPeriod();
-    if (!Number.isInteger(minute) || minute < 1 || minute > 60) throw new Error("Bitte eine Spielminute zwischen 1 und 60 eingeben.");
-    if (![1, 2, 3].includes(period)) throw new Error("Bitte das Drittel auswählen.");
-    return { minute, period };
+    if (!Number.isInteger(minute) || minute < 1) throw new Error("Bitte eine gültige Spielminute ab 1 eingeben.");
+    return minute;
+  }
+
+  function validateGoalPeople(player, assists) {
+    const names = [player, ...assists].filter(Boolean).map(item => item.name);
+    if (new Set(names).size !== names.length) throw new Error("Torschütze und Assists müssen unterschiedliche Spieler sein.");
   }
 
   form.addEventListener("change", event => {
     if (event.target.name === "action") syncActionFields();
-    if (event.target.name === "period") syncContext();
   });
   minuteInput.addEventListener("change", syncContext);
   opponentSelect.addEventListener("change", () => {
@@ -442,54 +553,65 @@ function initialize() {
     saveState(state);
     syncScore();
     syncActionFields();
-    for (const row of penaltyRows.children) {
+    [...penaltyRows.children].forEach(row => {
       const team = row.querySelector("[data-field='team']").value;
-      fillPlayerSelect(row.querySelector("[data-field='player']"), rosterForTeam(team, opponent()));
       row.querySelector("[data-field='team'] option[value='opponent']").textContent = opponent().shortName;
-    }
+      fillPlayerSelect(row.querySelector("[data-field='player']"), rosterForTeam(team, opponent()));
+    });
   });
+  shootoutTeam.addEventListener("change", () => syncShootoutRoster(""));
 
-  for (const button of document.querySelectorAll("[data-minute-step]")) {
+  document.querySelectorAll("[data-minute-step]").forEach(button => {
     button.addEventListener("click", () => {
-      const current = Number.parseInt(minuteInput.value, 10) || 1;
-      const step = Number.parseInt(button.dataset.minuteStep, 10);
-      minuteInput.value = String(Math.min(60, Math.max(1, current + step)));
+      minuteInput.value = String(Math.max(1, (selectedMinute() || 1) + Number.parseInt(button.dataset.minuteStep, 10)));
       syncContext();
     });
-  }
+  });
 
-  document.querySelector("#addPenalty").addEventListener("click", () => createPenaltyRow());
-  document.querySelector("#cancelEdit").addEventListener("click", cancelEdit);
+  $("#addPenalty").addEventListener("click", () => createPenaltyRow());
+  $("#cancelEdit").addEventListener("click", cancelEdit);
 
   form.addEventListener("submit", event => {
     event.preventDefault();
     errorBox.hidden = true;
     try {
-      const { minute, period } = validateContext();
       const action = selectedAction();
       let tickerEvent;
-      if (action === "PENALTY") {
-        const penalties = [...penaltyRows.children].map(penaltyRowData);
-        if (!penalties.length) throw new Error("Bitte mindestens eine Strafe erfassen.");
-        tickerEvent = { id: editingId || uid(), type: "penalty", minute, period, penalties };
-      } else {
-        const team = selectedGoalTeam();
+      if (action === "SHOOTOUT") {
+        const team = shootoutTeam.value;
         const roster = rosterForTeam(team, opponent());
         tickerEvent = {
-          id: editingId || uid(), type: "goal", team, minute, period,
-          player: playerFromSelect(goalPlayer, roster),
-          style: new FormData(form).get("goalStyle") || "classic"
+          id: editingId || uid(), type: "shootout", team,
+          player: playerFromSelect(shootoutPlayer, roster),
+          result: new FormData(form).get("shootoutResult") || "scored"
         };
+      } else {
+        const minute = validateMinute();
+        if (action === "PENALTY") {
+          const penalties = [...penaltyRows.children].map(penaltyRowData);
+          if (!penalties.length) throw new Error("Bitte mindestens eine Strafe erfassen.");
+          tickerEvent = { id: editingId || uid(), type: "penalty", minute, penalties };
+        } else {
+          const team = selectedGoalTeam();
+          const roster = rosterForTeam(team, opponent());
+          const player = playerFromSelect(goalPlayer, roster);
+          const assists = [playerFromSelect(assist1, roster), playerFromSelect(assist2, roster)].filter(Boolean);
+          validateGoalPeople(player, assists);
+          tickerEvent = {
+            id: editingId || uid(), type: "goal", team, minute, player, assists,
+            style: new FormData(form).get("goalStyle") || "classic"
+          };
+        }
       }
-      const existingIndex = editingId ? state.history.findIndex(item => item.id === editingId) : -1;
-      if (existingIndex >= 0) state.history.splice(existingIndex, 1, tickerEvent);
+      const index = editingId ? state.history.findIndex(item => item.id === editingId) : -1;
+      if (index >= 0) state.history.splice(index, 1, tickerEvent);
       else state.history.push(tickerEvent);
-      state.period = period;
-      state.minute = minute;
+      if (tickerEvent.type !== "shootout") state.minute = tickerEvent.minute;
       saveState(state);
       renderHistory();
       setOutput(formatEventText(tickerEvent, state.history, opponent()));
       cancelEdit();
+      syncContext();
     } catch (error) {
       errorBox.textContent = error.message || "Aktion konnte nicht gespeichert werden.";
       errorBox.hidden = false;
@@ -510,37 +632,38 @@ function initialize() {
     }
   });
 
-  document.querySelector("#periodSummaryButton").addEventListener("click", () => {
-    try { setOutput(formatPeriodSummary(state.history, selectedPeriod(), opponent())); }
+  $("#periodSummaryButton").addEventListener("click", () => {
+    try { setOutput(formatSegmentSummary(state.history, segmentForMinute(selectedMinute()).key, opponent())); }
     catch (error) { errorBox.textContent = error.message; errorBox.hidden = false; }
   });
-  document.querySelector("#finalSummaryButton").addEventListener("click", () => setOutput(formatFinalSummary(state.history, opponent())));
+  $("#finalSummaryButton").addEventListener("click", () => setOutput(formatFinalSummary(state.history, opponent())));
 
   copyButton.addEventListener("click", async () => {
     if (!output.value.trim()) { errorBox.textContent = "Bitte zuerst einen Text erstellen."; errorBox.hidden = false; return; }
     try { await navigator.clipboard.writeText(output.value); }
-    catch { output.focus(); output.select(); document.execCommand("copy"); output.setSelectionRange(output.value.length, output.value.length); }
+    catch { output.focus(); output.select(); document.execCommand("copy"); }
     copyButton.dataset.copied = "true";
     copyButton.textContent = "Kopiert ✓";
     errorBox.hidden = true;
   });
 
-  document.querySelector("#resetGame").addEventListener("click", () => {
+  $("#resetGame").addEventListener("click", () => {
     if (!window.confirm("Alle lokal gespeicherten Testaktionen und den Spielstand zurücksetzen?")) return;
     state = defaultState();
     editingId = null;
     saveState(state);
     opponentSelect.value = state.opponentId;
     minuteInput.value = "1";
-    document.querySelector("#period1").checked = true;
     output.value = "";
     penaltyRows.replaceChildren();
     ensurePenaltyRow();
     cancelEdit();
+    syncContext();
     renderHistory();
   });
 
   ensurePenaltyRow();
+  syncContext();
   syncScore();
   syncActionFields();
   renderHistory();
