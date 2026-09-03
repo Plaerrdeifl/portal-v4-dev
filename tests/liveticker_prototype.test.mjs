@@ -5,11 +5,13 @@ import test from "node:test";
 
 import {
   ERFURT_ROSTER,
+  GOAL_POSITION_ORDER,
   MIGHTY_ROSTER,
   OPPONENTS,
   PENALTY_DURATIONS,
+  PENALTY_POSITION_ORDER,
   PENALTY_REASONS
-} from "../js/liveticker-prototype.js";
+} from "../js/liveticker-prototype-v4.js";
 
 const root = resolve(import.meta.dirname, "..");
 const read = path => readFile(join(root, path), "utf8");
@@ -22,7 +24,7 @@ test("public Liveticker prototype stays isolated and ships in the static build",
   assert.match(html, /default-src 'self'/);
   assert.match(html, /connect-src 'none'/);
   assert.match(html, /Keine Anmeldung · nur lokal auf diesem Gerät gespeichert · keine Datenübertragung/);
-  assert.match(html, /type="module" src="\.\.\/js\/liveticker-prototype\.js"/);
+  assert.match(html, /type="module" src="\.\.\/js\/liveticker-prototype-v4\.js\?v=20260903-1"/);
   assert.doesNotMatch(html, /supabase|auth-gate|runtime-config/i);
   assert.match(build, /"liveticker"/);
 });
@@ -36,8 +38,12 @@ test("manual period controls are gone and minute driven status is visible", asyn
   assert.doesNotMatch(html, /max="60"/);
 });
 
-test("goal editor exposes two optional assists and shootout as a separate action", async () => {
+test("goal editor exposes two optional assists, shootout and inline jersey inputs", async () => {
   const html = await read("liveticker/index.html");
+  for (const id of ["goalNumber", "assist1Number", "assist2Number", "shootoutNumber"]) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(html, /class="player-entry"/);
   assert.match(html, /id="assist1"/);
   assert.match(html, /id="assist2"/);
   assert.match(html, /id="actionShootout" name="action" type="radio" value="SHOOTOUT"/);
@@ -45,7 +51,12 @@ test("goal editor exposes two optional assists and shootout as a separate action
   assert.match(html, /id="shootoutMissed"/);
 });
 
-test("2026/27 Mighty Dogs roster remains complete and grouped", () => {
+test("player ordering is context specific", () => {
+  assert.deepEqual([...GOAL_POSITION_ORDER], ["Sturm", "Verteidigung", "Tor"]);
+  assert.deepEqual([...PENALTY_POSITION_ORDER], ["Verteidigung", "Sturm", "Tor"]);
+});
+
+test("2026/27 Mighty Dogs roster remains complete", () => {
   assert.equal(MIGHTY_ROSTER.length, 18);
   assert.deepEqual(
     [...new Set(MIGHTY_ROSTER.map(player => player.position))],
