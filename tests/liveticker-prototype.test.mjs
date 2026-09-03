@@ -1,17 +1,22 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  GOAL_POSITION_ORDER,
+  MIGHTY_ROSTER,
   OPPONENTS,
+  PENALTY_POSITION_ORDER,
   calculateOfficialFinalScore,
   calculateScore,
   calculateShootout,
+  findPlayerByNumber,
   formatFinalSummary,
   formatGoalText,
   formatSegmentSummary,
   isMajorPenalty,
+  normalizeJerseyNumber,
   parsePenaltyDuration,
   segmentForMinute
-} from "../js/liveticker-prototype.js";
+} from "../js/liveticker-prototype-v4.js";
 
 const opponent = OPPONENTS.erfurt;
 const melchior = { number: "84", name: "Nils Melchior", position: "Sturm" };
@@ -32,6 +37,18 @@ test("game segment is derived only from the minute", () => {
   assert.equal(segmentForMinute(60).key, "P3");
   assert.equal(segmentForMinute(61).key, "OT");
   assert.equal(segmentForMinute(75).key, "OT");
+});
+
+test("player contexts use the intended practical roster order", () => {
+  assert.deepEqual([...GOAL_POSITION_ORDER], ["Sturm", "Verteidigung", "Tor"]);
+  assert.deepEqual([...PENALTY_POSITION_ORDER], ["Verteidigung", "Sturm", "Tor"]);
+});
+
+test("jersey number lookup accepts plain and hash-prefixed numbers", () => {
+  assert.equal(normalizeJerseyNumber(" #84 "), "84");
+  assert.equal(findPlayerByNumber(MIGHTY_ROSTER, "84")?.name, "Nils Melchior");
+  assert.equal(findPlayerByNumber(MIGHTY_ROSTER, "#10")?.name, "Kevin Heckenberger");
+  assert.equal(findPlayerByNumber(MIGHTY_ROSTER, "999"), null);
 });
 
 test("calculateScore ignores shootout attempts", () => {
@@ -71,6 +88,17 @@ test("goal text supports scorer plus two assists", () => {
   assert.match(text, /\*1:0\*/);
 });
 
+test("unknown scorer is omitted from generated goal text", () => {
+  const mightyHistory = [goal("g1", "mighty", 18, null)];
+  const mightyText = formatGoalText(mightyHistory[0], mightyHistory, opponent);
+  assert.doesNotMatch(mightyText, /Torschütze noch offen|Torschütze:/);
+
+  const opponentHistory = [goal("g2", "opponent", 29, null, [], "short")];
+  const opponentText = formatGoalText(opponentHistory[0], opponentHistory, opponent);
+  assert.match(opponentText, /Tor Erfurt/);
+  assert.doesNotMatch(opponentText, /Torschütze noch offen/);
+});
+
 test("period summary contains only goals and scorers from the derived segment", () => {
   const history = [
     goal("g1", "mighty", 8, melchior, [heckenberger]),
@@ -84,6 +112,13 @@ test("period summary contains only goals and scorers from the derived segment", 
   assert.doesNotMatch(text, /Kevin Heckenberger/);
   assert.doesNotMatch(text, /25 Spielminute/);
   assert.doesNotMatch(text, /Halten/);
+});
+
+test("unknown scorer summary keeps only the minute", () => {
+  const history = [goal("g1", "opponent", 12, null)];
+  const text = formatSegmentSummary(history, "P1", opponent);
+  assert.match(text, /12 Spielminute/);
+  assert.doesNotMatch(text, /Torschütze noch offen/);
 });
 
 test("final summary includes goals, penalties, large penalty highlighting and shootout result", () => {
