@@ -43,6 +43,9 @@ function patchPenaltyRows(storedEvent = null) {
     replaceReasonOptions(row.querySelector("[data-field='reason']"), stored?.reason || "");
   });
 }
+function patchPenaltyRowsAfterCore(storedEvent = null) {
+  queueMicrotask(() => patchPenaltyRows(storedEvent));
+}
 function swapScorePairs(text) { return text.replace(/\*(\d+):(\d+)\*/g, (_, left, right) => `*${right}:${left}*`); }
 function swapFinalHeadline(text, opponentName) {
   const escaped = opponentName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -91,13 +94,28 @@ function initializeEnhancements() {
   const quick = document.createElement("button"); quick.type = "button"; quick.className = "shootout-quick"; quick.textContent = "🏒 Penaltyschießen"; minuteField?.append(quick);
   if (shootoutLabel) shootoutLabel.hidden = true;
   quick.addEventListener("click", () => { actionShootout.checked = true; actionShootout.dispatchEvent(new Event("change", { bubbles: true })); document.querySelector("#shootoutFields")?.scrollIntoView({ behavior: "smooth", block: "nearest" }); });
+
   patchPenaltyRows();
-  document.querySelector("#addPenalty")?.addEventListener("click", () => patchPenaltyRows());
+  form.addEventListener("change", event => {
+    if (event.target?.name === "action") patchPenaltyRowsAfterCore();
+  });
+  form.addEventListener("click", event => {
+    if (event.target?.closest?.("#addPenalty, #cancelEdit")) patchPenaltyRowsAfterCore();
+  });
+  document.querySelector("#resetGame")?.addEventListener("click", () => patchPenaltyRowsAfterCore());
+
   let pendingEditId = null;
   const historyList = document.querySelector("#historyList");
   historyList?.addEventListener("click", event => { pendingEditId = event.target?.dataset?.edit || null; }, true);
-  historyList?.addEventListener("click", () => { if (pendingEditId) patchPenaltyRows(loadStoredEvent(pendingEditId)); pendingEditId = null; });
-  form.addEventListener("submit", () => { output.value = applyVenueToOutput(output.value, venue, opponentSelect.options[opponentSelect.selectedIndex]?.text || "Gegner"); });
+  historyList?.addEventListener("click", () => {
+    if (pendingEditId) patchPenaltyRowsAfterCore(loadStoredEvent(pendingEditId));
+    pendingEditId = null;
+  });
+
+  form.addEventListener("submit", () => {
+    patchPenaltyRowsAfterCore();
+    output.value = applyVenueToOutput(output.value, venue, opponentSelect.options[opponentSelect.selectedIndex]?.text || "Gegner");
+  });
   document.querySelector("#periodSummaryButton")?.addEventListener("click", () => { output.value = applyVenueToOutput(output.value, venue, opponentSelect.options[opponentSelect.selectedIndex]?.text || "Gegner"); });
   document.querySelector("#finalSummaryButton")?.addEventListener("click", () => { output.value = applyVenueToOutput(output.value, venue, opponentSelect.options[opponentSelect.selectedIndex]?.text || "Gegner"); });
 }
