@@ -10,6 +10,7 @@ let syncing = false;
 let applyingRemote = false;
 let pendingLocalState = null;
 let pollTimer = null;
+let completing = false;
 
 function runtimeConfig() {
   const value = window.PD_RUNTIME_CONFIG || {};
@@ -74,7 +75,8 @@ function normalizeState(raw) {
     eventId: raw?.eventId || raw?.event_id || "",
     revision: Number(raw?.revision || 0),
     minute: Math.max(1, Number(raw?.minute || 1)),
-    history: Array.isArray(raw?.history) ? raw.history : []
+    history: Array.isArray(raw?.history) ? raw.history : [],
+    completedAt: raw?.completedAt || raw?.completed_at || null
   };
 }
 
@@ -97,7 +99,7 @@ function applyRemoteState(raw) {
   } finally {
     applyingRemote = false;
   }
-  renderSyncStatus("Gespeichert", "success");
+  renderSyncStatus(next.completedAt ? "Abgeschlossen · archiviert" : "Gespeichert", "success");
 }
 
 function historyMap(history) {
@@ -182,6 +184,37 @@ async function syncLocalState(localState) {
   }
 }
 
+async function completeSelectedGame() {
+  if (!selectedGame || !serverState || completing) return;
+  completing = true;
+  renderSyncStatus("Schließt ab …", "pending");
+  try {
+    let result;
+    try {
+      result = await rpc("pd_public_liveticker_complete", {
+        p_event_id: selectedGame.eventId,
+        p_expected_revision: serverState.revision,
+        p_client_id: clientId()
+      });
+    } catch (error) {
+      if (error.code !== "40001") throw error;
+      const fresh = await rpc("pd_public_liveticker_state", { p_event_id: selectedGame.eventId });
+      serverState = normalizeState(fresh);
+      result = await rpc("pd_public_liveticker_complete", {
+        p_event_id: selectedGame.eventId,
+        p_expected_revision: serverState.revision,
+        p_client_id: clientId()
+      });
+    }
+    applyRemoteState(result);
+  } catch (error) {
+    console.error(error);
+    renderSyncStatus("Abschluss nicht gespeichert", "error");
+  } finally {
+    completing = false;
+  }
+}
+
 function readEngineState() {
   try {
     const parsed = JSON.parse(localStorage.getItem(STATE_KEY) || "null");
@@ -235,7 +268,7 @@ async function loadSelectedGame(game) {
 }
 
 async function poll() {
-  if (!selectedGame || syncing || pendingLocalState || document.hidden) return;
+  if (!selectedGame || syncing || completing || pendingLocalState || document.hidden) return;
   try {
     const fresh = await rpc("pd_public_liveticker_state", { p_event_id: selectedGame.eventId });
     const normalized = normalizeState(fresh);
@@ -266,6 +299,11 @@ export async function prepareLivetickerGameStorage() {
   window.addEventListener("pd-liveticker-state-saved", event => {
     const localState = event.detail?.state || readEngineState();
     if (localState) queueMicrotask(() => syncLocalState(localState));
+  });
+
+  document.addEventListener("click", event => {
+    if (!event.target?.closest?.("#finalSummaryButton")) return;
+    queueMicrotask(() => completeSelectedGame());
   });
 
   gameSelect?.addEventListener("change", async () => {
