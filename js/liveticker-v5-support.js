@@ -1,18 +1,18 @@
-export const BEV_PENALTY_DURATIONS = Object.freeze(["2", "2+2", "5", "10", "20", "25", "2+10", "2+20", "5+10", "5+20", "2+5", "2+5+20"]);
+export const BEV_PENALTY_DURATIONS = Object.freeze(["2", "2+2", "5", "10", "2+10", "5+10", "20", "2+20", "5+20", "25", "2+5", "2+5+20"]);
 
 export const PENALTY_DURATION_LABELS = Object.freeze({
   "2": "2 Min.",
-  "2+2": "2+2 Min.",
+  "2+2": "2 + 2 Min.",
   "5": "5 Min.",
-  "10": "10 Min. Disziplinarstrafe",
-  "20": "Spieldauer",
+  "10": "10 Min. Diszi",
+  "2+10": "2 + Diszi",
+  "5+10": "5 + Diszi",
+  "20": "SD",
+  "2+20": "2 + SD",
+  "5+20": "5 + SD",
   "25": "Matchstrafe",
-  "2+10": "2 Min. + 10 Min. Disziplinarstrafe",
-  "2+20": "2 Min. + Spieldauer",
-  "5+10": "5 Min. + 10 Min. Disziplinarstrafe",
-  "5+20": "5 Min. + Spieldauer",
-  "2+5": "2 Min. + 5 Min.",
-  "2+5+20": "2 Min. + 5 Min. + Spieldauer"
+  "2+5": "2 + 5 Min.",
+  "2+5+20": "2 + 5 + SD"
 });
 
 export const BEV_PENALTY_REASONS = Object.freeze([
@@ -95,7 +95,7 @@ function appendOptionGroup(select, label, values, makeLabel) {
 function populateDurationOptions(select, reason, selected = "") {
   if (!select) return;
   const recommendation = penaltyRecommendation(reason);
-  const recommended = recommendation.recommendedDurations.filter(value => BEV_PENALTY_DURATIONS.includes(value));
+  const recommended = BEV_PENALTY_DURATIONS.filter(value => recommendation.recommendedDurations.includes(value));
   const others = BEV_PENALTY_DURATIONS.filter(value => !recommended.includes(value));
   const previous = selected || select.value || recommendation.defaultDuration;
   select.replaceChildren();
