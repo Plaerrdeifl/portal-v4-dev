@@ -27,7 +27,7 @@ test("existing team-function editor can assign Liveticker selectively", async ()
 });
 
 test("DEV standalone Liveticker stays outside the portal auth gate", async () => {
-  const prototype = await read("pages/liveticker/index.html");
+  const prototype = await read("liveticker/index.html");
   assert.match(prototype, /liveticker-prototype-v4\.js/);
   assert.doesNotMatch(prototype, /Google|supabase|pd_api|Anmeldung erforderlich/i);
 });
