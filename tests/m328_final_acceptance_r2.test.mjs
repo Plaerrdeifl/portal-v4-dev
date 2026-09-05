@@ -9,7 +9,9 @@ const iosLoader = read("../js/m328-trip-edit-ios-fields.js");
 test("M328 final acceptance keeps ride workspaces inside the selected ride", () => {
   assert.match(acceptance, /const CHILD_VIEWS = new Set\(\["bookings", "participants", "occupancy", "operations", "trip-edit"\]\)/);
   assert.match(acceptance, /view: "trip-detail", trip:/);
-  assert.match(acceptance, /button\.textContent = "← Fahrt"/);
+  assert.match(acceptance, /duplicateReturn \? "← Prüfung" : "← Fahrt"/);
+  assert.match(acceptance, /location\.hash = duplicateReviewRoute\(route\.tripId, route\.reviewA, route\.reviewB\)/);
+  assert.match(acceptance, /location\.hash = tripDetailRoute\(route\.tripId\)/);
   assert.match(acceptance, /stopImmediatePropagation\(\)/);
 });
 

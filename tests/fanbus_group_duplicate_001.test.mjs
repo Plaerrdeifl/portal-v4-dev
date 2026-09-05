@@ -9,6 +9,7 @@ import {
 
 const read = path => fs.readFileSync(new URL(path, import.meta.url), "utf8");
 const ui = read("../js/m328-fanbus-operational-integrity.js");
+const finalAcceptance = read("../js/m328-final-acceptance.js");
 const migration = read("../supabase/migrations/20260905123213_fanbus_group_duplicate_review_r1.sql");
 
 function context(rows, bookingId = "b") {
@@ -103,12 +104,20 @@ test("DUPLICATE-001 review rendering is idempotent under the global MutationObse
   assert.doesNotMatch(ui, /function renderDuplicateReview[\s\S]*?\{\s*document\.querySelector\("\[data-m328-duplicate-review-panel\]"\)\?\.remove\(\);/);
 });
 
-test("DUPLICATE-001 review opens the actual booking overview entry", () => {
-  assert.match(ui, /function bookingsRoute\(tripId\)/);
-  assert.match(ui, /let pendingBookingId = "";/);
-  assert.match(ui, /location\.hash = bookingsRoute\(route\.tripId\)/);
-  assert.match(ui, /data-m328-open-booking/);
+test("DUPLICATE-001 review opens exactly one booking overview entry", () => {
+  assert.match(ui, /function bookingsRoute\(tripId, bookingId, candidate\)/);
+  assert.match(ui, /focusBooking: String\(bookingId \|\| ""\)/);
+  assert.match(ui, /from: "duplicate-review"/);
+  assert.match(ui, /document\.querySelectorAll\("\.m328-booking-card\[data-booking-card\]"\)\.forEach\(other => \{\s*other\.open = false;/s);
   assert.match(ui, /card\.open = true/);
   assert.match(ui, /card\.scrollIntoView\(\{ behavior: "smooth", block: "center" \}\)/);
-  assert.doesNotMatch(ui, /function openParticipant\(/);
+});
+
+test("DUPLICATE-001 booking back returns to the same review instead of trip detail", () => {
+  assert.match(finalAcceptance, /function duplicateReviewRoute\(tripId, reviewA, reviewB\)/);
+  assert.match(finalAcceptance, /route\.view === "bookings"\s*&& route\.from === "duplicate-review"/s);
+  assert.match(finalAcceptance, /location\.hash = duplicateReviewRoute\(route\.tripId, route\.reviewA, route\.reviewB\)/);
+  assert.match(finalAcceptance, /← Prüfung/);
+  assert.match(ui, /function restoreRequestedDuplicateReview\(route, data, registrations\)/);
+  assert.match(ui, /queueMicrotask\(\(\) => openDuplicateReview\(candidate, registrations\)\)/);
 });

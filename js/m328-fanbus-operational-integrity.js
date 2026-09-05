@@ -22,16 +22,35 @@ let syncKey = "";
 let syncPromise = null;
 let lastData = null;
 let scheduled = false;
-let pendingBookingId = "";
+let focusedBookingKey = "";
+let openedReviewKey = "";
 
 function routeState() {
   const [path, query = ""] = String(location.hash || "").split("?", 2);
   const params = new URLSearchParams(query);
-  return { path, view: params.get("view") || "", tripId: params.get("trip") || "" };
+  return {
+    path,
+    view: params.get("view") || "",
+    tripId: params.get("trip") || "",
+    focusBooking: params.get("focusBooking") || "",
+    from: params.get("from") || "",
+    review: params.get("review") || "",
+    reviewA: params.get("reviewA") || "",
+    reviewB: params.get("reviewB") || ""
+  };
 }
 
-function bookingsRoute(tripId) {
-  return `#/bus-orga?${new URLSearchParams({ view: "bookings", trip: String(tripId || "") })}`;
+function bookingsRoute(tripId, bookingId, candidate) {
+  const [reviewA = "", reviewB = ""] = pairIds(candidate);
+  const params = new URLSearchParams({
+    view: "bookings",
+    trip: String(tripId || ""),
+    focusBooking: String(bookingId || ""),
+    from: "duplicate-review",
+    reviewA,
+    reviewB
+  });
+  return `#/bus-orga?${params}`;
 }
 
 function ensureStyle() {
@@ -130,15 +149,21 @@ function applyBookingGroups(registrations) {
   }
 }
 
-function revealPendingBooking() {
-  if (!pendingBookingId) return;
-  const card = document.querySelector(`.m328-booking-card[data-booking-card="${CSS.escape(pendingBookingId)}"]`);
+function revealFocusedBooking(route) {
+  const bookingId = String(route.focusBooking || "");
+  if (!bookingId) return;
+  const key = `${route.tripId}:${bookingId}`;
+  if (focusedBookingKey === key) return;
+  const card = document.querySelector(`.m328-booking-card[data-booking-card="${CSS.escape(bookingId)}"]`);
   if (!card) return;
+  document.querySelectorAll(".m328-booking-card[data-booking-card]").forEach(other => {
+    other.open = false;
+  });
   card.open = true;
   card.scrollIntoView({ behavior: "smooth", block: "center" });
   const summary = card.querySelector("summary");
   requestAnimationFrame(() => summary?.focus({ preventScroll: true }));
-  pendingBookingId = "";
+  focusedBookingKey = key;
 }
 
 function duplicateCard(registration) {
@@ -152,16 +177,15 @@ function duplicateCard(registration) {
   </dl></article>`;
 }
 
-function openBooking(bookingId) {
+function openBooking(bookingId, candidate) {
   const route = routeState();
   const targetBookingId = String(bookingId || "");
   if (!route.tripId || !targetBookingId) {
     showToast("Die Buchung konnte nicht geöffnet werden.", "error", 5200);
     return;
   }
-  pendingBookingId = targetBookingId;
   closeAllDialogs();
-  location.hash = bookingsRoute(route.tripId);
+  location.hash = bookingsRoute(route.tripId, targetBookingId, candidate);
 }
 
 function openDuplicateReview(candidate, registrations) {
@@ -186,7 +210,7 @@ function openDuplicateReview(candidate, registrations) {
       <button class="button primary" type="button" data-m328-not-duplicate>Kein Duplikat – als geprüft markieren</button></div>`
   });
 
-  dialog.querySelectorAll("[data-m328-open-booking]").forEach(button => button.addEventListener("click", () => openBooking(button.dataset.m328OpenBooking)));
+  dialog.querySelectorAll("[data-m328-open-booking]").forEach(button => button.addEventListener("click", () => openBooking(button.dataset.m328OpenBooking, candidate)));
   dialog.querySelector("[data-m328-not-duplicate]")?.addEventListener("click", async event => {
     const button = event.currentTarget;
     button.disabled = true;
@@ -269,14 +293,27 @@ function renderDuplicateReview(data, registrations) {
   target.before(panel);
 }
 
+function restoreRequestedDuplicateReview(route, data, registrations) {
+  if (route.review !== "duplicate-review" || !route.reviewA || !route.reviewB) return;
+  const requestedPair = [route.reviewA, route.reviewB].sort().join(":");
+  const key = `${route.tripId}:${requestedPair}`;
+  if (openedReviewKey === key) return;
+  const candidates = Array.isArray(data?.duplicateCandidates) ? data.duplicateCandidates : [];
+  const candidate = candidates.find(item => pairIds(item).sort().join(":") === requestedPair);
+  if (!candidate) return;
+  openedReviewKey = key;
+  queueMicrotask(() => openDuplicateReview(candidate, registrations));
+}
+
 function applyData(route, data) {
   const registrations = Array.isArray(data?.registrations) ? data.registrations : [];
   if (route.view === "participants") {
     applyParticipantGroups(registrations);
     renderDuplicateReview(data, registrations);
+    restoreRequestedDuplicateReview(route, data, registrations);
   } else {
     applyBookingGroups(registrations);
-    revealPendingBooking();
+    revealFocusedBooking(route);
   }
 }
 
@@ -326,6 +363,9 @@ function scheduleSync() {
 }
 
 window.addEventListener("hashchange", () => {
+  const route = routeState();
+  if (route.view !== "participants") openedReviewKey = "";
+  if (route.view !== "bookings") focusedBookingKey = "";
   syncKey = "";
   lastData = null;
   scheduleSync();
