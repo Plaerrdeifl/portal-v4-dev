@@ -54,6 +54,21 @@ async function rpc(name, body = {}) {
   return data;
 }
 
+function opponentKey(game) {
+  return game?.opponentTeam?.id || `calendar:${game?.eventId || "opponent"}`;
+}
+
+function exposeGameContext(game) {
+  if (!game) return;
+  window.PD_LIVETICKER_GAME_CONTEXT = {
+    eventId: game.eventId,
+    homeAway: game.homeAway,
+    ownTeam: game.ownTeam || null,
+    opponentTeam: game.opponentTeam || null,
+    opponentKey: opponentKey(game)
+  };
+}
+
 function normalizeState(raw) {
   return {
     eventId: raw?.eventId || raw?.event_id || "",
@@ -64,8 +79,9 @@ function normalizeState(raw) {
 }
 
 function writeEngineState(state) {
+  exposeGameContext(selectedGame);
   const engineState = {
-    opponentId: "erfurt",
+    opponentId: opponentKey(selectedGame),
     minute: state.minute,
     history: state.history
   };
@@ -210,6 +226,7 @@ function installStyles() {
 async function loadSelectedGame(game) {
   selectedGame = game;
   pendingLocalState = null;
+  exposeGameContext(game);
   localStorage.setItem(SELECTED_EVENT_KEY, game.eventId);
   localStorage.setItem(VENUE_KEY, game.homeAway === "AWAY" ? "away" : "home");
   renderSyncStatus("Lädt …", "pending");
@@ -237,11 +254,12 @@ export async function prepareLivetickerGameStorage() {
   installStyles();
   const response = await rpc("pd_public_liveticker_games");
   const games = Array.isArray(response?.games) ? response.games : [];
-  if (!games.length) throw new Error("Kein Liveticker-Spiel mit gepflegtem Gegner/Kader verfügbar.");
+  if (!games.length) throw new Error("Keine Spiele im zentralen Kalender verfügbar.");
 
   const gameSelect = installGameSelector(games);
   const remembered = localStorage.getItem(SELECTED_EVENT_KEY);
   const chosen = games.find(game => game.eventId === remembered) || games[0];
+  exposeGameContext(chosen);
   if (gameSelect) gameSelect.value = chosen.eventId;
   await loadSelectedGame(chosen);
 
