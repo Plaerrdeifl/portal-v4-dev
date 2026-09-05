@@ -8,7 +8,7 @@ try {
   } else {
     const app = document.getElementById("tickerApp");
     if (app) app.hidden = false;
-    await import("./liveticker-bootstrap.js?v=20260905-prod1");
+    await import("./liveticker-bootstrap.js?v=20260905-prod2");
   }
 } catch (error) {
   console.error(error);
