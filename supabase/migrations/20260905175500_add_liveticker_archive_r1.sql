@@ -16,6 +16,103 @@ alter table app_modules.liveticker_journal
   add constraint liveticker_journal_type_check
   check (mutation_type in ('ACTION_UPSERT','ACTION_REMOVE','MINUTE_SET','GAME_COMPLETED','GAME_RESET'));
 
+-- Abgeschlossene Spiele verlassen die aktive Spielauswahl, der öffentliche Zustand
+-- kennt den Abschlussmarker und weitere Ticker-Schreibvorgänge bleiben bis zu einem
+-- bewussten Portal-Reset gesperrt.
+alter function public.pd_public_liveticker_games()
+  rename to pd_public_liveticker_games_before_archive_r1;
+
+create function public.pd_public_liveticker_games()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_source jsonb;
+begin
+  perform app_private.liveticker_require_public_dev();
+  v_source := public.pd_public_liveticker_games_before_archive_r1();
+
+  return jsonb_build_object(
+    'games',
+    coalesce((
+      select jsonb_agg(entry.value order by entry.ordinality)
+      from jsonb_array_elements(coalesce(v_source -> 'games', '[]'::jsonb))
+        with ordinality as entry(value, ordinality)
+      where not exists (
+        select 1
+        from app_modules.liveticker_game_states as state
+        where state.event_id = (entry.value ->> 'eventId')::uuid
+          and state.completed_at is not null
+      )
+    ), '[]'::jsonb)
+  );
+end;
+$$;
+
+alter function public.pd_public_liveticker_state(uuid)
+  rename to pd_public_liveticker_state_before_archive_r1;
+
+create function public.pd_public_liveticker_state(p_event_id uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_state jsonb;
+  v_completed_at timestamptz;
+begin
+  perform app_private.liveticker_require_public_dev();
+  v_state := public.pd_public_liveticker_state_before_archive_r1(p_event_id);
+
+  select state.completed_at
+  into v_completed_at
+  from app_modules.liveticker_game_states as state
+  where state.event_id = p_event_id;
+
+  return v_state || jsonb_build_object('completedAt', v_completed_at);
+end;
+$$;
+
+alter function public.pd_public_liveticker_sync(uuid, integer, jsonb, text)
+  rename to pd_public_liveticker_sync_before_archive_r1;
+
+create function public.pd_public_liveticker_sync(
+  p_event_id uuid,
+  p_expected_revision integer,
+  p_changes jsonb,
+  p_client_id text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform app_private.liveticker_require_public_dev();
+
+  if exists (
+    select 1
+    from app_modules.liveticker_game_states as state
+    where state.event_id = p_event_id
+      and state.completed_at is not null
+  ) then
+    raise exception 'LIVETICKER_GAME_COMPLETED' using errcode = '55000';
+  end if;
+
+  return public.pd_public_liveticker_sync_before_archive_r1(
+    p_event_id,
+    p_expected_revision,
+    p_changes,
+    p_client_id
+  );
+end;
+$$;
+
 create or replace function public.pd_public_liveticker_complete(
   p_event_id uuid,
   p_expected_revision integer,
@@ -79,8 +176,7 @@ begin
     v_completed_at := v_state.completed_at;
   end if;
 
-  return public.pd_public_liveticker_state(p_event_id)
-    || jsonb_build_object('completedAt', v_completed_at);
+  return public.pd_public_liveticker_state(p_event_id);
 end;
 $$;
 
@@ -303,7 +399,17 @@ as $$
   end;
 $$;
 
+revoke all on function public.pd_public_liveticker_games_before_archive_r1() from public, anon, authenticated;
+revoke all on function public.pd_public_liveticker_state_before_archive_r1(uuid) from public, anon, authenticated;
+revoke all on function public.pd_public_liveticker_sync_before_archive_r1(uuid, integer, jsonb, text) from public, anon, authenticated;
+revoke all on function public.pd_public_liveticker_games() from public, anon, authenticated;
+revoke all on function public.pd_public_liveticker_state(uuid) from public, anon, authenticated;
+revoke all on function public.pd_public_liveticker_sync(uuid, integer, jsonb, text) from public, anon, authenticated;
 revoke all on function public.pd_public_liveticker_complete(uuid, integer, text) from public, anon, authenticated;
+
+grant execute on function public.pd_public_liveticker_games() to anon, authenticated;
+grant execute on function public.pd_public_liveticker_state(uuid) to anon, authenticated;
+grant execute on function public.pd_public_liveticker_sync(uuid, integer, jsonb, text) to anon, authenticated;
 grant execute on function public.pd_public_liveticker_complete(uuid, integer, text) to anon, authenticated;
 
 revoke all on function app_private.api_liveticker_archive_list() from public, anon, authenticated;
