@@ -125,7 +125,7 @@ function currentBusOrgaView() {
   return new URLSearchParams(query).get("view") || "";
 }
 
-export function preloadAuthenticatedModules(keys = ["dashboard", "dates", "fanclub", "tasks", "teams", "admin"]) {
+export function preloadAuthenticatedModules(keys = ["dashboard", "dates", "fanclub", "tasks", "teams", "liveticker", "admin"]) {
   const modules = {
     profile: "./modules/profile.js",
     dashboard: "./modules/dashboard.js?v=20260724-dashboard-delivery-corr2&feature=20260724-personal-dashboard-widgets-r1-fix4&small=20260725-dashboard-small-widgets-r1",
@@ -133,6 +133,7 @@ export function preloadAuthenticatedModules(keys = ["dashboard", "dates", "fancl
     fanclub: "./modules/fanclub.js",
     tasks: "./modules/tasks.js",
     teams: "./modules/teams.js",
+    liveticker: "./modules/liveticker-admin.js",
     admin: "./modules/admin.js"
   };
   return Promise.allSettled(
@@ -232,5 +233,6 @@ export async function hydratePage(key, context = {}) {
   if (key === "fanclub") return feature("./modules/fanclub.js", "hydrateFanclub", context);
   if (key === "tasks") return feature("./modules/tasks.js", "hydrateTasks", context);
   if (key === "teams") return feature("./modules/teams.js", "hydrateTeams", context);
+  if (key === "liveticker") return feature("./modules/liveticker-admin.js", "hydrateLivetickerAdmin", context);
   if (key === "admin") return feature("./modules/admin.js", "hydrateAdmin", context);
 }
