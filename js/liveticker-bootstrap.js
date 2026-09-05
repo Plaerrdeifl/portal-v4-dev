@@ -17,35 +17,43 @@ export const OPPONENTS = Object.freeze({
 });`;
 }
 
+function replaceEngineSection(source, pattern, replacement, label) {
+  const next = source.replace(pattern, replacement);
+  if (next === source) {
+    throw new Error(`Liveticker-Engine passt nicht zum Kalender-Adapter (${label}).`);
+  }
+  return next;
+}
+
 async function importRuntimeEngine() {
   const response = await fetch("../js/liveticker-engine-v4.js", { cache: "no-store" });
   if (!response.ok) throw new Error("Liveticker-Engine konnte nicht geladen werden.");
   let source = await response.text();
 
-  const opponentBlock = `export const OPPONENTS = Object.freeze({
-  erfurt: Object.freeze({ id: "erfurt", shortName: "Erfurt", fullName: "TecArt Black Dragons Erfurt", roster: ERFURT_ROSTER })
-});`;
-  const defaultState = `function defaultState() {
-  return { opponentId: "erfurt", minute: 1, history: [] };
-}`;
-  const rosterFunction = `function rosterForTeam(team, opponent) {
-  return team === "mighty" ? MIGHTY_ROSTER : opponent.roster;
-}`;
-
-  if (!source.includes(opponentBlock) || !source.includes(defaultState) || !source.includes(rosterFunction)) {
-    throw new Error("Liveticker-Engine passt nicht zum Kalender-Adapter.");
-  }
-
-  source = source
-    .replace(opponentBlock, runtimeOpponentSource())
-    .replace(defaultState, `function defaultState() {
+  source = replaceEngineSection(
+    source,
+    /export const OPPONENTS\s*=\s*Object\.freeze\(\{[\s\S]*?\}\);\s*(?=export const PENALTY_REASONS)/,
+    `${runtimeOpponentSource()}\n`,
+    "Gegner"
+  );
+  source = replaceEngineSection(
+    source,
+    /function defaultState\(\)\s*\{[\s\S]*?\}\s*(?=function normalizeLoadedState)/,
+    `function defaultState() {
   const runtimeId = globalThis.PD_LIVETICKER_GAME_CONTEXT?.opponentKey || Object.keys(OPPONENTS)[0];
   return { opponentId: runtimeId, minute: 1, history: [] };
-}`)
-    .replace(rosterFunction, `function rosterForTeam(team, opponent) {
+}\n`,
+    "Startzustand"
+  );
+  source = replaceEngineSection(
+    source,
+    /function rosterForTeam\(team,[^)]*\)\s*\{[\s\S]*?\}\s*(?=function fillPlayerSelect)/,
+    `function rosterForTeam(team, opponent) {
   const ownRoster = globalThis.PD_LIVETICKER_GAME_CONTEXT?.ownTeam?.players;
   return team === "mighty" ? (Array.isArray(ownRoster) ? ownRoster : MIGHTY_ROSTER) : opponent.roster;
-}`);
+}\n`,
+    "Kader"
+  );
 
   const url = URL.createObjectURL(new Blob([source], { type: "text/javascript" }));
   try {
