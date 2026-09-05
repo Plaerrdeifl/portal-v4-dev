@@ -16,6 +16,18 @@ test("completed Liveticker games have a central archive marker and journal", asy
   assert.match(migration, /completed_at is not null/);
 });
 
+test("completed games leave the active selector and reject further public writes", async () => {
+  const migration = await read("supabase/migrations/20260905175500_add_liveticker_archive_r1.sql");
+  assert.match(migration, /pd_public_liveticker_games_before_archive_r1/);
+  assert.match(migration, /pd_public_liveticker_state_before_archive_r1/);
+  assert.match(migration, /pd_public_liveticker_sync_before_archive_r1/);
+  assert.match(migration, /'completedAt'/);
+  assert.match(migration, /LIVETICKER_GAME_COMPLETED/);
+  assert.match(migration, /state\.completed_at is not null/);
+  assert.match(migration, /grant execute on function public\.pd_public_liveticker_games\(\) to anon, authenticated/);
+  assert.match(migration, /grant execute on function public\.pd_public_liveticker_sync\(uuid, integer, jsonb, text\) to anon, authenticated/);
+});
+
 test("archive and reset stay behind liveticker.manage and pd_api", async () => {
   const migration = await read("supabase/migrations/20260905175500_add_liveticker_archive_r1.sql");
   assert.match(migration, /api_liveticker_archive_list/);
