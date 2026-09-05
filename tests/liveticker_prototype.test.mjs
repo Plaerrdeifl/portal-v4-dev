@@ -16,16 +16,23 @@ import {
 const root = resolve(import.meta.dirname, "..");
 const read = path => readFile(join(root, path), "utf8");
 
-test("public Liveticker prototype stays isolated and ships in the static build", async () => {
+test("public DEV Liveticker stays standalone and uses the scoped Supabase storage boundary", async () => {
   const html = await read("liveticker/index.html");
+  const bootstrap = await read("js/liveticker-bootstrap.js");
+  const storage = await read("js/liveticker-game-storage.js");
   const build = await read("scripts/build-static.mjs");
 
   assert.match(html, /data-route="liveticker-prototype"/);
   assert.match(html, /default-src 'self'/);
-  assert.match(html, /connect-src 'none'/);
-  assert.match(html, /Keine Anmeldung · nur lokal auf diesem Gerät gespeichert · keine Datenübertragung/);
-  assert.match(html, /type="module" src="\.\.\/js\/liveticker-prototype-v4\.js\?v=20260903-1"/);
-  assert.doesNotMatch(html, /supabase|auth-gate|runtime-config/i);
+  assert.match(html, /connect-src 'self' https:\/\/\*\.supabase\.co/);
+  assert.match(html, /Spielstand und Aktionen werden zentral pro Spiel gespeichert/);
+  assert.match(html, /type="module" src="\.\.\/js\/liveticker-bootstrap\.js\?v=20260905-game-storage1"/);
+  assert.match(bootstrap, /runtime-config\.js/);
+  assert.match(bootstrap, /liveticker-prototype-v4\.js/);
+  assert.match(storage, /pd_public_liveticker_games/);
+  assert.match(storage, /pd_public_liveticker_state/);
+  assert.match(storage, /pd_public_liveticker_sync/);
+  assert.doesNotMatch(html + bootstrap + storage, /Google|auth-gate|Anmeldung erforderlich/i);
   assert.match(build, /"liveticker"/);
 });
 
