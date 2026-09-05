@@ -19,33 +19,42 @@ const POSITION_LABELS = Object.freeze({
   FORWARD: "Sturm"
 });
 
+function ensureLivetickerAdminStyles() {
+  if (document.querySelector('link[data-liveticker-admin-styles]')) return;
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = "./css/liveticker-admin.css?v=20260905-mobile-form1";
+  link.dataset.livetickerAdminStyles = "true";
+  document.head.appendChild(link);
+}
+
 function normalizeCheckbox(values, name) {
   return { ...values, [name]: values[name] === "on" };
 }
 
 function teamForm(team = {}) {
-  return `<form class="form-grid v4-smart-form">
+  return `<form class="liveticker-admin-form">
     <input type="hidden" name="id" value="${escapeAttr(team.id || "")}">
-    <label class="v4-field-full">Teamname<input name="name" required maxlength="160" value="${escapeAttr(team.name || "")}"></label>
-    <label>Kurzname<input name="shortName" required maxlength="60" value="${escapeAttr(team.shortName || "")}"></label>
+    <label>Teamname<input name="name" required maxlength="160" placeholder="z. B. Mighty Dogs Schweinfurt" value="${escapeAttr(team.name || "")}"></label>
+    <label>Kurzname<input name="shortName" required maxlength="60" placeholder="z. B. Mighty Dogs" value="${escapeAttr(team.shortName || "")}"></label>
     <label>Logo-URL<input name="logoUrl" type="url" inputmode="url" placeholder="https://…" value="${escapeAttr(team.logoUrl || "")}"></label>
-    <label class="checkbox-row v4-field-full"><input name="homeClub" type="checkbox" ${team.homeClub ? "checked" : ""}> Unser Verein / Heimverein</label>
-    <label class="checkbox-row v4-field-full"><input name="active" type="checkbox" ${team.active !== false ? "checked" : ""}> Team ist aktiv</label>
+    <label class="checkbox-row"><input name="homeClub" type="checkbox" ${team.homeClub ? "checked" : ""}><span>Unser Verein / Heimverein</span></label>
+    <label class="checkbox-row"><input name="active" type="checkbox" ${team.active !== false ? "checked" : ""}><span>Team ist aktiv</span></label>
   </form>`;
 }
 
 function playerForm(team, player = {}) {
-  return `<form class="form-grid v4-smart-form">
+  return `<form class="liveticker-admin-form">
     <input type="hidden" name="id" value="${escapeAttr(player.id || "")}">
     <input type="hidden" name="teamId" value="${escapeAttr(team.id)}">
-    <label>Nr.<input name="number" maxlength="8" inputmode="numeric" value="${escapeAttr(player.number || "")}"></label>
+    <label>Trikotnummer<input name="number" maxlength="8" inputmode="numeric" placeholder="z. B. 84" value="${escapeAttr(player.number || "")}"></label>
     <label>Position<select name="position" required>${optionList([
       { value: "GOALIE", label: "Tor" },
       { value: "DEFENSE", label: "Verteidigung" },
       { value: "FORWARD", label: "Sturm" }
     ], player.position || "FORWARD")}</select></label>
-    <label class="v4-field-full">Name<input name="name" required maxlength="160" value="${escapeAttr(player.name || "")}"></label>
-    <label class="checkbox-row v4-field-full"><input name="active" type="checkbox" ${player.active !== false ? "checked" : ""}> Spieler ist aktiv</label>
+    <label>Name<input name="name" required maxlength="160" placeholder="Vorname Nachname" value="${escapeAttr(player.name || "")}"></label>
+    <label class="checkbox-row"><input name="active" type="checkbox" ${player.active !== false ? "checked" : ""}><span>Spieler ist aktiv</span></label>
   </form>`;
 }
 
@@ -174,6 +183,7 @@ function render() {
 }
 
 export async function hydrateLivetickerAdmin(context = {}) {
+  ensureLivetickerAdminStyles();
   const panel = document.getElementById("livetickerRosterPanel");
   if (panel) panel.innerHTML = loading("Teams und Kader werden geladen …");
 
