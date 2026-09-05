@@ -11,7 +11,10 @@ import {
 } from "./common.js";
 
 let snapshot = null;
+let archiveSnapshot = null;
 let currentTeamId = "";
+let currentArchiveEventId = "";
+let currentView = "teams";
 
 const POSITION_LABELS = Object.freeze({
   GOALIE: "Tor",
@@ -83,6 +86,46 @@ function ensureLivetickerAdminStyles() {
     .v4-dialog .liveticker-admin-form .checkbox-row>span{
       min-width:0!important;
     }
+    .liveticker-archive-score-card{
+      display:grid;
+      justify-items:center;
+      gap:5px;
+      padding:18px 14px;
+      margin-bottom:14px;
+      border:1px solid #d7e2ee;
+      border-radius:16px;
+      background:#f7faff;
+      text-align:center;
+    }
+    .liveticker-archive-score-card strong{
+      font-size:2rem;
+      line-height:1;
+      letter-spacing:-.04em;
+    }
+    .liveticker-archive-score-card small{
+      color:#60748a;
+      font-weight:800;
+    }
+    .liveticker-archive-facts{
+      display:grid;
+      gap:0;
+      margin-bottom:14px;
+      border:1px solid #d7e2ee;
+      border-radius:14px;
+      overflow:hidden;
+    }
+    .liveticker-archive-fact{
+      display:flex;
+      justify-content:space-between;
+      gap:14px;
+      padding:10px 12px;
+      background:#fff;
+      border-bottom:1px solid #e3eaf2;
+      font-size:.82rem;
+    }
+    .liveticker-archive-fact:last-child{border-bottom:0}
+    .liveticker-archive-fact span{color:#60748a}
+    .liveticker-archive-fact strong{text-align:right}
     @media(max-width:430px){
       .v4-dialog .liveticker-admin-form{gap:12px!important}
       .v4-dialog .liveticker-admin-form input:not([type="checkbox"]),
@@ -219,10 +262,158 @@ function bindTeamDetail(panel, team) {
   });
 }
 
+function archiveDate(value) {
+  if (!value) return "–";
+  const date = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
+}
+
+function archiveCompletedAt(value) {
+  if (!value) return "–";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("de-DE", { dateStyle: "short", timeStyle: "short" }).format(date);
+}
+
+function archiveScore(game) {
+  const own = Number(game.ownScore || 0);
+  const opponent = Number(game.opponentScore || 0);
+  return game.homeAway === "AWAY" ? `${opponent}:${own}` : `${own}:${opponent}`;
+}
+
+function archiveScoreLabel(game) {
+  const suffix = String(game.suffix || "").trim();
+  return `${archiveScore(game)}${suffix ? ` ${suffix}` : ""}`;
+}
+
+function archiveRow(game) {
+  return `<button class="v4-team-list-row" type="button" data-archive-event-id="${escapeAttr(game.eventId)}">
+    <span>
+      <strong>${escapeHtml(game.displayTitle || "Spiel")}</strong>
+      <small>${escapeHtml(archiveDate(game.eventDate))} · Endstand ${escapeHtml(archiveScoreLabel(game))}</small>
+    </span>
+    <span class="v4-row-chevron" aria-hidden="true">›</span>
+  </button>`;
+}
+
+function archiveDetail(game) {
+  const venue = String(game.venue || "").trim() || "–";
+  return `<div class="liveticker-archive-detail">
+    <div class="liveticker-archive-score-card">
+      <span class="subtle">Endstand</span>
+      <strong>${escapeHtml(archiveScoreLabel(game))}</strong>
+      <small>${escapeHtml(game.displayTitle || "Spiel")}</small>
+    </div>
+    <div class="liveticker-archive-facts">
+      <div class="liveticker-archive-fact"><span>Spieltag</span><strong>${escapeHtml(archiveDate(game.eventDate))}</strong></div>
+      <div class="liveticker-archive-fact"><span>Abgeschlossen</span><strong>${escapeHtml(archiveCompletedAt(game.completedAt))}</strong></div>
+      <div class="liveticker-archive-fact"><span>Letzte Spielminute</span><strong>${escapeHtml(game.minute || 1)}</strong></div>
+      <div class="liveticker-archive-fact"><span>Tore erfasst</span><strong>${escapeHtml(game.goalCount || 0)}</strong></div>
+      <div class="liveticker-archive-fact"><span>Strafen erfasst</span><strong>${escapeHtml(game.penaltyCount || 0)}</strong></div>
+      <div class="liveticker-archive-fact"><span>Spielort</span><strong>${escapeHtml(venue)}</strong></div>
+    </div>
+    <div class="button-row">
+      <button class="button danger" type="button" data-reset-archive-game>Spiel zurücksetzen</button>
+    </div>
+  </div>`;
+}
+
+function confirmArchiveReset(game) {
+  openDialog({
+    title: "Spiel zurücksetzen?",
+    kicker: game.displayTitle || "Liveticker · Archiv",
+    body: `<div class="notice warning"><strong>Der gespeicherte Spielstand wird geleert.</strong><p>Tore, Strafen, Penaltyschießen und Spielminute werden zurückgesetzt. Das Kalenderspiel selbst bleibt bestehen und kann danach erneut getickert werden.</p></div>`,
+    submitLabel: "Spiel zurücksetzen",
+    danger: true,
+    onSubmit: async () => {
+      archiveSnapshot = await runWrite(
+        () => call("liveticker_game_reset", {
+          eventId: game.eventId,
+          expectedRevision: game.revision
+        }),
+        "Spiel wurde zurückgesetzt."
+      );
+      currentArchiveEventId = "";
+      render();
+    }
+  });
+}
+
+async function showArchive() {
+  currentView = "archive";
+  currentTeamId = "";
+  currentArchiveEventId = "";
+  archiveSnapshot = null;
+  render();
+
+  try {
+    archiveSnapshot = await call("liveticker_archive_list");
+    render();
+  } catch (error) {
+    const panel = document.getElementById("livetickerRosterPanel");
+    if (panel) panel.innerHTML = errorPanel(error, "Spielarchiv konnte nicht geladen werden");
+    showToast(error?.message || "Spielarchiv konnte nicht geladen werden.", "error", 6500);
+  }
+}
+
+function renderArchive(toolbar, panel) {
+  const games = archiveSnapshot?.games || [];
+  const currentGame = currentArchiveEventId
+    ? games.find(game => game.eventId === currentArchiveEventId) || null
+    : null;
+
+  if (currentArchiveEventId && !currentGame) currentArchiveEventId = "";
+
+  if (currentGame) {
+    toolbar.innerHTML = `<div class="v4-section-heading">
+      <div><span class="subtle">Liveticker · Archiv</span><h2>${escapeHtml(currentGame.displayTitle || "Spiel")}</h2><p class="subtle">Abgeschlossenes Spiel ansehen oder zurücksetzen.</p></div>
+      <button class="button small secondary" type="button" data-back-archive>← Archiv</button>
+    </div>`;
+    panel.innerHTML = archiveDetail(currentGame);
+    toolbar.querySelector("[data-back-archive]")?.addEventListener("click", () => {
+      currentArchiveEventId = "";
+      render();
+    });
+    panel.querySelector("[data-reset-archive-game]")?.addEventListener("click", () => confirmArchiveReset(currentGame));
+    return;
+  }
+
+  toolbar.innerHTML = `<div class="v4-section-heading">
+    <div><span class="subtle">Liveticker</span><h2>Spielarchiv</h2><p class="subtle">Abgeschlossene Liveticker-Spiele.</p></div>
+    <button class="button small secondary" type="button" data-back-teams>← Teams</button>
+  </div>`;
+
+  if (!archiveSnapshot) {
+    panel.innerHTML = loading("Spielarchiv wird geladen …");
+  } else {
+    panel.innerHTML = games.length
+      ? `<div class="v4-team-list">${games.map(archiveRow).join("")}</div>`
+      : '<div class="notice neutral">Noch keine abgeschlossenen Spiele im Liveticker-Archiv.</div>';
+  }
+
+  toolbar.querySelector("[data-back-teams]")?.addEventListener("click", () => {
+    currentView = "teams";
+    currentArchiveEventId = "";
+    render();
+  });
+  panel.querySelectorAll("[data-archive-event-id]").forEach(button => {
+    button.addEventListener("click", () => {
+      currentArchiveEventId = button.dataset.archiveEventId || "";
+      render();
+    });
+  });
+}
+
 function render() {
   const toolbar = document.getElementById("livetickerRosterToolbar");
   const panel = document.getElementById("livetickerRosterPanel");
   if (!toolbar || !panel) return;
+
+  if (currentView === "archive") {
+    renderArchive(toolbar, panel);
+    return;
+  }
 
   const teams = snapshot?.teams || [];
   const currentTeam = currentTeamId
@@ -248,13 +439,17 @@ function render() {
 
   toolbar.innerHTML = `<div class="v4-section-heading">
     <div><span class="subtle">Liveticker</span><h2>Teams & Kader</h2><p class="subtle">Team auswählen oder neu anlegen.</p></div>
-    <button class="button small primary" type="button" data-add-team>+ Team</button>
+    <div class="button-row">
+      <button class="button small secondary" type="button" data-open-archive>Archiv</button>
+      <button class="button small primary" type="button" data-add-team>+ Team</button>
+    </div>
   </div>`;
 
   panel.innerHTML = teams.length
     ? `<div class="v4-team-list">${teams.map(teamListRow).join("")}</div>`
     : '<div class="notice neutral">Noch keine Liveticker-Teams angelegt.</div>';
 
+  toolbar.querySelector("[data-open-archive]")?.addEventListener("click", () => showArchive());
   toolbar.querySelector("[data-add-team]")?.addEventListener("click", () => openTeam());
   panel.querySelectorAll("[data-team-id]").forEach(button => {
     button.addEventListener("click", () => {
@@ -266,7 +461,10 @@ function render() {
 
 export async function hydrateLivetickerAdmin(context = {}) {
   ensureLivetickerAdminStyles();
+  currentView = "teams";
   currentTeamId = "";
+  currentArchiveEventId = "";
+  archiveSnapshot = null;
   const panel = document.getElementById("livetickerRosterPanel");
   if (panel) panel.innerHTML = loading("Teams und Kader werden geladen …");
 
