@@ -28,6 +28,15 @@ test("roster module uses central pd_api actions and optimistic revisions", async
   assert.match(module, /FORWARD/);
 });
 
+test("team selection opens a dedicated detail view with back navigation", async () => {
+  const module = await source("js/modules/liveticker-admin.js");
+  assert.match(module, /data-back-teams/);
+  assert.match(module, /currentTeamId\s*\?\s*teams\.find/);
+  assert.match(module, /currentTeamId\s*=\s*"";\s*\n\s*render\(\)/);
+  assert.doesNotMatch(module, /\|\|\s*teams\[0\]/);
+  assert.doesNotMatch(module, /v4-team-layout/);
+});
+
 test("schema migration protects writes and seeds the first matchup", async () => {
   const migration = await source("supabase/migrations/20260905150000_add_liveticker_team_rosters_r1.sql");
   assert.match(migration, /'liveticker\.manage'/);
