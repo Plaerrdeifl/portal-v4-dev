@@ -2,6 +2,7 @@ import "./m328-quick-change.js?v=20260830-m328-quick-change4";
 import "./m328-quick-back.js?v=20260830-m328-quick-back1";
 import "./m328-final-acceptance.js?v=20260830-m328-final-acceptance2";
 import "./m328-booking-filter-cleanup.js?v=20260830-m328-booking-filter-cleanup1";
+import "./m328-fanbus-operational-integrity.js?v=20260905-fanbus-operational-integrity1";
 
 function installM328TripEditIosFieldFix() {
   if (document.getElementById("m328TripEditIosFieldFix")) return;
