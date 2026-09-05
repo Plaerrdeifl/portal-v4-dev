@@ -24,8 +24,11 @@ const directories = [
   "components",
   "css",
   "js",
-  "liveticker",
   "pages"
+];
+
+const optionalDirectories = [
+  "liveticker"
 ];
 
 const allowedEnvironments = new Set(["LOCAL", "DEV", "PROD"]);
@@ -47,6 +50,20 @@ for (const file of files) {
 }
 
 for (const directory of directories) {
+  await cp(
+    resolve(root, directory),
+    resolve(dist, directory),
+    { recursive: true }
+  );
+}
+
+for (const directory of optionalDirectories) {
+  try {
+    await access(resolve(root, directory), constants.R_OK);
+  } catch {
+    continue;
+  }
+
   await cp(
     resolve(root, directory),
     resolve(dist, directory),
