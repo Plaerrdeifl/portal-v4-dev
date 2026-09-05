@@ -20,14 +20,23 @@ test("BEV 2026/27 penalty catalogue includes match and game misconduct values", 
   assert.ok(BEV_PENALTY_REASONS.includes("Faustkampf"));
 });
 
-test("penalty durations use hockey terminology instead of raw report minutes", () => {
-  assert.equal(penaltyDurationLabel("20"), "Spieldauer");
+test("penalty durations use compact hockey terminology", () => {
+  assert.equal(penaltyDurationLabel("10"), "10 Min. Diszi");
+  assert.equal(penaltyDurationLabel("2+10"), "2 + Diszi");
+  assert.equal(penaltyDurationLabel("20"), "SD");
+  assert.equal(penaltyDurationLabel("2+20"), "2 + SD");
+  assert.equal(penaltyDurationLabel("5+20"), "5 + SD");
   assert.equal(penaltyDurationLabel("25"), "Matchstrafe");
-  assert.equal(penaltyDurationLabel("5+20"), "5 Min. + Spieldauer");
   assert.equal(
     applyPenaltyTerminology("Mighty Dogs · 5+20 min · Kniecheck"),
-    "Mighty Dogs · 5 Min. + Spieldauer · Kniecheck"
+    "Mighty Dogs · 5 + SD · Kniecheck"
   );
+});
+
+test("penalty duration catalogue is ordered for quick in-game use", () => {
+  assert.deepEqual(BEV_PENALTY_DURATIONS.slice(0, 10), [
+    "2", "2+2", "5", "10", "2+10", "5+10", "20", "2+20", "5+20", "25"
+  ]);
 });
 
 test("reason-first selection provides a normal default without blocking exceptions", () => {
@@ -59,4 +68,5 @@ test("BEV catalogue is restored after core rebuilds penalty rows", async () => {
   assert.match(source, /Sonderfall/);
   assert.match(source, /Weitere Strafarten/);
   assert.match(source, /Weitere Gründe/);
+  assert.match(source, /BEV_PENALTY_DURATIONS\.filter\(value => recommendation\.recommendedDurations\.includes\(value\)\)/);
 });
