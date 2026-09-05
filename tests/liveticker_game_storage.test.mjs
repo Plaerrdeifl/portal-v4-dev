@@ -55,7 +55,8 @@ test("calendar migration no longer filters games by an existing roster", async (
   const calendar = await read("supabase/migrations/20260905170500_liveticker_calendar_games_r1.sql");
   assert.match(calendar, /left join lateral/);
   assert.match(calendar, /game\.opponent_name/);
-  assert.match(calendar, /'players', '112'::jsonb|"players"/i);
+  assert.match(calendar, /'players'/);
+  assert.match(calendar, /'\[\]'::jsonb/);
   assert.doesNotMatch(calendar, /join app_modules\.liveticker_teams as opponent_team\s+on/i);
 });
 
