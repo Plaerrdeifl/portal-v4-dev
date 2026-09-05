@@ -22,11 +22,16 @@ let syncKey = "";
 let syncPromise = null;
 let lastData = null;
 let scheduled = false;
+let pendingBookingId = "";
 
 function routeState() {
   const [path, query = ""] = String(location.hash || "").split("?", 2);
   const params = new URLSearchParams(query);
   return { path, view: params.get("view") || "", tripId: params.get("trip") || "" };
+}
+
+function bookingsRoute(tripId) {
+  return `#/bus-orga?${new URLSearchParams({ view: "bookings", trip: String(tripId || "") })}`;
 }
 
 function ensureStyle() {
@@ -125,6 +130,17 @@ function applyBookingGroups(registrations) {
   }
 }
 
+function revealPendingBooking() {
+  if (!pendingBookingId) return;
+  const card = document.querySelector(`.m328-booking-card[data-booking-card="${CSS.escape(pendingBookingId)}"]`);
+  if (!card) return;
+  card.open = true;
+  card.scrollIntoView({ behavior: "smooth", block: "center" });
+  const summary = card.querySelector("summary");
+  requestAnimationFrame(() => summary?.focus({ preventScroll: true }));
+  pendingBookingId = "";
+}
+
 function duplicateCard(registration) {
   return `<article class="m328-duplicate-review-card"><h3>${escapeHtml(fanbusPersonName(registration))}</h3><dl>
     <dt>Buchung</dt><dd>${escapeHtml(registration?.bookingNumber || "–")}</dd>
@@ -136,9 +152,16 @@ function duplicateCard(registration) {
   </dl></article>`;
 }
 
-function openParticipant(registrationId) {
+function openBooking(bookingId) {
+  const route = routeState();
+  const targetBookingId = String(bookingId || "");
+  if (!route.tripId || !targetBookingId) {
+    showToast("Die Buchung konnte nicht geöffnet werden.", "error", 5200);
+    return;
+  }
+  pendingBookingId = targetBookingId;
   closeAllDialogs();
-  requestAnimationFrame(() => document.querySelector(`.m328-participants [data-m328-participant-id="${CSS.escape(String(registrationId || ""))}"]`)?.click());
+  location.hash = bookingsRoute(route.tripId);
 }
 
 function openDuplicateReview(candidate, registrations) {
@@ -157,13 +180,13 @@ function openDuplicateReview(candidate, registrations) {
     body: `<p class="subtle">Der Name stimmt überein, die technische Identität ist aber nicht eindeutig. Bitte prüfe beide Anmeldungen manuell.</p>
       <div class="m328-duplicate-review-grid">${duplicateCard(first)}${duplicateCard(second)}</div>
       <div class="m328-duplicate-review-actions"><div class="button-row">
-        <button class="button secondary" type="button" data-m328-open-duplicate="${escapeAttr(first.id)}">${escapeHtml(first.bookingNumber || "Anmeldung 1")} öffnen</button>
-        <button class="button secondary" type="button" data-m328-open-duplicate="${escapeAttr(second.id)}">${escapeHtml(second.bookingNumber || "Anmeldung 2")} öffnen</button>
-      </div><p class="subtle">Sind es zwei verschiedene Personen, kann die Warnung dauerhaft als geprüft markiert werden. Ist es dieselbe Person, öffne die falsche Anmeldung und storniere sie; die verbleibende Gastteilnahme kann anschließend bei Bedarf mit dem Portaluser verknüpft werden.</p>
+        <button class="button secondary" type="button" data-m328-open-booking="${escapeAttr(fanbusBookingKey(first))}">${escapeHtml(first.bookingNumber || "Anmeldung 1")} öffnen</button>
+        <button class="button secondary" type="button" data-m328-open-booking="${escapeAttr(fanbusBookingKey(second))}">${escapeHtml(second.bookingNumber || "Anmeldung 2")} öffnen</button>
+      </div><p class="subtle">Sind es zwei verschiedene Personen, kann die Warnung dauerhaft als geprüft markiert werden. Ist es dieselbe Person, öffne die falsche Buchung und storniere sie; die verbleibende Gastteilnahme kann anschließend bei Bedarf mit dem Portaluser verknüpft werden.</p>
       <button class="button primary" type="button" data-m328-not-duplicate>Kein Duplikat – als geprüft markieren</button></div>`
   });
 
-  dialog.querySelectorAll("[data-m328-open-duplicate]").forEach(button => button.addEventListener("click", () => openParticipant(button.dataset.m328OpenDuplicate)));
+  dialog.querySelectorAll("[data-m328-open-booking]").forEach(button => button.addEventListener("click", () => openBooking(button.dataset.m328OpenBooking)));
   dialog.querySelector("[data-m328-not-duplicate]")?.addEventListener("click", async event => {
     const button = event.currentTarget;
     button.disabled = true;
@@ -253,6 +276,7 @@ function applyData(route, data) {
     renderDuplicateReview(data, registrations);
   } else {
     applyBookingGroups(registrations);
+    revealPendingBooking();
   }
 }
 
