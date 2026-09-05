@@ -7,7 +7,7 @@
   <meta name="color-scheme" content="light">
   <meta name="referrer" content="no-referrer">
   <meta name="description" content="Öffentlicher DEV-Prototyp für den Mighty-Dogs-Liveticker.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' blob:; connect-src 'self' https://*.supabase.co; form-action 'none'">
   <link rel="icon" type="image/x-icon" href="../favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/icon-32.png">
   <title>Liveticker-Test · Plärrdeifl</title>
@@ -42,7 +42,7 @@
       <div class="score-top">
         <div class="team"><span class="team-name">Mighty Dogs</span><strong id="mightyScore" class="score">0</strong></div>
         <span class="score-separator">:</span>
-        <div class="team"><span id="opponentScoreName" class="team-name">Erfurt</span><strong id="opponentScore" class="score">0</strong></div>
+        <div class="team"><span id="opponentScoreName" class="team-name">Gegner</span><strong id="opponentScore" class="score">0</strong></div>
       </div>
       <div class="status-bar">
         <strong id="segmentLabel">1. Drittel</strong>
@@ -50,7 +50,7 @@
       </div>
       <div class="game-meta">
         <div class="field">
-          <label class="label" for="opponentSelect">Gegner</label>
+          <label class="label" for="opponentSelect">Gegner · aus Kalender</label>
           <select id="opponentSelect"></select>
         </div>
         <div class="field">
@@ -73,7 +73,7 @@
         <legend class="label" style="margin-bottom:7px">Was ist passiert?</legend>
         <div class="action-grid">
           <input id="actionGoalMighty" name="action" type="radio" value="GOAL_MIGHTY" checked><label for="actionGoalMighty">🥅 Tor<br>Mighty Dogs</label>
-          <input id="actionGoalOpponent" name="action" type="radio" value="GOAL_OPPONENT"><label id="actionGoalOpponentLabel" for="actionGoalOpponent">🥅 Tor<br>Erfurt</label>
+          <input id="actionGoalOpponent" name="action" type="radio" value="GOAL_OPPONENT"><label id="actionGoalOpponentLabel" for="actionGoalOpponent">🥅 Tor<br>Gegner</label>
           <input id="actionPenalty" name="action" type="radio" value="PENALTY"><label for="actionPenalty">🚨 Strafe(n)</label>
           <input id="actionShootout" name="action" type="radio" value="SHOOTOUT"><label for="actionShootout">🏒 Penalty-<br>schießen</label>
         </div>
@@ -108,7 +108,7 @@
       <section id="shootoutFields" class="shootout-fields" hidden>
         <div class="field">
           <label class="label" for="shootoutTeam">Mannschaft</label>
-          <select id="shootoutTeam"><option value="mighty">Mighty Dogs</option><option value="opponent">Erfurt</option></select>
+          <select id="shootoutTeam"><option value="mighty">Mighty Dogs</option><option value="opponent">Gegner</option></select>
         </div>
         <div class="field">
           <label class="label" for="shootoutPlayer">Schütze</label>
@@ -152,6 +152,6 @@
     <div class="footer-actions"><button id="resetGame" class="secondary danger" type="button">Testspiel zurücksetzen</button></div>
     <p class="privacy-note">DEV-Prototyp · Spielstand und Aktionen werden zentral pro Spiel gespeichert · keine Anmeldung</p>
   </main>
-  <script type="module" src="../js/liveticker-bootstrap.js?v=20260905-game-storage1"></script>
+  <script type="module" src="../js/liveticker-bootstrap.js?v=20260905-calendar1"></script>
 </body>
 </html>
