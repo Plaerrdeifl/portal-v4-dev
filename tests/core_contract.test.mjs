@@ -75,7 +75,7 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260809095000_add_membership_application_public_intake_api_r1.sql",
     "20260809143000_add_m150_membership_communication_core_r1.sql",
     "20260809190000_add_m150_membership_retention_r1.sql",
-    "20260810080000_add_m150_membership_application_withdraw_r1.sql",
+    "20260810080000_add_membership_application_withdraw_r1.sql",
     "20260810140000_add_central_user_capabilities_m010_r1.sql",
     "20260810174420_add_fanbus_core_m310_r1.sql",
     "20260810181918_add_internal_fanbus_api_m310_r1.sql",
@@ -140,7 +140,9 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260901133530_hotfix_public_fanbus_homepage_alignment.sql",
     "20260901220000_m020_push_navigation_badge_acknowledgement.sql",
     "20260905123213_fanbus_group_duplicate_review_r1.sql",
-    "20260905123644_fanbus_duplicate_review_indexes_r1.sql"
+    "20260905123644_fanbus_duplicate_review_indexes_r1.sql",
+    "20260905150000_add_liveticker_team_rosters_r1.sql",
+    "20260905151000_add_liveticker_navigation_r1.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
@@ -288,77 +290,30 @@ test("member email match migration is safe and confirmable", async () => {
   );
   const admin = await read("js/modules/admin.js");
 
-  assert.ok(
-    migration.includes(
-      "create or replace function app_private.api_member_match"
-    )
-  );
-  assert.ok(
-    migration.includes("require_capability('users.manage')")
-  );
-  assert.ok(
-    migration.includes("when 'member_match'")
-  );
-  assert.ok(
-    migration.includes("lower(btrim(coalesce(member.email")
-  );
-  assert.ok(
-    migration.includes("user_member_links")
-  );
-
-  assert.ok(
-    admin.includes('call("member_match"')
-  );
-  assert.ok(
-    admin.includes("Mögliche Mitgliedszuordnung gefunden")
-  );
-  assert.ok(
-    admin.includes("Bitte Identität prüfen")
-  );
-  assert.ok(
-    admin.includes("AMBIGUOUS")
-  );
-  assert.ok(
-    !admin.includes("Mitglied automatisch erkannt")
-  );
+  assert.ok(migration.includes("create or replace function app_private.api_member_match"));
+  assert.ok(migration.includes("require_capability('users.manage')"));
+  assert.ok(migration.includes("when 'member_match'"));
+  assert.ok(migration.includes("lower(btrim(coalesce(member.email"));
+  assert.ok(migration.includes("user_member_links"));
+  assert.ok(admin.includes('call("member_match"'));
+  assert.ok(admin.includes("Mögliche Mitgliedszuordnung gefunden"));
+  assert.ok(admin.includes("Bitte Identität prüfen"));
+  assert.ok(admin.includes("AMBIGUOUS"));
+  assert.ok(!admin.includes("Mitglied automatisch erkannt"));
 });
 
 test("admins can delete unused teams safely", async () => {
-  const migration = await read(
-    "supabase/migrations/20260720161000_add_admin_team_delete.sql"
-  );
+  const migration = await read("supabase/migrations/20260720161000_add_admin_team_delete.sql");
   const teams = await read("js/modules/teams.js");
-
-  assert.ok(
-    migration.includes(
-      "create or replace function app_private.api_delete_team"
-    )
-  );
-  assert.ok(
-    migration.includes("require_capability('teams.manage')")
-  );
-  assert.ok(
-    migration.includes("from app_modules.tasks")
-  );
-  assert.ok(
-    migration.includes("delete from app_portal.teams")
-  );
-  assert.ok(
-    migration.includes("TEAM_DELETED")
-  );
-  assert.ok(
-    migration.includes("when 'delete_team'")
-  );
-
-  assert.ok(
-    teams.includes('call("delete_team"')
-  );
-  assert.ok(
-    teams.includes("data-delete-team")
-  );
-  assert.ok(
-    teams.includes("Team löschen")
-  );
+  assert.ok(migration.includes("create or replace function app_private.api_delete_team"));
+  assert.ok(migration.includes("require_capability('teams.manage')"));
+  assert.ok(migration.includes("from app_modules.tasks"));
+  assert.ok(migration.includes("delete from app_portal.teams"));
+  assert.ok(migration.includes("TEAM_DELETED"));
+  assert.ok(migration.includes("when 'delete_team'"));
+  assert.ok(teams.includes('call("delete_team"'));
+  assert.ok(teams.includes("data-delete-team"));
+  assert.ok(teams.includes("Team löschen"));
 });
 
 test("Cloudflare Pages DEV deployment publishes only the static build", async () => {
@@ -366,21 +321,12 @@ test("Cloudflare Pages DEV deployment publishes only the static build", async ()
   const build = await read("scripts/build-static.mjs");
   const ignore = await read(".gitignore");
   const readme = await read("README.md");
-
   assert.equal(pkg.scripts.build, "node scripts/build-static.mjs");
   assert.match(readme, /DEV-Hosting:\*\* Cloudflare Pages/);
   assert.match(readme, /Hosting\/Deployment: Cloudflare Pages über die GitHub-Integration/);
-
-  for (const directory of [
-    "assets",
-    "components",
-    "css",
-    "js",
-    "pages"
-  ]) {
+  for (const directory of ["assets", "components", "css", "js", "pages"]) {
     assert.ok(build.includes(`"${directory}"`));
   }
-
   assert.ok(build.includes("write-runtime-config.mjs"));
   assert.ok(build.includes("SUPABASE_PUBLISHABLE_KEY"));
   assert.doesNotMatch(build, /service[_-]?role/i);
@@ -388,45 +334,19 @@ test("Cloudflare Pages DEV deployment publishes only the static build", async ()
 });
 
 test("team codes are generated internally and hidden from the UI", async () => {
-  const migration = await read(
-    "supabase/migrations/20260720174500_make_team_codes_internal.sql"
-  );
+  const migration = await read("supabase/migrations/20260720174500_make_team_codes_internal.sql");
   const teams = await read("js/modules/teams.js");
-
-  assert.match(
-    migration,
-    /create or replace function app_private\.team_code_base/
-  );
-  assert.match(
-    migration,
-    /create or replace function app_private\.next_team_code/
-  );
-  assert.match(
-    migration,
-    /v_code := app_private\.next_team_code\(v_name\)/
-  );
-  assert.doesNotMatch(
-    migration,
-    /set code = v_code/
-  );
-
-  assert.doesNotMatch(
-    teams,
-    /name="code"/
-  );
-  assert.doesNotMatch(
-    teams,
-    /team\.code/
-  );
-  assert.doesNotMatch(
-    teams,
-    /BUS_ORGA/
-  );
+  assert.match(migration, /create or replace function app_private\.team_code_base/);
+  assert.match(migration, /create or replace function app_private\.next_team_code/);
+  assert.match(migration, /v_code := app_private\.next_team_code\(v_name\)/);
+  assert.doesNotMatch(migration, /set code = v_code/);
+  assert.doesNotMatch(teams, /name="code"/);
+  assert.doesNotMatch(teams, /team\.code/);
+  assert.doesNotMatch(teams, /BUS_ORGA/);
 });
 
 test("task status uses a constrained dropdown", async () => {
   const tasks = await read("js/modules/tasks.js");
-
   assert.match(tasks, /function statusOptions\(task\)/);
   assert.match(tasks, /function statusSelect\(task\)/);
   assert.match(tasks, /data-task-status=/);
@@ -436,16 +356,10 @@ test("task status uses a constrained dropdown", async () => {
 });
 
 test("admins can permanently delete archived tasks before deleting a team", async () => {
-  const migration = await read(
-    "supabase/migrations/20260721013000_add_finance_task_profile_workflows.sql"
-  );
+  const migration = await read("supabase/migrations/20260721013000_add_finance_task_profile_workflows.sql");
   const tasks = await read("js/modules/tasks.js");
   const teams = await read("js/modules/teams.js");
-
-  assert.match(
-    migration,
-    /create or replace function app_private\.api_delete_archived_task/
-  );
+  assert.match(migration, /create or replace function app_private\.api_delete_archived_task/);
   assert.match(migration, /require_capability\('portal\.admin'\)/);
   assert.match(migration, /v_task\.status <> 'ARCHIVED'/);
   assert.match(migration, /v_confirmation <> 'LÖSCHEN'/);
@@ -453,17 +367,12 @@ test("admins can permanently delete archived tasks before deleting a team", asyn
   assert.match(migration, /delete from app_modules\.tasks/);
   assert.match(migration, /'canDeletePermanently'/);
   assert.match(migration, /'archivedTaskCount'/);
-  assert.match(
-    migration,
-    /Diese müssen im Aufgabenarchiv durch einen Admin endgültig gelöscht werden/
-  );
-
+  assert.match(migration, /Diese müssen im Aufgabenarchiv durch einen Admin endgültig gelöscht werden/);
   assert.match(tasks, /call\("delete_archived_task"/);
   assert.match(tasks, /data-delete-archived-task=/);
   assert.match(tasks, /Endgültig löschen/);
   assert.match(tasks, /pattern="LÖSCHEN"/);
   assert.match(tasks, /activeArchiveTeamId/);
-
   assert.match(teams, /data-open-team-archive=/);
   assert.match(teams, /Archivierte Aufgaben anzeigen/);
   assert.match(teams, /team\.archivedTaskCount/);
@@ -471,26 +380,16 @@ test("admins can permanently delete archived tasks before deleting a team", asyn
 });
 
 test("task workflow remains revision-safe and archived without hard delete", async () => {
-  const migration = await read(
-    "supabase/migrations/20260720201500_harden_task_workflow.sql"
-  );
+  const migration = await read("supabase/migrations/20260720201500_harden_task_workflow.sql");
   const tasks = await read("js/modules/tasks.js");
   const common = await read("js/modules/common.js");
-
   assert.match(migration, /add column if not exists archived_by uuid/);
-  assert.match(
-    migration,
-    /check \(status in \('OPEN', 'IN_PROGRESS', 'DONE', 'ARCHIVED'\)\)/
-  );
-  assert.match(
-    migration,
-    /create or replace function app_private\.api_archive_task/
-  );
+  assert.match(migration, /check \(status in \('OPEN', 'IN_PROGRESS', 'DONE', 'ARCHIVED'\)\)/);
+  assert.match(migration, /create or replace function app_private\.api_archive_task/);
   assert.match(migration, /when 'archive_task'/);
   assert.match(migration, /TASK_REOPENED/);
   assert.match(migration, /Die Aufgabe wurde zwischenzeitlich geändert/);
   assert.doesNotMatch(migration, /delete from app_modules\.tasks/i);
-
   assert.match(tasks, /Meine Aufgaben/);
   assert.match(tasks, /Teamaufgaben/);
   assert.match(tasks, /Vorstandsaufgaben/);
@@ -508,25 +407,16 @@ test("task workflow remains revision-safe and archived without hard delete", asy
 });
 
 test("archived tasks remain restorable through an audited action", async () => {
-  const migration = await read(
-    "supabase/migrations/20260720223000_restore_archived_tasks.sql"
-  );
+  const migration = await read("supabase/migrations/20260720223000_restore_archived_tasks.sql");
   const tasks = await read("js/modules/tasks.js");
-
-  assert.match(
-    migration,
-    /create or replace function app_private\.api_restore_task/
-  );
+  assert.match(migration, /create or replace function app_private\.api_restore_task/);
   assert.match(migration, /when 'restore_task'/);
   assert.match(migration, /TASK_RESTORED/);
   assert.match(migration, /'canRestore'/);
   assert.match(migration, /set status = 'OPEN'/);
   assert.match(migration, /archived_at = null/);
   assert.match(migration, /archived_by = null/);
-  assert.match(
-    migration,
-    /task_can_reopen_or_archive\(v_actor, v_id\)/
-  );
+  assert.match(migration, /task_can_reopen_or_archive\(v_actor, v_id\)/);
   assert.match(tasks, /async function restoreTask\(task\)/);
   assert.match(tasks, /call\("restore_task"/);
   assert.match(tasks, /data-restore-task=/);
@@ -535,25 +425,11 @@ test("archived tasks remain restorable through an audited action", async () => {
 });
 
 test("contribution workflow remains permissioned and ledger-backed", async () => {
-  const migration = await read(
-    "supabase/migrations/20260720234500_add_contribution_management.sql"
-  );
+  const migration = await read("supabase/migrations/20260720234500_add_contribution_management.sql");
   const fanclub = await read("js/modules/fanclub.js");
-
-  for (const table of [
-    "contribution_seasons",
-    "contribution_classes",
-    "member_contributions",
-    "finance_accounts",
-    "contribution_payment_reports",
-    "finance_entries"
-  ]) {
-    assert.match(
-      migration,
-      new RegExp(`create table app_fanclub\\.${table}`)
-    );
+  for (const table of ["contribution_seasons", "contribution_classes", "member_contributions", "finance_accounts", "contribution_payment_reports", "finance_entries"]) {
+    assert.match(migration, new RegExp(`create table app_fanclub\\.${table}`));
   }
-
   assert.match(migration, /'KASSE',[\s\S]+?'Kasse',[\s\S]+?'CASH'/);
   assert.match(migration, /can_report_contribution_payment/);
   assert.match(migration, /when 'save_contribution_season'/);
@@ -565,7 +441,6 @@ test("contribution workflow remains permissioned and ledger-backed", async () =>
   assert.match(migration, /insert into app_fanclub\.finance_entries/);
   assert.doesNotMatch(migration, /update app_fanclub\.finance_entries/i);
   assert.doesNotMatch(migration, /delete from app_fanclub\.finance_entries/i);
-
   assert.match(fanclub, /\["contributions", "Beiträge"\]/);
   assert.match(fanclub, /call\("save_contribution_season"/);
   assert.match(fanclub, /call\("save_contribution_class"/);
@@ -578,45 +453,23 @@ test("contribution workflow remains permissioned and ledger-backed", async () =>
 });
 
 test("finance ledger remains immutable transferable reversible and statement-ready", async () => {
-  const migration = await read(
-    "supabase/migrations/20260721013000_add_finance_task_profile_workflows.sql"
-  );
+  const migration = await read("supabase/migrations/20260721013000_add_finance_task_profile_workflows.sql");
   const fanclub = await read("js/modules/fanclub.js");
-
   assert.match(migration, /add column operation_id uuid not null/);
   assert.match(migration, /add column reverses_entry_id uuid/);
   assert.match(migration, /REVERSED/);
-  assert.match(
-    migration,
-    /create or replace function app_private\.api_save_finance_account/
-  );
-  assert.match(
-    migration,
-    /create or replace function app_private\.api_delete_finance_account/
-  );
-  assert.match(
-    migration,
-    /create or replace function app_private\.api_create_finance_entry/
-  );
-  assert.match(
-    migration,
-    /create or replace function app_private\.api_transfer_finance/
-  );
-  assert.match(
-    migration,
-    /create or replace function app_private\.api_reverse_finance_entry/
-  );
+  assert.match(migration, /create or replace function app_private\.api_save_finance_account/);
+  assert.match(migration, /create or replace function app_private\.api_delete_finance_account/);
+  assert.match(migration, /create or replace function app_private\.api_create_finance_entry/);
+  assert.match(migration, /create or replace function app_private\.api_transfer_finance/);
+  assert.match(migration, /create or replace function app_private\.api_reverse_finance_entry/);
   assert.match(migration, /FINANCE_TRANSFER_CREATED/);
   assert.match(migration, /FINANCE_TRANSFER_REVERSED/);
   assert.match(migration, /FINANCE_ENTRY_REVERSED/);
-  assert.match(
-    migration,
-    /Das Konto wurde bereits verwendet und kann nur deaktiviert werden/
-  );
+  assert.match(migration, /Das Konto wurde bereits verwendet und kann nur deaktiviert werden/);
   assert.doesNotMatch(migration, /update app_fanclub\.finance_entries/i);
   assert.doesNotMatch(migration, /delete from app_fanclub\.finance_entries/i);
   assert.doesNotMatch(migration, /limit 1000/i);
-
   assert.match(fanclub, /\["cashbook", "Kasse"\]/);
   assert.match(fanclub, /call\("save_finance_account"/);
   assert.match(fanclub, /call\("delete_finance_account"/);
@@ -628,19 +481,12 @@ test("finance ledger remains immutable transferable reversible and statement-rea
   assert.match(fanclub, /function accountStatementEntries\(accountId\)/);
   assert.match(fanclub, /Kontoauszug/);
   assert.match(fanclub, /runningBalance/);
-  assert.doesNotMatch(
-    fanclub,
-    /data-edit-finance-entry|data-delete-finance-entry/
-  );
+  assert.doesNotMatch(fanclub, /data-edit-finance-entry|data-delete-finance-entry/);
 });
 
 test("portal profile privacy and account creation contracts remain intact", async () => {
-  const profileMigration = await read(
-    "supabase/migrations/20260721013000_add_finance_task_profile_workflows.sql"
-  );
-  const accountMigration = await read(
-    "supabase/migrations/20260721095000_add_finance_account_opening_balance.sql"
-  );
+  const profileMigration = await read("supabase/migrations/20260721013000_add_finance_task_profile_workflows.sql");
+  const accountMigration = await read("supabase/migrations/20260721095000_add_finance_account_opening_balance.sql");
   const api = await read("js/api.js");
   const app = await read("js/app.js");
   const ui = await read("js/ui.js");
@@ -651,23 +497,12 @@ test("portal profile privacy and account creation contracts remain intact", asyn
   const sidebar = await read("components/sidebar.html");
   const index = await read("index.html");
   const login = await read("pages/login.html");
-
-  assert.match(
-    profileMigration,
-    /create table app_portal\.profile_change_requests/
-  );
-  assert.match(
-    profileMigration,
-    /create or replace function app_private\.api_submit_profile_change_request/
-  );
-  assert.match(
-    profileMigration,
-    /create or replace function app_private\.api_review_profile_change_request/
-  );
+  assert.match(profileMigration, /create table app_portal\.profile_change_requests/);
+  assert.match(profileMigration, /create or replace function app_private\.api_submit_profile_change_request/);
+  assert.match(profileMigration, /create or replace function app_private\.api_review_profile_change_request/);
   assert.match(profileMigration, /PROFILE_CHANGE_REQUEST_APPROVED/);
   assert.match(profileMigration, /when 'submit_profile_change_request'/);
   assert.match(profileMigration, /when 'review_profile_change_request'/);
-
   assert.match(api, /pd-api-state/);
   assert.match(api, /pendingRequests/);
   assert.match(app, /label: "Live"/);
@@ -680,51 +515,35 @@ test("portal profile privacy and account creation contracts remain intact", asyn
   assert.doesNotMatch(ui, /profileField\("Portal-ID"/);
   assert.match(ui, /member\.memberCode/);
   assert.match(ui, /memberStatusLabel\(member\.status\)/);
-  assert.match(
-    ui,
-    /Keine Mitgliedschaft mit diesem Portalaccount verknüpft/
-  );
-
+  assert.match(ui, /Keine Mitgliedschaft mit diesem Portalaccount verknüpft/);
   assert.match(admin, /\["profileChanges", "Datenänderungen"\]/);
   assert.match(admin, /review_profile_change_request/);
   assert.match(admin, /renderProfileChanges/);
   assert.doesNotMatch(teams, /user\.userCode|member\.userCode/);
-
   assert.match(topbar, /id="portalHomeButton"/);
   assert.match(topbar, /id="connectionStatus"/);
   assert.match(topbar, /id="userAvatarImage"/);
   assert.doesNotMatch(topbar, /logoutButton|Abmelden/);
   assert.match(sidebar, /mobile-sidebar-close/);
   assert.doesNotMatch(sidebar, /R7\.1|Milestone 4/);
-
   assert.match(index, /id="mobileNav"/);
   assert.doesNotMatch(index, /id="mobileMorePanel"|id="mobileMoreBackdrop"/);
   assert.doesNotMatch(index, /id="buildLabel"/);
   assert.doesNotMatch(index, /mobileLogoutButton|id="logoutButton"/);
-
   assert.match(login, /public-login-inline/);
   assert.doesNotMatch(login, /auth-page|auth-brand-panel|auth-card-wrap/);
   assert.doesNotMatch(login, /data-route="home"/);
-
   const accountStart = fanclub.indexOf("function accountForm(account = {})");
-  const accountEnd = fanclub.indexOf(
-    "function openFinanceAccount",
-    accountStart
-  );
+  const accountEnd = fanclub.indexOf("function openFinanceAccount", accountStart);
   assert.equal(accountStart >= 0, true);
   assert.equal(accountEnd > accountStart, true);
-
   const accountFormSource = fanclub.slice(accountStart, accountEnd);
   assert.doesNotMatch(accountFormSource, /name="code"/);
   assert.match(accountFormSource, /name="openingBalance"/);
   assert.match(accountFormSource, /name="openingBalanceDate"/);
   assert.doesNotMatch(accountFormSource, /placeholder="Bankkonto"/);
-  assert.doesNotMatch(
-    fanclub,
-    /<small>\$\{escapeHtml\(account\.code\)\}<\/small>/
-  );
+  assert.doesNotMatch(fanclub, /<small>\$\{escapeHtml\(account\.code\)\}<\/small>/);
   assert.match(fanclub, /OPENING_BALANCE: "Startsaldo"/);
-
   assert.match(accountMigration, /'KONTO_'/);
   assert.match(accountMigration, /'OPENING_BALANCE'/);
   assert.match(accountMigration, /'Startsaldo'/);
@@ -735,15 +554,11 @@ test("portal profile privacy and account creation contracts remain intact", asyn
 test("mobile navigation keeps the bottom bar and More opens the full sidebar", async () => {
   const index = await read("index.html");
   const ui = await read("js/ui.js");
-
   assert.match(index, /id="mobileNav"/);
   assert.doesNotMatch(index, /id="mobileMorePanel"|id="mobileMoreBackdrop"/);
   assert.match(ui, /MOBILE_PRIMARY/);
   assert.match(ui, /more\.id = "mobileMoreToggle"/);
   assert.match(ui, /event\.target\.closest\("#mobileMoreToggle"\)/);
-  assert.match(
-    ui,
-    /event\.target\.closest\("#mobileMoreToggle"\)[\s\S]*?openMobileMenu\(\)/
-  );
+  assert.match(ui, /event\.target\.closest\("#mobileMoreToggle"\)[\s\S]*?openMobileMenu\(\)/);
   assert.doesNotMatch(ui, /openMobileMore|closeMobileMore|mobileMoreRoutes/);
 });
