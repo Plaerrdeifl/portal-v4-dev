@@ -72,17 +72,12 @@ function writeEngineState(state) {
   localStorage.setItem(STATE_KEY, JSON.stringify(engineState));
 }
 
-function applyRemoteState(raw, notifyEngine = true) {
+function applyRemoteState(raw) {
   const next = normalizeState(raw);
   serverState = next;
   applyingRemote = true;
   try {
     writeEngineState(next);
-    if (notifyEngine) {
-      window.dispatchEvent(new CustomEvent("pd-liveticker-remote-state", {
-        detail: { state: { opponentId: "erfurt", minute: next.minute, history: next.history } }
-      }));
-    }
   } finally {
     applyingRemote = false;
   }
@@ -153,7 +148,7 @@ async function syncLocalState(localState) {
         p_client_id: clientId()
       });
     }
-    applyRemoteState(result, false);
+    applyRemoteState(result);
   } catch (error) {
     console.error(error);
     renderSyncStatus("Speicherfehler", "error");
@@ -203,21 +198,24 @@ function installStyles() {
   document.head.append(style);
 }
 
-async function loadSelectedGame(game, notifyEngine = false) {
+async function loadSelectedGame(game) {
   selectedGame = game;
   localStorage.setItem(SELECTED_EVENT_KEY, game.eventId);
   localStorage.setItem(VENUE_KEY, game.homeAway === "AWAY" ? "away" : "home");
   renderSyncStatus("Lädt …", "pending");
   const state = await rpc("pd_public_liveticker_state", { p_event_id: game.eventId });
-  applyRemoteState(state, notifyEngine);
+  applyRemoteState(state);
 }
 
 async function poll() {
-  if (!selectedGame || syncing) return;
+  if (!selectedGame || syncing || document.hidden) return;
   try {
     const fresh = await rpc("pd_public_liveticker_state", { p_event_id: selectedGame.eventId });
     const normalized = normalizeState(fresh);
-    if (!serverState || normalized.revision !== serverState.revision) applyRemoteState(fresh, true);
+    if (!serverState || normalized.revision !== serverState.revision) {
+      applyRemoteState(fresh);
+      window.location.reload();
+    }
   } catch (error) {
     console.error(error);
     renderSyncStatus("Verbindung prüfen", "error");
@@ -235,7 +233,7 @@ export async function prepareLivetickerGameStorage() {
   const remembered = localStorage.getItem(SELECTED_EVENT_KEY);
   const chosen = games.find(game => game.eventId === remembered) || games[0];
   if (gameSelect) gameSelect.value = chosen.eventId;
-  await loadSelectedGame(chosen, false);
+  await loadSelectedGame(chosen);
 
   window.addEventListener("pd-liveticker-state-saved", event => {
     const localState = event.detail?.state || readEngineState();
@@ -245,7 +243,8 @@ export async function prepareLivetickerGameStorage() {
   gameSelect?.addEventListener("change", async () => {
     const game = games.find(item => item.eventId === gameSelect.value);
     if (!game) return;
-    await loadSelectedGame(game, true);
+    await loadSelectedGame(game);
+    window.location.reload();
   });
 
   pollTimer = window.setInterval(poll, 3000);
