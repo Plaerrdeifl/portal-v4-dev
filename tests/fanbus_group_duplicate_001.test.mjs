@@ -9,7 +9,7 @@ import {
 
 const read = path => fs.readFileSync(new URL(path, import.meta.url), "utf8");
 const ui = read("../js/m328-fanbus-operational-integrity.js");
-const migration = read("../supabase/migrations/20260905143000_fanbus_group_duplicate_review_r1.sql");
+const migration = read("../supabase/migrations/20260905123213_fanbus_group_duplicate_review_r1.sql");
 
 test("GROUP-001 counts only ACTIVE and WAITLISTED as the current booking", () => {
   const registrations = [
