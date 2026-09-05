@@ -1,3 +1,5 @@
+import { normalizeLivetickerTemplateSnapshot } from "./liveticker-output-templates.js?v=20260906-r1";
+
 const STATE_KEY = "plaerrdeifl.livetickerPrototype.v3";
 const SELECTED_EVENT_KEY = "plaerrdeifl.livetickerPrototype.eventId";
 const VENUE_KEY = "plaerrdeifl.livetickerPrototype.venue";
@@ -10,7 +12,9 @@ let syncing = false;
 let applyingRemote = false;
 let pendingLocalState = null;
 let pollTimer = null;
+let templatePollTimer = null;
 let completing = false;
+let templateSignature = "";
 
 function runtimeConfig() {
   const value = window.PD_RUNTIME_CONFIG || {};
@@ -282,10 +286,33 @@ async function poll() {
   }
 }
 
+function applyOutputTemplates(raw) {
+  const snapshot = normalizeLivetickerTemplateSnapshot(raw);
+  const signature = JSON.stringify(snapshot.templates.map(template => [template.key, template.title, template.revision]));
+  globalThis.PD_LIVETICKER_OUTPUT_TEMPLATES = snapshot;
+  if (templateSignature && signature !== templateSignature) {
+    window.dispatchEvent(new CustomEvent("pd-liveticker-output-templates-updated"));
+  }
+  templateSignature = signature;
+}
+
+async function pollOutputTemplates() {
+  if (document.hidden) return;
+  try {
+    applyOutputTemplates(await rpc("pd_public_liveticker_templates"));
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 export async function prepareLivetickerGameStorage() {
   config = runtimeConfig();
   installStyles();
-  const response = await rpc("pd_public_liveticker_games");
+  const [response, rawTemplates] = await Promise.all([
+    rpc("pd_public_liveticker_games"),
+    rpc("pd_public_liveticker_templates")
+  ]);
+  applyOutputTemplates(rawTemplates);
   const games = Array.isArray(response?.games) ? response.games : [];
   if (!games.length) throw new Error("Keine Spiele im zentralen Kalender verfügbar.");
 
@@ -314,7 +341,11 @@ export async function prepareLivetickerGameStorage() {
   });
 
   pollTimer = window.setInterval(poll, 3000);
-  window.addEventListener("pagehide", () => { if (pollTimer) clearInterval(pollTimer); }, { once: true });
+  templatePollTimer = window.setInterval(pollOutputTemplates, 30000);
+  window.addEventListener("pagehide", () => {
+    if (pollTimer) clearInterval(pollTimer);
+    if (templatePollTimer) clearInterval(templatePollTimer);
+  }, { once: true });
 
   return { games, selectedGame: chosen, state: serverState };
 }

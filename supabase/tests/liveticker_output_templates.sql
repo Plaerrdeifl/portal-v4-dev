@@ -1,0 +1,149 @@
+\set ON_ERROR_STOP on
+
+begin;
+
+update app_portal.settings
+set value = value || jsonb_build_object('environment', 'DEV')
+where key = 'platform.mode';
+
+set local role anon;
+
+do $liveticker_public_runtime$
+begin
+  if jsonb_array_length(public.pd_public_liveticker_templates() -> 'templates') <> 3 then
+    raise exception 'Öffentliche DEV-Runtime liefert nicht die drei gespeicherten Ausgabevarianten.';
+  end if;
+end
+$liveticker_public_runtime$;
+
+reset role;
+
+do $liveticker_output_templates$
+declare
+  v_manager uuid := '00000000-0000-4906-8000-000000000001';
+  v_without_right uuid := '00000000-0000-4906-8000-000000000002';
+  v_role uuid := '00000000-0000-4906-8000-000000000101';
+  v_before jsonb;
+  v_saved jsonb;
+  v_revision integer;
+begin
+  if not (
+    select relrowsecurity
+    from pg_class
+    where oid = 'app_modules.liveticker_output_templates'::regclass
+  ) then
+    raise exception 'RLS fehlt auf liveticker_output_templates.';
+  end if;
+
+  if has_table_privilege('anon', 'app_modules.liveticker_output_templates', 'SELECT')
+     or has_table_privilege('authenticated', 'app_modules.liveticker_output_templates', 'SELECT')
+     or has_table_privilege('authenticated', 'app_modules.liveticker_output_templates', 'UPDATE') then
+    raise exception 'Browserrollen besitzen direkten Tabellenzugriff auf Ausgabevarianten.';
+  end if;
+
+  if not has_function_privilege('anon', 'public.pd_public_liveticker_templates()', 'EXECUTE')
+     or not has_function_privilege('authenticated', 'public.pd_public_liveticker_templates()', 'EXECUTE') then
+    raise exception 'Öffentliche Runtime-Lesegrenze fehlt.';
+  end if;
+
+  insert into auth.users (id, email)
+  values
+    (v_manager, 'liveticker-template-manager@example.invalid'),
+    (v_without_right, 'liveticker-template-no-right@example.invalid');
+
+  insert into app_portal.portal_roles (id, code, name, is_active, sort_order)
+  values (v_role, 'LIVETICKER_TEMPLATE_TEST', 'Liveticker Template Test', true, 990);
+
+  insert into app_portal.role_capabilities (role_id, capability_code)
+  values (v_role, 'liveticker.manage');
+
+  insert into app_portal.users (
+    id, user_code, email, first_name, last_name, status, role_id
+  ) values
+    (v_manager, 'U-LT-TEMPLATE-1', 'liveticker-template-manager@example.invalid', 'Template', 'Manager', 'ACTIVE', v_role),
+    (v_without_right, 'U-LT-TEMPLATE-2', 'liveticker-template-no-right@example.invalid', 'Ohne', 'Recht', 'ACTIVE', '00000000-0000-4000-8000-000000000003');
+
+  perform set_config('request.jwt.claim.sub', v_manager::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub', v_manager, 'role', 'authenticated')::text,
+    true
+  );
+
+  v_before := app_private.api_liveticker_output_templates_list();
+  select (template_entry.item ->> 'revision')::integer into v_revision
+  from jsonb_array_elements(v_before -> 'templates') as template_entry(item)
+  where template_entry.item ->> 'key' = 'classic';
+
+  v_saved := app_private.api_liveticker_output_template_save(jsonb_build_object(
+    'key', 'classic',
+    'title', 'Persistierter Titel',
+    'ownGoalTemplate', E' CUSTOM {{minute}}\n{{scorer}}\n{{mighty_score}}:{{opponent_score}}\n',
+    'opponentGoalTemplate', E'CUSTOM {{minute}} Tor {{opponent_name}}\n{{mighty_score}}:{{opponent_score}}\n ',
+    'expectedRevision', v_revision
+  ));
+
+  if not exists (
+    select 1
+    from jsonb_array_elements(v_saved -> 'templates') as template_entry(item)
+    where template_entry.item ->> 'key' = 'classic'
+      and template_entry.item ->> 'title' = 'Persistierter Titel'
+      and template_entry.item ->> 'ownGoalTemplate' = E' CUSTOM {{minute}}\n{{scorer}}\n{{mighty_score}}:{{opponent_score}}\n'
+      and template_entry.item ->> 'opponentGoalTemplate' = E'CUSTOM {{minute}} Tor {{opponent_name}}\n{{mighty_score}}:{{opponent_score}}\n '
+      and (template_entry.item ->> 'revision')::integer = v_revision + 1
+  ) then
+    raise exception 'Titel/Text wurden nicht revisionssicher persistiert: %', v_saved;
+  end if;
+
+  begin
+    perform app_private.api_liveticker_output_template_save(jsonb_build_object(
+      'key', 'classic',
+      'title', 'Unbekannt',
+      'ownGoalTemplate', '{{minute}} {{unknown}} {{mighty_score}}:{{opponent_score}}',
+      'opponentGoalTemplate', '{{minute}} {{opponent_name}} {{mighty_score}}:{{opponent_score}}',
+      'expectedRevision', v_revision + 1
+    ));
+    raise exception 'Unbekannter Platzhalter wurde gespeichert.';
+  exception
+    when sqlstate '22023' then null;
+  end;
+
+  begin
+    perform app_private.api_liveticker_output_template_save(jsonb_build_object(
+      'key', 'classic',
+      'title', 'Fehlend',
+      'ownGoalTemplate', '{{minute}} ohne Spielstand',
+      'opponentGoalTemplate', '{{minute}} {{opponent_name}} {{mighty_score}}:{{opponent_score}}',
+      'expectedRevision', v_revision + 1
+    ));
+    raise exception 'Fehlender Pflichtplatzhalter wurde gespeichert.';
+  exception
+    when sqlstate '22023' then null;
+  end;
+
+  begin
+    update app_modules.liveticker_output_templates
+    set template_key = 'classic_changed'
+    where template_key = 'classic';
+    raise exception 'Technischer Varianten-Key wurde geändert.';
+  exception
+    when sqlstate '22023' then null;
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_without_right::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    jsonb_build_object('sub', v_without_right, 'role', 'authenticated')::text,
+    true
+  );
+
+  begin
+    perform app_private.api_liveticker_output_templates_list();
+    raise exception 'Benutzer ohne liveticker.manage durfte Vorlagen lesen.';
+  exception
+    when sqlstate '42501' then null;
+  end;
+end
+$liveticker_output_templates$;
+
+rollback;

@@ -164,6 +164,10 @@ function assistLine(event) {
   return assists.length ? `Assists: ${assists.map(playerText).join(" · ")}` : "";
 }
 
+function assistTemplateValue(event) {
+  return assistPlayers(event).map(playerText).join(" · ");
+}
+
 function eventSegment(event) {
   if (event.type === "shootout") return SEGMENTS.SO;
   return segmentForMinute(event.minute);
@@ -171,32 +175,28 @@ function eventSegment(event) {
 
 export function formatGoalText(event, history, opponent) {
   const score = scoreAtEvent(history, event.id);
-  const minute = `${event.minute} Spielminute`;
-  const scorer = goalPlayerLine(event);
-  const assists = assistLine(event);
-  const details = [...(scorer ? [scorer] : []), ...(assists ? [assists] : [])];
+  const templates = globalThis.PD_LIVETICKER_OUTPUT_TEMPLATES?.templates;
+  const variant = Array.isArray(templates)
+    ? templates.find(template => template.key === (event.style || "classic"))
+    : null;
+  const renderer = globalThis.PD_LIVETICKER_TEMPLATE_RENDERER?.render;
 
-  if (event.team === "opponent") {
-    if (event.style === "short") return [minute, `Tor ${opponent.shortName}`, ...details, "", `*${score.mighty}:${score.opponent}*`].join("\n");
-    return [minute, `Tor ${opponent.shortName}`, ...details, "", "Neuer Spielstand", `*${score.mighty}:${score.opponent}*`].join("\n");
+  if (!variant || typeof renderer !== "function") {
+    throw new Error("Liveticker-Ausgabevarianten konnten nicht geladen werden.");
   }
 
-  if (event.style === "emotional") {
-    return [minute, "🔥 *TOOOOOOOR MIGHTY DOGS!* 🔥", "", ...details, "", "Neuer Spielstand", `*${score.mighty}:${score.opponent}*`].join("\n");
-  }
-  if (event.style === "short") {
-    return [minute, "*TOOOOOR SCHWEINFURT!*", ...details, "", `*${score.mighty}:${score.opponent}*`].join("\n");
-  }
-  return [
-    minute,
-    "*Tooooooor für unsere Schweinfurter Mighty Dogs*",
-    "",
-    ...(scorer ? [`Torschütze: ${scorer}`] : []),
-    ...(assists ? [assists] : []),
-    "",
-    "Neuer Spielstand",
-    `*${score.mighty}:${score.opponent}*`
-  ].join("\n");
+  const template = event.team === "opponent"
+    ? variant.opponentGoalTemplate
+    : variant.ownGoalTemplate;
+
+  return renderer(template, {
+    minute: event.minute,
+    scorer: goalPlayerLine(event),
+    assists: assistTemplateValue(event),
+    mighty_score: score.mighty,
+    opponent_score: score.opponent,
+    opponent_name: opponent.shortName
+  });
 }
 
 function formatPenaltyEntry(penalty, opponent) {
@@ -409,6 +409,17 @@ function initialize() {
   Object.values(OPPONENTS).forEach(item => opponentSelect.append(new Option(item.shortName, item.id)));
   opponentSelect.value = state.opponentId;
   minuteInput.value = String(state.minute);
+
+  function syncGoalStyleTitles() {
+    const outputTemplates = globalThis.PD_LIVETICKER_OUTPUT_TEMPLATES?.templates || [];
+    document.querySelectorAll("input[name='goalStyle']").forEach(input => {
+      const variant = outputTemplates.find(template => template.key === input.value);
+      const label = document.querySelector(`label[for='${input.id}']`);
+      if (variant && label) label.textContent = variant.title;
+    });
+  }
+  syncGoalStyleTitles();
+  window.addEventListener("pd-liveticker-output-templates-updated", syncGoalStyleTitles);
 
   function opponent() { return OPPONENTS[state.opponentId]; }
   function selectedAction() { return new FormData(form).get("action"); }

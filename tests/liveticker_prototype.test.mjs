@@ -27,7 +27,7 @@ test("public DEV Liveticker stays standalone and uses the scoped Supabase storag
   assert.match(html, /script-src 'self' blob:/);
   assert.match(html, /connect-src 'self' https:\/\/\*\.supabase\.co/);
   assert.match(html, /Spielstand und Aktionen werden zentral pro Spiel gespeichert/);
-  assert.match(html, /type="module" src="\.\.\/js\/liveticker-bootstrap\.js\?v=20260905-calendar1"/);
+  assert.match(html, /type="module" src="\.\.\/js\/liveticker-bootstrap\.js\?v=20260906-templates1"/);
   assert.match(bootstrap, /runtime-config\.js/);
   assert.match(bootstrap, /importRuntimeEngine/);
   assert.match(storage, /pd_public_liveticker_games/);

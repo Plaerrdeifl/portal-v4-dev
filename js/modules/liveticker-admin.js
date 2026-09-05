@@ -9,9 +9,18 @@ import {
   runWrite,
   showToast
 } from "./common.js";
+import {
+  LIVETICKER_TEMPLATE_CONTEXTS,
+  LIVETICKER_TEMPLATE_VARIABLES,
+  livetickerSafeTokenInsertionRange,
+  planLivetickerProtectedEdit,
+  templateToken,
+  validateLivetickerTemplate
+} from "../liveticker-output-templates.js?v=20260906-r1";
 
 let snapshot = null;
 let archiveSnapshot = null;
+let templateSnapshot = null;
 let currentTeamId = "";
 let currentArchiveEventId = "";
 let currentView = "teams";
@@ -49,7 +58,8 @@ function ensureLivetickerAdminStyles() {
       line-height:1.2!important;
     }
     .v4-dialog .liveticker-admin-form input:not([type="checkbox"]),
-    .v4-dialog .liveticker-admin-form select{
+    .v4-dialog .liveticker-admin-form select,
+    .v4-dialog .liveticker-admin-form textarea{
       width:100%!important;
       min-width:0!important;
       min-height:48px!important;
@@ -58,6 +68,44 @@ function ensureLivetickerAdminStyles() {
       border-radius:13px!important;
       background:#fff!important;
     }
+    .v4-dialog .liveticker-admin-form textarea{
+      min-height:190px!important;
+      resize:vertical!important;
+      font:500 .86rem/1.48 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;
+      white-space:pre-wrap!important;
+    }
+    .liveticker-template-key{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:10px 12px;
+      border:1px solid #d7e2ee;
+      border-radius:12px;
+      background:#f7faff;
+      font-size:.8rem;
+    }
+    .liveticker-template-key code{font-weight:900;color:#244e78}
+    .liveticker-template-variables{display:grid;gap:7px}
+    .liveticker-template-variables strong{font-size:.78rem}
+    .liveticker-variable-chips{display:flex;flex-wrap:wrap;gap:7px}
+    .liveticker-variable-chip{
+      min-height:38px;
+      padding:7px 9px;
+      border:1px solid #b9cce0;
+      border-radius:10px;
+      background:#f5f9fd;
+      color:#123e68;
+      font:800 .72rem/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    }
+    .liveticker-variable-chip.is-required{border-color:#7daee0;background:#eaf4ff}
+    .liveticker-template-help,.liveticker-template-validation{
+      margin:0;
+      color:#60748a;
+      font-size:.72rem;
+      line-height:1.4;
+    }
+    .liveticker-template-validation[data-valid="false"]{color:#a22832;font-weight:800}
     .v4-dialog .liveticker-admin-form .checkbox-row{
       display:grid!important;
       grid-template-columns:32px minmax(0,1fr)!important;
@@ -130,7 +178,9 @@ function ensureLivetickerAdminStyles() {
       .v4-dialog .liveticker-admin-form{gap:12px!important}
       .v4-dialog .liveticker-admin-form input:not([type="checkbox"]),
       .v4-dialog .liveticker-admin-form select{min-height:50px!important}
+      .v4-dialog .liveticker-admin-form textarea{min-height:220px!important}
       .v4-dialog .liveticker-admin-form .checkbox-row{min-height:48px!important}
+      .liveticker-variable-chip{min-height:42px}
     }
   `;
   document.head.appendChild(style);
@@ -164,6 +214,151 @@ function playerForm(team, player = {}) {
     <label>Name<input name="name" required maxlength="160" placeholder="Vorname Nachname" value="${escapeAttr(player.name || "")}"></label>
     <label class="checkbox-row"><input name="active" type="checkbox" ${player.active !== false ? "checked" : ""}><span>Spieler ist aktiv</span></label>
   </form>`;
+}
+
+function templateVariables(contextKey) {
+  const context = LIVETICKER_TEMPLATE_CONTEXTS[contextKey];
+  const serverVariables = Array.isArray(templateSnapshot?.variables)
+    ? templateSnapshot.variables
+    : LIVETICKER_TEMPLATE_VARIABLES;
+  return serverVariables.filter(variable => (variable.contexts || []).includes(contextKey)).map(variable => ({
+    ...variable,
+    required: context.required.includes(variable.key)
+  }));
+}
+
+function variableControls(contextKey, target) {
+  const variables = templateVariables(contextKey);
+  return `<div class="liveticker-template-variables">
+    <strong>Verfügbare Platzhalter · * Pflicht</strong>
+    <div class="liveticker-variable-chips">${variables.map(variable => `<button class="liveticker-variable-chip${variable.required ? " is-required" : ""}" type="button" data-insert-variable="${escapeAttr(variable.key)}" data-template-target="${escapeAttr(target)}" title="${escapeAttr(variable.label || variable.key)}">${escapeHtml(templateToken(variable.key))}${variable.required ? " *" : ""}</button>`).join("")}</div>
+  </div>`;
+}
+
+function outputTemplateForm(template) {
+  return `<form class="liveticker-admin-form liveticker-output-template-form">
+    <div class="liveticker-template-key"><span>Technischer Key · nicht editierbar</span><code>${escapeHtml(template.key)}</code></div>
+    <label>Sichtbarer Titel<input name="title" required maxlength="60" value="${escapeAttr(template.title || "")}"></label>
+    <label>Ausgabetext · eigenes Tor<textarea name="ownGoalTemplate" required maxlength="4000" aria-describedby="ownGoalTemplateHelp">${escapeHtml(template.ownGoalTemplate || "")}</textarea></label>
+    ${variableControls("own", "ownGoalTemplate")}
+    <p id="ownGoalTemplateHelp" class="liveticker-template-help">Technische Namen sind geschützt. Rücktaste oder Entfernen löscht einen Platzhalter immer vollständig. Optionale Platzhalter entfernen ihre vollständige Ausgabezeile, wenn kein Wert vorhanden ist.</p>
+    <p class="liveticker-template-validation" data-template-validation="own" data-valid="true"></p>
+    <label>Ausgabetext · Gegnertor<textarea name="opponentGoalTemplate" required maxlength="4000" aria-describedby="opponentGoalTemplateHelp">${escapeHtml(template.opponentGoalTemplate || "")}</textarea></label>
+    ${variableControls("opponent", "opponentGoalTemplate")}
+    <p id="opponentGoalTemplateHelp" class="liveticker-template-help">Technische Namen sind geschützt. Platzhalter über die Schaltflächen einsetzen; unbekannte oder fehlende Pflichtplatzhalter werden nicht gespeichert.</p>
+    <p class="liveticker-template-validation" data-template-validation="opponent" data-valid="true"></p>
+  </form>`;
+}
+
+function bindProtectedTemplateField(field) {
+  let pendingFallback = null;
+
+  field.addEventListener("beforeinput", event => {
+    const plan = planLivetickerProtectedEdit(
+      field.value,
+      field.selectionStart,
+      field.selectionEnd,
+      event.inputType
+    );
+    if (plan.action === "allow") return;
+
+    if (!event.cancelable) {
+      pendingFallback = { plan, value: field.value };
+      return;
+    }
+
+    event.preventDefault();
+    if (plan.action === "delete") {
+      field.setRangeText("", plan.start, plan.end, "end");
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+      return;
+    }
+    field.setSelectionRange(plan.start, plan.end);
+  });
+
+  field.addEventListener("input", () => {
+    if (!pendingFallback) return;
+    const { plan, value } = pendingFallback;
+    pendingFallback = null;
+    field.value = plan.action === "delete"
+      ? `${value.slice(0, plan.start)}${value.slice(plan.end)}`
+      : value;
+    field.setSelectionRange(plan.start, plan.start);
+  });
+}
+
+function bindOutputTemplateForm(dialog) {
+  const form = dialog.querySelector(".liveticker-output-template-form");
+  if (!form) return;
+
+  for (const context of Object.values(LIVETICKER_TEMPLATE_CONTEXTS)) {
+    const field = form.elements.namedItem(context.field);
+    if (field instanceof HTMLTextAreaElement) bindProtectedTemplateField(field);
+  }
+
+  function validateField(contextKey) {
+    const context = LIVETICKER_TEMPLATE_CONTEXTS[contextKey];
+    const field = form.elements.namedItem(context.field);
+    const message = form.querySelector(`[data-template-validation='${contextKey}']`);
+    if (!(field instanceof HTMLTextAreaElement)) return;
+    const result = validateLivetickerTemplate(field.value, contextKey);
+    field.setCustomValidity(result.errors.join(" "));
+    if (message) {
+      message.dataset.valid = String(result.valid);
+      message.textContent = result.valid ? "Alle Pflichtplatzhalter vorhanden." : result.errors.join(" ");
+    }
+  }
+
+  for (const contextKey of Object.keys(LIVETICKER_TEMPLATE_CONTEXTS)) {
+    const context = LIVETICKER_TEMPLATE_CONTEXTS[contextKey];
+    const field = form.elements.namedItem(context.field);
+    field?.addEventListener("input", () => validateField(contextKey));
+    validateField(contextKey);
+  }
+
+  form.querySelectorAll("[data-insert-variable]").forEach(button => {
+    button.addEventListener("click", () => {
+      const field = form.elements.namedItem(button.dataset.templateTarget || "");
+      if (!(field instanceof HTMLTextAreaElement)) return;
+      const token = templateToken(button.dataset.insertVariable || "");
+      const range = livetickerSafeTokenInsertionRange(
+        field.value,
+        field.selectionStart,
+        field.selectionEnd
+      );
+      field.setRangeText(token, range.start, range.end, "end");
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+      field.focus({ preventScroll: true });
+    });
+  });
+}
+
+function openOutputTemplate(template) {
+  const dialog = openDialog({
+    title: template.title || "Ausgabevariante",
+    kicker: "Liveticker · Ausgabevarianten",
+    body: outputTemplateForm(template),
+    submitLabel: "Variante speichern",
+    onSubmit: async values => {
+      const ownValidation = validateLivetickerTemplate(values.ownGoalTemplate, "own");
+      const opponentValidation = validateLivetickerTemplate(values.opponentGoalTemplate, "opponent");
+      const errors = [...ownValidation.errors, ...opponentValidation.errors];
+      if (errors.length) throw new Error([...new Set(errors)].join(" "));
+
+      templateSnapshot = await runWrite(
+        () => call("liveticker_output_template_save", {
+          key: template.key,
+          title: values.title,
+          ownGoalTemplate: values.ownGoalTemplate,
+          opponentGoalTemplate: values.opponentGoalTemplate,
+          expectedRevision: template.revision
+        }),
+        "Ausgabevariante wurde aktualisiert."
+      );
+      render();
+    }
+  });
+  bindOutputTemplateForm(dialog);
 }
 
 function openTeam(team = null) {
@@ -405,6 +600,38 @@ function renderArchive(toolbar, panel) {
   });
 }
 
+function outputTemplateRow(template) {
+  return `<button class="v4-team-list-row" type="button" data-template-key="${escapeAttr(template.key)}">
+    <span>
+      <strong>${escapeHtml(template.title)}</strong>
+      <small>Technischer Key: ${escapeHtml(template.key)} · Version ${escapeHtml(template.revision)}</small>
+    </span>
+    <span class="v4-row-chevron" aria-hidden="true">›</span>
+  </button>`;
+}
+
+function renderOutputTemplates(toolbar, panel) {
+  const templates = templateSnapshot?.templates || [];
+  toolbar.innerHTML = `<div class="v4-section-heading">
+    <div><span class="subtle">Liveticker</span><h2>Ausgabevarianten</h2><p class="subtle">Titel und Texte für zukünftige Tor-Ausgaben bearbeiten.</p></div>
+    <button class="button small secondary" type="button" data-back-teams>← Teams</button>
+  </div>`;
+  panel.innerHTML = templates.length
+    ? `<div class="v4-team-list">${templates.map(outputTemplateRow).join("")}</div>`
+    : '<div class="notice warning">Keine Ausgabevarianten verfügbar.</div>';
+
+  toolbar.querySelector("[data-back-teams]")?.addEventListener("click", () => {
+    currentView = "teams";
+    render();
+  });
+  panel.querySelectorAll("[data-template-key]").forEach(button => {
+    button.addEventListener("click", () => {
+      const template = templates.find(item => item.key === button.dataset.templateKey);
+      if (template) openOutputTemplate(template);
+    });
+  });
+}
+
 function render() {
   const toolbar = document.getElementById("livetickerRosterToolbar");
   const panel = document.getElementById("livetickerRosterPanel");
@@ -412,6 +639,10 @@ function render() {
 
   if (currentView === "archive") {
     renderArchive(toolbar, panel);
+    return;
+  }
+  if (currentView === "templates") {
+    renderOutputTemplates(toolbar, panel);
     return;
   }
 
@@ -440,6 +671,7 @@ function render() {
   toolbar.innerHTML = `<div class="v4-section-heading">
     <div><span class="subtle">Liveticker</span><h2>Teams & Kader</h2><p class="subtle">Team auswählen oder neu anlegen.</p></div>
     <div class="button-row">
+      <button class="button small secondary" type="button" data-open-templates>Ausgabevarianten</button>
       <button class="button small secondary" type="button" data-open-archive>Archiv</button>
       <button class="button small primary" type="button" data-add-team>+ Team</button>
     </div>
@@ -449,6 +681,11 @@ function render() {
     ? `<div class="v4-team-list">${teams.map(teamListRow).join("")}</div>`
     : '<div class="notice neutral">Noch keine Liveticker-Teams angelegt.</div>';
 
+  toolbar.querySelector("[data-open-templates]")?.addEventListener("click", () => {
+    currentView = "templates";
+    currentTeamId = "";
+    render();
+  });
   toolbar.querySelector("[data-open-archive]")?.addEventListener("click", () => showArchive());
   toolbar.querySelector("[data-add-team]")?.addEventListener("click", () => openTeam());
   panel.querySelectorAll("[data-team-id]").forEach(button => {
@@ -465,17 +702,21 @@ export async function hydrateLivetickerAdmin(context = {}) {
   currentTeamId = "";
   currentArchiveEventId = "";
   archiveSnapshot = null;
+  templateSnapshot = null;
   const panel = document.getElementById("livetickerRosterPanel");
-  if (panel) panel.innerHTML = loading("Teams und Kader werden geladen …");
+  if (panel) panel.innerHTML = loading("Liveticker-Verwaltung wird geladen …");
 
   try {
-    snapshot = await call("liveticker_teams_list");
+    [snapshot, templateSnapshot] = await Promise.all([
+      call("liveticker_teams_list"),
+      call("liveticker_output_templates_list")
+    ]);
     if (context.isCurrent && !context.isCurrent()) return;
     render();
   } catch (error) {
     if (context.isCurrent && !context.isCurrent()) return;
-    if (panel) panel.innerHTML = errorPanel(error, "Liveticker-Teams konnten nicht geladen werden");
-    showToast(error?.message || "Liveticker-Teams konnten nicht geladen werden.", "error", 6500);
+    if (panel) panel.innerHTML = errorPanel(error, "Liveticker-Verwaltung konnte nicht geladen werden");
+    showToast(error?.message || "Liveticker-Verwaltung konnte nicht geladen werden.", "error", 6500);
   }
 }
 

@@ -17,6 +17,30 @@ import {
   parsePenaltyDuration,
   segmentForMinute
 } from "../js/liveticker-prototype-v4.js";
+import "../js/liveticker-output-templates.js";
+
+globalThis.PD_LIVETICKER_OUTPUT_TEMPLATES = {
+  templates: [
+    {
+      key: "classic",
+      title: "Klassisch",
+      ownGoalTemplate: "{{minute}} Spielminute\n*Tooooooor für unsere Schweinfurter Mighty Dogs*\n\nTorschütze: {{scorer}}\nAssists: {{assists}}\n\nNeuer Spielstand\n*{{mighty_score}}:{{opponent_score}}*",
+      opponentGoalTemplate: "{{minute}} Spielminute\nTor {{opponent_name}}\n{{scorer}}\nAssists: {{assists}}\n\nNeuer Spielstand\n*{{mighty_score}}:{{opponent_score}}*"
+    },
+    {
+      key: "emotional",
+      title: "Emotional",
+      ownGoalTemplate: "{{minute}} Spielminute\n🔥 *TOOOOOOOR MIGHTY DOGS!* 🔥\n\n{{scorer}}\nAssists: {{assists}}\n\nNeuer Spielstand\n*{{mighty_score}}:{{opponent_score}}*",
+      opponentGoalTemplate: "{{minute}} Spielminute\nTor {{opponent_name}}\n{{scorer}}\nAssists: {{assists}}\n\nNeuer Spielstand\n*{{mighty_score}}:{{opponent_score}}*"
+    },
+    {
+      key: "short",
+      title: "Kurz",
+      ownGoalTemplate: "{{minute}} Spielminute\n*TOOOOOR SCHWEINFURT!*\n{{scorer}}\nAssists: {{assists}}\n\n*{{mighty_score}}:{{opponent_score}}*",
+      opponentGoalTemplate: "{{minute}} Spielminute\nTor {{opponent_name}}\n{{scorer}}\nAssists: {{assists}}\n\n*{{mighty_score}}:{{opponent_score}}*"
+    }
+  ]
+};
 
 const opponent = OPPONENTS.erfurt;
 const melchior = { number: "84", name: "Nils Melchior", position: "Sturm" };
@@ -86,6 +110,22 @@ test("goal text supports scorer plus two assists", () => {
   assert.match(text, /Torschütze: #84 Nils Melchior/);
   assert.match(text, /Assists: #10 Kevin Heckenberger · #46 Pavel Bares/);
   assert.match(text, /\*1:0\*/);
+});
+
+test("seeded classic, emotional and short variants preserve their previous output", () => {
+  const ownClassic = goal("classic", "mighty", 18, melchior, [heckenberger], "classic");
+  const ownEmotional = goal("emotional", "mighty", 18, melchior, [heckenberger], "emotional");
+  const ownShort = goal("short", "mighty", 18, melchior, [heckenberger], "short");
+  const opponentClassic = goal("opponent-classic", "opponent", 29, potvin, [], "classic");
+  const opponentEmotional = goal("opponent-emotional", "opponent", 29, potvin, [], "emotional");
+  const opponentShort = goal("opponent-short", "opponent", 29, potvin, [], "short");
+
+  assert.equal(formatGoalText(ownClassic, [ownClassic], opponent), "18 Spielminute\n*Tooooooor für unsere Schweinfurter Mighty Dogs*\n\nTorschütze: #84 Nils Melchior\nAssists: #10 Kevin Heckenberger\n\nNeuer Spielstand\n*1:0*");
+  assert.equal(formatGoalText(ownEmotional, [ownEmotional], opponent), "18 Spielminute\n🔥 *TOOOOOOOR MIGHTY DOGS!* 🔥\n\n#84 Nils Melchior\nAssists: #10 Kevin Heckenberger\n\nNeuer Spielstand\n*1:0*");
+  assert.equal(formatGoalText(ownShort, [ownShort], opponent), "18 Spielminute\n*TOOOOOR SCHWEINFURT!*\n#84 Nils Melchior\nAssists: #10 Kevin Heckenberger\n\n*1:0*");
+  assert.equal(formatGoalText(opponentClassic, [opponentClassic], opponent), "29 Spielminute\nTor Erfurt\n#27 Frédéric Potvin\n\nNeuer Spielstand\n*0:1*");
+  assert.equal(formatGoalText(opponentEmotional, [opponentEmotional], opponent), formatGoalText(opponentClassic, [opponentClassic], opponent));
+  assert.equal(formatGoalText(opponentShort, [opponentShort], opponent), "29 Spielminute\nTor Erfurt\n#27 Frédéric Potvin\n\n*0:1*");
 });
 
 test("unknown scorer is omitted from generated goal text", () => {

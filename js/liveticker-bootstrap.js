@@ -1,7 +1,8 @@
 await import("./runtime-config.js");
+await import("./liveticker-output-templates.js?v=20260906-r1");
 
 const STORAGE_KEY = "plaerrdeifl.livetickerPrototype.v3";
-const { prepareLivetickerGameStorage } = await import("./liveticker-game-storage.js?v=20260905-archive1");
+const { prepareLivetickerGameStorage } = await import("./liveticker-game-storage.js?v=20260906-templates1");
 
 function runtimeOpponentSource() {
   return `const runtimeGame = globalThis.PD_LIVETICKER_GAME_CONTEXT || {};
