@@ -20,12 +20,26 @@ function routeState() {
   return {
     path,
     view: params.get("view") || "",
-    tripId: params.get("trip") || ""
+    tripId: params.get("trip") || "",
+    from: params.get("from") || "",
+    reviewA: params.get("reviewA") || "",
+    reviewB: params.get("reviewB") || ""
   };
 }
 
 function tripDetailRoute(tripId) {
   const params = new URLSearchParams({ view: "trip-detail", trip: String(tripId || "") });
+  return `#/bus-orga?${params}`;
+}
+
+function duplicateReviewRoute(tripId, reviewA, reviewB) {
+  const params = new URLSearchParams({
+    view: "participants",
+    trip: String(tripId || ""),
+    review: "duplicate-review",
+    reviewA: String(reviewA || ""),
+    reviewB: String(reviewB || "")
+  });
   return `#/bus-orga?${params}`;
 }
 
@@ -55,9 +69,14 @@ function ensureStyle() {
 function normalizeBackButtons() {
   const route = routeState();
   if (route.path !== "#/bus-orga" || !route.tripId || !CHILD_VIEWS.has(route.view)) return;
+  const duplicateReturn = route.view === "bookings"
+    && route.from === "duplicate-review"
+    && route.reviewA
+    && route.reviewB;
   document.querySelectorAll(BACK_SELECTOR).forEach(button => {
-    if (button.textContent !== "← Fahrt") button.textContent = "← Fahrt";
-    button.setAttribute("aria-label", "Zur Fahrtdetailseite");
+    const label = duplicateReturn ? "← Prüfung" : "← Fahrt";
+    if (button.textContent !== label) button.textContent = label;
+    button.setAttribute("aria-label", duplicateReturn ? "Zur Doppelanmeldungsprüfung" : "Zur Fahrtdetailseite");
   });
 }
 
@@ -286,6 +305,10 @@ document.addEventListener("click", event => {
   event.preventDefault();
   event.stopPropagation();
   event.stopImmediatePropagation();
+  if (route.view === "bookings" && route.from === "duplicate-review" && route.reviewA && route.reviewB) {
+    location.hash = duplicateReviewRoute(route.tripId, route.reviewA, route.reviewB);
+    return;
+  }
   location.hash = tripDetailRoute(route.tripId);
 }, true);
 
