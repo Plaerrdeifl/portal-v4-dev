@@ -95,3 +95,10 @@ test("DUPLICATE-001 UI exposes warning, review and existing participant actions"
   assert.match(ui, /Kein Duplikat – als geprüft markieren/);
   assert.match(ui, /data-m328-open-duplicate/);
 });
+
+test("DUPLICATE-001 review rendering is idempotent under the global MutationObserver", () => {
+  assert.match(ui, /function duplicateReviewSignature\(candidates\)/);
+  assert.match(ui, /existingPanel\?\.dataset\.m328DuplicateReviewSignature === signature/);
+  assert.match(ui, /syncDuplicateMarkers\(candidates\);\s*if \(existingPanel\?\.dataset\.m328DuplicateReviewSignature === signature\) return;/s);
+  assert.doesNotMatch(ui, /function renderDuplicateReview[\s\S]*?\{\s*document\.querySelector\("\[data-m328-duplicate-review-panel\]"\)\?\.remove\(\);/);
+});

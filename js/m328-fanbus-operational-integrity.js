@@ -184,32 +184,57 @@ function openDuplicateReview(candidate, registrations) {
   });
 }
 
+function duplicateReviewSignature(candidates) {
+  return candidates
+    .map(candidate => pairIds(candidate).sort().join(":"))
+    .filter(Boolean)
+    .sort()
+    .join("|");
+}
+
+function syncDuplicateMarkers(candidates) {
+  const expectedIds = new Set(candidates.flatMap(candidate => pairIds(candidate)));
+  document.querySelectorAll("[data-m328-duplicate-marker]").forEach(marker => {
+    const card = marker.closest("[data-m328-participant-id]");
+    if (!card || !expectedIds.has(String(card.dataset.m328ParticipantId || ""))) marker.remove();
+  });
+  expectedIds.forEach(id => {
+    const card = document.querySelector(`.m328-participants [data-m328-participant-id="${CSS.escape(id)}"]`);
+    if (!card || card.querySelector("[data-m328-duplicate-marker]")) return;
+    const marker = document.createElement("div");
+    marker.className = "m328-duplicate-marker";
+    marker.dataset.m328DuplicateMarker = "";
+    marker.innerHTML = '<span class="badge warning">⚠ Mögliche Doppelanmeldung</span>';
+    card.querySelector(".m328-card-head")?.insertAdjacentElement("afterend", marker);
+  });
+}
+
 function renderDuplicateReview(data, registrations) {
-  document.querySelector("[data-m328-duplicate-review-panel]")?.remove();
-  document.querySelectorAll("[data-m328-duplicate-marker]").forEach(node => node.remove());
   const candidates = Array.isArray(data?.duplicateCandidates) ? data.duplicateCandidates : [];
-  if (!candidates.length) return;
+  const signature = duplicateReviewSignature(candidates);
+  const existingPanel = document.querySelector("[data-m328-duplicate-review-panel]");
+
+  if (!candidates.length) {
+    existingPanel?.remove();
+    document.querySelectorAll("[data-m328-duplicate-marker]").forEach(node => node.remove());
+    return;
+  }
+
+  syncDuplicateMarkers(candidates);
+  if (existingPanel?.dataset.m328DuplicateReviewSignature === signature) return;
+  existingPanel?.remove();
 
   const target = document.querySelector(".m328-participants .m328-workspace-panel");
   if (!target) return;
   const panel = document.createElement("div");
   panel.className = "notice warning m328-duplicate-review-panel";
   panel.dataset.m328DuplicateReviewPanel = "";
+  panel.dataset.m328DuplicateReviewSignature = signature;
   panel.innerHTML = `<strong>⚠ ${candidates.length} ${candidates.length === 1 ? "mögliche Doppelanmeldung" : "mögliche Doppelanmeldungen"} prüfen</strong><div class="button-row"></div>`;
   const actions = panel.querySelector(".button-row");
   const byId = registrationsById(registrations);
 
   candidates.forEach((candidate, index) => {
-    pairIds(candidate).forEach(id => {
-      const card = document.querySelector(`.m328-participants [data-m328-participant-id="${CSS.escape(id)}"]`);
-      if (!card || card.querySelector("[data-m328-duplicate-marker]")) return;
-      const marker = document.createElement("div");
-      marker.className = "m328-duplicate-marker";
-      marker.dataset.m328DuplicateMarker = "";
-      marker.innerHTML = '<span class="badge warning">⚠ Mögliche Doppelanmeldung</span>';
-      card.querySelector(".m328-card-head")?.insertAdjacentElement("afterend", marker);
-    });
-
     const first = byId.get(pairIds(candidate)[0]);
     const button = document.createElement("button");
     button.type = "button";
