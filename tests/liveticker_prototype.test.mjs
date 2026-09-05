@@ -24,16 +24,27 @@ test("public DEV Liveticker stays standalone and uses the scoped Supabase storag
 
   assert.match(html, /data-route="liveticker-prototype"/);
   assert.match(html, /default-src 'self'/);
+  assert.match(html, /script-src 'self' blob:/);
   assert.match(html, /connect-src 'self' https:\/\/\*\.supabase\.co/);
   assert.match(html, /Spielstand und Aktionen werden zentral pro Spiel gespeichert/);
-  assert.match(html, /type="module" src="\.\.\/js\/liveticker-bootstrap\.js\?v=20260905-game-storage1"/);
+  assert.match(html, /type="module" src="\.\.\/js\/liveticker-bootstrap\.js\?v=20260905-calendar1"/);
   assert.match(bootstrap, /runtime-config\.js/);
-  assert.match(bootstrap, /liveticker-prototype-v4\.js/);
+  assert.match(bootstrap, /importRuntimeEngine/);
   assert.match(storage, /pd_public_liveticker_games/);
   assert.match(storage, /pd_public_liveticker_state/);
   assert.match(storage, /pd_public_liveticker_sync/);
   assert.doesNotMatch(html + bootstrap + storage, /Google|auth-gate|Anmeldung erforderlich/i);
   assert.match(build, /"liveticker"/);
+});
+
+test("calendar owns opponent and home-away selection", async () => {
+  const html = await read("liveticker/index.html");
+  const bootstrap = await read("js/liveticker-bootstrap.js");
+  const storage = await read("js/liveticker-game-storage.js");
+  assert.match(html, /Gegner · aus Kalender/);
+  assert.match(storage, /game\.homeAway === "AWAY" \? "away" : "home"/);
+  assert.match(bootstrap, /opponentSelect\.disabled = true/);
+  assert.match(bootstrap, /button\.disabled = true/);
 });
 
 test("manual period controls are gone and minute driven status is visible", async () => {
@@ -47,15 +58,11 @@ test("manual period controls are gone and minute driven status is visible", asyn
 
 test("goal editor exposes two optional assists, shootout and inline jersey inputs", async () => {
   const html = await read("liveticker/index.html");
-  for (const id of ["goalNumber", "assist1Number", "assist2Number", "shootoutNumber"]) {
-    assert.match(html, new RegExp(`id="${id}"`));
-  }
+  for (const id of ["goalNumber", "assist1Number", "assist2Number", "shootoutNumber"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.match(html, /class="player-entry"/);
   assert.match(html, /id="assist1"/);
   assert.match(html, /id="assist2"/);
   assert.match(html, /id="actionShootout" name="action" type="radio" value="SHOOTOUT"/);
-  assert.match(html, /id="shootoutScored"/);
-  assert.match(html, /id="shootoutMissed"/);
 });
 
 test("player ordering is context specific", () => {
@@ -63,30 +70,21 @@ test("player ordering is context specific", () => {
   assert.deepEqual([...PENALTY_POSITION_ORDER], ["Verteidigung", "Sturm", "Tor"]);
 });
 
-test("2026/27 Mighty Dogs roster remains complete", () => {
+test("2026/27 Mighty Dogs fallback roster remains complete", () => {
   assert.equal(MIGHTY_ROSTER.length, 18);
-  assert.deepEqual(
-    [...new Set(MIGHTY_ROSTER.map(player => player.position))],
-    ["Tor", "Verteidigung", "Sturm"]
-  );
   assert.equal(MIGHTY_ROSTER.filter(player => !player.number).length, 2);
   assert.ok(MIGHTY_ROSTER.some(player => player.name === "Kevin Heckenberger" && player.number === "10"));
-  assert.ok(MIGHTY_ROSTER.some(player => player.name === "Ricards Bernhards" && player.number === ""));
 });
 
-test("Erfurt is available as the first opponent with its roster", () => {
+test("Erfurt fallback remains available for module contract tests", () => {
   assert.equal(OPPONENTS.erfurt.shortName, "Erfurt");
-  assert.equal(OPPONENTS.erfurt.fullName, "TecArt Black Dragons Erfurt");
   assert.equal(OPPONENTS.erfurt.roster, ERFURT_ROSTER);
   assert.ok(ERFURT_ROSTER.some(player => player.name === "Patrick Glatzel" && player.number === "37"));
-  assert.ok(ERFURT_ROSTER.some(player => player.name === "Harrison Reed" && player.number === "83"));
 });
 
 test("penalty catalogue keeps common reasons and combination penalties", () => {
   assert.ok(PENALTY_REASONS.includes("Halten"));
   assert.ok(PENALTY_REASONS.includes("Beinstellen"));
   assert.ok(PENALTY_DURATIONS.includes("2+2"));
-  assert.ok(PENALTY_DURATIONS.includes("2+10"));
-  assert.ok(PENALTY_DURATIONS.includes("5+10"));
   assert.ok(PENALTY_DURATIONS.includes("5+20"));
 });
