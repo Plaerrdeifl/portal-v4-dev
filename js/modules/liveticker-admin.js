@@ -194,7 +194,7 @@ function teamListRow(team) {
 function teamDetail(team) {
   return `<div class="v4-team-detail">
     <div class="v4-section-heading">
-      <div><span class="subtle">Liveticker-Team</span><h2>${escapeHtml(team.name)}</h2></div>
+      <div><span class="subtle">Teamverwaltung</span><h2>Kader</h2></div>
       <div class="button-row">
         <button class="button small secondary" type="button" data-edit-team>Team bearbeiten</button>
         <button class="button small primary" type="button" data-add-player>+ Spieler</button>
@@ -208,25 +208,51 @@ function teamDetail(team) {
   </div>`;
 }
 
+function bindTeamDetail(panel, team) {
+  panel.querySelector("[data-edit-team]")?.addEventListener("click", () => openTeam(team));
+  panel.querySelector("[data-add-player]")?.addEventListener("click", () => openPlayer(team));
+  panel.querySelectorAll("[data-player-id]").forEach(button => {
+    button.addEventListener("click", () => {
+      const player = (team.players || []).find(item => item.id === button.dataset.playerId);
+      if (player) openPlayer(team, player);
+    });
+  });
+}
+
 function render() {
   const toolbar = document.getElementById("livetickerRosterToolbar");
   const panel = document.getElementById("livetickerRosterPanel");
   if (!toolbar || !panel) return;
 
   const teams = snapshot?.teams || [];
-  const currentTeam = teams.find(team => team.id === currentTeamId) || teams[0] || null;
-  if (currentTeam && !currentTeamId) currentTeamId = currentTeam.id;
+  const currentTeam = currentTeamId
+    ? teams.find(team => team.id === currentTeamId) || null
+    : null;
+
+  if (currentTeamId && !currentTeam) currentTeamId = "";
+
+  if (currentTeam) {
+    toolbar.innerHTML = `<div class="v4-section-heading">
+      <div><span class="subtle">Liveticker · Teams & Kader</span><h2>${escapeHtml(currentTeam.name)}</h2><p class="subtle">Mannschaft und Kader bearbeiten.</p></div>
+      <button class="button small secondary" type="button" data-back-teams>← Zurück</button>
+    </div>`;
+    panel.innerHTML = teamDetail(currentTeam);
+
+    toolbar.querySelector("[data-back-teams]")?.addEventListener("click", () => {
+      currentTeamId = "";
+      render();
+    });
+    bindTeamDetail(panel, currentTeam);
+    return;
+  }
 
   toolbar.innerHTML = `<div class="v4-section-heading">
-    <div><span class="subtle">Liveticker</span><h2>Teams & Kader</h2><p class="subtle">Zentrale Mannschaften und Spieler für den Spieltag.</p></div>
+    <div><span class="subtle">Liveticker</span><h2>Teams & Kader</h2><p class="subtle">Team auswählen oder neu anlegen.</p></div>
     <button class="button small primary" type="button" data-add-team>+ Team</button>
   </div>`;
 
   panel.innerHTML = teams.length
-    ? `<div class="v4-team-layout">
-        <div class="v4-team-list">${teams.map(teamListRow).join("")}</div>
-        <div class="v4-team-detail-panel">${currentTeam ? teamDetail(currentTeam) : ""}</div>
-      </div>`
+    ? `<div class="v4-team-list">${teams.map(teamListRow).join("")}</div>`
     : '<div class="notice neutral">Noch keine Liveticker-Teams angelegt.</div>';
 
   toolbar.querySelector("[data-add-team]")?.addEventListener("click", () => openTeam());
@@ -236,19 +262,11 @@ function render() {
       render();
     });
   });
-  panel.querySelector("[data-edit-team]")?.addEventListener("click", () => currentTeam && openTeam(currentTeam));
-  panel.querySelector("[data-add-player]")?.addEventListener("click", () => currentTeam && openPlayer(currentTeam));
-  panel.querySelectorAll("[data-player-id]").forEach(button => {
-    button.addEventListener("click", () => {
-      if (!currentTeam) return;
-      const player = (currentTeam.players || []).find(item => item.id === button.dataset.playerId);
-      if (player) openPlayer(currentTeam, player);
-    });
-  });
 }
 
 export async function hydrateLivetickerAdmin(context = {}) {
   ensureLivetickerAdminStyles();
+  currentTeamId = "";
   const panel = document.getElementById("livetickerRosterPanel");
   if (panel) panel.innerHTML = loading("Teams und Kader werden geladen …");
 
