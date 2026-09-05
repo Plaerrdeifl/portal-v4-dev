@@ -37,7 +37,6 @@ async function rpc(name, body = {}) {
     method: "POST",
     headers: {
       apikey: config.supabasePublishableKey,
-      Authorization: `Bearer ${config.supabasePublishableKey}`,
       "Content-Type": "application/json"
     },
     body: JSON.stringify(body)
