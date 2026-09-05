@@ -93,7 +93,7 @@ test("DUPLICATE-001 UI exposes warning, review and existing participant actions"
   assert.match(ui, /Mögliche Doppelanmeldung/);
   assert.match(ui, /fanbus_duplicate_review_resolve/);
   assert.match(ui, /Kein Duplikat – als geprüft markieren/);
-  assert.match(ui, /data-m328-open-duplicate/);
+  assert.match(ui, /data-m328-open-booking/);
 });
 
 test("DUPLICATE-001 review rendering is idempotent under the global MutationObserver", () => {
@@ -101,4 +101,14 @@ test("DUPLICATE-001 review rendering is idempotent under the global MutationObse
   assert.match(ui, /existingPanel\?\.dataset\.m328DuplicateReviewSignature === signature/);
   assert.match(ui, /syncDuplicateMarkers\(candidates\);\s*if \(existingPanel\?\.dataset\.m328DuplicateReviewSignature === signature\) return;/s);
   assert.doesNotMatch(ui, /function renderDuplicateReview[\s\S]*?\{\s*document\.querySelector\("\[data-m328-duplicate-review-panel\]"\)\?\.remove\(\);/);
+});
+
+test("DUPLICATE-001 review opens the actual booking overview entry", () => {
+  assert.match(ui, /function bookingsRoute\(tripId\)/);
+  assert.match(ui, /let pendingBookingId = "";/);
+  assert.match(ui, /location\.hash = bookingsRoute\(route\.tripId\)/);
+  assert.match(ui, /data-m328-open-booking/);
+  assert.match(ui, /card\.open = true/);
+  assert.match(ui, /card\.scrollIntoView\(\{ behavior: "smooth", block: "center" \}\)/);
+  assert.doesNotMatch(ui, /function openParticipant\(/);
 });
