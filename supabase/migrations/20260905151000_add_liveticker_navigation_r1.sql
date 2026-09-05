@@ -1,5 +1,7 @@
 -- Plärrdeifl Portal V4
 -- Liveticker R1: Navigation nur für berechtigte aktive Portaluser.
+-- Fachrecht wird im Social-Media-Team wie bei der Bus-Orga über
+-- eine explizite TEAM_FUNCTION vergeben; reine Teammitgliedschaft reicht nicht.
 
 alter function app_private.api_bootstrap()
   rename to api_bootstrap_before_liveticker_nav_r1;
@@ -35,3 +37,70 @@ $$;
 
 revoke all on function app_private.api_bootstrap() from public, anon, authenticated;
 revoke all on function app_private.api_bootstrap_before_liveticker_nav_r1() from public, anon, authenticated;
+
+-- ============================================================
+-- Social-Media -> Liveticker-Fachfunktion
+-- ============================================================
+-- Keine automatische Zuweisung an bestehende Teammitglieder.
+-- Das bestehende generische Team-UI zeigt diese Funktion dadurch nur
+-- innerhalb des Social-Media-Teams an und setzt sie über set_team_functions.
+
+do $$
+begin
+  if not exists (
+    select 1
+    from app_portal.teams
+    where code = 'SOCIAL_MEDIA'
+      and is_active
+  ) then
+    raise exception 'LIVETICKER_SOCIAL_MEDIA_TEAM_MISSING'
+      using errcode = 'P0002';
+  end if;
+
+  if not exists (
+    select 1
+    from app_portal.capabilities
+    where code = 'liveticker.manage'
+      and is_active
+  ) then
+    raise exception 'LIVETICKER_CAPABILITY_MISSING'
+      using errcode = 'P0002';
+  end if;
+end;
+$$;
+
+insert into app_portal.team_functions (
+  code,
+  name,
+  description,
+  is_active
+)
+values (
+  'SOCIAL_LIVETICKER',
+  'Liveticker',
+  'Liveticker bedienen sowie Liveticker-Teams und Kader verwalten.',
+  true
+)
+on conflict (code) do update
+set
+  name = excluded.name,
+  description = excluded.description,
+  is_active = excluded.is_active;
+
+insert into app_portal.team_function_capabilities (
+  team_id,
+  function_code,
+  capability_code,
+  is_active,
+  created_by
+)
+select
+  team.id,
+  'SOCIAL_LIVETICKER',
+  'liveticker.manage',
+  true,
+  null
+from app_portal.teams as team
+where team.code = 'SOCIAL_MEDIA'
+on conflict (team_id, function_code, capability_code) do update
+set is_active = true;
