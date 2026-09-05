@@ -30,6 +30,7 @@ test("DEV standalone Liveticker stays outside the portal auth gate", async () =>
   const prototype = await read("liveticker/index.html");
   const bootstrap = await read("js/liveticker-bootstrap.js");
   assert.match(prototype, /liveticker-bootstrap\.js/);
-  assert.match(bootstrap, /liveticker-prototype-v4\.js/);
+  assert.match(bootstrap, /liveticker-engine-v4\.js/);
+  assert.match(bootstrap, /liveticker-v5-support\.js/);
   assert.doesNotMatch(prototype + bootstrap, /Google|auth-gate|Anmeldung erforderlich/i);
 });
