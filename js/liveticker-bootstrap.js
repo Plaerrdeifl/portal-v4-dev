@@ -12,7 +12,7 @@ export const OPPONENTS = Object.freeze({
     id: runtimeOpponentId,
     shortName: runtimeOpponentTeam.shortName || runtimeOpponentTeam.name || \"Gegner\",
     fullName: runtimeOpponentTeam.name || runtimeOpponentTeam.shortName || \"Gegner\",
-    roster: Object.freeze(Array.isArray(runtimeOpponentTeam.players) ? runtimeOpponentTeam.players : ERFURT_ROSTER)
+    roster: Object.freeze(Array.isArray(runtimeOpponentTeam.players) ? runtimeOpponentTeam.players : [])
   })
 });`;
 }
