@@ -25,14 +25,13 @@ test("game storage is event-bound, revision-safe and journaled", async () => {
 test("all anonymous Liveticker RPCs fail closed outside DEV", async () => {
   const model = await read("supabase/migrations/20260905161000_add_liveticker_game_storage_r1.sql");
   const hardening = await read("supabase/migrations/20260905161500_harden_liveticker_public_dev_only_r1.sql");
+  const calendar = await read("supabase/migrations/20260905170500_liveticker_calendar_games_r1.sql");
 
   assert.match(model, /create function app_private\.liveticker_require_public_dev/);
   assert.match(model, /environment' <> 'DEV'/);
   assert.match(model, /mode' <> 'NORMAL'/);
-  assert.match(model, /perform app_private\.liveticker_require_public_dev\(\)/);
-  assert.match(hardening, /create or replace function public\.pd_public_liveticker_games/);
-  assert.match(hardening, /create or replace function public\.pd_public_liveticker_state/);
-  assert.equal((hardening.match(/perform app_private\.liveticker_require_public_dev\(\)/g) || []).length, 2);
+  assert.match(hardening, /perform app_private\.liveticker_require_public_dev\(\)/);
+  assert.match(calendar, /perform app_private\.liveticker_require_public_dev\(\)/);
 });
 
 test("browser adapter selects a GAME event and syncs only state diffs", async () => {
@@ -48,14 +47,24 @@ test("browser adapter selects a GAME event and syncs only state diffs", async ()
   assert.match(storage, /changes\.minute/);
   assert.match(storage, /error\.code !== "40001"/);
   assert.match(storage, /window\.setInterval\(poll, 3000\)/);
+  assert.match(storage, /PD_LIVETICKER_GAME_CONTEXT/);
+  assert.match(storage, /game\.homeAway === "AWAY" \? "away" : "home"/);
 });
 
-test("existing V4 engine stays intact behind the central-storage bootstrap", async () => {
-  const bootstrap = await read("js/liveticker-bootstrap.js");
+test("calendar migration no longer filters games by an existing roster", async () => {
+  const calendar = await read("supabase/migrations/20260905170500_liveticker_calendar_games_r1.sql");
+  assert.match(calendar, /left join lateral/);
+  assert.match(calendar, /game\.opponent_name/);
+  assert.match(calendar, /'players', '112'::jsonb|"players"/i);
+  assert.doesNotMatch(calendar, /join app_modules\.liveticker_teams as opponent_team\s+on/i);
+});
 
-  assert.match(bootstrap, /await import\("\.\/runtime-config\.js"\)/);
+test("runtime bootstrap injects selected team rosters without changing the V4 source file", async () => {
+  const bootstrap = await read("js/liveticker-bootstrap.js");
   assert.match(bootstrap, /prepareLivetickerGameStorage/);
-  assert.match(bootstrap, /Storage\.prototype\.setItem/);
-  assert.match(bootstrap, /pd-liveticker-state-saved/);
-  assert.match(bootstrap, /liveticker-prototype-v4\.js/);
+  assert.match(bootstrap, /runtimeOpponentSource/);
+  assert.match(bootstrap, /PD_LIVETICKER_GAME_CONTEXT/);
+  assert.match(bootstrap, /ownTeam\?\.players/);
+  assert.match(bootstrap, /new Blob/);
+  assert.match(bootstrap, /liveticker-v5-support/);
 });
