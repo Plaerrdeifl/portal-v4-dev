@@ -8,6 +8,7 @@ let selectedGame = null;
 let serverState = null;
 let syncing = false;
 let applyingRemote = false;
+let pendingLocalState = null;
 let pollTimer = null;
 
 function runtimeConfig() {
@@ -116,7 +117,12 @@ function hasChanges(changes) {
 }
 
 async function syncLocalState(localState) {
-  if (!selectedGame || syncing || applyingRemote || !serverState) return;
+  if (!selectedGame || applyingRemote || !serverState) return;
+  if (syncing) {
+    pendingLocalState = localState;
+    return;
+  }
+
   const changes = diffChanges(localState);
   if (!hasChanges(changes)) return;
 
@@ -150,9 +156,13 @@ async function syncLocalState(localState) {
     applyRemoteState(result);
   } catch (error) {
     console.error(error);
+    pendingLocalState = localState;
     renderSyncStatus("Speicherfehler", "error");
   } finally {
     syncing = false;
+    const pending = pendingLocalState;
+    pendingLocalState = null;
+    if (pending) queueMicrotask(() => syncLocalState(pending));
   }
 }
 
@@ -199,6 +209,7 @@ function installStyles() {
 
 async function loadSelectedGame(game) {
   selectedGame = game;
+  pendingLocalState = null;
   localStorage.setItem(SELECTED_EVENT_KEY, game.eventId);
   localStorage.setItem(VENUE_KEY, game.homeAway === "AWAY" ? "away" : "home");
   renderSyncStatus("Lädt …", "pending");
@@ -207,7 +218,7 @@ async function loadSelectedGame(game) {
 }
 
 async function poll() {
-  if (!selectedGame || syncing || document.hidden) return;
+  if (!selectedGame || syncing || pendingLocalState || document.hidden) return;
   try {
     const fresh = await rpc("pd_public_liveticker_state", { p_event_id: selectedGame.eventId });
     const normalized = normalizeState(fresh);
