@@ -49,6 +49,13 @@ const ROUTES = Object.freeze({
     icon: "🤝",
     order: 40
   },
+  liveticker: {
+    title: "Liveticker",
+    subtitle: "Teams, Kader und Spieltag",
+    page: "liveticker-admin.html",
+    icon: "🏒",
+    order: 45
+  },
   fanbuses: {
     title: "Fanbusse",
     subtitle: "Informationsseite; Fachfunktionen folgen in v4",
@@ -94,6 +101,7 @@ export function fixedAuthenticatedOrder() {
     "fanclub",
     "tasks",
     "teams",
+    "liveticker",
     "fanbuses",
     "admin"
   ];
