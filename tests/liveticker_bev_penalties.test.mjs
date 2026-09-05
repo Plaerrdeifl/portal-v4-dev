@@ -70,3 +70,8 @@ test("BEV catalogue is restored after core rebuilds penalty rows", async () => {
   assert.match(source, /Weitere Gründe/);
   assert.match(source, /BEV_PENALTY_DURATIONS\.filter\(value => recommendation\.recommendedDurations\.includes\(value\)\)/);
 });
+
+test("penalty reason is placed before player selection", async () => {
+  const source = await readFile(resolve(import.meta.dirname, "../js/liveticker-v5-support.js"), "utf8");
+  assert.match(source, /insertBefore\(reasonField, playerField\)/);
+});
