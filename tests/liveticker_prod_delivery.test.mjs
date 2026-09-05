@@ -25,3 +25,20 @@ test("standalone Liveticker stays hidden until active authorized login", async (
   assert.match(gate, /app\.hidden = false/);
   assert.match(gate, /await import\("\.\/liveticker-bootstrap\.js/);
 });
+
+test("calendar adapter accepts the current compact engine and injects calendar rosters", async () => {
+  const adapter = await read("js/liveticker-bootstrap.js");
+  const engine = await read("js/liveticker-engine-v4.js");
+
+  const opponentSection = /export const OPPONENTS\s*=\s*Object\.freeze\(\{[\s\S]*?\}\);\s*(?=export const PENALTY_REASONS)/;
+  const defaultStateSection = /function defaultState\(\)\s*\{[\s\S]*?\}\s*(?=function normalizeLoadedState)/;
+  const rosterSection = /function rosterForTeam\(team,[^)]*\)\s*\{[\s\S]*?\}\s*(?=function fillPlayerSelect)/;
+
+  assert.match(engine, opponentSection);
+  assert.match(engine, defaultStateSection);
+  assert.match(engine, rosterSection);
+  assert.match(adapter, /replaceEngineSection/);
+  assert.match(adapter, /PD_LIVETICKER_GAME_CONTEXT\?\.ownTeam\?\.players/);
+  assert.match(adapter, /runtimeOpponentTeam\.players/);
+  assert.doesNotMatch(adapter, /const opponentBlock = `export const OPPONENTS/);
+});
