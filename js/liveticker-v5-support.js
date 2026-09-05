@@ -143,6 +143,12 @@ function enhancePenaltyRow(row, stored = null) {
   const reason = row.querySelector("[data-field='reason']");
   if (!duration || !reason) return;
 
+  const reasonField = reason.closest(".field");
+  const playerField = row.querySelector("[data-field='player']")?.closest(".field");
+  if (reasonField && playerField && reasonField !== playerField && reasonField.nextElementSibling !== playerField) {
+    playerField.parentNode?.insertBefore(reasonField, playerField);
+  }
+
   const currentReason = stored?.reason || reason.value || BEV_PENALTY_REASONS[0];
   const currentDuration = stored?.duration || duration.value || penaltyRecommendation(currentReason).defaultDuration;
   populateDurationOptions(duration, currentReason, currentDuration);
