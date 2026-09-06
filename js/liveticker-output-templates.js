@@ -1,21 +1,29 @@
+const GOAL_CONTEXT_KEYS = Object.freeze(["own", "opponent"]);
+
 export const LIVETICKER_TEMPLATE_VARIABLES = Object.freeze([
-  Object.freeze({ key: "minute", label: "Spielminute", optional: false, contexts: Object.freeze(["own", "opponent"]) }),
-  Object.freeze({ key: "scorer", label: "Torschütze (mit Trikotnummer)", optional: true, contexts: Object.freeze(["own", "opponent"]) }),
-  Object.freeze({ key: "assists", label: "Assists (mit Trikotnummern)", optional: true, contexts: Object.freeze(["own", "opponent"]) }),
-  Object.freeze({ key: "mighty_score", label: "Tore Mighty Dogs", optional: false, contexts: Object.freeze(["own", "opponent"]) }),
-  Object.freeze({ key: "opponent_score", label: "Tore Gegner", optional: false, contexts: Object.freeze(["own", "opponent"]) }),
-  Object.freeze({ key: "opponent_name", label: "Kurzname Gegner", optional: false, contexts: Object.freeze(["opponent"]) })
+  Object.freeze({ key: "minute", label: "Spielminute", optional: false, contexts: Object.freeze([...GOAL_CONTEXT_KEYS, "penalty"]) }),
+  Object.freeze({ key: "scorer", label: "Torschütze (mit Trikotnummer)", optional: true, contexts: GOAL_CONTEXT_KEYS }),
+  Object.freeze({ key: "assists", label: "Assists (mit Trikotnummern)", optional: true, contexts: GOAL_CONTEXT_KEYS }),
+  Object.freeze({ key: "mighty_score", label: "Tore Mighty Dogs", optional: false, contexts: GOAL_CONTEXT_KEYS }),
+  Object.freeze({ key: "opponent_score", label: "Tore Gegner", optional: false, contexts: GOAL_CONTEXT_KEYS }),
+  Object.freeze({ key: "opponent_name", label: "Kurzname Gegner", optional: false, contexts: Object.freeze(["opponent"]) }),
+  Object.freeze({ key: "penalties", label: "Formatierte Strafzeilen", optional: false, contexts: Object.freeze(["penalty"]) })
 ]);
 
 export const LIVETICKER_TEMPLATE_CONTEXTS = Object.freeze({
   own: Object.freeze({
     field: "ownGoalTemplate",
-    label: "Eigenes Tor",
+    label: "Tor – Wir",
     required: Object.freeze(["minute", "mighty_score", "opponent_score"])
+  }),
+  penalty: Object.freeze({
+    field: "penaltyTemplate",
+    label: "Strafenausgabe",
+    required: Object.freeze(["minute", "penalties"])
   }),
   opponent: Object.freeze({
     field: "opponentGoalTemplate",
-    label: "Gegnertor",
+    label: "Tor – Die anderen",
     required: Object.freeze(["minute", "mighty_score", "opponent_score", "opponent_name"])
   })
 });
@@ -151,11 +159,13 @@ export function normalizeLivetickerTemplateSnapshot(raw) {
       throw new Error("Eine Liveticker-Ausgabevariante ist unvollständig.");
     }
     assertLivetickerTemplate(template.ownGoalTemplate, "own");
+    assertLivetickerTemplate(template.penaltyTemplate, "penalty");
     assertLivetickerTemplate(template.opponentGoalTemplate, "opponent");
     return Object.freeze({
       key,
       title,
       ownGoalTemplate: String(template.ownGoalTemplate),
+      penaltyTemplate: String(template.penaltyTemplate),
       opponentGoalTemplate: String(template.opponentGoalTemplate),
       revision: Number(template.revision || 0)
     });

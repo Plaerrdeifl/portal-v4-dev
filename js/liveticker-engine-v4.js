@@ -205,12 +205,23 @@ function formatPenaltyEntry(penalty, opponent) {
 }
 
 export function formatPenaltyText(event, opponent) {
-  const lines = [`${event.minute} Spielminute`, "Strafe(n)", ""];
-  for (const penalty of event.penalties) {
-    const line = formatPenaltyEntry(penalty, opponent);
-    lines.push(isMajorPenalty(penalty.duration) ? `🚨 *${line}*` : line);
+  const templates = globalThis.PD_LIVETICKER_OUTPUT_TEMPLATES?.templates;
+  const variant = Array.isArray(templates)
+    ? templates.find(template => template.key === (event.style || "classic"))
+    : null;
+  const renderer = globalThis.PD_LIVETICKER_TEMPLATE_RENDERER?.render;
+  if (!variant?.penaltyTemplate || typeof renderer !== "function") {
+    throw new Error("Liveticker-Strafenausgaben konnten nicht geladen werden.");
   }
-  return lines.join("\n");
+
+  const penalties = event.penalties.map(penalty => {
+    const line = formatPenaltyEntry(penalty, opponent);
+    return isMajorPenalty(penalty.duration) ? `🚨 *${line}*` : line;
+  });
+  return renderer(variant.penaltyTemplate, {
+    minute: event.minute,
+    penalties: penalties.join("\n")
+  });
 }
 
 export function formatShootoutText(event, opponent) {
@@ -410,16 +421,16 @@ function initialize() {
   opponentSelect.value = state.opponentId;
   minuteInput.value = String(state.minute);
 
-  function syncGoalStyleTitles() {
+  function syncTemplateStyleTitles() {
     const outputTemplates = globalThis.PD_LIVETICKER_OUTPUT_TEMPLATES?.templates || [];
-    document.querySelectorAll("input[name='goalStyle']").forEach(input => {
+    document.querySelectorAll("input[name='goalStyle'],input[name='penaltyStyle']").forEach(input => {
       const variant = outputTemplates.find(template => template.key === input.value);
       const label = document.querySelector(`label[for='${input.id}']`);
       if (variant && label) label.textContent = variant.title;
     });
   }
-  syncGoalStyleTitles();
-  window.addEventListener("pd-liveticker-output-templates-updated", syncGoalStyleTitles);
+  syncTemplateStyleTitles();
+  window.addEventListener("pd-liveticker-output-templates-updated", syncTemplateStyleTitles);
 
   function opponent() { return OPPONENTS[state.opponentId]; }
   function selectedAction() { return new FormData(form).get("action"); }
@@ -590,6 +601,8 @@ function initialize() {
       syncActionFields();
       penaltyRows.replaceChildren();
       event.penalties.forEach(createPenaltyRow);
+      const style = $(`input[name='penaltyStyle'][value='${event.style || "classic"}']`);
+      if (style) style.checked = true;
     } else {
       $("#actionShootout").checked = true;
       syncActionFields();
@@ -662,7 +675,10 @@ function initialize() {
         if (action === "PENALTY") {
           const penalties = [...penaltyRows.children].map(penaltyRowData);
           if (!penalties.length) throw new Error("Bitte mindestens eine Strafe erfassen.");
-          tickerEvent = { id: editingId || uid(), type: "penalty", minute, penalties };
+          tickerEvent = {
+            id: editingId || uid(), type: "penalty", minute, penalties,
+            style: new FormData(form).get("penaltyStyle") || "classic"
+          };
         } else {
           const team = selectedGoalTeam();
           const roster = rosterForTeam(team, opponent());

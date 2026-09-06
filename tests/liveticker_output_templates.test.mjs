@@ -15,6 +15,7 @@ const root = resolve(import.meta.dirname, "..");
 const read = path => readFile(resolve(root, path), "utf8");
 
 const validOwn = "{{minute}}' {{scorer}} {{assists}}\n*{{mighty_score}}:{{opponent_score}}*";
+const validPenalty = "{{minute}} Spielminute\nStrafe(n)\n\n{{penalties}}";
 const validOpponent = "{{minute}}' Tor {{opponent_name}} {{scorer}}\n*{{mighty_score}}:{{opponent_score}}*";
 
 function dollarQuoted(source, tag) {
@@ -28,6 +29,7 @@ function dollarQuoted(source, tag) {
 
 test("template validation blocks missing, unknown and malformed variables", () => {
   assert.equal(validateLivetickerTemplate(validOwn, "own").valid, true);
+  assert.equal(validateLivetickerTemplate(validPenalty, "penalty").valid, true);
 
   const missing = validateLivetickerTemplate("{{minute}} Spielminute", "own");
   assert.equal(missing.valid, false);
@@ -40,6 +42,10 @@ test("template validation blocks missing, unknown and malformed variables", () =
   const malformed = validateLivetickerTemplate(validOwn.replace("{{minute}}", "{{ minute }}"), "own");
   assert.equal(malformed.valid, false);
   assert.match(malformed.errors.join(" "), /technisch ungültig/);
+
+  const missingPenaltyLines = validateLivetickerTemplate("{{minute}} Spielminute", "penalty");
+  assert.equal(missingPenaltyLines.valid, false);
+  assert.deepEqual([...missingPenaltyLines.missingVariables], ["penalties"]);
 });
 
 test("renderer uses persisted text values and omits empty optional-variable lines", () => {
@@ -58,6 +64,7 @@ test("template snapshot keeps fixed keys, editable titles and bodies", () => {
     key: "classic",
     title: "Mein Titel",
     ownGoalTemplate: validOwn,
+    penaltyTemplate: validPenalty,
     opponentGoalTemplate: validOpponent,
     revision: 7
   }] });
@@ -65,6 +72,7 @@ test("template snapshot keeps fixed keys, editable titles and bodies", () => {
     key: "classic",
     title: "Mein Titel",
     ownGoalTemplate: validOwn,
+    penaltyTemplate: validPenalty,
     opponentGoalTemplate: validOpponent,
     revision: 7
   });
@@ -126,25 +134,51 @@ test("editor removes optional tokens atomically and required-token validation re
   const validation = validateLivetickerTemplate(withoutRequired, "own");
   assert.equal(validation.valid, false);
   assert.deepEqual([...validation.missingVariables], ["minute"]);
+
+  const penaltiesStart = validPenalty.indexOf("{{penalties}}");
+  const protectedPenaltyName = planLivetickerProtectedEdit(
+    validPenalty,
+    penaltiesStart + 4,
+    penaltiesStart + 4,
+    "insertText"
+  );
+  assert.equal(protectedPenaltyName.action, "block");
+  const penaltyDelete = planLivetickerProtectedEdit(
+    validPenalty,
+    penaltiesStart + "{{penalties}}".length,
+    penaltiesStart + "{{penalties}}".length,
+    "deleteContentBackward"
+  );
+  assert.deepEqual(penaltyDelete, {
+    action: "delete",
+    start: penaltiesStart,
+    end: penaltiesStart + "{{penalties}}".length
+  });
+  const penaltyWithoutLines = `${validPenalty.slice(0, penaltyDelete.start)}${validPenalty.slice(penaltyDelete.end)}`;
+  assert.deepEqual([...validateLivetickerTemplate(penaltyWithoutLines, "penalty").missingVariables], ["penalties"]);
 });
 
 test("migration persists and seeds existing variants behind liveticker.manage", async () => {
-  const migration = await read("supabase/migrations/20260905231529_add_liveticker_output_templates_r1.sql");
-  assert.match(migration, /create table app_modules\.liveticker_output_templates/);
-  assert.match(migration, /'classic',[\s\S]*?'Klassisch'/);
-  assert.match(migration, /'emotional',[\s\S]*?'Emotional'/);
-  assert.match(migration, /'short',[\s\S]*?'Kurz'/);
-  assert.match(migration, /require_capability\('liveticker\.manage'\)/g);
-  assert.match(migration, /where template_key = v_key\s+for update/);
-  assert.match(migration, /revision = revision \+ 1/);
-  assert.match(migration, /liveticker_validate_output_template/);
-  assert.match(migration, /new\.template_key is distinct from old\.template_key/);
-  assert.match(migration, /before insert or update\s+on app_modules\.liveticker_output_templates/);
-  assert.match(migration, /when 'liveticker_output_templates_list' then 'READ'/);
-  assert.match(migration, /when 'liveticker_output_template_save' then 'USER_MUTATION'/);
-  assert.match(migration, /liveticker_require_public_dev/);
-  assert.doesNotMatch(migration, /insert into app_portal\.capabilities/i);
-  assert.doesNotMatch(migration, /grant (?:select|insert|update|delete) on table/i);
+  const initial = await read("supabase/migrations/20260905231529_add_liveticker_output_templates_r1.sql");
+  const followup = await read("supabase/migrations/20260906004157_event_oriented_liveticker_templates_r2.sql");
+  const migrations = initial + followup;
+  assert.match(initial, /create table app_modules\.liveticker_output_templates/);
+  assert.match(initial, /'classic',[\s\S]*?'Klassisch'/);
+  assert.match(initial, /'emotional',[\s\S]*?'Emotional'/);
+  assert.match(initial, /'short',[\s\S]*?'Kurz'/);
+  assert.match(migrations, /require_capability\('liveticker\.manage'\)/g);
+  assert.match(followup, /add column penalty_template text/);
+  assert.match(followup, /when 'own' then[\s\S]*when 'penalty' then[\s\S]*when 'opponent' then/);
+  assert.match(followup, /where template_key = v_key\s+for update/);
+  assert.match(followup, /revision = revision \+ 1/);
+  assert.match(followup, /new\.template_key is distinct from old\.template_key/);
+  assert.match(initial, /before insert or update\s+on app_modules\.liveticker_output_templates/);
+  assert.match(initial, /when 'liveticker_output_templates_list' then 'READ'/);
+  assert.match(initial, /when 'liveticker_output_template_save' then 'USER_MUTATION'/);
+  assert.match(initial, /liveticker_require_public_dev/);
+  assert.doesNotMatch(followup, /home_own|home_opponent|away_own|away_opponent/i);
+  assert.doesNotMatch(migrations, /insert into app_portal\.capabilities/i);
+  assert.doesNotMatch(migrations, /grant (?:select|insert|update|delete) on table/i);
 });
 
 test("database seed texts reproduce all previous goal outputs", async () => {
@@ -169,6 +203,14 @@ test("database seed texts reproduce all previous goal outputs", async () => {
   assert.equal(renderLivetickerTemplate(dollarQuoted(migration, "short_opponent"), opponentValues), "29 Spielminute\nTor Erfurt\n#84 Nils Melchior\n\n*0:1*");
 });
 
+test("penalty seed reproduces the previous penalty output", async () => {
+  const migration = await read("supabase/migrations/20260906004157_event_oriented_liveticker_templates_r2.sql");
+  assert.equal(renderLivetickerTemplate(dollarQuoted(migration, "penalty"), {
+    minute: 34,
+    penalties: "Mighty Dogs · 2 min · Halten · #84 Nils Melchior\n🚨 *Erfurt · 5+20 min · Bandencheck · #27 Frédéric Potvin*"
+  }), "34 Spielminute\nStrafe(n)\n\nMighty Dogs · 2 min · Halten · #84 Nils Melchior\n🚨 *Erfurt · 5+20 min · Bandencheck · #27 Frédéric Potvin*");
+});
+
 test("admin and runtime consume the same stored templates", async () => {
   const [admin, storage, engine] = await Promise.all([
     read("js/modules/liveticker-admin.js"),
@@ -181,11 +223,15 @@ test("admin and runtime consume the same stored templates", async () => {
   assert.match(admin, /data-insert-variable/);
   assert.match(admin, /addEventListener\("beforeinput"/);
   assert.match(admin, /planLivetickerProtectedEdit/);
+  assert.match(admin, /title: "Tore – Wir"[\s\S]*title: "Strafen"[\s\S]*title: "Tore – Die anderen"/);
+  assert.match(admin, /Option \$\{escapeHtml\(optionNumber\)\}/);
   assert.doesNotMatch(admin, /Standard wiederherstellen/i);
   assert.match(storage, /pd_public_liveticker_templates/);
   assert.match(storage, /PD_LIVETICKER_OUTPUT_TEMPLATES/);
   assert.match(storage, /window\.setInterval\(pollOutputTemplates, 30000\)/);
   assert.match(engine, /variant\.opponentGoalTemplate/);
   assert.match(engine, /variant\.ownGoalTemplate/);
+  assert.match(engine, /variant\.penaltyTemplate/);
+  assert.doesNotMatch(engine, /homeOwnGoalTemplate|awayOwnGoalTemplate/);
   assert.doesNotMatch(engine, /TOOOOOOOR MIGHTY DOGS/);
 });

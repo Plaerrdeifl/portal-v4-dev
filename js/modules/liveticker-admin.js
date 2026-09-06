@@ -16,7 +16,7 @@ import {
   planLivetickerProtectedEdit,
   templateToken,
   validateLivetickerTemplate
-} from "../liveticker-output-templates.js?v=20260906-r1";
+} from "../liveticker-output-templates.js?v=20260906-events2";
 
 let snapshot = null;
 let archiveSnapshot = null;
@@ -30,6 +30,27 @@ const POSITION_LABELS = Object.freeze({
   DEFENSE: "Verteidigung",
   FORWARD: "Sturm"
 });
+
+const OUTPUT_TEMPLATE_SECTIONS = Object.freeze([
+  Object.freeze({
+    key: "own",
+    title: "Tore – Wir",
+    description: "Ausgaben, wenn die Mighty Dogs treffen.",
+    contexts: Object.freeze(["own"])
+  }),
+  Object.freeze({
+    key: "penalty",
+    title: "Strafen",
+    description: "Ausgaben für eine oder mehrere Strafen in derselben Situation.",
+    contexts: Object.freeze(["penalty"])
+  }),
+  Object.freeze({
+    key: "opponent",
+    title: "Tore – Die anderen",
+    description: "Ausgaben, wenn der Gegner trifft.",
+    contexts: Object.freeze(["opponent"])
+  })
+]);
 
 function ensureLivetickerAdminStyles() {
   if (document.querySelector("style[data-liveticker-admin-styles]")) return;
@@ -106,6 +127,23 @@ function ensureLivetickerAdminStyles() {
       line-height:1.4;
     }
     .liveticker-template-validation[data-valid="false"]{color:#a22832;font-weight:800}
+    .liveticker-template-sections{display:grid;gap:14px}
+    .liveticker-template-section{
+      overflow:hidden;
+      border:1px solid #d7e2ee;
+      border-radius:16px;
+      background:#fff;
+    }
+    .liveticker-template-section-head{
+      display:grid;
+      gap:4px;
+      padding:13px 14px;
+      border-bottom:1px solid #e3eaf2;
+      background:#f7faff;
+    }
+    .liveticker-template-section-head h3{margin:0;font-size:1rem}
+    .liveticker-template-section-head p{margin:0;color:#60748a;font-size:.75rem;line-height:1.4}
+    .liveticker-template-section .v4-team-list{border:0!important;border-radius:0!important}
     .v4-dialog .liveticker-admin-form .checkbox-row{
       display:grid!important;
       grid-template-columns:32px minmax(0,1fr)!important;
@@ -235,18 +273,20 @@ function variableControls(contextKey, target) {
   </div>`;
 }
 
-function outputTemplateForm(template) {
+function outputTemplateField(template, contextKey) {
+  const context = LIVETICKER_TEMPLATE_CONTEXTS[contextKey];
+  const helpId = `${contextKey}TemplateHelp`;
+  return `<label>Ausgabetext · ${escapeHtml(context.label)}<textarea name="${escapeAttr(context.field)}" required maxlength="4000" aria-describedby="${escapeAttr(helpId)}">${escapeHtml(template[context.field] || "")}</textarea></label>
+    ${variableControls(contextKey, context.field)}
+    <p id="${escapeAttr(helpId)}" class="liveticker-template-help">Technische Namen sind geschützt. Rücktaste oder Entfernen löscht einen Platzhalter immer vollständig; unbekannte oder fehlende Pflichtplatzhalter werden nicht gespeichert.</p>
+    <p class="liveticker-template-validation" data-template-validation="${escapeAttr(contextKey)}" data-valid="true"></p>`;
+}
+
+function outputTemplateForm(template, section) {
   return `<form class="liveticker-admin-form liveticker-output-template-form">
     <div class="liveticker-template-key"><span>Technischer Key · nicht editierbar</span><code>${escapeHtml(template.key)}</code></div>
     <label>Sichtbarer Titel<input name="title" required maxlength="60" value="${escapeAttr(template.title || "")}"></label>
-    <label>Ausgabetext · eigenes Tor<textarea name="ownGoalTemplate" required maxlength="4000" aria-describedby="ownGoalTemplateHelp">${escapeHtml(template.ownGoalTemplate || "")}</textarea></label>
-    ${variableControls("own", "ownGoalTemplate")}
-    <p id="ownGoalTemplateHelp" class="liveticker-template-help">Technische Namen sind geschützt. Rücktaste oder Entfernen löscht einen Platzhalter immer vollständig. Optionale Platzhalter entfernen ihre vollständige Ausgabezeile, wenn kein Wert vorhanden ist.</p>
-    <p class="liveticker-template-validation" data-template-validation="own" data-valid="true"></p>
-    <label>Ausgabetext · Gegnertor<textarea name="opponentGoalTemplate" required maxlength="4000" aria-describedby="opponentGoalTemplateHelp">${escapeHtml(template.opponentGoalTemplate || "")}</textarea></label>
-    ${variableControls("opponent", "opponentGoalTemplate")}
-    <p id="opponentGoalTemplateHelp" class="liveticker-template-help">Technische Namen sind geschützt. Platzhalter über die Schaltflächen einsetzen; unbekannte oder fehlende Pflichtplatzhalter werden nicht gespeichert.</p>
-    <p class="liveticker-template-validation" data-template-validation="opponent" data-valid="true"></p>
+    ${section.contexts.map(contextKey => outputTemplateField(template, contextKey)).join("")}
   </form>`;
 }
 
@@ -287,11 +327,12 @@ function bindProtectedTemplateField(field) {
   });
 }
 
-function bindOutputTemplateForm(dialog) {
+function bindOutputTemplateForm(dialog, contextKeys) {
   const form = dialog.querySelector(".liveticker-output-template-form");
   if (!form) return;
 
-  for (const context of Object.values(LIVETICKER_TEMPLATE_CONTEXTS)) {
+  for (const contextKey of contextKeys) {
+    const context = LIVETICKER_TEMPLATE_CONTEXTS[contextKey];
     const field = form.elements.namedItem(context.field);
     if (field instanceof HTMLTextAreaElement) bindProtectedTemplateField(field);
   }
@@ -309,7 +350,7 @@ function bindOutputTemplateForm(dialog) {
     }
   }
 
-  for (const contextKey of Object.keys(LIVETICKER_TEMPLATE_CONTEXTS)) {
+  for (const contextKey of contextKeys) {
     const context = LIVETICKER_TEMPLATE_CONTEXTS[contextKey];
     const field = form.elements.namedItem(context.field);
     field?.addEventListener("input", () => validateField(contextKey));
@@ -333,32 +374,38 @@ function bindOutputTemplateForm(dialog) {
   });
 }
 
-function openOutputTemplate(template) {
+function openOutputTemplate(template, section, optionNumber) {
   const dialog = openDialog({
-    title: template.title || "Ausgabevariante",
-    kicker: "Liveticker · Ausgabevarianten",
-    body: outputTemplateForm(template),
-    submitLabel: "Variante speichern",
+    title: `${section.title} · Option ${optionNumber}`,
+    kicker: template.title || "Liveticker · Ausgabeoption",
+    body: outputTemplateForm(template, section),
+    submitLabel: "Option speichern",
     onSubmit: async values => {
-      const ownValidation = validateLivetickerTemplate(values.ownGoalTemplate, "own");
-      const opponentValidation = validateLivetickerTemplate(values.opponentGoalTemplate, "opponent");
-      const errors = [...ownValidation.errors, ...opponentValidation.errors];
+      const errors = section.contexts.flatMap(contextKey => {
+        const context = LIVETICKER_TEMPLATE_CONTEXTS[contextKey];
+        return validateLivetickerTemplate(values[context.field], contextKey).errors;
+      });
       if (errors.length) throw new Error([...new Set(errors)].join(" "));
 
+      const payload = {
+        key: template.key,
+        context: section.key,
+        title: values.title,
+        expectedRevision: template.revision
+      };
+      for (const contextKey of section.contexts) {
+        const context = LIVETICKER_TEMPLATE_CONTEXTS[contextKey];
+        payload[context.field] = values[context.field];
+      }
+
       templateSnapshot = await runWrite(
-        () => call("liveticker_output_template_save", {
-          key: template.key,
-          title: values.title,
-          ownGoalTemplate: values.ownGoalTemplate,
-          opponentGoalTemplate: values.opponentGoalTemplate,
-          expectedRevision: template.revision
-        }),
-        "Ausgabevariante wurde aktualisiert."
+        () => call("liveticker_output_template_save", payload),
+        "Ausgabeoption wurde aktualisiert."
       );
       render();
     }
   });
-  bindOutputTemplateForm(dialog);
+  bindOutputTemplateForm(dialog, section.contexts);
 }
 
 function openTeam(team = null) {
@@ -600,25 +647,35 @@ function renderArchive(toolbar, panel) {
   });
 }
 
-function outputTemplateRow(template) {
-  return `<button class="v4-team-list-row" type="button" data-template-key="${escapeAttr(template.key)}">
+function outputTemplateRow(template, optionNumber, section) {
+  return `<button class="v4-team-list-row" type="button" data-template-key="${escapeAttr(template.key)}" data-template-context="${escapeAttr(section.key)}">
     <span>
-      <strong>${escapeHtml(template.title)}</strong>
-      <small>Technischer Key: ${escapeHtml(template.key)} · Version ${escapeHtml(template.revision)}</small>
+      <strong>Option ${escapeHtml(optionNumber)}</strong>
+      <small>${escapeHtml(template.title)} · Technischer Key: ${escapeHtml(template.key)} · Version ${escapeHtml(template.revision)}</small>
     </span>
     <span class="v4-row-chevron" aria-hidden="true">›</span>
   </button>`;
 }
 
+function outputTemplateSection(section, templates) {
+  return `<section class="liveticker-template-section" data-template-section="${escapeAttr(section.key)}">
+    <div class="liveticker-template-section-head">
+      <h3>${escapeHtml(section.title)}</h3>
+      <p>${escapeHtml(section.description)}</p>
+    </div>
+    <div class="v4-team-list">${templates.map((template, index) => outputTemplateRow(template, index + 1, section)).join("")}</div>
+  </section>`;
+}
+
 function renderOutputTemplates(toolbar, panel) {
   const templates = templateSnapshot?.templates || [];
   toolbar.innerHTML = `<div class="v4-section-heading">
-    <div><span class="subtle">Liveticker</span><h2>Ausgabevarianten</h2><p class="subtle">Titel und Texte für zukünftige Tor-Ausgaben bearbeiten.</p></div>
+    <div><span class="subtle">Liveticker</span><h2>Ausgaben</h2><p class="subtle">Ausgaben nach Ereignistyp und Option bearbeiten.</p></div>
     <button class="button small secondary" type="button" data-back-teams>← Teams</button>
   </div>`;
   panel.innerHTML = templates.length
-    ? `<div class="v4-team-list">${templates.map(outputTemplateRow).join("")}</div>`
-    : '<div class="notice warning">Keine Ausgabevarianten verfügbar.</div>';
+    ? `<div class="liveticker-template-sections">${OUTPUT_TEMPLATE_SECTIONS.map(section => outputTemplateSection(section, templates)).join("")}</div>`
+    : '<div class="notice warning">Keine Ausgabeoptionen verfügbar.</div>';
 
   toolbar.querySelector("[data-back-teams]")?.addEventListener("click", () => {
     currentView = "teams";
@@ -627,7 +684,9 @@ function renderOutputTemplates(toolbar, panel) {
   panel.querySelectorAll("[data-template-key]").forEach(button => {
     button.addEventListener("click", () => {
       const template = templates.find(item => item.key === button.dataset.templateKey);
-      if (template) openOutputTemplate(template);
+      const section = OUTPUT_TEMPLATE_SECTIONS.find(item => item.key === button.dataset.templateContext);
+      const optionNumber = templates.findIndex(item => item.key === button.dataset.templateKey) + 1;
+      if (template && section && optionNumber > 0) openOutputTemplate(template, section, optionNumber);
     });
   });
 }
@@ -671,7 +730,8 @@ function render() {
   toolbar.innerHTML = `<div class="v4-section-heading">
     <div><span class="subtle">Liveticker</span><h2>Teams & Kader</h2><p class="subtle">Team auswählen oder neu anlegen.</p></div>
     <div class="button-row">
-      <button class="button small secondary" type="button" data-open-templates>Ausgabevarianten</button>
+      <a class="button small secondary" href="./liveticker/" target="_blank" rel="noopener noreferrer">Ticker öffnen ↗</a>
+      <button class="button small secondary" type="button" data-open-templates>Ausgaben</button>
       <button class="button small secondary" type="button" data-open-archive>Archiv</button>
       <button class="button small primary" type="button" data-add-team>+ Team</button>
     </div>

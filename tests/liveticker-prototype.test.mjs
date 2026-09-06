@@ -11,6 +11,7 @@ import {
   findPlayerByNumber,
   formatFinalSummary,
   formatGoalText,
+  formatPenaltyText,
   formatSegmentSummary,
   isMajorPenalty,
   normalizeJerseyNumber,
@@ -25,18 +26,21 @@ globalThis.PD_LIVETICKER_OUTPUT_TEMPLATES = {
       key: "classic",
       title: "Klassisch",
       ownGoalTemplate: "{{minute}} Spielminute\n*Tooooooor für unsere Schweinfurter Mighty Dogs*\n\nTorschütze: {{scorer}}\nAssists: {{assists}}\n\nNeuer Spielstand\n*{{mighty_score}}:{{opponent_score}}*",
+      penaltyTemplate: "{{minute}} Spielminute\nStrafe(n)\n\n{{penalties}}",
       opponentGoalTemplate: "{{minute}} Spielminute\nTor {{opponent_name}}\n{{scorer}}\nAssists: {{assists}}\n\nNeuer Spielstand\n*{{mighty_score}}:{{opponent_score}}*"
     },
     {
       key: "emotional",
       title: "Emotional",
       ownGoalTemplate: "{{minute}} Spielminute\n🔥 *TOOOOOOOR MIGHTY DOGS!* 🔥\n\n{{scorer}}\nAssists: {{assists}}\n\nNeuer Spielstand\n*{{mighty_score}}:{{opponent_score}}*",
+      penaltyTemplate: "{{minute}} Spielminute\nStrafe(n)\n\n{{penalties}}",
       opponentGoalTemplate: "{{minute}} Spielminute\nTor {{opponent_name}}\n{{scorer}}\nAssists: {{assists}}\n\nNeuer Spielstand\n*{{mighty_score}}:{{opponent_score}}*"
     },
     {
       key: "short",
       title: "Kurz",
       ownGoalTemplate: "{{minute}} Spielminute\n*TOOOOOR SCHWEINFURT!*\n{{scorer}}\nAssists: {{assists}}\n\n*{{mighty_score}}:{{opponent_score}}*",
+      penaltyTemplate: "{{minute}} Spielminute\nStrafe(n)\n\n{{penalties}}",
       opponentGoalTemplate: "{{minute}} Spielminute\nTor {{opponent_name}}\n{{scorer}}\nAssists: {{assists}}\n\n*{{mighty_score}}:{{opponent_score}}*"
     }
   ]
@@ -126,6 +130,49 @@ test("seeded classic, emotional and short variants preserve their previous outpu
   assert.equal(formatGoalText(opponentClassic, [opponentClassic], opponent), "29 Spielminute\nTor Erfurt\n#27 Frédéric Potvin\n\nNeuer Spielstand\n*0:1*");
   assert.equal(formatGoalText(opponentEmotional, [opponentEmotional], opponent), formatGoalText(opponentClassic, [opponentClassic], opponent));
   assert.equal(formatGoalText(opponentShort, [opponentShort], opponent), "29 Spielminute\nTor Erfurt\n#27 Frédéric Potvin\n\n*0:1*");
+});
+
+test("our and opponent goal templates stay independent of home or away venue", () => {
+  const ownGoal = goal("own-venue", "mighty", 18, melchior);
+  const opponentGoal = goal("opponent-venue", "opponent", 29, potvin);
+
+  globalThis.PD_LIVETICKER_GAME_CONTEXT = { homeAway: "HOME" };
+  const homeOwn = formatGoalText(ownGoal, [ownGoal], opponent);
+  const homeOpponent = formatGoalText(opponentGoal, [opponentGoal], opponent);
+  globalThis.PD_LIVETICKER_GAME_CONTEXT = { homeAway: "AWAY" };
+  const awayOwn = formatGoalText(ownGoal, [ownGoal], opponent);
+  const awayOpponent = formatGoalText(opponentGoal, [opponentGoal], opponent);
+  delete globalThis.PD_LIVETICKER_GAME_CONTEXT;
+
+  assert.equal(awayOwn, homeOwn);
+  assert.equal(awayOpponent, homeOpponent);
+  assert.match(awayOwn, /unsere Schweinfurter Mighty Dogs/);
+  assert.match(awayOpponent, /Tor Erfurt/);
+});
+
+test("seeded penalty template preserves output and persisted variants are used", () => {
+  const event = {
+    id: "penalty-template",
+    type: "penalty",
+    minute: 34,
+    penalties: [
+      { team: "mighty", player: melchior, duration: "2", reason: "Halten" },
+      { team: "opponent", player: potvin, duration: "5+20", reason: "Bandencheck" }
+    ]
+  };
+  assert.equal(
+    formatPenaltyText(event, opponent),
+    "34 Spielminute\nStrafe(n)\n\nMighty Dogs · 2 min · Halten · #84 Nils Melchior\n🚨 *Erfurt · 5+20 min · Bandencheck · #27 Frédéric Potvin*"
+  );
+
+  const emotional = globalThis.PD_LIVETICKER_OUTPUT_TEMPLATES.templates.find(template => template.key === "emotional");
+  const seededTemplate = emotional.penaltyTemplate;
+  emotional.penaltyTemplate = "OPTION 2 · {{minute}}\n{{penalties}}";
+  try {
+    assert.match(formatPenaltyText({ ...event, style: "emotional" }, opponent), /^OPTION 2 · 34/);
+  } finally {
+    emotional.penaltyTemplate = seededTemplate;
+  }
 });
 
 test("unknown scorer is omitted from generated goal text", () => {

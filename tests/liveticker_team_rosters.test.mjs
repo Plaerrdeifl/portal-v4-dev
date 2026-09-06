@@ -28,6 +28,15 @@ test("roster module uses central pd_api actions and optimistic revisions", async
   assert.match(module, /FORWARD/);
 });
 
+test("portal management exposes the standalone ticker without weakening its route guard", async () => {
+  const module = await source("js/modules/liveticker-admin.js");
+  const navigation = await source("supabase/migrations/20260905151000_add_liveticker_navigation_r1.sql");
+  assert.match(module, /href="\.\/liveticker\/"/);
+  assert.match(module, /target="_blank"/);
+  assert.match(module, /rel="noopener noreferrer"/);
+  assert.match(navigation, /has_capability\(v_auth_id, 'liveticker\.manage'\)/);
+});
+
 test("team selection opens a dedicated detail view with back navigation", async () => {
   const module = await source("js/modules/liveticker-admin.js");
   assert.match(module, /data-back-teams/);

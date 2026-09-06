@@ -27,7 +27,7 @@ test("public DEV Liveticker stays standalone and uses the scoped Supabase storag
   assert.match(html, /script-src 'self' blob:/);
   assert.match(html, /connect-src 'self' https:\/\/\*\.supabase\.co/);
   assert.match(html, /Spielstand und Aktionen werden zentral pro Spiel gespeichert/);
-  assert.match(html, /type="module" src="\.\.\/js\/liveticker-bootstrap\.js\?v=20260906-templates1"/);
+  assert.match(html, /type="module" src="\.\.\/js\/liveticker-bootstrap\.js\?v=20260906-events2"/);
   assert.match(bootstrap, /runtime-config\.js/);
   assert.match(bootstrap, /importRuntimeEngine/);
   assert.match(storage, /pd_public_liveticker_games/);
@@ -63,6 +63,14 @@ test("goal editor exposes two optional assists, shootout and inline jersey input
   assert.match(html, /id="assist1"/);
   assert.match(html, /id="assist2"/);
   assert.match(html, /id="actionShootout" name="action" type="radio" value="SHOOTOUT"/);
+});
+
+test("penalty editor offers the same stored output options", async () => {
+  const html = await read("liveticker/index.html");
+  for (const id of ["penaltyStyleClassic", "penaltyStyleEmotional", "penaltyStyleShort"]) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(html, /name="penaltyStyle"/);
 });
 
 test("player ordering is context specific", () => {
