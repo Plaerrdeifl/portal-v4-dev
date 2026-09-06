@@ -16,7 +16,7 @@ import {
   planLivetickerProtectedEdit,
   templateToken,
   validateLivetickerTemplate
-} from "../liveticker-output-templates.js?v=20260906-penalty3";
+} from "../liveticker-output-templates.js?v=20260906-prod-titlefix1";
 
 let snapshot = null;
 let archiveSnapshot = null;
@@ -294,9 +294,12 @@ function outputTemplateField(template, contextKey) {
 }
 
 function outputTemplateForm(template, section) {
+  const contextKey = section.contexts[0];
+  const context = LIVETICKER_TEMPLATE_CONTEXTS[contextKey];
+  const contextTitle = template[context.titleField] || template.title || "";
   return `<form class="liveticker-admin-form liveticker-output-template-form">
     <div class="liveticker-template-key"><span>Technischer Key · nicht editierbar</span><code>${escapeHtml(template.key)}</code></div>
-    <label>Sichtbarer Titel<input name="title" required maxlength="60" value="${escapeAttr(template.title || "")}"></label>
+    <label>Sichtbarer Buttonname · ${escapeHtml(context.label)}<input name="title" required maxlength="60" value="${escapeAttr(contextTitle)}"></label>
     ${section.contexts.map(contextKey => outputTemplateField(template, contextKey)).join("")}
   </form>`;
 }
@@ -386,9 +389,12 @@ function bindOutputTemplateForm(dialog, contextKeys) {
 }
 
 function openOutputTemplate(template, section, optionNumber) {
+  const contextKey = section.contexts[0];
+  const context = LIVETICKER_TEMPLATE_CONTEXTS[contextKey];
+  const contextTitle = template[context.titleField] || template.title || "Ausgabeoption";
   const dialog = openDialog({
     title: `${section.title} · Option ${optionNumber}`,
-    kicker: `Liveticker · Editor · ${template.title || "Ausgabeoption"}`,
+    kicker: `Liveticker · Editor · ${contextTitle}`,
     body: outputTemplateForm(template, section),
     submitLabel: "Option speichern",
     onSubmit: async values => {
@@ -659,10 +665,12 @@ function renderArchive(toolbar, panel) {
 }
 
 function outputTemplateRow(template, optionNumber, section) {
+  const context = LIVETICKER_TEMPLATE_CONTEXTS[section.contexts[0]];
+  const contextTitle = template[context.titleField] || template.title || "Ausgabeoption";
   return `<button class="v4-team-list-row" type="button" data-template-key="${escapeAttr(template.key)}" data-template-context="${escapeAttr(section.key)}">
     <span>
       <strong>Option ${escapeHtml(optionNumber)}</strong>
-      <small>${escapeHtml(template.title)} · Technischer Key: ${escapeHtml(template.key)} · Version ${escapeHtml(template.revision)}</small>
+      <small>${escapeHtml(contextTitle)} · Technischer Key: ${escapeHtml(template.key)} · Version ${escapeHtml(template.revision)}</small>
     </span>
     <span class="v4-row-chevron" aria-hidden="true">›</span>
   </button>`;

@@ -487,12 +487,39 @@ function initialize() {
   opponentSelect.value = state.opponentId;
   minuteInput.value = String(state.minute);
 
+  function contextualTemplateTitle(variant, contextKey) {
+    const fields = {
+      own: "ownGoalTitle",
+      opponent: "opponentGoalTitle",
+      ownPenalty: "ownPenaltyTitle",
+      opponentPenalty: "opponentPenaltyTitle"
+    };
+    return variant?.[fields[contextKey]] || variant?.title || "Option";
+  }
+
+  function currentPenaltyTitleContext() {
+    const teams = new Set([...penaltyRows.children]
+      .map(row => row.querySelector("[data-field='team']")?.value)
+      .filter(Boolean));
+    if (teams.size !== 1) return "";
+    return teams.has("opponent") ? "opponentPenalty" : "ownPenalty";
+  }
+
   function syncTemplateStyleTitles() {
     const outputTemplates = globalThis.PD_LIVETICKER_OUTPUT_TEMPLATES?.templates || [];
-    document.querySelectorAll("input[name='goalStyle'],input[name='penaltyStyle']").forEach(input => {
+    const goalContext = selectedAction() === "GOAL_OPPONENT" ? "opponent" : "own";
+    const penaltyContext = currentPenaltyTitleContext();
+    document.querySelectorAll("input[name='goalStyle']").forEach(input => {
       const variant = outputTemplates.find(template => template.key === input.value);
       const label = document.querySelector(`label[for='${input.id}']`);
-      if (variant && label) label.textContent = variant.title;
+      if (variant && label) label.textContent = contextualTemplateTitle(variant, goalContext);
+    });
+    document.querySelectorAll("input[name='penaltyStyle']").forEach(input => {
+      const variant = outputTemplates.find(template => template.key === input.value);
+      const label = document.querySelector(`label[for='${input.id}']`);
+      if (variant && label) label.textContent = penaltyContext
+        ? contextualTemplateTitle(variant, penaltyContext)
+        : (variant.title || "Option");
     });
   }
   syncTemplateStyleTitles();
@@ -557,6 +584,7 @@ function initialize() {
     shootoutFields.hidden = action !== "SHOOTOUT";
     if (!goalFields.hidden) syncGoalRoster();
     if (!shootoutFields.hidden) syncShootoutRoster();
+    syncTemplateStyleTitles();
     errorBox.hidden = true;
   }
 
@@ -581,9 +609,16 @@ function initialize() {
     team.addEventListener("change", () => {
       fillPlayerSelect(player, getRoster(), "", "Spieler noch unbekannt", PENALTY_POSITION_ORDER);
       binding.syncFromSelect();
+      syncTemplateStyleTitles();
     });
-    row.querySelector(".remove-penalty").addEventListener("click", () => { if (penaltyRows.children.length > 1) row.remove(); });
+    row.querySelector(".remove-penalty").addEventListener("click", () => {
+      if (penaltyRows.children.length > 1) {
+        row.remove();
+        syncTemplateStyleTitles();
+      }
+    });
     penaltyRows.append(row);
+    syncTemplateStyleTitles();
   }
 
   function ensurePenaltyRow() { if (!penaltyRows.children.length) createPenaltyRow(); }

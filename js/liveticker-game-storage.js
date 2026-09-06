@@ -1,6 +1,6 @@
 import { auth } from "./auth.js";
 import { getSupabaseClient } from "./supabase-client.js";
-import { normalizeLivetickerTemplateSnapshot } from "./liveticker-output-templates.js?v=20260906-penalty3";
+import { normalizeLivetickerTemplateSnapshot } from "./liveticker-output-templates.js?v=20260906-prod-titlefix1";
 
 const STATE_KEY = "plaerrdeifl.livetickerPrototype.v3";
 const SELECTED_EVENT_KEY = "plaerrdeifl.livetickerPrototype.eventId";
@@ -308,7 +308,10 @@ async function poll() {
 
 function applyOutputTemplates(raw) {
   const snapshot = normalizeLivetickerTemplateSnapshot(raw);
-  const signature = JSON.stringify(snapshot.templates.map(template => [template.key, template.title, template.revision]));
+  const signature = JSON.stringify(snapshot.templates.map(template => [
+    template.key, template.title, template.ownGoalTitle, template.ownPenaltyTitle,
+    template.opponentGoalTitle, template.opponentPenaltyTitle, template.revision
+  ]));
   globalThis.PD_LIVETICKER_OUTPUT_TEMPLATES = snapshot;
   if (templateSignature && signature !== templateSignature) {
     window.dispatchEvent(new CustomEvent("pd-liveticker-output-templates-updated"));

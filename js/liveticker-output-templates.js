@@ -21,21 +21,25 @@ export const LIVETICKER_TEMPLATE_VARIABLES = Object.freeze([
 export const LIVETICKER_TEMPLATE_CONTEXTS = Object.freeze({
   own: Object.freeze({
     field: "ownGoalTemplate",
+    titleField: "ownGoalTitle",
     label: "Tor – Wir",
     required: Object.freeze(["minute", "mighty_score", "opponent_score"])
   }),
   ownPenalty: Object.freeze({
     field: "ownPenaltyTemplate",
+    titleField: "ownPenaltyTitle",
     label: "Strafen – Wir",
     required: Object.freeze(["minute", "penalties"])
   }),
   opponentPenalty: Object.freeze({
     field: "opponentPenaltyTemplate",
+    titleField: "opponentPenaltyTitle",
     label: "Strafen – Die anderen",
     required: Object.freeze(["minute", "penalties"])
   }),
   opponent: Object.freeze({
     field: "opponentGoalTemplate",
+    titleField: "opponentGoalTitle",
     label: "Tor – Die anderen",
     required: Object.freeze(["minute", "mighty_score", "opponent_score", "opponent_name"])
   })
@@ -184,6 +188,10 @@ export function normalizeLivetickerTemplateSnapshot(raw) {
     return Object.freeze({
       key,
       title,
+      ownGoalTitle: String(template.ownGoalTitle || title).trim(),
+      ownPenaltyTitle: String(template.ownPenaltyTitle || title).trim(),
+      opponentGoalTitle: String(template.opponentGoalTitle || title).trim(),
+      opponentPenaltyTitle: String(template.opponentPenaltyTitle || title).trim(),
       ownGoalTemplate: String(template.ownGoalTemplate),
       ownPenaltyTemplate: String(ownPenaltyTemplate),
       opponentPenaltyTemplate: String(opponentPenaltyTemplate),

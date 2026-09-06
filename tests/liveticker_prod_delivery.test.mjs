@@ -70,3 +70,33 @@ test("PROD editor ships the frozen four output contexts", async () => {
   assert.match(templates, /ownPenaltyTemplate/);
   assert.match(templates, /opponentPenaltyTemplate/);
 });
+
+
+test("PROD Liveticker hotfix keeps option titles independent per output context", async () => {
+  const migration = await read("supabase/migrations/20260906163500_liveticker_context_titles_prod_hotfix.sql");
+  const templates = await read("js/liveticker-output-templates.js");
+  const admin = await read("js/modules/liveticker-admin.js");
+  const engine = await read("js/liveticker-engine-v4.js");
+
+  assert.match(migration, /add column own_goal_title text/);
+  assert.match(migration, /add column own_penalty_title text/);
+  assert.match(migration, /add column opponent_goal_title text/);
+  assert.match(migration, /add column opponent_penalty_title text/);
+  assert.match(migration, /set own_goal_title = title,[\s\S]*own_penalty_title = title,[\s\S]*opponent_goal_title = title,[\s\S]*opponent_penalty_title = title/);
+  assert.match(migration, /when 'own' then[\s\S]*v_own_goal_title:=v_context_title/);
+  assert.match(migration, /when 'own_penalty' then[\s\S]*v_own_penalty_title:=v_context_title/);
+  assert.match(migration, /when 'opponent' then[\s\S]*v_opponent_goal_title:=v_context_title/);
+  assert.match(migration, /when 'opponent_penalty' then[\s\S]*v_opponent_penalty_title:=v_context_title/);
+  assert.doesNotMatch(migration, /set title=v_context_title/);
+
+  assert.match(templates, /titleField: "ownGoalTitle"/);
+  assert.match(templates, /titleField: "ownPenaltyTitle"/);
+  assert.match(templates, /titleField: "opponentGoalTitle"/);
+  assert.match(templates, /titleField: "opponentPenaltyTitle"/);
+  assert.match(admin, /template\[context\.titleField\]/);
+  assert.match(admin, /Sichtbarer Buttonname/);
+  assert.match(engine, /currentPenaltyTitleContext/);
+  assert.match(engine, /selectedAction\(\) === "GOAL_OPPONENT" \? "opponent" : "own"/);
+  assert.match(engine, /opponentPenaltyTitle/);
+  assert.match(engine, /ownPenaltyTitle/);
+});
