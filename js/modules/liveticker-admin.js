@@ -243,7 +243,8 @@ function teamForm(team = {}) {
     <input type="hidden" name="id" value="${escapeAttr(team.id || "")}">
     <label>Teamname<input name="name" required maxlength="160" placeholder="z. B. Mighty Dogs Schweinfurt" value="${escapeAttr(team.name || "")}"></label>
     <label>Kurzname<input name="shortName" required maxlength="60" placeholder="z. B. Mighty Dogs" value="${escapeAttr(team.shortName || "")}"></label>
-    <label>Logo-URL<input name="logoUrl" type="url" inputmode="url" placeholder="https://…" value="${escapeAttr(team.logoUrl || "")}"></label>
+    <label>Teamkürzel<input name="teamCode" required maxlength="12" autocapitalize="characters" placeholder="z. B. ERVS" value="${escapeAttr(team.teamCode || "")}"></label>
+    ${team.logoAssetPath ? `<div class="liveticker-team-logo-editor"><img src="${escapeAttr(team.logoAssetPath)}" alt="Logo ${escapeAttr(team.shortName || team.name || "Team")}" width="96" height="96"><span class="subtle">Logo wird als lokales Portal-Asset verwaltet.</span></div>` : '<p class="subtle">Für dieses Team ist noch kein lokales Logo-Asset hinterlegt.</p>'}
     <label class="checkbox-row"><input name="homeClub" type="checkbox" ${team.homeClub ? "checked" : ""}><span>Unser Verein / Heimverein</span></label>
     <label class="checkbox-row"><input name="active" type="checkbox" ${team.active !== false ? "checked" : ""}><span>Team ist aktiv</span></label>
   </form>`;
@@ -487,7 +488,7 @@ function teamListRow(team) {
   return `<button class="v4-team-list-row" type="button" data-team-id="${escapeAttr(team.id)}">
     <span>
       <strong>${escapeHtml(team.shortName || team.name)}${team.homeClub ? " · 🏠" : ""}</strong>
-      <small>${activePlayers} aktive Spieler${team.active ? "" : " · Team inaktiv"}</small>
+      <small>${team.teamCode ? `${escapeHtml(team.teamCode)} · ` : ""}${activePlayers} aktive Spieler${team.active ? "" : " · Team inaktiv"}</small>
     </span>
     <span class="v4-row-chevron" aria-hidden="true">›</span>
   </button>`;
@@ -502,7 +503,10 @@ function teamDetail(team) {
         <button class="button small primary" type="button" data-add-player>+ Spieler</button>
       </div>
     </div>
-    ${team.logoUrl ? `<p class="subtle">Logo: ${escapeHtml(team.logoUrl)}</p>` : ""}
+    <div class="liveticker-team-identity">
+      ${team.logoAssetPath ? `<img src="${escapeAttr(team.logoAssetPath)}" alt="Logo ${escapeAttr(team.shortName || team.name)}" width="100" height="100" loading="lazy">` : ""}
+      <p class="subtle">${team.teamCode ? `Kürzel: ${escapeHtml(team.teamCode)}` : "Kein Kürzel"}${team.logoAssetPath ? ` · lokales Logo vorhanden` : " · Kein Logo-Asset"}</p>
+    </div>
     ${groupPlayers(team, "GOALIE")}
     ${groupPlayers(team, "DEFENSE")}
     ${groupPlayers(team, "FORWARD")}

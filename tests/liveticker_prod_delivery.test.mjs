@@ -100,3 +100,28 @@ test("PROD Liveticker hotfix keeps option titles independent per output context"
   assert.match(engine, /opponentPenaltyTitle/);
   assert.match(engine, /ownPenaltyTitle/);
 });
+
+
+test("PROD Liveticker teams use portal-owned codes and server-managed local logo assets", async () => {
+  const migration = await read("supabase/migrations/20260906221000_liveticker_team_assets_prod_hotfix.sql");
+  const admin = await read("js/modules/liveticker-admin.js");
+  const build = await read("scripts/build-static.mjs");
+
+  assert.match(migration, /add column team_code text/);
+  assert.match(migration, /add column logo_asset_path text/);
+  assert.match(migration, /team_code[\s\S]*A-Z0-9/);
+  assert.match(migration, /\^\/assets\/liveticker\/teams\//);
+  assert.doesNotMatch(migration, /team_[0-9]+\.png/);
+  assert.match(migration, /'teamCode',t\.team_code/);
+  assert.match(migration, /'logoAssetPath',t\.logo_asset_path/);
+  assert.match(migration, /black-dragons-erfurt\.svg/);
+  assert.match(migration, /team_code='TBD'/);
+  assert.doesNotMatch(migration, /p_payload->>'logoUrl'/);
+  assert.doesNotMatch(migration, /p_payload->>'logoAssetPath'/);
+  assert.match(admin, /Teamkürzel/);
+  assert.doesNotMatch(admin, /name="logoUrl"/);
+  assert.doesNotMatch(admin, /name="logoAssetPath"/);
+  assert.match(admin, /team\.logoAssetPath/);
+  assert.match(admin, /lokales Portal-Asset/);
+  assert.match(build, /"assets"/);
+});
