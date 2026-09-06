@@ -175,9 +175,11 @@ test("repo auth defaults and WordPress cache versions are hardened consistently"
   assert.match(config, /\[auth\.email\][\s\S]*enable_signup = false/);
   assert.match(config, /secure_password_change = true/);
   assert.match(config, /\[auth\.sms\][\s\S]*enable_signup = false/);
+  assert.match(m150, /Version: 1\.0\.5/);
+  assert.match(m150, /private const VERSION = '1\.0\.5'/);
+  assert.match(m310, /Version: 1\.1\.0/);
+  assert.match(m310, /private const VERSION = '1\.1\.0'/);
   for (const plugin of [m150, m310]) {
-    assert.match(plugin, /Version: 1\.0\.5/);
-    assert.match(plugin, /private const VERSION = '1\.0\.5'/);
     assert.match(plugin, /esc_html|esc_attr|esc_url/);
   }
 });
