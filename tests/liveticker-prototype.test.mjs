@@ -5,6 +5,8 @@ import {
   MIGHTY_ROSTER,
   OPPONENTS,
   PENALTY_POSITION_ORDER,
+  applyPenaltyStyleToDraft,
+  completeTickerSubmitLifecycle,
   calculateOfficialFinalScore,
   calculateScore,
   calculateShootout,
@@ -15,6 +17,7 @@ import {
   formatSegmentSummary,
   isMajorPenalty,
   normalizeJerseyNumber,
+  penaltyTemplateValues,
   parsePenaltyDuration,
   segmentForMinute
 } from "../js/liveticker-prototype-v4.js";
@@ -26,21 +29,24 @@ globalThis.PD_LIVETICKER_OUTPUT_TEMPLATES = {
       key: "classic",
       title: "Klassisch",
       ownGoalTemplate: "{{minute}} Spielminute\n*Tooooooor für unsere Schweinfurter Mighty Dogs*\n\nTorschütze: {{scorer}}\nAssists: {{assists}}\n\nNeuer Spielstand\n*{{mighty_score}}:{{opponent_score}}*",
-      penaltyTemplate: "{{minute}} Spielminute\nStrafe(n)\n\n{{penalties}}",
+      ownPenaltyTemplate: "{{minute}} Spielminute\nStrafe(n)\n\n{{penalties}}",
+      opponentPenaltyTemplate: "{{minute}} Spielminute\nStrafe(n)\n\n{{penalties}}",
       opponentGoalTemplate: "{{minute}} Spielminute\nTor {{opponent_name}}\n{{scorer}}\nAssists: {{assists}}\n\nNeuer Spielstand\n*{{mighty_score}}:{{opponent_score}}*"
     },
     {
       key: "emotional",
       title: "Emotional",
       ownGoalTemplate: "{{minute}} Spielminute\n🔥 *TOOOOOOOR MIGHTY DOGS!* 🔥\n\n{{scorer}}\nAssists: {{assists}}\n\nNeuer Spielstand\n*{{mighty_score}}:{{opponent_score}}*",
-      penaltyTemplate: "{{minute}} Spielminute\nStrafe(n)\n\n{{penalties}}",
+      ownPenaltyTemplate: "{{minute}} Spielminute\nStrafe(n)\n\n{{penalties}}",
+      opponentPenaltyTemplate: "{{minute}} Spielminute\nStrafe(n)\n\n{{penalties}}",
       opponentGoalTemplate: "{{minute}} Spielminute\nTor {{opponent_name}}\n{{scorer}}\nAssists: {{assists}}\n\nNeuer Spielstand\n*{{mighty_score}}:{{opponent_score}}*"
     },
     {
       key: "short",
       title: "Kurz",
       ownGoalTemplate: "{{minute}} Spielminute\n*TOOOOOR SCHWEINFURT!*\n{{scorer}}\nAssists: {{assists}}\n\n*{{mighty_score}}:{{opponent_score}}*",
-      penaltyTemplate: "{{minute}} Spielminute\nStrafe(n)\n\n{{penalties}}",
+      ownPenaltyTemplate: "{{minute}} Spielminute\nStrafe(n)\n\n{{penalties}}",
+      opponentPenaltyTemplate: "{{minute}} Spielminute\nStrafe(n)\n\n{{penalties}}",
       opponentGoalTemplate: "{{minute}} Spielminute\nTor {{opponent_name}}\n{{scorer}}\nAssists: {{assists}}\n\n*{{mighty_score}}:{{opponent_score}}*"
     }
   ]
@@ -150,7 +156,88 @@ test("our and opponent goal templates stay independent of home or away venue", (
   assert.match(awayOpponent, /Tor Erfurt/);
 });
 
-test("seeded penalty template preserves output and persisted variants are used", () => {
+test("real penalty submit lifecycle preserves draft rows and updates one history event across all options", () => {
+  const penalties = [
+    { team: "mighty", player: melchior, duration: "2", reason: "Halten" },
+    { team: "opponent", player: potvin, duration: "5+20", reason: "Bandencheck" }
+  ];
+  const state = { minute: 1, history: [] };
+  let editingId = null;
+  let persistCalls = 0;
+  let outputCalls = 0;
+  let preserveCalls = 0;
+  let cancelCalls = 0;
+
+  for (const style of ["classic", "emotional", "short"]) {
+    const event = applyPenaltyStyleToDraft({
+      id: editingId || "penalty-draft",
+      type: "penalty",
+      minute: 34,
+      penalties
+    }, style);
+    const lifecycle = completeTickerSubmitLifecycle({
+      state,
+      editingId,
+      tickerEvent: event,
+      persist: () => { persistCalls += 1; },
+      renderHistory: () => {},
+      renderOutput: () => { outputCalls += 1; },
+      preservePenaltyDraft: id => { editingId = id; preserveCalls += 1; },
+      cancelEdit: () => { cancelCalls += 1; },
+      syncContext: () => {}
+    });
+
+    assert.equal(lifecycle.preservePenaltyDraft, true);
+    assert.equal(state.history.length, 1);
+    assert.equal(state.history[0].style, style);
+    assert.strictEqual(state.history[0].penalties, penalties);
+  }
+
+  assert.equal(persistCalls, 3);
+  assert.equal(outputCalls, 3);
+  assert.equal(preserveCalls, 3);
+  assert.equal(cancelCalls, 0);
+
+  assert.deepEqual(state.history[0].penalties.map(item => ({
+    team: item.team,
+    player: item.player,
+    number: item.player?.number,
+    duration: item.duration,
+    reason: item.reason
+  })), [
+    { team: "mighty", player: melchior, number: "84", duration: "2", reason: "Halten" },
+    { team: "opponent", player: potvin, number: "27", duration: "5+20", reason: "Bandencheck" }
+  ]);
+});
+
+test("goal and shootout submit lifecycle still finishes without preserving a penalty draft", () => {
+  const goalState = { minute: 1, history: [] };
+  const goalEvent = goal("goal-submit", "mighty", 12, melchior);
+  let cancelCalls = 0;
+  const finish = tickerEvent => completeTickerSubmitLifecycle({
+    state: goalState,
+    editingId: null,
+    tickerEvent,
+    persist: () => {},
+    renderHistory: () => {},
+    renderOutput: () => {},
+    preservePenaltyDraft: () => assert.fail("Tor/Shootout darf keinen Strafendraft erhalten."),
+    cancelEdit: () => { cancelCalls += 1; },
+    syncContext: () => {}
+  });
+  const goalLifecycle = finish(goalEvent);
+  assert.deepEqual(goalLifecycle, { editingId: null, preservePenaltyDraft: false });
+  assert.equal(goalState.history.length, 1);
+
+  const shootoutEvent = { id: "shootout-submit", type: "shootout", team: "opponent", player: potvin, result: "missed" };
+  const shootoutLifecycle = finish(shootoutEvent);
+  assert.deepEqual(shootoutLifecycle, { editingId: null, preservePenaltyDraft: false });
+  assert.equal(goalState.history.length, 2);
+  assert.equal(goalState.minute, 12);
+  assert.equal(cancelCalls, 2);
+});
+
+test("seeded penalty templates preserve output and persisted variants are used", () => {
   const event = {
     id: "penalty-template",
     type: "penalty",
@@ -166,13 +253,81 @@ test("seeded penalty template preserves output and persisted variants are used",
   );
 
   const emotional = globalThis.PD_LIVETICKER_OUTPUT_TEMPLATES.templates.find(template => template.key === "emotional");
-  const seededTemplate = emotional.penaltyTemplate;
-  emotional.penaltyTemplate = "OPTION 2 · {{minute}}\n{{penalties}}";
+  const seededTemplate = emotional.ownPenaltyTemplate;
+  emotional.ownPenaltyTemplate = "OPTION 2 · {{minute}}\n{{penalties}}";
   try {
-    assert.match(formatPenaltyText({ ...event, style: "emotional" }, opponent), /^OPTION 2 · 34/);
+    const text = formatPenaltyText({ ...event, style: "emotional" }, opponent);
+    assert.match(text, /^OPTION 2 · 34/);
+    assert.match(text, /#84 Nils Melchior/);
+    assert.match(text, /#27 Frédéric Potvin/);
   } finally {
-    emotional.penaltyTemplate = seededTemplate;
+    emotional.ownPenaltyTemplate = seededTemplate;
   }
+});
+
+test("our and opponent penalty templates are separate and independent of home or away", () => {
+  const variant = globalThis.PD_LIVETICKER_OUTPUT_TEMPLATES.templates.find(template => template.key === "short");
+  const ownBefore = variant.ownPenaltyTemplate;
+  const opponentBefore = variant.opponentPenaltyTemplate;
+  variant.ownPenaltyTemplate = "WIR {{minute}}\n{{penalties}}";
+  variant.opponentPenaltyTemplate = "DIE ANDEREN {{minute}} {{opponent_name}}\n{{penalties}}";
+  const event = {
+    id: "penalty-contexts", type: "penalty", minute: 40, style: "short",
+    penalties: [
+      { team: "mighty", player: melchior, duration: "2", reason: "Halten" },
+      { team: "opponent", player: potvin, duration: "5+20", reason: "Bandencheck" }
+    ]
+  };
+
+  try {
+    globalThis.PD_LIVETICKER_GAME_CONTEXT = { homeAway: "HOME" };
+    const home = formatPenaltyText(event, opponent);
+    globalThis.PD_LIVETICKER_GAME_CONTEXT = { homeAway: "AWAY" };
+    const away = formatPenaltyText(event, opponent);
+    assert.equal(away, home);
+    assert.match(away, /^WIR 40[\s\S]*Mighty Dogs/);
+    assert.match(away, /DIE ANDEREN 40 Erfurt[\s\S]*🚨 \*Erfurt/);
+  } finally {
+    variant.ownPenaltyTemplate = ownBefore;
+    variant.opponentPenaltyTemplate = opponentBefore;
+    delete globalThis.PD_LIVETICKER_GAME_CONTEXT;
+  }
+});
+
+test("single-penalty variables are explicit and ambiguous values stay empty for multiple rows", () => {
+  const single = penaltyTemplateValues({ minute: 18 }, [{
+    team: "mighty", player: melchior, duration: "2", reason: "Halten"
+  }], opponent);
+  assert.deepEqual(single, {
+    minute: 18,
+    player_name: "Nils Melchior",
+    jersey_number: "84",
+    player: "#84 Nils Melchior",
+    penalty_duration: "2 min",
+    penalty_reason: "Halten",
+    team_name: "Mighty Dogs",
+    opponent_name: "Erfurt",
+    penalty_line: "Mighty Dogs · 2 min · Halten · #84 Nils Melchior",
+    penalties: "Mighty Dogs · 2 min · Halten · #84 Nils Melchior"
+  });
+
+  const multiple = penaltyTemplateValues({ minute: 18 }, [
+    { team: "mighty", player: melchior, duration: "2", reason: "Halten" },
+    { team: "mighty", player: bares, duration: "5+20", reason: "Bandencheck" }
+  ], opponent);
+  assert.equal(multiple.player_name, "");
+  assert.equal(multiple.jersey_number, "");
+  assert.equal(multiple.penalty_duration, "");
+  assert.equal(multiple.penalty_reason, "");
+  assert.equal(multiple.penalty_line, "");
+  assert.match(multiple.penalties, /🚨 \*Mighty Dogs · 5\+20 min/);
+
+  const opponentMultiple = penaltyTemplateValues({ minute: 18 }, [
+    { team: "opponent", player: potvin, duration: "2", reason: "Halten" },
+    { team: "opponent", player: null, duration: "2+2", reason: "Hoher Stock" }
+  ], opponent);
+  assert.equal(opponentMultiple.team_name, "Erfurt");
+  assert.match(opponentMultiple.penalties, /^Erfurt · 2 min[\s\S]*Erfurt · 2\+2 min/);
 });
 
 test("unknown scorer is omitted from generated goal text", () => {

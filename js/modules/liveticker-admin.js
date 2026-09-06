@@ -16,7 +16,7 @@ import {
   planLivetickerProtectedEdit,
   templateToken,
   validateLivetickerTemplate
-} from "../liveticker-output-templates.js?v=20260906-events2";
+} from "../liveticker-output-templates.js?v=20260906-penalty3";
 
 let snapshot = null;
 let archiveSnapshot = null;
@@ -39,16 +39,22 @@ const OUTPUT_TEMPLATE_SECTIONS = Object.freeze([
     contexts: Object.freeze(["own"])
   }),
   Object.freeze({
-    key: "penalty",
-    title: "Strafen",
-    description: "Ausgaben für eine oder mehrere Strafen in derselben Situation.",
-    contexts: Object.freeze(["penalty"])
+    key: "own_penalty",
+    title: "Strafen – Wir",
+    description: "Ausgaben für eine oder mehrere Strafen der Mighty Dogs.",
+    contexts: Object.freeze(["ownPenalty"])
   }),
   Object.freeze({
     key: "opponent",
     title: "Tore – Die anderen",
     description: "Ausgaben, wenn der Gegner trifft.",
     contexts: Object.freeze(["opponent"])
+  }),
+  Object.freeze({
+    key: "opponent_penalty",
+    title: "Strafen – Die anderen",
+    description: "Ausgaben für eine oder mehrere Strafen des Gegners.",
+    contexts: Object.freeze(["opponentPenalty"])
   })
 ]);
 
@@ -94,6 +100,10 @@ function ensureLivetickerAdminStyles() {
       resize:vertical!important;
       font:500 .86rem/1.48 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;
       white-space:pre-wrap!important;
+    }
+    .v4-dialog .liveticker-output-template-form input:not([type="checkbox"]),
+    .v4-dialog .liveticker-output-template-form textarea{
+      font-size:16px!important;
     }
     .liveticker-template-key{
       display:flex;
@@ -266,9 +276,10 @@ function templateVariables(contextKey) {
 }
 
 function variableControls(contextKey, target) {
+  const context = LIVETICKER_TEMPLATE_CONTEXTS[contextKey];
   const variables = templateVariables(contextKey);
   return `<div class="liveticker-template-variables">
-    <strong>Verfügbare Platzhalter · * Pflicht</strong>
+    <strong>Verfügbare Platzhalter für ${escapeHtml(context.label)} · * Pflicht</strong>
     <div class="liveticker-variable-chips">${variables.map(variable => `<button class="liveticker-variable-chip${variable.required ? " is-required" : ""}" type="button" data-insert-variable="${escapeAttr(variable.key)}" data-template-target="${escapeAttr(target)}" title="${escapeAttr(variable.label || variable.key)}">${escapeHtml(templateToken(variable.key))}${variable.required ? " *" : ""}</button>`).join("")}</div>
   </div>`;
 }
@@ -377,7 +388,7 @@ function bindOutputTemplateForm(dialog, contextKeys) {
 function openOutputTemplate(template, section, optionNumber) {
   const dialog = openDialog({
     title: `${section.title} · Option ${optionNumber}`,
-    kicker: template.title || "Liveticker · Ausgabeoption",
+    kicker: `Liveticker · Editor · ${template.title || "Ausgabeoption"}`,
     body: outputTemplateForm(template, section),
     submitLabel: "Option speichern",
     onSubmit: async values => {
@@ -670,7 +681,7 @@ function outputTemplateSection(section, templates) {
 function renderOutputTemplates(toolbar, panel) {
   const templates = templateSnapshot?.templates || [];
   toolbar.innerHTML = `<div class="v4-section-heading">
-    <div><span class="subtle">Liveticker</span><h2>Ausgaben</h2><p class="subtle">Ausgaben nach Ereignistyp und Option bearbeiten.</p></div>
+    <div><span class="subtle">Liveticker · Editor</span><h2>Liveticker-Editor</h2><p class="subtle">Texte nach Ereignistyp und Option bearbeiten.</p></div>
     <button class="button small secondary" type="button" data-back-teams>← Teams</button>
   </div>`;
   panel.innerHTML = templates.length
@@ -731,7 +742,7 @@ function render() {
     <div><span class="subtle">Liveticker</span><h2>Teams & Kader</h2><p class="subtle">Team auswählen oder neu anlegen.</p></div>
     <div class="button-row">
       <a class="button small secondary" href="./liveticker/" target="_blank" rel="noopener noreferrer">Ticker öffnen ↗</a>
-      <button class="button small secondary" type="button" data-open-templates>Ausgaben</button>
+      <button class="button small secondary" type="button" data-open-templates>Editor</button>
       <button class="button small secondary" type="button" data-open-archive>Archiv</button>
       <button class="button small primary" type="button" data-add-team>+ Team</button>
     </div>

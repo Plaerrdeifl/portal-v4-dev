@@ -1,4 +1,4 @@
-import { normalizeLivetickerTemplateSnapshot } from "./liveticker-output-templates.js?v=20260906-events2";
+import { normalizeLivetickerTemplateSnapshot } from "./liveticker-output-templates.js?v=20260906-penalty3";
 
 const STATE_KEY = "plaerrdeifl.livetickerPrototype.v3";
 const SELECTED_EVENT_KEY = "plaerrdeifl.livetickerPrototype.eventId";

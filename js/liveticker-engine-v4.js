@@ -204,24 +204,89 @@ function formatPenaltyEntry(penalty, opponent) {
   return `${teamName(penalty.team, opponent)} · ${penalty.duration} min · ${penalty.reason}${player}`;
 }
 
+function formattedPenaltyEntry(penalty, opponent) {
+  const line = formatPenaltyEntry(penalty, opponent);
+  return isMajorPenalty(penalty.duration) ? `🚨 *${line}*` : line;
+}
+
+export function applyPenaltyStyleToDraft(draft, style) {
+  const selectedStyle = ["classic", "emotional", "short"].includes(style) ? style : "classic";
+  return Object.freeze({ ...draft, style: selectedStyle, penalties: draft.penalties });
+}
+
+export function applyTickerSubmitLifecycle(state, editingId, tickerEvent) {
+  const index = editingId ? state.history.findIndex(item => item.id === editingId) : -1;
+  if (index >= 0) state.history.splice(index, 1, tickerEvent);
+  else state.history.push(tickerEvent);
+  if (tickerEvent.type !== "shootout") state.minute = tickerEvent.minute;
+  return Object.freeze({
+    editingId: tickerEvent.type === "penalty" ? tickerEvent.id : null,
+    preservePenaltyDraft: tickerEvent.type === "penalty"
+  });
+}
+
+export function completeTickerSubmitLifecycle({
+  state,
+  editingId,
+  tickerEvent,
+  persist,
+  renderHistory,
+  renderOutput,
+  preservePenaltyDraft,
+  cancelEdit,
+  syncContext
+}) {
+  const lifecycle = applyTickerSubmitLifecycle(state, editingId, tickerEvent);
+  persist();
+  renderHistory();
+  renderOutput();
+  if (lifecycle.preservePenaltyDraft) preservePenaltyDraft(lifecycle.editingId);
+  else cancelEdit();
+  syncContext();
+  return lifecycle;
+}
+
+export function penaltyTemplateValues(event, penalties, opponent) {
+  const entries = Array.isArray(penalties) ? penalties : [];
+  const single = entries.length === 1 ? entries[0] : null;
+  const teams = [...new Set(entries.map(penalty => penalty.team))];
+  return Object.freeze({
+    minute: event.minute,
+    player_name: single?.player?.name || "",
+    jersey_number: single?.player?.number || "",
+    player: single?.player ? playerText(single.player) : "",
+    penalty_duration: single ? `${single.duration} min` : "",
+    penalty_reason: single?.reason || "",
+    team_name: teams.map(team => teamName(team, opponent)).join(" + "),
+    opponent_name: opponent.shortName,
+    penalty_line: single ? formattedPenaltyEntry(single, opponent) : "",
+    penalties: entries.map(penalty => formattedPenaltyEntry(penalty, opponent)).join("\n")
+  });
+}
+
 export function formatPenaltyText(event, opponent) {
   const templates = globalThis.PD_LIVETICKER_OUTPUT_TEMPLATES?.templates;
   const variant = Array.isArray(templates)
     ? templates.find(template => template.key === (event.style || "classic"))
     : null;
   const renderer = globalThis.PD_LIVETICKER_TEMPLATE_RENDERER?.render;
-  if (!variant?.penaltyTemplate || typeof renderer !== "function") {
+  const ownTemplate = variant?.ownPenaltyTemplate || variant?.penaltyTemplate;
+  const opponentTemplate = variant?.opponentPenaltyTemplate || variant?.penaltyTemplate;
+  if (!ownTemplate || !opponentTemplate || typeof renderer !== "function") {
     throw new Error("Liveticker-Strafenausgaben konnten nicht geladen werden.");
   }
 
-  const penalties = event.penalties.map(penalty => {
-    const line = formatPenaltyEntry(penalty, opponent);
-    return isMajorPenalty(penalty.duration) ? `🚨 *${line}*` : line;
-  });
-  return renderer(variant.penaltyTemplate, {
-    minute: event.minute,
-    penalties: penalties.join("\n")
-  });
+  if (ownTemplate === opponentTemplate) {
+    return renderer(ownTemplate, penaltyTemplateValues(event, event.penalties, opponent));
+  }
+
+  return [
+    ["mighty", ownTemplate],
+    ["opponent", opponentTemplate]
+  ].map(([team, template]) => {
+    const penalties = event.penalties.filter(penalty => penalty.team === team);
+    return penalties.length ? renderer(template, penaltyTemplateValues(event, penalties, opponent)) : "";
+  }).filter(Boolean).join("\n\n");
 }
 
 export function formatShootoutText(event, opponent) {
@@ -385,6 +450,7 @@ function initialize() {
 
   let state = loadState();
   let editingId = null;
+  let preservedPenaltyDraftId = null;
   const $ = selector => document.querySelector(selector);
   const opponentSelect = $("#opponentSelect");
   const minuteInput = $("#gameMinute");
@@ -570,16 +636,27 @@ function initialize() {
 
   function cancelEdit() {
     editingId = null;
+    preservedPenaltyDraftId = null;
     editingBanner.hidden = true;
+    editingBanner.querySelector("span").textContent = "Aktion wird bearbeitet";
     submitButton.textContent = "Aktion speichern & Text erstellen";
     penaltyRows.replaceChildren();
     ensurePenaltyRow();
     syncActionFields();
   }
 
+  function preservePenaltyDraft(id) {
+    editingId = id;
+    preservedPenaltyDraftId = id;
+    editingBanner.hidden = false;
+    editingBanner.querySelector("span").textContent = "Strafe gespeichert · Textoption kann gewechselt werden";
+    submitButton.textContent = "Strafe aktualisieren & Text erstellen";
+  }
+
   function editEvent(id) {
     const event = state.history.find(item => item.id === id);
     if (!event) return;
+    preservedPenaltyDraftId = null;
     editingId = id;
     editingBanner.hidden = false;
     submitButton.textContent = "Änderung speichern & Text erstellen";
@@ -627,7 +704,9 @@ function initialize() {
   }
 
   form.addEventListener("change", event => {
-    if (event.target.name === "action") syncActionFields();
+    if (event.target.name !== "action") return;
+    if (preservedPenaltyDraftId && selectedAction() !== "PENALTY") cancelEdit();
+    else syncActionFields();
   });
   minuteInput.addEventListener("change", syncContext);
   opponentSelect.addEventListener("change", () => {
@@ -675,10 +754,9 @@ function initialize() {
         if (action === "PENALTY") {
           const penalties = [...penaltyRows.children].map(penaltyRowData);
           if (!penalties.length) throw new Error("Bitte mindestens eine Strafe erfassen.");
-          tickerEvent = {
+          tickerEvent = applyPenaltyStyleToDraft({
             id: editingId || uid(), type: "penalty", minute, penalties,
-            style: new FormData(form).get("penaltyStyle") || "classic"
-          };
+          }, new FormData(form).get("penaltyStyle") || "classic");
         } else {
           const team = selectedGoalTeam();
           const roster = rosterForTeam(team, opponent());
@@ -691,15 +769,17 @@ function initialize() {
           };
         }
       }
-      const index = editingId ? state.history.findIndex(item => item.id === editingId) : -1;
-      if (index >= 0) state.history.splice(index, 1, tickerEvent);
-      else state.history.push(tickerEvent);
-      if (tickerEvent.type !== "shootout") state.minute = tickerEvent.minute;
-      saveState(state);
-      renderHistory();
-      setOutput(formatEventText(tickerEvent, state.history, opponent()));
-      cancelEdit();
-      syncContext();
+      completeTickerSubmitLifecycle({
+        state,
+        editingId,
+        tickerEvent,
+        persist: () => saveState(state),
+        renderHistory,
+        renderOutput: () => setOutput(formatEventText(tickerEvent, state.history, opponent())),
+        preservePenaltyDraft,
+        cancelEdit,
+        syncContext
+      });
     } catch (error) {
       errorBox.textContent = error.message || "Aktion konnte nicht gespeichert werden.";
       errorBox.hidden = false;

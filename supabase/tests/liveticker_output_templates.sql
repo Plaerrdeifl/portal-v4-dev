@@ -27,6 +27,8 @@ declare
   v_saved jsonb;
   v_revision integer;
   v_opponent_before text;
+  v_own_penalty_before text;
+  v_opponent_penalty_before text;
 begin
   if not (
     select relrowsecurity
@@ -72,10 +74,25 @@ begin
   );
 
   v_before := app_private.api_liveticker_output_templates_list();
+  if exists (
+    select 1
+    from jsonb_array_elements(v_before -> 'variables') as variable_entry(item)
+    where (
+      (variable_entry.item -> 'contexts') ? 'ownPenalty'
+      or (variable_entry.item -> 'contexts') ? 'opponentPenalty'
+    )
+      and variable_entry.item ->> 'key' not in ('minute', 'penalties')
+      and not (variable_entry.item ->> 'optional')::boolean
+  ) then
+    raise exception 'Optionale Strafvariablen werden fälschlich als Pflichtvariablen ausgeliefert.';
+  end if;
+
   select
     (template_entry.item ->> 'revision')::integer,
-    template_entry.item ->> 'opponentGoalTemplate'
-  into v_revision, v_opponent_before
+    template_entry.item ->> 'opponentGoalTemplate',
+    template_entry.item ->> 'ownPenaltyTemplate',
+    template_entry.item ->> 'opponentPenaltyTemplate'
+  into v_revision, v_opponent_before, v_own_penalty_before, v_opponent_penalty_before
   from jsonb_array_elements(v_before -> 'templates') as template_entry(item)
   where template_entry.item ->> 'key' = 'classic';
 
@@ -94,6 +111,8 @@ begin
       and template_entry.item ->> 'title' = 'Persistierter Titel'
       and template_entry.item ->> 'ownGoalTemplate' = E' CUSTOM {{minute}}\n{{scorer}}\n{{mighty_score}}:{{opponent_score}}\n'
       and template_entry.item ->> 'opponentGoalTemplate' = v_opponent_before
+      and template_entry.item ->> 'ownPenaltyTemplate' = v_own_penalty_before
+      and template_entry.item ->> 'opponentPenaltyTemplate' = v_opponent_penalty_before
       and (template_entry.item ->> 'revision')::integer = v_revision + 1
   ) then
     raise exception 'Titel/Text wurden nicht revisionssicher persistiert: %', v_saved;
@@ -101,9 +120,9 @@ begin
 
   v_saved := app_private.api_liveticker_output_template_save(jsonb_build_object(
     'key', 'classic',
-    'context', 'penalty',
+    'context', 'own_penalty',
     'title', 'Persistierter Titel',
-    'penaltyTemplate', E'CUSTOM {{minute}}\n{{penalties}}\n ',
+    'ownPenaltyTemplate', E'WIR {{minute}} {{player}}\n{{penalties}}\n ',
     'expectedRevision', v_revision + 1
   ));
 
@@ -111,17 +130,18 @@ begin
     select 1
     from jsonb_array_elements(v_saved -> 'templates') as template_entry(item)
     where template_entry.item ->> 'key' = 'classic'
-      and template_entry.item ->> 'penaltyTemplate' = E'CUSTOM {{minute}}\n{{penalties}}\n '
+      and template_entry.item ->> 'ownPenaltyTemplate' = E'WIR {{minute}} {{player}}\n{{penalties}}\n '
+      and template_entry.item ->> 'opponentPenaltyTemplate' = v_opponent_penalty_before
       and (template_entry.item ->> 'revision')::integer = v_revision + 2
   ) then
-    raise exception 'Strafentext wurde nicht revisionssicher persistiert: %', v_saved;
+    raise exception 'Eigener Strafentext wurde nicht getrennt persistiert: %', v_saved;
   end if;
 
   v_saved := app_private.api_liveticker_output_template_save(jsonb_build_object(
     'key', 'classic',
-    'context', 'opponent',
+    'context', 'opponent_penalty',
     'title', 'Persistierter Titel',
-    'opponentGoalTemplate', E'CUSTOM {{minute}} Tor {{opponent_name}}\n{{mighty_score}}:{{opponent_score}}\n ',
+    'opponentPenaltyTemplate', E'DIE ANDEREN {{minute}} {{opponent_name}}\n{{penalties}}\n ',
     'expectedRevision', v_revision + 2
   ));
 
@@ -129,10 +149,30 @@ begin
     select 1
     from jsonb_array_elements(v_saved -> 'templates') as template_entry(item)
     where template_entry.item ->> 'key' = 'classic'
-      and template_entry.item ->> 'ownGoalTemplate' = E' CUSTOM {{minute}}\n{{scorer}}\n{{mighty_score}}:{{opponent_score}}\n'
-      and template_entry.item ->> 'penaltyTemplate' = E'CUSTOM {{minute}}\n{{penalties}}\n '
-      and template_entry.item ->> 'opponentGoalTemplate' = E'CUSTOM {{minute}} Tor {{opponent_name}}\n{{mighty_score}}:{{opponent_score}}\n '
+      and template_entry.item ->> 'ownPenaltyTemplate' = E'WIR {{minute}} {{player}}\n{{penalties}}\n '
+      and template_entry.item ->> 'opponentPenaltyTemplate' = E'DIE ANDEREN {{minute}} {{opponent_name}}\n{{penalties}}\n '
       and (template_entry.item ->> 'revision')::integer = v_revision + 3
+  ) then
+    raise exception 'Gegnerischer Strafentext wurde nicht getrennt persistiert: %', v_saved;
+  end if;
+
+  v_saved := app_private.api_liveticker_output_template_save(jsonb_build_object(
+    'key', 'classic',
+    'context', 'opponent',
+    'title', 'Persistierter Titel',
+    'opponentGoalTemplate', E'CUSTOM {{minute}} Tor {{opponent_name}}\n{{mighty_score}}:{{opponent_score}}\n ',
+    'expectedRevision', v_revision + 3
+  ));
+
+  if not exists (
+    select 1
+    from jsonb_array_elements(v_saved -> 'templates') as template_entry(item)
+    where template_entry.item ->> 'key' = 'classic'
+      and template_entry.item ->> 'ownGoalTemplate' = E' CUSTOM {{minute}}\n{{scorer}}\n{{mighty_score}}:{{opponent_score}}\n'
+      and template_entry.item ->> 'ownPenaltyTemplate' = E'WIR {{minute}} {{player}}\n{{penalties}}\n '
+      and template_entry.item ->> 'opponentPenaltyTemplate' = E'DIE ANDEREN {{minute}} {{opponent_name}}\n{{penalties}}\n '
+      and template_entry.item ->> 'opponentGoalTemplate' = E'CUSTOM {{minute}} Tor {{opponent_name}}\n{{mighty_score}}:{{opponent_score}}\n '
+      and (template_entry.item ->> 'revision')::integer = v_revision + 4
   ) then
     raise exception 'Gegnertor-Text oder andere Kontexte wurden nicht revisionssicher persistiert: %', v_saved;
   end if;
@@ -140,10 +180,10 @@ begin
   begin
     perform app_private.api_liveticker_output_template_save(jsonb_build_object(
       'key', 'classic',
-      'context', 'penalty',
+      'context', 'own_penalty',
       'title', 'Unbekannt',
-      'penaltyTemplate', '{{minute}} {{penalties}} {{unknown}}',
-      'expectedRevision', v_revision + 3
+      'ownPenaltyTemplate', '{{minute}} {{penalties}} {{unknown}}',
+      'expectedRevision', v_revision + 4
     ));
     raise exception 'Unbekannter Platzhalter wurde gespeichert.';
   exception
@@ -153,10 +193,10 @@ begin
   begin
     perform app_private.api_liveticker_output_template_save(jsonb_build_object(
       'key', 'classic',
-      'context', 'penalty',
+      'context', 'opponent_penalty',
       'title', 'Fehlend',
-      'penaltyTemplate', '{{minute}} ohne Strafzeilen',
-      'expectedRevision', v_revision + 3
+      'opponentPenaltyTemplate', '{{minute}} ohne Strafzeilen',
+      'expectedRevision', v_revision + 4
     ));
     raise exception 'Fehlender Pflichtplatzhalter wurde gespeichert.';
   exception

@@ -1,13 +1,21 @@
 const GOAL_CONTEXT_KEYS = Object.freeze(["own", "opponent"]);
+const PENALTY_CONTEXT_KEYS = Object.freeze(["ownPenalty", "opponentPenalty"]);
 
 export const LIVETICKER_TEMPLATE_VARIABLES = Object.freeze([
-  Object.freeze({ key: "minute", label: "Spielminute", optional: false, contexts: Object.freeze([...GOAL_CONTEXT_KEYS, "penalty"]) }),
+  Object.freeze({ key: "minute", label: "Spielminute", optional: false, contexts: Object.freeze([...GOAL_CONTEXT_KEYS, ...PENALTY_CONTEXT_KEYS]) }),
   Object.freeze({ key: "scorer", label: "Torschütze (mit Trikotnummer)", optional: true, contexts: GOAL_CONTEXT_KEYS }),
   Object.freeze({ key: "assists", label: "Assists (mit Trikotnummern)", optional: true, contexts: GOAL_CONTEXT_KEYS }),
   Object.freeze({ key: "mighty_score", label: "Tore Mighty Dogs", optional: false, contexts: GOAL_CONTEXT_KEYS }),
   Object.freeze({ key: "opponent_score", label: "Tore Gegner", optional: false, contexts: GOAL_CONTEXT_KEYS }),
-  Object.freeze({ key: "opponent_name", label: "Kurzname Gegner", optional: false, contexts: Object.freeze(["opponent"]) }),
-  Object.freeze({ key: "penalties", label: "Formatierte Strafzeilen", optional: false, contexts: Object.freeze(["penalty"]) })
+  Object.freeze({ key: "opponent_name", label: "Kurzname Gegner", optional: true, contexts: Object.freeze(["opponent", ...PENALTY_CONTEXT_KEYS]) }),
+  Object.freeze({ key: "player_name", label: "Spielername · nur bei einer Strafzeile", optional: true, contexts: PENALTY_CONTEXT_KEYS }),
+  Object.freeze({ key: "jersey_number", label: "Trikotnummer · nur bei einer Strafzeile", optional: true, contexts: PENALTY_CONTEXT_KEYS }),
+  Object.freeze({ key: "player", label: "Spieler mit Trikotnummer · nur bei einer Strafzeile", optional: true, contexts: PENALTY_CONTEXT_KEYS }),
+  Object.freeze({ key: "penalty_duration", label: "Strafdauer · nur bei einer Strafzeile", optional: true, contexts: PENALTY_CONTEXT_KEYS }),
+  Object.freeze({ key: "penalty_reason", label: "Strafgrund · nur bei einer Strafzeile", optional: true, contexts: PENALTY_CONTEXT_KEYS }),
+  Object.freeze({ key: "team_name", label: "Betroffenes Team", optional: true, contexts: PENALTY_CONTEXT_KEYS }),
+  Object.freeze({ key: "penalty_line", label: "Vollständige Strafzeile · nur bei einer Strafzeile", optional: true, contexts: PENALTY_CONTEXT_KEYS }),
+  Object.freeze({ key: "penalties", label: "Alle formatierten Strafzeilen", optional: false, contexts: PENALTY_CONTEXT_KEYS })
 ]);
 
 export const LIVETICKER_TEMPLATE_CONTEXTS = Object.freeze({
@@ -16,9 +24,14 @@ export const LIVETICKER_TEMPLATE_CONTEXTS = Object.freeze({
     label: "Tor – Wir",
     required: Object.freeze(["minute", "mighty_score", "opponent_score"])
   }),
-  penalty: Object.freeze({
-    field: "penaltyTemplate",
-    label: "Strafenausgabe",
+  ownPenalty: Object.freeze({
+    field: "ownPenaltyTemplate",
+    label: "Strafen – Wir",
+    required: Object.freeze(["minute", "penalties"])
+  }),
+  opponentPenalty: Object.freeze({
+    field: "opponentPenaltyTemplate",
+    label: "Strafen – Die anderen",
     required: Object.freeze(["minute", "penalties"])
   }),
   opponent: Object.freeze({
@@ -103,8 +116,11 @@ export function validateLivetickerTemplate(template, contextKey) {
   if (!context) throw new Error("Unbekannter Liveticker-Template-Kontext.");
 
   const body = String(template ?? "");
+  const allowedVariables = LIVETICKER_TEMPLATE_VARIABLES
+    .filter(variable => variable.contexts.includes(contextKey))
+    .map(variable => variable.key);
   const variables = [...body.matchAll(TOKEN_PATTERN)].map(match => match[1].trim());
-  const unknownVariables = [...new Set(variables.filter(variable => !VARIABLE_KEYS.includes(variable)))];
+  const unknownVariables = [...new Set(variables.filter(variable => !allowedVariables.includes(variable)))];
   const missingVariables = context.required.filter(variable => !variables.includes(variable));
   const withoutValidTokens = body.replace(EXACT_TOKEN_PATTERN, "");
   const malformed = /\{\{|\}\}/.test(withoutValidTokens);
@@ -159,13 +175,18 @@ export function normalizeLivetickerTemplateSnapshot(raw) {
       throw new Error("Eine Liveticker-Ausgabevariante ist unvollständig.");
     }
     assertLivetickerTemplate(template.ownGoalTemplate, "own");
-    assertLivetickerTemplate(template.penaltyTemplate, "penalty");
+    const legacyPenaltyTemplate = template.penaltyTemplate;
+    const ownPenaltyTemplate = template.ownPenaltyTemplate ?? legacyPenaltyTemplate;
+    const opponentPenaltyTemplate = template.opponentPenaltyTemplate ?? legacyPenaltyTemplate;
+    assertLivetickerTemplate(ownPenaltyTemplate, "ownPenalty");
+    assertLivetickerTemplate(opponentPenaltyTemplate, "opponentPenalty");
     assertLivetickerTemplate(template.opponentGoalTemplate, "opponent");
     return Object.freeze({
       key,
       title,
       ownGoalTemplate: String(template.ownGoalTemplate),
-      penaltyTemplate: String(template.penaltyTemplate),
+      ownPenaltyTemplate: String(ownPenaltyTemplate),
+      opponentPenaltyTemplate: String(opponentPenaltyTemplate),
       opponentGoalTemplate: String(template.opponentGoalTemplate),
       revision: Number(template.revision || 0)
     });
