@@ -103,6 +103,14 @@
         <div id="penaltyRows" class="penalty-list"></div>
         <button id="addPenalty" class="secondary" type="button">+ Weitere Strafe in dieser Situation</button>
         <p class="hint">Mehrere Strafen können derselben Mannschaft oder beiden Teams gleichzeitig zugeordnet werden.</p>
+        <fieldset style="border:0;margin:0;padding:0">
+          <legend class="label">Textvariante</legend>
+          <div class="segmented">
+            <input id="penaltyStyleClassic" name="penaltyStyle" type="radio" value="classic" checked><label for="penaltyStyleClassic">Klassisch</label>
+            <input id="penaltyStyleEmotional" name="penaltyStyle" type="radio" value="emotional"><label for="penaltyStyleEmotional">Emotional</label>
+            <input id="penaltyStyleShort" name="penaltyStyle" type="radio" value="short"><label for="penaltyStyleShort">Kurz</label>
+          </div>
+        </fieldset>
       </section>
 
       <section id="shootoutFields" class="shootout-fields" hidden>
@@ -154,6 +162,6 @@
   </main>
   <script src="../js/runtime-config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7"></script>
-  <script type="module" src="../js/liveticker-auth-bootstrap.js?v=20260905-prod1"></script>
+  <script type="module" src="../js/liveticker-auth-bootstrap.js?v=20260906-prod-freeze1"></script>
 </body>
 </html>

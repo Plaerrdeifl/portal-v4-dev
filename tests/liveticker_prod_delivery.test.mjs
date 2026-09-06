@@ -42,3 +42,31 @@ test("calendar adapter accepts the current compact engine and injects calendar r
   assert.match(adapter, /runtimeOpponentTeam\.players/);
   assert.doesNotMatch(adapter, /const opponentBlock = `export const OPPONENTS/);
 });
+
+
+test("PROD output templates stay authenticated and capability-gated", async () => {
+  const migration = await read("supabase/migrations/20260906115000_liveticker_output_templates_prod_r1.sql");
+  const storage = await read("js/liveticker-game-storage.js");
+  const admin = await read("js/modules/liveticker-admin.js");
+
+  assert.match(migration, /create function public\.pd_public_liveticker_templates\(\)/);
+  assert.match(migration, /perform app_private\.liveticker_require_operator\(\)/);
+  assert.match(migration, /revoke all on function public\.pd_public_liveticker_templates\(\) from public,anon,authenticated/);
+  assert.match(migration, /grant execute on function public\.pd_public_liveticker_templates\(\) to authenticated/);
+  assert.doesNotMatch(migration, /grant execute on function public\.pd_public_liveticker_templates\(\) to anon/);
+  assert.match(storage, /Authorization: `Bearer \$\{token\}`/);
+  assert.match(storage, /auth\.hasCapability\("liveticker\.manage"\)/);
+  assert.match(admin, /call\("liveticker_output_templates_list"\)/);
+  assert.match(admin, /call\("liveticker_output_template_save"/);
+});
+
+test("PROD editor ships the frozen four output contexts", async () => {
+  const admin = await read("js/modules/liveticker-admin.js");
+  const templates = await read("js/liveticker-output-templates.js");
+  assert.match(admin, /Tore – Wir/);
+  assert.match(admin, /Strafen – Wir/);
+  assert.match(admin, /Tore – Die anderen/);
+  assert.match(admin, /Strafen – Die anderen/);
+  assert.match(templates, /ownPenaltyTemplate/);
+  assert.match(templates, /opponentPenaltyTemplate/);
+});
