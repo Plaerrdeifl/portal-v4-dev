@@ -123,13 +123,13 @@ function renderTripCard(trip, model) {
     ${binding ? `<div class="m340-publishing-shortlink">
       <span>Dauerhafter Kurzlink</span>
       <a href="${escapeAttr(shortlink)}" target="_blank" rel="noopener noreferrer">${escapeHtml(shortlink)}</a>
-      <small>Ort: ${escapeHtml(binding.displayName || binding.slug || "–")} · ${escapeHtml(binding.boundPlaceKey || "")}</small>
+      <small>Ort: ${escapeHtml(binding.displayName || binding.slug || "–")}</small>
+      ${binding.boundPlaceKey ? `<details class="m340-publishing-technical"><summary>Technische Details</summary><code>Venue-Key: ${escapeHtml(binding.boundPlaceKey)}</code></details>` : ""}
     </div>
     <div class="v4-row-actions m340-publishing-trip-actions">
       <button class="button small primary" type="button" data-m340-enqueue="${escapeAttr(trip.tripId)}">Flyer &amp; QR neu erstellen</button>
     </div>` : `<div class="notice warning m340-publishing-unbound">
-      <strong>Noch kein Kurzlink zugeordnet</strong>
-      <p>Der Veranstaltungsort muss zuerst mit einem dauerhaften Publishing-Ort verbunden werden.</p>
+      <div><strong>Noch kein Kurzlink zugeordnet</strong><small>Bitte mit einem dauerhaften Ort verbinden.</small></div>
       ${compatible.length ? `<form class="m340-publishing-bind-form" data-m340-bind-form data-event-id="${escapeAttr(trip?.eventId || "")}">
         <label>Passender Ort
           <select name="placeId" required>
@@ -137,7 +137,8 @@ function renderTripCard(trip, model) {
           </select>
         </label>
         <button class="button small secondary" type="submit">Ort zuordnen</button>
-      </form>` : `<small>Kein vorhandener Ort besitzt den Venue-Key <code>${escapeHtml(normalizePlaceKey(trip?.venue) || "–")}</code>.</small>`}
+      </form>` : `<small>Für diesen Veranstaltungsort ist noch keine passende technische Zuordnung hinterlegt.</small>
+      <details class="m340-publishing-technical"><summary>Technische Details</summary><code>Erwarteter Venue-Key: ${escapeHtml(normalizePlaceKey(trip?.venue) || "–")}</code></details>`}
     </div>`}
     ${latest?.lastErrorCode ? `<div class="notice error"><strong>Letzter Fehler</strong><p>${escapeHtml(latest.lastErrorCode)}</p></div>` : ""}
   </article>`;
@@ -160,34 +161,51 @@ function renderPlaceCard(place) {
       <span>${asCount(place?.referralCount)} Weiterleitungen</span>
     </div>
     <div class="m340-publishing-shortlink"><span>Produktiver Zielpfad</span><code>${escapeHtml(url)}</code></div>
-    <div class="m340-publishing-keys">
-      <strong>Venue-Keys</strong>
-      ${keys.length ? `<ul>${keys.map(key => `<li><code>${escapeHtml(key.placeKey || "")}</code>${key.sourceLabel ? ` <span>${escapeHtml(key.sourceLabel)}</span>` : ""}</li>`).join("")}</ul>` : `<p class="subtle">Noch kein Venue-Key hinterlegt.</p>`}
-    </div>
-    <form class="m340-publishing-key-form" data-m340-key-form data-place-id="${escapeAttr(place?.id || "")}">
-      <label>Weiteren Veranstaltungsort zuordnen
-        <input name="sourceLabel" maxlength="240" required placeholder="z. B. Landsberg am Lech">
-      </label>
-      <button class="button small secondary" type="submit">Venue-Key hinzufügen</button>
-    </form>
+    <details class="m340-publishing-technical m340-publishing-place-technical">
+      <summary>Technische Zuordnungen${keys.length ? ` (${keys.length})` : ""}</summary>
+      <div class="m340-publishing-keys">
+        ${keys.length ? `<ul>${keys.map(key => `<li><code>${escapeHtml(key.placeKey || "")}</code>${key.sourceLabel ? ` <span>${escapeHtml(key.sourceLabel)}</span>` : ""}</li>`).join("")}</ul>` : `<p class="subtle">Noch kein Venue-Key hinterlegt.</p>`}
+      </div>
+      <form class="m340-publishing-key-form" data-m340-key-form data-place-id="${escapeAttr(place?.id || "")}">
+        <label>Weiteren Veranstaltungsort zuordnen
+          <input name="sourceLabel" maxlength="240" required placeholder="z. B. Landsberg am Lech">
+        </label>
+        <button class="button small secondary" type="submit">Zuordnung hinzufügen</button>
+      </form>
+    </details>
   </article>`;
+}
+
+function artifactLabel(kind) {
+  switch (String(kind || "").toUpperCase()) {
+    case "QR": return "QR-Code";
+    case "POST": return "Post";
+    case "STORY": return "Story";
+    case "LED": return "LED";
+    default: return "Datei";
+  }
 }
 
 function renderArtifacts(manifest) {
   const artifacts = asArray(manifest?.artifacts);
   if (!artifacts.length) return "";
-  return `<div class="m340-publishing-artifacts">${artifacts.map(artifact => `<div>
-    <strong>${escapeHtml(artifact?.kind || "Datei")}</strong>
-    <code>${escapeHtml(artifact?.nextcloudPath || artifact?.filename || "")}</code>
-  </div>`).join("")}</div>`;
+  const technicalRows = artifacts
+    .filter(artifact => artifact?.nextcloudPath || artifact?.filename)
+    .map(artifact => `<li><strong>${escapeHtml(artifactLabel(artifact?.kind))}:</strong> <code>${escapeHtml(artifact?.nextcloudPath || artifact?.filename || "")}</code></li>`)
+    .join("");
+  return `<div class="m340-publishing-artifacts" aria-label="Erstellte Dateien">${artifacts.map(artifact => `<div>
+    <strong>${escapeHtml(artifactLabel(artifact?.kind))}</strong>
+    <small>In Nextcloud gespeichert</small>
+  </div>`).join("")}</div>
+  ${technicalRows ? `<details class="m340-publishing-technical m340-publishing-file-details"><summary>Technische Dateiinformationen</summary><ul>${technicalRows}</ul></details>` : ""}`;
 }
 
-function renderJob(job) {
+function renderJob(job, current = false) {
   const state = jobPresentation(job?.status);
-  return `<article class="m340-publishing-history-item">
+  return `<article class="m340-publishing-history-item${current ? " is-current" : ""}">
     <div class="m340-publishing-history-head">
       <div><strong>${escapeHtml(job?.placeDisplayName || job?.placeSlug || "Publishing")}</strong><small>${escapeHtml(formatDateTime(job?.createdAt))}</small></div>
-      <span class="badge ${escapeAttr(state.className)}">${escapeHtml(state.label)}</span>
+      <div class="m340-publishing-history-badges">${current ? `<span class="badge neutral">Aktuell</span>` : ""}<span class="badge ${escapeAttr(state.className)}">${escapeHtml(state.label)}</span></div>
     </div>
     <p class="subtle">Versuch ${asCount(job?.attemptCount)}${job?.completedAt ? ` · abgeschlossen ${escapeHtml(formatDateTime(job.completedAt))}` : ""}</p>
     ${job?.lastErrorCode ? `<div class="notice error"><strong>${escapeHtml(job.lastErrorCode)}</strong></div>` : ""}
@@ -213,7 +231,7 @@ function workspaceMarkup(model) {
     <header class="v4-m325-workspace-header">
       <button class="button small secondary" type="button" data-m340-back>Zurück</button>
       <div>
-        <span class="m340-publishing-kicker">Fanbus</span>
+        <span class="m340-publishing-kicker">Bus-Orga</span>
         <h2>Flyer &amp; Kurzlinks</h2>
         <p>QR-Ziele, Flyer-Erstellung, Nextcloud-Ablage und anonyme Klickstatistik.</p>
       </div>
@@ -226,15 +244,15 @@ function workspaceMarkup(model) {
     <section class="v4-m325-workspace-section" aria-labelledby="m340PublishingPlacesTitle">
       <div class="m340-publishing-section-head"><div><h3 id="m340PublishingPlacesTitle">Orte &amp; Kurzlinks</h3><p>Ein Slug bleibt dauerhaft gesperrt und wird später nicht umbenannt.</p></div></div>
       <form class="form-grid v4-smart-form m340-publishing-create-place" data-m340-place-form>
-        <label>Anzeigename<input name="displayName" maxlength="160" required placeholder="z. B. Landsberg"></label>
-        <label>Slug<input name="slug" maxlength="48" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required placeholder="landsberg"></label>
+        <label class="v4-field-half">Anzeigename<input name="displayName" maxlength="160" required placeholder="z. B. Landsberg"></label>
+        <label class="v4-field-half">Slugname<input name="slug" maxlength="48" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required placeholder="landsberg"></label>
         <div class="v4-detail-actions v4-field-full"><button class="button small secondary" type="submit">Dauerhaften Ort anlegen</button></div>
       </form>
       <div class="m340-publishing-grid">${places.length ? places.map(renderPlaceCard).join("") : empty("Noch keine Publishing-Orte vorhanden.")}</div>
     </section>
     <section class="v4-m325-workspace-section" aria-labelledby="m340PublishingHistoryTitle">
-      <div class="m340-publishing-section-head"><div><h3 id="m340PublishingHistoryTitle">Erstellungshistorie</h3><p>Die letzten 50 Publishing-Jobs dieser Umgebung.</p></div></div>
-      <div class="m340-publishing-history">${jobs.length ? jobs.map(renderJob).join("") : empty("Noch keine Flyer-Erstellung vorhanden.")}</div>
+      <div class="m340-publishing-section-head"><div><h3 id="m340PublishingHistoryTitle">Erstellungshistorie</h3><p>Die neueste Erstellung zuerst; ältere Generationen sind kompakt zusammengefasst.</p></div></div>
+      <div class="m340-publishing-history">${jobs.length ? `${renderJob(jobs[0], true)}${jobs.length > 1 ? `<details class="m340-publishing-older"><summary><span>Ältere Generationen</span><small>${jobs.length - 1}</small></summary><div class="m340-publishing-older-list">${jobs.slice(1).map(job => renderJob(job)).join("")}</div></details>` : ""}` : empty("Noch keine Flyer-Erstellung vorhanden.")}</div>
     </section>
     <section class="v4-m325-workspace-section" aria-labelledby="m340PublishingStatsTitle">
       <div class="m340-publishing-section-head"><div><h3 id="m340PublishingStatsTitle">Kurzlink-Statistik</h3><p>Ausschließlich anonyme Tagesaggregate, ohne IP, Cookies oder Geräteprofile.</p></div></div>
@@ -249,10 +267,12 @@ async function loadOverview() {
   return model;
 }
 
+function returnToBusOrga() {
+  window.location.hash = "#/bus-orga";
+}
+
 function bindWorkspace(panel, model, refresh) {
-  panel.querySelector("[data-m340-back]")?.addEventListener("click", () => {
-    window.location.hash = "#/fanbuses";
-  });
+  panel.querySelector("[data-m340-back]")?.addEventListener("click", returnToBusOrga);
 
   const createForm = panel.querySelector("[data-m340-place-form]");
   createForm?.elements?.displayName?.addEventListener("input", event => {
@@ -338,14 +358,12 @@ function bindWorkspace(panel, model, refresh) {
 
 export async function renderM340PublishingWorkspace(panel, summary) {
   if (!hasCapability(M340_PUBLISHING_CAPABILITY)) {
-    window.location.hash = "#/fanbuses";
+    returnToBusOrga();
     return;
   }
   if (summary) summary.textContent = "";
-  panel.innerHTML = `<section class="v4-m325-workspace m340-publishing-workspace"><header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m340-back>Zurück</button><div><h2>Flyer &amp; Kurzlinks</h2><p>Publishing-Daten werden geladen …</p></div></header></section>`;
-  panel.querySelector("[data-m340-back]")?.addEventListener("click", () => {
-    window.location.hash = "#/fanbuses";
-  });
+  panel.innerHTML = `<section class="v4-m325-workspace m340-publishing-workspace"><header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m340-back>Zurück</button><div><span class="m340-publishing-kicker">Bus-Orga</span><h2>Flyer &amp; Kurzlinks</h2><p>Publishing-Daten werden geladen …</p></div></header></section>`;
+  panel.querySelector("[data-m340-back]")?.addEventListener("click", returnToBusOrga);
 
   const refresh = async () => {
     try {
@@ -355,10 +373,8 @@ export async function renderM340PublishingWorkspace(panel, summary) {
       bindWorkspace(panel, model, refresh);
     } catch (error) {
       if (!panel.isConnected) return;
-      panel.innerHTML = `<section class="v4-m325-workspace m340-publishing-workspace"><header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m340-back>Zurück</button><div><h2>Flyer &amp; Kurzlinks</h2></div></header>${errorPanel(error, "Publishing-Daten konnten nicht geladen werden")}</section>`;
-      panel.querySelector("[data-m340-back]")?.addEventListener("click", () => {
-        window.location.hash = "#/fanbuses";
-      });
+      panel.innerHTML = `<section class="v4-m325-workspace m340-publishing-workspace"><header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m340-back>Zurück</button><div><span class="m340-publishing-kicker">Bus-Orga</span><h2>Flyer &amp; Kurzlinks</h2></div></header>${errorPanel(error, "Publishing-Daten konnten nicht geladen werden")}</section>`;
+      panel.querySelector("[data-m340-back]")?.addEventListener("click", returnToBusOrga);
     }
   };
 
