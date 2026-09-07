@@ -287,9 +287,11 @@ test("M310 WordPress presentation is portal-scoped, readable and mobile-safe", a
   );
   assert.equal(
     (plugin.match(/\/rest\/v1\/rpc\/[a-z0-9_]+/g) || []).length,
-    3
+    5
   );
   assert.match(plugin, /private const STATUS_RPC_PATH = '\/rest\/v1\/rpc\/pd_public_platform_status'/);
+  assert.match(plugin, /private const ONTOUR_RESOLVER_RPC_PATH = '\/rest\/v1\/rpc\/pd_public_fanbus_ontour_resolve'/);
+  assert.match(plugin, /private const ONTOUR_REFERRAL_RPC_PATH = '\/rest\/v1\/rpc\/pd_public_fanbus_trip_referral_track'/);
   assert.match(plugin, /private static function load_public_trip_stops/);
   assert.match(plugin, /private static function validated_stop/);
   assert.match(

@@ -26,7 +26,8 @@ const BUS_ORGA_CAPABILITIES = Object.freeze([
   "fanbus.manage",
   "fanbus.registrations.manage",
   "fanbus.operations.manage",
-  "fanbus.payment_marker.manage"
+  "fanbus.payment_marker.manage",
+  "fanbus.publishing.manage"
 ]);
 
 function stableRenderValue(value) {
