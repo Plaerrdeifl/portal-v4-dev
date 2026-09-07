@@ -130,9 +130,28 @@ test("Bus-Orga discovery includes the dedicated publishing capability", () => {
   assert.match(content.pages, /bus-orga-v3\.js\?[^"\n]*m340=20260907-m340-publishing-bus-orga1/);
 });
 
-test("publishing workspace has responsive styling within the existing fanbus surface", () => {
+test("publishing workspace has responsive styling within the active Bus-Orga surface", () => {
   assert.match(content.css, /\.m340-publishing-workspace/);
   assert.match(content.css, /\.m340-publishing-metrics/);
   assert.match(content.css, /@media \(max-width: 700px\)/);
   assert.match(content.css, /@media \(max-width: 430px\)/);
+  assert.match(content.publishing, /m340-publishing-create-place[\s\S]*class="v4-field-half">Anzeigename[\s\S]*class="v4-field-half">Slugname/);
+  assert.match(content.css, /\.m340-publishing-create-place > label\s*\{[\s\S]*grid-column: span 6 !important/);
+  assert.match(content.css, /@media \(max-width: 700px\)[\s\S]*\.m340-publishing-create-place > label\s*\{\s*grid-column: 1 \/ -1 !important/);
+});
+
+test("publishing history prioritizes the latest job and hides technical paths by default", () => {
+  assert.match(content.publishing, /renderJob\(jobs\[0\], true\)/);
+  assert.match(content.publishing, /<details class="m340-publishing-older">[\s\S]*Ältere Generationen/);
+  assert.match(content.publishing, /In Nextcloud gespeichert/);
+  assert.match(content.publishing, /<details class="m340-publishing-technical m340-publishing-file-details">/);
+  assert.doesNotMatch(content.publishing, /href="\$\{escapeAttr\(artifact\?\.nextcloudPath/);
+});
+
+test("publishing keeps venue keys secondary and identifies the Bus-Orga area", () => {
+  assert.match(content.publishing, /m340-publishing-place-technical/);
+  assert.match(content.publishing, /<summary>Technische Details<\/summary><code>Venue-Key:/);
+  assert.match(content.publishing, /<span class="m340-publishing-kicker">Bus-Orga<\/span>/);
+  assert.doesNotMatch(content.publishing, /<span class="m340-publishing-kicker">Fanbus<\/span>/);
+  assert.match(content.publishing, /function returnToBusOrga\(\)[\s\S]*window\.location\.hash = "#\/bus-orga"/);
 });

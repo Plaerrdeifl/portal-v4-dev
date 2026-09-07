@@ -431,8 +431,8 @@ def build_text_fields(normalized: dict[str, Any]) -> dict[str, str]:
         if len(stops) >= number:
             stop = stops[number - 1]
             fields[f"m340-boarding-{number}-time"] = stop["departure"].strftime("%H:%M UHR –")
-            fields[f"m340-boarding-{number}-place"] = stop["label"] + ("," if stop["detail"] else "")
-            fields[f"m340-boarding-{number}-detail"] = stop["detail"]
+            fields[f"m340-boarding-{number}-place"] = stop["label"]
+            fields[f"m340-boarding-{number}-detail"] = ""
         else:
             fields[f"m340-boarding-{number}-time"] = ""
             fields[f"m340-boarding-{number}-place"] = ""
