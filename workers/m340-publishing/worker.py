@@ -720,9 +720,12 @@ def _mkcol(config: Config, remote_path: str) -> None:
 
 
 def _ensure_collection_chain(config: Config, remote_path: str) -> None:
+    _remote_path(remote_path)
     parts = remote_path.strip("/").split("/")
-    current = ""
-    for part in parts:
+    if not parts or parts[0] != "Fanbus":
+        raise WorkerError("NEXTCLOUD_PATH_INVALID")
+    current = "/Fanbus"
+    for part in parts[1:]:
         current += "/" + part
         _mkcol(config, current)
 

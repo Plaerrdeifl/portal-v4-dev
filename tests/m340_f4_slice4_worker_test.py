@@ -258,6 +258,23 @@ class ManifestTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(worker.WorkerError):
                 worker._remote_path(value)
 
+    def test_collection_chain_skips_protected_fanbus_root(self):
+        config = worker.load_config(CONFIG_PATH)
+        created = []
+        original = worker._mkcol
+        worker._mkcol = lambda _config, path: created.append(path)
+        try:
+            worker._ensure_collection_chain(
+                config,
+                "/Fanbus/_DEV/2026-10-03_landsberg/generation-001",
+            )
+        finally:
+            worker._mkcol = original
+
+        self.assertEqual(created[0], "/Fanbus/_DEV")
+        self.assertNotIn("/Fanbus", created)
+        self.assertEqual(created[-1], "/Fanbus/_DEV/2026-10-03_landsberg/generation-001")
+
 
 class ContractTests(unittest.TestCase):
     def test_qr_bridge_uses_only_pinned_inkscape_encoder(self):
