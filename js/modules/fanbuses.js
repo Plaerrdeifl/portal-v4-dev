@@ -17,6 +17,10 @@ import {
 import { downloadFanbusRegistrationsXlsx } from "./fanbus-xlsx.js";
 import { groupFanbusTrips } from "./fanbus-trip-groups.js";
 import { setupFanbusMyBookings } from "./fanbus-my-bookings.js";
+import {
+  M340_PUBLISHING_CAPABILITY,
+  renderM340PublishingWorkspace
+} from "./m340-publishing.js";
 
 const BERLIN_TIME_ZONE = "Europe/Berlin";
 const PRIVACY_REFERENCE = "https://plaerrdeifl.de/datenschutzerklaerung/";
@@ -796,6 +800,7 @@ function setupFanbusActionMenu(canManage) {
   const regularRidersButton = document.getElementById("m326RegularRidersButton");
   const personGroupsButton = document.getElementById("m326PersonGroupsButton");
   const settingsButton = document.getElementById("m310FanbusSettingsButton");
+  const publishingButton = document.getElementById("m340PublishingButton");
   if (!root || !toggle || !menu) return;
 
   const close = ({ restoreFocus = false } = {}) => {
@@ -843,6 +848,14 @@ function setupFanbusActionMenu(canManage) {
       window.location.hash = "#/fanbuses?view=settings";
     } : null;
   }
+  const canPublish = hasCapability(M340_PUBLISHING_CAPABILITY);
+  if (publishingButton) {
+    publishingButton.hidden = !canPublish;
+    publishingButton.onclick = canPublish ? () => {
+      close();
+      window.location.hash = "#/fanbuses?view=publishing";
+    } : null;
+  }
   toggle.onclick = () => menu.hidden ? open() : close({ restoreFocus: true });
 
   if (root.dataset.actionMenuBound !== "true") {
@@ -878,6 +891,15 @@ function render() {
     }
     setWorkspaceShell(true);
     void renderFanbusSettingsWorkspace(panel, summary);
+    return;
+  }
+  if (routeQuery.get("view") === "publishing") {
+    if (!hasCapability(M340_PUBLISHING_CAPABILITY)) {
+      returnToFanbuses();
+      return;
+    }
+    setWorkspaceShell(true);
+    void renderM340PublishingWorkspace(panel, summary);
     return;
   }
   if (routeQuery.get("view") === "regular-riders") {

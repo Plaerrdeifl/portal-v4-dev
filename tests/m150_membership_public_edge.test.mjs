@@ -43,7 +43,8 @@ test("only explicitly approved functions receive dedicated JWT bypass config", (
     "m150-membership-submit",
     "m150-membership-email-dispatch",
     "notification-dispatch",
-    "m310-fanbus-register"
+    "m310-fanbus-register",
+    "m340-publishing-worker"
   ]);
   assert.equal(
     (config.match(/^\[functions\.m150-membership-submit\]$/gm) || []).length,
