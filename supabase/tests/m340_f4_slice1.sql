@@ -437,7 +437,6 @@ declare
   v_denied uuid := '00000000-0000-4340-8000-000000000003';
   v_role uuid;
   v_bus_team uuid;
-  v_place_id uuid;
   v_response jsonb;
 begin
   select id
@@ -535,55 +534,23 @@ begin
   );
 
   v_response := public.pd_api(
-    'fanbus_publishing_place_create',
-    jsonb_build_object(
-      'slug', 'pd-api-auth-place',
-      'displayName', 'PD API Auth Place'
-    )
+    'fanbus_publishing_resolution_ensure',
+    '{}'::jsonb
   );
   if (v_response ->> 'ok')::boolean is distinct from true then
-    raise exception 'Authorized pd_api Place create failed: %', v_response;
-  end if;
-  v_place_id := (v_response #>> '{data,place,id}')::uuid;
-  if v_place_id is null then
-    raise exception 'Authorized pd_api Place create returned no Place id';
+    raise exception 'Authorized pd_api auto resolution failed: %', v_response;
   end if;
 
   v_response := public.pd_api(
-    'fanbus_publishing_place_key_add',
+    'fanbus_publishing_place_create',
     jsonb_build_object(
-      'placeId', v_place_id,
-      'sourceLabel', 'PD API Auth Venue'
+      'slug', 'pd-api-deprecated-place',
+      'displayName', 'PD API Deprecated Place'
     )
   );
-  if (v_response ->> 'ok')::boolean is distinct from true
-     or v_response #>> '{data,placeKey}' <> 'v1:pd-api-auth-venue' then
-    raise exception 'Authorized pd_api Place key add failed: %', v_response;
-  end if;
-
-  insert into app_modules.events(
-    id, event_type, title, event_date, event_time, venue, visibility
-  )
-  values (
-    '00000000-0000-4340-8250-000000000001',
-    'OTHER',
-    'PD API Auth Event',
-    app_private.fanbus_publishing_berlin_day(statement_timestamp()) + 30,
-    time '18:00',
-    'PD API Auth Venue',
-    'PUBLIC'
-  );
-
-  v_response := public.pd_api(
-    'fanbus_publishing_event_place_bind',
-    jsonb_build_object(
-      'eventId', '00000000-0000-4340-8250-000000000001',
-      'placeId', v_place_id
-    )
-  );
-  if (v_response ->> 'ok')::boolean is distinct from true
-     or (v_response #>> '{data,binding,placeId}')::uuid is distinct from v_place_id then
-    raise exception 'Authorized pd_api Event bind failed: %', v_response;
+  if (v_response ->> 'ok')::boolean is distinct from false
+     or v_response #>> '{error,code}' <> '0A000' then
+    raise exception 'Deprecated manual Place API remained reachable: %', v_response;
   end if;
 
   perform set_config('request.jwt.claim.sub', v_denied::text, true);
@@ -593,11 +560,8 @@ begin
     true
   );
   v_response := public.pd_api(
-    'fanbus_publishing_place_create',
-    jsonb_build_object(
-      'slug', 'pd-api-denied-place',
-      'displayName', 'PD API Denied Place'
-    )
+    'fanbus_publishing_resolution_ensure',
+    '{}'::jsonb
   );
   if (v_response ->> 'ok')::boolean is distinct from false
      or v_response #>> '{error,code}' <> '42501'
@@ -605,14 +569,7 @@ begin
        coalesce(v_response #>> '{error,message}', ''),
        'fanbus.publishing.manage'
      ) = 0 then
-    raise exception 'Unauthorized pd_api mutation did not fail by capability: %', v_response;
-  end if;
-  if exists (
-    select 1
-    from app_modules.fanbus_publishing_places
-    where slug = 'pd-api-denied-place'
-  ) then
-    raise exception 'Unauthorized pd_api mutation created a Place';
+    raise exception 'Unauthorized auto resolution did not fail by capability: %', v_response;
   end if;
 
   perform set_config(

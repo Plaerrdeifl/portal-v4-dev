@@ -47,23 +47,6 @@ function formatDateTime(value) {
   return Number.isNaN(date.getTime()) ? String(value) : `${DATE_TIME_FORMAT.format(date)} Uhr`;
 }
 
-function normalizePlaceKey(value) {
-  const normalized = String(value || "")
-    .trim()
-    .toLocaleLowerCase("de-DE")
-    .replaceAll("ä", "ae")
-    .replaceAll("ö", "oe")
-    .replaceAll("ü", "ue")
-    .replaceAll("ß", "ss")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return normalized ? `v1:${normalized}` : "";
-}
-
-function normalizeSlug(value) {
-  return normalizePlaceKey(value).replace(/^v1:/, "").slice(0, 48);
-}
-
 function publicBase(environment) {
   return environment === "DEV"
     ? "https://staging.plaerrdeifl.de"
@@ -81,34 +64,24 @@ function jobPresentation(status) {
 }
 
 function renderMetrics(model) {
-  const places = asArray(model?.places);
+  const resolvedTrips = asArray(model?.trips).filter(trip => trip?.resolutionStatus === "RESOLVED");
   const stats = model?.stats || {};
   const successfulJobs = asArray(model?.jobs).filter(job => job?.status === "SUCCESS").length;
   return `<div class="m340-publishing-metrics" aria-label="Publishing-Übersicht">
-    <article><span>Kurzlinks</span><strong>${places.filter(place => place?.active !== false).length}</strong></article>
+    <article><span>Bereite Fahrten</span><strong>${resolvedTrips.length}</strong></article>
     <article><span>Aufrufe</span><strong>${asCount(stats.landingCount)}</strong></article>
     <article><span>Weiterleitungen</span><strong>${asCount(stats.referralCount)}</strong></article>
     <article><span>Erstellungen</span><strong>${successfulJobs}</strong></article>
   </div>`;
 }
 
-function compatiblePlaces(trip, places) {
-  const key = normalizePlaceKey(trip?.venue);
-  if (!key) return [];
-  return asArray(places).filter(place =>
-    place?.active !== false
-    && asArray(place?.keys).some(item => item?.placeKey === key)
-  );
-}
-
 function renderTripCard(trip, model) {
-  const places = asArray(model?.places);
-  const binding = trip?.place;
+  const resolutionStatus = String(trip?.resolutionStatus || "MISSING_VENUE");
+  const candidates = asArray(trip?.resolutionCandidates);
   const latest = trip?.lastJob;
   const job = latest ? jobPresentation(latest.status) : null;
-  const compatible = compatiblePlaces(trip, places);
-  const shortlink = binding?.shortlinkPath
-    ? `${publicBase(model?.environment)}${binding.shortlinkPath}`
+  const shortlink = trip?.shortlinkPath
+    ? `${publicBase(model?.environment)}${trip.shortlinkPath}`
     : "";
 
   return `<article class="m340-publishing-card" data-m340-trip="${escapeAttr(trip?.tripId || "")}">
@@ -120,59 +93,27 @@ function renderTripCard(trip, model) {
       </div>
       ${job ? `<span class="badge ${escapeAttr(job.className)}">${escapeHtml(job.label)}</span>` : ""}
     </header>
-    ${binding ? `<div class="m340-publishing-shortlink">
-      <span>Dauerhafter Kurzlink</span>
+    ${resolutionStatus === "RESOLVED" ? `<div class="m340-publishing-shortlink">
+      <span>Kurzlink</span>
       <a href="${escapeAttr(shortlink)}" target="_blank" rel="noopener noreferrer">${escapeHtml(shortlink)}</a>
-      <small>Ort: ${escapeHtml(binding.displayName || binding.slug || "–")}</small>
-      ${binding.boundPlaceKey ? `<details class="m340-publishing-technical"><summary>Technische Details</summary><code>Venue-Key: ${escapeHtml(binding.boundPlaceKey)}</code></details>` : ""}
     </div>
     <div class="v4-row-actions m340-publishing-trip-actions">
       <button class="button small primary" type="button" data-m340-enqueue="${escapeAttr(trip.tripId)}">Flyer &amp; QR neu erstellen</button>
-    </div>` : `<div class="notice warning m340-publishing-unbound">
-      <div><strong>Noch kein Kurzlink zugeordnet</strong><small>Bitte mit einem dauerhaften Ort verbinden.</small></div>
-      ${compatible.length ? `<form class="m340-publishing-bind-form" data-m340-bind-form data-event-id="${escapeAttr(trip?.eventId || "")}">
-        <label>Passender Ort
+    </div>` : resolutionStatus === "AMBIGUOUS" ? `<div class="notice warning m340-publishing-resolution-notice">
+      <div><strong>Kurzlink-Ziel prüfen</strong><small>Der Veranstaltungsort passt zu mehreren bekannten Zielen. Bitte einmalig das richtige Ziel auswählen.</small></div>
+      <form class="m340-publishing-ambiguity-form" data-m340-ambiguity-form data-event-id="${escapeAttr(trip?.eventId || "")}">
+        <label>Ziel
           <select name="placeId" required>
-            ${compatible.map(place => `<option value="${escapeAttr(place.id)}">${escapeHtml(place.displayName)} · /ontour/${escapeHtml(place.slug)}</option>`).join("")}
+            <option value="">Bitte auswählen</option>
+            ${candidates.map(candidate => `<option value="${escapeAttr(candidate.placeId)}">${escapeHtml(candidate.displayName || "Ziel")}</option>`).join("")}
           </select>
         </label>
-        <button class="button small secondary" type="submit">Ort zuordnen</button>
-      </form>` : `<small>Für diesen Veranstaltungsort ist noch keine passende technische Zuordnung hinterlegt.</small>
-      <details class="m340-publishing-technical"><summary>Technische Details</summary><code>Erwarteter Venue-Key: ${escapeHtml(normalizePlaceKey(trip?.venue) || "–")}</code></details>`}
+        <button class="button small secondary" type="submit">Ziel übernehmen</button>
+      </form>
+    </div>` : `<div class="notice warning m340-publishing-resolution-notice">
+      <div><strong>Veranstaltungsort fehlt</strong><small>Bitte den Veranstaltungsort beim Spieltermin ergänzen. Danach wird der Kurzlink automatisch vorbereitet.</small></div>
     </div>`}
     ${latest?.lastErrorCode ? `<div class="notice error"><strong>Letzter Fehler</strong><p>${escapeHtml(latest.lastErrorCode)}</p></div>` : ""}
-  </article>`;
-}
-
-function renderPlaceCard(place) {
-  const keys = asArray(place?.keys);
-  const url = `https://plaerrdeifl.de/ontour/${place?.slug || ""}`;
-  return `<article class="m340-publishing-card m340-publishing-place-card" data-m340-place="${escapeAttr(place?.id || "")}">
-    <header class="m340-publishing-card-head">
-      <div>
-        <span class="m340-publishing-kicker">Dauerhafter Ort</span>
-        <h3>${escapeHtml(place?.displayName || place?.slug || "Ort")}</h3>
-        <p><code>/ontour/${escapeHtml(place?.slug || "")}</code></p>
-      </div>
-      <span class="badge ${place?.active === false ? "neutral" : "success"}">${place?.active === false ? "Inaktiv" : "Aktiv"}</span>
-    </header>
-    <div class="m340-publishing-place-stats">
-      <span>${asCount(place?.landingCount)} Aufrufe</span>
-      <span>${asCount(place?.referralCount)} Weiterleitungen</span>
-    </div>
-    <div class="m340-publishing-shortlink"><span>Produktiver Zielpfad</span><code>${escapeHtml(url)}</code></div>
-    <details class="m340-publishing-technical m340-publishing-place-technical">
-      <summary>Technische Zuordnungen${keys.length ? ` (${keys.length})` : ""}</summary>
-      <div class="m340-publishing-keys">
-        ${keys.length ? `<ul>${keys.map(key => `<li><code>${escapeHtml(key.placeKey || "")}</code>${key.sourceLabel ? ` <span>${escapeHtml(key.sourceLabel)}</span>` : ""}</li>`).join("")}</ul>` : `<p class="subtle">Noch kein Venue-Key hinterlegt.</p>`}
-      </div>
-      <form class="m340-publishing-key-form" data-m340-key-form data-place-id="${escapeAttr(place?.id || "")}">
-        <label>Weiteren Veranstaltungsort zuordnen
-          <input name="sourceLabel" maxlength="240" required placeholder="z. B. Landsberg am Lech">
-        </label>
-        <button class="button small secondary" type="submit">Zuordnung hinzufügen</button>
-      </form>
-    </details>
   </article>`;
 }
 
@@ -204,7 +145,7 @@ function renderJob(job, current = false) {
   const state = jobPresentation(job?.status);
   return `<article class="m340-publishing-history-item${current ? " is-current" : ""}">
     <div class="m340-publishing-history-head">
-      <div><strong>${escapeHtml(job?.placeDisplayName || job?.placeSlug || "Publishing")}</strong><small>${escapeHtml(formatDateTime(job?.createdAt))}</small></div>
+      <div><strong>${escapeHtml(job?.displayTitle || "Publishing")}</strong><small>${escapeHtml(formatDateTime(job?.createdAt))}</small></div>
       <div class="m340-publishing-history-badges">${current ? `<span class="badge neutral">Aktuell</span>` : ""}<span class="badge ${escapeAttr(state.className)}">${escapeHtml(state.label)}</span></div>
     </div>
     <p class="subtle">Versuch ${asCount(job?.attemptCount)}${job?.completedAt ? ` · abgeschlossen ${escapeHtml(formatDateTime(job.completedAt))}` : ""}</p>
@@ -225,7 +166,6 @@ function renderDaily(stats) {
 
 function workspaceMarkup(model) {
   const trips = asArray(model?.trips);
-  const places = asArray(model?.places);
   const jobs = asArray(model?.jobs);
   return `<section class="v4-m325-workspace m340-publishing-workspace">
     <header class="v4-m325-workspace-header">
@@ -238,17 +178,8 @@ function workspaceMarkup(model) {
     </header>
     ${renderMetrics(model)}
     <section class="v4-m325-workspace-section" aria-labelledby="m340PublishingTripsTitle">
-      <div class="m340-publishing-section-head"><div><h3 id="m340PublishingTripsTitle">Fahrten veröffentlichen</h3><p>Der QR-Code verwendet immer den dauerhaften Ortslink.</p></div><span class="badge neutral">${escapeHtml(model?.environment || "–")}</span></div>
+      <div class="m340-publishing-section-head"><div><h3 id="m340PublishingTripsTitle">Fahrten veröffentlichen</h3><p>Dieser Kurzlink wird für QR-Code und Flyer verwendet.</p></div><span class="badge neutral">${escapeHtml(model?.environment || "–")}</span></div>
       <div class="m340-publishing-grid">${trips.length ? trips.map(trip => renderTripCard(trip, model)).join("") : empty("Keine veröffentlichte Fanbusfahrt verfügbar.")}</div>
-    </section>
-    <section class="v4-m325-workspace-section" aria-labelledby="m340PublishingPlacesTitle">
-      <div class="m340-publishing-section-head"><div><h3 id="m340PublishingPlacesTitle">Orte &amp; Kurzlinks</h3><p>Ein Slug bleibt dauerhaft gesperrt und wird später nicht umbenannt.</p></div></div>
-      <form class="form-grid v4-smart-form m340-publishing-create-place" data-m340-place-form>
-        <label class="v4-field-half">Anzeigename<input name="displayName" maxlength="160" required placeholder="z. B. Landsberg"></label>
-        <label class="v4-field-half">Slugname<input name="slug" maxlength="48" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required placeholder="landsberg"></label>
-        <div class="v4-detail-actions v4-field-full"><button class="button small secondary" type="submit">Dauerhaften Ort anlegen</button></div>
-      </form>
-      <div class="m340-publishing-grid">${places.length ? places.map(renderPlaceCard).join("") : empty("Noch keine Publishing-Orte vorhanden.")}</div>
     </section>
     <section class="v4-m325-workspace-section" aria-labelledby="m340PublishingHistoryTitle">
       <div class="m340-publishing-section-head"><div><h3 id="m340PublishingHistoryTitle">Erstellungshistorie</h3><p>Die neueste Erstellung zuerst; ältere Generationen sind kompakt zusammengefasst.</p></div></div>
@@ -262,6 +193,7 @@ function workspaceMarkup(model) {
 }
 
 async function loadOverview() {
+  await call("fanbus_publishing_resolution_ensure", {});
   const model = await call("fanbus_publishing_overview", {});
   if (!model || typeof model !== "object") throw new Error("Publishing-Übersicht ist ungültig.");
   return model;
@@ -271,55 +203,10 @@ function returnToBusOrga() {
   window.location.hash = "#/bus-orga";
 }
 
-function bindWorkspace(panel, model, refresh) {
+function bindWorkspace(panel, refresh) {
   panel.querySelector("[data-m340-back]")?.addEventListener("click", returnToBusOrga);
 
-  const createForm = panel.querySelector("[data-m340-place-form]");
-  createForm?.elements?.displayName?.addEventListener("input", event => {
-    const slug = createForm.elements.slug;
-    if (slug && !slug.dataset.m340Touched) slug.value = normalizeSlug(event.target.value);
-  });
-  createForm?.elements?.slug?.addEventListener("input", event => {
-    event.target.dataset.m340Touched = "true";
-  });
-  createForm?.addEventListener("submit", async event => {
-    event.preventDefault();
-    const displayName = String(createForm.elements.displayName?.value || "").trim();
-    const slug = String(createForm.elements.slug?.value || "").trim();
-    if (!displayName || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-      showToast("Bitte Anzeigename und gültigen Slug angeben.", "warning", 5200);
-      return;
-    }
-    try {
-      await runWrite(
-        () => call("fanbus_publishing_place_create", { slug, displayName }),
-        "Dauerhafter Publishing-Ort angelegt."
-      );
-      await refresh();
-    } catch (error) {
-      showToast(error?.message || "Publishing-Ort konnte nicht angelegt werden.", "error", 6000);
-    }
-  });
-
-  panel.querySelectorAll("[data-m340-key-form]").forEach(form => {
-    form.addEventListener("submit", async event => {
-      event.preventDefault();
-      const placeId = form.dataset.placeId || "";
-      const sourceLabel = String(form.elements.sourceLabel?.value || "").trim();
-      if (!placeId || !sourceLabel) return;
-      try {
-        await runWrite(
-          () => call("fanbus_publishing_place_key_add", { placeId, sourceLabel }),
-          "Venue-Key hinzugefügt."
-        );
-        await refresh();
-      } catch (error) {
-        showToast(error?.message || "Venue-Key konnte nicht hinzugefügt werden.", "error", 6000);
-      }
-    });
-  });
-
-  panel.querySelectorAll("[data-m340-bind-form]").forEach(form => {
+  panel.querySelectorAll("[data-m340-ambiguity-form]").forEach(form => {
     form.addEventListener("submit", async event => {
       event.preventDefault();
       const eventId = form.dataset.eventId || "";
@@ -327,12 +214,12 @@ function bindWorkspace(panel, model, refresh) {
       if (!eventId || !placeId) return;
       try {
         await runWrite(
-          () => call("fanbus_publishing_event_place_bind", { eventId, placeId }),
-          "Fanbusfahrt mit dauerhaftem Ortslink verbunden."
+          () => call("fanbus_publishing_resolution_choose", { eventId, placeId }),
+          "Kurzlink-Ziel wurde übernommen."
         );
         await refresh();
       } catch (error) {
-        showToast(error?.message || "Ortslink konnte nicht zugeordnet werden.", "error", 6000);
+        showToast(error?.message || "Kurzlink-Ziel konnte nicht gespeichert werden.", "error", 6000);
       }
     });
   });
@@ -370,7 +257,7 @@ export async function renderM340PublishingWorkspace(panel, summary) {
       const model = await loadOverview();
       if (!panel.isConnected) return;
       panel.innerHTML = workspaceMarkup(model);
-      bindWorkspace(panel, model, refresh);
+      bindWorkspace(panel, refresh);
     } catch (error) {
       if (!panel.isConnected) return;
       panel.innerHTML = `<section class="v4-m325-workspace m340-publishing-workspace"><header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m340-back>Zurück</button><div><span class="m340-publishing-kicker">Bus-Orga</span><h2>Flyer &amp; Kurzlinks</h2></div></header>${errorPanel(error, "Publishing-Daten konnten nicht geladen werden")}</section>`;
