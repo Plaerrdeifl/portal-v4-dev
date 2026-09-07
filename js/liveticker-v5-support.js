@@ -285,7 +285,8 @@ function initializeEnhancements() {
     patchPenaltyHistoryAfterCore();
     normalizeOutput();
   });
-  document.querySelector("#periodSummaryButton")?.addEventListener("click", normalizeOutput);
-  document.querySelector("#finalSummaryButton")?.addEventListener("click", normalizeOutput);
+  document.querySelector("#period1OutputButton")?.addEventListener("click", normalizeOutput);
+  document.querySelector("#period2OutputButton")?.addEventListener("click", normalizeOutput);
+  document.querySelector("#finalOutputButton")?.addEventListener("click", normalizeOutput);
 }
 if (typeof document !== "undefined") initializeEnhancements();

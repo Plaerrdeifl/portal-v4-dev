@@ -835,11 +835,33 @@ function initialize() {
     }
   });
 
-  $("#periodSummaryButton").addEventListener("click", () => {
-    try { setOutput(formatSegmentSummary(state.history, segmentForMinute(selectedMinute()).key, opponent())); }
-    catch (error) { errorBox.textContent = error.message; errorBox.hidden = false; }
+  $("#period1OutputButton")?.addEventListener("click", () => {
+    try {
+      setOutput(formatSegmentSummary(state.history, "P1", opponent()));
+      errorBox.hidden = true;
+    } catch (error) {
+      errorBox.textContent = error.message;
+      errorBox.hidden = false;
+    }
   });
-  $("#finalSummaryButton").addEventListener("click", () => setOutput(formatFinalSummary(state.history, opponent())));
+  $("#period2OutputButton")?.addEventListener("click", () => {
+    try {
+      setOutput(formatSegmentSummary(state.history, "P2", opponent()));
+      errorBox.hidden = true;
+    } catch (error) {
+      errorBox.textContent = error.message;
+      errorBox.hidden = false;
+    }
+  });
+  $("#finalOutputButton")?.addEventListener("click", () => {
+    try {
+      setOutput(formatFinalSummary(state.history, opponent()));
+      errorBox.hidden = true;
+    } catch (error) {
+      errorBox.textContent = error.message;
+      errorBox.hidden = false;
+    }
+  });
 
   copyButton.addEventListener("click", async () => {
     if (!output.value.trim()) { errorBox.textContent = "Bitte zuerst einen Text erstellen."; errorBox.hidden = false; return; }

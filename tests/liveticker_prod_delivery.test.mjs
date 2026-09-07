@@ -125,3 +125,31 @@ test("PROD Liveticker teams use portal-owned codes and server-managed local logo
   assert.match(admin, /lokales Portal-Asset/);
   assert.match(build, /"assets"/);
 });
+
+
+test("PROD Liveticker exposes exactly three repeatable manual output buttons", async () => {
+  const html = await read("liveticker/index.html");
+  const engine = await read("js/liveticker-engine-v4.js");
+  const graphics = await read("js/liveticker-graphics-inline.js");
+  const migration = await read("supabase/migrations/20260907210154_liveticker_manual_outputs_prod_hotfix.sql");
+
+  assert.match(html, /id="period1OutputButton"[^>]*>1\. Drittel<\/button>/);
+  assert.match(html, /id="period2OutputButton"[^>]*>2\. Drittel<\/button>/);
+  assert.match(html, /id="finalOutputButton"[^>]*>Ende<\/button>/);
+  assert.doesNotMatch(html, /periodSummaryButton|finalSummaryButton|periodGraphicButton|finalGraphicButton/);
+
+  assert.match(engine, /period1OutputButton[\s\S]*formatSegmentSummary\(state\.history, "P1"/);
+  assert.match(engine, /period2OutputButton[\s\S]*formatSegmentSummary\(state\.history, "P2"/);
+  assert.match(engine, /finalOutputButton[\s\S]*formatFinalSummary\(state\.history, opponent\(\)\)/);
+
+  assert.match(graphics, /PERIOD_1: document\.getElementById\("period1OutputButton"\)/);
+  assert.match(graphics, /PERIOD_2: document\.getElementById\("period2OutputButton"\)/);
+  assert.match(graphics, /FINAL: document\.getElementById\("finalOutputButton"\)/);
+  assert.match(graphics, /api\.call\("liveticker_graphics_enqueue", \{ eventId, kind \}\)/);
+  assert.doesNotMatch(graphics, /latestPeriodKind|currentGame\?\.completedAt|minute >= 20|minute >= 40/);
+  assert.match(graphics, /job\?\.status === "SUCCEEDED"[\s\S]*`\$\{base\} · neu`/);
+
+  assert.match(migration, /v_kind not in \('PERIOD_1','PERIOD_2','FINAL'\)/);
+  assert.doesNotMatch(migration, /v_state\.minute < 20|v_state\.minute < 40|v_state\.completed_at is null/);
+  assert.doesNotMatch(migration, /LIVETICKER_GRAPHIC_PERIOD_NOT_READY|LIVETICKER_GRAPHIC_FINAL_NOT_READY/);
+});

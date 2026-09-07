@@ -1,7 +1,10 @@
 import { api } from "./api.js";
 
-const periodButton = document.getElementById("periodGraphicButton");
-const finalButton = document.getElementById("finalGraphicButton");
+const BUTTONS = Object.freeze({
+  PERIOD_1: document.getElementById("period1OutputButton"),
+  PERIOD_2: document.getElementById("period2OutputButton"),
+  FINAL: document.getElementById("finalOutputButton")
+});
 const statusLine = document.getElementById("inlineGraphicStatus");
 const artifactsBox = document.getElementById("inlineGraphicArtifacts");
 
@@ -12,12 +15,12 @@ const STATUS_LABELS = Object.freeze({
   FAILED: "Fehlgeschlagen"
 });
 
-let currentGame = null;
+const KINDS = Object.freeze(["PERIOD_1", "PERIOD_2", "FINAL"]);
 let jobs = [];
 let refreshTimer = 0;
 let delayedRefreshTimer = 0;
 let requestInFlight = false;
-let enqueueInFlight = false;
+let enqueueInFlight = "";
 
 function currentEventId() {
   return String(globalThis.PD_LIVETICKER_GAME_CONTEXT?.eventId || "").trim();
@@ -27,17 +30,14 @@ function latestJob(kind) {
   return jobs.find(job => job?.kind === kind) || null;
 }
 
-function latestPeriodKind() {
-  const minute = Number(currentGame?.minute || 0);
-  if (minute >= 40) return "PERIOD_2";
-  if (minute >= 20) return "PERIOD_1";
-  return "";
-}
-
 function kindLabel(kind) {
   if (kind === "PERIOD_1") return "1. Drittel";
   if (kind === "PERIOD_2") return "2. Drittel";
   return "Endergebnis";
+}
+
+function buttonLabel(kind) {
+  return kind === "FINAL" ? "Ende" : kindLabel(kind);
 }
 
 function jobStatus(job) {
@@ -48,34 +48,32 @@ function isActive(job) {
   return job?.status === "QUEUED" || job?.status === "PROCESSING";
 }
 
-function setButtonState(button, { ready, job, label }) {
+function setButtonState(kind) {
+  const button = BUTTONS[kind];
   if (!button) return;
+  const job = latestJob(kind);
   const active = isActive(job);
-  button.disabled = !ready || active || enqueueInFlight;
-  button.classList.toggle("graphic-ready", ready && !active && !enqueueInFlight);
-  button.dataset.graphicKind = label.kind || "";
+  const ready = Boolean(currentEventId());
+  const enqueueing = enqueueInFlight === kind;
 
+  button.disabled = !ready || active || enqueueing;
+  button.classList.toggle("graphic-ready", ready && !active && !enqueueing);
+  button.dataset.graphicKind = kind;
+
+  const base = buttonLabel(kind);
   if (!ready) {
-    button.textContent = label.unavailable;
-    return;
+    button.textContent = base;
+  } else if (enqueueing || job?.status === "QUEUED") {
+    button.textContent = `${base} · wartet`;
+  } else if (job?.status === "PROCESSING") {
+    button.textContent = `${base} · läuft …`;
+  } else if (job?.status === "SUCCEEDED") {
+    button.textContent = `${base} · neu`;
+  } else if (job?.status === "FAILED") {
+    button.textContent = `${base} · erneut`;
+  } else {
+    button.textContent = base;
   }
-  if (job?.status === "QUEUED") {
-    button.textContent = `${label.ready}: Warteschlange`;
-    return;
-  }
-  if (job?.status === "PROCESSING") {
-    button.textContent = `${label.ready}: Wird erzeugt …`;
-    return;
-  }
-  if (job?.status === "SUCCEEDED") {
-    button.textContent = `${label.ready}: Neu erzeugen`;
-    return;
-  }
-  if (job?.status === "FAILED") {
-    button.textContent = `${label.ready}: Erneut versuchen`;
-    return;
-  }
-  button.textContent = label.ready;
 }
 
 function validArtifactUrl(value, download = false) {
@@ -96,17 +94,19 @@ function artifactRowsFor(job) {
   );
 }
 
-function renderArtifacts(periodJob, finalJob) {
+function renderArtifacts() {
   if (!artifactsBox) return;
   artifactsBox.replaceChildren();
-  const candidates = [periodJob, finalJob].filter(job => job?.status === "SUCCEEDED");
-  for (const job of candidates) {
+
+  for (const kind of KINDS) {
+    const job = latestJob(kind);
+    if (job?.status !== "SUCCEEDED") continue;
     for (const artifact of artifactRowsFor(job)) {
       const row = document.createElement("div");
       row.className = "graphic-artifact";
 
       const title = document.createElement("strong");
-      title.textContent = `${kindLabel(job.kind)} · ${artifact.kind}`;
+      title.textContent = `${kindLabel(kind)} · ${artifact.kind}`;
       row.append(title);
 
       const actions = document.createElement("div");
@@ -129,7 +129,7 @@ function renderArtifacts(periodJob, finalJob) {
       const share = document.createElement("button");
       share.type = "button";
       share.dataset.shareUrl = artifact.shareUrl;
-      share.dataset.shareTitle = `${kindLabel(job.kind)} · ${artifact.kind}`;
+      share.dataset.shareTitle = `${kindLabel(kind)} · ${artifact.kind}`;
       share.textContent = "Teilen";
       actions.append(share);
 
@@ -137,47 +137,19 @@ function renderArtifacts(periodJob, finalJob) {
       artifactsBox.append(row);
     }
   }
+
   artifactsBox.hidden = !artifactsBox.childElementCount;
 }
 
 function render() {
-  if (!periodButton || !finalButton || !statusLine) return;
+  for (const kind of KINDS) setButtonState(kind);
+  if (!statusLine) return;
 
-  const periodKind = latestPeriodKind();
-  const periodJob = periodKind ? latestJob(periodKind) : null;
-  const finalJob = latestJob("FINAL");
-  const finalReady = Boolean(currentGame?.completedAt);
-
-  setButtonState(periodButton, {
-    ready: Boolean(periodKind),
-    job: periodJob,
-    label: {
-      kind: periodKind,
-      unavailable: "Zwischenstand-Grafik",
-      ready: periodKind ? `Grafik ${kindLabel(periodKind)}` : "Zwischenstand-Grafik"
-    }
-  });
-
-  setButtonState(finalButton, {
-    ready: finalReady,
-    job: finalJob,
-    label: {
-      kind: "FINAL",
-      unavailable: "Endergebnis-Grafik",
-      ready: "Endergebnis-Grafik"
-    }
-  });
-
-  const periodText = periodKind
-    ? `${kindLabel(periodKind)}: ${jobStatus(periodJob)}`
-    : "Zwischenstand: ab Ende des 1. Drittels verfügbar";
-  const finalText = finalReady
-    ? `Endergebnis: ${jobStatus(finalJob)}`
-    : "Endergebnis: nach Spielabschluss verfügbar";
-
-  statusLine.textContent = `Grafiken · ${periodText} · ${finalText}`;
-  statusLine.dataset.state = jobs.some(isActive) ? "active" : jobs.some(job => job?.status === "FAILED") ? "error" : "idle";
-  renderArtifacts(periodJob, finalJob);
+  statusLine.textContent = `Grafiken · ${KINDS.map(kind => `${kindLabel(kind)}: ${jobStatus(latestJob(kind))}`).join(" · ")}`;
+  statusLine.dataset.state = jobs.some(isActive)
+    ? "active"
+    : jobs.some(job => job?.status === "FAILED") ? "error" : "idle";
+  renderArtifacts();
 }
 
 function clearRefreshTimer() {
@@ -202,37 +174,18 @@ async function refreshStatusOnly() {
     scheduleActiveRefresh();
   } catch (error) {
     console.error("Liveticker graphics status refresh failed", error);
-    if (statusLine) statusLine.textContent = `Grafiken · Status konnte nicht geladen werden: ${error?.message || "Unbekannter Fehler"}`;
+    if (statusLine) {
+      statusLine.textContent = `Grafiken · Status konnte nicht geladen werden: ${error?.message || "Unbekannter Fehler"}`;
+      statusLine.dataset.state = "error";
+    }
   } finally {
     requestInFlight = false;
   }
 }
 
 async function refreshAll() {
-  const eventId = currentEventId();
   clearRefreshTimer();
-  if (!eventId || requestInFlight) {
-    render();
-    return;
-  }
-
-  requestInFlight = true;
-  try {
-    const [gamesSnapshot, statusSnapshot] = await Promise.all([
-      api.call("liveticker_graphics_games"),
-      api.call("liveticker_graphics_status", { eventId })
-    ]);
-    const games = Array.isArray(gamesSnapshot?.games) ? gamesSnapshot.games : [];
-    currentGame = games.find(game => game?.eventId === eventId) || null;
-    jobs = Array.isArray(statusSnapshot?.jobs) ? statusSnapshot.jobs : [];
-    render();
-    scheduleActiveRefresh();
-  } catch (error) {
-    console.error("Liveticker graphics inline load failed", error);
-    if (statusLine) statusLine.textContent = `Grafiken · Status konnte nicht geladen werden: ${error?.message || "Unbekannter Fehler"}`;
-  } finally {
-    requestInFlight = false;
-  }
+  await refreshStatusOnly();
 }
 
 function scheduleFullRefresh(delay = 700) {
@@ -245,18 +198,21 @@ function scheduleFullRefresh(delay = 700) {
 
 async function enqueue(kind) {
   const eventId = currentEventId();
-  if (!eventId || !kind || enqueueInFlight) return;
+  if (!eventId || !KINDS.includes(kind) || enqueueInFlight) return;
 
-  enqueueInFlight = true;
+  enqueueInFlight = kind;
   render();
   try {
     await api.call("liveticker_graphics_enqueue", { eventId, kind });
     await refreshAll();
   } catch (error) {
     console.error("Liveticker graphic enqueue failed", error);
-    if (statusLine) statusLine.textContent = `Grafik konnte nicht erzeugt werden: ${error?.message || "Unbekannter Fehler"}`;
+    if (statusLine) {
+      statusLine.textContent = `${kindLabel(kind)} · Grafik konnte nicht erzeugt werden: ${error?.message || "Unbekannter Fehler"}`;
+      statusLine.dataset.state = "error";
+    }
   } finally {
-    enqueueInFlight = false;
+    enqueueInFlight = "";
     render();
   }
 }
@@ -281,12 +237,11 @@ artifactsBox?.addEventListener("click", async event => {
   }
 });
 
-periodButton?.addEventListener("click", () => enqueue(latestPeriodKind()));
-finalButton?.addEventListener("click", () => enqueue("FINAL"));
+for (const kind of KINDS) {
+  BUTTONS[kind]?.addEventListener("click", () => enqueue(kind));
+}
 
 window.addEventListener("pd-liveticker-state-saved", () => scheduleFullRefresh(900));
-document.getElementById("finalSummaryButton")?.addEventListener("click", () => scheduleFullRefresh(1200));
-document.getElementById("gameSelect")?.addEventListener("change", () => scheduleFullRefresh(500));
 window.addEventListener("pagehide", () => {
   clearRefreshTimer();
   if (delayedRefreshTimer) window.clearTimeout(delayedRefreshTimer);

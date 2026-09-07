@@ -80,7 +80,7 @@ try {
   };
 
   await importRuntimeEngine();
-  await import("./liveticker-v5-support.js?v=20260906-prod-titlefix1");
+  await import("./liveticker-v5-support.js?v=20260907-prod-manual-output1");
 
   const opponentSelect = document.querySelector("#opponentSelect");
   if (opponentSelect) {
