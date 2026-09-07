@@ -8,7 +8,8 @@ try {
   } else {
     const app = document.getElementById("tickerApp");
     if (app) app.hidden = false;
-    await import("./liveticker-bootstrap.js?v=20260906-prod-titlefix1");
+    await import("./liveticker-bootstrap.js?v=20260907-prod-graphics-inline1");
+    await import("./liveticker-graphics-inline.js?v=20260907-prod-graphics-inline1");
   }
 } catch (error) {
   console.error(error);
