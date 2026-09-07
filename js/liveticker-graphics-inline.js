@@ -3,6 +3,7 @@ import { api } from "./api.js";
 const periodButton = document.getElementById("periodGraphicButton");
 const finalButton = document.getElementById("finalGraphicButton");
 const statusLine = document.getElementById("inlineGraphicStatus");
+const artifactsBox = document.getElementById("inlineGraphicArtifacts");
 
 const STATUS_LABELS = Object.freeze({
   QUEUED: "Warteschlange",
@@ -77,6 +78,68 @@ function setButtonState(button, { ready, job, label }) {
   button.textContent = label.ready;
 }
 
+function validArtifactUrl(value, download = false) {
+  if (typeof value !== "string") return false;
+  const pattern = download
+    ? /^https:\/\/cloud\.plaerrdeifl\.de\/s\/[A-Za-z0-9]{8,128}\/download$/
+    : /^https:\/\/cloud\.plaerrdeifl\.de\/s\/[A-Za-z0-9]{8,128}$/;
+  return pattern.test(value);
+}
+
+function artifactRowsFor(job) {
+  const artifacts = Array.isArray(job?.result?.artifacts) ? job.result.artifacts : [];
+  return artifacts.filter(item =>
+    ["POST", "STORY"].includes(item?.kind)
+    && validArtifactUrl(item?.shareUrl)
+    && validArtifactUrl(item?.downloadUrl, true)
+    && item.downloadUrl === `${item.shareUrl}/download`
+  );
+}
+
+function renderArtifacts(periodJob, finalJob) {
+  if (!artifactsBox) return;
+  artifactsBox.replaceChildren();
+  const candidates = [periodJob, finalJob].filter(job => job?.status === "SUCCEEDED");
+  for (const job of candidates) {
+    for (const artifact of artifactRowsFor(job)) {
+      const row = document.createElement("div");
+      row.className = "graphic-artifact";
+
+      const title = document.createElement("strong");
+      title.textContent = `${kindLabel(job.kind)} · ${artifact.kind}`;
+      row.append(title);
+
+      const actions = document.createElement("div");
+      actions.className = "graphic-artifact-actions";
+
+      const open = document.createElement("a");
+      open.href = artifact.shareUrl;
+      open.target = "_blank";
+      open.rel = "noopener noreferrer";
+      open.textContent = "Öffnen";
+      actions.append(open);
+
+      const download = document.createElement("a");
+      download.href = artifact.downloadUrl;
+      download.target = "_blank";
+      download.rel = "noopener noreferrer";
+      download.textContent = "Download";
+      actions.append(download);
+
+      const share = document.createElement("button");
+      share.type = "button";
+      share.dataset.shareUrl = artifact.shareUrl;
+      share.dataset.shareTitle = `${kindLabel(job.kind)} · ${artifact.kind}`;
+      share.textContent = "Teilen";
+      actions.append(share);
+
+      row.append(actions);
+      artifactsBox.append(row);
+    }
+  }
+  artifactsBox.hidden = !artifactsBox.childElementCount;
+}
+
 function render() {
   if (!periodButton || !finalButton || !statusLine) return;
 
@@ -114,6 +177,7 @@ function render() {
 
   statusLine.textContent = `Grafiken · ${periodText} · ${finalText}`;
   statusLine.dataset.state = jobs.some(isActive) ? "active" : jobs.some(job => job?.status === "FAILED") ? "error" : "idle";
+  renderArtifacts(periodJob, finalJob);
 }
 
 function clearRefreshTimer() {
@@ -196,6 +260,26 @@ async function enqueue(kind) {
     render();
   }
 }
+
+artifactsBox?.addEventListener("click", async event => {
+  const button = event.target?.closest?.("button[data-share-url]");
+  if (!button) return;
+  const url = button.dataset.shareUrl || "";
+  const title = button.dataset.shareTitle || "Liveticker-Grafik";
+  if (!validArtifactUrl(url)) return;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title, url });
+    } else if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(url);
+      button.textContent = "Link kopiert ✓";
+    } else {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  } catch (error) {
+    if (error?.name !== "AbortError") console.error("Liveticker graphic share failed", error);
+  }
+});
 
 periodButton?.addEventListener("click", () => enqueue(latestPeriodKind()));
 finalButton?.addEventListener("click", () => enqueue("FINAL"));
