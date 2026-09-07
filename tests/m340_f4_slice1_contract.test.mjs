@@ -124,7 +124,7 @@ test("central pd_api dispatcher routes every M340 mutation and classifies it as 
   }
 });
 
-test("SQL auth contract uses the complete public pd_api and M010 team-function path", () => {
+test("SQL auth contract uses public pd_api and M010 team-function path after auto-resolution correction", () => {
   const start = sqlTest.indexOf("do $m340_pd_api_authorization$");
   const end = sqlTest.indexOf("$m340_pd_api_authorization$;", start + 1);
   assert.notEqual(start, -1, "M340 pd_api authorization fixture fehlt");
@@ -141,9 +141,9 @@ test("SQL auth contract uses the complete public pd_api and M010 team-function p
     authContract,
     /has_capability\(v_authorized, 'portal\.admin'\)[\s\S]*has_capability\(v_denied, 'portal\.admin'\)/
   );
+  assert.match(authContract, /public\.pd_api\([\s\S]*'fanbus_publishing_resolution_ensure'/);
   assert.match(authContract, /public\.pd_api\([\s\S]*'fanbus_publishing_place_create'/);
-  assert.match(authContract, /public\.pd_api\([\s\S]*'fanbus_publishing_place_key_add'/);
-  assert.match(authContract, /public\.pd_api\([\s\S]*'fanbus_publishing_event_place_bind'/);
+  assert.match(authContract, /Deprecated manual Place API remained reachable/);
   assert.match(authContract, /#>> '\{error,code\}'[\s\S]*'42501'/);
   assert.doesNotMatch(authContract, /app_private\.api_fanbus_publishing_/);
 });
