@@ -1,0 +1,33 @@
+[Unit]
+Description=Plaerrdeifl M340 Fanbus Publishing Worker (DEV)
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=benny
+Group=benny
+SupplementaryGroups=docker
+WorkingDirectory=/srv/docker/m340/worker
+ExecStart=/usr/bin/python3 /srv/docker/m340/worker/worker.py --config /srv/docker/m340/worker/config.json
+Restart=always
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+ReadOnlyPaths=/srv/docker/m340/worker /srv/docker/m340/templates /srv/docker/m340/fonts /srv/docker/m340/secrets
+ReadWritePaths=/srv/docker/m340/work
+
+[Install]
+WantedBy=multi-user.target

@@ -240,8 +240,8 @@ test("M310 WordPress presentation is portal-scoped, readable and mobile-safe", a
     readFile(resolve(pluginRoot, "assets", "m310-fanbus.css"), "utf8")
   ]);
 
-  assert.match(plugin, /^ \* Version: 1\.0\.5$/m);
-  assert.match(plugin, /private const VERSION = '1\.0\.5'/);
+  assert.match(plugin, /^ \* Version: 1\.1\.0$/m);
+  assert.match(plugin, /private const VERSION = '1\.1\.0'/);
   assert.match(style, /\.pd-m310-fanbus\s*\{[\s\S]+color:\s*var\(--pd-m310-ink\)/);
   assert.match(style, /\.pd-m310-fanbus \.pd-m310-title\s*\{[\s\S]+color:\s*var\(--pd-m310-ink\)[\s\S]+white-space:\s*normal/);
   assert.match(style, /\.pd-m310-fanbus \.pd-m310-meta-item dd\s*\{[\s\S]+color:\s*var\(--pd-m310-ink\)/);
@@ -287,9 +287,11 @@ test("M310 WordPress presentation is portal-scoped, readable and mobile-safe", a
   );
   assert.equal(
     (plugin.match(/\/rest\/v1\/rpc\/[a-z0-9_]+/g) || []).length,
-    3
+    5
   );
   assert.match(plugin, /private const STATUS_RPC_PATH = '\/rest\/v1\/rpc\/pd_public_platform_status'/);
+  assert.match(plugin, /private const ONTOUR_RESOLVER_RPC_PATH = '\/rest\/v1\/rpc\/pd_public_fanbus_ontour_resolve'/);
+  assert.match(plugin, /private const ONTOUR_REFERRAL_RPC_PATH = '\/rest\/v1\/rpc\/pd_public_fanbus_trip_referral_track'/);
   assert.match(plugin, /private static function load_public_trip_stops/);
   assert.match(plugin, /private static function validated_stop/);
   assert.match(

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plärrdeifl M310 Fanbusfahrten
  * Description: Öffentliche Anzeige der Fanbusfahrten mit Verlinkung zur zentralen Anmeldung.
- * Version: 1.0.5
+ * Version: 1.1.0
  * Requires PHP: 8.3
  */
 
@@ -14,13 +14,17 @@ if (!defined('ABSPATH')) {
 
 final class PD_M310_Fanbus_Plugin
 {
-    private const VERSION = '1.0.5';
+    private const VERSION = '1.1.0';
     private const OPTION_NAME = 'plaerrdeifl_m310_fanbus_settings';
     private const SETTINGS_GROUP = 'plaerrdeifl_m310_fanbus_settings_group';
     private const ADMIN_SLUG = 'plaerrdeifl-m310-fanbus';
     private const RPC_PATH = '/rest/v1/rpc/pd_public_fanbus_trips';
     private const STOPS_RPC_PATH = '/rest/v1/rpc/pd_public_fanbus_trip_boarding_stops';
     private const STATUS_RPC_PATH = '/rest/v1/rpc/pd_public_platform_status';
+    private const ONTOUR_RESOLVER_RPC_PATH = '/rest/v1/rpc/pd_public_fanbus_ontour_resolve';
+    private const ONTOUR_REFERRAL_RPC_PATH = '/rest/v1/rpc/pd_public_fanbus_trip_referral_track';
+    private const ONTOUR_AJAX_ACTION = 'pd_m340_track_referral';
+    private const ONTOUR_SLUG_PATTERN = '/^[a-z0-9]+(?:-[a-z0-9]+)*$/D';
     private const REQUEST_TIMEOUT = 8;
     private const MAX_RESPONSE_BYTES = 262144;
     private const MAX_URL_LENGTH = 2048;
@@ -31,6 +35,19 @@ final class PD_M310_Fanbus_Plugin
         add_shortcode('plaerrdeifl_fanbusfahrten', array(self::class, 'render_shortcode'));
         add_action('admin_menu', array(self::class, 'register_admin_page'));
         add_action('admin_init', array(self::class, 'register_settings'));
+        add_action(
+            'template_redirect',
+            array(self::class, 'route_ontour_request'),
+            0
+        );
+        add_action(
+            'wp_ajax_' . self::ONTOUR_AJAX_ACTION,
+            array(self::class, 'handle_ontour_referral_ajax')
+        );
+        add_action(
+            'wp_ajax_nopriv_' . self::ONTOUR_AJAX_ACTION,
+            array(self::class, 'handle_ontour_referral_ajax')
+        );
     }
 
     private static function default_settings(): array
@@ -348,6 +365,425 @@ final class PD_M310_Fanbus_Plugin
             array(),
             $style_version
         );
+    }
+
+    private static function enqueue_ontour_assets(): void
+    {
+        self::enqueue_public_assets();
+        $script_path = plugin_dir_path(__FILE__) . 'assets/m340-ontour.js';
+        $script_version = is_file($script_path)
+            ? (string) filemtime($script_path)
+            : self::VERSION;
+
+        wp_enqueue_script(
+            'pd-m340-ontour',
+            plugins_url('assets/m340-ontour.js', __FILE__),
+            array(),
+            $script_version,
+            true
+        );
+        wp_localize_script(
+            'pd-m340-ontour',
+            'PD_M340_ONTOUR',
+            array(
+                'ajaxUrl' => admin_url('admin-ajax.php', 'relative'),
+                'action' => self::ONTOUR_AJAX_ACTION,
+            )
+        );
+    }
+
+    public static function route_ontour_request(): void
+    {
+        $slug = self::requested_ontour_slug();
+        if ($slug === null) {
+            return;
+        }
+
+        self::disable_ontour_cache();
+        status_header(200);
+        $config = self::configuration();
+        $resolution = $config === null
+            ? null
+            : self::load_ontour_resolution($config, $slug);
+
+        if (
+            $config !== null
+            && is_array($resolution)
+            && $resolution['mode'] === 'SINGLE'
+        ) {
+            $trip = $resolution['trips'][0];
+            self::send_ontour_referral(
+                $config,
+                $slug,
+                $trip['tripId'],
+                false
+            );
+            $target = self::portal_trip_url(
+                $config['portal_registration_url'],
+                $trip['tripId']
+            );
+            wp_redirect($target, 302, 'Plaerrdeifl M340 OnTour');
+            exit;
+        }
+
+        self::render_ontour_page($slug, $config, $resolution);
+        exit;
+    }
+
+    private static function requested_ontour_slug(): ?string
+    {
+        if (!isset($_SERVER['REQUEST_URI']) || !is_string($_SERVER['REQUEST_URI'])) {
+            return null;
+        }
+
+        $request_path = wp_parse_url(
+            wp_unslash($_SERVER['REQUEST_URI']),
+            PHP_URL_PATH
+        );
+        $home_path = wp_parse_url(home_url('/'), PHP_URL_PATH);
+        if (!is_string($request_path) || !is_string($home_path)) {
+            return null;
+        }
+
+        $base_path = rtrim($home_path, '/');
+        if ($base_path !== '') {
+            $base_prefix = $base_path . '/';
+            if (!str_starts_with($request_path, $base_prefix)) {
+                return null;
+            }
+            $request_path = substr($request_path, strlen($base_path));
+        }
+
+        if (
+            preg_match(
+                '#^/ontour/([a-z0-9]+(?:-[a-z0-9]+)*)/?$#D',
+                $request_path,
+                $matches
+            ) !== 1
+        ) {
+            return null;
+        }
+
+        $slug = $matches[1];
+        return self::valid_ontour_slug($slug) ? $slug : null;
+    }
+
+    private static function valid_ontour_slug(mixed $value): bool
+    {
+        return is_string($value)
+            && strlen($value) >= 1
+            && strlen($value) <= 48
+            && preg_match(self::ONTOUR_SLUG_PATTERN, $value) === 1;
+    }
+
+    private static function disable_ontour_cache(): void
+    {
+        if (!defined('DONOTCACHEPAGE')) {
+            define('DONOTCACHEPAGE', true);
+        }
+        nocache_headers();
+    }
+
+    public static function handle_ontour_referral_ajax(): void
+    {
+        self::disable_ontour_cache();
+        $allowed_keys = array('action', 'slug', 'tripId');
+        if (
+            array_diff(array_keys($_POST), $allowed_keys) !== array()
+            || array_diff($allowed_keys, array_keys($_POST)) !== array()
+            || !is_string($_POST['action'])
+            || wp_unslash($_POST['action']) !== self::ONTOUR_AJAX_ACTION
+            || !is_string($_POST['slug'])
+            || !is_string($_POST['tripId'])
+        ) {
+            wp_send_json_error(array('code' => 'invalid_request'), 400);
+        }
+
+        $slug = wp_unslash($_POST['slug']);
+        $trip_id = wp_unslash($_POST['tripId']);
+        if (!self::valid_ontour_slug($slug) || !self::valid_uuid($trip_id)) {
+            wp_send_json_error(array('code' => 'invalid_request'), 400);
+        }
+
+        $config = self::configuration();
+        if ($config === null) {
+            wp_send_json_error(array('code' => 'unavailable'), 503);
+        }
+
+        self::send_ontour_referral($config, $slug, $trip_id, true);
+        wp_send_json_success(null, 202);
+    }
+
+    private static function load_ontour_resolution(
+        array $config,
+        string $slug
+    ): ?array {
+        if (!self::valid_ontour_slug($slug)) {
+            return null;
+        }
+
+        $body = wp_json_encode(array(
+            'p_slug' => $slug,
+        ));
+        if (!is_string($body) || $body === '') {
+            return null;
+        }
+
+        $response = wp_remote_post(
+            $config['supabase_url'] . self::ONTOUR_RESOLVER_RPC_PATH,
+            array(
+                'timeout' => self::REQUEST_TIMEOUT,
+                'redirection' => 0,
+                'reject_unsafe_urls' => true,
+                'limit_response_size' => self::MAX_RESPONSE_BYTES,
+                'headers' => array(
+                    'apikey' => $config['publishable_key'],
+                    'Content-Type' => 'application/json',
+                    'Cache-Control' => 'no-cache, no-store, max-age=0',
+                ),
+                'body' => $body,
+            )
+        );
+        if (is_wp_error($response)) {
+            return null;
+        }
+        $status = wp_remote_retrieve_response_code($response);
+        if ($status < 200 || $status >= 300) {
+            return null;
+        }
+
+        try {
+            $data = json_decode(
+                wp_remote_retrieve_body($response),
+                true,
+                64,
+                JSON_THROW_ON_ERROR
+            );
+        } catch (JsonException) {
+            return null;
+        }
+
+        return self::validated_ontour_resolution($data, $slug);
+    }
+
+    private static function validated_ontour_resolution(
+        mixed $value,
+        string $requested_slug
+    ): ?array {
+        if (!is_array($value) || array_is_list($value)) {
+            return null;
+        }
+        $keys = array_keys($value);
+        sort($keys);
+        if ($keys !== array('mode', 'place', 'trips')) {
+            return null;
+        }
+        if (!in_array($value['mode'], array('SINGLE', 'MULTIPLE', 'FALLBACK'), true)) {
+            return null;
+        }
+
+        $place = null;
+        if ($value['place'] !== null) {
+            if (!is_array($value['place']) || array_is_list($value['place'])) {
+                return null;
+            }
+            $place_keys = array_keys($value['place']);
+            sort($place_keys);
+            if (
+                $place_keys !== array('displayName', 'slug')
+                || !self::valid_ontour_slug($value['place']['slug'])
+                || $value['place']['slug'] !== $requested_slug
+                || !self::valid_text($value['place']['displayName'], 160)
+            ) {
+                return null;
+            }
+            $place = array(
+                'slug' => $value['place']['slug'],
+                'displayName' => trim($value['place']['displayName']),
+            );
+        }
+
+        if (!is_array($value['trips']) || !array_is_list($value['trips'])) {
+            return null;
+        }
+        $trips = array();
+        foreach ($value['trips'] as $raw_trip) {
+            $trip = self::validated_trip($raw_trip);
+            if (
+                $trip === null
+                || !in_array($trip['registrationStatus'], array('OPEN', 'WAITLIST'), true)
+            ) {
+                return null;
+            }
+            $trips[] = $trip;
+        }
+
+        $trip_count = count($trips);
+        if (
+            ($value['mode'] === 'SINGLE' && ($place === null || $trip_count !== 1))
+            || ($value['mode'] === 'MULTIPLE' && ($place === null || $trip_count < 2))
+            || ($value['mode'] === 'FALLBACK' && $trip_count !== 0)
+        ) {
+            return null;
+        }
+
+        return array(
+            'mode' => $value['mode'],
+            'place' => $place,
+            'trips' => $trips,
+        );
+    }
+
+    private static function send_ontour_referral(
+        array $config,
+        string $slug,
+        string $trip_id,
+        bool $blocking
+    ): void {
+        if (!self::valid_ontour_slug($slug) || !self::valid_uuid($trip_id)) {
+            return;
+        }
+
+        $body = wp_json_encode(array(
+            'p_slug' => $slug,
+            'p_trip_id' => $trip_id,
+        ));
+        if (!is_string($body) || $body === '') {
+            return;
+        }
+
+        try {
+            wp_remote_post(
+                $config['supabase_url'] . self::ONTOUR_REFERRAL_RPC_PATH,
+                array(
+                    'timeout' => $blocking ? self::REQUEST_TIMEOUT : 0.5,
+                    'blocking' => $blocking,
+                    'redirection' => 0,
+                    'reject_unsafe_urls' => true,
+                    'limit_response_size' => 8192,
+                    'headers' => array(
+                        'apikey' => $config['publishable_key'],
+                        'Content-Type' => 'application/json',
+                    ),
+                    'body' => $body,
+                )
+            );
+        } catch (Throwable) {
+            // Tracking is best effort and must never affect navigation.
+        }
+    }
+
+    private static function portal_trip_url(string $portal_url, string $trip_id): string
+    {
+        return add_query_arg('trip', $trip_id, $portal_url);
+    }
+
+    private static function render_ontour_page(
+        string $slug,
+        ?array $config,
+        ?array $resolution
+    ): void {
+        $is_multiple = $config !== null
+            && is_array($resolution)
+            && $resolution['mode'] === 'MULTIPLE';
+        if ($is_multiple) {
+            self::enqueue_ontour_assets();
+        } else {
+            self::enqueue_public_assets();
+        }
+
+        get_header();
+        ?>
+        <main id="primary" class="pd-m340-ontour" tabindex="-1">
+            <?php if ($is_multiple) : ?>
+                <?php self::render_ontour_multiple(
+                    $slug,
+                    $resolution['place'],
+                    $resolution['trips'],
+                    $config['portal_registration_url']
+                ); ?>
+            <?php else : ?>
+                <div class="pd-m340-ontour-notice" role="status">
+                    <?php echo esc_html(
+                        'Für diesen Ortslink ist aktuell keine direkte Fanbusfahrt verfügbar.'
+                    ); ?>
+                </div>
+                <?php echo self::render_shortcode(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+            <?php endif; ?>
+        </main>
+        <?php
+        get_footer();
+    }
+
+    private static function render_ontour_multiple(
+        string $slug,
+        array $place,
+        array $trips,
+        string $portal_url
+    ): void {
+        $heading_id = wp_unique_id('pd-m340-ontour-title-');
+        ?>
+        <section
+            class="pd-m310-fanbus pd-m340-ontour-selection"
+            aria-labelledby="<?php echo esc_attr($heading_id); ?>"
+        >
+            <header class="pd-m310-header">
+                <h1 id="<?php echo esc_attr($heading_id); ?>" class="pd-m310-heading">
+                    <?php echo esc_html('Fanbusfahrten nach ' . $place['displayName']); ?>
+                </h1>
+                <p class="pd-m310-intro">
+                    <?php echo esc_html('Wähle die gewünschte Fahrt zur Anmeldung aus.'); ?>
+                </p>
+            </header>
+            <div class="pd-m340-ontour-grid">
+                <?php foreach ($trips as $trip) : ?>
+                    <?php
+                    $status = self::status_presentation($trip['registrationStatus']);
+                    $target = self::portal_trip_url($portal_url, $trip['tripId']);
+                    ?>
+                    <article class="pd-m340-ontour-trip">
+                        <div class="pd-m340-ontour-trip-head">
+                            <p class="pd-m340-ontour-date">
+                                <?php echo esc_html(self::format_event_date($trip['eventDate'])); ?>
+                                <?php if (is_string($trip['eventTime']) && $trip['eventTime'] !== '') : ?>
+                                    <span aria-hidden="true"> · </span>
+                                    <?php echo esc_html(self::format_event_time($trip['eventTime'])); ?>
+                                <?php endif; ?>
+                            </p>
+                            <span class="pd-m310-status <?php echo esc_attr($status['class']); ?>">
+                                <?php echo esc_html($status['label']); ?>
+                            </span>
+                        </div>
+                        <h2 class="pd-m340-ontour-trip-title">
+                            <?php echo esc_html($trip['displayTitle']); ?>
+                        </h2>
+                        <dl class="pd-m340-ontour-meta">
+                            <div>
+                                <dt>Fahrtpreis</dt>
+                                <dd><?php echo esc_html(self::format_price($trip['priceCents'])); ?></dd>
+                            </div>
+                            <div>
+                                <dt>Anmeldeschluss</dt>
+                                <dd><?php echo esc_html(
+                                    self::format_timestamp($trip['registrationClosesAt'])
+                                ); ?></dd>
+                            </div>
+                        </dl>
+                        <a
+                            class="pd-m310-link pd-m340-ontour-link"
+                            href="<?php echo esc_url($target); ?>"
+                            data-pd-m340-referral
+                            data-pd-m340-slug="<?php echo esc_attr($slug); ?>"
+                            data-pd-m340-trip-id="<?php echo esc_attr($trip['tripId']); ?>"
+                            aria-label="<?php echo esc_attr(
+                                'Jetzt anmelden: ' . $trip['displayTitle']
+                            ); ?>"
+                        ><?php echo esc_html('Jetzt anmelden'); ?></a>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        </section>
+        <?php
     }
 
     public static function render_shortcode(): string
