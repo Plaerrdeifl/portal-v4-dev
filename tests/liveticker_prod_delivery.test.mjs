@@ -120,9 +120,10 @@ test("PROD Liveticker teams use portal-owned codes and server-managed local logo
   assert.doesNotMatch(migration, /p_payload->>'logoAssetPath'/);
   assert.match(admin, /Teamkürzel/);
   assert.doesNotMatch(admin, /name="logoUrl"/);
-  assert.doesNotMatch(admin, /name="logoAssetPath"/);
+  assert.match(admin, /name="logoAssetPath" required/);
+  assert.match(admin, /TEAM_LOGO_ASSETS/);
   assert.match(admin, /team\.logoAssetPath/);
-  assert.match(admin, /lokales Portal-Asset/);
+  assert.match(admin, /lokal[^\n]*Teamlogo/i);
   assert.match(build, /"assets"/);
 });
 
