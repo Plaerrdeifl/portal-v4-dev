@@ -143,7 +143,12 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260905200938_liveticker_prod_rosters_r1.sql",
     "20260906115000_liveticker_output_templates_prod_r1.sql",
     "20260906163500_liveticker_context_titles_prod_hotfix.sql",
-    "20260906221000_liveticker_team_assets_prod_hotfix.sql"
+    "20260906221000_liveticker_team_assets_prod_hotfix.sql",
+    "20260907185126_liveticker_graphics_jobs_prod_r1.sql",
+    "20260907185214_liveticker_graphics_worker_gateway_hardening_prod_r1.sql",
+    "20260907185726_liveticker_graphics_portal_api_prod_r1.sql",
+    "20260907190134_liveticker_graphics_completed_games_prod_hotfix.sql",
+    "20260907190513_liveticker_graphics_portal_rpc_hardening_prod_r1.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
