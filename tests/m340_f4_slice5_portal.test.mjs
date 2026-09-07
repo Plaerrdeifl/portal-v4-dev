@@ -10,7 +10,9 @@ const files = {
   fanbuses: "js/modules/fanbuses.js",
   auth: "js/auth.js",
   busOrga: "js/m328-bus-orga-shell.js",
-  busOrgaModule: "js/modules/bus-orga.js",
+  busOrgaModule: "js/modules/bus-orga-v2.js",
+  busOrgaV3: "js/modules/bus-orga-v3.js",
+  pages: "js/pages.js",
   fanbusPage: "pages/fanbuses.html",
   busOrgaPage: "pages/bus-orga.html",
   css: "css/app.css"
@@ -123,6 +125,9 @@ test("Bus-Orga discovery includes the dedicated publishing capability", () => {
   assert.match(content.auth, /"fanbus\.publishing\.manage"/);
   assert.match(content.busOrga, /"fanbus\.publishing\.manage"/);
   assert.match(content.busOrgaModule, /"fanbus\.publishing\.manage"/);
+  assert.match(content.busOrgaModule, /renderPublishing\(\)/);
+  assert.match(content.busOrgaV3, /bus-orga-v2\.js\?[^"\n]*m340=20260907-m340-publishing-bus-orga1/);
+  assert.match(content.pages, /bus-orga-v3\.js\?[^"\n]*m340=20260907-m340-publishing-bus-orga1/);
 });
 
 test("publishing workspace has responsive styling within the existing fanbus surface", () => {
