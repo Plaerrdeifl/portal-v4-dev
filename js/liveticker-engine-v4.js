@@ -302,8 +302,18 @@ export function formatEventText(event, history, opponent) {
   throw new Error("Unbekannte Aktion.");
 }
 
+export function historyByMinute(history) {
+  return (Array.isArray(history) ? history : [])
+    .map((event, index) => {
+      const minute = Number.parseInt(event?.minute, 10);
+      return { event, index, minute: Number.isInteger(minute) ? minute : Number.POSITIVE_INFINITY };
+    })
+    .sort((a, b) => a.minute - b.minute || a.index - b.index)
+    .map(item => item.event);
+}
+
 function goalSummaryLines(history, team, segmentKey = null) {
-  return history
+  return historyByMinute(history)
     .filter(event => event.type === "goal" && event.team === team && (!segmentKey || eventSegment(event).key === segmentKey))
     .map(event => {
       const scorer = goalPlayerLine(event);
@@ -334,7 +344,7 @@ export function formatPeriodSummary(history, period, opponent) {
 
 function penaltySummaryLines(history, team) {
   const lines = [];
-  for (const event of history) {
+  for (const event of historyByMinute(history)) {
     if (event.type !== "penalty") continue;
     for (const penalty of event.penalties.filter(entry => entry.team === team)) {
       const base = `${event.minute} Spielminute – ${penalty.player ? playerText(penalty.player) : "ohne Spieler"} – ${penalty.duration} min ${penalty.reason}`;
@@ -345,7 +355,7 @@ function penaltySummaryLines(history, team) {
 }
 
 function shootoutSummaryLines(history, opponent) {
-  const attempts = history.filter(event => event.type === "shootout");
+  const attempts = historyByMinute(history).filter(event => event.type === "shootout");
   if (!attempts.length) return [];
   const score = calculateShootout(history);
   return ["", "🏒 *Penaltyschießen*", `Treffer: Mighty Dogs ${score.mighty}:${score.opponent} ${opponent.shortName}`, ...attempts.map(event => `${teamName(event.team, opponent)} · ${event.player ? playerText(event.player) : "Schütze offen"} · ${event.result === "scored" ? "verwandelt" : "vergeben"}`)];
@@ -653,7 +663,7 @@ function initialize() {
   function renderHistory() {
     historyList.replaceChildren();
     historyEmpty.hidden = state.history.length > 0;
-    [...state.history].reverse().forEach(event => {
+    historyByMinute(state.history).reverse().forEach(event => {
       const item = document.createElement("article");
       const major = event.type === "penalty" && event.penalties.some(entry => isMajorPenalty(entry.duration));
       item.className = `history-item${major ? " major" : ""}`;

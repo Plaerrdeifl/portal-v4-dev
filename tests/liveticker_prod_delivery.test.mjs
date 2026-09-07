@@ -153,3 +153,23 @@ test("PROD Liveticker exposes exactly three repeatable manual output buttons", a
   assert.doesNotMatch(migration, /v_state\.minute < 20|v_state\.minute < 40|v_state\.completed_at is null/);
   assert.doesNotMatch(migration, /LIVETICKER_GRAPHIC_PERIOD_NOT_READY|LIVETICKER_GRAPHIC_FINAL_NOT_READY/);
 });
+
+
+
+test("PROD team editor can change team code and select a local logo asset", async () => {
+  const admin = await read("js/modules/liveticker-admin.js");
+  const migration = await read("supabase/migrations/20260907213229_liveticker_team_logo_edit_prod_hotfix.sql");
+
+  assert.match(admin, /name="teamCode"/);
+  assert.match(admin, /name="logoAssetPath" required/);
+  assert.match(admin, /data-team-logo-preview-image/);
+  assert.match(admin, /teamLogoChoices/);
+  assert.doesNotMatch(admin, /name="logoUrl"/);
+
+  assert.match(migration, /p_payload->>'teamCode'/);
+  assert.match(migration, /p_payload->>'logoAssetPath'/);
+  assert.match(migration, /team_code=v_code/);
+  assert.match(migration, /logo_asset_path=v_logo/);
+  assert.match(migration, /\^\/assets\/liveticker\/teams\//);
+  assert.doesNotMatch(migration, /https?:\/\//);
+});
