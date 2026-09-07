@@ -10,7 +10,9 @@ const files = {
   fanbuses: "js/modules/fanbuses.js",
   auth: "js/auth.js",
   busOrga: "js/m328-bus-orga-shell.js",
-  page: "pages/fanbuses.html",
+  busOrgaModule: "js/modules/bus-orga.js",
+  fanbusPage: "pages/fanbuses.html",
+  busOrgaPage: "pages/bus-orga.html",
   css: "css/app.css"
 };
 
@@ -91,7 +93,11 @@ test("portal workspace uses only frozen M340 actions and capability gate", () =>
   assert.match(content.publishing, /hasCapability\(M340_PUBLISHING_CAPABILITY\)/);
   assert.match(content.fanbuses, /view=publishing/);
   assert.match(content.fanbuses, /renderM340PublishingWorkspace/);
-  assert.match(content.page, /id="m340PublishingButton"[\s\S]*Flyer &amp; Kurzlinks/);
+  assert.doesNotMatch(content.fanbusPage, /m340PublishingButton/);
+  assert.match(content.busOrgaPage, /id="m340PublishingSection"[\s\S]*id="m340PublishingEntry"[\s\S]*Flyer &amp; Kurzlinks/);
+  assert.match(content.busOrgaModule, /hasCapability\("fanbus\.publishing\.manage"\)/);
+  assert.match(content.busOrgaModule, /openWorkspace\("publishing"\)/);
+  assert.match(content.busOrga, /\[data-m340-back\]/);
 });
 
 test("portal keeps durable public links separate from the DEV staging test base", () => {
@@ -116,6 +122,7 @@ test("browser publishing surface contains no server credentials or direct WebDAV
 test("Bus-Orga discovery includes the dedicated publishing capability", () => {
   assert.match(content.auth, /"fanbus\.publishing\.manage"/);
   assert.match(content.busOrga, /"fanbus\.publishing\.manage"/);
+  assert.match(content.busOrgaModule, /"fanbus\.publishing\.manage"/);
 });
 
 test("publishing workspace has responsive styling within the existing fanbus surface", () => {

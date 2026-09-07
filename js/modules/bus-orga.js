@@ -20,7 +20,8 @@ const BUS_ORGA_CAPABILITIES = Object.freeze([
   "fanbus.manage",
   "fanbus.registrations.manage",
   "fanbus.operations.manage",
-  "fanbus.payment_marker.manage"
+  "fanbus.payment_marker.manage",
+  "fanbus.publishing.manage"
 ]);
 
 function hasBusOrgaAccess() {
@@ -151,6 +152,19 @@ function renderWorkspaces() {
   });
 }
 
+function renderPublishing() {
+  const section = document.getElementById("m340PublishingSection");
+  const button = document.getElementById("m340PublishingEntry");
+  if (!section || !button) return;
+  const allowed = hasCapability("fanbus.publishing.manage");
+  section.hidden = !allowed;
+  if (!allowed) {
+    button.onclick = null;
+    return;
+  }
+  button.onclick = () => openWorkspace("publishing");
+}
+
 function renderNextTrip(items) {
   const target = document.getElementById("m328BusOrgaNextTrip");
   if (!target) return;
@@ -263,6 +277,7 @@ export async function hydrateBusOrga(context = {}) {
     renderNextTrip(items);
     renderQuickRegistration(items);
     renderWorkspaces();
+    renderPublishing();
     renderTrips(items);
   } catch (error) {
     if (context.isCurrent && !context.isCurrent()) return;
