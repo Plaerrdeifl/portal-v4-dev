@@ -304,7 +304,7 @@ function bindGlobalListeners() {
     }
 
     const back = event.target?.closest?.(
-      "[data-m325-back],[data-m310-settings-back],[data-m326-back]"
+      "[data-m325-back],[data-m310-settings-back],[data-m326-back],[data-m340-back]"
     );
     if (!back || !isM328BusOrgaContext()) return;
     event.preventDefault();
