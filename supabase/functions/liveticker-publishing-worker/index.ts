@@ -89,6 +89,8 @@ function validManifest(value: unknown) {
     if (typeof item.nextcloudPath !== "string" || !item.nextcloudPath.startsWith("/Liveticker/") || item.nextcloudPath.includes("..") || item.nextcloudPath.includes("\\") || item.nextcloudPath.includes("?") || item.nextcloudPath.includes("#")) return false;
     if (typeof item.sha256 !== "string" || !/^[0-9a-f]{64}$/.test(item.sha256)) return false;
     if (typeof item.bytes !== "number" || !Number.isSafeInteger(item.bytes) || item.bytes < 1 || item.bytes > 104_857_600) return false;
+    if (typeof item.shareUrl !== "string" || !/^https:\/\/cloud\.plaerrdeifl\.de\/s\/[A-Za-z0-9]{8,128}$/.test(item.shareUrl)) return false;
+    if (typeof item.downloadUrl !== "string" || item.downloadUrl !== `${item.shareUrl}/download`) return false;
   }
   return kinds.has("POST") && kinds.has("STORY");
 }
