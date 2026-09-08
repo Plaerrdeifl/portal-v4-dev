@@ -58,6 +58,7 @@ require("script.google.com/macros" not in index, "Legacy Apps Script ist im Entr
 require("google-identity.js" not in index, "Legacy Google GIS ist im Entry Point aktiv.")
 require("upgrade-insecure-requests" not in index, "CSP würde lokale Supabase-HTTP-Verbindung hochstufen.")
 require("https://*.supabase.co" in index, "Supabase-Cloud fehlt in connect-src.")
+require("https://cloud.plaerrdeifl.de" in index, "Nextcloud fehlt in connect-src für M340-Flyer-Downloads.")
 require("http://127.0.0.1:54321" in index, "Lokale Supabase-API fehlt in connect-src.")
 
 package = json.loads(text("package.json"))
