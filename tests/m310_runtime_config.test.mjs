@@ -144,7 +144,7 @@ test("M310 runtime generator and PR workflow retain their security boundaries", 
 
   assert.match(
     workflow,
-    /M310_TURNSTILE_SITE_KEY: \$\{\{ vars\.M310_TURNSTILE_SITE_KEY \}\}/
+    /M310_TURNSTILE_SITE_KEY: \$\{\{ vars\.M310_TURNSTILE_SITE_KEY \|\| '1x00000000000000000000AA' \}\}/
   );
   assert.match(
     workflow,
