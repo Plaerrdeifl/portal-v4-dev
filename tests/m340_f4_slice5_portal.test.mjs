@@ -162,11 +162,11 @@ test("publishing workspace retains responsive history and ambiguity styling", ()
   assert.match(content.css, /@media \(max-width: 700px\)/);
   assert.match(content.css, /@media \(max-width: 430px\)/);
   assert.doesNotMatch(content.css, /\.m340-publishing-(create-place|key-form|bind-form|place-technical|place-stats|keys)/);
-  assert.match(content.publishing, /renderJob\(jobs\[0\], true\)/);
+  assert.match(content.publishing, /renderGeneration\(jobs\[0\], true\)/);
   assert.match(content.publishing, /<details class="m340-publishing-older">[\s\S]*Ältere Generationen/);
-  assert.match(content.publishing, /Dateien herunterladen/);
-  assert.match(content.publishing, /href="\$\{escapeAttr\(artifact\.downloadUrl\)\}"/);
-  assert.match(content.publishing, />Herunterladen<\/a>/);
+  assert.match(content.publishing, /Erstellte Assets/);
+  assert.match(content.publishing, /href="\$\{escapeAttr\(downloadUrl\)\}"/);
+  assert.match(content.publishing, />Download<\/a>/);
   assert.doesNotMatch(content.publishing, /Technische Dateiinformationen|In Nextcloud gespeichert/);
 });
 
@@ -176,16 +176,16 @@ test("normal UI uses user-facing language only", () => {
     "Canonical Place", "technische Ortszuordnung", "Alias-Zuordnung"
   ]) assert.ok(!content.publishing.toLocaleLowerCase("de-DE").includes(forbidden.toLocaleLowerCase("de-DE")), `${forbidden} darf nicht sichtbar sein`);
   assert.match(content.publishing, /<span>Kurzlink<\/span>/);
-  assert.match(content.publishing, /Dieser Kurzlink wird für QR-Code und Flyer verwendet\./);
+  assert.match(content.publishing, /Jede Fahrt hat ihren dauerhaften OnTour-Link und ihre eigenen Asset-Generationen\./);
   assert.match(content.publishing, /<span class="m340-publishing-kicker">Bus-Orga<\/span>/);
   assert.doesNotMatch(content.publishing, /<span class="m340-publishing-kicker">Fanbus<\/span>/);
 });
 
 test("active import chain carries the M340 cache key end-to-end", () => {
-  const cacheKey = "m340=20260908-direct-download-r1";
-  assert.ok(content.fanbuses.includes(`m340-publishing.js?v=20260908-direct-download-r1`));
+  const cacheKey = "m340=20260908-publishing-assets-r1";
+  assert.ok(content.fanbuses.includes(`m340-publishing.js?v=20260908-publishing-assets-r1`));
   assert.ok(content.pages.includes(`fanbuses.js?v=20260826-p800-r2-final-direct-fix&groups=20260828-m310-r1&m327=20260828-m327-r1&completion=20260829-m328-final1&correction=20260830-m328-c1&${cacheKey}`));
-  assert.match(content.app, /pages\.js\?[^"\n]*m340=20260908-direct-download-r1/);
-  assert.match(content.index, /js\/app\.js\?[^"\n]*m340=20260908-direct-download-r1/);
-  assert.match(content.index, /css\/app\.css\?[^"\n]*m340=20260908-direct-download-r1/);
+  assert.match(content.app, /pages\.js\?[^"\n]*m340=20260908-publishing-assets-r1/);
+  assert.match(content.index, /js\/app\.js\?[^"\n]*m340=20260908-publishing-assets-r1/);
+  assert.match(content.index, /css\/app\.css\?[^"\n]*m340=20260908-publishing-assets-r1/);
 });
