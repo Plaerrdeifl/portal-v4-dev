@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse, base64, json, mimetypes, os, struct, subprocess
+import argparse, base64, hashlib, json, mimetypes, os, struct, subprocess
 from collections import OrderedDict
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -44,11 +44,9 @@ def data_uri(path:Path):
 
 def inject_background(root,fmt):
     path=BACKGROUND[fmt]
-    if not path.is_file():
-        return False
+    if not path.is_file(): return False
     g=find(root,'background_image')
-    if g is None:
-        raise RuntimeError('missing background_image group')
+    if g is None: raise RuntimeError('missing background_image group')
     for child in list(g): g.remove(child)
     w,h=EXPECTED[fmt]
     img=ET.Element(q('image'),{'x':'0','y':'0','width':str(w),'height':str(h),'preserveAspectRatio':'xMidYMid slice','href':data_uri(path)})
@@ -61,10 +59,7 @@ def inject_logo(root,id_,path:Path):
     g=find(root,id_)
     if g is None: raise RuntimeError(f'missing logo group: {id_}')
     for child in list(g): g.remove(child)
-    box={
-      ('POST','logo_home'):(118,430,230,230), ('POST','logo_away'):(906,430,230,230),
-      ('STORY','logo_home'):(62,430,220,220), ('STORY','logo_away'):(659,430,220,220),
-    }[(CURRENT_FORMAT,id_)]
+    box={('POST','logo_home'):(118,430,230,230),('POST','logo_away'):(906,430,230,230),('STORY','logo_home'):(62,430,220,220),('STORY','logo_away'):(659,430,220,220)}[(CURRENT_FORMAT,id_)]
     x,y,w,h=box
     img=ET.Element(q('image'),{'x':str(x),'y':str(y),'width':str(w),'height':str(h),'preserveAspectRatio':'xMidYMid meet','href':data_uri(path)})
     g.append(img)
@@ -90,8 +85,7 @@ def score_scope(history,kind):
                 if so_our>so_opp: our+=1
                 else: opp+=1
                 suffix='n.P.'
-        elif any(e.get('type')=='goal' and int(e.get('minute',0) or 0)>60 for e in history):
-            suffix='n.V.'
+        elif any(e.get('type')=='goal' and int(e.get('minute',0) or 0)>60 for e in history): suffix='n.V.'
     return our,opp,suffix
 
 def minute_label(ev):
@@ -121,8 +115,7 @@ def goal_lines(history,kind):
         except: continue
         if max_min is not None and minute>max_min: continue
         p=ev.get('player') or {}
-        number=str(p.get('number') or '').strip()
-        name=short_player_name(p)
+        number=str(p.get('number') or '').strip(); name=short_player_name(p)
         key=str(p.get('id') or f'{number}|{name}')
         if key not in grouped: grouped[key]={'number':number,'name':name,'mins':[]}
         grouped[key]['mins'].append(minute_label(ev))
@@ -140,28 +133,33 @@ def png_dims(path:Path):
     if not b.startswith(b'\x89PNG\r\n\x1a\n'): raise RuntimeError('not png')
     return struct.unpack('>II',b[16:24])
 
+def snapshot_template_tree(state,fmt):
+    templates=state.get('graphicTemplates')
+    key='post' if fmt=='POST' else 'story'
+    template=templates.get(key) if isinstance(templates,dict) else None
+    if not isinstance(template,dict): raise RuntimeError(f'missing template snapshot: {fmt}')
+    svg_text=template.get('svgText'); sha256=str(template.get('sha256') or '').lower()
+    if not isinstance(svg_text,str): raise RuntimeError(f'invalid template snapshot: {fmt}')
+    data=svg_text.encode('utf-8')
+    if len(data)<200 or len(data)>524288: raise RuntimeError(f'invalid template size: {fmt}')
+    if hashlib.sha256(data).hexdigest()!=sha256: raise RuntimeError(f'template checksum mismatch: {fmt}')
+    return ET.ElementTree(ET.fromstring(svg_text))
+
 def render_one(state,kind,fmt,outdir):
     global CURRENT_FORMAT
     CURRENT_FORMAT=fmt
-    tree=ET.parse(TEMPLATES[(kind,fmt)]); root=tree.getroot()
+    tree=snapshot_template_tree(state,fmt); root=tree.getroot()
     background_applied=inject_background(root,fmt)
     our,opp,suffix=score_scope(state['history'],kind)
     set_text(root,'headline','ENDERGEBNIS' if kind=='FINAL' else 'ZWISCHENSTAND')
     if kind=='FINAL':
-        set_text(root,'subheadline',state.get('competitionLabel',''))
-        set_text(root,'result_suffix',suffix)
-        set_text(root,'series_info',state.get('seriesInfo',''))
+        set_text(root,'subheadline',state.get('competitionLabel','')); set_text(root,'result_suffix',suffix); set_text(root,'series_info',state.get('seriesInfo',''))
         if not state.get('seriesInfo'): hide(root,'series_ribbon')
-    else:
-        set_text(root,'period_label','1. DRITTEL' if kind=='PERIOD_1' else '2. DRITTEL')
-    set_text(root,'home_score',our); set_text(root,'away_score',opp)
-    set_text(root,'our_goals_heading','UNSERE TORE')
-    lines=goal_lines(state['history'],kind)
-    apply_lines(root,lines)
-    inject_logo(root,'logo_home',Path(state['ourTeam']['logoPath']))
-    inject_logo(root,'logo_away',Path(state['opponentTeam']['logoPath']))
-    stem=f"{kind.lower()}-{fmt.lower()}"
-    svg=outdir/f'{stem}.svg'; png=outdir/f'{stem}.png'
+    else: set_text(root,'period_label','1. DRITTEL' if kind=='PERIOD_1' else '2. DRITTEL')
+    set_text(root,'home_score',our); set_text(root,'away_score',opp); set_text(root,'our_goals_heading','UNSERE TORE')
+    lines=goal_lines(state['history'],kind); apply_lines(root,lines)
+    inject_logo(root,'logo_home',Path(state['ourTeam']['logoPath'])); inject_logo(root,'logo_away',Path(state['opponentTeam']['logoPath']))
+    stem=f"{kind.lower()}-{fmt.lower()}"; svg=outdir/f'{stem}.svg'; png=outdir/f'{stem}.png'
     tree.write(svg,encoding='utf-8',xml_declaration=True)
     cmd=['docker','run','--rm','--network','none','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=256','--user',f'{os.getuid()}:{os.getgid()}','-e','HOME=/tmp','-v',f'{outdir}:/work','-v',f'{FONT_DIR}:/usr/share/fonts/truetype/plaerrdeifl:ro','--entrypoint','inkscape',RENDERER,f'/work/{svg.name}','--export-type=png',f'--export-filename=/work/{png.name}']
     r=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,timeout=180)
@@ -173,9 +171,10 @@ def main():
     ap=argparse.ArgumentParser(); ap.add_argument('state'); ap.add_argument('--out',required=True); args=ap.parse_args()
     state=json.loads(Path(args.state).read_text(encoding='utf-8'))
     out=Path(args.out); out.mkdir(parents=True,exist_ok=True)
+    kind=str(state.get('kind') or '').upper()
+    if kind not in ('PERIOD_1','PERIOD_2','FINAL'): raise RuntimeError('invalid graphic kind')
     results=[]
-    for kind in ('PERIOD_1','PERIOD_2','FINAL'):
-        for fmt in ('POST','STORY'): results.append(render_one(state,kind,fmt,out))
+    for fmt in ('POST','STORY'): results.append(render_one(state,kind,fmt,out))
     (out/'manifest.json').write_text(json.dumps(results,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps(results,ensure_ascii=False,indent=2))
 if __name__=='__main__': main()
