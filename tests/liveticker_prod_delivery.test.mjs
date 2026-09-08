@@ -120,10 +120,10 @@ test("PROD Liveticker teams use portal-owned codes and server-managed local logo
   assert.doesNotMatch(migration, /p_payload->>'logoAssetPath'/);
   assert.match(admin, /Teamkürzel/);
   assert.doesNotMatch(admin, /name="logoUrl"/);
-  assert.match(admin, /name="logoAssetPath" required/);
-  assert.match(admin, /TEAM_LOGO_ASSETS/);
+  assert.match(admin, /name="logoFile" type="file"/);
+  assert.doesNotMatch(admin, /TEAM_LOGO_ASSETS|teamLogoChoices/);
   assert.match(admin, /team\.logoAssetPath/);
-  assert.match(admin, /lokal[^\n]*Teamlogo/i);
+  assert.match(admin, /ersetzt ausschließlich das Logo dieses Teams/);
   assert.match(build, /"assets"/);
 });
 
@@ -157,24 +157,36 @@ test("PROD Liveticker exposes exactly three repeatable manual output buttons", a
 
 
 
-test("PROD team editor can change team code and select a local logo asset", async () => {
+test("PROD team editor changes code and replaces only that team's logo by upload", async () => {
   const admin = await read("js/modules/liveticker-admin.js");
-  const migration = await read("supabase/migrations/20260907213229_liveticker_team_logo_edit_prod_hotfix.sql");
+  const migration = await read("supabase/migrations/20260908065652_liveticker_team_logo_upload_prod_r1.sql");
+  const worker = await read("scripts/liveticker-renderer/publishing_worker.py");
 
-  const teamFormSource = admin.match(/function teamForm[\s\S]*?function bindTeamLogoPreview/)?.[0] || "";
+  const teamFormSource = admin.match(/function teamForm[\s\S]*?async function loadTeamLogo/)?.[0] || "";
   assert.match(admin, /name="teamCode"/);
-  assert.match(admin, /name="logoAssetPath" required/);
-  assert.match(admin, /document\.createElement\("img"\)/);
-  assert.match(admin, /data-team-logo-preview/);
-  assert.match(admin, /teamLogoChoices/);
+  assert.match(admin, /name="logoFile" type="file" accept="image\/png,image\/jpeg,image\/webp"/);
+  assert.match(admin, /TEAM_LOGO_MAX_BYTES = 1024 \* 1024/);
+  assert.match(admin, /fileToBase64/);
+  assert.match(admin, /liveticker_team_logo_get/);
+  assert.match(admin, /logoDataBase64/);
+  assert.match(admin, /logoMime/);
+  assert.match(admin, /ersetzt ausschließlich das Logo dieses Teams/);
+  assert.doesNotMatch(admin, /TEAM_LOGO_ASSETS|teamLogoChoices|name="logoAssetPath"/);
   assert.doesNotMatch(teamFormSource, /<img/);
-  assert.doesNotMatch(teamFormSource, /autocapitalize="characters"/);
-  assert.doesNotMatch(admin, /name="logoUrl"/);
 
-  assert.match(migration, /p_payload->>'teamCode'/);
-  assert.match(migration, /p_payload->>'logoAssetPath'/);
-  assert.match(migration, /team_code=v_code/);
-  assert.match(migration, /logo_asset_path=v_logo/);
-  assert.match(migration, /\^\/assets\/liveticker\/teams\//);
+  assert.match(migration, /add column if not exists logo_data bytea/);
+  assert.match(migration, /octet_length\(logo_data\) between 1 and 1048576/);
+  assert.match(migration, /image\/png','image\/jpeg','image\/webp/);
+  assert.match(migration, /p_payload->>'logoDataBase64'/);
+  assert.match(migration, /p_payload->>'logoMime'/);
+  assert.match(migration, /logo_data=case when v_logo_b64 is not null/);
+  assert.match(migration, /logo_asset_path/);
+  assert.match(migration, /'logoDataBase64',case when v_own\.logo_data is null/);
+  assert.match(migration, /liveticker_team_logo_get/);
   assert.doesNotMatch(migration, /https?:\/\//);
+
+  assert.match(worker, /def snapshot_logo_path/);
+  assert.match(worker, /logoDataBase64/);
+  assert.match(worker, /TEAM_LOGO_SIZE_INVALID/);
+  assert.match(worker, /return local_logo_path\(asset_path\)/);
 });

@@ -34,25 +34,9 @@ const POSITION_LABELS = Object.freeze({
   FORWARD: "Sturm"
 });
 
-const TEAM_LOGO_ASSETS = Object.freeze([
-  Object.freeze({ value: "/assets/liveticker/teams/black-dragons-erfurt.svg", label: "Erfurt" }),
-  Object.freeze({ value: "/assets/liveticker/teams/ea-schongau.png", label: "Schongau" }),
-  Object.freeze({ value: "/assets/liveticker/teams/ehc-klostersee.png", label: "Klostersee" }),
-  Object.freeze({ value: "/assets/liveticker/teams/ehc-koenigsbrunn.png", label: "Königsbrunn" }),
-  Object.freeze({ value: "/assets/liveticker/teams/ehc-waldkraiburg.png", label: "Waldkraiburg" }),
-  Object.freeze({ value: "/assets/liveticker/teams/ersc-amberg.png", label: "Amberg" }),
-  Object.freeze({ value: "/assets/liveticker/teams/esc-dorfen.png", label: "Dorfen" }),
-  Object.freeze({ value: "/assets/liveticker/teams/esc-geretsried.png", label: "Geretsried" }),
-  Object.freeze({ value: "/assets/liveticker/teams/esc-kempten.png", label: "Kempten" }),
-  Object.freeze({ value: "/assets/liveticker/teams/esv-buchloe.png", label: "Buchloe" }),
-  Object.freeze({ value: "/assets/liveticker/teams/esv-burgau-2000.png", label: "Burgau" }),
-  Object.freeze({ value: "/assets/liveticker/teams/ev-dingolfing.png", label: "Dingolfing" }),
-  Object.freeze({ value: "/assets/liveticker/teams/hc-landsberg.png", label: "Landsberg" }),
-  Object.freeze({ value: "/assets/liveticker/teams/mighty-dogs-schweinfurt.png", label: "Mighty Dogs" }),
-  Object.freeze({ value: "/assets/liveticker/teams/peissenberg-miners.png", label: "Peißenberg" }),
-  Object.freeze({ value: "/assets/liveticker/teams/tev-miesbach.png", label: "Miesbach" }),
-  Object.freeze({ value: "/assets/liveticker/teams/vfe-ulm-neu-ulm.png", label: "Ulm/Neu-Ulm" })
-]);
+const TEAM_LOGO_MAX_BYTES = 1024 * 1024;
+const TEAM_LOGO_MIMES = new Set(["image/png", "image/jpeg", "image/webp"]);
+
 
 const OUTPUT_TEMPLATE_SECTIONS = Object.freeze([
   Object.freeze({ key: "own", title: "Tore – Wir", description: "Ausgaben, wenn die Mighty Dogs treffen.", contexts: Object.freeze(["own"]) }),
@@ -100,42 +84,97 @@ function ensureLivetickerAdminStyles() {
 
 function normalizeCheckbox(values, name) { return { ...values, [name]: values[name] === "on" }; }
 
-function teamLogoChoices(team = {}) {
-  const choices = [...TEAM_LOGO_ASSETS];
-  const currentPath = String(team.logoAssetPath || "").trim();
-  if (currentPath && !choices.some(choice => choice.value === currentPath)) {
-    choices.push({ value: currentPath, label: team.shortName || team.name || currentPath.split("/").pop() || currentPath });
+function teamLogoDataUrl(payload) {
+  if (!payload?.uploaded || !payload?.mime || !payload?.dataBase64) return "";
+  return `data:${payload.mime};base64,${payload.dataBase64}`;
+}
+
+function validateTeamLogoFile(file, required = false) {
+  if (!(file instanceof File) || !file.size) {
+    if (required) throw new Error("Bitte ein Teamlogo auswählen.");
+    return null;
   }
-  return choices.sort((a, b) => a.label.localeCompare(b.label, "de"));
+  if (!TEAM_LOGO_MIMES.has(file.type)) {
+    throw new Error("Teamlogo muss PNG, JPG oder WebP sein.");
+  }
+  if (file.size > TEAM_LOGO_MAX_BYTES) {
+    throw new Error("Teamlogo darf maximal 1 MB groß sein.");
+  }
+  return file;
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Teamlogo konnte nicht gelesen werden."));
+    reader.onload = () => {
+      const value = String(reader.result || "");
+      const marker = ";base64,";
+      const index = value.indexOf(marker);
+      if (index < 0) return reject(new Error("Teamlogo konnte nicht verarbeitet werden."));
+      resolve(value.slice(index + marker.length));
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 function teamForm(team = {}) {
-  const logoChoices = teamLogoChoices(team);
-  const logoPath = String(team.logoAssetPath || "").trim();
-  const logoOptions = ['<option value="">Logo auswählen …</option>', ...logoChoices.map(choice => `<option value="${escapeAttr(choice.value)}" ${choice.value === logoPath ? "selected" : ""}>${escapeHtml(choice.label)}</option>`)].join("");
-  const preview = `<div class="liveticker-team-logo-editor" data-team-logo-preview ${logoPath ? "" : "hidden"}><span class="subtle" data-team-logo-preview-label>${logoPath ? "Aktuell ausgewähltes lokales Logo" : "Ausgewähltes lokales Logo"}</span></div>`;
-  return `<form class="liveticker-admin-form"><input type="hidden" name="id" value="${escapeAttr(team.id || "")}"><label>Teamname<input name="name" required maxlength="160" placeholder="z. B. Mighty Dogs Schweinfurt" value="${escapeAttr(team.name || "")}"></label><label>Kurzname<input name="shortName" required maxlength="60" placeholder="z. B. Mighty Dogs" value="${escapeAttr(team.shortName || "")}"></label><label>Teamkürzel<input name="teamCode" required maxlength="12" placeholder="z. B. ERVS" value="${escapeAttr(team.teamCode || "")}"></label><label>Teamlogo<select name="logoAssetPath" required>${logoOptions}</select></label>${preview}<p class="subtle">Es werden ausschließlich bereits lokal im Portal hinterlegte Teamlogos verwendet.</p><label class="checkbox-row"><input name="homeClub" type="checkbox" ${team.homeClub ? "checked" : ""}><span>Unser Verein / Heimverein</span></label><label class="checkbox-row"><input name="active" type="checkbox" ${team.active !== false ? "checked" : ""}><span>Team ist aktiv</span></label></form>`;
+  const hasLogo = Boolean(team.logoUploaded || team.logoAssetPath);
+  return `<form class="liveticker-admin-form"><input type="hidden" name="id" value="${escapeAttr(team.id || "")}"><label>Teamname<input name="name" required maxlength="160" placeholder="z. B. Mighty Dogs Schweinfurt" value="${escapeAttr(team.name || "")}"></label><label>Kurzname<input name="shortName" required maxlength="60" placeholder="z. B. Mighty Dogs" value="${escapeAttr(team.shortName || "")}"></label><label>Teamkürzel<input name="teamCode" required maxlength="12" placeholder="z. B. ERVS" value="${escapeAttr(team.teamCode || "")}"></label><label>Teamlogo<input name="logoFile" type="file" accept="image/png,image/jpeg,image/webp" ${team.id ? "" : "required"}></label><div class="liveticker-team-logo-editor" data-team-logo-preview ${hasLogo ? "" : "hidden"}><span class="subtle" data-team-logo-preview-label>${team.logoUploaded ? "Aktuell hochgeladenes Teamlogo" : hasLogo ? "Aktuelles Teamlogo" : "Neues Teamlogo"}</span></div><p class="subtle">PNG, JPG oder WebP · maximal 1 MB. Ein neuer Upload ersetzt ausschließlich das Logo dieses Teams.</p><label class="checkbox-row"><input name="homeClub" type="checkbox" ${team.homeClub ? "checked" : ""}><span>Unser Verein / Heimverein</span></label><label class="checkbox-row"><input name="active" type="checkbox" ${team.active !== false ? "checked" : ""}><span>Team ist aktiv</span></label></form>`;
 }
 
-function bindTeamLogoPreview(dialog) {
+async function loadTeamLogo(team) {
+  if (team?.logoUploaded && team?.id) {
+    const payload = await call("liveticker_team_logo_get", { teamId: team.id });
+    const url = teamLogoDataUrl(payload);
+    if (url) return url;
+  }
+  return String(team?.logoAssetPath || "").trim();
+}
+
+function bindTeamLogoPreview(dialog, team = {}) {
   const form = dialog?.querySelector?.(".liveticker-admin-form");
-  const select = form?.elements?.namedItem?.("logoAssetPath");
+  const input = form?.elements?.namedItem?.("logoFile");
   const preview = dialog?.querySelector?.("[data-team-logo-preview]");
-  if (!(select instanceof HTMLSelectElement) || !preview) return;
+  const label = dialog?.querySelector?.("[data-team-logo-preview-label]");
+  if (!(input instanceof HTMLInputElement) || !preview) return;
   const image = document.createElement("img");
   image.dataset.teamLogoPreviewImage = "true";
-  image.alt = "Ausgewähltes Teamlogo";
+  image.alt = `Logo ${team.shortName || team.name || "Team"}`;
   image.width = 96;
   image.height = 96;
   preview.prepend(image);
-  const sync = () => {
-    const value = String(select.value || "").trim();
-    preview.hidden = !value;
-    if (value) image.src = value;
-    else image.removeAttribute("src");
+  let objectUrl = "";
+  const setSource = source => {
+    if (!source) {
+      preview.hidden = true;
+      image.removeAttribute("src");
+      return;
+    }
+    preview.hidden = false;
+    image.src = source;
   };
-  select.addEventListener("change", sync);
-  sync();
+  loadTeamLogo(team).then(setSource).catch(error => console.error("Liveticker team logo preview failed", error));
+  input.addEventListener("change", () => {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    objectUrl = "";
+    const file = input.files?.[0] || null;
+    try {
+      const valid = validateTeamLogoFile(file, false);
+      input.setCustomValidity("");
+      if (!valid) {
+        loadTeamLogo(team).then(setSource).catch(() => setSource(""));
+        return;
+      }
+      objectUrl = URL.createObjectURL(valid);
+      if (label) label.textContent = "Neues Teamlogo · wird beim Speichern übernommen";
+      setSource(objectUrl);
+    } catch (error) {
+      input.setCustomValidity(error?.message || "Ungültiges Teamlogo.");
+      input.reportValidity();
+    }
+  });
+  dialog.addEventListener("close", () => { if (objectUrl) URL.revokeObjectURL(objectUrl); }, { once: true });
 }
 
 function playerForm(team, player = {}) {
@@ -149,13 +188,13 @@ function outputTemplateForm(template,section){const contextKey=section.contexts[
 function bindProtectedTemplateField(field){let pendingFallback=null;field.addEventListener("beforeinput",event=>{const plan=planLivetickerProtectedEdit(field.value,field.selectionStart,field.selectionEnd,event.inputType);if(plan.action==="allow")return;if(!event.cancelable){pendingFallback={plan,value:field.value};return}event.preventDefault();if(plan.action==="delete"){field.setRangeText("",plan.start,plan.end,"end");field.dispatchEvent(new Event("input",{bubbles:true}));return}field.setSelectionRange(plan.start,plan.end)});field.addEventListener("input",()=>{if(!pendingFallback)return;const{plan,value}=pendingFallback;pendingFallback=null;field.value=plan.action==="delete"?`${value.slice(0,plan.start)}${value.slice(plan.end)}`:value;field.setSelectionRange(plan.start,plan.start)})}
 function bindOutputTemplateForm(dialog,contextKeys){const form=dialog.querySelector(".liveticker-output-template-form");if(!form)return;for(const contextKey of contextKeys){const context=LIVETICKER_TEMPLATE_CONTEXTS[contextKey];const field=form.elements.namedItem(context.field);if(field instanceof HTMLTextAreaElement)bindProtectedTemplateField(field)}function validateField(contextKey){const context=LIVETICKER_TEMPLATE_CONTEXTS[contextKey];const field=form.elements.namedItem(context.field);const message=form.querySelector(`[data-template-validation='${contextKey}']`);if(!(field instanceof HTMLTextAreaElement))return;const result=validateLivetickerTemplate(field.value,contextKey);field.setCustomValidity(result.errors.join(" "));if(message){message.dataset.valid=String(result.valid);message.textContent=result.valid?"Alle Pflichtplatzhalter vorhanden.":result.errors.join(" ")}}for(const contextKey of contextKeys){const context=LIVETICKER_TEMPLATE_CONTEXTS[contextKey];const field=form.elements.namedItem(context.field);field?.addEventListener("input",()=>validateField(contextKey));validateField(contextKey)}form.querySelectorAll("[data-insert-variable]").forEach(button=>{button.addEventListener("click",()=>{const field=form.elements.namedItem(button.dataset.templateTarget||"");if(!(field instanceof HTMLTextAreaElement))return;const token=templateToken(button.dataset.insertVariable||"");const range=livetickerSafeTokenInsertionRange(field.value,field.selectionStart,field.selectionEnd);field.setRangeText(token,range.start,range.end,"end");field.dispatchEvent(new Event("input",{bubbles:true}));field.focus({preventScroll:true})})})}
 function openOutputTemplate(template,section,optionNumber){const contextKey=section.contexts[0];const context=LIVETICKER_TEMPLATE_CONTEXTS[contextKey];const contextTitle=template[context.titleField]||template.title||"Ausgabeoption";const dialog=openDialog({title:`${section.title} · Option ${optionNumber}`,kicker:`Liveticker · Editor · ${contextTitle}`,body:outputTemplateForm(template,section),submitLabel:"Option speichern",onSubmit:async values=>{const errors=section.contexts.flatMap(key=>{const ctx=LIVETICKER_TEMPLATE_CONTEXTS[key];return validateLivetickerTemplate(values[ctx.field],key).errors});if(errors.length)throw new Error([...new Set(errors)].join(" "));const payload={key:template.key,context:section.key,title:values.title,expectedRevision:template.revision};for(const key of section.contexts){const ctx=LIVETICKER_TEMPLATE_CONTEXTS[key];payload[ctx.field]=values[ctx.field]}templateSnapshot=await runWrite(()=>call("liveticker_output_template_save",payload),"Ausgabeoption wurde aktualisiert.");render()}});bindOutputTemplateForm(dialog,section.contexts)}
-function openTeam(team=null){const dialog=openDialog({title:team?"Team bearbeiten":"Team anlegen",kicker:"Liveticker · Teams",body:teamForm(team||{}),onSubmit:async values=>{let payload=normalizeCheckbox(values,"homeClub");payload=normalizeCheckbox(payload,"active");if(team)payload.expectedRevision=team.revision;snapshot=await runWrite(()=>call("liveticker_team_save",payload),team?"Team wurde aktualisiert.":"Team wurde angelegt.");currentTeamId=payload.id||snapshot?.teams?.find(item=>item.name===payload.name)?.id||currentTeamId;render()}});bindTeamLogoPreview(dialog)}
+function openTeam(team=null){const dialog=openDialog({title:team?"Team bearbeiten":"Team anlegen",kicker:"Liveticker · Teams",body:teamForm(team||{}),onSubmit:async values=>{const logoFile=validateTeamLogoFile(values.logoFile,!team);let payload={...values};delete payload.logoFile;payload=normalizeCheckbox(payload,"homeClub");payload=normalizeCheckbox(payload,"active");if(logoFile){payload.logoMime=logoFile.type;payload.logoDataBase64=await fileToBase64(logoFile)}if(team)payload.expectedRevision=team.revision;snapshot=await runWrite(()=>call("liveticker_team_save",payload),team?"Team wurde aktualisiert.":"Team wurde angelegt.");currentTeamId=payload.id||snapshot?.teams?.find(item=>item.name===payload.name)?.id||currentTeamId;render()}});bindTeamLogoPreview(dialog,team||{})}
 function openPlayer(team,player=null){openDialog({title:player?"Spieler bearbeiten":"Spieler hinzufügen",kicker:team.shortName||team.name,body:playerForm(team,player||{}),onSubmit:async values=>{const payload=normalizeCheckbox(values,"active");if(player)payload.expectedRevision=player.revision;snapshot=await runWrite(()=>call("liveticker_player_save",payload),player?"Spieler wurde aktualisiert.":"Spieler wurde hinzugefügt.");currentTeamId=team.id;render()}})}
 function playerRow(team,player){const number=player.number?`#${escapeHtml(player.number)}`:"–";return `<button class="v4-team-member-row is-actionable" type="button" data-player-id="${escapeAttr(player.id)}"><span class="v4-team-member-copy"><strong>${number} ${escapeHtml(player.name)}</strong><small>${escapeHtml(POSITION_LABELS[player.position]||player.position)}${player.active?"":" · inaktiv"}</small></span><span class="v4-row-chevron" aria-hidden="true">›</span></button>`}
 function groupPlayers(team,position){const players=(team.players||[]).filter(player=>player.position===position);if(!players.length)return"";return `<section class="v4-team-detail-section"><h3>${escapeHtml(POSITION_LABELS[position])}</h3><div class="v4-team-member-list">${players.map(player=>playerRow(team,player)).join("")}</div></section>`}
 function teamListRow(team){const activePlayers=(team.players||[]).filter(player=>player.active).length;return `<button class="v4-team-list-row" type="button" data-team-id="${escapeAttr(team.id)}"><span><strong>${escapeHtml(team.shortName||team.name)}${team.homeClub?" · 🏠":""}</strong><small>${team.teamCode?`${escapeHtml(team.teamCode)} · `:""}${activePlayers} aktive Spieler${team.active?"":" · Team inaktiv"}</small></span><span class="v4-row-chevron" aria-hidden="true">›</span></button>`}
-function teamDetail(team){return `<div class="v4-team-detail"><div class="v4-section-heading"><div><span class="subtle">Teamverwaltung</span><h2>Kader</h2></div><div class="button-row"><button class="button small secondary" type="button" data-edit-team>Team bearbeiten</button><button class="button small primary" type="button" data-add-player>+ Spieler</button></div></div><div class="liveticker-team-identity">${team.logoAssetPath?`<img src="${escapeAttr(team.logoAssetPath)}" alt="Logo ${escapeAttr(team.shortName||team.name)}" width="100" height="100" loading="lazy">`:""}<p class="subtle">${team.teamCode?`Kürzel: ${escapeHtml(team.teamCode)}`:"Kein Kürzel"}${team.logoAssetPath?" · lokales Logo vorhanden":" · Kein Logo-Asset"}</p></div>${groupPlayers(team,"GOALIE")}${groupPlayers(team,"DEFENSE")}${groupPlayers(team,"FORWARD")}${(team.players||[]).length?"":'<div class="notice neutral">Noch keine Spieler angelegt.</div>'}</div>`}
-function bindTeamDetail(panel,team){panel.querySelector("[data-edit-team]")?.addEventListener("click",()=>openTeam(team));panel.querySelector("[data-add-player]")?.addEventListener("click",()=>openPlayer(team));panel.querySelectorAll("[data-player-id]").forEach(button=>button.addEventListener("click",()=>{const player=(team.players||[]).find(item=>item.id===button.dataset.playerId);if(player)openPlayer(team,player)}))}
+function teamDetail(team){const fallback=String(team.logoAssetPath||"").trim();return `<div class="v4-team-detail"><div class="v4-section-heading"><div><span class="subtle">Teamverwaltung</span><h2>Kader</h2></div><div class="button-row"><button class="button small secondary" type="button" data-edit-team>Team bearbeiten</button><button class="button small primary" type="button" data-add-player>+ Spieler</button></div></div><div class="liveticker-team-identity"><img data-team-logo-detail ${fallback?`src="${escapeAttr(fallback)}"`:"hidden"} alt="Logo ${escapeAttr(team.shortName||team.name)}" width="100" height="100" loading="lazy"><p class="subtle">${team.teamCode?`Kürzel: ${escapeHtml(team.teamCode)}`:"Kein Kürzel"}${team.logoUploaded?" · eigenes Logo hochgeladen":fallback?" · Standardlogo":" · Kein Logo"}</p></div>${groupPlayers(team,"GOALIE")}${groupPlayers(team,"DEFENSE")}${groupPlayers(team,"FORWARD")}${(team.players||[]).length?"":'<div class="notice neutral">Noch keine Spieler angelegt.</div>'}</div>`}
+function bindTeamDetail(panel,team){const logo=panel.querySelector("[data-team-logo-detail]");if(logo instanceof HTMLImageElement){loadTeamLogo(team).then(source=>{if(source){logo.src=source;logo.hidden=false}else{logo.hidden=true}}).catch(error=>console.error("Liveticker team logo detail failed",error))}panel.querySelector("[data-edit-team]")?.addEventListener("click",()=>openTeam(team));panel.querySelector("[data-add-player]")?.addEventListener("click",()=>openPlayer(team));panel.querySelectorAll("[data-player-id]").forEach(button=>button.addEventListener("click",()=>{const player=(team.players||[]).find(item=>item.id===button.dataset.playerId);if(player)openPlayer(team,player)}))}
 function archiveDate(value){if(!value)return"–";const date=new Date(`${value}T12:00:00`);if(Number.isNaN(date.getTime()))return String(value);return new Intl.DateTimeFormat("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"}).format(date)}
 function archiveCompletedAt(value){if(!value)return"–";const date=new Date(value);if(Number.isNaN(date.getTime()))return String(value);return new Intl.DateTimeFormat("de-DE",{dateStyle:"short",timeStyle:"short"}).format(date)}
 function archiveScore(game){const own=Number(game.ownScore||0);const opponent=Number(game.opponentScore||0);return game.homeAway==="AWAY"?`${opponent}:${own}`:`${own}:${opponent}`}
