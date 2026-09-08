@@ -15,7 +15,8 @@ import {
   isCurrentFanbusRegistration,
   operationalBookingCountLabel,
   operationalBookingRoleLabel,
-  operationalGroupLabel
+  operationalGroupLabel,
+  replaceOperationalRolePrefix
 } from "./modules/fanbus-operational-integrity.js";
 
 let syncKey = "";
@@ -111,14 +112,6 @@ function applyParticipantGroups(registrations) {
   });
 }
 
-function replaceRolePrefix(text, role) {
-  const raw = String(text || "");
-  const prefix = /^(?:Gruppenbuchung · \d+ Personen|Mitfahrer · Gruppe [^·]+|Einzelbuchung)(?: · )?/u;
-  if (prefix.test(raw)) return raw.replace(prefix, `${role} · `).replace(/ · $/, "");
-  const separator = raw.indexOf(" · ");
-  return separator < 0 ? role : `${role} · ${raw.slice(separator + 3)}`;
-}
-
 function applyBookingGroups(registrations) {
   const contexts = buildOperationalBookingContexts(registrations);
   const grouped = new Map();
@@ -143,7 +136,7 @@ function applyBookingGroups(registrations) {
       if (!registration || !isCurrentFanbusRegistration(registration)) return;
       const target = row.querySelector("small");
       if (!target) return;
-      const next = replaceRolePrefix(target.textContent, operationalBookingRoleLabel(registration, context));
+      const next = replaceOperationalRolePrefix(target.textContent, operationalBookingRoleLabel(registration, context));
       if (target.textContent !== next) target.textContent = next;
     });
   }
