@@ -146,7 +146,7 @@ def game_remote_dir(request: dict[str, Any]) -> str:
     if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', event_date):
         raise WorkerError('SNAPSHOT_EVENT_DATE_INVALID')
     opponent_name = opponent.get('shortName') or opponent.get('name') if isinstance(opponent, dict) else ''
-    folder = f'{event_date}_{slug(str(opponent_name), "Gegner")}_{event_id[:8]}'
+    folder = f'{event_date}_{slug(str(opponent_name), "Gegner")}'
     return f'{NEXTCLOUD_ROOT}/{folder}'
 
 def webdav_url(path: str) -> str:
