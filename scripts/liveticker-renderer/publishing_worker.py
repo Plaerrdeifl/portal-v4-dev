@@ -38,6 +38,14 @@ FORMAT_BY_NAME = {
     'period_2-post.png': 'POST', 'period_2-story.png': 'STORY',
     'final-post.png': 'POST', 'final-story.png': 'STORY',
 }
+REMOTE_NAME_BY_LOCAL = {
+    'period_1-post.png': '1-Drittel_POST.png',
+    'period_1-story.png': '1-Drittel_STORY.png',
+    'period_2-post.png': '2-Drittel_POST.png',
+    'period_2-story.png': '2-Drittel_STORY.png',
+    'final-post.png': 'Endstand_POST.png',
+    'final-story.png': 'Endstand_STORY.png',
+}
 
 class WorkerError(RuntimeError):
     def __init__(self, code: str):
@@ -121,6 +129,25 @@ def remote_path(path: str) -> str:
     if not path.startswith('/Liveticker/') or '..' in path or '\\' in path or '?' in path or '#' in path:
         raise WorkerError('NEXTCLOUD_PATH_INVALID')
     return path
+
+
+def slug(value: str, fallback: str) -> str:
+    normalized = re.sub(r'[^A-Za-z0-9ÄÖÜäöüß._-]+', '-', str(value or '').strip())
+    normalized = re.sub(r'-{2,}', '-', normalized).strip('-.')
+    return normalized[:80] or fallback
+
+
+def game_remote_dir(request: dict[str, Any]) -> str:
+    event_id = str(request.get('eventId') or '').strip()
+    event_date = str(request.get('eventDate') or '').strip()
+    opponent = request.get('opponentTeam')
+    if not re.fullmatch(r'[0-9a-fA-F-]{36}', event_id):
+        raise WorkerError('SNAPSHOT_EVENT_ID_INVALID')
+    if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', event_date):
+        raise WorkerError('SNAPSHOT_EVENT_DATE_INVALID')
+    opponent_name = opponent.get('shortName') or opponent.get('name') if isinstance(opponent, dict) else ''
+    folder = f'{event_date}_{slug(str(opponent_name), "Gegner")}_{event_id[:8]}'
+    return f'{NEXTCLOUD_ROOT}/{folder}'
 
 def webdav_url(path: str) -> str:
     return NEXTCLOUD_BASE.rstrip('/') + '/' + urllib.parse.quote(remote_path(path).lstrip('/'), safe='/')
@@ -313,9 +340,9 @@ def process_job(job: dict[str, Any]) -> dict[str, Any]:
     for name in names:
         if not (rendered / name).is_file() or (rendered / name).stat().st_size <= 0:
             raise WorkerError('RENDER_OUTPUT_MISSING')
-    remote_dir = f'{NEXTCLOUD_ROOT}/{job_id}/current'
+    remote_dir = game_remote_dir(job['request'])
     ensure_collection(remote_dir)
-    artifacts = [put(rendered / name, f'{remote_dir}/{name}') for name in names]
+    artifacts = [put(rendered / name, f'{remote_dir}/{REMOTE_NAME_BY_LOCAL[name]}') for name in names]
     manifest = {'schemaVersion': 1, 'graphicKind': kind, 'artifacts': artifacts}
     write_json(jobdir / 'receipt.json', manifest)
     return manifest
