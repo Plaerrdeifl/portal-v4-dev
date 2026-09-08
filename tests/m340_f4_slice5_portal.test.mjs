@@ -186,6 +186,7 @@ test("flyer delivery fetches the original public DAV file and stays inside the p
   assert.match(content.publishing, /URL\.createObjectURL\(blob\)/);
   assert.match(content.publishing, /URL\.revokeObjectURL\(objectUrl\)/);
   assert.match(content.publishing, /Flyer konnte nicht geladen werden\. Bitte erneut versuchen\./);
+  assert.match(content.index, /connect-src[^;]*https:\/\/cloud\.plaerrdeifl\.de/);
 });
 
 test("each published trip shows its own shortlink counters", () => {
