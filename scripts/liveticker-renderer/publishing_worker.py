@@ -182,9 +182,68 @@ def ensure_collection(path: str) -> None:
         current += '/' + part
         webdav('MKCOL', current, {201, 405})
 
+def valid_share_url(value: Any) -> str | None:
+    share_url = str(value or '').rstrip('/')
+    if re.fullmatch(r'https://cloud[.]plaerrdeifl[.]de/s/[A-Za-z0-9]{8,128}', share_url):
+        return share_url
+    return None
+
+
+def existing_public_share(remote: str, auth: str) -> str | None:
+    query = urllib.parse.urlencode({
+        'format': 'json',
+        'path': remote_path(remote),
+        'reshares': 'true',
+    })
+    request = urllib.request.Request(
+        NEXTCLOUD_SHARE_API + '?' + query,
+        headers={
+            'Authorization': f'Basic {auth}',
+            'OCS-APIRequest': 'true',
+            'Accept': 'application/json',
+            'User-Agent': 'Plaerrdeifl-Liveticker-Worker/1',
+        },
+        method='GET',
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            raw = response.read(1_048_577)
+    except urllib.error.HTTPError as exc:
+        if exc.code in {401, 403}:
+            raise WorkerError('NEXTCLOUD_AUTH_FAILED') from exc
+        raise WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
+    except urllib.error.URLError as exc:
+        raise WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
+    try:
+        body = json.loads(raw.decode('utf-8'))
+        meta = body['ocs']['meta']
+        if int(meta.get('statuscode', 0)) != 200:
+            raise ValueError('OCS share lookup failed')
+        shares = body['ocs']['data']
+        if not isinstance(shares, list):
+            raise TypeError('OCS share lookup returned invalid data')
+    except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        raise WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
+    for share in reversed(shares):
+        if not isinstance(share, dict):
+            continue
+        if int(share.get('share_type', -1)) != 3:
+            continue
+        if int(share.get('permissions', 0)) & 1 != 1:
+            continue
+        share_url = valid_share_url(share.get('url'))
+        if share_url:
+            return share_url
+    return None
+
+
 def public_share(remote: str) -> tuple[str, str]:
     password = read_secret(NEXTCLOUD_SECRET)
     auth = base64.b64encode(f'{NEXTCLOUD_USER}:{password}'.encode('utf-8')).decode('ascii')
+    share_url = existing_public_share(remote, auth)
+    if share_url:
+        return share_url, share_url + '/download'
+
     payload = urllib.parse.urlencode({
         'path': remote_path(remote),
         'shareType': '3',
@@ -217,11 +276,11 @@ def public_share(remote: str) -> tuple[str, str]:
         meta = body['ocs']['meta']
         if int(meta.get('statuscode', 0)) != 200:
             raise ValueError('OCS share creation failed')
-        share_url = str(body['ocs']['data']['url']).rstrip('/')
+        share_url = valid_share_url(body['ocs']['data']['url'])
+        if share_url is None:
+            raise ValueError('OCS share creation returned invalid URL')
     except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
         raise WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
-    if not re.fullmatch(r'https://cloud[.]plaerrdeifl[.]de/s/[A-Za-z0-9]{8,128}', share_url):
-        raise WorkerError('NEXTCLOUD_SHARE_FAILED')
     return share_url, share_url + '/download'
 
 
