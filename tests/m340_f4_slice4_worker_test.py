@@ -235,9 +235,14 @@ class ManifestTests(unittest.TestCase):
                 path = tmp / f"{kind}.png"
                 path.write_bytes(b"png" + bytes([index]))
                 pngs[kind] = path
+            shares = {
+                kind: (f"https://cloud.plaerrdeifl.de/s/TestShare{index:02d}", f"https://cloud.plaerrdeifl.de/s/TestShare{index:02d}/download")
+                for index, kind in enumerate(worker.ARTIFACTS, start=1)
+            }
             manifest = worker.build_manifest(
                 pngs,
                 "/Fanbus/_DEV/2026-10-03_landsberg/generation-001",
+                shares,
             )
             self.assertEqual(manifest["schemaVersion"], 1)
             self.assertEqual([item["kind"] for item in manifest["artifacts"]], ["QR", "POST", "STORY", "LED"])
@@ -246,6 +251,8 @@ class ManifestTests(unittest.TestCase):
                 self.assertRegex(item["sha256"], r"^[0-9a-f]{64}$")
                 self.assertTrue(item["nextcloudPath"].startswith("/Fanbus/_DEV/"))
                 self.assertTrue(item["filename"].endswith(".png"))
+                self.assertRegex(item["shareUrl"], r"^https://cloud\.plaerrdeifl\.de/s/[A-Za-z0-9]{8,128}$")
+                self.assertEqual(item["downloadUrl"], item["shareUrl"] + "/download")
 
     def test_remote_path_rejects_traversal_and_urls(self):
         invalid = [

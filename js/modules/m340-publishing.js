@@ -128,17 +128,12 @@ function artifactLabel(kind) {
 }
 
 function renderArtifacts(manifest) {
-  const artifacts = asArray(manifest?.artifacts);
+  const artifacts = asArray(manifest?.artifacts).filter(artifact => artifact?.downloadUrl);
   if (!artifacts.length) return "";
-  const technicalRows = artifacts
-    .filter(artifact => artifact?.nextcloudPath || artifact?.filename)
-    .map(artifact => `<li><strong>${escapeHtml(artifactLabel(artifact?.kind))}:</strong> <code>${escapeHtml(artifact?.nextcloudPath || artifact?.filename || "")}</code></li>`)
-    .join("");
-  return `<div class="m340-publishing-artifacts" aria-label="Erstellte Dateien">${artifacts.map(artifact => `<div>
+  return `<div class="m340-publishing-artifacts" aria-label="Dateien herunterladen">${artifacts.map(artifact => `<div>
     <strong>${escapeHtml(artifactLabel(artifact?.kind))}</strong>
-    <small>In Nextcloud gespeichert</small>
-  </div>`).join("")}</div>
-  ${technicalRows ? `<details class="m340-publishing-technical m340-publishing-file-details"><summary>Technische Dateiinformationen</summary><ul>${technicalRows}</ul></details>` : ""}`;
+    <a class="button small secondary" href="${escapeAttr(artifact.downloadUrl)}" rel="noopener">Herunterladen</a>
+  </div>`).join("")}</div>`;
 }
 
 function renderJob(job, current = false) {
@@ -173,7 +168,7 @@ function workspaceMarkup(model) {
       <div>
         <span class="m340-publishing-kicker">Bus-Orga</span>
         <h2>Flyer &amp; Kurzlinks</h2>
-        <p>QR-Ziele, Flyer-Erstellung, Nextcloud-Ablage und anonyme Klickstatistik.</p>
+        <p>QR-Ziele, Flyer-Erstellung, direkte Downloads und anonyme Klickstatistik.</p>
       </div>
     </header>
     ${renderMetrics(model)}
