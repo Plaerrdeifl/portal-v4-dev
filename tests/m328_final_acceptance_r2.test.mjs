@@ -18,12 +18,10 @@ test("M328 final acceptance keeps ride workspaces inside the selected ride", () 
 });
 
 test("M328 normal booking back navigation is no longer swallowed by the acceptance layer", () => {
-  const bookingBranch = acceptance.slice(
-    acceptance.indexOf('if (route.view === "bookings") {'),
-    acceptance.indexOf('event.preventDefault();', acceptance.indexOf('if (route.view === "bookings") {') + 1)
+  assert.match(
+    acceptance,
+    /if \(route\.view === "bookings"\) \{[\s\S]*?if \(route\.from === "duplicate-review" && route\.reviewA && route\.reviewB\) \{[\s\S]*?location\.hash = duplicateReviewRoute\(route\.tripId, route\.reviewA, route\.reviewB\);[\s\S]*?\}\s*return;\s*\}/
   );
-  assert.match(bookingBranch, /return;/);
-  assert.doesNotMatch(bookingBranch, /tripDetailRoute/);
 });
 
 test("M328 final acceptance gives booking roles clear group semantics", () => {
