@@ -27,6 +27,10 @@ function routeState() {
   };
 }
 
+function isBusOrgaRoute() {
+  return routeState().path === "#/bus-orga";
+}
+
 function tripDetailRoute(tripId) {
   const params = new URLSearchParams({ view: "trip-detail", trip: String(tripId || "") });
   return `#/bus-orga?${params}`;
@@ -199,28 +203,28 @@ async function syncParticipantRoles() {
 }
 
 function ensureBookingFilter() {
+  const route = routeState();
+  if (route.view !== "bookings") return;
   const tools = document.querySelector(".m328-bookings-tools");
   const count = document.getElementById("m328BookingCount");
-  if (!tools || !count || tools.querySelector("[data-m328-booking-status-filter]")) return;
+  const details = tools?.querySelector(".m328-bookings-filter, .m328-final-booking-filter");
+  if (!tools || !count || !details) return;
+
   tools.classList.add("m328-final-booking-tools");
-  const row = document.createElement("div");
-  row.className = "m328-final-booking-tools-row";
-  count.before(row);
-  row.append(count);
-  const details = document.createElement("details");
-  details.className = "m328-final-booking-filter";
-  details.innerHTML = `
-    <summary class="button small secondary">Filter</summary>
-    <label class="m328-final-booking-filter-body">Status
-      <select data-m328-booking-status-filter>
-        <option value="OPEN" selected>Nicht storniert</option>
-        <option value="ALL">Alle</option>
-        <option value="ACTIVE">Aktiv</option>
-        <option value="WAITLISTED">Warteliste</option>
-        <option value="CANCELLED">Storniert</option>
-      </select>
-    </label>`;
-  row.append(details);
+  details.classList.remove("m328-bookings-filter");
+  details.classList.add("m328-final-booking-filter");
+  const body = details.querySelector(".m328-bookings-filter-body, .m328-final-booking-filter-body");
+  body?.classList.remove("m328-bookings-filter-body");
+  body?.classList.add("m328-final-booking-filter-body");
+
+  let row = tools.querySelector(".m328-final-booking-tools-row");
+  if (!row) {
+    row = document.createElement("div");
+    row.className = "m328-final-booking-tools-row";
+    count.before(row);
+  }
+  if (count.parentElement !== row) row.append(count);
+  if (details.parentElement !== row) row.append(details);
 }
 
 function bookingCardStatus(card) {
@@ -231,27 +235,17 @@ function bookingCardStatus(card) {
   return "";
 }
 
-function applyBookingFilter() {
+function syncBookingSummary() {
   const route = routeState();
   if (route.view !== "bookings") return;
-  ensureBookingFilter();
-  const selected = document.querySelector("[data-m328-booking-status-filter]")?.value || "OPEN";
   const cards = [...document.querySelectorAll("#m328BookingList .m328-booking-card")];
-  let visible = 0;
-  for (const card of cards) {
-    const status = bookingCardStatus(card);
-    const show = selected === "ALL"
-      || (selected === "OPEN" ? status !== "CANCELLED" : status === selected);
-    card.hidden = !show;
-    if (show) visible += 1;
-  }
+  if (!cards.length) return;
+  const cancelled = cards.filter(card => bookingCardStatus(card) === "CANCELLED").length;
+  const active = cards.length - cancelled;
+  const activeLabel = active === 1 ? "aktive Buchung" : "aktive Buchungen";
   const count = document.getElementById("m328BookingCount");
-  if (count) {
-    const current = count.textContent || "";
-    const total = Number(current.match(/von\s+(\d+)\s+Buchungen/i)?.[1] || cards.length);
-    const next = `${visible} von ${total} Buchungen`;
-    if (count.textContent !== next) count.textContent = next;
-  }
+  const next = `${active} ${activeLabel} · ${cancelled} storniert`;
+  if (count && count.textContent !== next) count.textContent = next;
 }
 
 function repairOperationsFilter() {
@@ -282,13 +276,13 @@ function applySynchronousPolish() {
   ensureParticipantQuickFilter();
   applyParticipantFilters();
   ensureBookingFilter();
-  applyBookingFilter();
+  syncBookingSummary();
   repairOperationsFilter();
   repairBusWorkspace();
 }
 
 function schedulePolish() {
-  if (scheduled) return;
+  if (!isBusOrgaRoute() || scheduled) return;
   scheduled = true;
   queueMicrotask(() => {
     scheduled = false;
@@ -302,13 +296,20 @@ document.addEventListener("click", event => {
   if (!button) return;
   const route = routeState();
   if (route.path !== "#/bus-orga" || !route.tripId || !CHILD_VIEWS.has(route.view)) return;
+
+  if (route.view === "bookings") {
+    if (route.from === "duplicate-review" && route.reviewA && route.reviewB) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      location.hash = duplicateReviewRoute(route.tripId, route.reviewA, route.reviewB);
+    }
+    return;
+  }
+
   event.preventDefault();
   event.stopPropagation();
   event.stopImmediatePropagation();
-  if (route.view === "bookings" && route.from === "duplicate-review" && route.reviewA && route.reviewB) {
-    location.hash = duplicateReviewRoute(route.tripId, route.reviewA, route.reviewB);
-    return;
-  }
   location.hash = tripDetailRoute(route.tripId);
 }, true);
 
@@ -317,10 +318,6 @@ document.addEventListener("input", event => {
 });
 
 document.addEventListener("change", event => {
-  if (event.target.matches?.("[data-m328-booking-status-filter]")) {
-    applyBookingFilter();
-    return;
-  }
   if (event.target.closest?.("[data-m328-participant-filter]")) {
     const form = event.target.closest("[data-m328-participant-filter]");
     const hide = form?.querySelector("[data-m328-hide-cancelled]");
@@ -339,7 +336,8 @@ document.addEventListener("visibilitychange", () => {
 });
 
 const observer = new MutationObserver(() => schedulePolish());
-observer.observe(document.documentElement, { childList: true, subtree: true });
+const viewRoot = document.getElementById("view");
+if (viewRoot) observer.observe(viewRoot, { childList: true, subtree: true });
 
 schedulePolish();
 
