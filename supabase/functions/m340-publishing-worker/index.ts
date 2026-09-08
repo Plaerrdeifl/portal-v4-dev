@@ -63,7 +63,9 @@ function isValidArtifact(value: unknown) {
     "filename",
     "nextcloudPath",
     "sha256",
-    "bytes"
+    "bytes",
+    "shareUrl",
+    "downloadUrl"
   ])) return false;
 
   return ["QR", "POST", "STORY", "LED"].includes(String(value.kind))
@@ -86,7 +88,11 @@ function isValidArtifact(value: unknown) {
     && typeof value.bytes === "number"
     && Number.isSafeInteger(value.bytes)
     && value.bytes >= 1
-    && value.bytes <= 104_857_600;
+    && value.bytes <= 104_857_600
+    && typeof value.shareUrl === "string"
+    && /^https:\/\/cloud\.plaerrdeifl\.de\/s\/[A-Za-z0-9]{8,128}$/.test(value.shareUrl)
+    && typeof value.downloadUrl === "string"
+    && value.downloadUrl === `${value.shareUrl}/download`;
 }
 
 function isValidManifest(value: unknown) {

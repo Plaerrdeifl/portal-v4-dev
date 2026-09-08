@@ -159,6 +159,7 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260907210154_liveticker_manual_outputs_prod_hotfix.sql",
     "20260907213229_liveticker_team_logo_edit_prod_hotfix.sql",
     "20260908065652_liveticker_team_logo_upload_prod_r1.sql",
+    "20260908080000_add_fanbus_publishing_download_links_m340.sql",
     "20260908155358_liveticker_graphic_templates_portal_prod_r1.sql"
   ]);
 

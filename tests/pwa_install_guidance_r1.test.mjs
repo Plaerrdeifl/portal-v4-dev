@@ -76,7 +76,7 @@ test("PWA guidance remains active under the current shell release", () => {
   const participantRelease = "20260830-m328-participant-mobile1";
   const finalM328Release = "20260830-m328-final-bus-management1";
   const m327PersonalRelease = "20260830-m327-personal-final1";
-  const m340Release = "20260907-auto-place-resolution-r2";
+  const m340Release = "20260908-direct-download-r1";
   const cache = "pd-portal-v4-pwa-install-guidance-r1-20260802";
 
   assert.match(
