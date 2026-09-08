@@ -65,6 +65,7 @@ EXPECTED_TEMPLATE_DIMENSIONS = {key.upper(): value for key, value in EXPECTED_PN
 REQUIRED_TEMPLATE_IDS = (
     "m340-destination",
     "m340-trip-label-brush",
+    "plaerrdeifl-brush-horizontal-proof",
     "m340-trip-label-text",
     "text34",
     "m340-date",
@@ -676,11 +677,9 @@ def validate_template_contract(path: Path, kind: str) -> None:
                 raise WorkerError("TEMPLATE_EXTERNAL_RESOURCE")
     if any(id_counts.get(element_id) != 1 for element_id in REQUIRED_TEMPLATE_IDS):
         raise WorkerError("TEMPLATE_CONTRACT_INVALID")
-    brush = _find_id(root, "m340-trip-label-brush")
-    if brush.tag.rsplit("}", 1)[-1].lower() != "rect" or brush.get("transform"):
+    brush = _find_id(root, "plaerrdeifl-brush-horizontal-proof")
+    if brush.tag.rsplit("}", 1)[-1].lower() != "path" or brush.get("transform") or not brush.get("d"):
         raise WorkerError("TEMPLATE_CONTRACT_INVALID")
-    for name in ("x", "y", "width", "height"):
-        _number_attribute(brush, name)
 
 
 def _set_display(element: ET.Element, visible: bool) -> None:
@@ -719,10 +718,13 @@ def apply_template(
             child.text = ""
 
     label = _find_id(root, "m340-trip-label-text")
-    brush = _find_id(root, "m340-trip-label-brush")
+    brush = _find_id(root, "plaerrdeifl-brush-horizontal-proof")
+    legacy_brush = _find_id(root, "m340-trip-label-brush")
     _set_display(label, trip_label_enabled)
     _set_display(brush, trip_label_enabled)
+    _set_display(legacy_brush, False)
     brush.attrib.pop("transform", None)
+    legacy_brush.attrib.pop("transform", None)
 
     slot = _find_id(root, "m340-qr-slot")
     quiet = _find_id(root, "m340-qr-quiet-zone")
@@ -883,7 +885,7 @@ def _query_bbox(config: Config, job_dir: Path, filename: str, element_id: str) -
 
 def fit_trip_label_brush(config: Config, svg_path: Path) -> None:
     text_x, _, text_width, _ = _query_bbox(config, svg_path.parent, svg_path.name, "m340-trip-label-text")
-    _, _, brush_width, _ = _query_bbox(config, svg_path.parent, svg_path.name, "m340-trip-label-brush")
+    brush_x, _, brush_width, _ = _query_bbox(config, svg_path.parent, svg_path.name, "plaerrdeifl-brush-horizontal-proof")
     if text_width <= 0 or brush_width <= 0:
         raise WorkerError("TEMPLATE_MEASURE_FAILED")
     desired_width = text_width + 2 * TRIP_LABEL_BRUSH_PADDING
@@ -895,8 +897,8 @@ def fit_trip_label_brush(config: Config, svg_path: Path) -> None:
         root = tree.getroot()
     except (OSError, ET.ParseError) as exc:
         raise WorkerError("TEMPLATE_CONTRACT_INVALID") from exc
-    brush = _find_id(root, "m340-trip-label-brush")
-    center = _number_attribute(brush, "x") + _number_attribute(brush, "width") / 2.0
+    brush = _find_id(root, "plaerrdeifl-brush-horizontal-proof")
+    center = brush_x + brush_width / 2.0
     brush.set(
         "transform",
         f"translate({center:.6f} 0) scale({scale:.8f} 1) translate({-center:.6f} 0)",

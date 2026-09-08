@@ -65,6 +65,7 @@ test("upload gateway is DEV-only bounded and validates active SVG content", () =
   assert.match(upload, /https:\/\/dev\.plaerrdeifl\.de/);
   assert.match(upload, /MAX_SVG_BYTES = 5 \* 1024 \* 1024/);
   assert.match(upload, /m340-trip-label-brush/);
+  assert.match(upload, /plaerrdeifl-brush-horizontal-proof/);
   assert.match(upload, /m340-qr-vector/);
   assert.match(upload, /DOCTYPE\|<!ENTITY/);
   assert.match(upload, /foreignObject\|iframe\|object\|embed/);
@@ -89,6 +90,7 @@ test("worker keeps v1 compatibility and renders v2 label plus dynamic brush", ()
   assert.match(worker, /TRIP_LABEL_DEFAULT = "FANBUSFAHRT"/);
   assert.match(worker, /normalized\["tripLabel"\]\["text"\]/);
   assert.match(worker, /m340-trip-label-brush/);
+  assert.match(worker, /plaerrdeifl-brush-horizontal-proof/);
   assert.match(worker, /--query-id=/);
   assert.match(worker, /data-m340-brush-scale/);
   assert.match(worker, /action": "template"/);
