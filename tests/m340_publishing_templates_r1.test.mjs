@@ -10,6 +10,7 @@ const api = read("js/api.js");
 const upload = read("supabase/functions/m340-publishing-templates/index.ts");
 const workerGateway = read("supabase/functions/m340-publishing-worker/index.ts");
 const worker = read("workers/m340-publishing/worker.py");
+const generatorMigration = read("supabase/migrations/20260908200446_m340_social_media_generator_r1.sql");
 
  test("historical template foundation is restored under the applied DEV migration version", () => {
   assert.match(historical, /m340-publishing-templates/);
@@ -36,16 +37,28 @@ test("template replacement remains private versioned and rollbackable", () => {
   assert.doesNotMatch(historical, /grant .*authenticated.*fanbus_publishing_template_versions/is);
 });
 
-test("portal exposes settings and exactly three template upload targets without previews", () => {
-  assert.match(portal, /Flyer-Einstellungen/);
-  assert.match(portal, /data-m340-label-form/);
-  assert.match(portal, /fanbus_publishing_output_settings_update/);
+test("portal separates the generator from compact template management without previews", () => {
+  assert.match(portal, /Flyer-Generator/);
+  assert.match(portal, /data-m340-generator-trip/);
+  assert.match(portal, /data-m340-generator-config/);
+  assert.match(portal, /<summary>Vorlagen verwalten<\/summary>/);
   assert.match(portal, /uploadM340Template/);
   assert.match(portal, /data-m340-template-rollback/);
   assert.match(portal, /data-m340-template-reset/);
   assert.match(api, /functions\/v1\/m340-publishing-templates/);
+  assert.doesNotMatch(portal, /Flyer-Einstellungen|data-m340-label-form|fanbus_publishing_output_settings_update/);
   assert.doesNotMatch(portal, /<img[^>]+m340/i);
   assert.doesNotMatch(portal, /QR-Code herunterladen|data-m340-qr-download/);
+});
+
+test("generator payload is per-job and accepts empty text only when disabled", () => {
+  assert.match(generatorMigration, /tripLabelEnabled/);
+  assert.match(generatorMigration, /tripLabelText/);
+  assert.match(generatorMigration, /v_label_enabled and char_length\(v_label_text\) < 1/);
+  assert.match(generatorMigration, /if not v_label_enabled then[\s\S]*v_label_text := ''/);
+  assert.match(generatorMigration, /'settings',v_settings/);
+  assert.match(worker, /if enabled and not text/);
+  assert.match(worker, /if not enabled:[\s\S]*text = ""/);
 });
 
 test("upload gateway is DEV-only bounded and validates active SVG content", () => {

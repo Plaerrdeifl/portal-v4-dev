@@ -7,6 +7,7 @@ const root = path.resolve(import.meta.dirname, "..");
 const files = {
   originalMigration: "supabase/migrations/20260907065000_add_fanbus_publishing_portal_read_m340.sql",
   correctionMigration: "supabase/migrations/20260907185349_add_fanbus_auto_place_resolution_m340.sql",
+  generatorMigration: "supabase/migrations/20260908200446_m340_social_media_generator_r1.sql",
   publishing: "js/modules/m340-publishing.js",
   fanbuses: "js/modules/fanbuses.js",
   auth: "js/auth.js",
@@ -94,7 +95,8 @@ test("portal uses automatic resolution and no manual place actions", () => {
   assert.match(content.fanbuses, /view=publishing/);
   assert.match(content.fanbuses, /renderM340PublishingWorkspace/);
   assert.doesNotMatch(content.fanbusPage, /m340PublishingButton/);
-  assert.match(content.busOrgaPage, /id="m340PublishingSection"[\s\S]*id="m340PublishingEntry"[\s\S]*Flyer &amp; Kurzlinks/);
+  assert.match(content.busOrgaPage, /id="m340PublishingSection"[\s\S]*id="m340PublishingEntry"[\s\S]*Social Media/);
+  assert.doesNotMatch(content.busOrgaPage, /QR-Codes, Flyer, Nextcloud-Ablage und Kurzlink-Statistik/);
   assert.match(content.busOrgaModule, /hasCapability\("fanbus\.publishing\.manage"\)/);
   assert.match(content.busOrgaModule, /openWorkspace\("publishing"\)/);
   assert.match(content.busOrga, /\[data-m340-back\]/);
@@ -119,14 +121,14 @@ test("ambiguity control exists only in the AMBIGUOUS render branch", () => {
   assert.match(branch, /data-m340-ambiguity-form/);
   assert.match(branch, /candidate\.displayName/);
   assert.doesNotMatch(branch, /candidate\.placeKey|candidate\.slug|Slug|Venue-Key/);
-  assert.match(content.publishing, /resolutionStatus === "RESOLVED"[\s\S]*data-m340-enqueue/);
+  assert.match(content.publishing, /filter\(trip => trip\?\.resolutionStatus === "RESOLVED"\)/);
+  assert.doesNotMatch(content.publishing, /data-m340-enqueue/);
   assert.match(content.publishing, /Veranstaltungsort fehlt[\s\S]*beim Spieltermin ergänzen/);
 });
 
-test("public links preserve DEV staging separation", () => {
-  assert.match(content.publishing, /environment === "DEV"[\s\S]*https:\/\/staging\.plaerrdeifl\.de/);
-  assert.match(content.publishing, /https:\/\/plaerrdeifl\.de/);
-  assert.match(content.publishing, /shortlinkPath/);
+test("Social-Media UI hides the raw shortlink while resolver data stays backend-owned", () => {
+  assert.doesNotMatch(content.publishing, /<span>Kurzlink<\/span>|m340-publishing-trip-link|publicBase\(/);
+  assert.match(content.correctionMigration, /'shortlinkPath'/);
   assert.doesNotMatch(content.publishing, /fanbus-anmeldung\?trip=.*shortlink|shortlink.*fanbus-anmeldung/i);
 });
 
@@ -155,17 +157,19 @@ test("Bus-Orga integration and publishing capability remain intact", () => {
   assert.match(content.publishing, /window\.location\.hash = "#\/bus-orga"/);
 });
 
-test("publishing workspace is trip-based and exposes only three flyer downloads", () => {
+test("Social-Media workspace exposes compact published trips and three equal flyer targets", () => {
   assert.match(content.css, /\.m340-publishing-trip-row/);
   assert.match(content.css, /\.m340-publishing-flyers/);
   assert.match(content.css, /\.m340-publishing-flyer-buttons/);
+  assert.match(content.css, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
   assert.match(content.publishing, /<details class="m340-publishing-flyers">/);
-  assert.match(content.publishing, /Instagram Post/);
-  assert.match(content.publishing, /Instagram Story/);
-  assert.match(content.publishing, /LED 16:9/);
+  assert.match(content.publishing, /\["POST", "Post"\]/);
+  assert.match(content.publishing, /\["STORY", "Story"\]/);
+  assert.match(content.publishing, /\["LED", "LED"\]/);
+  assert.match(content.publishing, /trip\?\.venue \|\| trip\?\.displayTitle/);
   assert.doesNotMatch(content.publishing, /data-m340-preview|preview-dialog|Asset-Vorschau|Vorschau<\//);
   assert.doesNotMatch(content.publishing, /artifactLabel|case "QR"|QR-Code/);
-  assert.doesNotMatch(content.publishing, /m340-publishing-daily|Kurzlink-Statistik<\/h3>/);
+  assert.doesNotMatch(content.publishing, /m340-publishing-daily|Kurzlink-Statistik<\/h3>|data-m340-enqueue/);
 });
 
 test("flyer delivery fetches the original public DAV file and stays inside the portal", () => {
@@ -189,12 +193,32 @@ test("flyer delivery fetches the original public DAV file and stays inside the p
   assert.match(content.index, /connect-src[^;]*https:\/\/cloud\.plaerrdeifl\.de/);
 });
 
-test("each published trip shows its own shortlink counters", () => {
+test("each published trip keeps its anonymous counters without displaying the shortlink", () => {
   assert.match(content.publishing, /trip\?\.landingCount/);
   assert.match(content.publishing, /trip\?\.referralCount/);
   assert.match(content.publishing, /Kurzlink-Statistik dieser Fahrt/);
-  assert.match(content.publishing, /<span>Kurzlink<\/span>/);
+  assert.doesNotMatch(content.publishing, /<span>Kurzlink<\/span>/);
   assert.match(content.publishing, /Veröffentlichte Fahrten/);
+});
+
+test("Flyer generator starts blank, reveals text on demand and freezes values into enqueue", () => {
+  assert.match(content.publishing, /<h3 id="m340GeneratorTitle">Flyer-Generator<\/h3>/);
+  assert.match(content.publishing, /<option value="">Fahrt auswählen<\/option>/);
+  assert.match(content.publishing, /const generator = \{ tripId: "", saved: false, enabled: false, text: "" \}/);
+  assert.match(content.publishing, /data-m340-generator-config/);
+  assert.match(content.publishing, /m340-generator-text"\$\{enabled \? "" : " hidden"\}/);
+  assert.match(content.publishing, /data-m340-generator-change>Ändern/);
+  assert.match(content.publishing, /data-m340-generator-create/);
+  assert.match(content.publishing, /call\("fanbus_publishing_job_enqueue", \{[\s\S]*tripLabelEnabled:[\s\S]*tripLabelText:/);
+  assert.match(content.generatorMigration, /legacy enqueue payload \{tripId\} remains valid/i);
+  assert.match(content.generatorMigration, /v_generator_payload/);
+  assert.match(content.generatorMigration, /'settings',v_settings/);
+});
+
+test("Social Media header has no old description or top metric dashboard", () => {
+  assert.match(content.publishing, /<h2>Social Media<\/h2>/);
+  assert.doesNotMatch(content.publishing, /Flyer &amp; Kurzlinks|Veröffentlichte Fahrten, Kurzlink-Statistik und Flyer-Downloads/);
+  assert.doesNotMatch(content.publishing, /m340-publishing-metrics|Bereite Fahrten|Erstellungen<\/span>/);
 });
 
 test("normal UI uses user-facing language only", () => {
@@ -207,10 +231,10 @@ test("normal UI uses user-facing language only", () => {
 });
 
 test("active import chain carries the M340 cache key end-to-end", () => {
-  const cacheKey = "m340=20260908-publishing-ux-r1";
-  assert.ok(content.fanbuses.includes(`m340-publishing.js?v=20260908-publishing-ux-r1`));
+  const cacheKey = "m340=20260908-social-media-generator-r1";
+  assert.ok(content.fanbuses.includes(`m340-publishing.js?v=20260908-social-media-generator-r1`));
   assert.ok(content.pages.includes(`fanbuses.js?v=20260826-p800-r2-final-direct-fix&groups=20260828-m310-r1&m327=20260828-m327-r1&completion=20260829-m328-final1&correction=20260830-m328-c1&${cacheKey}`));
-  assert.match(content.app, /pages\.js\?[^"\n]*m340=20260908-publishing-ux-r1/);
-  assert.match(content.index, /js\/app\.js\?[^"\n]*m340=20260908-publishing-ux-r1/);
-  assert.match(content.index, /css\/app\.css\?[^"\n]*m340=20260908-publishing-ux-r1/);
+  assert.match(content.app, /pages\.js\?[^"\n]*m340=20260908-social-media-generator-r1/);
+  assert.match(content.index, /js\/app\.js\?[^"\n]*m340=20260908-social-media-generator-r1/);
+  assert.match(content.index, /css\/app\.css\?[^"\n]*m340=20260908-social-media-generator-r1/);
 });
