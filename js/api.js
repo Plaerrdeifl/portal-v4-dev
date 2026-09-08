@@ -189,6 +189,58 @@ export const api = Object.freeze({
     }
   },
 
+  async uploadM340Template(kind, file) {
+    const client = getSupabaseClient();
+    let transportFailure = false;
+    pendingRequests += 1;
+    lastError = null;
+    emitActivity();
+    try {
+      const { data: sessionData, error: sessionError } = await client.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (sessionError || !accessToken) {
+        throw new ApiError("Anmeldung erforderlich.", "AUTH_REQUIRED", sessionError);
+      }
+      const form = new FormData();
+      form.set("action", "upload");
+      form.set("kind", String(kind || "").toUpperCase());
+      form.set("file", file);
+      let response;
+      try {
+        response = await fetch(
+          `${CONFIG.supabase.url.replace(/\/+$/, "")}/functions/v1/m340-publishing-templates`,
+          {
+            method: "POST",
+            headers: {
+              apikey: CONFIG.supabase.publishableKey,
+              Authorization: `Bearer ${accessToken}`
+            },
+            body: form
+          }
+        );
+      } catch (error) {
+        transportFailure = true;
+        throw error;
+      }
+      const result = await response.json().catch(() => null);
+      if (!response.ok || result?.ok !== true) {
+        const error = result?.error || {};
+        throw new ApiError(
+          platformMessage(error.code, error.message || "Die SVG-Vorlage konnte nicht hochgeladen werden."),
+          error.code || `HTTP_${response.status}`,
+          error
+        );
+      }
+      return result.data;
+    } catch (error) {
+      lastError = transportFailure ? error : null;
+      throw error;
+    } finally {
+      pendingRequests = Math.max(0, pendingRequests - 1);
+      emitActivity();
+    }
+  },
+
   activity() {
     return {
       pending: pendingRequests,

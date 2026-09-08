@@ -61,6 +61,35 @@ EXPECTED_PNG_DIMENSIONS = {
     "story": (1080, 1920),
     "led": (1920, 1080),
 }
+EXPECTED_TEMPLATE_DIMENSIONS = {key.upper(): value for key, value in EXPECTED_PNG_DIMENSIONS.items() if key != "qr"}
+REQUIRED_TEMPLATE_IDS = (
+    "m340-destination",
+    "m340-trip-label-brush",
+    "m340-trip-label-text",
+    "text34",
+    "m340-date",
+    "m340-game-start",
+    "m340-price",
+    "m340-registration-deadline-date",
+    "m340-registration-deadline-time",
+    "m340-boarding-1-time",
+    "m340-boarding-1-place",
+    "m340-boarding-1-detail",
+    "m340-boarding-2-time",
+    "m340-boarding-2-place",
+    "m340-boarding-2-detail",
+    "m340-contact-pascal-name",
+    "m340-contact-pascal-phone",
+    "m340-contact-luca-name",
+    "m340-contact-luca-phone",
+    "m340-qr-slot",
+    "m340-qr-quiet-zone",
+    "m340-qr-vector",
+)
+MAX_TEMPLATE_BYTES = 5 * 1024 * 1024
+TRIP_LABEL_DEFAULT = "FANBUSFAHRT"
+TRIP_LABEL_MAX_CHARS = 32
+TRIP_LABEL_BRUSH_PADDING = 36.0
 SVG_NS = "http://www.w3.org/2000/svg"
 XLINK_NS = "http://www.w3.org/1999/xlink"
 INKSCAPE_NS = "http://www.inkscape.org/namespaces/inkscape"
@@ -273,6 +302,40 @@ def complete(
         raise WorkerError("COMPLETE_REJECTED")
 
 
+def _uuid(value: Any) -> str:
+    if not isinstance(value, str) or not UUID_RE.fullmatch(value):
+        raise WorkerError("SNAPSHOT_INVALID")
+    return value.lower()
+
+
+def _bounded_text(value: Any, maximum: int, allow_empty: bool = False) -> str:
+    if not isinstance(value, str):
+        raise WorkerError("SNAPSHOT_INVALID")
+    text = " ".join(value.split())
+    if (not allow_empty and not text) or len(text) > maximum:
+        raise WorkerError("SNAPSHOT_TEXT_TOO_LONG" if len(text) > maximum else "SNAPSHOT_INVALID")
+    return text
+
+
+def _date_only(value: Any) -> date:
+    if not isinstance(value, str) or len(value) > 16:
+        raise WorkerError("SNAPSHOT_INVALID")
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise WorkerError("SNAPSHOT_INVALID") from exc
+
+
+def _datetime(value: Any) -> datetime:
+    return _parse_aware_datetime(value)
+
+
+def _integer(value: Any, minimum: int, maximum: int) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or not minimum <= value <= maximum:
+        raise WorkerError("SNAPSHOT_INVALID")
+    return value
+
+
 def _parse_aware_datetime(value: Any) -> datetime:
     if not isinstance(value, str) or len(value) > 64:
         raise WorkerError("SNAPSHOT_INVALID")
@@ -295,88 +358,176 @@ def _bounded_text(value: Any, maximum: int, allow_empty: bool = False) -> str:
     return text
 
 
-def validate_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
-    if set(snapshot) != {"schemaVersion", "shortlinkPath", "place", "trip", "boardingStops"}:
-        raise WorkerError("SNAPSHOT_INVALID")
-    if snapshot.get("schemaVersion") != 1:
-        raise WorkerError("SNAPSHOT_INVALID")
-    place = snapshot.get("place")
-    trip = snapshot.get("trip")
-    stops = snapshot.get("boardingStops")
-    if not isinstance(place, dict) or not isinstance(trip, dict) or not isinstance(stops, list):
-        raise WorkerError("SNAPSHOT_INVALID")
-
-    slug = place.get("slug")
-    if not isinstance(slug, str) or len(slug) > 48 or not SLUG_RE.fullmatch(slug):
-        raise WorkerError("SNAPSHOT_INVALID")
-    if snapshot.get("shortlinkPath") != f"/ontour/{slug}":
-        raise WorkerError("SNAPSHOT_INVALID")
-    display_name = _bounded_text(place.get("displayName"), 40)
-    place_id = place.get("id")
-    if not isinstance(place_id, str) or not UUID_RE.fullmatch(place_id):
-        raise WorkerError("SNAPSHOT_INVALID")
-
-    trip_id = trip.get("tripId")
-    if not isinstance(trip_id, str) or not UUID_RE.fullmatch(trip_id):
-        raise WorkerError("SNAPSHOT_INVALID")
-    if trip.get("tripStatus") != "PUBLISHED":
-        raise WorkerError("SNAPSHOT_INVALID")
-    _bounded_text(trip.get("displayTitle"), 120)
-    try:
-        event_date = date.fromisoformat(str(trip.get("eventDate")))
-    except ValueError as exc:
-        raise WorkerError("SNAPSHOT_INVALID") from exc
-    event_time = trip.get("eventTime")
-    if event_time is not None and (
-        not isinstance(event_time, str) or re.fullmatch(r"\d{2}:\d{2}(?::\d{2})?", event_time) is None
-    ):
-        raise WorkerError("SNAPSHOT_INVALID")
-    closes = _parse_aware_datetime(trip.get("registrationClosesAt"))
-    price = trip.get("priceCents")
-    if isinstance(price, bool) or not isinstance(price, int) or price < 0 or price > 1_000_000:
-        raise WorkerError("SNAPSHOT_INVALID")
-    organization = trip.get("organizationContact", {})
-    if not isinstance(organization, dict):
-        raise WorkerError("SNAPSHOT_INVALID")
-
-    if len(stops) > 2:
-        raise WorkerError("SNAPSHOT_UNSUPPORTED_STOPS")
-    normalized_stops: list[dict[str, Any]] = []
-    for index, stop in enumerate(stops):
-        if not isinstance(stop, dict):
-            raise WorkerError("SNAPSHOT_INVALID")
-        label = _bounded_text(stop.get("label"), 50)
-        departure = _parse_aware_datetime(stop.get("departureAt"))
-        default_note = stop.get("defaultNote")
-        address = stop.get("address")
-        detail = ""
-        if isinstance(default_note, str) and default_note.strip():
-            detail = _bounded_text(default_note, 60)
-        elif isinstance(address, str) and address.strip():
-            detail = _bounded_text(address, 60)
-        position = stop.get("position", index + 1)
-        if isinstance(position, bool) or not isinstance(position, int):
-            raise WorkerError("SNAPSHOT_INVALID")
-        normalized_stops.append(
-            {"label": label, "departure": departure, "detail": detail, "position": position}
-        )
-    normalized_stops.sort(key=lambda item: item["position"])
-
+def _default_template_descriptors() -> dict[str, dict[str, Any]]:
     return {
-        "slug": slug,
-        "displayName": display_name,
-        "placeId": place_id,
-        "tripId": trip_id,
-        "displayTitle": trip["displayTitle"],
-        "eventDate": event_date,
-        "eventTime": event_time,
-        "registrationClosesAt": closes,
-        "priceCents": price,
-        "organizationContact": organization,
-        "stops": normalized_stops,
-        "shortlinkPath": snapshot["shortlinkPath"],
+        kind: {"kind": kind, "source": "SERVER_DEFAULT"}
+        for kind in ("POST", "STORY", "LED")
     }
 
+
+def _normalize_template_descriptors(value: Any) -> dict[str, dict[str, Any]]:
+    if not isinstance(value, list) or len(value) != 3:
+        raise WorkerError("SNAPSHOT_INVALID")
+    result: dict[str, dict[str, Any]] = {}
+    for item in value:
+        if not isinstance(item, dict):
+            raise WorkerError("SNAPSHOT_INVALID")
+        kind = str(item.get("kind") or "").upper()
+        source = str(item.get("source") or "").upper()
+        if kind not in {"POST", "STORY", "LED"} or kind in result:
+            raise WorkerError("SNAPSHOT_INVALID")
+        if source == "SERVER_DEFAULT":
+            if set(item) != {"kind", "source"}:
+                raise WorkerError("SNAPSHOT_INVALID")
+            result[kind] = {"kind": kind, "source": source}
+            continue
+        if source != "CUSTOM" or set(item) != {
+            "kind", "source", "versionId", "objectName", "filename", "sha256", "bytes"
+        }:
+            raise WorkerError("SNAPSHOT_INVALID")
+        version_id = _uuid(item.get("versionId"))
+        object_name = _bounded_text(item.get("objectName"), 500)
+        filename = _bounded_text(item.get("filename"), 160)
+        sha256 = str(item.get("sha256") or "")
+        size = item.get("bytes")
+        if (
+            not re.fullmatch(r"versions/dev/[0-9a-f-]{36}/[0-9a-f-]{36}[.]svg", object_name, re.IGNORECASE)
+            or not re.fullmatch(r"[A-Za-z0-9ÄÖÜäöüß._ -]+[.]svg", filename)
+            or not re.fullmatch(r"[0-9a-f]{64}", sha256)
+            or not isinstance(size, int)
+            or isinstance(size, bool)
+            or not 1000 <= size <= MAX_TEMPLATE_BYTES
+        ):
+            raise WorkerError("SNAPSHOT_INVALID")
+        result[kind] = {
+            "kind": kind,
+            "source": source,
+            "versionId": version_id,
+            "objectName": object_name,
+            "filename": filename,
+            "sha256": sha256,
+            "bytes": size,
+        }
+    if set(result) != {"POST", "STORY", "LED"}:
+        raise WorkerError("SNAPSHOT_INVALID")
+    return result
+
+
+def validate_snapshot(snapshot: Any) -> dict[str, Any]:
+    if not isinstance(snapshot, dict):
+        raise WorkerError("SNAPSHOT_INVALID")
+    schema_version = snapshot.get("schemaVersion")
+    if schema_version == 1:
+        if set(snapshot) != {"schemaVersion", "shortlinkPath", "place", "trip", "boardingStops"}:
+            raise WorkerError("SNAPSHOT_INVALID")
+        trip_label = {"enabled": True, "text": TRIP_LABEL_DEFAULT}
+        templates = _default_template_descriptors()
+    elif schema_version == 2:
+        if set(snapshot) != {"schemaVersion", "shortlinkPath", "place", "trip", "boardingStops", "publishing"}:
+            raise WorkerError("SNAPSHOT_INVALID")
+        publishing = snapshot.get("publishing")
+        if not isinstance(publishing, dict) or set(publishing) != {"settings", "templates"}:
+            raise WorkerError("SNAPSHOT_INVALID")
+        settings = publishing.get("settings")
+        if not isinstance(settings, dict) or set(settings) != {"tripLabel"}:
+            raise WorkerError("SNAPSHOT_INVALID")
+        raw_label = settings.get("tripLabel")
+        if not isinstance(raw_label, dict) or set(raw_label) != {"enabled", "text"}:
+            raise WorkerError("SNAPSHOT_INVALID")
+        enabled = raw_label.get("enabled")
+        text = raw_label.get("text")
+        if not isinstance(enabled, bool) or not isinstance(text, str):
+            raise WorkerError("SNAPSHOT_INVALID")
+        text = " ".join(text.split())
+        if not text or len(text) > TRIP_LABEL_MAX_CHARS or any(ord(char) < 32 or ord(char) == 127 for char in text):
+            raise WorkerError("SNAPSHOT_INVALID")
+        trip_label = {"enabled": enabled, "text": text}
+        templates = _normalize_template_descriptors(publishing.get("templates"))
+    else:
+        raise WorkerError("SNAPSHOT_INVALID")
+
+    shortlink_path = _bounded_text(snapshot.get("shortlinkPath"), 160)
+    place = snapshot.get("place")
+    trip = snapshot.get("trip")
+    boarding = snapshot.get("boardingStops")
+    if not isinstance(place, dict) or not isinstance(trip, dict) or not isinstance(boarding, list):
+        raise WorkerError("SNAPSHOT_INVALID")
+
+    if set(place) != {"id", "slug", "displayName"}:
+        raise WorkerError("SNAPSHOT_INVALID")
+    place_id = _uuid(place.get("id"))
+    slug = _bounded_text(place.get("slug"), 80).lower()
+    display_name = _bounded_text(place.get("displayName"), 120)
+    if not SLUG_RE.fullmatch(slug) or shortlink_path != f"/ontour/{slug}":
+        raise WorkerError("SNAPSHOT_INVALID")
+
+    required_trip_keys = {
+        "tripId",
+        "tripStatus",
+        "eventType",
+        "displayTitle",
+        "eventDate",
+        "eventTime",
+        "venue",
+        "departureAt",
+        "departureInfo",
+        "registrationOpensAt",
+        "registrationClosesAt",
+        "priceCents",
+        "capacity",
+        "activeRegistrationCount",
+        "remainingCapacity",
+        "registrationStatus",
+        "organizationContact",
+    }
+    if not required_trip_keys.issubset(trip.keys()):
+        raise WorkerError("SNAPSHOT_INVALID")
+    trip_id = _uuid(trip.get("tripId"))
+    if trip.get("tripStatus") != "PUBLISHED" or trip.get("eventType") != "GAME":
+        raise WorkerError("SNAPSHOT_INVALID")
+    event_date = _date_only(trip.get("eventDate"))
+    event_time = _bounded_text(trip.get("eventTime"), 16, allow_empty=True)
+    _bounded_text(trip.get("displayTitle"), 240)
+    _bounded_text(trip.get("venue"), 160)
+    registration_closes = _datetime(trip.get("registrationClosesAt"))
+    price_cents = _integer(trip.get("priceCents"), minimum=0, maximum=1_000_000)
+
+    stops: list[dict[str, Any]] = []
+    for raw in boarding:
+        if not isinstance(raw, dict):
+            raise WorkerError("SNAPSHOT_INVALID")
+        try:
+            stop = {
+                "id": _uuid(raw.get("id")),
+                "label": _bounded_text(raw.get("label"), 120),
+                "departure": _datetime(raw.get("departureAt")).astimezone(BERLIN),
+            }
+        except WorkerError:
+            raise
+        stops.append(stop)
+    if len(stops) > 2:
+        raise WorkerError("SNAPSHOT_UNSUPPORTED_STOPS")
+
+    organization = trip.get("organizationContact")
+    if not isinstance(organization, dict):
+        organization = {}
+
+    return {
+        "schemaVersion": schema_version,
+        "shortlinkPath": shortlink_path,
+        "placeId": place_id,
+        "slug": slug,
+        "displayName": display_name,
+        "tripId": trip_id,
+        "eventDate": event_date,
+        "eventTime": event_time,
+        "registrationClosesAt": registration_closes.astimezone(BERLIN),
+        "priceCents": price_cents,
+        "stops": stops,
+        "organizationContact": organization,
+        "tripLabel": trip_label,
+        "templates": templates,
+    }
 
 def _format_price(cents: int) -> str:
     euros, remainder = divmod(cents, 100)
@@ -419,7 +570,7 @@ def build_text_fields(normalized: dict[str, Any]) -> dict[str, str]:
     event_time = normalized["eventTime"]
     fields = {
         "m340-destination": normalized["displayName"].upper(),
-        "m340-trip-label-text": "FANBUSFAHRT",
+        "m340-trip-label-text": normalized["tripLabel"]["text"],
         "text34": GERMAN_WEEKDAYS[event_date.weekday()],
         "m340-date": event_date.strftime("%d.%m.%Y"),
         "m340-game-start": f"{event_time[:5]} UHR" if event_time else "",
@@ -467,6 +618,78 @@ def _number_attribute(element: ET.Element, name: str) -> float:
     return value
 
 
+def _svg_dimension(value: str | None) -> float:
+    match = re.fullmatch(r"([0-9]+(?:[.][0-9]+)?)(?:px)?", str(value or "").strip())
+    if not match:
+        raise WorkerError("TEMPLATE_CONTRACT_INVALID")
+    return float(match.group(1))
+
+
+def validate_template_contract(path: Path, kind: str) -> None:
+    expected = EXPECTED_TEMPLATE_DIMENSIONS.get(kind.upper())
+    if expected is None:
+        raise WorkerError("TEMPLATE_CONTRACT_INVALID")
+    try:
+        raw = path.read_bytes()
+    except OSError as exc:
+        raise WorkerError("TEMPLATE_CONTRACT_INVALID") from exc
+    if not 1000 <= len(raw) <= MAX_TEMPLATE_BYTES or b"<!DOCTYPE" in raw.upper() or b"<!ENTITY" in raw.upper():
+        raise WorkerError("TEMPLATE_CONTRACT_INVALID")
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError as exc:
+        raise WorkerError("TEMPLATE_CONTRACT_INVALID") from exc
+    if root.tag.rsplit("}", 1)[-1].lower() != "svg":
+        raise WorkerError("TEMPLATE_CONTRACT_INVALID")
+    if (_svg_dimension(root.get("width")), _svg_dimension(root.get("height"))) != expected:
+        raise WorkerError("TEMPLATE_DIMENSIONS_INVALID")
+    try:
+        viewbox = tuple(float(part) for part in re.split(r"[ ,]+", root.get("viewBox", "").strip()))
+    except ValueError as exc:
+        raise WorkerError("TEMPLATE_DIMENSIONS_INVALID") from exc
+    if viewbox != (0.0, 0.0, float(expected[0]), float(expected[1])):
+        raise WorkerError("TEMPLATE_DIMENSIONS_INVALID")
+
+    forbidden = {"script", "foreignobject", "iframe", "object", "embed", "audio", "video", "link"}
+    id_counts: dict[str, int] = {}
+    for element in root.iter():
+        tag = element.tag.rsplit("}", 1)[-1].lower()
+        if tag in forbidden:
+            raise WorkerError("TEMPLATE_CONTRACT_INVALID")
+        element_id = element.get("id")
+        if element_id:
+            id_counts[element_id] = id_counts.get(element_id, 0) + 1
+        for attribute, value in element.attrib.items():
+            local = attribute.rsplit("}", 1)[-1].lower()
+            lowered = str(value).strip().lower()
+            if local.startswith("on") or "javascript:" in lowered:
+                raise WorkerError("TEMPLATE_CONTRACT_INVALID")
+            if local == "href":
+                if str(value).startswith("#"):
+                    continue
+                if re.match(r"^data:image/(?:png|jpeg|webp);base64,", str(value), re.IGNORECASE):
+                    continue
+                raise WorkerError("TEMPLATE_EXTERNAL_RESOURCE")
+    if any(id_counts.get(element_id) != 1 for element_id in REQUIRED_TEMPLATE_IDS):
+        raise WorkerError("TEMPLATE_CONTRACT_INVALID")
+    brush = _find_id(root, "m340-trip-label-brush")
+    if brush.tag.rsplit("}", 1)[-1].lower() != "rect" or brush.get("transform"):
+        raise WorkerError("TEMPLATE_CONTRACT_INVALID")
+    for name in ("x", "y", "width", "height"):
+        _number_attribute(brush, name)
+
+
+def _set_display(element: ET.Element, visible: bool) -> None:
+    declarations = []
+    for raw in str(element.get("style") or "").split(";"):
+        item = raw.strip()
+        if not item or item.lower().startswith("display:"):
+            continue
+        declarations.append(item)
+    declarations.append("display:inline" if visible else "display:none")
+    element.set("style", ";".join(declarations))
+
+
 def apply_template(
     template_path: Path,
     output_path: Path,
@@ -474,6 +697,8 @@ def apply_template(
     qr_svg_path: Path,
     qr_url: str,
     document_title: str,
+    trip_label_enabled: bool = True,
+    kind: str | None = None,
 ) -> None:
     try:
         tree = ET.parse(template_path)
@@ -488,6 +713,12 @@ def apply_template(
         element.text = value
         for child in list(element):
             child.text = ""
+
+    label = _find_id(root, "m340-trip-label-text")
+    brush = _find_id(root, "m340-trip-label-brush")
+    _set_display(label, trip_label_enabled)
+    _set_display(brush, trip_label_enabled)
+    brush.attrib.pop("transform", None)
 
     slot = _find_id(root, "m340-qr-slot")
     quiet = _find_id(root, "m340-qr-quiet-zone")
@@ -559,10 +790,11 @@ def _png_dimensions(path: Path) -> tuple[int, int]:
 def verify_runtime(config: Config) -> None:
     if _sha256(config.font_file) != config.font_sha256:
         raise WorkerError("FONT_HASH_MISMATCH")
-    for name in ("post.svg", "story.svg", "led.svg"):
-        path = config.templates_dir / name
-        if not path.is_file() or path.stat().st_size < 1000:
+    for kind in ("post", "story", "led"):
+        path = config.templates_dir / f"{kind}.svg"
+        if not path.is_file():
             raise WorkerError("TEMPLATE_CONTRACT_INVALID")
+        validate_template_contract(path, kind.upper())
     if not Path(__file__).with_name("qr_bridge.py").is_file():
         raise WorkerError("QR_BRIDGE_MISSING")
 
@@ -582,6 +814,23 @@ def _run_renderer(command: list[str], error_code: str) -> None:
         raise WorkerError(error_code)
 
 
+def _run_renderer_output(command: list[str], error_code: str) -> str:
+    try:
+        completed = subprocess.run(
+            command,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=180,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise WorkerError(error_code) from exc
+    if completed.returncode != 0:
+        raise WorkerError(error_code)
+    return completed.stdout
+
+
 def _docker_base(config: Config, job_dir: Path) -> list[str]:
     return [
         "docker",
@@ -599,6 +848,128 @@ def _docker_base(config: Config, job_dir: Path) -> list[str]:
         "-v",
         f"{job_dir}:/work",
     ]
+
+
+def _query_bbox(config: Config, job_dir: Path, filename: str, element_id: str) -> tuple[float, float, float, float]:
+    command = _docker_base(config, job_dir) + [
+        "-v",
+        f"{config.font_file.parent}:/usr/share/fonts/truetype/m340:ro",
+        "--entrypoint",
+        "inkscape",
+        config.renderer_image,
+        f"/work/{filename}",
+        f"--query-id={element_id}",
+        "--query-x",
+        "--query-y",
+        "--query-width",
+        "--query-height",
+    ]
+    output = _run_renderer_output(command, "TEMPLATE_MEASURE_FAILED")
+    lines = [line.strip() for line in output.splitlines() if line.strip()]
+    if len(lines) != 4:
+        raise WorkerError("TEMPLATE_MEASURE_FAILED")
+    try:
+        values = tuple(float(value) for value in lines)
+    except ValueError as exc:
+        raise WorkerError("TEMPLATE_MEASURE_FAILED") from exc
+    if not all(value == value and abs(value) < 100_000 for value in values):
+        raise WorkerError("TEMPLATE_MEASURE_FAILED")
+    return values  # type: ignore[return-value]
+
+
+def fit_trip_label_brush(config: Config, svg_path: Path) -> None:
+    text_x, _, text_width, _ = _query_bbox(config, svg_path.parent, svg_path.name, "m340-trip-label-text")
+    _, _, brush_width, _ = _query_bbox(config, svg_path.parent, svg_path.name, "m340-trip-label-brush")
+    if text_width <= 0 or brush_width <= 0:
+        raise WorkerError("TEMPLATE_MEASURE_FAILED")
+    desired_width = text_width + 2 * TRIP_LABEL_BRUSH_PADDING
+    if desired_width > brush_width:
+        raise WorkerError("TRIP_LABEL_TOO_WIDE")
+    scale = max(0.20, min(1.0, desired_width / brush_width))
+    try:
+        tree = ET.parse(svg_path)
+        root = tree.getroot()
+    except (OSError, ET.ParseError) as exc:
+        raise WorkerError("TEMPLATE_CONTRACT_INVALID") from exc
+    brush = _find_id(root, "m340-trip-label-brush")
+    center = _number_attribute(brush, "x") + _number_attribute(brush, "width") / 2.0
+    brush.set(
+        "transform",
+        f"translate({center:.6f} 0) scale({scale:.8f} 1) translate({-center:.6f} 0)",
+    )
+    # Keep measurement metadata technical and local to the generated SVG only.
+    brush.set("data-m340-text-width", f"{text_width:.3f}")
+    brush.set("data-m340-brush-scale", f"{scale:.6f}")
+    try:
+        tree.write(svg_path, encoding="utf-8", xml_declaration=True)
+    except OSError as exc:
+        raise WorkerError("TEMPLATE_RENDER_FAILED") from exc
+
+
+def _download_custom_template(
+    config: Config,
+    descriptor: dict[str, Any],
+    output_dir: Path,
+    kind: str,
+) -> Path:
+    version_id = str(descriptor.get("versionId") or "")
+    resolved = call_edge(config, {"action": "template", "versionId": version_id})
+    required = {"environment", "kind", "versionId", "objectName", "filename", "sha256", "bytes", "downloadUrl"}
+    if set(resolved) != required:
+        raise WorkerError("TEMPLATE_RESOLVE_INVALID")
+    if (
+        resolved.get("environment") != config.environment
+        or resolved.get("kind") != kind
+        or resolved.get("versionId") != version_id
+        or resolved.get("objectName") != descriptor.get("objectName")
+        or resolved.get("filename") != descriptor.get("filename")
+        or resolved.get("sha256") != descriptor.get("sha256")
+        or resolved.get("bytes") != descriptor.get("bytes")
+    ):
+        raise WorkerError("TEMPLATE_RESOLVE_INVALID")
+    download_url = str(resolved.get("downloadUrl") or "")
+    try:
+        parsed = urllib.parse.urlsplit(download_url)
+    except ValueError as exc:
+        raise WorkerError("TEMPLATE_RESOLVE_INVALID") from exc
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname != EXPECTED_EDGE_HOST
+        or parsed.username
+        or parsed.password
+        or not parsed.path.startswith("/storage/v1/object/sign/m340-publishing-templates/")
+        or not urllib.parse.parse_qs(parsed.query).get("token")
+        or parsed.fragment
+    ):
+        raise WorkerError("TEMPLATE_RESOLVE_INVALID")
+
+    expected_bytes = int(descriptor["bytes"])
+    request = urllib.request.Request(download_url, headers={"User-Agent": "Plaerrdeifl-M340-Worker/1"})
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            body = response.read(expected_bytes + 1)
+            if response.status != 200:
+                raise WorkerError("TEMPLATE_DOWNLOAD_FAILED")
+    except urllib.error.HTTPError as exc:
+        raise WorkerError("TEMPLATE_DOWNLOAD_FAILED") from exc
+    except urllib.error.URLError as exc:
+        raise WorkerError("TEMPLATE_DOWNLOAD_FAILED") from exc
+    if len(body) != expected_bytes or hashlib.sha256(body).hexdigest() != descriptor["sha256"]:
+        raise WorkerError("TEMPLATE_HASH_MISMATCH")
+    path = output_dir / f"template-{kind.lower()}.svg"
+    try:
+        path.write_bytes(body)
+    except OSError as exc:
+        raise WorkerError("FILE_IO_FAILED") from exc
+    validate_template_contract(path, kind)
+    return path
+
+
+def _template_path(config: Config, normalized: dict[str, Any], output_dir: Path, kind: str) -> Path:
+    descriptor = normalized["templates"][kind]
+    if descriptor["source"] == "SERVER_DEFAULT":
+        return config.templates_dir / f"{kind.lower()}.svg"
+    return _download_custom_template(config, descriptor, output_dir, kind)
 
 
 def render_assets(config: Config, snapshot: dict[str, Any], output_dir: Path) -> dict[str, Path]:
@@ -626,15 +997,21 @@ def render_assets(config: Config, snapshot: dict[str, Any], output_dir: Path) ->
 
     fields = build_text_fields(normalized)
     title = f"Plärrdeifl Fanbus – {normalized['displayName']} {normalized['eventDate'].strftime('%d.%m.%Y')}"
-    for kind in ("post", "story", "led"):
+    label_enabled = normalized["tripLabel"]["enabled"]
+    for kind in ("POST", "STORY", "LED"):
+        output_svg = output_dir / f"{kind.lower()}.svg"
         apply_template(
-            config.templates_dir / f"{kind}.svg",
-            output_dir / f"{kind}.svg",
+            _template_path(config, normalized, output_dir, kind),
+            output_svg,
             fields,
             output_dir / "qr.svg",
             qr_url,
             title,
+            trip_label_enabled=label_enabled,
+            kind=kind,
         )
+        if label_enabled:
+            fit_trip_label_brush(config, output_svg)
 
     font_dir = config.font_file.parent
     for kind in ARTIFACTS:
@@ -656,7 +1033,6 @@ def render_assets(config: Config, snapshot: dict[str, Any], output_dir: Path) ->
             raise WorkerError("PNG_DIMENSIONS_INVALID")
 
     return {kind: output_dir / f"{kind}.png" for kind in ARTIFACTS}
-
 
 def _remote_path(path: str, required_root: str = "/Fanbus") -> str:
     if (

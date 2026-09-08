@@ -4,6 +4,8 @@ const MAX_SECRET_LENGTH = 2_048;
 const WORKER_TOKEN_HEADER = "X-M340-Worker-Token";
 const CLAIM_RPC = "pd_m340_fanbus_publishing_job_claim";
 const COMPLETE_RPC = "pd_m340_fanbus_publishing_job_complete";
+const TEMPLATE_RESOLVE_RPC = "pd_m340_fanbus_publishing_template_resolve";
+const TEMPLATE_BUCKET = "m340-publishing-templates";
 
 const encoder = new TextEncoder();
 
@@ -113,6 +115,10 @@ function isValidRequestBody(value: unknown): value is JsonObject {
 
   if (value.action === "claim") {
     return hasExactKeys(value, ["action"]);
+  }
+
+  if (value.action === "template") {
+    return hasExactKeys(value, ["action", "versionId"]) && isUuid(value.versionId);
   }
 
   if (value.action !== "complete" || !hasExactKeys(value, [
@@ -266,7 +272,7 @@ async function readBoundedJson(request: Request): Promise<unknown> {
 
 async function callWorkerRpc(
   config: RuntimeConfig,
-  rpcName: typeof CLAIM_RPC | typeof COMPLETE_RPC,
+  rpcName: typeof CLAIM_RPC | typeof COMPLETE_RPC | typeof TEMPLATE_RESOLVE_RPC,
   body: JsonObject
 ) {
   let response: Response;
@@ -298,6 +304,67 @@ async function callWorkerRpc(
   } catch {
     throw new WorkerGatewayError("RPC_FAILED");
   }
+}
+
+function encodedObjectName(value: string) {
+  return value.split("/").map(segment => encodeURIComponent(segment)).join("/");
+}
+
+async function resolveTemplateDownload(config: RuntimeConfig, versionId: string) {
+  const template = await callWorkerRpc(config, TEMPLATE_RESOLVE_RPC, { p_version_id: versionId });
+  if (
+    template.environment !== "DEV"
+    || !["POST", "STORY", "LED"].includes(String(template.kind))
+    || template.versionId !== versionId
+    || typeof template.objectName !== "string"
+    || !/^versions\/dev\/[0-9a-f-]{36}\/[0-9a-f-]{36}[.]svg$/i.test(template.objectName)
+    || typeof template.filename !== "string"
+    || !/^[A-Za-z0-9ÄÖÜäöüß._ -]+[.]svg$/.test(template.filename)
+    || typeof template.sha256 !== "string"
+    || !/^[0-9a-f]{64}$/.test(template.sha256)
+    || typeof template.bytes !== "number"
+    || !Number.isSafeInteger(template.bytes)
+    || template.bytes < 1000
+    || template.bytes > 5 * 1024 * 1024
+  ) throw new WorkerGatewayError("TEMPLATE_INVALID");
+
+  let response: Response;
+  try {
+    response = await fetch(
+      `${config.supabaseUrl}/storage/v1/object/sign/${TEMPLATE_BUCKET}/${encodedObjectName(template.objectName)}`,
+      {
+        method: "POST",
+        headers: {
+          apikey: config.supabaseSecretKey,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ expiresIn: 300 })
+      }
+    );
+  } catch {
+    throw new WorkerGatewayError("TEMPLATE_SIGN_FAILED");
+  }
+  if (!response.ok) {
+    await response.body?.cancel();
+    throw new WorkerGatewayError("TEMPLATE_SIGN_FAILED");
+  }
+  const signed: unknown = await response.json().catch(() => null);
+  if (!isObject(signed) || typeof signed.signedURL !== "string") {
+    throw new WorkerGatewayError("TEMPLATE_SIGN_FAILED");
+  }
+  let download: URL;
+  try {
+    download = new URL(signed.signedURL, config.supabaseUrl);
+  } catch {
+    throw new WorkerGatewayError("TEMPLATE_SIGN_FAILED");
+  }
+  if (
+    download.origin !== config.supabaseUrl
+    || !download.pathname.startsWith(`/storage/v1/object/sign/${TEMPLATE_BUCKET}/`)
+    || !download.searchParams.get("token")
+  ) throw new WorkerGatewayError("TEMPLATE_SIGN_FAILED");
+
+  return { ...template, downloadUrl: download.href };
 }
 
 Deno.serve(async request => {
@@ -337,6 +404,8 @@ Deno.serve(async request => {
     const config = loadRuntimeConfig();
     const result = payload.action === "claim"
       ? await callWorkerRpc(config, CLAIM_RPC, {})
+      : payload.action === "template"
+      ? await resolveTemplateDownload(config, String(payload.versionId))
       : await callWorkerRpc(config, COMPLETE_RPC, {
         p_job_id: payload.jobId,
         p_claim_token: payload.claimToken,
