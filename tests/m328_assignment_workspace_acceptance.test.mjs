@@ -38,8 +38,9 @@ test("M328 participant cards visually identify related group bookings", () => {
 });
 
 test("M328 booking acceptance keeps exactly one compact filter surface", () => {
-  assert.match(filterCleanup, /tools\.querySelector\("\.m328-bookings-filter"\)\?\.remove\(\)/);
+  assert.match(filterCleanup, /const finalFilter = tools\.querySelector\("\.m328-final-booking-filter"\)/);
+  assert.doesNotMatch(filterCleanup, /tools\.querySelector\("\.m328-bookings-filter"\)\?\.remove\(\)/);
   assert.match(filterCleanup, /\.m328-final-booking-filter-body\{position:absolute/);
   assert.match(filterCleanup, /width:min\(220px,calc\(100vw - 52px\)\)/);
-  assert.match(iosEntry, /m328-booking-filter-cleanup\.js\?v=20260830-m328-booking-filter-cleanup1/);
+  assert.match(iosEntry, /m328-booking-filter-cleanup\.js\?v=20260908-m328-booking-filter-cleanup2/);
 });
