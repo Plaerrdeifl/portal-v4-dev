@@ -168,7 +168,7 @@ export async function hydratePage(key, context = {}) {
     }
     if (view === "trip-detail") {
       const result = await feature(
-        "./modules/bus-orga-trip-detail.js?v=20260830-m328-final-bus-management1",
+        "./modules/bus-orga-trip-detail.js?v=20260908-m328-ios-modal-recovery1",
         "hydrateBusOrgaTripDetail",
         context
       );
