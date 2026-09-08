@@ -31,6 +31,7 @@ EXPECTED_EDGE_PATH = "/functions/v1/m340-publishing-worker"
 EXPECTED_PUBLIC_HOST = "staging.plaerrdeifl.de"
 EXPECTED_NEXTCLOUD_HOST = "cloud.plaerrdeifl.de"
 EXPECTED_NEXTCLOUD_ROOT = "/Fanbus/_DEV"
+NEXTCLOUD_SHARE_API = "https://cloud.plaerrdeifl.de/ocs/v2.php/apps/files_sharing/api/v1/shares"
 EXPECTED_RENDERER = (
     "lscr.io/linuxserver/inkscape:1.4.2-r8-ls94@"
     "sha256:4d651665d4e3471a8d59d970e9841d50369baf1c4daa6df206f31caf163c4b22"
@@ -715,6 +716,52 @@ def _webdav_request(
     return status, body
 
 
+def _public_share(config: Config, remote_path: str) -> tuple[str, str]:
+    remote = _remote_path(remote_path)
+    password = read_secret(config.nextcloud_password_file, 1)
+    credentials = base64.b64encode(
+        f"{config.nextcloud_username}:{password}".encode("utf-8")
+    ).decode("ascii")
+    payload = urllib.parse.urlencode({
+        "path": remote,
+        "shareType": "3",
+        "permissions": "1",
+        "label": f"Fanbus Flyer {Path(remote).name}",
+    }).encode("utf-8")
+    request = urllib.request.Request(
+        NEXTCLOUD_SHARE_API + "?format=json",
+        data=payload,
+        headers={
+            "Authorization": f"Basic {credentials}",
+            "OCS-APIRequest": "true",
+            "Accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": "Plaerrdeifl-M340-Worker/1",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            raw = response.read(1_048_577)
+    except urllib.error.HTTPError as exc:
+        if exc.code in {401, 403}:
+            raise WorkerError("NEXTCLOUD_AUTH_FAILED") from exc
+        raise WorkerError("NEXTCLOUD_SHARE_FAILED") from exc
+    except urllib.error.URLError as exc:
+        raise WorkerError("NEXTCLOUD_SHARE_FAILED") from exc
+    try:
+        body = json.loads(raw.decode("utf-8"))
+        meta = body["ocs"]["meta"]
+        if int(meta.get("statuscode", 0)) != 200:
+            raise ValueError("OCS share creation failed")
+        share_url = str(body["ocs"]["data"]["url"]).rstrip("/")
+    except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        raise WorkerError("NEXTCLOUD_SHARE_FAILED") from exc
+    if not re.fullmatch(r"https://cloud[.]plaerrdeifl[.]de/s/[A-Za-z0-9]{8,128}", share_url):
+        raise WorkerError("NEXTCLOUD_SHARE_FAILED")
+    return share_url, share_url + "/download"
+
+
 def _mkcol(config: Config, remote_path: str) -> None:
     _webdav_request(config, "MKCOL", remote_path, {201, 405})
 
@@ -808,12 +855,21 @@ def _put_file(config: Config, local: Path, remote: str) -> None:
     )
 
 
-def build_manifest(pngs: dict[str, Path], remote_generation: str) -> dict[str, Any]:
+def build_manifest(
+    pngs: dict[str, Path],
+    remote_generation: str,
+    shares: dict[str, tuple[str, str]],
+) -> dict[str, Any]:
     artifacts: list[dict[str, Any]] = []
     for kind, api_kind in (("qr", "QR"), ("post", "POST"), ("story", "STORY"), ("led", "LED")):
         path = pngs[kind]
         size = path.stat().st_size
+        share_url, download_url = shares[kind]
         if size <= 0 or size > 104_857_600:
+            raise WorkerError("MANIFEST_INVALID")
+        if not re.fullmatch(r"https://cloud[.]plaerrdeifl[.]de/s/[A-Za-z0-9]{8,128}", share_url):
+            raise WorkerError("MANIFEST_INVALID")
+        if download_url != share_url + "/download":
             raise WorkerError("MANIFEST_INVALID")
         artifacts.append(
             {
@@ -822,6 +878,8 @@ def build_manifest(pngs: dict[str, Path], remote_generation: str) -> dict[str, A
                 "nextcloudPath": _remote_path(f"{remote_generation}/{kind}.png"),
                 "sha256": _sha256(path),
                 "bytes": size,
+                "shareUrl": share_url,
+                "downloadUrl": download_url,
             }
         )
     return {"schemaVersion": 1, "artifacts": artifacts}
@@ -847,7 +905,11 @@ def process_job(config: Config, job: dict[str, Any]) -> dict[str, Any]:
             local = job_dir / f"{kind}.{extension}"
             _put_file(config, local, f"{current_path}/{kind}.{extension}")
 
-    return build_manifest(pngs, generation_path)
+    shares = {
+        kind: _public_share(config, f"{generation_path}/{kind}.png")
+        for kind in ARTIFACTS
+    }
+    return build_manifest(pngs, generation_path, shares)
 
 
 def _failure_code(exc: BaseException) -> str:
