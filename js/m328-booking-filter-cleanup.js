@@ -26,13 +26,12 @@ function cleanupBookingFilter() {
   if (!tools) return;
   const finalFilter = tools.querySelector(".m328-final-booking-filter");
   if (!finalFilter) return;
-  tools.querySelector(".m328-bookings-filter")?.remove();
   tools.classList.add("m328-booking-filter-cleaned");
 }
 
 let scheduled = false;
 function scheduleCleanup() {
-  if (scheduled) return;
+  if (!isBookingsView() || scheduled) return;
   scheduled = true;
   queueMicrotask(() => {
     scheduled = false;
@@ -42,7 +41,8 @@ function scheduleCleanup() {
 
 window.addEventListener("hashchange", scheduleCleanup);
 const observer = new MutationObserver(scheduleCleanup);
-observer.observe(document.documentElement, { childList: true, subtree: true });
+const viewRoot = document.getElementById("view");
+if (viewRoot) observer.observe(viewRoot, { childList: true, subtree: true });
 scheduleCleanup();
 
 export function noop() {}
