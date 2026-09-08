@@ -231,6 +231,37 @@ function menuButton(action, label, className = "secondary") {
   return `<button class="button ${escapeAttr(className)}" type="button" data-m328-trip-menu-action="${escapeAttr(action)}">${escapeHtml(label)}</button>`;
 }
 
+function afterNativeDialogClose(dialog, callback) {
+  let completed = false;
+
+  const proceed = () => {
+    if (completed || dialog?.open) return;
+    completed = true;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!dialog?.open) callback();
+      });
+    });
+  };
+
+  if (!dialog?.open) {
+    proceed();
+    return;
+  }
+
+  const handleClose = () => proceed();
+  dialog.addEventListener("close", handleClose, { once: true });
+  dialog.close?.();
+
+  queueMicrotask(() => {
+    if (dialog.open) {
+      dialog.removeEventListener("close", handleClose);
+      return;
+    }
+    proceed();
+  });
+}
+
 function openTripMenu(state) {
   const work = workingMenuActions(state);
   const lifecycle = lifecycleMenuActions(state.trip);
@@ -239,8 +270,7 @@ function openTripMenu(state) {
   dialog.querySelectorAll("[data-m328-trip-menu-action]").forEach(button => {
     button.addEventListener("click", () => {
       const action = button.dataset.m328TripMenuAction;
-      dialog.close?.();
-      void handleAction(action, state.trip);
+      afterNativeDialogClose(dialog, () => void handleAction(action, state.trip));
     });
   });
 }
