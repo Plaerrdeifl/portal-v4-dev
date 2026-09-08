@@ -34,12 +34,6 @@ function formatCalendarDate(value) {
   return Number.isNaN(date.getTime()) ? String(value || "–") : DATE_FORMAT.format(date);
 }
 
-function publicBase(environment) {
-  return environment === "DEV"
-    ? "https://staging.plaerrdeifl.de"
-    : "https://plaerrdeifl.de";
-}
-
 function jobPresentation(status) {
   switch (String(status || "").toUpperCase()) {
     case "SUCCESS": return { label: "Flyer bereit", className: "success" };
@@ -48,18 +42,6 @@ function jobPresentation(status) {
     case "FAILED": return { label: "Fehlgeschlagen", className: "danger" };
     default: return { label: "Noch nicht erstellt", className: "neutral" };
   }
-}
-
-function renderMetrics(model) {
-  const resolvedTrips = asArray(model?.trips).filter(trip => trip?.resolutionStatus === "RESOLVED");
-  const stats = model?.stats || {};
-  const successfulJobs = asArray(model?.jobs).filter(job => job?.status === "SUCCESS").length;
-  return `<div class="m340-publishing-metrics" aria-label="Publishing-Übersicht">
-    <article><span>Bereite Fahrten</span><strong>${resolvedTrips.length}</strong></article>
-    <article><span>Aufrufe</span><strong>${asCount(stats.landingCount)}</strong></article>
-    <article><span>Weiterleitungen</span><strong>${asCount(stats.referralCount)}</strong></article>
-    <article><span>Erstellungen</span><strong>${successfulJobs}</strong></article>
-  </div>`;
 }
 
 const NEXTCLOUD_PUBLIC_HOST = "cloud.plaerrdeifl.de";
@@ -130,9 +112,9 @@ function flyerButtons(job) {
   const artifacts = asArray(job?.resultManifest?.artifacts);
   const byKind = new Map(artifacts.map(item => [String(item?.kind || "").toUpperCase(), item]));
   const definitions = [
-    ["POST", "Instagram Post"],
-    ["STORY", "Instagram Story"],
-    ["LED", "LED 16:9"]
+    ["POST", "Post"],
+    ["STORY", "Story"],
+    ["LED", "LED"]
   ];
   return `<div class="m340-publishing-flyer-buttons">${definitions.map(([kind, label]) => {
     const artifact = byKind.get(kind);
@@ -232,20 +214,43 @@ function templateStatus(template) {
   return template?.filename ? `Eigene Vorlage · ${template.filename}` : "Eigene Vorlage";
 }
 
-function renderPublishingSettings(model) {
-  const tripLabel = model?.settings?.tripLabel || { enabled: true, text: "FANBUSFAHRT" };
-  const templates = asArray(model?.templates);
-  return `<section class="v4-m325-workspace-section m340-publishing-settings" aria-labelledby="m340PublishingSettingsTitle">
-    <div class="m340-publishing-section-head"><div><h3 id="m340PublishingSettingsTitle">Flyer-Einstellungen</h3><p>Gilt für neu gestartete Flyer-Erstellungen.</p></div></div>
-    <form class="m340-publishing-label-form" data-m340-label-form>
-      <div class="m340-publishing-label-copy">
-        <strong>Zusatzzeile</strong>
-        <small>Text und Brush unter dem Zielort gemeinsam ein- oder ausblenden.</small>
+function generatorTripOptions(model, selectedTripId = "") {
+  const trips = asArray(model?.trips).filter(trip => trip?.resolutionStatus === "RESOLVED");
+  return `<option value="">Fahrt auswählen</option>${trips.map(trip => {
+    const title = trip?.venue || trip?.displayTitle || "Fanbusfahrt";
+    const date = formatCalendarDate(trip?.eventDate);
+    return `<option value="${escapeAttr(trip?.tripId || "")}"${String(trip?.tripId || "") === String(selectedTripId || "") ? " selected" : ""}>${escapeHtml(`${date} · ${title}`)}</option>`;
+  }).join("")}`;
+}
+
+function renderFlyerGenerator(model, generator = {}) {
+  const tripId = String(generator?.tripId || "");
+  const saved = Boolean(generator?.saved && tripId);
+  const enabled = Boolean(generator?.enabled);
+  const text = String(generator?.text || "");
+  const activeJob = tripId ? jobsForTrip(model, tripId).find(job => ["QUEUED", "PROCESSING"].includes(String(job?.status || "").toUpperCase())) : null;
+  return `<section class="v4-m325-workspace-section m340-generator" aria-labelledby="m340GeneratorTitle">
+    <div class="m340-publishing-section-head"><h3 id="m340GeneratorTitle">Flyer-Generator</h3></div>
+    <div class="m340-generator-body">
+      <label class="m340-generator-trip"><span>Fahrt</span><select data-m340-generator-trip>${generatorTripOptions(model, tripId)}</select></label>
+      ${tripId ? (saved ? `<div class="m340-generator-saved">
+        <span class="m340-generator-saved-check" aria-label="Zusatzanzeige ${enabled ? "aktiviert" : "deaktiviert"}"><input type="checkbox" ${enabled ? "checked " : ""}disabled><span>Zusatzanzeige</span></span>
+        ${enabled ? `<small>${escapeHtml(text)}</small>` : ""}
+        <button class="button small ghost" type="button" data-m340-generator-change>Ändern</button>
       </div>
-      <label class="m340-publishing-toggle"><input type="checkbox" name="tripLabelEnabled"${tripLabel?.enabled !== false ? " checked" : ""}><span>Anzeigen</span></label>
-      <label class="m340-publishing-label-input"><span>Text</span><input type="text" name="tripLabelText" maxlength="32" required value="${escapeAttr(tripLabel?.text || "FANBUSFAHRT")}"></label>
-      <button class="button small secondary" type="submit">Speichern</button>
-    </form>
+      <button class="button primary m340-generator-create" type="button" data-m340-generator-create${activeJob ? " disabled" : ""}>${activeJob ? "Wird erstellt …" : "Flyer generieren"}</button>` : `<form class="m340-generator-config" data-m340-generator-config>
+        <label class="m340-publishing-toggle"><input type="checkbox" name="tripLabelEnabled"${enabled ? " checked" : ""}><span>Zusatzanzeige</span></label>
+        <label class="m340-generator-text"${enabled ? "" : " hidden"}><span>Text</span><input type="text" name="tripLabelText" maxlength="32" value="${escapeAttr(text)}"></label>
+        <button class="button small secondary" type="submit">Speichern</button>
+      </form>`) : ""}
+    </div>
+  </section>`;
+}
+
+function renderTemplateManagement(model) {
+  const templates = asArray(model?.templates);
+  return `<details class="v4-m325-workspace-section m340-template-management">
+    <summary>Vorlagen verwalten</summary>
     <div class="m340-publishing-template-list" aria-label="Flyer-Vorlagen">
       ${templates.map(template => `<article class="m340-publishing-template-row" data-m340-template="${escapeAttr(template?.kind || "")}">
         <div><strong>${escapeHtml(template?.label || template?.kind || "Vorlage")}</strong><small>${escapeHtml(templateStatus(template))}</small></div>
@@ -256,37 +261,30 @@ function renderPublishingSettings(model) {
         </div>
       </article>`).join("")}
     </div>
-  </section>`;
+  </details>`;
 }
 
 function renderResolvedTrip(trip, model) {
   const latest = trip?.lastJob;
   const state = jobPresentation(latest?.status);
   const flyerJob = latestFlyerJob(model, trip?.tripId);
-  const shortlink = `${publicBase(model?.environment)}${trip.shortlinkPath || ""}`;
-  const actionLabel = flyerJob ? "Flyer neu erzeugen" : "Flyer erstellen";
+  const showState = ["QUEUED", "PROCESSING", "FAILED"].includes(String(latest?.status || "").toUpperCase());
 
   return `<article class="m340-publishing-trip-row" data-m340-trip="${escapeAttr(trip?.tripId || "")}">
     <header class="m340-publishing-trip-row-head">
       <div class="m340-publishing-trip-main">
         <span class="m340-publishing-kicker">${escapeHtml(formatCalendarDate(trip?.eventDate))}${trip?.eventTime ? ` · ${escapeHtml(String(trip.eventTime).slice(0, 5))}` : ""}</span>
-        <h3>${escapeHtml(trip?.displayTitle || trip?.venue || "Fanbusfahrt")}</h3>
-        ${trip?.venue ? `<p>${escapeHtml(trip.venue)}</p>` : ""}
+        <h3>${escapeHtml(trip?.venue || trip?.displayTitle || "Fanbusfahrt")}</h3>
       </div>
       <div class="m340-publishing-trip-stats" aria-label="Kurzlink-Statistik dieser Fahrt">
         <span><strong>${asCount(trip?.landingCount)}</strong><small>Aufrufe</small></span>
         <span><strong>${asCount(trip?.referralCount)}</strong><small>Weiterleitungen</small></span>
       </div>
-      <div class="m340-publishing-trip-controls">
-        <span class="badge ${escapeAttr(state.className)}">${escapeHtml(state.label)}</span>
-        <button class="button small secondary" type="button" data-m340-enqueue="${escapeAttr(trip.tripId)}">${escapeHtml(actionLabel)}</button>
-      </div>
     </header>
-    <div class="m340-publishing-trip-link"><span>Kurzlink</span><a href="${escapeAttr(shortlink)}" target="_blank" rel="noopener noreferrer">${escapeHtml(shortlink)}</a></div>
     <details class="m340-publishing-flyers">
-      <summary><span>Flyer</span><small>Post · Story · LED</small></summary>
+      <summary><span>Flyer</span>${showState ? `<small class="m340-flyer-state ${escapeAttr(state.className)}">${escapeHtml(state.label)}</small>` : ""}</summary>
       <div class="m340-publishing-flyers-body">
-        ${flyerJob ? flyerButtons(flyerJob) : `<p class="subtle">Für diese Fahrt liegen noch keine direkten Flyer-Downloads vor.</p>`}
+        ${flyerJob ? flyerButtons(flyerJob) : `<p class="subtle">Noch keine Flyer vorhanden.</p>`}
       </div>
     </details>
     ${latest?.lastErrorCode ? `<div class="notice error"><strong>Letzter Fehler</strong><p>${escapeHtml(latest.lastErrorCode)}</p></div>` : ""}
@@ -302,7 +300,7 @@ function renderTripCard(trip, model) {
     <header class="m340-publishing-trip-row-head">
       <div class="m340-publishing-trip-main">
         <span class="m340-publishing-kicker">${escapeHtml(formatCalendarDate(trip?.eventDate))}</span>
-        <h3>${escapeHtml(trip?.displayTitle || trip?.venue || "Fanbusfahrt")}</h3>
+        <h3>${escapeHtml(trip?.venue || trip?.displayTitle || "Fanbusfahrt")}</h3>
       </div>
     </header>
     ${resolutionStatus === "AMBIGUOUS" ? `<div class="notice warning m340-publishing-resolution-notice">
@@ -320,23 +318,19 @@ function renderTripCard(trip, model) {
   </article>`;
 }
 
-function workspaceMarkup(model) {
+function workspaceMarkup(model, generator) {
   const trips = asArray(model?.trips);
   return `<section class="v4-m325-workspace m340-publishing-workspace">
     <header class="v4-m325-workspace-header">
       <button class="button small secondary" type="button" data-m340-back>Zurück</button>
-      <div>
-        <span class="m340-publishing-kicker">Bus-Orga</span>
-        <h2>Flyer &amp; Kurzlinks</h2>
-        <p>Veröffentlichte Fahrten, Kurzlink-Statistik und Flyer-Downloads.</p>
-      </div>
+      <div><span class="m340-publishing-kicker">Bus-Orga</span><h2>Social Media</h2></div>
     </header>
-    ${renderMetrics(model)}
-    ${renderPublishingSettings(model)}
+    ${renderFlyerGenerator(model, generator)}
     <section class="v4-m325-workspace-section" aria-labelledby="m340PublishingTripsTitle">
-      <div class="m340-publishing-section-head"><div><h3 id="m340PublishingTripsTitle">Veröffentlichte Fahrten</h3><p>Flyer je Fahrt aufklappen und direkt herunterladen.</p></div><span class="badge neutral">${escapeHtml(model?.environment || "–")}</span></div>
+      <div class="m340-publishing-section-head"><h3 id="m340PublishingTripsTitle">Veröffentlichte Fahrten</h3></div>
       <div class="m340-publishing-grid">${trips.length ? trips.map(trip => renderTripCard(trip, model)).join("") : empty("Keine veröffentlichte Fanbusfahrt verfügbar.")}</div>
     </section>
+    ${renderTemplateManagement(model)}
   </section>`;
 }
 
@@ -351,29 +345,66 @@ function returnToBusOrga() {
   window.location.hash = "#/bus-orga";
 }
 
-function bindWorkspace(panel, refresh) {
+function bindWorkspace(panel, refresh, generator) {
   panel.querySelector("[data-m340-back]")?.addEventListener("click", returnToBusOrga);
 
-  panel.querySelector("[data-m340-label-form]")?.addEventListener("submit", async event => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const button = form.querySelector('button[type="submit"]');
-    const tripLabelEnabled = Boolean(form.elements.tripLabelEnabled?.checked);
-    const tripLabelText = String(form.elements.tripLabelText?.value || "").trim().replace(/\s+/g, " ");
-    if (!tripLabelText || tripLabelText.length > 32) {
-      showToast("Bitte einen Text mit höchstens 32 Zeichen eingeben.", "error", 5000);
-      return;
-    }
-    if (button) button.disabled = true;
+  const tripSelect = panel.querySelector("[data-m340-generator-trip]");
+  tripSelect?.addEventListener("change", async () => {
+    generator.tripId = String(tripSelect.value || "");
+    generator.saved = false;
+    generator.enabled = false;
+    generator.text = "";
+    await refresh();
+  });
+
+  const configForm = panel.querySelector("[data-m340-generator-config]");
+  if (configForm) {
+    const toggle = configForm.elements.tripLabelEnabled;
+    const textLabel = configForm.querySelector(".m340-generator-text");
+    const textInput = configForm.elements.tripLabelText;
+    toggle?.addEventListener("change", () => {
+      const enabled = Boolean(toggle.checked);
+      textLabel?.toggleAttribute("hidden", !enabled);
+      if (!enabled && textInput) textInput.value = "";
+      if (enabled) textInput?.focus({ preventScroll: true });
+    });
+    configForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      const enabled = Boolean(toggle?.checked);
+      const text = String(textInput?.value || "").trim().replace(/\s+/g, " ");
+      if (enabled && (!text || text.length > 32)) {
+        showToast("Bitte einen Text mit höchstens 32 Zeichen eingeben.", "error", 5000);
+        return;
+      }
+      generator.enabled = enabled;
+      generator.text = enabled ? text : "";
+      generator.saved = true;
+      await refresh();
+    });
+  }
+
+  panel.querySelector("[data-m340-generator-change]")?.addEventListener("click", async () => {
+    generator.saved = false;
+    await refresh();
+  });
+
+  panel.querySelector("[data-m340-generator-create]")?.addEventListener("click", async event => {
+    const button = event.currentTarget;
+    if (!generator.tripId || !generator.saved) return;
+    button.disabled = true;
     try {
       await runWrite(
-        () => call("fanbus_publishing_output_settings_update", { tripLabelEnabled, tripLabelText }),
-        "Flyer-Einstellungen wurden gespeichert."
+        () => call("fanbus_publishing_job_enqueue", {
+          tripId: generator.tripId,
+          tripLabelEnabled: Boolean(generator.enabled),
+          tripLabelText: generator.enabled ? String(generator.text || "") : ""
+        }),
+        "Flyer-Erstellung wurde gestartet."
       );
       await refresh();
     } catch (error) {
-      showToast(error?.message || "Flyer-Einstellungen konnten nicht gespeichert werden.", "error", 6000);
-      if (button) button.disabled = false;
+      showToast(error?.message || "Flyer konnten nicht gestartet werden.", "error", 6000);
+      button.disabled = false;
     }
   });
 
@@ -472,23 +503,6 @@ function bindWorkspace(panel, refresh) {
     });
   });
 
-  panel.querySelectorAll("[data-m340-enqueue]").forEach(button => {
-    button.addEventListener("click", async () => {
-      const tripId = button.dataset.m340Enqueue || "";
-      if (!tripId) return;
-      button.disabled = true;
-      try {
-        await runWrite(
-          () => call("fanbus_publishing_job_enqueue", { tripId }),
-          "Flyer-Erstellung wurde gestartet."
-        );
-        await refresh();
-      } catch (error) {
-        showToast(error?.message || "Flyer konnten nicht gestartet werden.", "error", 6000);
-        button.disabled = false;
-      }
-    });
-  });
 }
 
 export async function renderM340PublishingWorkspace(panel, summary) {
@@ -497,9 +511,10 @@ export async function renderM340PublishingWorkspace(panel, summary) {
     return;
   }
   if (summary) summary.textContent = "";
-  panel.innerHTML = `<section class="v4-m325-workspace m340-publishing-workspace"><header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m340-back>Zurück</button><div><span class="m340-publishing-kicker">Bus-Orga</span><h2>Flyer &amp; Kurzlinks</h2><p>Publishing-Daten werden geladen …</p></div></header></section>`;
+  panel.innerHTML = `<section class="v4-m325-workspace m340-publishing-workspace"><header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m340-back>Zurück</button><div><span class="m340-publishing-kicker">Bus-Orga</span><h2>Social Media</h2></div></header></section>`;
   panel.querySelector("[data-m340-back]")?.addEventListener("click", returnToBusOrga);
 
+  const generator = { tripId: "", saved: false, enabled: false, text: "" };
   let activeRefreshTimer = 0;
   const clearActiveRefresh = () => {
     if (activeRefreshTimer) window.clearTimeout(activeRefreshTimer);
@@ -514,9 +529,9 @@ export async function renderM340PublishingWorkspace(panel, summary) {
         .filter(Boolean));
       const model = await loadOverview();
       if (!panel.isConnected) return;
-      panel.innerHTML = workspaceMarkup(model);
+      panel.innerHTML = workspaceMarkup(model, generator);
       openTrips.forEach(tripId => panel.querySelector(`[data-m340-trip="${CSS.escape(tripId)}"] details.m340-publishing-flyers`)?.setAttribute("open", ""));
-      bindWorkspace(panel, refresh);
+      bindWorkspace(panel, refresh, generator);
       if (hasActiveJobs(model)) {
         activeRefreshTimer = window.setTimeout(() => {
           activeRefreshTimer = 0;
@@ -525,7 +540,7 @@ export async function renderM340PublishingWorkspace(panel, summary) {
       }
     } catch (error) {
       if (!panel.isConnected) return;
-      panel.innerHTML = `<section class="v4-m325-workspace m340-publishing-workspace"><header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m340-back>Zurück</button><div><span class="m340-publishing-kicker">Bus-Orga</span><h2>Flyer &amp; Kurzlinks</h2></div></header>${errorPanel(error, "Publishing-Daten konnten nicht geladen werden")}</section>`;
+      panel.innerHTML = `<section class="v4-m325-workspace m340-publishing-workspace"><header class="v4-m325-workspace-header"><button class="button small secondary" type="button" data-m340-back>Zurück</button><div><span class="m340-publishing-kicker">Bus-Orga</span><h2>Social Media</h2></div></header>${errorPanel(error, "Social-Media-Daten konnten nicht geladen werden")}</section>`;
       panel.querySelector("[data-m340-back]")?.addEventListener("click", returnToBusOrga);
     }
   };
