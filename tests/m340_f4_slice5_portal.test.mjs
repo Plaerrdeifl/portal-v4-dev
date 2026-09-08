@@ -168,6 +168,26 @@ test("publishing workspace is trip-based and exposes only three flyer downloads"
   assert.doesNotMatch(content.publishing, /m340-publishing-daily|Kurzlink-Statistik<\/h3>/);
 });
 
+test("flyer delivery fetches the original public DAV file and stays inside the portal", () => {
+  const fetchBlock = functionBlock(content.publishing, "async function fetchFlyerArtifact", "function downloadFlyerBlob");
+  assert.match(content.publishing, /public\.php\/dav\/files\/\$\{encodeURIComponent\(token\)\}/);
+  assert.match(fetchBlock, /method: "GET"/);
+  assert.match(fetchBlock, /credentials: "omit"/);
+  assert.match(fetchBlock, /response\.blob\(\)/);
+  assert.match(fetchBlock, /Content-Disposition/);
+  assert.match(fetchBlock, /Content-Type/);
+  assert.match(fetchBlock, /blob\.size !== expectedBytes/);
+  assert.doesNotMatch(fetchBlock, /headers\s*:/);
+  assert.doesNotMatch(content.publishing, /\/preview/);
+  assert.doesNotMatch(content.publishing, /href="\$\{escapeAttr\(artifact\.downloadUrl\)\}"/);
+  assert.match(content.publishing, /data-m340-flyer-download/);
+  assert.match(content.publishing, /navigator\.canShare\(\{ files: \[file\] \}\)/);
+  assert.match(content.publishing, /navigator\.share\(\{ files: \[file\], title: label \}\)/);
+  assert.match(content.publishing, /URL\.createObjectURL\(blob\)/);
+  assert.match(content.publishing, /URL\.revokeObjectURL\(objectUrl\)/);
+  assert.match(content.publishing, /Flyer konnte nicht geladen werden\. Bitte erneut versuchen\./);
+});
+
 test("each published trip shows its own shortlink counters", () => {
   assert.match(content.publishing, /trip\?\.landingCount/);
   assert.match(content.publishing, /trip\?\.referralCount/);
@@ -186,10 +206,10 @@ test("normal UI uses user-facing language only", () => {
 });
 
 test("active import chain carries the M340 cache key end-to-end", () => {
-  const cacheKey = "m340=20260908-trip-accordion-r2";
-  assert.ok(content.fanbuses.includes(`m340-publishing.js?v=20260908-trip-accordion-r2`));
+  const cacheKey = "m340=20260908-ios-download-r1";
+  assert.ok(content.fanbuses.includes(`m340-publishing.js?v=20260908-ios-download-r1`));
   assert.ok(content.pages.includes(`fanbuses.js?v=20260826-p800-r2-final-direct-fix&groups=20260828-m310-r1&m327=20260828-m327-r1&completion=20260829-m328-final1&correction=20260830-m328-c1&${cacheKey}`));
-  assert.match(content.app, /pages\.js\?[^"\n]*m340=20260908-trip-accordion-r2/);
-  assert.match(content.index, /js\/app\.js\?[^"\n]*m340=20260908-trip-accordion-r2/);
-  assert.match(content.index, /css\/app\.css\?[^"\n]*m340=20260908-trip-accordion-r2/);
+  assert.match(content.app, /pages\.js\?[^"\n]*m340=20260908-ios-download-r1/);
+  assert.match(content.index, /js\/app\.js\?[^"\n]*m340=20260908-ios-download-r1/);
+  assert.match(content.index, /css\/app\.css\?[^"\n]*m340=20260908-ios-download-r1/);
 });
