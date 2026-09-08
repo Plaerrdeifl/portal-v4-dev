@@ -57,10 +57,10 @@ test("M328 quick targets return one step to the selected quick action", () => {
   assert.match(quickBack, /content:"← Auswahl"/);
 });
 
-test("M328 quick modules are loaded before the legacy acceptance back interceptor", () => {
+test("M328 quick modules are loaded before the acceptance back interceptor", () => {
   const quickIndex = iosEntry.indexOf('m328-quick-change.js?v=20260830-m328-quick-change4');
   const backIndex = iosEntry.indexOf('m328-quick-back.js?v=20260830-m328-quick-back1');
-  const acceptanceIndex = iosEntry.indexOf('m328-final-acceptance.js?v=20260830-m328-final-acceptance2');
+  const acceptanceIndex = iosEntry.indexOf('m328-final-acceptance.js?v=20260908-m328-final-acceptance3');
   assert.ok(quickIndex >= 0);
   assert.ok(backIndex >= 0);
   assert.ok(acceptanceIndex > backIndex);
