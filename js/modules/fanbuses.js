@@ -20,7 +20,7 @@ import { setupFanbusMyBookings } from "./fanbus-my-bookings.js";
 import {
   M340_PUBLISHING_CAPABILITY,
   renderM340PublishingWorkspace
-} from "./m340-publishing.js?v=20260908-publishing-assets-r1";
+} from "./m340-publishing.js?v=20260908-trip-accordion-r2";
 
 const BERLIN_TIME_ZONE = "Europe/Berlin";
 const PRIVACY_REFERENCE = "https://plaerrdeifl.de/datenschutzerklaerung/";
