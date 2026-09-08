@@ -346,10 +346,15 @@ def normalize_snapshot(snapshot: dict[str, Any], logo_dir: Path) -> tuple[str, d
     kind = str(snapshot.get('kind') or '').upper()
     if kind not in EXPECTED_BY_KIND or not isinstance(snapshot.get('history'), list):
         raise WorkerError('SNAPSHOT_INVALID')
+    templates = snapshot.get('graphicTemplates')
+    if not isinstance(templates, dict):
+        raise WorkerError('GRAPHIC_TEMPLATE_SNAPSHOT_MISSING')
     normalized = {
+        'kind': kind,
         'competitionLabel': str(snapshot.get('competitionLabel') or ''),
         'seriesInfo': str(snapshot.get('seriesInfo') or ''),
         'history': snapshot['history'],
+        'graphicTemplates': templates,
     }
     for source_key, target_key in (('ourTeam', 'ourTeam'), ('opponentTeam', 'opponentTeam')):
         team = snapshot.get(source_key)
@@ -383,7 +388,7 @@ def render(state_file: Path, outdir: Path) -> list[dict[str, Any]]:
         manifest = json.loads((outdir / 'manifest.json').read_text(encoding='utf-8'))
     except (OSError, json.JSONDecodeError) as exc:
         raise WorkerError('RENDER_MANIFEST_INVALID') from exc
-    if not isinstance(manifest, list) or len(manifest) != 6 or not all(isinstance(item, dict) and item.get('backgroundApplied') is True for item in manifest):
+    if not isinstance(manifest, list) or len(manifest) != 2 or not all(isinstance(item, dict) and item.get('backgroundApplied') is True for item in manifest):
         raise WorkerError('RENDER_OUTPUT_INVALID')
     return manifest
 
