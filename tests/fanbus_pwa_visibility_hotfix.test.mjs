@@ -85,6 +85,15 @@ test("Auto-Refresh verwirft keine laufende Buchungsbearbeitung oder offene Dialo
   assert.doesNotMatch(app, /location\.reload\s*\(/);
 });
 
+test("BUS_ORGA sieht die höchste Buchungsnummer zuerst", () => {
+  const grouping = functionBlock(bookings, "groupBookings", "bookingStatus");
+
+  assert.match(
+    grouping,
+    /sort\(\(a, b\) => String\(b\.number\)\.localeCompare\(String\(a\.number\), "de"\)\)/
+  );
+});
+
 test("M020 Badge, selektive Quittierung und TASK_* Verhalten bleiben unangetastet nutzbar", () => {
   assert.match(bridge, /void synchronizeAuthoritativeBadge\(\)/);
   assert.match(bridge, /startsWith\("TASK_"\)/);
