@@ -439,8 +439,12 @@ def validate_snapshot(snapshot: Any) -> dict[str, Any]:
         if not isinstance(enabled, bool) or not isinstance(text, str):
             raise WorkerError("SNAPSHOT_INVALID")
         text = " ".join(text.split())
-        if not text or len(text) > TRIP_LABEL_MAX_CHARS or any(ord(char) < 32 or ord(char) == 127 for char in text):
+        if len(text) > TRIP_LABEL_MAX_CHARS or any(ord(char) < 32 or ord(char) == 127 for char in text):
             raise WorkerError("SNAPSHOT_INVALID")
+        if enabled and not text:
+            raise WorkerError("SNAPSHOT_INVALID")
+        if not enabled:
+            text = ""
         trip_label = {"enabled": enabled, "text": text}
         templates = _normalize_template_descriptors(publishing.get("templates"))
     else:
