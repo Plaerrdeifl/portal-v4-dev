@@ -4,7 +4,8 @@ import test from "node:test";
 import {
   buildOperationalBookingContexts,
   operationalBookingCountLabel,
-  operationalBookingRoleLabel
+  operationalBookingRoleLabel,
+  replaceOperationalRolePrefix
 } from "../js/modules/fanbus-operational-integrity.js";
 
 const read = path => fs.readFileSync(new URL(path, import.meta.url), "utf8");
@@ -78,6 +79,21 @@ test("GROUP-001 case 7: ACTIVE and WAITLISTED count, CANCELLED does not", () => 
 test("GROUP-001 case 8: mobile duplicate review remains single-column", () => {
   assert.match(ui, /@media\(max-width:520px\)/);
   assert.match(ui, /m328-duplicate-review-grid\{grid-template-columns:1fr\}/);
+});
+
+test("booking role decoration is idempotent for companion metadata", () => {
+  const role = "Mitfahrer · Gruppe Anna Beispiel";
+  const decorated = `${role} · anna@example.invalid · Bus 1`;
+  assert.equal(replaceOperationalRolePrefix(decorated, role), decorated);
+  assert.equal(replaceOperationalRolePrefix(replaceOperationalRolePrefix(decorated, role), role), decorated);
+  assert.equal(
+    replaceOperationalRolePrefix("Mitfahrer · Gruppe Alter Name · anna@example.invalid", role),
+    `${role} · anna@example.invalid`
+  );
+  assert.equal(
+    replaceOperationalRolePrefix("Gruppenbuchung · 2 Personen · anna@example.invalid", "Einzelbuchung"),
+    "Einzelbuchung · anna@example.invalid"
+  );
 });
 
 test("DUPLICATE-001 is cross-booking, current-only, review-only", () => {

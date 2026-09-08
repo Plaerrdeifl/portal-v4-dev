@@ -64,3 +64,15 @@ export function operationalBookingCountLabel(context) {
     ? `${current} · ${context.cancelledCount} storniert`
     : current;
 }
+
+export function replaceOperationalRolePrefix(text, role) {
+  const raw = String(text || "");
+  const prefix = /^(?:Gruppenbuchung · \d+ Personen|Mitfahrer · Gruppe [^·]+|Einzelbuchung)(?: · |$)/u;
+  const match = raw.match(prefix);
+  if (match) {
+    const suffix = raw.slice(match[0].length);
+    return suffix ? `${role} · ${suffix}` : role;
+  }
+  const separator = raw.indexOf(" · ");
+  return separator < 0 ? role : `${role} · ${raw.slice(separator + 3)}`;
+}

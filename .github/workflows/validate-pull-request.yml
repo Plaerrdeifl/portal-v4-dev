@@ -40,12 +40,15 @@ jobs:
         run: npm test
 
       - name: Build exact DEV portal
+        # PR validation creates a non-deployed DEV artifact. The Supabase
+        # publishable key is public client configuration; Turnstile uses
+        # Cloudflare's official automated-test site key as the CI fallback.
         env:
           PORTAL_ENVIRONMENT: DEV
-          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
-          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
-          SUPABASE_EXPECTED_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
-          M310_TURNSTILE_SITE_KEY: ${{ vars.M310_TURNSTILE_SITE_KEY }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL || 'https://tpieykhhawszlzsoflnl.supabase.co' }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_0CNMhK3t95eEa-v3XXj61Q__mWzFOJ6' }}
+          SUPABASE_EXPECTED_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF || 'tpieykhhawszlzsoflnl' }}
+          M310_TURNSTILE_SITE_KEY: ${{ vars.M310_TURNSTILE_SITE_KEY || '1x00000000000000000000AA' }}
         run: npm run build
 
       - name: Verify DEV output
