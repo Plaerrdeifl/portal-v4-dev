@@ -1,5 +1,15 @@
-const DEV_ORIGIN = "https://dev.plaerrdeifl.de";
-const EXPECTED_SUPABASE_HOST = "tpieykhhawszlzsoflnl.supabase.co";
+const RUNTIME_CONTRACTS = {
+  "tpieykhhawszlzsoflnl.supabase.co": {
+    environment: "DEV",
+    portalOrigin: "https://dev.plaerrdeifl.de",
+    objectPrefix: "versions/dev"
+  },
+  "wplescvhlgctynkfwvrj.supabase.co": {
+    environment: "PROD",
+    portalOrigin: "https://portal.plaerrdeifl.de",
+    objectPrefix: "versions/prod"
+  }
+} as const;
 const BUCKET = "m340-publishing-templates";
 const MAX_SVG_BYTES = 5 * 1024 * 1024;
 const MAX_REQUEST_BYTES = MAX_SVG_BYTES + 128 * 1024;
@@ -35,15 +45,22 @@ const DIMENSIONS: Record<string, [number, number]> = {
 };
 
 type JsonObject = Record<string, unknown>;
-type RuntimeConfig = { supabaseUrl: string; anonKey: string; serviceRoleKey: string };
+type RuntimeConfig = {
+  supabaseUrl: string;
+  anonKey: string;
+  serviceRoleKey: string;
+  environment: "DEV" | "PROD";
+  portalOrigin: string;
+  objectPrefix: string;
+};
 
 function isObject(value: unknown): value is JsonObject {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function corsHeaders() {
+function corsHeaders(origin: string) {
   return {
-    "Access-Control-Allow-Origin": DEV_ORIGIN,
+    "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "authorization, apikey, content-type",
     "Access-Control-Max-Age": "600",
@@ -51,19 +68,19 @@ function corsHeaders() {
   };
 }
 
-function jsonResponse(status: number, body: JsonObject, cors = true) {
+function jsonResponse(status: number, body: JsonObject, corsOrigin: string | null = null) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "no-store",
-      ...(cors ? corsHeaders() : {})
+      ...(corsOrigin ? corsHeaders(corsOrigin) : {})
     }
   });
 }
 
-function fail(status: number, code: string, message: string, cors = true) {
-  return jsonResponse(status, { ok: false, error: { code, message } }, cors);
+function fail(status: number, code: string, message: string, corsOrigin: string | null = null) {
+  return jsonResponse(status, { ok: false, error: { code, message } }, corsOrigin);
 }
 
 function configuredSupabaseSecretKey() {
@@ -90,11 +107,20 @@ function loadConfig(): RuntimeConfig | null {
   if (!rawUrl || !anonKey || !serviceRoleKey || /[\r\n]/.test(serviceRoleKey)) return null;
   try {
     const url = new URL(rawUrl);
-    if (url.protocol !== "https:" || url.hostname !== EXPECTED_SUPABASE_HOST || url.origin !== rawUrl || url.pathname !== "/") return null;
+    if (url.protocol !== "https:" || url.origin !== rawUrl || url.pathname !== "/") return null;
+    const contract = RUNTIME_CONTRACTS[url.hostname as keyof typeof RUNTIME_CONTRACTS];
+    if (!contract) return null;
+    return {
+      supabaseUrl: rawUrl,
+      anonKey,
+      serviceRoleKey,
+      environment: contract.environment,
+      portalOrigin: contract.portalOrigin,
+      objectPrefix: contract.objectPrefix
+    };
   } catch {
     return null;
   }
-  return { supabaseUrl: rawUrl, anonKey, serviceRoleKey };
 }
 
 function bearerToken(request: Request) {
@@ -262,51 +288,50 @@ async function storageDelete(config: RuntimeConfig, objectName: string) {
 }
 
 Deno.serve(async request => {
-  const origin = request.headers.get("Origin") || "";
-  if (origin !== DEV_ORIGIN) return fail(403, "ORIGIN_REJECTED", "Die Anfrage ist nicht zulässig.", false);
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders() });
-  if (request.method !== "POST") return fail(405, "METHOD_NOT_ALLOWED", "Die Anfrage ist nicht zulässig.");
-
   const config = loadConfig();
   if (!config) return fail(500, "CONFIG_INVALID", "Der Vorlagendienst ist nicht konfiguriert.");
+  const origin = request.headers.get("Origin") || "";
+  if (origin !== config.portalOrigin) return fail(403, "ORIGIN_REJECTED", "Die Anfrage ist nicht zulässig.");
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(config.portalOrigin) });
+  if (request.method !== "POST") return fail(405, "METHOD_NOT_ALLOWED", "Die Anfrage ist nicht zulässig.", config.portalOrigin);
   const token = bearerToken(request);
-  if (!token) return fail(401, "AUTH_REQUIRED", "Anmeldung erforderlich.");
+  if (!token) return fail(401, "AUTH_REQUIRED", "Anmeldung erforderlich.", config.portalOrigin);
   if (!/^multipart\/form-data;\s*boundary=/i.test(request.headers.get("Content-Type") || "")) {
-    return fail(400, "INVALID_REQUEST", "Die Upload-Anfrage ist ungültig.");
+    return fail(400, "INVALID_REQUEST", "Die Upload-Anfrage ist ungültig.", config.portalOrigin);
   }
 
   const body = await readBoundedBody(request);
-  if (!body) return fail(413, "REQUEST_TOO_LARGE", "Die Datei ist zu groß.");
+  if (!body) return fail(413, "REQUEST_TOO_LARGE", "Die Datei ist zu groß.", config.portalOrigin);
   let form: FormData;
   try {
     form = await new Response(body, { headers: { "Content-Type": request.headers.get("Content-Type") || "" } }).formData();
   } catch {
-    return fail(400, "INVALID_REQUEST", "Die Upload-Anfrage ist ungültig.");
+    return fail(400, "INVALID_REQUEST", "Die Upload-Anfrage ist ungültig.", config.portalOrigin);
   }
-  if (form.get("action") !== "upload") return fail(400, "INVALID_REQUEST", "Die Upload-Anfrage ist ungültig.");
+  if (form.get("action") !== "upload") return fail(400, "INVALID_REQUEST", "Die Upload-Anfrage ist ungültig.", config.portalOrigin);
   const kind = String(form.get("kind") || "").trim().toUpperCase();
   const file = form.get("file");
   if (!DIMENSIONS[kind] || !(file instanceof File) || !/^[A-Za-z0-9ÄÖÜäöüß._ -]+\.svg$/.test(file.name)) {
-    return fail(400, "INVALID_FILE", "Bitte eine gültige SVG-Vorlage auswählen.");
+    return fail(400, "INVALID_FILE", "Bitte eine gültige SVG-Vorlage auswählen.", config.portalOrigin);
   }
-  if (file.size < 1000 || file.size > MAX_SVG_BYTES) return fail(413, "INVALID_FILE_SIZE", "Die SVG-Datei darf höchstens 5 MiB groß sein.");
+  if (file.size < 1000 || file.size > MAX_SVG_BYTES) return fail(413, "INVALID_FILE_SIZE", "Die SVG-Datei darf höchstens 5 MiB groß sein.", config.portalOrigin);
   if (file.type && !["image/svg+xml", "application/xml", "text/xml", "application/octet-stream"].includes(file.type)) {
-    return fail(400, "INVALID_FILE_TYPE", "Der Dateityp ist keine SVG-Datei.");
+    return fail(400, "INVALID_FILE_TYPE", "Der Dateityp ist keine SVG-Datei.", config.portalOrigin);
   }
   const bytes = new Uint8Array(await file.arrayBuffer());
   const validationError = validateSvg(bytes, kind);
-  if (validationError) return fail(400, "TEMPLATE_CONTRACT_INVALID", validationError);
+  if (validationError) return fail(400, "TEMPLATE_CONTRACT_INVALID", validationError, config.portalOrigin);
 
   const authorization = await portalApi(config, token, "fanbus_publishing_template_upload_authorize", { kind, filename: file.name });
-  if (!authorization) return fail(403, "FORBIDDEN", "Die Vorlage darf nicht ersetzt werden.");
+  if (!authorization) return fail(403, "FORBIDDEN", "Die Vorlage darf nicht ersetzt werden.", config.portalOrigin);
   const actorId = String(authorization.actorId || "");
   const environment = String(authorization.environment || "");
-  if (!/^[0-9a-f-]{36}$/i.test(actorId) || environment !== "DEV" || authorization.kind !== kind || authorization.filename !== file.name) {
-    return fail(403, "FORBIDDEN", "Die Vorlage darf nicht ersetzt werden.");
+  if (!/^[0-9a-f-]{36}$/i.test(actorId) || environment !== config.environment || authorization.kind !== kind || authorization.filename !== file.name) {
+    return fail(403, "FORBIDDEN", "Die Vorlage darf nicht ersetzt werden.", config.portalOrigin);
   }
 
   const versionId = crypto.randomUUID();
-  const objectName = `versions/dev/${actorId}/${versionId}.svg`;
+  const objectName = `${config.objectPrefix}/${actorId}/${versionId}.svg`;
   const sha256 = await sha256Hex(bytes);
   try {
     await storageUpload(config, objectName, bytes);
@@ -318,9 +343,9 @@ Deno.serve(async request => {
       p_sha256: sha256,
       p_bytes: bytes.byteLength
     });
-    return jsonResponse(200, { ok: true, data: { ...activated, source: "CUSTOM" } });
+    return jsonResponse(200, { ok: true, data: { ...activated, source: "CUSTOM" } }, config.portalOrigin);
   } catch {
     await storageDelete(config, objectName);
-    return fail(500, "TEMPLATE_UPLOAD_FAILED", "Die SVG-Vorlage konnte nicht aktiviert werden.");
+    return fail(500, "TEMPLATE_UPLOAD_FAILED", "Die SVG-Vorlage konnte nicht aktiviert werden.", config.portalOrigin);
   }
 });

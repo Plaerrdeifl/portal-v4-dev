@@ -1,0 +1,16 @@
+{
+  "environment": "PROD",
+  "edgeUrl": "https://wplescvhlgctynkfwvrj.supabase.co/functions/v1/m340-publishing-worker",
+  "publicBaseUrl": "https://plaerrdeifl.de",
+  "workerTokenFile": "/srv/docker/m340-prod/secrets/worker_token",
+  "nextcloudWebdavBase": "https://cloud.plaerrdeifl.de/remote.php/dav/files/m340-prod",
+  "nextcloudRoot": "/Fanbus",
+  "nextcloudUsername": "m340-prod",
+  "nextcloudPasswordFile": "/srv/docker/m340-prod/secrets/nextcloud_app_password",
+  "templatesDir": "/srv/docker/m340-prod/templates",
+  "workDir": "/srv/docker/m340-prod/work",
+  "fontFile": "/srv/docker/m340-prod/fonts/KOMIKAX.ttf",
+  "fontSha256": "d2c790c5ce96e4453ab7ea2d17f8c71db06cec3d3ab4f7f98db02955e63ab353",
+  "rendererImage": "lscr.io/linuxserver/inkscape:1.4.2-r8-ls94@sha256:4d651665d4e3471a8d59d970e9841d50369baf1c4daa6df206f31caf163c4b22",
+  "pollSeconds": 30
+}

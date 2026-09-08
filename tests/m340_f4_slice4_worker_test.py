@@ -13,6 +13,7 @@ WORKER_DIR = ROOT / "workers" / "m340-publishing"
 WORKER_PATH = WORKER_DIR / "worker.py"
 QR_BRIDGE_PATH = WORKER_DIR / "qr_bridge.py"
 CONFIG_PATH = WORKER_DIR / "config.dev.example.json"
+PROD_CONFIG_PATH = WORKER_DIR / "config.prod.example.json"
 SERVICE_PATH = WORKER_DIR / "m340-publishing-worker.service"
 
 spec = importlib.util.spec_from_file_location("m340_worker", WORKER_PATH)
@@ -131,10 +132,19 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.renderer_image, worker.EXPECTED_RENDERER)
         self.assertEqual(config.font_sha256, worker.EXPECTED_FONT_SHA256)
 
-    def test_prod_or_wrong_hosts_are_rejected(self):
+    def test_prod_example_is_locked_to_prod_endpoints(self):
+        config = worker.load_config(PROD_CONFIG_PATH)
+        self.assertEqual(config.environment, "PROD")
+        self.assertEqual(config.edge_url, "https://wplescvhlgctynkfwvrj.supabase.co/functions/v1/m340-publishing-worker")
+        self.assertEqual(config.public_base_url, "https://plaerrdeifl.de")
+        self.assertEqual(config.nextcloud_root, "/Fanbus")
+        self.assertEqual(config.nextcloud_username, "m340-prod")
+        self.assertEqual(config.poll_seconds, 30)
+
+    def test_cross_environment_or_wrong_hosts_are_rejected(self):
         raw = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
         cases = [
-            ("environment", "PROD"),
+            ("environment", "STAGING"),
             ("edgeUrl", "https://example.invalid/functions/v1/m340-publishing-worker"),
             ("publicBaseUrl", "https://plaerrdeifl.de"),
             ("nextcloudRoot", "/Fanbus"),

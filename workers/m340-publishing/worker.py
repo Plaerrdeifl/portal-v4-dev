@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""M340 DEV outbound Fanbus publishing worker for acer01."""
+"""M340 outbound Fanbus publishing worker for acer01."""
 
 from __future__ import annotations
 
@@ -25,12 +25,22 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-EXPECTED_ENVIRONMENT = "DEV"
-EXPECTED_EDGE_HOST = "tpieykhhawszlzsoflnl.supabase.co"
+ENVIRONMENT_CONTRACTS = {
+    "DEV": {
+        "edge_host": "tpieykhhawszlzsoflnl.supabase.co",
+        "public_host": "staging.plaerrdeifl.de",
+        "nextcloud_root": "/Fanbus/_DEV",
+        "nextcloud_username": "m340-dev",
+    },
+    "PROD": {
+        "edge_host": "wplescvhlgctynkfwvrj.supabase.co",
+        "public_host": "plaerrdeifl.de",
+        "nextcloud_root": "/Fanbus",
+        "nextcloud_username": "m340-prod",
+    },
+}
 EXPECTED_EDGE_PATH = "/functions/v1/m340-publishing-worker"
-EXPECTED_PUBLIC_HOST = "staging.plaerrdeifl.de"
 EXPECTED_NEXTCLOUD_HOST = "cloud.plaerrdeifl.de"
-EXPECTED_NEXTCLOUD_ROOT = "/Fanbus/_DEV"
 NEXTCLOUD_SHARE_API = "https://cloud.plaerrdeifl.de/ocs/v2.php/apps/files_sharing/api/v1/shares"
 EXPECTED_RENDERER = (
     "lscr.io/linuxserver/inkscape:1.4.2-r8-ls94@"
@@ -170,16 +180,21 @@ def load_config(path: Path) -> Config:
     }
     if set(raw) != expected:
         raise WorkerError("CONFIG_INVALID")
-    if raw["environment"] != EXPECTED_ENVIRONMENT:
+    environment = str(raw["environment"])
+    contract = ENVIRONMENT_CONTRACTS.get(environment)
+    if contract is None:
         raise WorkerError("CONFIG_INVALID")
-    edge = _https_url(str(raw["edgeUrl"]), EXPECTED_EDGE_HOST, EXPECTED_EDGE_PATH)
-    public_base = _https_url(str(raw["publicBaseUrl"]), EXPECTED_PUBLIC_HOST, "")
+    edge = _https_url(str(raw["edgeUrl"]), str(contract["edge_host"]), EXPECTED_EDGE_PATH)
+    public_base = _https_url(str(raw["publicBaseUrl"]), str(contract["public_host"]), "")
+    username = str(raw["nextcloudUsername"])
+    if username != contract["nextcloud_username"]:
+        raise WorkerError("CONFIG_INVALID")
     webdav = _https_url(
         str(raw["nextcloudWebdavBase"]),
         EXPECTED_NEXTCLOUD_HOST,
-        "/remote.php/dav/files/m340-dev",
+        f"/remote.php/dav/files/{username}",
     )
-    if raw["nextcloudRoot"] != EXPECTED_NEXTCLOUD_ROOT:
+    if raw["nextcloudRoot"] != contract["nextcloud_root"]:
         raise WorkerError("CONFIG_INVALID")
     if raw["rendererImage"] != EXPECTED_RENDERER:
         raise WorkerError("CONFIG_INVALID")
@@ -188,16 +203,13 @@ def load_config(path: Path) -> Config:
     poll = raw["pollSeconds"]
     if isinstance(poll, bool) or not isinstance(poll, int) or poll != 30:
         raise WorkerError("CONFIG_INVALID")
-    username = raw["nextcloudUsername"]
-    if username != "m340-dev":
-        raise WorkerError("CONFIG_INVALID")
     return Config(
-        environment=EXPECTED_ENVIRONMENT,
+        environment=environment,
         edge_url=edge,
         public_base_url=public_base,
         worker_token_file=Path(str(raw["workerTokenFile"])),
         nextcloud_webdav_base=webdav,
-        nextcloud_root=EXPECTED_NEXTCLOUD_ROOT,
+        nextcloud_root=str(contract["nextcloud_root"]),
         nextcloud_username=username,
         nextcloud_password_file=Path(str(raw["nextcloudPasswordFile"])),
         templates_dir=Path(str(raw["templatesDir"])),
@@ -392,7 +404,7 @@ def _normalize_template_descriptors(value: Any) -> dict[str, dict[str, Any]]:
         sha256 = str(item.get("sha256") or "")
         size = item.get("bytes")
         if (
-            not re.fullmatch(r"versions/dev/[0-9a-f-]{36}/[0-9a-f-]{36}[.]svg", object_name, re.IGNORECASE)
+            not re.fullmatch(r"versions/(?:dev|prod)/[0-9a-f-]{36}/[0-9a-f-]{36}[.]svg", object_name, re.IGNORECASE)
             or not re.fullmatch(r"[A-Za-z0-9ÄÖÜäöüß._ -]+[.]svg", filename)
             or not re.fullmatch(r"[0-9a-f]{64}", sha256)
             or not isinstance(size, int)
@@ -938,9 +950,10 @@ def _download_custom_template(
         parsed = urllib.parse.urlsplit(download_url)
     except ValueError as exc:
         raise WorkerError("TEMPLATE_RESOLVE_INVALID") from exc
+    expected_edge_host = urllib.parse.urlsplit(config.edge_url).hostname
     if (
         parsed.scheme != "https"
-        or parsed.hostname != EXPECTED_EDGE_HOST
+        or parsed.hostname != expected_edge_host
         or parsed.username
         or parsed.password
         or not parsed.path.startswith("/storage/v1/object/sign/m340-publishing-templates/")

@@ -61,8 +61,11 @@ test("generator payload is per-job and accepts empty text only when disabled", (
   assert.match(worker, /if not enabled:[\s\S]*text = ""/);
 });
 
-test("upload gateway is DEV-only bounded and validates active SVG content", () => {
+test("upload gateway is environment-bound, bounded and validates active SVG content", () => {
   assert.match(upload, /https:\/\/dev\.plaerrdeifl\.de/);
+  assert.match(upload, /https:\/\/portal\.plaerrdeifl\.de/);
+  assert.match(upload, /tpieykhhawszlzsoflnl\.supabase\.co/);
+  assert.match(upload, /wplescvhlgctynkfwvrj\.supabase\.co/);
   assert.match(upload, /MAX_SVG_BYTES = 5 \* 1024 \* 1024/);
   assert.match(upload, /m340-trip-label-brush/);
   assert.match(upload, /plaerrdeifl-brush-horizontal-proof/);
@@ -76,11 +79,13 @@ test("upload gateway is DEV-only bounded and validates active SVG content", () =
   assert.doesNotMatch(upload, /Authorization: `Bearer \$\{config\.serviceRoleKey\}`/);
 });
 
-test("worker gateway signs only a resolved private template version", () => {
+test("worker gateway signs only an environment-matched private template version", () => {
   assert.match(workerGateway, /action === "template"/);
   assert.match(workerGateway, /pd_m340_fanbus_publishing_template_resolve/);
   assert.match(workerGateway, /storage\/v1\/object\/sign/);
   assert.match(workerGateway, /expiresIn: 300/);
+  assert.match(workerGateway, /template\.environment !== config\.environment/);
+  assert.match(workerGateway, /wplescvhlgctynkfwvrj\.supabase\.co/);
   assert.doesNotMatch(workerGateway, /Authorization: `Bearer \$\{config\.supabaseSecretKey\}`/);
 });
 
@@ -95,4 +100,6 @@ test("worker keeps v1 compatibility and renders v2 label plus dynamic brush", ()
   assert.match(worker, /data-m340-brush-scale/);
   assert.match(worker, /action": "template"/);
   assert.match(worker, /TEMPLATE_HASH_MISMATCH/);
+  assert.match(worker, /ENVIRONMENT_CONTRACTS/);
+  assert.match(worker, /wplescvhlgctynkfwvrj\.supabase\.co/);
 });

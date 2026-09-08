@@ -6,6 +6,10 @@ const CLAIM_RPC = "pd_m340_fanbus_publishing_job_claim";
 const COMPLETE_RPC = "pd_m340_fanbus_publishing_job_complete";
 const TEMPLATE_RESOLVE_RPC = "pd_m340_fanbus_publishing_template_resolve";
 const TEMPLATE_BUCKET = "m340-publishing-templates";
+const RUNTIME_CONTRACTS = {
+  "tpieykhhawszlzsoflnl.supabase.co": { environment: "DEV", objectPrefix: "versions/dev" },
+  "wplescvhlgctynkfwvrj.supabase.co": { environment: "PROD", objectPrefix: "versions/prod" }
+} as const;
 
 const encoder = new TextEncoder();
 
@@ -14,6 +18,8 @@ type JsonObject = Record<string, unknown>;
 type RuntimeConfig = {
   supabaseUrl: string;
   supabaseSecretKey: string;
+  environment: "DEV" | "PROD";
+  objectPrefix: string;
 };
 
 class WorkerGatewayError extends Error {
@@ -174,7 +180,7 @@ function configuredSupabaseSecretKey() {
   throw new WorkerGatewayError("CONFIG_INVALID");
 }
 
-function validatedSupabaseUrl() {
+function validatedSupabaseRuntime() {
   const rawUrl = Deno.env.get("SUPABASE_URL")?.trim();
   if (!rawUrl) throw new WorkerGatewayError("CONFIG_INVALID");
 
@@ -186,7 +192,7 @@ function validatedSupabaseUrl() {
   }
 
   if (
-    !["http:", "https:"].includes(parsedUrl.protocol)
+    parsedUrl.protocol !== "https:"
     || parsedUrl.username
     || parsedUrl.password
     || parsedUrl.search
@@ -196,7 +202,13 @@ function validatedSupabaseUrl() {
     throw new WorkerGatewayError("CONFIG_INVALID");
   }
 
-  return parsedUrl.origin;
+  const contract = RUNTIME_CONTRACTS[parsedUrl.hostname as keyof typeof RUNTIME_CONTRACTS];
+  if (!contract) throw new WorkerGatewayError("CONFIG_INVALID");
+  return {
+    supabaseUrl: parsedUrl.origin,
+    environment: contract.environment,
+    objectPrefix: contract.objectPrefix
+  };
 }
 
 function loadRuntimeConfig(): RuntimeConfig {
@@ -206,8 +218,9 @@ function loadRuntimeConfig(): RuntimeConfig {
     || /[\r\n]/.test(supabaseSecretKey)
   ) throw new WorkerGatewayError("CONFIG_INVALID");
 
+  const runtime = validatedSupabaseRuntime();
   return {
-    supabaseUrl: validatedSupabaseUrl(),
+    ...runtime,
     supabaseSecretKey
   };
 }
@@ -313,11 +326,11 @@ function encodedObjectName(value: string) {
 async function resolveTemplateDownload(config: RuntimeConfig, versionId: string) {
   const template = await callWorkerRpc(config, TEMPLATE_RESOLVE_RPC, { p_version_id: versionId });
   if (
-    template.environment !== "DEV"
+    template.environment !== config.environment
     || !["POST", "STORY", "LED"].includes(String(template.kind))
     || template.versionId !== versionId
     || typeof template.objectName !== "string"
-    || !/^versions\/dev\/[0-9a-f-]{36}\/[0-9a-f-]{36}[.]svg$/i.test(template.objectName)
+    || !new RegExp(`^${config.objectPrefix.replace("/", "\\/")}\\/[0-9a-f-]{36}\\/[0-9a-f-]{36}[.]svg$`, "i").test(template.objectName)
     || typeof template.filename !== "string"
     || !/^[A-Za-z0-9ÄÖÜäöüß._ -]+[.]svg$/.test(template.filename)
     || typeof template.sha256 !== "string"
