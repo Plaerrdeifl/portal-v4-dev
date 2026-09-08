@@ -161,10 +161,14 @@ test("PROD team editor can change team code and select a local logo asset", asyn
   const admin = await read("js/modules/liveticker-admin.js");
   const migration = await read("supabase/migrations/20260907213229_liveticker_team_logo_edit_prod_hotfix.sql");
 
+  const teamFormSource = admin.match(/function teamForm[\s\S]*?function bindTeamLogoPreview/)?.[0] || "";
   assert.match(admin, /name="teamCode"/);
   assert.match(admin, /name="logoAssetPath" required/);
-  assert.match(admin, /data-team-logo-preview-image/);
+  assert.match(admin, /document\.createElement\("img"\)/);
+  assert.match(admin, /data-team-logo-preview/);
   assert.match(admin, /teamLogoChoices/);
+  assert.doesNotMatch(teamFormSource, /<img/);
+  assert.doesNotMatch(teamFormSource, /autocapitalize="characters"/);
   assert.doesNotMatch(admin, /name="logoUrl"/);
 
   assert.match(migration, /p_payload->>'teamCode'/);

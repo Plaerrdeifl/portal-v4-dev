@@ -113,18 +113,21 @@ function teamForm(team = {}) {
   const logoChoices = teamLogoChoices(team);
   const logoPath = String(team.logoAssetPath || "").trim();
   const logoOptions = ['<option value="">Logo auswählen …</option>', ...logoChoices.map(choice => `<option value="${escapeAttr(choice.value)}" ${choice.value === logoPath ? "selected" : ""}>${escapeHtml(choice.label)}</option>`)].join("");
-  const preview = logoPath
-    ? `<div class="liveticker-team-logo-editor" data-team-logo-preview><img data-team-logo-preview-image src="${escapeAttr(logoPath)}" alt="Logo ${escapeAttr(team.shortName || team.name || "Team")}" width="96" height="96"><span class="subtle" data-team-logo-preview-label>Aktuell ausgewähltes lokales Logo</span></div>`
-    : `<div class="liveticker-team-logo-editor" data-team-logo-preview hidden><img data-team-logo-preview-image alt="Ausgewähltes Teamlogo" width="96" height="96"><span class="subtle" data-team-logo-preview-label>Ausgewähltes lokales Logo</span></div>`;
-  return `<form class="liveticker-admin-form"><input type="hidden" name="id" value="${escapeAttr(team.id || "")}"><label>Teamname<input name="name" required maxlength="160" placeholder="z. B. Mighty Dogs Schweinfurt" value="${escapeAttr(team.name || "")}"></label><label>Kurzname<input name="shortName" required maxlength="60" placeholder="z. B. Mighty Dogs" value="${escapeAttr(team.shortName || "")}"></label><label>Teamkürzel<input name="teamCode" required maxlength="12" autocapitalize="characters" placeholder="z. B. ERVS" value="${escapeAttr(team.teamCode || "")}"></label><label>Teamlogo<select name="logoAssetPath" required>${logoOptions}</select></label>${preview}<p class="subtle">Es werden ausschließlich bereits lokal im Portal hinterlegte Teamlogos verwendet.</p><label class="checkbox-row"><input name="homeClub" type="checkbox" ${team.homeClub ? "checked" : ""}><span>Unser Verein / Heimverein</span></label><label class="checkbox-row"><input name="active" type="checkbox" ${team.active !== false ? "checked" : ""}><span>Team ist aktiv</span></label></form>`;
+  const preview = `<div class="liveticker-team-logo-editor" data-team-logo-preview ${logoPath ? "" : "hidden"}><span class="subtle" data-team-logo-preview-label>${logoPath ? "Aktuell ausgewähltes lokales Logo" : "Ausgewähltes lokales Logo"}</span></div>`;
+  return `<form class="liveticker-admin-form"><input type="hidden" name="id" value="${escapeAttr(team.id || "")}"><label>Teamname<input name="name" required maxlength="160" placeholder="z. B. Mighty Dogs Schweinfurt" value="${escapeAttr(team.name || "")}"></label><label>Kurzname<input name="shortName" required maxlength="60" placeholder="z. B. Mighty Dogs" value="${escapeAttr(team.shortName || "")}"></label><label>Teamkürzel<input name="teamCode" required maxlength="12" placeholder="z. B. ERVS" value="${escapeAttr(team.teamCode || "")}"></label><label>Teamlogo<select name="logoAssetPath" required>${logoOptions}</select></label>${preview}<p class="subtle">Es werden ausschließlich bereits lokal im Portal hinterlegte Teamlogos verwendet.</p><label class="checkbox-row"><input name="homeClub" type="checkbox" ${team.homeClub ? "checked" : ""}><span>Unser Verein / Heimverein</span></label><label class="checkbox-row"><input name="active" type="checkbox" ${team.active !== false ? "checked" : ""}><span>Team ist aktiv</span></label></form>`;
 }
 
 function bindTeamLogoPreview(dialog) {
   const form = dialog?.querySelector?.(".liveticker-admin-form");
   const select = form?.elements?.namedItem?.("logoAssetPath");
   const preview = dialog?.querySelector?.("[data-team-logo-preview]");
-  const image = dialog?.querySelector?.("[data-team-logo-preview-image]");
-  if (!(select instanceof HTMLSelectElement) || !preview || !(image instanceof HTMLImageElement)) return;
+  if (!(select instanceof HTMLSelectElement) || !preview) return;
+  const image = document.createElement("img");
+  image.dataset.teamLogoPreviewImage = "true";
+  image.alt = "Ausgewähltes Teamlogo";
+  image.width = 96;
+  image.height = 96;
+  preview.prepend(image);
   const sync = () => {
     const value = String(select.value || "").trim();
     preview.hidden = !value;
