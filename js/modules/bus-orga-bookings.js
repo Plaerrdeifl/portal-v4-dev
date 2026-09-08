@@ -128,7 +128,7 @@ function groupBookings(registrations) {
     booking.participants.sort((a, b) => Number(a.participantSequence || 0) - Number(b.participantSequence || 0));
     booking.primary = booking.participants.find(person => person.bookingRole === "PRIMARY") || booking.participants[0] || null;
     return booking;
-  }).sort((a, b) => String(a.number).localeCompare(String(b.number), "de"));
+  }).sort((a, b) => String(b.number).localeCompare(String(a.number), "de"));
 }
 
 function bookingStatus(booking) {

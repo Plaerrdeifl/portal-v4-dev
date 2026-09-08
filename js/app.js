@@ -4,6 +4,7 @@ import { auth } from "./auth.js";
 import {
   currentRoute,
   legacyRouteRedirect,
+  routeParams,
   routes
 } from "./router.js";
 import {
@@ -35,10 +36,15 @@ import {
   updateUserChrome
 } from "./ui.js";
 
+const FANBUS_REFRESH_DEBOUNCE_MS = 250;
+
 let renderSequence = 0;
 let authEventQueued = false;
 let authOperationActive = false;
 let explicitRefreshActive = false;
+let explicitRefreshQueued = false;
+let fanbusRefreshTimer = null;
+let pwaWasHidden = document.visibilityState === "hidden";
 let lastAuthRenderRevision = -1;
 let apiActivity = api.activity();
 
@@ -171,6 +177,48 @@ function enforceRoute(key) {
   return key;
 }
 
+function fanbusBookingsRefreshAllowed() {
+  if (document.visibilityState !== "visible") return false;
+  if (authOperationActive || currentRoute() !== "bus-orga") return false;
+
+  const params = routeParams();
+  if (params.get("view") !== "bookings" || !params.get("trip")) return false;
+
+  return !document.querySelector("[data-m328-edit-form], dialog[open]");
+}
+
+function scheduleFanbusBookingsRefresh() {
+  if (!fanbusBookingsRefreshAllowed()) return;
+  if (fanbusRefreshTimer !== null) window.clearTimeout(fanbusRefreshTimer);
+
+  fanbusRefreshTimer = window.setTimeout(() => {
+    fanbusRefreshTimer = null;
+    if (fanbusBookingsRefreshAllowed()) void refreshCurrentView();
+  }, FANBUS_REFRESH_DEBOUNCE_MS);
+}
+
+function handleFanbusPushStateChange(event) {
+  if (event.data?.type !== "PUSH_STATE_CHANGED") return;
+  if (!String(event.data.eventType || "").startsWith("FANBUS_")) return;
+  scheduleFanbusBookingsRefresh();
+}
+
+function handlePageShow(event) {
+  if (event.persisted === true || pwaWasHidden) {
+    scheduleFanbusBookingsRefresh();
+  }
+  pwaWasHidden = false;
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState !== "visible") {
+    pwaWasHidden = true;
+    return;
+  }
+  if (pwaWasHidden) scheduleFanbusBookingsRefresh();
+  pwaWasHidden = false;
+}
+
 async function renderRoute() {
   if (legacyRouteRedirect()) return;
 
@@ -275,12 +323,19 @@ async function signInWithGoogleCredential(response, nonce) {
 }
 
 async function refreshCurrentView() {
-  if (explicitRefreshActive) return;
+  if (explicitRefreshActive) {
+    explicitRefreshQueued = true;
+    return;
+  }
+
   explicitRefreshActive = true;
   try {
-    if (auth.isAuthenticated()) await auth.refresh();
-    syncAuthRenderRevision();
-    await renderRoute();
+    do {
+      explicitRefreshQueued = false;
+      if (auth.isAuthenticated()) await auth.refresh();
+      syncAuthRenderRevision();
+      await renderRoute();
+    } while (explicitRefreshQueued);
   } catch (error) {
     showToast(error?.message || "Aktualisierung fehlgeschlagen.", "error", 6500);
   } finally {
@@ -345,6 +400,9 @@ async function bootstrap() {
     setConnectionStatus(connection.label, connection.type);
   });
 
+  navigator.serviceWorker?.addEventListener("message", handleFanbusPushStateChange);
+  window.addEventListener("pageshow", handlePageShow);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
   window.addEventListener("online", refreshCurrentView);
   window.addEventListener("offline", updateChrome);
 
