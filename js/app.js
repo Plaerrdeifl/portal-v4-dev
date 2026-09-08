@@ -9,7 +9,7 @@ import {
 } from "./router.js";
 import {
   hydratePage
-} from "./pages.js?v=20260829-m328-r1-native-actions1&venue=2&m328workspaces=20260830-m328-native-workspaces1&participants=20260830-m328-participant-mobile1&m328final=20260830-m328-final-bus-management1&m327personal=20260830-m327-personal-final1&m340=20260908-trip-accordion-r2";
+} from "./pages.js?v=20260829-m328-r1-native-actions1&venue=2&m328workspaces=20260830-m328-native-workspaces1&participants=20260830-m328-participant-mobile1&m328final=20260830-m328-final-bus-management1&m327personal=20260830-m327-personal-final1&m340=20260908-ios-download-r1";
 import {
   activateUpdate,
   initializeInstall

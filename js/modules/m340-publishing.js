@@ -61,9 +61,50 @@ function renderMetrics(model) {
   </div>`;
 }
 
-function validDownloadUrl(value) {
-  return typeof value === "string"
-    && /^https:\/\/cloud\.plaerrdeifl\.de\/s\/[A-Za-z0-9]{8,128}\/download$/.test(value);
+const NEXTCLOUD_PUBLIC_HOST = "cloud.plaerrdeifl.de";
+
+function nextcloudShareToken(value) {
+  if (typeof value !== "string" || !value) return "";
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.hostname !== NEXTCLOUD_PUBLIC_HOST || url.port || url.search || url.hash) return "";
+    const match = /^\/s\/([A-Za-z0-9]{8,128})(?:\/download)?\/?$/.exec(url.pathname);
+    return match?.[1] || "";
+  } catch {
+    return "";
+  }
+}
+
+function artifactShareToken(artifact) {
+  return nextcloudShareToken(artifact?.shareUrl) || nextcloudShareToken(artifact?.downloadUrl);
+}
+
+function publicDavUrl(artifact) {
+  const token = artifactShareToken(artifact);
+  return token ? `https://${NEXTCLOUD_PUBLIC_HOST}/public.php/dav/files/${encodeURIComponent(token)}` : "";
+}
+
+function safeFlyerFilename(value, fallback = "flyer.png") {
+  const candidate = String(value || fallback)
+    .split(/[\\/]/)
+    .pop()
+    ?.replace(/[\u0000-\u001f\u007f]/g, "")
+    .trim();
+  return candidate && /^[^<>:"|?*]+\.png$/i.test(candidate) ? candidate : fallback;
+}
+
+function contentDispositionFilename(value) {
+  const header = String(value || "");
+  const encoded = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(header)?.[1]?.trim().replace(/^"|"$/g, "");
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded);
+    } catch {
+      // Fallback to the plain filename parameter below.
+    }
+  }
+  const plain = /filename\s*=\s*(?:"([^"]+)"|([^;]+))/i.exec(header);
+  return String(plain?.[1] || plain?.[2] || "").trim();
 }
 
 function jobsForTrip(model, tripId) {
@@ -78,7 +119,7 @@ function latestFlyerJob(model, tripId) {
   return jobsForTrip(model, tripId).find(job => {
     if (String(job?.status || "").toUpperCase() !== "SUCCESS") return false;
     const kinds = new Set(asArray(job?.resultManifest?.artifacts)
-      .filter(item => validDownloadUrl(item?.downloadUrl))
+      .filter(item => artifactShareToken(item))
       .map(item => String(item?.kind || "").toUpperCase()));
     return ["POST", "STORY", "LED"].every(kind => kinds.has(kind));
   }) || null;
@@ -94,11 +135,95 @@ function flyerButtons(job) {
   ];
   return `<div class="m340-publishing-flyer-buttons">${definitions.map(([kind, label]) => {
     const artifact = byKind.get(kind);
-    if (!validDownloadUrl(artifact?.downloadUrl)) {
+    if (!artifactShareToken(artifact)) {
       return `<span class="button small secondary disabled" aria-disabled="true">${escapeHtml(label)}</span>`;
     }
-    return `<a class="button small primary" href="${escapeAttr(artifact.downloadUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
+    return `<button class="button small primary" type="button"
+      data-m340-flyer-download
+      data-m340-share-url="${escapeAttr(artifact?.shareUrl || "")}"
+      data-m340-download-url="${escapeAttr(artifact?.downloadUrl || "")}"
+      data-m340-filename="${escapeAttr(artifact?.filename || `${kind.toLowerCase()}.png`)}"
+      data-m340-bytes="${escapeAttr(String(artifact?.bytes || ""))}">${escapeHtml(label)}</button>`;
   }).join("")}</div>`;
+}
+
+async function fetchFlyerArtifact(artifact) {
+  const url = publicDavUrl(artifact);
+  if (!url) throw new Error("M340_FLYER_SHARE_INVALID");
+
+  const response = await fetch(url, {
+    method: "GET",
+    credentials: "omit",
+    redirect: "follow"
+  });
+  if (!response.ok) throw new Error("M340_FLYER_FETCH_FAILED");
+
+  const contentType = String(response.headers.get("Content-Type") || "")
+    .split(";", 1)[0]
+    .trim()
+    .toLowerCase();
+  if (contentType !== "image/png") throw new Error("M340_FLYER_TYPE_INVALID");
+
+  const blob = await response.blob();
+  if (blob.type && blob.type.toLowerCase() !== "image/png") throw new Error("M340_FLYER_BLOB_INVALID");
+
+  const expectedBytes = Number(artifact?.bytes);
+  if (Number.isFinite(expectedBytes) && expectedBytes > 0 && blob.size !== expectedBytes) {
+    throw new Error("M340_FLYER_SIZE_MISMATCH");
+  }
+
+  const responseName = contentDispositionFilename(response.headers.get("Content-Disposition"));
+  const fallbackName = safeFlyerFilename(artifact?.filename, "flyer.png");
+  return {
+    blob,
+    filename: safeFlyerFilename(responseName, fallbackName)
+  };
+}
+
+function downloadFlyerBlob(blob, filename) {
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  let started = false;
+  try {
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    anchor.hidden = true;
+    document.body.append(anchor);
+    anchor.click();
+    started = true;
+  } finally {
+    anchor.remove();
+    if (started) {
+      globalThis.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } else {
+      URL.revokeObjectURL(objectUrl);
+    }
+  }
+}
+
+async function deliverFlyerArtifact(artifact, label) {
+  const { blob, filename } = await fetchFlyerArtifact(artifact);
+  if (typeof File === "function" && typeof navigator?.share === "function" && typeof navigator?.canShare === "function") {
+    const file = new File([blob], filename, { type: "image/png" });
+    let canShareFiles = false;
+    try {
+      canShareFiles = navigator.canShare({ files: [file] });
+    } catch {
+      canShareFiles = false;
+    }
+    if (canShareFiles) {
+      try {
+        await navigator.share({ files: [file], title: label });
+        return "shared";
+      } catch (error) {
+        if (error?.name === "AbortError") return "cancelled";
+        // iOS can lose transient activation while fetching; use the download fallback.
+      }
+    }
+  }
+
+  downloadFlyerBlob(blob, filename);
+  return "downloaded";
 }
 
 function renderResolvedTrip(trip, model) {
@@ -194,6 +319,30 @@ function returnToBusOrga() {
 
 function bindWorkspace(panel, refresh) {
   panel.querySelector("[data-m340-back]")?.addEventListener("click", returnToBusOrga);
+
+  panel.querySelectorAll("[data-m340-flyer-download]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const label = button.textContent?.trim() || "Flyer";
+      const artifact = {
+        shareUrl: button.dataset.m340ShareUrl || "",
+        downloadUrl: button.dataset.m340DownloadUrl || "",
+        filename: button.dataset.m340Filename || "flyer.png",
+        bytes: Number(button.dataset.m340Bytes || 0)
+      };
+      button.disabled = true;
+      button.setAttribute("aria-busy", "true");
+      button.textContent = "Lädt …";
+      try {
+        await deliverFlyerArtifact(artifact, label);
+      } catch {
+        showToast("Flyer konnte nicht geladen werden. Bitte erneut versuchen.", "error", 5000);
+      } finally {
+        button.disabled = false;
+        button.removeAttribute("aria-busy");
+        button.textContent = label;
+      }
+    });
+  });
 
   panel.querySelectorAll("[data-m340-ambiguity-form]").forEach(form => {
     form.addEventListener("submit", async event => {
