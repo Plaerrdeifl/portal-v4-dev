@@ -6,6 +6,7 @@ const MAX_REQUEST_BYTES = MAX_SVG_BYTES + 128 * 1024;
 const REQUIRED_IDS = [
   "m340-destination",
   "m340-trip-label-brush",
+  "plaerrdeifl-brush-horizontal-proof",
   "m340-trip-label-text",
   "text34",
   "m340-date",
@@ -187,10 +188,10 @@ function validateSvg(bytes: Uint8Array, kind: string) {
   for (const id of REQUIRED_IDS) {
     if (ids.get(id) !== 1) return `Technisches Vorlagenelement fehlt oder ist doppelt: ${id}`;
   }
-  const brushTag = new RegExp(`<rect\\b[^>]*\\bid\\s*=\\s*["']m340-trip-label-brush["'][^>]*>`, "i").exec(text)?.[0]
-    || new RegExp(`<rect\\b[^>]*\\bid\\s*=\\s*["']m340-trip-label-brush["'][^>]*/>`, "i").exec(text)?.[0];
-  if (!brushTag || attr(brushTag, "transform") || ["x", "y", "width", "height"].some(name => parseNumber(attr(brushTag, name)) === null)) {
-    return "Der dynamische Brush-Platzhalter ist ungültig.";
+  const brushTag = new RegExp(`<path\\b[^>]*\\bid\\s*=\\s*["']plaerrdeifl-brush-horizontal-proof["'][^>]*>`, "i").exec(text)?.[0]
+    || new RegExp(`<path\\b[^>]*\\bid\\s*=\\s*["']plaerrdeifl-brush-horizontal-proof["'][^>]*/>`, "i").exec(text)?.[0];
+  if (!brushTag || attr(brushTag, "transform") || !attr(brushTag, "d")) {
+    return "Der dynamische Brush ist ungültig.";
   }
   return null;
 }
