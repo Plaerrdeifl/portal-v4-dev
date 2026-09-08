@@ -17,6 +17,10 @@ export function importIcs(action, file, sourceKey, previewFingerprint = "") {
   return api.importIcs(action, file, sourceKey, previewFingerprint);
 }
 
+export function uploadM340Template(kind, file) {
+  return api.uploadM340Template(kind, file);
+}
+
 export function currentUser() {
   return auth.current().user || {};
 }

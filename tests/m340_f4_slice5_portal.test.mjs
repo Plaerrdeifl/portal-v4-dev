@@ -207,10 +207,10 @@ test("normal UI uses user-facing language only", () => {
 });
 
 test("active import chain carries the M340 cache key end-to-end", () => {
-  const cacheKey = "m340=20260908-ios-download-r1";
-  assert.ok(content.fanbuses.includes(`m340-publishing.js?v=20260908-ios-download-r1`));
+  const cacheKey = "m340=20260908-publishing-ux-r1";
+  assert.ok(content.fanbuses.includes(`m340-publishing.js?v=20260908-publishing-ux-r1`));
   assert.ok(content.pages.includes(`fanbuses.js?v=20260826-p800-r2-final-direct-fix&groups=20260828-m310-r1&m327=20260828-m327-r1&completion=20260829-m328-final1&correction=20260830-m328-c1&${cacheKey}`));
-  assert.match(content.app, /pages\.js\?[^"\n]*m340=20260908-ios-download-r1/);
-  assert.match(content.index, /js\/app\.js\?[^"\n]*m340=20260908-ios-download-r1/);
-  assert.match(content.index, /css\/app\.css\?[^"\n]*m340=20260908-ios-download-r1/);
+  assert.match(content.app, /pages\.js\?[^"\n]*m340=20260908-publishing-ux-r1/);
+  assert.match(content.index, /js\/app\.js\?[^"\n]*m340=20260908-publishing-ux-r1/);
+  assert.match(content.index, /css\/app\.css\?[^"\n]*m340=20260908-publishing-ux-r1/);
 });

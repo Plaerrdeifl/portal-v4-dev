@@ -438,3 +438,5 @@ verify_jwt = false
 
 [functions.m340-publishing-worker]
 verify_jwt = false
+[functions.m340-publishing-templates]
+verify_jwt = true

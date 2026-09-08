@@ -6,7 +6,8 @@ import {
   escapeHtml,
   hasCapability,
   runWrite,
-  showToast
+  showToast,
+  uploadM340Template
 } from "./common.js";
 
 export const M340_PUBLISHING_CAPABILITY = "fanbus.publishing.manage";
@@ -226,6 +227,38 @@ async function deliverFlyerArtifact(artifact, label) {
   return "downloaded";
 }
 
+function templateStatus(template) {
+  if (String(template?.source || "SERVER_DEFAULT") !== "CUSTOM") return "Standardvorlage";
+  return template?.filename ? `Eigene Vorlage · ${template.filename}` : "Eigene Vorlage";
+}
+
+function renderPublishingSettings(model) {
+  const tripLabel = model?.settings?.tripLabel || { enabled: true, text: "FANBUSFAHRT" };
+  const templates = asArray(model?.templates);
+  return `<section class="v4-m325-workspace-section m340-publishing-settings" aria-labelledby="m340PublishingSettingsTitle">
+    <div class="m340-publishing-section-head"><div><h3 id="m340PublishingSettingsTitle">Flyer-Einstellungen</h3><p>Gilt für neu gestartete Flyer-Erstellungen.</p></div></div>
+    <form class="m340-publishing-label-form" data-m340-label-form>
+      <div class="m340-publishing-label-copy">
+        <strong>Zusatzzeile</strong>
+        <small>Text und Brush unter dem Zielort gemeinsam ein- oder ausblenden.</small>
+      </div>
+      <label class="m340-publishing-toggle"><input type="checkbox" name="tripLabelEnabled"${tripLabel?.enabled !== false ? " checked" : ""}><span>Anzeigen</span></label>
+      <label class="m340-publishing-label-input"><span>Text</span><input type="text" name="tripLabelText" maxlength="32" required value="${escapeAttr(tripLabel?.text || "FANBUSFAHRT")}"></label>
+      <button class="button small secondary" type="submit">Speichern</button>
+    </form>
+    <div class="m340-publishing-template-list" aria-label="Flyer-Vorlagen">
+      ${templates.map(template => `<article class="m340-publishing-template-row" data-m340-template="${escapeAttr(template?.kind || "")}">
+        <div><strong>${escapeHtml(template?.label || template?.kind || "Vorlage")}</strong><small>${escapeHtml(templateStatus(template))}</small></div>
+        <div class="m340-publishing-template-actions">
+          <label class="button small secondary m340-publishing-template-upload">SVG ersetzen<input type="file" accept=".svg,image/svg+xml" data-m340-template-file="${escapeAttr(template?.kind || "")}" hidden></label>
+          ${template?.canRollback ? `<button class="button small ghost" type="button" data-m340-template-rollback="${escapeAttr(template.kind)}">Vorherige Vorlage</button>` : ""}
+          ${template?.canReset ? `<button class="button small ghost" type="button" data-m340-template-reset="${escapeAttr(template.kind)}">Standard verwenden</button>` : ""}
+        </div>
+      </article>`).join("")}
+    </div>
+  </section>`;
+}
+
 function renderResolvedTrip(trip, model) {
   const latest = trip?.lastJob;
   const state = jobPresentation(latest?.status);
@@ -299,6 +332,7 @@ function workspaceMarkup(model) {
       </div>
     </header>
     ${renderMetrics(model)}
+    ${renderPublishingSettings(model)}
     <section class="v4-m325-workspace-section" aria-labelledby="m340PublishingTripsTitle">
       <div class="m340-publishing-section-head"><div><h3 id="m340PublishingTripsTitle">Veröffentlichte Fahrten</h3><p>Flyer je Fahrt aufklappen und direkt herunterladen.</p></div><span class="badge neutral">${escapeHtml(model?.environment || "–")}</span></div>
       <div class="m340-publishing-grid">${trips.length ? trips.map(trip => renderTripCard(trip, model)).join("") : empty("Keine veröffentlichte Fanbusfahrt verfügbar.")}</div>
@@ -319,6 +353,82 @@ function returnToBusOrga() {
 
 function bindWorkspace(panel, refresh) {
   panel.querySelector("[data-m340-back]")?.addEventListener("click", returnToBusOrga);
+
+  panel.querySelector("[data-m340-label-form]")?.addEventListener("submit", async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('button[type="submit"]');
+    const tripLabelEnabled = Boolean(form.elements.tripLabelEnabled?.checked);
+    const tripLabelText = String(form.elements.tripLabelText?.value || "").trim().replace(/\s+/g, " ");
+    if (!tripLabelText || tripLabelText.length > 32) {
+      showToast("Bitte einen Text mit höchstens 32 Zeichen eingeben.", "error", 5000);
+      return;
+    }
+    if (button) button.disabled = true;
+    try {
+      await runWrite(
+        () => call("fanbus_publishing_output_settings_update", { tripLabelEnabled, tripLabelText }),
+        "Flyer-Einstellungen wurden gespeichert."
+      );
+      await refresh();
+    } catch (error) {
+      showToast(error?.message || "Flyer-Einstellungen konnten nicht gespeichert werden.", "error", 6000);
+      if (button) button.disabled = false;
+    }
+  });
+
+  panel.querySelectorAll("[data-m340-template-file]").forEach(input => {
+    input.addEventListener("change", async () => {
+      const file = input.files?.[0];
+      const kind = input.dataset.m340TemplateFile || "";
+      input.value = "";
+      if (!file || !kind) return;
+      if (!/\.svg$/i.test(file.name) || file.size < 1000 || file.size > 5 * 1024 * 1024) {
+        showToast("Bitte eine SVG-Datei bis maximal 5 MiB auswählen.", "error", 5000);
+        return;
+      }
+      const row = input.closest("[data-m340-template]");
+      row?.setAttribute("aria-busy", "true");
+      try {
+        await uploadM340Template(kind, file);
+        showToast("SVG-Vorlage wurde geprüft und aktiviert.", "success", 4500);
+        await refresh();
+      } catch (error) {
+        showToast(error?.message || "SVG-Vorlage konnte nicht ersetzt werden.", "error", 6500);
+        row?.removeAttribute("aria-busy");
+      }
+    });
+  });
+
+  panel.querySelectorAll("[data-m340-template-rollback]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const kind = button.dataset.m340TemplateRollback || "";
+      if (!kind) return;
+      button.disabled = true;
+      try {
+        await runWrite(() => call("fanbus_publishing_template_rollback", { kind }), "Vorherige Vorlage wurde aktiviert.");
+        await refresh();
+      } catch (error) {
+        showToast(error?.message || "Vorlage konnte nicht zurückgesetzt werden.", "error", 6000);
+        button.disabled = false;
+      }
+    });
+  });
+
+  panel.querySelectorAll("[data-m340-template-reset]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const kind = button.dataset.m340TemplateReset || "";
+      if (!kind) return;
+      button.disabled = true;
+      try {
+        await runWrite(() => call("fanbus_publishing_template_reset", { kind }), "Standardvorlage wurde aktiviert.");
+        await refresh();
+      } catch (error) {
+        showToast(error?.message || "Standardvorlage konnte nicht aktiviert werden.", "error", 6000);
+        button.disabled = false;
+      }
+    });
+  });
 
   panel.querySelectorAll("[data-m340-flyer-download]").forEach(button => {
     button.addEventListener("click", async () => {

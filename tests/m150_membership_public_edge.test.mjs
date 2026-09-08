@@ -36,7 +36,7 @@ test("F1.4B artifacts and function location are exact", async () => {
 });
 
 test("only explicitly approved functions receive dedicated JWT bypass config", () => {
-  const functionSections = [...config.matchAll(/^\[functions\.([^\]]+)\]$/gm)]
+  const functionSections = [...config.matchAll(/^\[functions\.([^\]]+)\]\r?\nverify_jwt = false\s*$/gm)]
     .map(match => match[1]);
   assert.deepEqual(functionSections, [
     "send-web-push",
@@ -46,6 +46,10 @@ test("only explicitly approved functions receive dedicated JWT bypass config", (
     "m310-fanbus-register",
     "m340-publishing-worker"
   ]);
+  assert.match(
+    config,
+    /^\[functions\.m340-publishing-templates\]\r?\nverify_jwt = true\s*$/m
+  );
   assert.equal(
     (config.match(/^\[functions\.m150-membership-submit\]$/gm) || []).length,
     1

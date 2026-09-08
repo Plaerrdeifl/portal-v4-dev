@@ -95,6 +95,31 @@ def snapshot(stops: int = 2):
     }
 
 
+def snapshot_v2(label_text: str = "AUSWÄRTSFAHRT", enabled: bool = True, custom: bool = False):
+    value = snapshot()
+    value["schemaVersion"] = 2
+    templates = [
+        {"kind": "POST", "source": "SERVER_DEFAULT"},
+        {"kind": "STORY", "source": "SERVER_DEFAULT"},
+        {"kind": "LED", "source": "SERVER_DEFAULT"},
+    ]
+    if custom:
+        templates[0] = {
+            "kind": "POST",
+            "source": "CUSTOM",
+            "versionId": "00000000-0000-4000-8000-000000000301",
+            "objectName": "versions/dev/00000000-0000-4000-8000-000000000302/00000000-0000-4000-8000-000000000301.svg",
+            "filename": "post-neu.svg",
+            "sha256": "a" * 64,
+            "bytes": 123456,
+        }
+    value["publishing"] = {
+        "settings": {"tripLabel": {"enabled": enabled, "text": label_text}},
+        "templates": templates,
+    }
+    return value
+
+
 class ConfigTests(unittest.TestCase):
     def test_dev_example_is_locked_to_frozen_endpoints(self):
         config = worker.load_config(CONFIG_PATH)
@@ -160,6 +185,29 @@ class SnapshotTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, "SNAPSHOT_INVALID")
 
 
+    def test_snapshot_v2_freezes_label_and_template_version(self):
+        normalized = worker.validate_snapshot(snapshot_v2(custom=True))
+        self.assertEqual(normalized["schemaVersion"], 2)
+        self.assertEqual(normalized["tripLabel"], {"enabled": True, "text": "AUSWÄRTSFAHRT"})
+        self.assertEqual(normalized["templates"]["POST"]["source"], "CUSTOM")
+        self.assertEqual(normalized["templates"]["POST"]["sha256"], "a" * 64)
+        self.assertEqual(worker.build_text_fields(normalized)["m340-trip-label-text"], "AUSWÄRTSFAHRT")
+
+    def test_snapshot_v1_keeps_frozen_default_label_and_server_templates(self):
+        normalized = worker.validate_snapshot(snapshot())
+        self.assertEqual(normalized["tripLabel"], {"enabled": True, "text": "FANBUSFAHRT"})
+        self.assertEqual({entry["source"] for entry in normalized["templates"].values()}, {"SERVER_DEFAULT"})
+
+    def test_snapshot_v2_rejects_invalid_label_and_incomplete_template_set(self):
+        value = snapshot_v2(label_text="X" * 33)
+        with self.assertRaises(worker.WorkerError):
+            worker.validate_snapshot(value)
+        value = snapshot_v2()
+        value["publishing"]["templates"].pop()
+        with self.assertRaises(worker.WorkerError):
+            worker.validate_snapshot(value)
+
+
 class TemplateTests(unittest.TestCase):
     def test_template_replacement_and_qr_embedding(self):
         fields = worker.build_text_fields(worker.validate_snapshot(snapshot()))
@@ -168,6 +216,7 @@ class TemplateTests(unittest.TestCase):
             '<svg xmlns="http://www.w3.org/2000/svg">'
             '<title>OLD TITLE</title>'
             f'{ids}'
+            '<rect id="m340-trip-label-brush" x="120" y="441" width="840" height="80" style="display:none"/>'
             '<g id="m340-qr-slot" data-qr-url="old">'
             '<rect id="m340-qr-quiet-zone" x="10" y="20" width="100" height="100"/>'
             '<path id="m340-qr-vector" d="OLD"/>'
@@ -203,6 +252,30 @@ class TemplateTests(unittest.TestCase):
             )
             self.assertEqual(by_id["m340-qr-vector"].get("d"), "M4 4h1v1h-1z")
             self.assertIn("scale(2.0000000000 2.0000000000)", by_id["m340-qr-vector"].get("transform", ""))
+            self.assertIn("display:inline", by_id["m340-trip-label-text"].get("style", ""))
+            self.assertIn("display:inline", by_id["m340-trip-label-brush"].get("style", ""))
+
+
+    def test_disabled_trip_label_hides_text_and_brush_together(self):
+        fields = worker.build_text_fields(worker.validate_snapshot(snapshot_v2(enabled=False)))
+        ids = "".join(f'<text id="{element_id}">OLD</text>' for element_id in fields)
+        template = (
+            '<svg xmlns="http://www.w3.org/2000/svg"><title>T</title>'
+            f'{ids}<rect id="m340-trip-label-brush" x="120" y="441" width="840" height="80"/>'
+            '<g id="m340-qr-slot"><rect id="m340-qr-quiet-zone" x="1" y="1" width="10" height="10"/>'
+            '<path id="m340-qr-vector" d="OLD"/></g></svg>'
+        )
+        qr = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path id="m340-qr-vector" d="M0 0h1v1z"/></svg>'
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            source, qr_path, output = tmp / "post.svg", tmp / "qr.svg", tmp / "out.svg"
+            source.write_text(template, encoding="utf-8")
+            qr_path.write_text(qr, encoding="utf-8")
+            worker.apply_template(source, output, fields, qr_path, "https://staging.plaerrdeifl.de/ontour/landsberg", "T", trip_label_enabled=False)
+            root = ET.parse(output).getroot()
+            by_id = {element.get("id"): element for element in root.iter() if element.get("id")}
+            self.assertIn("display:none", by_id["m340-trip-label-text"].get("style", ""))
+            self.assertIn("display:none", by_id["m340-trip-label-brush"].get("style", ""))
 
 
 class PngTests(unittest.TestCase):
