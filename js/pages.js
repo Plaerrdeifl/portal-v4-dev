@@ -133,7 +133,7 @@ export function preloadAuthenticatedModules(keys = ["dashboard", "dates", "fancl
     fanclub: "./modules/fanclub.js",
     tasks: "./modules/tasks.js",
     teams: "./modules/teams.js",
-    liveticker: "./modules/liveticker-admin.js?v=20260908-prod-team-upload1",
+    liveticker: "./modules/liveticker-admin.js?v=20260908-prod-graphic-template1",
     admin: "./modules/admin.js"
   };
   return Promise.allSettled(
@@ -180,18 +180,10 @@ export async function hydratePage(key, context = {}) {
       return result;
     }
     if (view === "bookings") {
-      return feature(
-        "./modules/bus-orga-bookings.js?v=20260830-m328-final-bus-management1",
-        "hydrateBusOrgaBookings",
-        context
-      );
+      return feature("./modules/bus-orga-bookings.js?v=20260830-m328-final-bus-management1", "hydrateBusOrgaBookings", context);
     }
     if (view === "trip-edit") {
-      return feature(
-        "./modules/bus-orga-trip-edit.js?v=20260830-m328-final-bus-management1",
-        "hydrateBusOrgaTripEdit",
-        context
-      );
+      return feature("./modules/bus-orga-trip-edit.js?v=20260830-m328-final-bus-management1", "hydrateBusOrgaTripEdit", context);
     }
     if (view === "registration") {
       const result = await feature(
@@ -199,40 +191,24 @@ export async function hydratePage(key, context = {}) {
         "hydrateBusOrgaV3",
         context
       );
-      await feature(
-        "./modules/bus-orga-registration-flow-wording.js?v=20260829-m328-r1-flow-wording2",
-        "setupM328RegistrationFlowWording",
-        context
-      );
+      await feature("./modules/bus-orga-registration-flow-wording.js?v=20260829-m328-r1-flow-wording2", "setupM328RegistrationFlowWording", context);
       return result;
     }
     if (["participants", "occupancy", "assignment", "operations"].includes(view)) {
-      return feature(
-        "./modules/bus-orga-trip-workspaces.js?v=20260830-m328-final-bus-management1",
-        "hydrateBusOrgaTripWorkspace",
-        context
-      );
+      return feature("./modules/bus-orga-trip-workspaces.js?v=20260830-m328-final-bus-management1", "hydrateBusOrgaTripWorkspace", context);
     }
     const result = await feature(
       "./modules/bus-orga-v3.js?v=20260829-m328-r1-next-trip-venue1&fix=20260829-m328-r1-next-trip-cancelled1&ux=20260829-m328-r1-registration-ux-correction1&modal=20260829-m328-r1-decision-click1&state=20260829-m328-r1-booking-state2&cards=20260829-m328-r1-active-person-cards2&rows=20260829-m328-r1-participant-row-edit1&prepared=20260829-m328-r1-prepared-density1&participant-click=20260829-m328-r1-active-person-click1&completion=20260829-m328-final1&correction=20260830-m328-c2&defaults=20260830-m328-draft-defaults1&tripedit=20260830-m328-trip-edit-compact1&workspaces=20260830-m328-native-workspaces1&final=20260830-m328-final-bus-management1",
       "hydrateBusOrgaV3",
       context
     );
-    await feature(
-      "./modules/bus-orga-registration-flow-wording.js?v=20260829-m328-r1-flow-wording2",
-      "setupM328RegistrationFlowWording",
-      context
-    );
-    await feature(
-      "./modules/m328-bus-orga-final-fixes.js?v=20260830-m328-create-publish1",
-      "setupM328BusOrgaFinalFixes",
-      context
-    );
+    await feature("./modules/bus-orga-registration-flow-wording.js?v=20260829-m328-r1-flow-wording2", "setupM328RegistrationFlowWording", context);
+    await feature("./modules/m328-bus-orga-final-fixes.js?v=20260830-m328-create-publish1", "setupM328BusOrgaFinalFixes", context);
     return result;
   }
   if (key === "fanclub") return feature("./modules/fanclub.js", "hydrateFanclub", context);
   if (key === "tasks") return feature("./modules/tasks.js", "hydrateTasks", context);
   if (key === "teams") return feature("./modules/teams.js", "hydrateTeams", context);
-  if (key === "liveticker") return feature("./modules/liveticker-admin.js?v=20260908-prod-team-upload1", "hydrateLivetickerAdmin", context);
+  if (key === "liveticker") return feature("./modules/liveticker-admin.js?v=20260908-prod-graphic-template1", "hydrateLivetickerAdmin", context);
   if (key === "admin") return feature("./modules/admin.js", "hydrateAdmin", context);
 }
