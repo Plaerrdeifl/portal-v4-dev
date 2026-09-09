@@ -140,7 +140,9 @@ function renderWorkspaces() {
   const cards = [];
   const canManage = hasCapability("fanbus.manage");
   const canRegistrations = hasCapability("fanbus.registrations.manage");
+  const canPublishing = hasCapability("fanbus.publishing.manage");
 
+  if (canPublishing) cards.push(workspaceCard({ id: "publishing", title: "Social Media", description: "Kurzlinks, QR-Codes und Fanbus-Flyer" }));
   if (canManage) cards.push(workspaceCard({ id: "settings", title: "Zustiege", description: "Zustiegsorte und Fanbus-Grundeinstellungen" }));
   if (canRegistrations) {
     cards.push(workspaceCard({ id: "regular-riders", title: "Stammfahrer", description: "Wiederkehrende Mitfahrer verwalten" }));
@@ -151,20 +153,12 @@ function renderWorkspaces() {
   target.querySelectorAll("[data-m328-workspace]").forEach(button => {
     button.addEventListener("click", () => {
       const action = button.dataset.m328Workspace;
+      if (action === "publishing") return openWorkspace("publishing");
       if (action === "settings") return openWorkspace("settings");
       if (action === "regular-riders") return openWorkspace("regular-riders");
       if (action === "person-groups") openWorkspace("person-groups");
     });
   });
-}
-
-function renderPublishing() {
-  const section = document.getElementById("m340PublishingSection");
-  const button = document.getElementById("m340PublishingEntry");
-  if (!section || !button) return;
-  const allowed = hasCapability("fanbus.publishing.manage");
-  section.hidden = !allowed;
-  button.onclick = allowed ? () => openWorkspace("publishing") : null;
 }
 
 function renderNextTrip(items) {
@@ -248,7 +242,6 @@ export async function hydrateBusOrgaV2(context = {}) {
     renderNextTrip(items);
     renderQuickRegistration(items);
     renderWorkspaces();
-    renderPublishing();
     renderTrips(items);
   } catch (error) {
     if (context.isCurrent && !context.isCurrent()) return;
