@@ -151,7 +151,7 @@ test("Bus-Orga integration and publishing capability remain intact", () => {
   assert.match(content.auth, /"fanbus\.publishing\.manage"/);
   assert.match(content.busOrga, /"fanbus\.publishing\.manage"/);
   assert.match(content.busOrgaModule, /"fanbus\.publishing\.manage"/);
-  assert.match(content.busOrgaModule, /renderPublishing\(\)/);
+  assert.match(content.busOrgaModule, /id: "publishing"[\s\S]*id: "settings"/);
   assert.match(content.busOrgaV3, /bus-orga-v2\.js\?[^"\n]*m340=20260907-m340-publishing-bus-orga1/);
   assert.match(content.pages, /bus-orga-v3\.js\?[^"\n]*m340=20260907-m340-publishing-bus-orga1/);
   assert.match(content.publishing, /window\.location\.hash = "#\/bus-orga"/);
