@@ -1167,6 +1167,8 @@ def _ensure_collection_chain(config: Config, remote_path: str) -> None:
     if not parts or parts[0] != "Fanbus":
         raise WorkerError("NEXTCLOUD_PATH_INVALID")
     current = "/Fanbus"
+    if config.nextcloud_root == "/Fanbus":
+        _mkcol(config, current)
     for part in parts[1:]:
         current += "/" + part
         _mkcol(config, current)

@@ -369,6 +369,22 @@ class ManifestTests(unittest.TestCase):
         self.assertNotIn("/Fanbus", created)
         self.assertEqual(created[-1], "/Fanbus/_DEV/2026-10-03_landsberg/generation-001")
 
+    def test_collection_chain_creates_prod_fanbus_root(self):
+        config = worker.load_config(PROD_CONFIG_PATH)
+        created = []
+        original = worker._mkcol
+        worker._mkcol = lambda _config, path: created.append(path)
+        try:
+            worker._ensure_collection_chain(
+                config,
+                "/Fanbus/2026-10-03_landsberg/generation-001",
+            )
+        finally:
+            worker._mkcol = original
+
+        self.assertEqual(created[0], "/Fanbus")
+        self.assertEqual(created[-1], "/Fanbus/2026-10-03_landsberg/generation-001")
+
 
 class ContractTests(unittest.TestCase):
     def test_qr_bridge_uses_only_pinned_inkscape_encoder(self):
