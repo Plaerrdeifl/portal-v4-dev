@@ -469,7 +469,9 @@ function initialize() {
   const segmentLabel = $("#segmentLabel");
   const mightyScore = $("#mightyScore");
   const opponentScore = $("#opponentScore");
+  const mightyScoreName = $("#mightyScoreName");
   const opponentScoreName = $("#opponentScoreName");
+  const assistDetails = $("#assistDetails");
   const shootoutStatus = $("#shootoutStatus");
   const goalFields = $("#goalFields");
   const penaltyFields = $("#penaltyFields");
@@ -567,8 +569,7 @@ function initialize() {
     const score = calculateScore(state.history);
     mightyScore.textContent = String(score.mighty);
     opponentScore.textContent = String(score.opponent);
-    opponentScoreName.textContent = opponent().shortName;
-    $("#actionGoalOpponentLabel").innerHTML = `🥅 Tor<br>${opponent().shortName}`;
+    $("#actionGoalOpponentLabel").innerHTML = "🥅<br>Gegner";
     const opponentShootoutOption = shootoutTeam.querySelector("option[value='opponent']");
     if (opponentShootoutOption) opponentShootoutOption.textContent = opponent().shortName;
     const shootout = calculateShootout(state.history);
@@ -768,9 +769,10 @@ function initialize() {
     preservedPenaltyDraftId = null;
     editingBanner.hidden = true;
     editingBanner.querySelector("span").textContent = "Aktion wird bearbeitet";
-    submitButton.textContent = "Speichern & kopieren";
+    submitButton.innerHTML = '<span aria-hidden="true">💾 📋</span><span class="visually-hidden">Speichern und kopieren</span>';
     penaltyRows.replaceChildren();
     ensurePenaltyRow();
+    if (assistDetails) assistDetails.open = false;
     syncActionFields();
   }
 
@@ -779,7 +781,7 @@ function initialize() {
     preservedPenaltyDraftId = id;
     editingBanner.hidden = false;
     editingBanner.querySelector("span").textContent = "Strafe gespeichert · Textoption kann gewechselt werden";
-    submitButton.textContent = "Speichern & kopieren";
+    submitButton.innerHTML = '<span aria-hidden="true">💾 📋</span><span class="visually-hidden">Speichern und kopieren</span>';
   }
 
   function editEvent(id) {
@@ -788,7 +790,7 @@ function initialize() {
     preservedPenaltyDraftId = null;
     editingId = id;
     editingBanner.hidden = false;
-    submitButton.textContent = "Speichern & kopieren";
+    submitButton.innerHTML = '<span aria-hidden="true">💾 📋</span><span class="visually-hidden">Speichern und kopieren</span>';
     if (event.type !== "shootout") minuteInput.value = String(event.minute);
     if (event.type === "goal") {
       $(event.team === "mighty" ? "#actionGoalMighty" : "#actionGoalOpponent").checked = true;
@@ -797,6 +799,7 @@ function initialize() {
       fillPlayerSelect(goalPlayer, roster, event.player?.name || "", "Torschütze noch unbekannt", GOAL_POSITION_ORDER);
       fillPlayerSelect(assist1, roster, event.assists?.[0]?.name || "", "Kein / 1. Assist noch unbekannt", GOAL_POSITION_ORDER);
       fillPlayerSelect(assist2, roster, event.assists?.[1]?.name || "", "Kein / 2. Assist noch unbekannt", GOAL_POSITION_ORDER);
+      if (assistDetails) assistDetails.open = Boolean(event.assists?.length);
       goalBinding.syncFromSelect();
       assist1Binding.syncFromSelect();
       assist2Binding.syncFromSelect();

@@ -241,9 +241,18 @@ function initializeEnhancements() {
   teams[0].classList.add("mighty-team"); teams[1].classList.add("opponent-team");
   const venue = readVenue();
   scoreTop.classList.toggle("away-game", venue === "away");
+  const mightyScoreName = document.querySelector("#mightyScoreName");
+  const opponentScoreName = document.querySelector("#opponentScoreName");
+  if (mightyScoreName) mightyScoreName.textContent = venue === "away" ? "Gast" : "Heim";
+  if (opponentScoreName) opponentScoreName.textContent = venue === "away" ? "Heim" : "Gast";
   const minuteField = minuteInput.closest(".field");
   const quick = document.createElement("button"); quick.type = "button"; quick.className = "shootout-quick"; quick.textContent = "🏒 Penaltyschießen"; minuteField?.append(quick);
   if (shootoutLabel) shootoutLabel.hidden = true;
+  const renderShootoutQuick = () => { quick.hidden = (Number.parseInt(minuteInput.value || "0", 10) || 0) < 60; };
+  renderShootoutQuick();
+  minuteInput.addEventListener("input", renderShootoutQuick);
+  minuteInput.addEventListener("change", renderShootoutQuick);
+  document.querySelectorAll("[data-minute-step]").forEach(button => button.addEventListener("click", () => queueMicrotask(renderShootoutQuick)));
   quick.addEventListener("click", () => { actionShootout.checked = true; actionShootout.dispatchEvent(new Event("change", { bubbles: true })); document.querySelector("#shootoutFields")?.scrollIntoView({ behavior: "smooth", block: "nearest" }); });
 
   patchPenaltyRows();
