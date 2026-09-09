@@ -583,7 +583,7 @@ function initialize() {
     const roster = rosterForTeam(team, opponent());
     goalPlayerLabel.textContent = team === "mighty" ? "Torschütze Mighty Dogs" : `Torschütze ${opponent().shortName}`;
     const values = [goalPlayer.value, assist1.value, assist2.value];
-    fillPlayerSelect(goalPlayer, roster, values[0], "Torschütze noch unbekannt", GOAL_POSITION_ORDER);
+    fillPlayerSelect(goalPlayer, roster, values[0], "Spieler wählen", GOAL_POSITION_ORDER);
     fillPlayerSelect(assist1, roster, values[1], "Kein / 1. Assist noch unbekannt", GOAL_POSITION_ORDER);
     fillPlayerSelect(assist2, roster, values[2], "Kein / 2. Assist noch unbekannt", GOAL_POSITION_ORDER);
     goalBinding.syncFromSelect();
@@ -610,7 +610,7 @@ function initialize() {
   function createPenaltyRow(initial = {}) {
     const row = document.createElement("div");
     row.className = "penalty-row";
-    row.innerHTML = `<div class="penalty-row-head"><strong>Strafe</strong><button class="remove-penalty" type="button">Entfernen</button></div><div class="penalty-grid"><div class="field"><label class="label">Team</label><select data-field="team"><option value="mighty">Mighty Dogs</option><option value="opponent">${opponent().shortName}</option></select></div><div class="field"><label class="label">Strafzeit</label><select data-field="duration"></select></div><div class="field wide"><label class="label">Spieler</label><div class="player-entry"><input class="jersey-number" data-field="number" type="text" inputmode="numeric" autocomplete="off" placeholder="#" aria-label="Trikotnummer"><select data-field="player"></select></div></div><div class="field wide"><label class="label">Strafgrund</label><select data-field="reason"></select></div></div>`;
+    row.innerHTML = `<div class="penalty-row-head"><strong>Strafe</strong><div class="penalty-row-actions"><button class="add-penalty" type="button">Hinzufügen</button><button class="remove-penalty" type="button">Entfernen</button></div></div><div class="penalty-grid"><div class="field"><label class="label">Team</label><select data-field="team"><option value="mighty">Mighty Dogs</option><option value="opponent">${opponent().shortName}</option></select></div><div class="field"><label class="label">Strafzeit</label><select data-field="duration"></select></div><div class="field wide"><label class="label">Spieler</label><div class="player-entry"><input class="jersey-number" data-field="number" type="text" inputmode="numeric" autocomplete="off" placeholder="#" aria-label="Trikotnummer"><select data-field="player"></select></div></div><div class="field wide"><label class="label">Strafgrund</label><select data-field="reason"></select></div></div>`;
     const team = row.querySelector("[data-field='team']");
     const duration = row.querySelector("[data-field='duration']");
     const player = row.querySelector("[data-field='player']");
@@ -630,6 +630,7 @@ function initialize() {
       binding.syncFromSelect();
       syncTemplateStyleTitles();
     });
+    row.querySelector(".add-penalty").addEventListener("click", () => createPenaltyRow());
     row.querySelector(".remove-penalty").addEventListener("click", () => {
       if (penaltyRows.children.length > 1) {
         row.remove();
@@ -796,7 +797,7 @@ function initialize() {
       $(event.team === "mighty" ? "#actionGoalMighty" : "#actionGoalOpponent").checked = true;
       syncActionFields();
       const roster = rosterForTeam(event.team, opponent());
-      fillPlayerSelect(goalPlayer, roster, event.player?.name || "", "Torschütze noch unbekannt", GOAL_POSITION_ORDER);
+      fillPlayerSelect(goalPlayer, roster, event.player?.name || "", "Spieler wählen", GOAL_POSITION_ORDER);
       fillPlayerSelect(assist1, roster, event.assists?.[0]?.name || "", "Kein / 1. Assist noch unbekannt", GOAL_POSITION_ORDER);
       fillPlayerSelect(assist2, roster, event.assists?.[1]?.name || "", "Kein / 2. Assist noch unbekannt", GOAL_POSITION_ORDER);
       if (assistDetails) assistDetails.open = Boolean(event.assists?.length);
@@ -864,7 +865,6 @@ function initialize() {
     });
   });
 
-  $("#addPenalty").addEventListener("click", () => createPenaltyRow());
   $("#cancelEdit").addEventListener("click", cancelEdit);
 
   form.addEventListener("submit", event => {

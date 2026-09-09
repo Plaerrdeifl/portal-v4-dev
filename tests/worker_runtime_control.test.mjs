@@ -53,6 +53,14 @@ test("Liveticker game mode keeps the live workflow compact and one-tap", async (
   assert.match(engine, /void copyCurrentOutput\(\)/);
   assert.match(engine, /actionGoalOpponentLabel"\)\.innerHTML = "🥅<br>Gegner"/);
   assert.match(html, /id="primaryOutputButton"/);
+  assert.match(html, /class="live-control-label">Spielstand<\/span>/);
+  assert.match(html, /class="live-control-label" for="gameMinute">Spielminute<\/label>/);
+  assert.match(html, /\.compact-score\{height:50px;min-height:50px/);
+  assert.doesNotMatch(html, />Was ist passiert\?</);
+  assert.match(html, /<select id="goalPlayer"><option value="">Spieler wählen<\/option>/);
+  assert.doesNotMatch(html, /id="addPenalty"/);
+  assert.match(engine, /class="add-penalty" type="button">Hinzufügen<\/button>/);
+  assert.match(engine, /querySelector\("\.add-penalty"\)\.addEventListener\("click", \(\) => createPenaltyRow\(\)\)/);
   assert.match(graphics, /function currentOutputKind\(\)/);
   assert.match(graphics, /BUTTONS\[kind\]\?\.click\(\)/);
   assert.match(html, /data-output-status="PERIOD_1"/);
