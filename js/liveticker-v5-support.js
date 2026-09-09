@@ -239,15 +239,8 @@ function initializeEnhancements() {
   if (!scoreTop || teams.length < 2 || !gameMeta || !minuteInput || !actionShootout || !form || !output || !opponentSelect) return;
   installStyle();
   teams[0].classList.add("mighty-team"); teams[1].classList.add("opponent-team");
-  let venue = readVenue();
-  const venueWrap = document.createElement("div");
-  venueWrap.className = "field";
-  venueWrap.innerHTML = `<span class="label">Spielort</span><div class="venue-switch"><button type="button" data-venue="home">🏠 Heimspiel</button><button type="button" data-venue="away">🚌 Auswärtsspiel</button></div>`;
-  gameMeta.parentNode.insertBefore(venueWrap, gameMeta);
-  const venueButtons = [...venueWrap.querySelectorAll("[data-venue]")];
-  function renderVenue() { scoreTop.classList.toggle("away-game", venue === "away"); venueButtons.forEach(button => button.setAttribute("aria-pressed", String(button.dataset.venue === venue))); }
-  venueButtons.forEach(button => button.addEventListener("click", () => { venue = button.dataset.venue === "away" ? "away" : "home"; saveVenue(venue); renderVenue(); }));
-  renderVenue();
+  const venue = readVenue();
+  scoreTop.classList.toggle("away-game", venue === "away");
   const minuteField = minuteInput.closest(".field");
   const quick = document.createElement("button"); quick.type = "button"; quick.className = "shootout-quick"; quick.textContent = "🏒 Penaltyschießen"; minuteField?.append(quick);
   if (shootoutLabel) shootoutLabel.hidden = true;

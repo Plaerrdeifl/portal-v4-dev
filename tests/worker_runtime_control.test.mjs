@@ -26,11 +26,18 @@ test("Liveticker game mode keeps the live workflow compact and one-tap", async (
   const html = await read("liveticker/index.html");
   const engine = await read("js/liveticker-engine-v4.js");
   const graphics = await read("js/liveticker-graphics-inline.js");
+  const storage = await read("js/liveticker-game-storage.js");
+  const support = await read("js/liveticker-v5-support.js");
   assert.match(html, /id="submitButton"[^>]*>Speichern &amp; kopieren<\/button>/);
   assert.match(html, /id="tickerOutputPreview"/);
   assert.match(html, /id="editOutputButton"[^>]*>Bearbeiten<\/button>/);
   assert.match(html, /id="saveOutputButton"[^>]*>Speichern &amp; kopieren<\/button>/);
   assert.match(html, /id="historyToggle"/);
+  assert.match(html, /class="live-game-row"[\s\S]*class="score-top compact-score"[\s\S]*id="gameMinute"/);
+  assert.match(html, /class="field opponent-field" hidden/);
+  assert.doesNotMatch(html, /primary-output-wrap\{position:sticky/);
+  assert.match(storage, /liveticker-sync-status\[data-state="error"\]\{display:block/);
+  assert.doesNotMatch(support, /<span class="label">Spielort<\/span>/);
   assert.match(engine, /ordered\.slice\(0, 5\)/);
   assert.match(engine, /data-expand=/);
   assert.match(engine, /void copyCurrentOutput\(\)/);

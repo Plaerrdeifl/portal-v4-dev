@@ -281,7 +281,7 @@ function installGameSelector(games) {
 
 function installStyles() {
   const style = document.createElement("style");
-  style.textContent = `.liveticker-game-field{margin-bottom:9px}.liveticker-sync-status{display:block;margin-top:5px;font-size:.72rem;font-weight:850;color:var(--muted)}.liveticker-sync-status[data-state="success"]{color:var(--green)}.liveticker-sync-status[data-state="error"]{color:var(--red)}.liveticker-sync-status[data-state="pending"]{color:#8a5900}`;
+  style.textContent = `.liveticker-game-field{margin-bottom:2px}.liveticker-sync-status{display:none;margin-top:5px;font-size:.72rem;font-weight:850}.liveticker-sync-status[data-state="error"]{display:block;color:var(--red)}`;
   document.head.append(style);
 }
 
