@@ -461,6 +461,8 @@ function initialize() {
   let state = loadState();
   let editingId = null;
   let preservedPenaltyDraftId = null;
+  let historyExpanded = false;
+  let outputEditing = false;
   const $ = selector => document.querySelector(selector);
   const opponentSelect = $("#opponentSelect");
   const minuteInput = $("#gameMinute");
@@ -484,12 +486,18 @@ function initialize() {
   const shootoutPlayer = $("#shootoutPlayer");
   const shootoutNumber = $("#shootoutNumber");
   const output = $("#tickerOutput");
+  const outputCard = $("#whatsappOutput");
+  const outputPreview = $("#tickerOutputPreview");
+  const outputCopyState = $("#outputCopyState");
+  const editOutputButton = $("#editOutputButton");
+  const saveOutputButton = $("#saveOutputButton");
   const errorBox = $("#formError");
   const copyButton = $("#copyButton");
   const submitButton = $("#submitButton");
   const editingBanner = $("#editingBanner");
   const historyList = $("#historyList");
   const historyEmpty = $("#historyEmpty");
+  const historyToggle = $("#historyToggle");
 
   if ([goalPlayer, goalNumber, assist1, assist1Number, assist2, assist2Number, shootoutPlayer, shootoutNumber].some(item => !item)) return;
 
@@ -660,23 +668,99 @@ function initialize() {
     return `${eventSegment(event).label} · ${event.penalties.map(item => `${item.duration} min ${item.reason}`).join(" · ")}`;
   }
 
+  function compactHistoryTitle(event) {
+    if (event.type === "goal") {
+      const scorer = event.player?.name || "Torschütze offen";
+      return `${event.minute}' 🥅 ${scorer} · ${teamName(event.team, opponent())}`;
+    }
+    if (event.type === "shootout") {
+      const shooter = event.player?.name || teamName(event.team, opponent());
+      return `🏒 ${shooter} · ${event.result === "scored" ? "verwandelt" : "vergeben"}`;
+    }
+    const first = event.penalties?.[0] || null;
+    const subject = first?.player?.name || (first ? teamName(first.team, opponent()) : "Strafe");
+    const suffix = first ? `${first.duration} Min.` : "";
+    return `${event.minute}' 🚨 ${subject}${suffix ? ` · ${suffix}` : ""}`;
+  }
+
   function renderHistory() {
     historyList.replaceChildren();
-    historyEmpty.hidden = state.history.length > 0;
-    historyByMinute(state.history).reverse().forEach(event => {
+    const ordered = historyByMinute(state.history).reverse();
+    historyEmpty.hidden = ordered.length > 0;
+    const visible = historyExpanded ? ordered : ordered.slice(0, 5);
+    visible.forEach(event => {
       const item = document.createElement("article");
       const major = event.type === "penalty" && event.penalties.some(entry => isMajorPenalty(entry.duration));
       item.className = `history-item${major ? " major" : ""}`;
-      item.innerHTML = `<div class="history-main"><div class="history-copy"><strong>${major ? "🚨 " : ""}${historyTitle(event)}</strong><small>${historyDetail(event)}</small></div></div><div class="history-buttons"><button type="button" data-edit="${event.id}">Bearbeiten</button><button type="button" data-delete="${event.id}">Zurücknehmen</button></div>`;
+      item.dataset.eventId = event.id;
+      item.innerHTML = `<button class="history-summary" type="button" data-expand="${event.id}" aria-expanded="false"><span>${compactHistoryTitle(event)}</span><span class="history-chevron" aria-hidden="true">⌄</span></button><div class="history-details" data-history-details="${event.id}" hidden><small>${historyDetail(event)}</small><div class="history-buttons"><button type="button" data-edit="${event.id}">Bearbeiten</button><button type="button" data-delete="${event.id}">Zurücknehmen</button></div></div>`;
       historyList.append(item);
     });
+    if (historyToggle) {
+      historyToggle.hidden = ordered.length <= 5;
+      historyToggle.textContent = historyExpanded ? "Weniger anzeigen ▴" : "Alle Ereignisse anzeigen ▾";
+    }
     syncScore();
+  }
+
+  function setCopyState(text = "", isError = false) {
+    if (!outputCopyState) return;
+    outputCopyState.textContent = text;
+    outputCopyState.classList.toggle("error", isError);
+  }
+
+  function renderOutputPreview() {
+    if (outputPreview) outputPreview.textContent = output.value;
+  }
+
+  function showOutputPreview() {
+    outputEditing = false;
+    if (outputCard) outputCard.hidden = !output.value.trim();
+    if (outputPreview) outputPreview.hidden = false;
+    output.hidden = true;
+    if (editOutputButton) editOutputButton.hidden = false;
+    if (saveOutputButton) saveOutputButton.hidden = true;
+    renderOutputPreview();
   }
 
   function setOutput(text) {
     output.value = text;
-    copyButton.dataset.copied = "false";
-    copyButton.textContent = "Kopieren";
+    if (copyButton) {
+      copyButton.dataset.copied = "false";
+      copyButton.textContent = "Kopieren";
+      copyButton.hidden = true;
+    }
+    setCopyState("");
+    showOutputPreview();
+  }
+
+  async function copyCurrentOutput() {
+    const text = output.value.trim();
+    if (!text) return false;
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("CLIPBOARD_UNAVAILABLE");
+      await navigator.clipboard.writeText(output.value);
+      setCopyState("✓ kopiert");
+      if (copyButton) copyButton.hidden = true;
+      return true;
+    } catch {
+      try {
+        output.hidden = false;
+        output.focus();
+        output.select();
+        const copied = document.execCommand("copy");
+        if (!copied) throw new Error("COPY_FAILED");
+        showOutputPreview();
+        setCopyState("✓ kopiert");
+        if (copyButton) copyButton.hidden = true;
+        return true;
+      } catch {
+        showOutputPreview();
+        setCopyState("Gespeichert · Kopieren fehlgeschlagen", true);
+        if (copyButton) copyButton.hidden = false;
+        return false;
+      }
+    }
   }
 
   function cancelEdit() {
@@ -684,7 +768,7 @@ function initialize() {
     preservedPenaltyDraftId = null;
     editingBanner.hidden = true;
     editingBanner.querySelector("span").textContent = "Aktion wird bearbeitet";
-    submitButton.textContent = "Aktion speichern & Text erstellen";
+    submitButton.textContent = "Speichern & kopieren";
     penaltyRows.replaceChildren();
     ensurePenaltyRow();
     syncActionFields();
@@ -695,7 +779,7 @@ function initialize() {
     preservedPenaltyDraftId = id;
     editingBanner.hidden = false;
     editingBanner.querySelector("span").textContent = "Strafe gespeichert · Textoption kann gewechselt werden";
-    submitButton.textContent = "Strafe aktualisieren & Text erstellen";
+    submitButton.textContent = "Speichern & kopieren";
   }
 
   function editEvent(id) {
@@ -704,7 +788,7 @@ function initialize() {
     preservedPenaltyDraftId = null;
     editingId = id;
     editingBanner.hidden = false;
-    submitButton.textContent = "Änderung speichern & Text erstellen";
+    submitButton.textContent = "Speichern & kopieren";
     if (event.type !== "shootout") minuteInput.value = String(event.minute);
     if (event.type === "goal") {
       $(event.team === "mighty" ? "#actionGoalMighty" : "#actionGoalOpponent").checked = true;
@@ -820,7 +904,10 @@ function initialize() {
         tickerEvent,
         persist: () => saveState(state),
         renderHistory,
-        renderOutput: () => setOutput(formatEventText(tickerEvent, state.history, opponent())),
+        renderOutput: () => {
+          setOutput(formatEventText(tickerEvent, state.history, opponent()));
+          void copyCurrentOutput();
+        },
         preservePenaltyDraft,
         cancelEdit,
         syncContext
@@ -832,9 +919,12 @@ function initialize() {
   });
 
   historyList.addEventListener("click", event => {
-    const editId = event.target.dataset.edit;
-    const deleteId = event.target.dataset.delete;
-    if (editId) editEvent(editId);
+    const editButton = event.target.closest?.("[data-edit]");
+    const deleteButton = event.target.closest?.("[data-delete]");
+    const expandButton = event.target.closest?.("[data-expand]");
+    const editId = editButton?.dataset.edit || "";
+    const deleteId = deleteButton?.dataset.delete || "";
+    if (editId) { editEvent(editId); return; }
     if (deleteId) {
       const item = state.history.find(entry => entry.id === deleteId);
       if (!item || !window.confirm(`Aktion „${historyTitle(item)}“ wirklich zurücknehmen?`)) return;
@@ -842,12 +932,27 @@ function initialize() {
       saveState(state);
       renderHistory();
       if (editingId === deleteId) cancelEdit();
+      return;
     }
+    if (expandButton) {
+      const id = expandButton.dataset.expand || "";
+      const details = historyList.querySelector(`[data-history-details="${id}"]`);
+      if (!details) return;
+      const expanded = expandButton.getAttribute("aria-expanded") === "true";
+      expandButton.setAttribute("aria-expanded", String(!expanded));
+      details.hidden = expanded;
+    }
+  });
+
+  historyToggle?.addEventListener("click", () => {
+    historyExpanded = !historyExpanded;
+    renderHistory();
   });
 
   $("#period1OutputButton")?.addEventListener("click", () => {
     try {
       setOutput(formatSegmentSummary(state.history, "P1", opponent()));
+      void copyCurrentOutput();
       errorBox.hidden = true;
     } catch (error) {
       errorBox.textContent = error.message;
@@ -857,6 +962,7 @@ function initialize() {
   $("#period2OutputButton")?.addEventListener("click", () => {
     try {
       setOutput(formatSegmentSummary(state.history, "P2", opponent()));
+      void copyCurrentOutput();
       errorBox.hidden = true;
     } catch (error) {
       errorBox.textContent = error.message;
@@ -866,6 +972,7 @@ function initialize() {
   $("#finalOutputButton")?.addEventListener("click", () => {
     try {
       setOutput(formatFinalSummary(state.history, opponent()));
+      void copyCurrentOutput();
       errorBox.hidden = true;
     } catch (error) {
       errorBox.textContent = error.message;
@@ -873,13 +980,28 @@ function initialize() {
     }
   });
 
-  copyButton.addEventListener("click", async () => {
-    if (!output.value.trim()) { errorBox.textContent = "Bitte zuerst einen Text erstellen."; errorBox.hidden = false; return; }
-    try { await navigator.clipboard.writeText(output.value); }
-    catch { output.focus(); output.select(); document.execCommand("copy"); }
-    copyButton.dataset.copied = "true";
-    copyButton.textContent = "Kopiert ✓";
+  copyButton?.addEventListener("click", async () => {
+    await copyCurrentOutput();
     errorBox.hidden = true;
+  });
+
+  editOutputButton?.addEventListener("click", () => {
+    if (!output.value.trim()) return;
+    outputEditing = true;
+    if (outputPreview) outputPreview.hidden = true;
+    output.hidden = false;
+    editOutputButton.hidden = true;
+    if (saveOutputButton) saveOutputButton.hidden = false;
+    if (copyButton) copyButton.hidden = true;
+    setCopyState("");
+    output.focus();
+  });
+
+  saveOutputButton?.addEventListener("click", async () => {
+    if (!output.value.trim()) return;
+    renderOutputPreview();
+    showOutputPreview();
+    await copyCurrentOutput();
   });
 
   $("#resetGame").addEventListener("click", () => {
@@ -890,6 +1012,10 @@ function initialize() {
     opponentSelect.value = state.opponentId;
     minuteInput.value = "1";
     output.value = "";
+    historyExpanded = false;
+    outputEditing = false;
+    if (outputCard) outputCard.hidden = true;
+    setCopyState("");
     goalNumber.value = "";
     assist1Number.value = "";
     assist2Number.value = "";

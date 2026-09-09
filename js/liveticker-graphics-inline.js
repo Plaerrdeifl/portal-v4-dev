@@ -7,8 +7,17 @@ const BUTTONS = Object.freeze({
 });
 const statusLine = document.getElementById("inlineGraphicStatus");
 const artifactsBox = document.getElementById("inlineGraphicArtifacts");
+const resultPanel = document.getElementById("graphicsResultPanel");
+const resultTitle = document.getElementById("graphicsResultTitle");
+const closeResults = document.getElementById("closeGraphicsResults");
+const primaryOutputWrap = document.getElementById("primaryOutputWrap");
+const primaryOutputButton = document.getElementById("primaryOutputButton");
+const resultGenerateButton = document.getElementById("resultGenerateButton");
+const outputStatusButtons = [...document.querySelectorAll("[data-output-status]")];
+const minuteInput = document.getElementById("gameMinute");
 const workerControl = document.getElementById("graphicWorkerControl");
 const workerStatusLine = document.getElementById("graphicWorkerStatus");
+const workerDot = document.getElementById("graphicWorkerDot");
 const workerToggle = document.getElementById("graphicWorkerToggle");
 const workerHint = document.getElementById("graphicWorkerHint");
 const WORKER_CODE = "LIVETICKER_GRAPHICS";
@@ -29,9 +38,18 @@ let enqueueInFlight = "";
 let workerRuntime = null;
 let workerRequestInFlight = false;
 let workerRefreshTimer = 0;
+let selectedArtifactKind = "";
+let resultsOpen = false;
 
 function currentEventId() {
   return String(globalThis.PD_LIVETICKER_GAME_CONTEXT?.eventId || "").trim();
+}
+
+function currentOutputKind() {
+  const minute = Math.max(1, Number.parseInt(minuteInput?.value || "1", 10) || 1);
+  if (minute <= 20) return "PERIOD_1";
+  if (minute <= 40) return "PERIOD_2";
+  return "FINAL";
 }
 
 function latestJob(kind) {
@@ -105,16 +123,16 @@ function artifactRowsFor(job) {
 function renderArtifacts() {
   if (!artifactsBox) return;
   artifactsBox.replaceChildren();
+  const kind = selectedArtifactKind || KINDS.find(item => latestJob(item)?.status === "SUCCEEDED") || "";
+  const job = kind ? latestJob(kind) : null;
 
-  for (const kind of KINDS) {
-    const job = latestJob(kind);
-    if (job?.status !== "SUCCEEDED") continue;
+  if (job?.status === "SUCCEEDED") {
     for (const artifact of artifactRowsFor(job)) {
       const row = document.createElement("div");
       row.className = "graphic-artifact";
 
       const title = document.createElement("strong");
-      title.textContent = `${kindLabel(kind)} · ${artifact.kind}`;
+      title.textContent = artifact.kind;
       row.append(title);
 
       const actions = document.createElement("div");
@@ -127,13 +145,6 @@ function renderArtifacts() {
       open.textContent = "Öffnen";
       actions.append(open);
 
-      const download = document.createElement("a");
-      download.href = artifact.downloadUrl;
-      download.target = "_blank";
-      download.rel = "noopener noreferrer";
-      download.textContent = "Download";
-      actions.append(download);
-
       const share = document.createElement("button");
       share.type = "button";
       share.dataset.shareUrl = artifact.shareUrl;
@@ -141,12 +152,60 @@ function renderArtifacts() {
       share.textContent = "Teilen";
       actions.append(share);
 
+      const download = document.createElement("a");
+      download.href = artifact.downloadUrl;
+      download.target = "_blank";
+      download.rel = "noopener noreferrer";
+      download.textContent = "Download";
+      actions.append(download);
+
       row.append(actions);
       artifactsBox.append(row);
     }
   }
 
   artifactsBox.hidden = !artifactsBox.childElementCount;
+  if (resultTitle) resultTitle.textContent = kind ? `${kindLabel(kind)} · Ausgabe` : "Ausgabe";
+  if (resultPanel) resultPanel.hidden = !resultsOpen;
+}
+
+function renderOutputStatus() {
+  for (const button of outputStatusButtons) {
+    const kind = button.dataset.outputStatus || "";
+    const job = latestJob(kind);
+    const active = isActive(job);
+    const done = job?.status === "SUCCEEDED";
+    const failed = job?.status === "FAILED";
+    const short = kind === "FINAL" ? "Ende" : kindLabel(kind);
+    button.textContent = `${short} ${done ? "✓" : active ? "…" : failed ? "!" : "—"}`;
+    button.disabled = !(done || failed);
+    button.classList.toggle("ready", done);
+    button.classList.toggle("active", active);
+  }
+}
+
+function renderPrimaryOutput() {
+  if (!primaryOutputButton) return;
+  const minute = Math.max(1, Number.parseInt(minuteInput?.value || "1", 10) || 1);
+  const kind = currentOutputKind();
+  const job = latestJob(kind);
+  const active = isActive(job) || enqueueInFlight === kind;
+  const ready = Boolean(currentEventId()) && Boolean(workerRuntime?.ready);
+  const atOutputMoment = minute === 20 || minute === 40 || minute >= 60;
+  if (primaryOutputWrap) primaryOutputWrap.hidden = !atOutputMoment;
+  primaryOutputButton.disabled = !ready || active;
+  if (active) primaryOutputButton.textContent = `🏁 ${kindLabel(kind)} wird erstellt …`;
+  else primaryOutputButton.textContent = `🏁 ${kindLabel(kind)} ausgeben`;
+}
+
+function renderResultGenerate() {
+  if (!resultGenerateButton) return;
+  const kind = selectedArtifactKind || currentOutputKind();
+  const job = latestJob(kind);
+  const active = isActive(job) || enqueueInFlight === kind;
+  resultGenerateButton.disabled = !Boolean(workerRuntime?.ready) || active;
+  resultGenerateButton.textContent = active ? "Wird erstellt …" : job?.status === "FAILED" ? "Erneut erstellen" : "Neu erstellen";
+  resultGenerateButton.dataset.graphicKind = kind;
 }
 
 function workerStateLabel(state) {
@@ -162,6 +221,11 @@ function renderWorker() {
   const enabled = Boolean(workerRuntime?.enabled);
   const ready = Boolean(workerRuntime?.ready);
   if (workerStatusLine) workerStatusLine.textContent = workerStateLabel(state);
+  if (workerDot) {
+    workerDot.classList.toggle("active", state === "ACTIVE");
+    workerDot.classList.toggle("starting", state === "STARTING");
+    workerDot.classList.toggle("error", state === "UNREACHABLE");
+  }
   if (workerToggle) {
     workerToggle.disabled = workerRequestInFlight;
     workerToggle.textContent = workerRequestInFlight ? "Speichert …" : enabled ? "Ausschalten" : "Einschalten";
@@ -174,6 +238,7 @@ function renderWorker() {
         : "Worker deaktiviert – Grafik-Erstellung derzeit nicht möglich.";
   }
   for (const kind of KINDS) setButtonState(kind);
+  renderPrimaryOutput();
 }
 
 function clearWorkerRefreshTimer() {
@@ -220,12 +285,15 @@ async function toggleWorker() {
 function render() {
   renderWorker();
   for (const kind of KINDS) setButtonState(kind);
-  if (!statusLine) return;
-
-  statusLine.textContent = `Grafiken · ${KINDS.map(kind => `${kindLabel(kind)}: ${jobStatus(latestJob(kind))}`).join(" · ")}`;
-  statusLine.dataset.state = jobs.some(isActive)
-    ? "active"
-    : jobs.some(job => job?.status === "FAILED") ? "error" : "idle";
+  renderOutputStatus();
+  renderPrimaryOutput();
+  renderResultGenerate();
+  if (statusLine) {
+    const kind = selectedArtifactKind || currentOutputKind();
+    const job = latestJob(kind);
+    statusLine.textContent = `${kindLabel(kind)} · ${jobStatus(job)}`;
+    statusLine.dataset.state = isActive(job) ? "active" : job?.status === "FAILED" ? "error" : "idle";
+  }
   renderArtifacts();
 }
 
@@ -278,6 +346,8 @@ async function enqueue(kind) {
   if (!eventId || !KINDS.includes(kind) || enqueueInFlight) return;
 
   enqueueInFlight = kind;
+  selectedArtifactKind = kind;
+  resultsOpen = true;
   render();
   try {
     await api.call("liveticker_graphics_enqueue", { eventId, kind });
@@ -317,6 +387,32 @@ artifactsBox?.addEventListener("click", async event => {
 for (const kind of KINDS) {
   BUTTONS[kind]?.addEventListener("click", () => enqueue(kind));
 }
+
+primaryOutputButton?.addEventListener("click", () => {
+  const kind = currentOutputKind();
+  BUTTONS[kind]?.click();
+});
+
+outputStatusButtons.forEach(button => button.addEventListener("click", () => {
+  const kind = button.dataset.outputStatus || "";
+  if (latestJob(kind)?.status !== "SUCCEEDED") return;
+  selectedArtifactKind = kind;
+  resultsOpen = true;
+  render();
+}));
+
+closeResults?.addEventListener("click", () => {
+  resultsOpen = false;
+  renderArtifacts();
+});
+
+resultGenerateButton?.addEventListener("click", () => {
+  const kind = resultGenerateButton.dataset.graphicKind || selectedArtifactKind || currentOutputKind();
+  BUTTONS[kind]?.click();
+});
+
+minuteInput?.addEventListener("input", renderPrimaryOutput);
+minuteInput?.addEventListener("change", renderPrimaryOutput);
 workerToggle?.addEventListener("click", toggleWorker);
 
 window.addEventListener("pd-liveticker-state-saved", () => scheduleFullRefresh(900));

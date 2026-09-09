@@ -21,6 +21,28 @@ test("Liveticker exposes manual worker control and blocks graphics until ready",
   assert.doesNotMatch(fullRefresh[0], /clearWorkerRefreshTimer\(\)/);
 });
 
+
+test("Liveticker game mode keeps the live workflow compact and one-tap", async () => {
+  const html = await read("liveticker/index.html");
+  const engine = await read("js/liveticker-engine-v4.js");
+  const graphics = await read("js/liveticker-graphics-inline.js");
+  assert.match(html, /id="submitButton"[^>]*>Speichern &amp; kopieren<\/button>/);
+  assert.match(html, /id="tickerOutputPreview"/);
+  assert.match(html, /id="editOutputButton"[^>]*>Bearbeiten<\/button>/);
+  assert.match(html, /id="saveOutputButton"[^>]*>Speichern &amp; kopieren<\/button>/);
+  assert.match(html, /id="historyToggle"/);
+  assert.match(engine, /ordered\.slice\(0, 5\)/);
+  assert.match(engine, /data-expand=/);
+  assert.match(engine, /void copyCurrentOutput\(\)/);
+  assert.match(html, /id="primaryOutputButton"/);
+  assert.match(graphics, /function currentOutputKind\(\)/);
+  assert.match(graphics, /BUTTONS\[kind\]\?\.click\(\)/);
+  assert.match(html, /data-output-status="PERIOD_1"/);
+  assert.match(html, /data-output-status="PERIOD_2"/);
+  assert.match(html, /data-output-status="FINAL"/);
+  assert.doesNotMatch(html, /Spiel schnell mittickern/);
+});
+
 test("Fanbus Social Media exposes manual worker control and blocks flyer generation until ready", async () => {
   const js = await read("js/modules/m340-publishing.js");
   assert.match(js, /data-m340-worker-toggle/);
