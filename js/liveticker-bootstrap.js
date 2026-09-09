@@ -80,7 +80,7 @@ try {
   };
 
   await importRuntimeEngine();
-  await import("./liveticker-v5-support.js?v=20260909-live-ux4");
+  await import("./liveticker-v5-support.js?v=20260910-live-ux5");
 
   const opponentSelect = document.querySelector("#opponentSelect");
   if (opponentSelect) {

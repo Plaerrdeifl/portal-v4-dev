@@ -66,6 +66,13 @@ test("Liveticker game mode keeps the live workflow compact and one-tap", async (
   assert.match(html, /data-output-status="PERIOD_1"/);
   assert.match(html, /data-output-status="PERIOD_2"/);
   assert.match(html, /data-output-status="FINAL"/);
+  const statusStripIndex = html.indexOf('id="outputStatusStrip"');
+  const graphicsPanelIndex = html.indexOf('id="graphicsResultPanel"');
+  const primaryOutputIndex = html.indexOf('id="primaryOutputWrap"');
+  assert.ok(statusStripIndex >= 0 && graphicsPanelIndex > statusStripIndex && primaryOutputIndex > graphicsPanelIndex);
+  assert.match(html, /id="graphicsResultPanel" class="summary-actions score-inline-output" hidden/);
+  assert.match(graphics, /button\.disabled = !\(done \|\| failed\)/);
+  assert.match(graphics, /latestJob\(kind\)\?\.status !== "SUCCEEDED"/);
   assert.doesNotMatch(html, /Spiel schnell mittickern/);
 });
 
