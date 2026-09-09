@@ -32,7 +32,7 @@ def find(root,id_):
 def set_text(root,id_,value):
     e=find(root,id_)
     if e is None: raise RuntimeError(f'missing id: {id_}')
-    e.text=str(value or '')
+    e.text='' if value is None else str(value)
 
 def hide(root,id_):
     e=find(root,id_)
