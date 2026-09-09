@@ -352,6 +352,9 @@ class ManifestTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(worker.WorkerError):
                 worker._remote_path(value)
 
+    def test_remote_path_allows_exact_protected_root(self):
+        self.assertEqual(worker._remote_path("/Fanbus"), "/Fanbus")
+
     def test_collection_chain_skips_protected_fanbus_root(self):
         config = worker.load_config(CONFIG_PATH)
         created = []

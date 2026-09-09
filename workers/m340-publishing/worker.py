@@ -1055,7 +1055,7 @@ def render_assets(config: Config, snapshot: dict[str, Any], output_dir: Path) ->
 
 def _remote_path(path: str, required_root: str = "/Fanbus") -> str:
     if (
-        not path.startswith(required_root + "/")
+        (path != required_root and not path.startswith(required_root + "/"))
         or ".." in path
         or "\\" in path
         or "?" in path
