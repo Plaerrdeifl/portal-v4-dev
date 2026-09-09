@@ -410,7 +410,9 @@ class ContractTests(unittest.TestCase):
         generation_upload = source.index('_put_file(config, local, f"{generation_path}/{kind}.{extension}")')
         current_upload = source.index('_put_file(config, local, f"{current_path}/{kind}.{extension}")')
         self.assertLess(generation_upload, current_upload)
-        self.assertIn("time.sleep(config.poll_seconds)", source)
+        self.assertIn("LAST_POLL_SECONDS = 60", source)
+        self.assertIn("time.sleep(LAST_POLL_SECONDS)", source)
+        self.assertIn("poll_seconds not in (5, 60)", source)
 
     def test_systemd_unit_runs_as_benny_without_inbound_listener(self):
         service = SERVICE_PATH.read_text(encoding="utf-8")

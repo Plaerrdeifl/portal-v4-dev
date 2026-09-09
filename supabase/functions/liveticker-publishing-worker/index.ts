@@ -8,6 +8,7 @@ const EXPECTED_TOKEN_SHA256_BY_HOST = {
 } as const;
 const CLAIM_RPC = "pd_liveticker_graphic_worker_claim";
 const COMPLETE_RPC = "pd_liveticker_graphic_worker_complete";
+const CONTROL_RPC = "pd_worker_runtime_control";
 const encoder = new TextEncoder();
 
 type JsonObject = Record<string, unknown>;
@@ -112,7 +113,7 @@ function validManifest(value: unknown) {
 
 function validBody(value: unknown): value is JsonObject {
   if (!isObject(value) || typeof value.action !== "string") return false;
-  if (value.action === "claim") return exactKeys(value, ["action"]);
+  if (value.action === "claim" || value.action === "control") return exactKeys(value, ["action"]);
   if (value.action !== "complete" || !exactKeys(value, ["action", "jobId", "claimToken", "success", "errorCode", "result"])) return false;
   if (!isUuid(value.jobId) || !isUuid(value.claimToken) || typeof value.success !== "boolean") return false;
   if (value.success) return (value.errorCode === null || value.errorCode === "") && validManifest(value.result);
@@ -163,6 +164,8 @@ Deno.serve(async request => {
     if (!validBody(body)) return response(400, { ok: false, error: "Invalid request" });
     const data = body.action === "claim"
       ? await rpc(CLAIM_RPC, {})
+      : body.action === "control"
+      ? await rpc(CONTROL_RPC, { p_worker_code: "LIVETICKER_GRAPHICS" })
       : await rpc(COMPLETE_RPC, {
         p_job_id: body.jobId,
         p_claim_token: body.claimToken,

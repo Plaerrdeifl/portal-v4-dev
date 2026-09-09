@@ -1,0 +1,1 @@
+-- Liveticker uses the authenticated worker control heartbeat endpoint for 60s disabled / 5s active polling. The claim RPC remains queue-only and fail-closed while disabled.

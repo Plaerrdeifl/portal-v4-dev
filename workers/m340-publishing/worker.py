@@ -49,6 +49,7 @@ EXPECTED_RENDERER = (
 EXPECTED_FONT_SHA256 = "d2c790c5ce96e4453ab7ea2d17f8c71db06cec3d3ab4f7f98db02955e63ab353"
 WORKER_HEADER = "X-M340-Worker-Token"
 BERLIN = ZoneInfo("Europe/Berlin")
+LAST_POLL_SECONDS = 60
 UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
     re.IGNORECASE,
@@ -273,7 +274,13 @@ def call_edge(config: Config, payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def claim(config: Config) -> dict[str, Any] | None:
+    global LAST_POLL_SECONDS
     result = call_edge(config, {"action": "claim"})
+    worker_enabled = result.get("workerEnabled")
+    poll_seconds = result.get("pollSeconds")
+    if not isinstance(worker_enabled, bool) or poll_seconds not in (5, 60):
+        raise WorkerError("CLAIM_INVALID")
+    LAST_POLL_SECONDS = poll_seconds
     if result.get("claimed") is False:
         return None
     if result.get("claimed") is not True or not isinstance(result.get("job"), dict):
@@ -1332,12 +1339,14 @@ def run_once(config: Config) -> bool:
 
 
 def run_forever(config: Config) -> None:
+    global LAST_POLL_SECONDS
     while True:
         try:
             run_once(config)
         except Exception as exc:
             logging.error("M340 poll failed with %s", _failure_code(exc))
-        time.sleep(config.poll_seconds)
+            LAST_POLL_SECONDS = 60
+        time.sleep(LAST_POLL_SECONDS)
 
 
 def render_fixture(config: Config, fixture_path: Path, output_dir: Path) -> None:

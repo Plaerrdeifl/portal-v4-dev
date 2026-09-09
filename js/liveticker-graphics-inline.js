@@ -7,6 +7,11 @@ const BUTTONS = Object.freeze({
 });
 const statusLine = document.getElementById("inlineGraphicStatus");
 const artifactsBox = document.getElementById("inlineGraphicArtifacts");
+const workerControl = document.getElementById("graphicWorkerControl");
+const workerStatusLine = document.getElementById("graphicWorkerStatus");
+const workerToggle = document.getElementById("graphicWorkerToggle");
+const workerHint = document.getElementById("graphicWorkerHint");
+const WORKER_CODE = "LIVETICKER_GRAPHICS";
 
 const STATUS_LABELS = Object.freeze({
   QUEUED: "Warteschlange",
@@ -21,6 +26,9 @@ let refreshTimer = 0;
 let delayedRefreshTimer = 0;
 let requestInFlight = false;
 let enqueueInFlight = "";
+let workerRuntime = null;
+let workerRequestInFlight = false;
+let workerRefreshTimer = 0;
 
 function currentEventId() {
   return String(globalThis.PD_LIVETICKER_GAME_CONTEXT?.eventId || "").trim();
@@ -53,7 +61,7 @@ function setButtonState(kind) {
   if (!button) return;
   const job = latestJob(kind);
   const active = isActive(job);
-  const ready = Boolean(currentEventId());
+  const ready = Boolean(currentEventId()) && Boolean(workerRuntime?.ready);
   const enqueueing = enqueueInFlight === kind;
 
   button.disabled = !ready || active || enqueueing;
@@ -141,7 +149,76 @@ function renderArtifacts() {
   artifactsBox.hidden = !artifactsBox.childElementCount;
 }
 
+function workerStateLabel(state) {
+  if (state === "ACTIVE") return "AKTIV";
+  if (state === "STARTING") return "WIRD AKTIVIERT …";
+  if (state === "UNREACHABLE") return "NICHT ERREICHBAR";
+  return "AUS";
+}
+
+function renderWorker() {
+  if (!workerControl) return;
+  const state = String(workerRuntime?.state || "UNREACHABLE");
+  const enabled = Boolean(workerRuntime?.enabled);
+  const ready = Boolean(workerRuntime?.ready);
+  if (workerStatusLine) workerStatusLine.textContent = workerStateLabel(state);
+  if (workerToggle) {
+    workerToggle.disabled = workerRequestInFlight;
+    workerToggle.textContent = workerRequestInFlight ? "Speichert …" : enabled ? "Ausschalten" : "Einschalten";
+  }
+  if (workerHint) {
+    workerHint.textContent = ready
+      ? "Worker aktiv – Grafiken werden spätestens nach wenigen Sekunden verarbeitet."
+      : enabled
+        ? "Worker wird aktiviert. Grafik-Erstellung ist bis zum nächsten Heartbeat gesperrt."
+        : "Worker deaktiviert – Grafik-Erstellung derzeit nicht möglich.";
+  }
+  for (const kind of KINDS) setButtonState(kind);
+}
+
+function clearWorkerRefreshTimer() {
+  if (workerRefreshTimer) window.clearTimeout(workerRefreshTimer);
+  workerRefreshTimer = 0;
+}
+
+function scheduleWorkerRefresh(delay = 5000) {
+  clearWorkerRefreshTimer();
+  workerRefreshTimer = window.setTimeout(() => refreshWorkerStatus(), delay);
+}
+
+async function refreshWorkerStatus() {
+  if (workerRequestInFlight) return;
+  try {
+    workerRuntime = await api.call("worker_runtime_status", { workerCode: WORKER_CODE });
+    renderWorker();
+  } catch (error) {
+    console.error("Liveticker worker status refresh failed", error);
+    workerRuntime = { enabled: false, ready: false, state: "UNREACHABLE" };
+    renderWorker();
+  } finally {
+    scheduleWorkerRefresh(workerRuntime?.enabled && !workerRuntime?.ready ? 2500 : 10000);
+  }
+}
+
+async function toggleWorker() {
+  if (workerRequestInFlight) return;
+  workerRequestInFlight = true;
+  renderWorker();
+  try {
+    workerRuntime = await api.call("worker_runtime_set", { workerCode: WORKER_CODE, enabled: !Boolean(workerRuntime?.enabled) });
+    renderWorker();
+    scheduleWorkerRefresh(workerRuntime?.enabled ? 1500 : 10000);
+  } catch (error) {
+    console.error("Liveticker worker toggle failed", error);
+    if (workerHint) workerHint.textContent = error?.message || "Worker-Status konnte nicht geändert werden.";
+  } finally {
+    workerRequestInFlight = false;
+    renderWorker();
+  }
+}
+
 function render() {
+  renderWorker();
   for (const kind of KINDS) setButtonState(kind);
   if (!statusLine) return;
 
@@ -190,6 +267,7 @@ async function refreshAll() {
 
 function scheduleFullRefresh(delay = 700) {
   if (delayedRefreshTimer) window.clearTimeout(delayedRefreshTimer);
+  clearWorkerRefreshTimer();
   delayedRefreshTimer = window.setTimeout(() => {
     delayedRefreshTimer = 0;
     refreshAll();
@@ -240,12 +318,14 @@ artifactsBox?.addEventListener("click", async event => {
 for (const kind of KINDS) {
   BUTTONS[kind]?.addEventListener("click", () => enqueue(kind));
 }
+workerToggle?.addEventListener("click", toggleWorker);
 
 window.addEventListener("pd-liveticker-state-saved", () => scheduleFullRefresh(900));
 window.addEventListener("pagehide", () => {
   clearRefreshTimer();
   if (delayedRefreshTimer) window.clearTimeout(delayedRefreshTimer);
+  clearWorkerRefreshTimer();
 });
 
 render();
-await refreshAll();
+await Promise.all([refreshWorkerStatus(), refreshAll()]);

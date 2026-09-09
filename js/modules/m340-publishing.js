@@ -223,12 +223,27 @@ function generatorTripOptions(model, selectedTripId = "") {
   }).join("")}`;
 }
 
+function renderWorkerControl(model) {
+  const worker = model?.workerRuntime || {};
+  const state = String(worker?.state || "UNREACHABLE");
+  const enabled = Boolean(worker?.enabled);
+  const ready = Boolean(worker?.ready);
+  const label = state === "ACTIVE" ? "AKTIV" : state === "STARTING" ? "WIRD AKTIVIERT …" : state === "UNREACHABLE" ? "NICHT ERREICHBAR" : "AUS";
+  const hint = ready
+    ? "Worker aktiv – Flyer werden spätestens nach wenigen Sekunden verarbeitet."
+    : enabled
+      ? "Worker wird aktiviert. Flyer-Erstellung ist bis zum nächsten Heartbeat gesperrt."
+      : "Worker deaktiviert – Flyer-Erstellung derzeit nicht möglich.";
+  return `<section class="v4-m325-workspace-section"><div class="m340-publishing-section-head"><div><h3>Flyer-Worker</h3><small>${escapeHtml(label)}</small></div><button class="button small secondary" type="button" data-m340-worker-toggle>${enabled ? "Ausschalten" : "Einschalten"}</button></div><p class="subtle">${escapeHtml(hint)}</p></section>`;
+}
+
 function renderFlyerGenerator(model, generator = {}) {
   const tripId = String(generator?.tripId || "");
   const saved = Boolean(generator?.saved && tripId);
   const enabled = Boolean(generator?.enabled);
   const text = String(generator?.text || "");
   const activeJob = tripId ? jobsForTrip(model, tripId).find(job => ["QUEUED", "PROCESSING"].includes(String(job?.status || "").toUpperCase())) : null;
+  const workerReady = Boolean(model?.workerRuntime?.ready);
   return `<section class="v4-m325-workspace-section m340-generator" aria-labelledby="m340GeneratorTitle">
     <div class="m340-publishing-section-head"><h3 id="m340GeneratorTitle">Flyer-Generator</h3></div>
     <div class="m340-generator-body">
@@ -238,7 +253,7 @@ function renderFlyerGenerator(model, generator = {}) {
         ${enabled ? `<small>${escapeHtml(text)}</small>` : ""}
         <button class="button small ghost" type="button" data-m340-generator-change>Ändern</button>
       </div>
-      <button class="button primary m340-generator-create" type="button" data-m340-generator-create${activeJob ? " disabled" : ""}>${activeJob ? "Wird erstellt …" : "Flyer generieren"}</button>` : `<form class="m340-generator-config" data-m340-generator-config>
+      <button class="button primary m340-generator-create" type="button" data-m340-generator-create${activeJob || !workerReady ? " disabled" : ""}>${activeJob ? "Wird erstellt …" : workerReady ? "Flyer generieren" : "Worker nicht aktiv"}</button>` : `<form class="m340-generator-config" data-m340-generator-config>
         <label class="m340-publishing-toggle"><input type="checkbox" name="tripLabelEnabled"${enabled ? " checked" : ""}><span>Zusatzanzeige</span></label>
         <label class="m340-generator-text"${enabled ? "" : " hidden"}><span>Text</span><input type="text" name="tripLabelText" maxlength="32" value="${escapeAttr(text)}"></label>
         <button class="button small secondary" type="submit">Speichern</button>
@@ -325,6 +340,7 @@ function workspaceMarkup(model, generator) {
       <button class="button small secondary" type="button" data-m340-back>Zurück</button>
       <div><span class="m340-publishing-kicker">Bus-Orga</span><h2>Social Media</h2></div>
     </header>
+    ${renderWorkerControl(model)}
     ${renderFlyerGenerator(model, generator)}
     <section class="v4-m325-workspace-section" aria-labelledby="m340PublishingTripsTitle">
       <div class="m340-publishing-section-head"><h3 id="m340PublishingTripsTitle">Veröffentlichte Fahrten</h3></div>
@@ -336,8 +352,12 @@ function workspaceMarkup(model, generator) {
 
 async function loadOverview() {
   await call("fanbus_publishing_resolution_ensure", {});
-  const model = await call("fanbus_publishing_overview", {});
+  const [model, workerRuntime] = await Promise.all([
+    call("fanbus_publishing_overview", {}),
+    call("worker_runtime_status", { workerCode: "FANBUS_PUBLISHING" })
+  ]);
   if (!model || typeof model !== "object") throw new Error("Publishing-Übersicht ist ungültig.");
+  model.workerRuntime = workerRuntime;
   return model;
 }
 
@@ -347,6 +367,22 @@ function returnToBusOrga() {
 
 function bindWorkspace(panel, refresh, generator) {
   panel.querySelector("[data-m340-back]")?.addEventListener("click", returnToBusOrga);
+  panel.querySelector("[data-m340-worker-toggle]")?.addEventListener("click", async event => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      const status = await call("worker_runtime_status", { workerCode: "FANBUS_PUBLISHING" });
+      await runWrite(
+        () => call("worker_runtime_set", { workerCode: "FANBUS_PUBLISHING", enabled: !Boolean(status?.enabled) }),
+        status?.enabled ? "Flyer-Worker wurde ausgeschaltet." : "Flyer-Worker wird aktiviert."
+      );
+      await refresh();
+      if (!status?.enabled) window.setTimeout(() => panel.isConnected && refresh(), 2500);
+    } catch (error) {
+      showToast(error?.message || "Worker-Status konnte nicht geändert werden.", "error", 6000);
+      button.disabled = false;
+    }
+  });
 
   const tripSelect = panel.querySelector("[data-m340-generator-trip]");
   tripSelect?.addEventListener("change", async () => {
