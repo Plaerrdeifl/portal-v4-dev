@@ -2,7 +2,10 @@ const MAX_BODY_BYTES = 65_536;
 const MAX_SECRET_LENGTH = 2_048;
 const MIN_WORKER_TOKEN_BYTES = 32;
 const WORKER_TOKEN_HEADER = "X-Liveticker-Worker-Token";
-const EXPECTED_TOKEN_SHA256 = "b70a4b43dbb9d1e65050fab9199b10b8f6ae67f03ba879cbec1484ee2548085d";
+const EXPECTED_TOKEN_SHA256_BY_HOST = {
+  "tpieykhhawszlzsoflnl.supabase.co": "8ad104a328042fe7a10854836c99f7b86ee6933c7de022516b29ab398299af16",
+  "wplescvhlgctynkfwvrj.supabase.co": "b70a4b43dbb9d1e65050fab9199b10b8f6ae67f03ba879cbec1484ee2548085d",
+} as const;
 const CLAIM_RPC = "pd_liveticker_graphic_worker_claim";
 const COMPLETE_RPC = "pd_liveticker_graphic_worker_complete";
 const encoder = new TextEncoder();
@@ -32,13 +35,25 @@ async function sha256Hex(value: string) {
   const digest = await crypto.subtle.digest("SHA-256", encoder.encode(value));
   return Array.from(new Uint8Array(digest)).map(item => item.toString(16).padStart(2, "0")).join("");
 }
+function expectedTokenSha256() {
+  const rawUrl = Deno.env.get("SUPABASE_URL")?.trim();
+  if (!rawUrl) return "";
+  try {
+    const hostname = new URL(rawUrl).hostname;
+    return EXPECTED_TOKEN_SHA256_BY_HOST[hostname as keyof typeof EXPECTED_TOKEN_SHA256_BY_HOST] || "";
+  } catch {
+    return "";
+  }
+}
+
 async function authorized(request: Request) {
+  const expected = expectedTokenSha256();
   const token = request.headers.get(WORKER_TOKEN_HEADER) || "";
-  if (token.length > MAX_SECRET_LENGTH || encoder.encode(token).byteLength < MIN_WORKER_TOKEN_BYTES) return false;
+  if (!expected || token.length > MAX_SECRET_LENGTH || encoder.encode(token).byteLength < MIN_WORKER_TOKEN_BYTES) return false;
   const actual = await sha256Hex(token);
   let diff = 0;
-  for (let index = 0; index < EXPECTED_TOKEN_SHA256.length; index += 1) {
-    diff |= actual.charCodeAt(index) ^ EXPECTED_TOKEN_SHA256.charCodeAt(index);
+  for (let index = 0; index < expected.length; index += 1) {
+    diff |= actual.charCodeAt(index) ^ expected.charCodeAt(index);
   }
   return diff === 0;
 }
