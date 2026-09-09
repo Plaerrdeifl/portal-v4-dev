@@ -6,6 +6,7 @@ const STATE_KEY = "plaerrdeifl.livetickerPrototype.v3";
 const SELECTED_EVENT_KEY = "plaerrdeifl.livetickerPrototype.eventId";
 const VENUE_KEY = "plaerrdeifl.livetickerPrototype.venue";
 const CLIENT_KEY = "plaerrdeifl.livetickerPrototype.clientId";
+const SUPPORTED_ENVIRONMENTS = new Set(["DEV", "PROD"]);
 
 let config = null;
 let selectedGame = null;
@@ -20,23 +21,27 @@ let templateSignature = "";
 
 function runtimeConfig() {
   const value = window.PD_RUNTIME_CONFIG || {};
-  if (!value.supabaseUrl || !value.supabasePublishableKey || value.environment !== "PROD") {
-    throw new Error("PROD-Liveticker ist nicht korrekt konfiguriert.");
+  const environment = String(value.environment || "").trim().toUpperCase();
+  if (!value.supabaseUrl || !value.supabasePublishableKey || !SUPPORTED_ENVIRONMENTS.has(environment)) {
+    throw new Error("Liveticker ist nicht korrekt konfiguriert.");
   }
-  return value;
+  const badge = document.querySelector(".dev-badge");
+  if (badge) badge.textContent = `${environment} · INTERN`;
+  return { ...value, environment };
 }
 
 function clientId() {
+  const environmentPrefix = String(config?.environment || "DEV").toLowerCase();
   try {
     const existing = localStorage.getItem(CLIENT_KEY);
-    if (existing) return existing;
+    if (existing?.startsWith(`${environmentPrefix}-`)) return existing;
     const created = typeof crypto?.randomUUID === "function"
-      ? `prod-${crypto.randomUUID()}`
-      : `prod-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      ? `${environmentPrefix}-${crypto.randomUUID()}`
+      : `${environmentPrefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     localStorage.setItem(CLIENT_KEY, created);
     return created;
   } catch {
-    return `prod-${Date.now()}`;
+    return `${environmentPrefix}-${Date.now()}`;
   }
 }
 
