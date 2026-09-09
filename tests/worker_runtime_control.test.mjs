@@ -16,6 +16,9 @@ test("Liveticker exposes manual worker control and blocks graphics until ready",
   assert.match(js, /LIVETICKER_GRAPHICS/);
   assert.match(js, /Boolean\(workerRuntime\?\.ready\)/);
   assert.match(js, /Worker deaktiviert – Grafik-Erstellung derzeit nicht möglich\./);
+  const fullRefresh = js.match(/function scheduleFullRefresh\([\s\S]*?\n}\n/);
+  assert.ok(fullRefresh, "scheduleFullRefresh must exist");
+  assert.doesNotMatch(fullRefresh[0], /clearWorkerRefreshTimer\(\)/);
 });
 
 test("Fanbus Social Media exposes manual worker control and blocks flyer generation until ready", async () => {

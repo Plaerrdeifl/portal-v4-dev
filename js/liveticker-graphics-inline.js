@@ -267,7 +267,6 @@ async function refreshAll() {
 
 function scheduleFullRefresh(delay = 700) {
   if (delayedRefreshTimer) window.clearTimeout(delayedRefreshTimer);
-  clearWorkerRefreshTimer();
   delayedRefreshTimer = window.setTimeout(() => {
     delayedRefreshTimer = 0;
     refreshAll();
