@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
+import { readFileSync } from "node:fs";
 
 test("Liveticker renderer preserves numeric zero score text", () => {
   const renderer = resolve("scripts/liveticker-renderer/render_v1.py");
@@ -19,4 +20,11 @@ assert module.find(root, "away_score").text == "0"
 `;
   const result = spawnSync("python3", ["-c", source, renderer], { encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr || result.stdout);
+});
+
+
+test("DEV worker uses its isolated renderer path", () => {
+  const source = readFileSync(resolve("workers/liveticker-publishing/publishing_worker_dev.py"), "utf8");
+  assert.match(source, /DEV_RENDERER = DEV_ROOT \/ 'worker' \/ 'render_v1\.py'/);
+  assert.match(source, /base\.RENDERER = DEV_RENDERER/);
 });

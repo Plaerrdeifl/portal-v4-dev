@@ -14,6 +14,7 @@ DEV_JOBS = DEV_WORK / 'jobs'
 DEV_TOKEN = DEV_ROOT / 'secrets' / 'worker_token'
 DEV_EDGE_URL = 'https://tpieykhhawszlzsoflnl.supabase.co/functions/v1/liveticker-publishing-worker'
 DEV_NEXTCLOUD_ROOT = '/Liveticker/_DEV'
+DEV_RENDERER = DEV_ROOT / 'worker' / 'render_v1.py'
 
 spec = importlib.util.spec_from_file_location('liveticker_publishing_base', BASE_WORKER)
 if spec is None or spec.loader is None:
@@ -27,6 +28,7 @@ base.JOBS = DEV_JOBS
 base.WORKER_TOKEN_FILE = DEV_TOKEN
 base.EDGE_URL = DEV_EDGE_URL
 base.NEXTCLOUD_ROOT = DEV_NEXTCLOUD_ROOT
+base.RENDERER = DEV_RENDERER
 
 
 def dev_remote_path(path: str) -> str:
