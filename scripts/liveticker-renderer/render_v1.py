@@ -258,7 +258,8 @@ def render_one(state,kind,fmt,outdir):
     set_text(root,'period_label','' if kind=='FINAL' else ('1. DRITTEL' if kind=='PERIOD_1' else '2. DRITTEL'))
     set_text(root,'result_suffix',suffix if kind=='FINAL' else '')
     set_text(root,'home_score',our); set_text(root,'away_score',opp); set_text(root,'our_goals_heading','UNSERE TORE')
-    lines=goal_lines(state['history'],kind); apply_lines(root,lines); center_goal_block(root,lines)
+    lines=goal_lines(state['history'],kind); apply_lines(root,lines)
+    if fmt=='STORY': center_goal_block(root,lines)
     inject_logo(root,'logo_home',Path(state['ourTeam']['logoPath'])); inject_logo(root,'logo_away',Path(state['opponentTeam']['logoPath']))
     stem=f"{kind.lower()}-{fmt.lower()}"; svg=outdir/f'{stem}.svg'; png=outdir/f'{stem}.png'
     tree.write(svg,encoding='utf-8',xml_declaration=True)
