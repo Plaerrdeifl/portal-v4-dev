@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse, base64, hashlib, json, mimetypes, os, struct, subprocess
+import argparse, base64, hashlib, json, mimetypes, os, re, struct, subprocess
 from collections import OrderedDict
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -20,6 +20,8 @@ TEMPLATES={
 }
 EXPECTED={'POST':(1254,1254),'STORY':(941,1672)}
 BACKGROUND={'POST':ROOT/'assets/backgrounds/post-background.jpg','STORY':ROOT/'assets/backgrounds/story-background.jpg'}
+LOGO_HEIGHT={'POST':200.0,'STORY':200.0}
+LOGO_TRIMMER=Path(__file__).with_name('trim_logo.py')
 OUR={'mighty','our','mighty_dogs','home_club'}
 OPP={'opponent','away','guest','other'}
 
@@ -67,14 +69,67 @@ def inject_background(root,fmt):
     if placeholder is not None: placeholder.set('display','none')
     return True
 
-def inject_logo(root,id_,path:Path):
+def transform_point(value,x,y):
+    value=str(value or '').strip()
+    if not value: return x,y
+    m=re.fullmatch(r'translate\(\s*([-+0-9.eE]+)(?:[ ,]+([-+0-9.eE]+))?\s*\)',value)
+    if m:
+        return x+float(m.group(1)),y+float(m.group(2) or 0)
+    m=re.fullmatch(r'matrix\(\s*([-+0-9.eE]+)[ ,]+([-+0-9.eE]+)[ ,]+([-+0-9.eE]+)[ ,]+([-+0-9.eE]+)[ ,]+([-+0-9.eE]+)[ ,]+([-+0-9.eE]+)\s*\)',value)
+    if m:
+        a,b,c,d,e,f=map(float,m.groups())
+        return a*x+c*y+e,b*x+d*y+f
+    raise RuntimeError(f'unsupported logo transform: {value}')
+
+def logo_anchor(root,id_):
     g=find(root,id_)
     if g is None: raise RuntimeError(f'missing logo group: {id_}')
+    anchor=next((child for child in list(g) if child.tag==q('image')),None)
+    if anchor is None: raise RuntimeError(f'missing logo anchor image: {id_}')
+    try:
+        x=float(anchor.get('x','0')); y=float(anchor.get('y','0'))
+        w=float(anchor.get('width','0')); h=float(anchor.get('height','0'))
+    except ValueError as exc:
+        raise RuntimeError(f'invalid logo anchor geometry: {id_}') from exc
+    if w<=0 or h<=0: raise RuntimeError(f'invalid logo anchor geometry: {id_}')
+    cx,cy=transform_point(g.get('transform'),x+w/2,y+h/2)
+    g.attrib.pop('transform',None)
     for child in list(g): g.remove(child)
-    box={('POST','logo_home'):(118,430,230,230),('POST','logo_away'):(906,430,230,230),('STORY','logo_home'):(62,430,220,220),('STORY','logo_away'):(659,430,220,220)}[(CURRENT_FORMAT,id_)]
-    x,y,w,h=box
-    img=ET.Element(q('image'),{'x':str(x),'y':str(y),'width':str(w),'height':str(h),'preserveAspectRatio':'xMidYMid meet','href':data_uri(path)})
+    return g,cx,cy
+
+def inject_logo(root,id_,path:Path):
+    if not path.is_file(): raise RuntimeError(f'missing normalized logo: {path}')
+    src_w,src_h=png_dims(path)
+    if src_w<=0 or src_h<=0: raise RuntimeError(f'invalid normalized logo: {path}')
+    g,cx,cy=logo_anchor(root,id_)
+    h=LOGO_HEIGHT[CURRENT_FORMAT]
+    w=h*src_w/src_h
+    x=cx-w/2; y=cy-h/2
+    img=ET.Element(q('image'),{
+        'x':f'{x:.6f}','y':f'{y:.6f}','width':f'{w:.6f}','height':f'{h:.6f}',
+        'preserveAspectRatio':'xMidYMid meet','href':data_uri(path)
+    })
     g.append(img)
+
+def normalize_logo_assets(state,outdir):
+    home=Path(state['ourTeam']['logoPath']).resolve()
+    away=Path(state['opponentTeam']['logoPath']).resolve()
+    if not home.is_file() or not away.is_file(): raise RuntimeError('logo source missing')
+    if not LOGO_TRIMMER.is_file(): raise RuntimeError('logo trimmer missing')
+    target=outdir/'normalized-logos'; target.mkdir(parents=True,exist_ok=True)
+    home_out=target/'home.png'; away_out=target/'away.png'
+    cmd=[
+        'docker','run','--rm','--network','none','--cap-drop=ALL','--security-opt=no-new-privileges',
+        '--pids-limit=128','--user',f'{os.getuid()}:{os.getgid()}','-e','HOME=/tmp',
+        '-v',f'{home}:/input/home:ro','-v',f'{away}:/input/away:ro',
+        '-v',f'{target}:/out','-v',f'{LOGO_TRIMMER}:/trim_logo.py:ro',
+        '--entrypoint','python3',RENDERER,'/trim_logo.py','/input/home','/out/home.png','/input/away','/out/away.png'
+    ]
+    r=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,timeout=90)
+    if r.returncode: raise RuntimeError(f'logo normalization failed: {r.stderr[-800:]}')
+    if not home_out.is_file() or not away_out.is_file(): raise RuntimeError('logo normalization output missing')
+    state['ourTeam']['logoPath']=str(home_out)
+    state['opponentTeam']['logoPath']=str(away_out)
 
 def score_scope(history,kind):
     max_min={'PERIOD_1':20,'PERIOD_2':40,'FINAL':None}[kind]
@@ -181,6 +236,7 @@ def main():
     ap=argparse.ArgumentParser(); ap.add_argument('state'); ap.add_argument('--out',required=True); args=ap.parse_args()
     state=json.loads(Path(args.state).read_text(encoding='utf-8'))
     out=Path(args.out); out.mkdir(parents=True,exist_ok=True)
+    normalize_logo_assets(state,out)
     kind=str(state.get('kind') or '').upper()
     if kind not in ('PERIOD_1','PERIOD_2','FINAL'): raise RuntimeError('invalid graphic kind')
     results=[]
