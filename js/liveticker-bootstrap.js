@@ -80,7 +80,7 @@ try {
   };
 
   await importRuntimeEngine();
-  await import("./liveticker-v5-support.js?v=20260910-live-ux5");
+  await import("./liveticker-v5-support.js?v=20260910-shootout60-r1");
 
   const opponentSelect = document.querySelector("#opponentSelect");
   if (opponentSelect) {

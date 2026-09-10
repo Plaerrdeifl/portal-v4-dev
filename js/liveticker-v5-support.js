@@ -222,7 +222,7 @@ function applyVenueToOutput(text, venue, opponentName) {
 }
 function installStyle() {
   const style = document.createElement("style");
-  style.textContent = `.venue-switch{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px;border:1px solid var(--line);border-radius:15px;background:var(--soft)}.venue-switch button{min-height:42px;border:1px solid transparent;border-radius:11px;background:transparent;color:#3f5269;font-weight:900}.venue-switch button[aria-pressed="true"]{border-color:rgba(13,121,232,.18);background:#fff;color:var(--blue-dark);box-shadow:0 3px 10px rgba(4,28,51,.09)}.score-top.away-game .mighty-team{order:3}.score-top.away-game .score-separator{order:2}.score-top.away-game .opponent-team{order:1}.shootout-quick{margin-top:7px;width:100%;min-height:42px;padding:7px 10px;border:1px solid var(--line);border-radius:12px;background:#f7faff;color:#04233f;font-size:.82rem;font-weight:900;text-align:center}.action-grid label[for="actionShootout"]{display:none!important}.penalty-smart-hint{margin:0;padding:8px 10px;border-radius:10px;background:#edf8f2;color:#17663e;font-size:.72rem;font-weight:800;line-height:1.35}.penalty-smart-hint.special{background:#fff7e8;color:#8a5900}`;
+  style.textContent = `.venue-switch{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px;border:1px solid var(--line);border-radius:15px;background:var(--soft)}.venue-switch button{min-height:42px;border:1px solid transparent;border-radius:11px;background:transparent;color:#3f5269;font-weight:900}.venue-switch button[aria-pressed="true"]{border-color:rgba(13,121,232,.18);background:#fff;color:var(--blue-dark);box-shadow:0 3px 10px rgba(4,28,51,.09)}.score-top.away-game .mighty-team{order:3}.score-top.away-game .score-separator{order:2}.score-top.away-game .opponent-team{order:1}.action-grid.shootout-available{grid-template-columns:repeat(2,minmax(0,1fr))}.action-grid label[for="actionShootout"][hidden]{display:none!important}.penalty-smart-hint{margin:0;padding:8px 10px;border-radius:10px;background:#edf8f2;color:#17663e;font-size:.72rem;font-weight:800;line-height:1.35}.penalty-smart-hint.special{background:#fff7e8;color:#8a5900}`;
   document.head.append(style);
 }
 
@@ -245,15 +245,24 @@ function initializeEnhancements() {
   const opponentScoreName = document.querySelector("#opponentScoreName");
   if (mightyScoreName) mightyScoreName.textContent = venue === "away" ? "Gast" : "Heim";
   if (opponentScoreName) opponentScoreName.textContent = venue === "away" ? "Heim" : "Gast";
-  const minuteField = minuteInput.closest(".field");
-  const quick = document.createElement("button"); quick.type = "button"; quick.className = "shootout-quick"; quick.textContent = "🏒 Penaltyschießen"; minuteField?.append(quick);
-  if (shootoutLabel) shootoutLabel.hidden = true;
-  const renderShootoutQuick = () => { quick.hidden = (Number.parseInt(minuteInput.value || "0", 10) || 0) < 60; };
-  renderShootoutQuick();
-  minuteInput.addEventListener("input", renderShootoutQuick);
-  minuteInput.addEventListener("change", renderShootoutQuick);
-  document.querySelectorAll("[data-minute-step]").forEach(button => button.addEventListener("click", () => queueMicrotask(renderShootoutQuick)));
-  quick.addEventListener("click", () => { actionShootout.checked = true; actionShootout.dispatchEvent(new Event("change", { bubbles: true })); document.querySelector("#shootoutFields")?.scrollIntoView({ behavior: "smooth", block: "nearest" }); });
+  const actionGrid = actionShootout.closest(".action-grid");
+  const renderShootoutOption = () => {
+    const available = (Number.parseInt(minuteInput.value || "0", 10) || 0) >= 60;
+    actionShootout.disabled = !available;
+    if (shootoutLabel) shootoutLabel.hidden = !available;
+    actionGrid?.classList.toggle("shootout-available", available);
+    if (!available && actionShootout.checked) {
+      const fallback = document.querySelector("#actionGoalMighty");
+      if (fallback) {
+        fallback.checked = true;
+        fallback.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+  };
+  renderShootoutOption();
+  minuteInput.addEventListener("input", renderShootoutOption);
+  minuteInput.addEventListener("change", renderShootoutOption);
+  document.querySelectorAll("[data-minute-step]").forEach(button => button.addEventListener("click", () => queueMicrotask(renderShootoutOption)));
 
   patchPenaltyRows();
   patchPenaltyHistory();

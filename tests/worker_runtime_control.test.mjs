@@ -47,7 +47,11 @@ test("Liveticker game mode keeps the live workflow compact and one-tap", async (
   assert.doesNotMatch(html, /primary-output-wrap\{position:sticky/);
   assert.match(storage, /liveticker-sync-status\[data-state="error"\]\{display:block/);
   assert.doesNotMatch(support, /<span class="label">Spielort<\/span>/);
-  assert.match(support, /quick\.hidden = \(Number\.parseInt\(minuteInput\.value \|\| "0", 10\) \|\| 0\) < 60/);
+  assert.match(html, /id="actionShootout"[\s\S]*Penalty-<br>schießen/);
+  assert.match(support, /const available = \(Number\.parseInt\(minuteInput\.value \|\| "0", 10\) \|\| 0\) >= 60/);
+  assert.match(support, /actionShootout\.disabled = !available/);
+  assert.match(support, /shootoutLabel\.hidden = !available/);
+  assert.match(support, /classList\.toggle\("shootout-available", available\)/);
   assert.match(engine, /ordered\.slice\(0, 5\)/);
   assert.match(engine, /data-expand=/);
   assert.match(engine, /void copyCurrentOutput\(\)/);
