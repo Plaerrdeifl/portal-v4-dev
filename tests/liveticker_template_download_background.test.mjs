@@ -9,7 +9,9 @@ test("Liveticker template download embeds the standard background", () => {
   assert.match(admin, /#background_image/);
   assert.match(admin, /post-background\.jpg/);
   assert.match(admin, /story-background\.jpg/);
-  assert.match(admin, /readAsDataURL/);
+  const downloadFn = admin.slice(admin.indexOf("async function downloadGraphicTemplate"), admin.indexOf("async function uploadGraphicTemplate"));
+  assert.match(downloadFn, /const blob=await response\.blob\(\)/);
+  assert.match(downloadFn, /reader\.readAsDataURL\(blob\)/);
   assert.match(admin, /background_placeholder/);
   assert.match(admin, /standardHashes/);
   assert.match(admin, /standardHashes\.has/);
