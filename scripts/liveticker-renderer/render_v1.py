@@ -32,7 +32,14 @@ def find(root,id_):
 def set_text(root,id_,value):
     e=find(root,id_)
     if e is None: raise RuntimeError(f'missing id: {id_}')
-    e.text='' if value is None else str(value)
+    text='' if value is None else str(value)
+    tspans=[child for child in list(e) if child.tag==q('tspan')]
+    if tspans:
+        e.text=None
+        tspans[0].text=text
+        for child in tspans[1:]: child.text=''
+    else:
+        e.text=text
 
 def hide(root,id_):
     e=find(root,id_)
@@ -43,15 +50,20 @@ def data_uri(path:Path):
     return f'data:{mime};base64,'+base64.b64encode(path.read_bytes()).decode('ascii')
 
 def inject_background(root,fmt):
-    path=BACKGROUND[fmt]
-    if not path.is_file(): return False
     g=find(root,'background_image')
     if g is None: raise RuntimeError('missing background_image group')
+    placeholder=find(root,'background_placeholder')
+    for child in list(g):
+        href=child.get('href') or child.get('{http://www.w3.org/1999/xlink}href') or ''
+        if child.tag==q('image') and str(href).startswith('data:image/'):
+            if placeholder is not None: placeholder.set('display','none')
+            return True
+    path=BACKGROUND[fmt]
+    if not path.is_file(): return False
     for child in list(g): g.remove(child)
     w,h=EXPECTED[fmt]
     img=ET.Element(q('image'),{'x':'0','y':'0','width':str(w),'height':str(h),'preserveAspectRatio':'xMidYMid slice','href':data_uri(path)})
     g.append(img)
-    placeholder=find(root,'background_placeholder')
     if placeholder is not None: placeholder.set('display','none')
     return True
 
@@ -126,7 +138,7 @@ def goal_lines(history,kind):
     return out
 
 def apply_lines(root,lines):
-    for i in range(1,7): set_text(root,f'our_goals_line_{i}',lines[i-1] if i<=len(lines) else '')
+    for i in range(1,11): set_text(root,f'our_goals_line_{i}',lines[i-1] if i<=len(lines) else '')
 
 def png_dims(path:Path):
     b=path.read_bytes()[:24]
@@ -141,7 +153,7 @@ def snapshot_template_tree(state,fmt):
     svg_text=template.get('svgText'); sha256=str(template.get('sha256') or '').lower()
     if not isinstance(svg_text,str): raise RuntimeError(f'invalid template snapshot: {fmt}')
     data=svg_text.encode('utf-8')
-    if len(data)<200 or len(data)>524288: raise RuntimeError(f'invalid template size: {fmt}')
+    if len(data)<200 or len(data)>1048576: raise RuntimeError(f'invalid template size: {fmt}')
     if hashlib.sha256(data).hexdigest()!=sha256: raise RuntimeError(f'template checksum mismatch: {fmt}')
     return ET.ElementTree(ET.fromstring(svg_text))
 
@@ -152,10 +164,8 @@ def render_one(state,kind,fmt,outdir):
     background_applied=inject_background(root,fmt)
     our,opp,suffix=score_scope(state['history'],kind)
     set_text(root,'headline','ENDERGEBNIS' if kind=='FINAL' else 'ZWISCHENSTAND')
-    if kind=='FINAL':
-        set_text(root,'subheadline',state.get('competitionLabel','')); set_text(root,'result_suffix',suffix); set_text(root,'series_info',state.get('seriesInfo',''))
-        if not state.get('seriesInfo'): hide(root,'series_ribbon')
-    else: set_text(root,'period_label','1. DRITTEL' if kind=='PERIOD_1' else '2. DRITTEL')
+    set_text(root,'period_label','' if kind=='FINAL' else ('1. DRITTEL' if kind=='PERIOD_1' else '2. DRITTEL'))
+    set_text(root,'result_suffix',suffix if kind=='FINAL' else '')
     set_text(root,'home_score',our); set_text(root,'away_score',opp); set_text(root,'our_goals_heading','UNSERE TORE')
     lines=goal_lines(state['history'],kind); apply_lines(root,lines)
     inject_logo(root,'logo_home',Path(state['ourTeam']['logoPath'])); inject_logo(root,'logo_away',Path(state['opponentTeam']['logoPath']))
