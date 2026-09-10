@@ -120,6 +120,96 @@ function artifactRowsFor(job) {
   );
 }
 
+const NEXTCLOUD_PUBLIC_HOST = "cloud.plaerrdeifl.de";
+
+function nextcloudShareToken(value) {
+  if (typeof value !== "string" || !value) return "";
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.hostname !== NEXTCLOUD_PUBLIC_HOST || url.port || url.search || url.hash) return "";
+    const match = /^\/s\/([A-Za-z0-9]{8,128})(?:\/download)?\/?$/.exec(url.pathname);
+    return match?.[1] || "";
+  } catch {
+    return "";
+  }
+}
+
+function publicDavUrl(artifact) {
+  const token = nextcloudShareToken(artifact?.shareUrl) || nextcloudShareToken(artifact?.downloadUrl);
+  return token ? `https://${NEXTCLOUD_PUBLIC_HOST}/public.php/dav/files/${encodeURIComponent(token)}` : "";
+}
+
+function safeGraphicFilename(value, fallback) {
+  const candidate = String(value || fallback)
+    .split(/[\\/]/)
+    .pop()
+    ?.replace(/[\u0000-\u001f\u007f]/g, "")
+    .trim();
+  return candidate && /^[^<>:"|?*]+\.png$/i.test(candidate) ? candidate : fallback;
+}
+
+function contentDispositionFilename(value) {
+  const header = String(value || "");
+  const encoded = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(header)?.[1]?.trim().replace(/^"|"$/g, "");
+  if (encoded) {
+    try { return decodeURIComponent(encoded); } catch { /* use plain filename */ }
+  }
+  const plain = /filename\s*=\s*(?:"([^"]+)"|([^;]+))/i.exec(header);
+  return String(plain?.[1] || plain?.[2] || "").trim();
+}
+
+async function fetchGraphicArtifact(artifact) {
+  const url = publicDavUrl(artifact);
+  if (!url) throw new Error("LIVETICKER_GRAPHIC_SHARE_INVALID");
+  const response = await fetch(url, { method: "GET", credentials: "omit", redirect: "follow" });
+  if (!response.ok) throw new Error("LIVETICKER_GRAPHIC_FETCH_FAILED");
+  const contentType = String(response.headers.get("Content-Type") || "").split(";", 1)[0].trim().toLowerCase();
+  if (contentType !== "image/png") throw new Error("LIVETICKER_GRAPHIC_TYPE_INVALID");
+  const blob = await response.blob();
+  if (blob.type && blob.type.toLowerCase() !== "image/png") throw new Error("LIVETICKER_GRAPHIC_BLOB_INVALID");
+  const expectedBytes = Number(artifact?.bytes);
+  if (Number.isFinite(expectedBytes) && expectedBytes > 0 && blob.size !== expectedBytes) throw new Error("LIVETICKER_GRAPHIC_SIZE_MISMATCH");
+  const fallback = safeGraphicFilename(artifact?.filename, `${String(artifact?.kind || "graphic").toLowerCase()}.png`);
+  return { blob, filename: safeGraphicFilename(contentDispositionFilename(response.headers.get("Content-Disposition")), fallback) };
+}
+
+function downloadGraphicBlob(blob, filename) {
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  let started = false;
+  try {
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    anchor.hidden = true;
+    document.body.append(anchor);
+    anchor.click();
+    started = true;
+  } finally {
+    anchor.remove();
+    if (started) globalThis.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    else URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function deliverGraphicArtifact(artifact, label) {
+  const { blob, filename } = await fetchGraphicArtifact(artifact);
+  if (typeof File === "function" && typeof navigator?.share === "function" && typeof navigator?.canShare === "function") {
+    const file = new File([blob], filename, { type: "image/png" });
+    let canShareFiles = false;
+    try { canShareFiles = navigator.canShare({ files: [file] }); } catch { canShareFiles = false; }
+    if (canShareFiles) {
+      try {
+        await navigator.share({ files: [file], title: label });
+        return "shared";
+      } catch (error) {
+        if (error?.name === "AbortError") return "cancelled";
+      }
+    }
+  }
+  downloadGraphicBlob(blob, filename);
+  return "downloaded";
+}
+
 function renderArtifacts() {
   if (!artifactsBox) return;
   artifactsBox.replaceChildren();
@@ -127,40 +217,33 @@ function renderArtifacts() {
   const job = kind ? latestJob(kind) : null;
 
   if (job?.status === "SUCCEEDED") {
-    for (const artifact of artifactRowsFor(job)) {
-      const row = document.createElement("div");
-      row.className = "graphic-artifact";
-
-      const title = document.createElement("strong");
-      title.textContent = artifact.kind;
-      row.append(title);
-
-      const actions = document.createElement("div");
-      actions.className = "graphic-artifact-actions";
-
-      const open = document.createElement("a");
-      open.href = artifact.shareUrl;
-      open.target = "_blank";
-      open.rel = "noopener noreferrer";
-      open.textContent = "Öffnen";
-      actions.append(open);
-
-      const share = document.createElement("button");
-      share.type = "button";
-      share.dataset.shareUrl = artifact.shareUrl;
-      share.dataset.shareTitle = `${kindLabel(kind)} · ${artifact.kind}`;
-      share.textContent = "Teilen";
-      actions.append(share);
-
-      const download = document.createElement("a");
-      download.href = artifact.downloadUrl;
-      download.target = "_blank";
-      download.rel = "noopener noreferrer";
-      download.textContent = "Download";
-      actions.append(download);
-
-      row.append(actions);
-      artifactsBox.append(row);
+    const artifacts = artifactRowsFor(job);
+    for (const artifact of artifacts) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "graphic-artifact-button";
+      button.dataset.graphicArtifact = artifact.kind;
+      button.textContent = artifact.kind === "POST" ? "Post" : "Story";
+      button.addEventListener("click", async () => {
+        const label = `${kindLabel(kind)} · ${button.textContent}`;
+        const original = button.textContent;
+        button.disabled = true;
+        button.setAttribute("aria-busy", "true");
+        button.textContent = "Lädt …";
+        try {
+          await deliverGraphicArtifact(artifact, label);
+        } catch (error) {
+          console.error("Liveticker graphic delivery failed", error);
+          button.textContent = "Fehler – erneut";
+          window.setTimeout(() => { button.textContent = original; }, 1800);
+          return;
+        } finally {
+          button.disabled = false;
+          button.removeAttribute("aria-busy");
+          if (button.textContent === "Lädt …") button.textContent = original;
+        }
+      });
+      artifactsBox.append(button);
     }
   }
 
@@ -192,7 +275,7 @@ function renderPrimaryOutput() {
   const active = isActive(job) || enqueueInFlight === kind;
   const ready = Boolean(currentEventId()) && Boolean(workerRuntime?.ready);
   const atOutputMoment = minute === 20 || minute === 40 || minute >= 60;
-  if (primaryOutputWrap) primaryOutputWrap.hidden = !atOutputMoment;
+  if (primaryOutputWrap) primaryOutputWrap.hidden = !atOutputMoment || resultsOpen;
   primaryOutputButton.disabled = !ready || active;
   if (active) primaryOutputButton.textContent = `🏁 ${kindLabel(kind)} wird erstellt …`;
   else primaryOutputButton.textContent = `🏁 ${kindLabel(kind)} ausgeben`;
@@ -293,6 +376,7 @@ function render() {
     const job = latestJob(kind);
     statusLine.textContent = `${kindLabel(kind)} · ${jobStatus(job)}`;
     statusLine.dataset.state = isActive(job) ? "active" : job?.status === "FAILED" ? "error" : "idle";
+    statusLine.hidden = job?.status === "SUCCEEDED";
   }
   renderArtifacts();
 }
@@ -364,25 +448,6 @@ async function enqueue(kind) {
   }
 }
 
-artifactsBox?.addEventListener("click", async event => {
-  const button = event.target?.closest?.("button[data-share-url]");
-  if (!button) return;
-  const url = button.dataset.shareUrl || "";
-  const title = button.dataset.shareTitle || "Liveticker-Grafik";
-  if (!validArtifactUrl(url)) return;
-  try {
-    if (navigator.share) {
-      await navigator.share({ title, url });
-    } else if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(url);
-      button.textContent = "Link kopiert ✓";
-    } else {
-      window.open(url, "_blank", "noopener,noreferrer");
-    }
-  } catch (error) {
-    if (error?.name !== "AbortError") console.error("Liveticker graphic share failed", error);
-  }
-});
 
 for (const kind of KINDS) {
   BUTTONS[kind]?.addEventListener("click", () => enqueue(kind));

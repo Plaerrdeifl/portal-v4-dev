@@ -195,6 +195,42 @@ def goal_lines(history,kind):
 def apply_lines(root,lines):
     for i in range(1,11): set_text(root,f'our_goals_line_{i}',lines[i-1] if i<=len(lines) else '')
 
+def numeric_y(element):
+    if element is None: return None
+    for node in (element,*list(element.iter())[1:]):
+        raw=str(node.get('y') or '').strip()
+        if not raw: continue
+        try: return float(raw.split()[0].split(',')[0])
+        except ValueError: continue
+    return None
+
+def shift_y(element,delta):
+    if element is None or abs(delta)<0.000001: return
+    for node in element.iter():
+        raw=str(node.get('y') or '').strip()
+        if not raw: continue
+        parts=re.split(r'([,\s]+)',raw)
+        changed=False
+        for i in range(0,len(parts),2):
+            if not parts[i]: continue
+            try:
+                parts[i]=f'{float(parts[i])+delta:.6f}'.rstrip('0').rstrip('.')
+                changed=True
+            except ValueError:
+                pass
+        if changed: node.set('y',''.join(parts))
+
+def center_goal_block(root,lines):
+    heading=find(root,'our_goals_heading'); final_anchor=find(root,'our_goals_line_10')
+    top=numeric_y(heading); bottom=numeric_y(final_anchor)
+    if top is None or bottom is None or bottom<=top: return
+    used=min(len(lines),10)
+    last=top if used==0 else numeric_y(find(root,f'our_goals_line_{used}'))
+    if last is None or last<top or last>bottom: return
+    delta=((top+bottom)/2)-((top+last)/2)
+    shift_y(heading,delta)
+    for i in range(1,used+1): shift_y(find(root,f'our_goals_line_{i}'),delta)
+
 def png_dims(path:Path):
     b=path.read_bytes()[:24]
     if not b.startswith(b'\x89PNG\r\n\x1a\n'): raise RuntimeError('not png')
@@ -222,7 +258,7 @@ def render_one(state,kind,fmt,outdir):
     set_text(root,'period_label','' if kind=='FINAL' else ('1. DRITTEL' if kind=='PERIOD_1' else '2. DRITTEL'))
     set_text(root,'result_suffix',suffix if kind=='FINAL' else '')
     set_text(root,'home_score',our); set_text(root,'away_score',opp); set_text(root,'our_goals_heading','UNSERE TORE')
-    lines=goal_lines(state['history'],kind); apply_lines(root,lines)
+    lines=goal_lines(state['history'],kind); apply_lines(root,lines); center_goal_block(root,lines)
     inject_logo(root,'logo_home',Path(state['ourTeam']['logoPath'])); inject_logo(root,'logo_away',Path(state['opponentTeam']['logoPath']))
     stem=f"{kind.lower()}-{fmt.lower()}"; svg=outdir/f'{stem}.svg'; png=outdir/f'{stem}.png'
     tree.write(svg,encoding='utf-8',xml_declaration=True)

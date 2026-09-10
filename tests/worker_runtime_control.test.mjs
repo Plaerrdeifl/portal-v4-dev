@@ -76,6 +76,22 @@ test("Liveticker game mode keeps the live workflow compact and one-tap", async (
   assert.doesNotMatch(html, /Spiel schnell mittickern/);
 });
 
+
+test("Liveticker result panel uses two direct Post/Story delivery buttons like Fanbus Social Media", async () => {
+  const html = await read("liveticker/index.html");
+  const graphics = await read("js/liveticker-graphics-inline.js");
+  const auth = await read("js/liveticker-auth-bootstrap.js");
+  assert.match(html, /connect-src[^;]*https:\/\/cloud\.plaerrdeifl\.de/);
+  assert.match(html, /graphic-artifacts\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(graphics, /button\.textContent = artifact\.kind === "POST" \? "Post" : "Story"/);
+  assert.match(graphics, /navigator\.canShare\(\{ files: \[file\] \}\)/);
+  assert.match(graphics, /navigator\.share\(\{ files: \[file\], title: label \}\)/);
+  assert.match(graphics, /downloadGraphicBlob\(blob, filename\)/);
+  assert.match(graphics, /statusLine\.hidden = job\?\.status === "SUCCEEDED"/);
+  assert.match(graphics, /primaryOutputWrap\.hidden = !atOutputMoment \|\| resultsOpen/);
+  assert.match(auth, /liveticker-graphics-inline\.js\?v=20260910-live-ux6/);
+});
+
 test("Fanbus Social Media exposes manual worker control and blocks flyer generation until ready", async () => {
   const js = await read("js/modules/m340-publishing.js");
   assert.match(js, /data-m340-worker-toggle/);

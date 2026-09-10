@@ -74,3 +74,28 @@ test("Liveticker renderer normalizes logo assets before rendering POST and STORY
   assert.match(trimmer, /get_has_alpha\(\)/);
   assert.match(trimmer, /new_subpixbuf/);
 });
+
+
+test("Liveticker renderer vertically centers the visible goal block in the template goal area", () => {
+  const renderer = resolve("scripts/liveticker-renderer/render_v1.py");
+  const source = String.raw`
+import importlib.util, sys
+import xml.etree.ElementTree as ET
+spec=importlib.util.spec_from_file_location("liveticker_render_v1", sys.argv[1])
+module=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+root=ET.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="our_goals_heading" y="100">UNSERE TORE</text><text id="our_goals_line_1" y="150">A</text><text id="our_goals_line_2" y="200">B</text><text id="our_goals_line_3" y="250"></text><text id="our_goals_line_4" y="300"></text><text id="our_goals_line_5" y="350"></text><text id="our_goals_line_6" y="400"></text><text id="our_goals_line_7" y="450"></text><text id="our_goals_line_8" y="500"></text><text id="our_goals_line_9" y="550"></text><text id="our_goals_line_10" y="600"></text></svg>')
+module.center_goal_block(root,["A","B"])
+heading=float(module.find(root,"our_goals_heading").get("y"))
+line1=float(module.find(root,"our_goals_line_1").get("y"))
+line2=float(module.find(root,"our_goals_line_2").get("y"))
+assert abs(((heading+line2)/2)-350.0)<0.000001,(heading,line2)
+assert abs((line1-heading)-50.0)<0.000001
+assert abs((line2-line1)-50.0)<0.000001
+root2=ET.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="our_goals_heading" y="100">UNSERE TORE</text>'+''.join(f'<text id="our_goals_line_{i}" y="{100+i*50}"></text>' for i in range(1,11))+'</svg>')
+module.center_goal_block(root2,[])
+assert abs(float(module.find(root2,"our_goals_heading").get("y"))-350.0)<0.000001
+`;
+  const result = spawnSync("python3", ["-c", source, renderer], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+});
