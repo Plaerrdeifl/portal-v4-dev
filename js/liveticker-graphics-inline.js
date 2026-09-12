@@ -173,41 +173,60 @@ async function fetchGraphicArtifact(artifact) {
   return { blob, filename: safeGraphicFilename(contentDispositionFilename(response.headers.get("Content-Disposition")), fallback) };
 }
 
-function downloadGraphicBlob(blob, filename) {
-  const objectUrl = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  let started = false;
-  try {
-    anchor.href = objectUrl;
-    anchor.download = filename;
-    anchor.hidden = true;
-    document.body.append(anchor);
-    anchor.click();
-    started = true;
-  } finally {
-    anchor.remove();
-    if (started) globalThis.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-    else URL.revokeObjectURL(objectUrl);
-  }
+const graphicArtifactCache = new Map();
+const GRAPHIC_ARTIFACT_CACHE_LIMIT = 6;
+
+function graphicArtifactCacheKey(artifact) {
+  return JSON.stringify([artifact.downloadUrl, artifact.sha256, artifact.bytes]);
 }
 
-async function deliverGraphicArtifact(artifact, label) {
-  const { blob, filename } = await fetchGraphicArtifact(artifact);
-  if (typeof File === "function" && typeof navigator?.share === "function" && typeof navigator?.canShare === "function") {
-    const file = new File([blob], filename, { type: "image/png" });
-    let canShareFiles = false;
-    try { canShareFiles = navigator.canShare({ files: [file] }); } catch { canShareFiles = false; }
-    if (canShareFiles) {
-      try {
-        await navigator.share({ files: [file], title: label });
-        return "shared";
-      } catch (error) {
-        if (error?.name === "AbortError") return "cancelled";
+function cachedGraphicArtifact(artifact) {
+  return graphicArtifactCache.get(graphicArtifactCacheKey(artifact))?.prepared || null;
+}
+
+function prefetchGraphicArtifact(artifact) {
+  const key = graphicArtifactCacheKey(artifact);
+  if (graphicArtifactCache.has(key)) return;
+  const entry = { prepared: null };
+  graphicArtifactCache.set(key, entry);
+  if (graphicArtifactCache.size > GRAPHIC_ARTIFACT_CACHE_LIMIT) {
+    graphicArtifactCache.delete(graphicArtifactCache.keys().next().value);
+  }
+  // Deduplicate pending requests; a failed prefetch leaves direct download available.
+  void fetchGraphicArtifact(artifact).then(
+    prepared => { entry.prepared = prepared; },
+    () => {}
+  );
+}
+
+function downloadGraphicArtifact(artifact) {
+  if (!validArtifactUrl(artifact?.downloadUrl, true)) return "invalid";
+  globalThis.location.assign(artifact.downloadUrl);
+  return "downloaded";
+}
+
+function handleGraphicShareError(error, artifact) {
+  if (error?.name === "AbortError") return "cancelled";
+  return downloadGraphicArtifact(artifact);
+}
+
+function deliverGraphicArtifact(artifact, label) {
+  const prepared = cachedGraphicArtifact(artifact);
+  try {
+    if (prepared && typeof File === "function" && typeof navigator?.share === "function" && typeof navigator?.canShare === "function") {
+      const file = new File([prepared.blob], prepared.filename, { type: "image/png" });
+      if (navigator.canShare({ files: [file] })) {
+        // Start sharing in the original click stack, before any promise handling.
+        return navigator.share({ files: [file], title: label }).then(
+          () => "shared",
+          error => handleGraphicShareError(error, artifact)
+        );
       }
     }
+  } catch (error) {
+    return handleGraphicShareError(error, artifact);
   }
-  downloadGraphicBlob(blob, filename);
-  return "downloaded";
+  return downloadGraphicArtifact(artifact);
 }
 
 function renderArtifacts() {
@@ -219,29 +238,24 @@ function renderArtifacts() {
   if (job?.status === "SUCCEEDED") {
     const artifacts = artifactRowsFor(job);
     for (const artifact of artifacts) {
+      prefetchGraphicArtifact(artifact);
       const button = document.createElement("button");
       button.type = "button";
       button.className = "graphic-artifact-button";
       button.dataset.graphicArtifact = artifact.kind;
       button.textContent = artifact.kind === "POST" ? "Post" : "Story";
-      button.addEventListener("click", async () => {
+      button.addEventListener("click", () => {
         const label = `${kindLabel(kind)} · ${button.textContent}`;
         const original = button.textContent;
         button.disabled = true;
         button.setAttribute("aria-busy", "true");
-        button.textContent = "Lädt …";
-        try {
-          await deliverGraphicArtifact(artifact, label);
-        } catch (error) {
-          console.error("Liveticker graphic delivery failed", error);
-          button.textContent = "Fehler – erneut";
-          window.setTimeout(() => { button.textContent = original; }, 1800);
-          return;
-        } finally {
+        button.textContent = "Teilen …";
+        const resetButton = () => {
           button.disabled = false;
           button.removeAttribute("aria-busy");
-          if (button.textContent === "Lädt …") button.textContent = original;
-        }
+          button.textContent = original;
+        };
+        Promise.resolve(deliverGraphicArtifact(artifact, label)).then(resetButton, resetButton);
       });
       artifactsBox.append(button);
     }

@@ -81,7 +81,7 @@ test("Liveticker game mode keeps the live workflow compact and one-tap", async (
 });
 
 
-test("Liveticker result panel uses two direct Post/Story delivery buttons like Fanbus Social Media", async () => {
+test("Liveticker result panel shares cached Post/Story files synchronously with direct download fallback", async () => {
   const html = await read("liveticker/index.html");
   const graphics = await read("js/liveticker-graphics-inline.js");
   const auth = await read("js/liveticker-auth-bootstrap.js");
@@ -90,10 +90,23 @@ test("Liveticker result panel uses two direct Post/Story delivery buttons like F
   assert.match(graphics, /button\.textContent = artifact\.kind === "POST" \? "Post" : "Story"/);
   assert.match(graphics, /navigator\.canShare\(\{ files: \[file\] \}\)/);
   assert.match(graphics, /navigator\.share\(\{ files: \[file\], title: label \}\)/);
-  assert.match(graphics, /downloadGraphicBlob\(blob, filename\)/);
+  assert.match(graphics, /const graphicArtifactCache = new Map\(\)/);
+  assert.match(graphics, /prefetchGraphicArtifact\(artifact\)/);
+  assert.match(graphics, /const prepared = cachedGraphicArtifact\(artifact\)/);
+  assert.match(graphics, /globalThis\.location\.assign\(artifact\.downloadUrl\)/);
+  const delivery = graphics.match(/function deliverGraphicArtifact\([\s\S]*?\n}\n/);
+  assert.ok(delivery);
+  assert.doesNotMatch(graphics, /async function deliverGraphicArtifact/);
+  assert.doesNotMatch(delivery[0], /\bawait\b|\bfetch\s*\(|fetchGraphicArtifact\(/);
+  const renderArtifacts = graphics.match(/function renderArtifacts\([\s\S]*?\n}\n/);
+  assert.ok(renderArtifacts);
+  assert.match(renderArtifacts[0], /button\.addEventListener\("click", \(\) =>/);
+  assert.doesNotMatch(renderArtifacts[0], /\basync\b|\bawait\b|\bfetch\s*\(/);
+  assert.match(graphics, /if \(error\?\.name === "AbortError"\) return "cancelled";\s*return downloadGraphicArtifact\(artifact\)/);
+  assert.doesNotMatch(graphics, /downloadGraphicBlob|createObjectURL|window\.open\(|Fehler – erneut/);
   assert.match(graphics, /statusLine\.hidden = job\?\.status === "SUCCEEDED"/);
   assert.match(graphics, /primaryOutputWrap\.hidden = !atOutputMoment \|\| resultsOpen/);
-  assert.match(auth, /liveticker-graphics-inline\.js\?v=20260910-live-ux6/);
+  assert.match(auth, /liveticker-graphics-inline\.js\?v=20260912-android-share-r1/);
 });
 
 test("Fanbus Social Media exposes manual worker control and blocks flyer generation until ready", async () => {
