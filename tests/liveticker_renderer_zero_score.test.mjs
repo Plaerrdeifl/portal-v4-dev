@@ -80,7 +80,8 @@ test("Liveticker renderer normalizes logo assets before rendering POST and STORY
 
 test("Liveticker renderer centers goal block only for STORY and keeps POST template positions", () => {
   const source = readFileSync(resolve("scripts/liveticker-renderer/render_v1.py"), "utf8");
-  assert.match(source, /apply_lines\(root,lines\)\n\s+if fmt==\'STORY\': center_goal_block\(root,lines\)/);
+  assert.match(source, /apply_goal_block\(root,lines,fmt\)/);
+  assert.match(source, /if fmt==\'STORY\' and lines: center_goal_block\(root,lines\)/);
   assert.doesNotMatch(source, /apply_lines\(root,lines\); center_goal_block\(root,lines\)/);
 });
 test("Liveticker renderer vertically centers the visible goal block in the template goal area", () => {

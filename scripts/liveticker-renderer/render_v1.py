@@ -195,6 +195,11 @@ def goal_lines(history,kind):
 def apply_lines(root,lines):
     for i in range(1,11): set_text(root,f'our_goals_line_{i}',lines[i-1] if i<=len(lines) else '')
 
+def apply_goal_block(root,lines,fmt):
+    set_text(root,'our_goals_heading','UNSERE TORE' if lines else '')
+    apply_lines(root,lines)
+    if fmt=='STORY' and lines: center_goal_block(root,lines)
+
 def numeric_y(element):
     if element is None: return None
     for node in (element,*list(element.iter())[1:]):
@@ -257,9 +262,8 @@ def render_one(state,kind,fmt,outdir):
     set_text(root,'headline','ENDERGEBNIS' if kind=='FINAL' else 'ZWISCHENSTAND')
     set_text(root,'period_label','' if kind=='FINAL' else ('1. DRITTEL' if kind=='PERIOD_1' else '2. DRITTEL'))
     set_text(root,'result_suffix',suffix if kind=='FINAL' else '')
-    set_text(root,'home_score',our); set_text(root,'away_score',opp); set_text(root,'our_goals_heading','UNSERE TORE')
-    lines=goal_lines(state['history'],kind); apply_lines(root,lines)
-    if fmt=='STORY': center_goal_block(root,lines)
+    set_text(root,'home_score',our); set_text(root,'away_score',opp)
+    lines=goal_lines(state['history'],kind); apply_goal_block(root,lines,fmt)
     inject_logo(root,'logo_home',Path(state['ourTeam']['logoPath'])); inject_logo(root,'logo_away',Path(state['opponentTeam']['logoPath']))
     stem=f"{kind.lower()}-{fmt.lower()}"; svg=outdir/f'{stem}.svg'; png=outdir/f'{stem}.png'
     tree.write(svg,encoding='utf-8',xml_declaration=True)

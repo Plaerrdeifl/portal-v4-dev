@@ -133,7 +133,7 @@ export function preloadAuthenticatedModules(keys = ["dashboard", "dates", "fancl
     fanclub: "./modules/fanclub.js",
     tasks: "./modules/tasks.js",
     teams: "./modules/teams.js",
-    liveticker: "./modules/liveticker-admin.js?v=20260908-prod-graphic-template1",
+    liveticker: "./modules/liveticker-admin.js?v=20260912-player-delete-r1",
     admin: "./modules/admin.js"
   };
   return Promise.allSettled(
@@ -209,6 +209,6 @@ export async function hydratePage(key, context = {}) {
   if (key === "fanclub") return feature("./modules/fanclub.js", "hydrateFanclub", context);
   if (key === "tasks") return feature("./modules/tasks.js", "hydrateTasks", context);
   if (key === "teams") return feature("./modules/teams.js", "hydrateTeams", context);
-  if (key === "liveticker") return feature("./modules/liveticker-admin.js?v=20260908-prod-graphic-template1", "hydrateLivetickerAdmin", context);
+  if (key === "liveticker") return feature("./modules/liveticker-admin.js?v=20260912-player-delete-r1", "hydrateLivetickerAdmin", context);
   if (key === "admin") return feature("./modules/admin.js", "hydrateAdmin", context);
 }
