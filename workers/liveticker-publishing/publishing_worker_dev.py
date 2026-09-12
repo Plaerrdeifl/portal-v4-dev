@@ -109,6 +109,21 @@ def snapshot_logo_path_dev(team: dict, logo_dir: Path, label: str) -> Path:
 base.snapshot_logo_path = snapshot_logo_path_dev
 
 
+base_normalize_snapshot = base.normalize_snapshot
+
+
+def normalize_snapshot_dev(snapshot: dict, logo_dir: Path):
+    kind, normalized = base_normalize_snapshot(snapshot, logo_dir)
+    home_away = str(snapshot.get("homeAway") or "").upper()
+    if home_away not in {"HOME", "AWAY"}:
+        raise base.WorkerError("SNAPSHOT_INVALID")
+    normalized["homeAway"] = home_away
+    return kind, normalized
+
+
+base.normalize_snapshot = normalize_snapshot_dev
+
+
 def dev_remote_path(path: str) -> str:
     if (
         path != DEV_NEXTCLOUD_ROOT

@@ -253,6 +253,14 @@ def snapshot_template_tree(state,fmt):
     if hashlib.sha256(data).hexdigest()!=sha256: raise RuntimeError(f'template checksum mismatch: {fmt}')
     return ET.ElementTree(ET.fromstring(svg_text))
 
+def visual_sides(state,our,opp):
+    home_away=str(state.get('homeAway') or '').upper()
+    if home_away=='HOME':
+        return our,opp,state['ourTeam'],state['opponentTeam']
+    if home_away=='AWAY':
+        return opp,our,state['opponentTeam'],state['ourTeam']
+    raise RuntimeError('invalid homeAway')
+
 def render_one(state,kind,fmt,outdir):
     global CURRENT_FORMAT
     CURRENT_FORMAT=fmt
@@ -262,16 +270,17 @@ def render_one(state,kind,fmt,outdir):
     set_text(root,'headline','ENDERGEBNIS' if kind=='FINAL' else 'ZWISCHENSTAND')
     set_text(root,'period_label','' if kind=='FINAL' else ('1. DRITTEL' if kind=='PERIOD_1' else '2. DRITTEL'))
     set_text(root,'result_suffix',suffix if kind=='FINAL' else '')
-    set_text(root,'home_score',our); set_text(root,'away_score',opp)
+    home_score,away_score,home_team,away_team=visual_sides(state,our,opp)
+    set_text(root,'home_score',home_score); set_text(root,'away_score',away_score)
     lines=goal_lines(state['history'],kind); apply_goal_block(root,lines,fmt)
-    inject_logo(root,'logo_home',Path(state['ourTeam']['logoPath'])); inject_logo(root,'logo_away',Path(state['opponentTeam']['logoPath']))
+    inject_logo(root,'logo_home',Path(home_team['logoPath'])); inject_logo(root,'logo_away',Path(away_team['logoPath']))
     stem=f"{kind.lower()}-{fmt.lower()}"; svg=outdir/f'{stem}.svg'; png=outdir/f'{stem}.png'
     tree.write(svg,encoding='utf-8',xml_declaration=True)
     cmd=['docker','run','--rm','--network','none','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=256','--user',f'{os.getuid()}:{os.getgid()}','-e','HOME=/tmp','-v',f'{outdir}:/work','-v',f'{FONT_DIR}:/usr/share/fonts/truetype/plaerrdeifl:ro','--entrypoint','inkscape',RENDERER,f'/work/{svg.name}','--export-type=png',f'--export-filename=/work/{png.name}']
     r=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,timeout=180)
     if r.returncode: raise RuntimeError(f'inkscape failed {stem}: {r.stderr[-1000:]}')
     if png_dims(png)!=EXPECTED[fmt]: raise RuntimeError(f'bad dimensions {stem}: {png_dims(png)}')
-    return {'kind':kind,'format':fmt,'svg':str(svg),'png':str(png),'score':f'{our}:{opp}','suffix':suffix,'goalLines':lines,'bytes':png.stat().st_size,'backgroundApplied':background_applied}
+    return {'kind':kind,'format':fmt,'svg':str(svg),'png':str(png),'score':f'{home_score}:{away_score}','suffix':suffix,'goalLines':lines,'bytes':png.stat().st_size,'backgroundApplied':background_applied}
 
 def main():
     ap=argparse.ArgumentParser(); ap.add_argument('state'); ap.add_argument('--out',required=True); args=ap.parse_args()

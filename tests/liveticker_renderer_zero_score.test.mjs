@@ -30,6 +30,46 @@ test("DEV worker uses its isolated renderer path", () => {
 });
 
 
+test("DEV worker preserves the calendar HOME/AWAY side for rendering", () => {
+  const source = readFileSync(resolve("workers/liveticker-publishing/publishing_worker_dev.py"), "utf8");
+  assert.match(source, /home_away = str\(snapshot\.get\("homeAway"\) or ""\)\.upper\(\)/);
+  assert.match(source, /home_away not in \{"HOME", "AWAY"\}/);
+  assert.match(source, /normalized\["homeAway"\] = home_away/);
+  assert.match(source, /base\.normalize_snapshot = normalize_snapshot_dev/);
+});
+
+
+test("Liveticker renderer places home left and away right including scores", () => {
+  const renderer = resolve("scripts/liveticker-renderer/render_v1.py");
+  const source = String.raw`
+import importlib.util, sys
+spec=importlib.util.spec_from_file_location("liveticker_render_v1", sys.argv[1])
+module=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+our={"name":"Mighty Dogs","logoPath":"our.png"}
+opp={"name":"Gegner","logoPath":"opp.png"}
+home=module.visual_sides({"homeAway":"HOME","ourTeam":our,"opponentTeam":opp},3,1)
+assert home[0:2]==(3,1)
+assert home[2] is our and home[3] is opp
+away=module.visual_sides({"homeAway":"AWAY","ourTeam":our,"opponentTeam":opp},3,1)
+assert away[0:2]==(1,3)
+assert away[2] is opp and away[3] is our
+try:
+    module.visual_sides({"homeAway":"","ourTeam":our,"opponentTeam":opp},3,1)
+except RuntimeError as exc:
+    assert str(exc)=="invalid homeAway"
+else:
+    raise AssertionError("missing fail-closed homeAway validation")
+`;
+  const result = spawnSync("python3", ["-c", source, renderer], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const rendererSource = readFileSync(renderer, "utf8");
+  assert.match(rendererSource, /inject_logo\(root,'logo_home',Path\(home_team\['logoPath'\]\)\)/);
+  assert.match(rendererSource, /inject_logo\(root,'logo_away',Path\(away_team\['logoPath'\]\)\)/);
+  assert.match(rendererSource, /set_text\(root,'home_score',home_score\); set_text\(root,'away_score',away_score\)/);
+});
+
+
 test("Liveticker renderer centers both logos on the SVG template anchors at one fixed height", () => {
   const renderer = resolve("scripts/liveticker-renderer/render_v1.py");
   const source = String.raw`
