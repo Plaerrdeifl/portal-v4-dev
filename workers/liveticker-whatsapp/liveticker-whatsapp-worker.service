@@ -1,0 +1,28 @@
+[Unit]
+Description=Plaerrdeifl Liveticker WhatsApp Channel Worker
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=benny
+Group=benny
+WorkingDirectory=/srv/docker/liveticker/whatsapp-worker
+EnvironmentFile=/srv/docker/liveticker/whatsapp-worker/.env
+ExecStart=/home/benny/.nvm/versions/node/v24.20.0/bin/node /srv/docker/liveticker/whatsapp-worker/worker.mjs
+Restart=always
+RestartSec=3
+TimeoutStopSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target
