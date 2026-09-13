@@ -2,10 +2,8 @@ const MAX_BODY_BYTES = 16_384;
 const MAX_SECRET_LENGTH = 2_048;
 const MIN_WORKER_TOKEN_BYTES = 32;
 const WORKER_TOKEN_HEADER = "X-Liveticker-Worker-Token";
-const EXPECTED_TOKEN_SHA256_BY_HOST = {
-  "tpieykhhawszlzsoflnl.supabase.co": "8ad104a328042fe7a10854836c99f7b86ee6933c7de022516b29ab398299af16",
-  "wplescvhlgctynkfwvrj.supabase.co": "b70a4b43dbb9d1e65050fab9199b10b8f6ae67f03ba879cbec1484ee2548085d",
-} as const;
+const EXPECTED_SUPABASE_HOST = "tpieykhhawszlzsoflnl.supabase.co";
+const EXPECTED_TOKEN_SHA256 = "8ad104a328042fe7a10854836c99f7b86ee6933c7de022516b29ab398299af16";
 const WORKER_VIEW = "pd_liveticker_whatsapp_jobs_worker";
 const PROCESSING_LEASE_MS = 120_000;
 const encoder = new TextEncoder();
@@ -43,26 +41,18 @@ async function sha256Hex(value: string) {
   return Array.from(new Uint8Array(digest)).map(item => item.toString(16).padStart(2, "0")).join("");
 }
 
-function expectedTokenSha256() {
-  const rawUrl = Deno.env.get("SUPABASE_URL")?.trim();
-  if (!rawUrl) return "";
-  try {
-    const hostname = new URL(rawUrl).hostname;
-    return EXPECTED_TOKEN_SHA256_BY_HOST[hostname as keyof typeof EXPECTED_TOKEN_SHA256_BY_HOST] || "";
-  } catch {
-    return "";
-  }
-}
-
 async function authorized(request: Request) {
-  const expected = expectedTokenSha256();
+  const rawUrl = Deno.env.get("SUPABASE_URL")?.trim();
   const token = request.headers.get(WORKER_TOKEN_HEADER) || "";
-  if (!expected || token.length > MAX_SECRET_LENGTH || encoder.encode(token).byteLength < MIN_WORKER_TOKEN_BYTES) return false;
+  if (!rawUrl || token.length > MAX_SECRET_LENGTH || encoder.encode(token).byteLength < MIN_WORKER_TOKEN_BYTES) return false;
+  let hostname = "";
+  try { hostname = new URL(rawUrl).hostname; } catch { return false; }
+  if (hostname !== EXPECTED_SUPABASE_HOST) return false;
   const actual = await sha256Hex(token);
-  if (actual.length !== expected.length) return false;
+  if (actual.length !== EXPECTED_TOKEN_SHA256.length) return false;
   let diff = 0;
-  for (let index = 0; index < expected.length; index += 1) {
-    diff |= actual.charCodeAt(index) ^ expected.charCodeAt(index);
+  for (let index = 0; index < EXPECTED_TOKEN_SHA256.length; index += 1) {
+    diff |= actual.charCodeAt(index) ^ EXPECTED_TOKEN_SHA256.charCodeAt(index);
   }
   return diff === 0;
 }
