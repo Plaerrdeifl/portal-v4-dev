@@ -9,7 +9,11 @@ import {
 
 const root = path.resolve(import.meta.dirname, "..");
 const read = relative => fs.readFile(path.join(root, relative), "utf8");
-const migrationPath = "supabase/migrations/20260913145500_liveticker_whatsapp_channel_dev_r1.sql";
+const migrationPaths = [
+  "supabase/migrations/20260913134310_liveticker_whatsapp_outbox_dev_r1.sql",
+  "supabase/migrations/20260913134341_liveticker_whatsapp_sync_wrapper_dev_r1.sql",
+  "supabase/migrations/20260913134516_liveticker_whatsapp_worker_view_dev_r1.sql"
+];
 
 test("WhatsApp intent decorates exactly one changed action without persisting into the baseline", () => {
   const previous = [{ id: "goal-1", type: "goal", team: "mighty", minute: 10 }];
@@ -42,14 +46,17 @@ test("WhatsApp intent is not attached when disabled, ambiguous or too long", () 
   assert.equal(tooLong.history[0]._whatsapp, undefined);
 });
 
-test("WhatsApp migration creates a durable unique outbox and strips transient metadata", async () => {
-  const sql = await read(migrationPath);
+test("WhatsApp migrations create the durable outbox, sync wrapper and server-only worker view", async () => {
+  const sql = (await Promise.all(migrationPaths.map(read))).join("\n");
   assert.match(sql, /create table app_modules\.liveticker_whatsapp_jobs/i);
   assert.match(sql, /unique \(event_id, client_action_id, publication_version\)/i);
   assert.match(sql, /v_item - '_whatsapp'/);
   assert.match(sql, /app_private\.liveticker_require_operator\(\)/);
   assert.match(sql, /on conflict \(event_id, client_action_id, publication_version\) do nothing/i);
   assert.match(sql, /revoke all on function public\.pd_public_liveticker_sync_before_whatsapp_channel_r1/i);
+  assert.match(sql, /create view public\.pd_liveticker_whatsapp_jobs_worker/i);
+  assert.match(sql, /security_invoker\s*=\s*true/i);
+  assert.match(sql, /grant select, update on table public\.pd_liveticker_whatsapp_jobs_worker to service_role/i);
 });
 
 test("storage wakes WhatsApp only after a durable sync and wake failures stay non-fatal", async () => {
