@@ -30,6 +30,14 @@ test("DEV worker uses its isolated renderer path", () => {
 });
 
 
+test("DEV enqueue snapshots the calendar HOME/AWAY side for rendering", () => {
+  const migration = readFileSync(resolve("supabase/migrations/20260913013000_liveticker_graphic_home_away_snapshot_r1.sql"), "utf8");
+  assert.match(migration, /select g\.home_away into v_home_away/);
+  assert.match(migration, /jsonb_set\([\s\S]*\{homeAway\}/);
+  assert.match(migration, /before insert on app_modules\.liveticker_graphic_jobs/);
+});
+
+
 test("DEV worker preserves the calendar HOME/AWAY side for rendering", () => {
   const source = readFileSync(resolve("workers/liveticker-publishing/publishing_worker_dev.py"), "utf8");
   assert.match(source, /home_away = str\(snapshot\.get\("homeAway"\) or ""\)\.upper\(\)/);
