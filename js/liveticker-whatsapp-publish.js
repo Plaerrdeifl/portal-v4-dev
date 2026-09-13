@@ -17,14 +17,10 @@ function actionMap(history) {
   return new Map(cleanHistory(history).map(item => [item?.id, item]));
 }
 
-function sameAction(a, b) {
-  return JSON.stringify(cleanAction(a)) === JSON.stringify(cleanAction(b));
-}
-
 export function changedWhatsappActionIds(previousHistory, currentHistory) {
   const previous = actionMap(previousHistory);
   return cleanHistory(currentHistory)
-    .filter(item => item?.id && (!previous.has(item.id) || !sameAction(previous.get(item.id), item)))
+    .filter(item => item?.id && !previous.has(item.id))
     .map(item => item.id);
 }
 
