@@ -74,11 +74,14 @@ try {
     try {
       const state = JSON.parse(value);
       if (state && Array.isArray(state.history)) {
-        window.dispatchEvent(new CustomEvent("pd-liveticker-state-saved", { detail: { state } }));
+        queueMicrotask(() => {
+          window.dispatchEvent(new CustomEvent("pd-liveticker-state-saved", { detail: { state } }));
+        });
       }
     } catch {}
   };
 
+  await import("./liveticker-whatsapp-publish.js?v=20260913-whatsapp-channel-r1");
   await importRuntimeEngine();
   await import("./liveticker-v5-support.js?v=20260910-shootout60-r1");
 
