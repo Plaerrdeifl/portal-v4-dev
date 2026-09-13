@@ -226,6 +226,34 @@ def shift_y(element,delta):
                 pass
         if changed: node.set('y',''.join(parts))
 
+def shift_x(element,delta):
+    if element is None or abs(delta)<0.000001: return
+    for node in element.iter():
+        raw=str(node.get('x') or '').strip()
+        if not raw: continue
+        parts=re.split(r'([,\s]+)',raw)
+        for i in range(0,len(parts),2):
+            if not parts[i]: continue
+            try: parts[i]=f'{float(parts[i])+delta:.6f}'.rstrip('0').rstrip('.')
+            except ValueError: pass
+        node.set('x',''.join(parts))
+
+def logo_center_x(root,id_):
+    g=find(root,id_)
+    if g is None: raise RuntimeError(f'missing logo group: {id_}')
+    anchor=next((child for child in list(g) if child.tag==q('image')),None)
+    if anchor is None: raise RuntimeError(f'missing logo anchor image: {id_}')
+    x=float(anchor.get('x','0')); y=float(anchor.get('y','0'))
+    w=float(anchor.get('width','0')); h=float(anchor.get('height','0'))
+    cx,_=transform_point(g.get('transform'),x+w/2,y+h/2)
+    return cx
+
+def place_goal_block(root,home_away):
+    if str(home_away or '').upper()!='AWAY': return
+    delta=logo_center_x(root,'logo_away')-logo_center_x(root,'logo_home')
+    shift_x(find(root,'our_goals_heading'),delta)
+    for i in range(1,11): shift_x(find(root,f'our_goals_line_{i}'),delta)
+
 def center_goal_block(root,lines):
     heading=find(root,'our_goals_heading'); final_anchor=find(root,'our_goals_line_10')
     top=numeric_y(heading); bottom=numeric_y(final_anchor)
@@ -274,6 +302,7 @@ def render_one(state,kind,fmt,outdir):
     home_score,away_score,home_team,away_team=visual_sides(state,our,opp)
     set_text(root,'home_score',home_score); set_text(root,'away_score',away_score)
     lines=goal_lines(state['history'],kind); apply_goal_block(root,lines,fmt)
+    place_goal_block(root,state.get('homeAway'))
     inject_logo(root,'logo_home',Path(home_team['logoPath'])); inject_logo(root,'logo_away',Path(away_team['logoPath']))
     stem=f"{kind.lower()}-{fmt.lower()}"; svg=outdir/f'{stem}.svg'; png=outdir/f'{stem}.png'
     tree.write(svg,encoding='utf-8',xml_declaration=True)
