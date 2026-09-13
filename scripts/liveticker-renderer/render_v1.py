@@ -20,7 +20,7 @@ TEMPLATES={
 }
 EXPECTED={'POST':(1254,1254),'STORY':(941,1672)}
 BACKGROUND={'POST':ROOT/'assets/backgrounds/post-background.jpg','STORY':ROOT/'assets/backgrounds/story-background.jpg'}
-LOGO_HEIGHT={'POST':200.0,'STORY':200.0}
+LOGO_HEIGHT={'POST':250.0,'STORY':200.0}
 LOGO_TRIMMER=Path(__file__).with_name('trim_logo.py')
 OUR={'mighty','our','mighty_dogs','home_club'}
 OPP={'opponent','away','guest','other'}
