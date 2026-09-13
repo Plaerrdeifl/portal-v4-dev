@@ -49,30 +49,53 @@ test("WhatsApp migration creates a durable unique outbox and strips transient me
   assert.match(sql, /v_item - '_whatsapp'/);
   assert.match(sql, /app_private\.liveticker_require_operator\(\)/);
   assert.match(sql, /on conflict \(event_id, client_action_id, publication_version\) do nothing/i);
-  assert.match(sql, /alter publication supabase_realtime add table app_modules\.liveticker_whatsapp_jobs/i);
   assert.match(sql, /revoke all on function public\.pd_public_liveticker_sync_before_whatsapp_channel_r1/i);
 });
 
-test("WhatsApp worker is server-only, realtime-woken and WAHA-loopback by default", async () => {
-  const [worker, envExample, service] = await Promise.all([
+test("storage wakes WhatsApp only after a durable sync and wake failures stay non-fatal", async () => {
+  const storage = await read("js/liveticker-game-storage.js");
+  assert.match(storage, /WHATSAPP_WAKE_TOPIC = "liveticker-whatsapp-jobs"/);
+  assert.match(storage, /hasWhatsappPublishIntent\(changes\)/);
+  assert.match(storage, /applyRemoteState\(result\);\s*if \(wakeWhatsapp\) void broadcastWhatsappWake\(\);/s);
+  assert.match(storage, /channel\.httpSend\("wake", \{\}\)/);
+  assert.match(storage, /await client\.removeChannel\(channel\)/);
+  assert.match(storage, /catch \(error\) \{[\s\S]*console\.warn\("WhatsApp-Worker konnte nicht sofort geweckt werden\./);
+});
+
+test("WhatsApp worker uses public realtime plus token-authenticated gateway, never a server DB key", async () => {
+  const [worker, envExample, service, gateway] = await Promise.all([
     read("workers/liveticker-whatsapp/worker.mjs"),
     read("workers/liveticker-whatsapp/liveticker-whatsapp-worker.env.example"),
-    read("workers/liveticker-whatsapp/liveticker-whatsapp-worker.service")
+    read("workers/liveticker-whatsapp/liveticker-whatsapp-worker.service"),
+    read("supabase/functions/liveticker-whatsapp-worker/index.ts")
   ]);
 
-  assert.match(worker, /postgres_changes/);
-  assert.match(worker, /event: "INSERT", schema: "app_modules", table: "liveticker_whatsapp_jobs"/);
-  assert.match(worker, /pd_liveticker_whatsapp_worker_claim/);
-  assert.match(worker, /pd_liveticker_whatsapp_worker_complete/);
-  assert.match(worker, /pd_liveticker_whatsapp_worker_fail/);
+  assert.match(worker, /SUPABASE_PUBLISHABLE_KEY/);
+  assert.doesNotMatch(worker, /SUPABASE_SERVICE_ROLE_KEY|SERVICE_ROLE_KEY/);
+  assert.match(worker, /X-Liveticker-Worker-Token/);
+  assert.match(worker, /message\.event === "broadcast" && message\.payload\?\.event === "wake"/);
   assert.match(worker, /http:\/\/127\.0\.0\.1:3001/);
-  assert.match(worker, /@newsletter/);
-  assert.doesNotMatch(worker, /REPLACE_WITH_DEV_SERVICE_ROLE_KEY/);
+  assert.match(worker, /WAHA_SESSION \|\| "Liveticker_Test"/);
+  assert.match(worker, /sent-journal\.json/);
+  assert.match(worker, /job_send_recovered/);
 
-  assert.match(envExample, /SUPABASE_SERVICE_ROLE_KEY=REPLACE_WITH_DEV_SERVICE_ROLE_KEY/);
-  assert.match(envExample, /WAHA_API_KEY=REPLACE_WITH_LOCAL_WAHA_API_KEY/);
+  assert.match(envExample, /SUPABASE_PUBLISHABLE_KEY=REPLACE_WITH_DEV_PUBLISHABLE_KEY/);
+  assert.doesNotMatch(envExample, /SERVICE_ROLE/);
+  assert.match(envExample, /LIVETICKER_WORKER_TOKEN_FILE=\/srv\/docker\/liveticker\/dev\/secrets\/worker_token/);
   assert.match(envExample, /EXPECTED_SUPABASE_PROJECT_REF=tpieykhhawszlzsoflnl/);
+  assert.match(envExample, /WAHA_SESSION=Liveticker_Test/);
+
   assert.match(service, /\/home\/benny\/\.nvm\/versions\/node\/v24\.20\.0\/bin\/node/);
+  assert.match(service, /ReadWritePaths=\/srv\/docker\/liveticker\/whatsapp-worker/);
+  assert.match(service, /UMask=0077/);
+
+  assert.match(gateway, /WORKER_TOKEN_HEADER = "X-Liveticker-Worker-Token"/);
+  assert.match(gateway, /pd_liveticker_whatsapp_jobs_worker/);
+  assert.match(gateway, /action === "claim"/);
+  assert.match(gateway, /action === "complete"/);
+  assert.match(gateway, /action === "fail"/);
+  assert.match(gateway, /SUPABASE_SECRET_KEYS/);
+  assert.doesNotMatch(gateway, /WAHA_API_KEY|WAHA_CHANNEL_ID/);
 });
 
 test("Liveticker bootstrap defers state dispatch until generated output exists", async () => {
