@@ -24,6 +24,7 @@ LOGO_HEIGHT={'POST':200.0,'STORY':200.0}
 LOGO_TRIMMER=Path(__file__).with_name('trim_logo.py')
 OUR={'mighty','our','mighty_dogs','home_club'}
 OPP={'opponent','away','guest','other'}
+MAX_GOAL_LINES=7
 
 def q(tag): return f'{{{SVG_NS}}}{tag}'
 def find(root,id_):
@@ -190,7 +191,7 @@ def goal_lines(history,kind):
     for d in grouped.values():
         who=f"#{d['number']} {d['name']}" if d['number'] else d['name']
         out.append(f"{who} | {', '.join(d['mins'])}")
-    return out
+    return out[:MAX_GOAL_LINES]
 
 def apply_lines(root,lines):
     for i in range(1,11): set_text(root,f'our_goals_line_{i}',lines[i-1] if i<=len(lines) else '')
