@@ -6,6 +6,7 @@ const STATE_KEY = "plaerrdeifl.livetickerPrototype.v3";
 const SELECTED_EVENT_KEY = "plaerrdeifl.livetickerPrototype.eventId";
 const VENUE_KEY = "plaerrdeifl.livetickerPrototype.venue";
 const CLIENT_KEY = "plaerrdeifl.livetickerPrototype.clientId";
+const WHATSAPP_WAKE_TOPIC = "liveticker-whatsapp-jobs";
 const SUPPORTED_ENVIRONMENTS = new Set(["DEV", "PROD"]);
 
 let config = null;
@@ -82,6 +83,28 @@ async function rpc(name, body = {}) {
     throw error;
   }
   return data;
+}
+
+function hasWhatsappPublishIntent(changes) {
+  return Array.isArray(changes?.upserts)
+    && changes.upserts.some(item => item?._whatsapp?.publish === true);
+}
+
+async function broadcastWhatsappWake() {
+  const client = getSupabaseClient();
+  const channel = client.channel(WHATSAPP_WAKE_TOPIC);
+  try {
+    await channel.httpSend("wake", {});
+  } catch (error) {
+    // The durable outbox is already committed. A failed wake only delays the
+    // worker until its recovery poll; it must never turn a saved ticker action
+    // into a visible save error for the operator.
+    console.warn("WhatsApp-Worker konnte nicht sofort geweckt werden.", error);
+  } finally {
+    try {
+      await client.removeChannel(channel);
+    } catch {}
+  }
 }
 
 function opponentKey(game) {
@@ -177,6 +200,7 @@ async function syncLocalState(localState) {
   renderSyncStatus("Speichert …", "pending");
   try {
     let result;
+    let wakeWhatsapp = hasWhatsappPublishIntent(changes);
     try {
       result = await rpc("pd_public_liveticker_sync", {
         p_event_id: selectedGame.eventId,
@@ -193,6 +217,7 @@ async function syncLocalState(localState) {
         applyRemoteState(fresh);
         return;
       }
+      wakeWhatsapp = hasWhatsappPublishIntent(retryChanges);
       result = await rpc("pd_public_liveticker_sync", {
         p_event_id: selectedGame.eventId,
         p_expected_revision: serverState.revision,
@@ -201,6 +226,7 @@ async function syncLocalState(localState) {
       });
     }
     applyRemoteState(result);
+    if (wakeWhatsapp) void broadcastWhatsappWake();
   } catch (error) {
     console.error(error);
     pendingLocalState = localState;
