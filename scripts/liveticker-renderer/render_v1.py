@@ -367,9 +367,31 @@ def center_story_goal_block_exact(root,tree,svg:Path,outdir:Path,ids):
         bounds=query_svg_bounds(svg,outdir,ids)
         if bounds is None: return
         left,top,right,bottom=bounds
+
+    # Center the player lines as the actual content block. The heading is
+    # positioned separately over those lines so it is visually centered over
+    # the scorer text instead of only centering the union of heading + lines.
+    line_ids=[id_ for id_ in ids if id_.startswith('our_goals_line_')]
+    line_bounds=query_svg_bounds(svg,outdir,line_ids) if line_ids else None
+    heading_bounds=query_svg_bounds(svg,outdir,['our_goals_heading']) if 'our_goals_heading' in ids else None
     target_x=941.0/2.0
     target_y=930.0
-    shift_goal_block(root,ids,target_x-(left+right)/2.0,target_y-(top+bottom)/2.0)
+    if line_bounds is not None:
+        ll,lt,lr,lb=line_bounds
+        dx_lines=target_x-(ll+lr)/2.0
+        for id_ in line_ids:
+            shift_x(find(root,id_),dx_lines)
+        if heading_bounds is not None:
+            hl,ht,hr,hb=heading_bounds
+            shift_x(find(root,'our_goals_heading'),target_x-(hl+hr)/2.0)
+    else:
+        shift_goal_block(root,ids,target_x-(left+right)/2.0,0.0)
+
+    tree.write(svg,encoding='utf-8',xml_declaration=True)
+    bounds=query_svg_bounds(svg,outdir,ids)
+    if bounds is None: return
+    left,top,right,bottom=bounds
+    shift_goal_block(root,ids,0.0,target_y-(top+bottom)/2.0)
     tree.write(svg,encoding='utf-8',xml_declaration=True)
 
 def place_post_goal_block(root,home_away,ids):
