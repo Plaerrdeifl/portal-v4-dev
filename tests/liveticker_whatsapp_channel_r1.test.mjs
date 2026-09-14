@@ -134,3 +134,16 @@ test("Liveticker bootstrap defers state dispatch until generated output exists",
   assert.match(bootstrap, /queueMicrotask\(\(\) => \{\s*window\.dispatchEvent\(new CustomEvent\("pd-liveticker-state-saved"/s);
   assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260913-whatsapp-channel-r1/);
 });
+
+
+test("DEV WhatsApp deploy script ships worker and authoritative media assets without restarting the service", async () => {
+  const deploy = await read("workers/liveticker-whatsapp/deploy-dev.sh");
+  assert.match(deploy, /Plaerrdeifl\/portal-v4-dev/);
+  assert.match(deploy, /EXPECTED_PROJECT_REF=.*tpieykhhawszlzsoflnl/);
+  assert.match(deploy, /WORKER_ENVIRONMENT=DEV/);
+  assert.match(deploy, /node.*--check|NODE_BIN.*--check/s);
+  assert.match(deploy, /rsync -a --delete[\s\S]*SOURCE_ASSETS[\s\S]*TARGET_ASSETS/);
+  assert.match(deploy, /sha256sum/);
+  assert.match(deploy, /Service was NOT restarted/);
+  assert.doesNotMatch(deploy, /systemctl\s+(restart|stop|start)/);
+});
