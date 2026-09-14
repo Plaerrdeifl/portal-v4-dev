@@ -1,0 +1,14 @@
+FROM devlikeapro/waha@sha256:527ff3d634925adb26d596883d7b3ca502c080f737af3c2af2be0c973c511533
+
+RUN node - <<'NODE'
+const fs = require('fs');
+const path = '/app/node_modules/@wppconnect-team/wppconnect/node_modules/@wppconnect/wa-js/dist/wppconnect-wa.js';
+const before = '["chat","image","video","poll_creation"].includes(t.type)';
+const after = '["chat","image","video","sticker","poll_creation"].includes(t.type)';
+const source = fs.readFileSync(path, 'utf8');
+const count = source.split(before).length - 1;
+if (count !== 1) {
+  throw new Error(`Expected one newsletter media type guard, found ${count}`);
+}
+fs.writeFileSync(path, source.replace(before, after));
+NODE
