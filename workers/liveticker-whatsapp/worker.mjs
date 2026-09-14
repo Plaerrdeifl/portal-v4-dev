@@ -19,6 +19,7 @@ const REQUIRED_ENV = [
 const POLL_INTERVAL_MS = Number.parseInt(process.env.POLL_INTERVAL_MS || "30000", 10);
 const EDGE_TIMEOUT_MS = Number.parseInt(process.env.EDGE_TIMEOUT_MS || "10000", 10);
 const WAHA_TIMEOUT_MS = Number.parseInt(process.env.WAHA_TIMEOUT_MS || "8000", 10);
+const MEDIA_TEXT_DELAY_MS = 2000;
 const REALTIME_HEARTBEAT_MS = 20000;
 const REALTIME_TOPIC = "realtime:liveticker-whatsapp-jobs";
 const WAHA_BASE_URL = String(process.env.WAHA_BASE_URL || "http://127.0.0.1:3001").replace(/\/$/, "");
@@ -350,6 +351,7 @@ async function processJob(job) {
 
   try {
     const mediaAsset = mediaAssetForJob(job);
+    let mediaSentThisRun = false;
     if (mediaAsset && !sentRecord.media) {
       const mediaRecord = mediaAsset === MEDIA_ASSETS.goal
         ? await sendStickerToWaha(mediaAsset)
@@ -357,6 +359,11 @@ async function processJob(job) {
       sentRecord = { ...sentRecord, media: mediaRecord };
       rememberSent(job.id, sentRecord);
       log("job_media_sent", { jobId: job.id, media: mediaAsset.filename });
+      mediaSentThisRun = true;
+    }
+
+    if (mediaSentThisRun) {
+      await new Promise((resolve) => setTimeout(resolve, MEDIA_TEXT_DELAY_MS));
     }
 
     if (!sentRecord.text) {

@@ -122,13 +122,18 @@ test("WhatsApp worker sends goal as sticker and penalty as image before the text
   assert.match(worker, /mediaAsset === MEDIA_ASSETS\.goal/);
   assert.match(worker, /await sendStickerToWaha\(mediaAsset\)/);
   assert.match(worker, /await sendImageToWaha\(mediaAsset\)/);
+  assert.match(worker, /MEDIA_TEXT_DELAY_MS = 2000/);
+  assert.match(worker, /await new Promise\(\(resolve\) => setTimeout\(resolve, MEDIA_TEXT_DELAY_MS\)\)/);
   assert.match(worker, /log\("job_media_sent"/);
 
   const mediaIndex = worker.indexOf("const mediaRecord =");
+  const delayIndex = worker.indexOf("setTimeout(resolve, MEDIA_TEXT_DELAY_MS)");
   const textIndex = worker.indexOf("const textRecord = await sendTextToWaha(job);");
   assert.notEqual(mediaIndex, -1);
+  assert.notEqual(delayIndex, -1);
   assert.notEqual(textIndex, -1);
-  assert.ok(mediaIndex < textIndex, "media must be sent before the text message");
+  assert.ok(mediaIndex < delayIndex, "media must be sent before the ordering delay");
+  assert.ok(delayIndex < textIndex, "ordering delay must happen before the text message");
 });
 
 test("Liveticker bootstrap defers state dispatch until generated output exists", async () => {
