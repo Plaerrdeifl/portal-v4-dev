@@ -199,7 +199,6 @@ def apply_lines(root,lines):
 def apply_goal_block(root,lines,fmt):
     set_text(root,'our_goals_heading','UNSERE TORE' if lines else '')
     apply_lines(root,lines)
-    if fmt=='STORY' and lines: center_goal_block(root,lines)
 
 def numeric_y(element):
     if element is None: return None
@@ -248,11 +247,119 @@ def logo_center_x(root,id_):
     cx,_=transform_point(g.get('transform'),x+w/2,y+h/2)
     return cx
 
+def numeric_x(element):
+    if element is None: return None
+    for node in element.iter():
+        raw=str(node.get('x') or '').strip()
+        if not raw: continue
+        try: return float(raw.split()[0].split(',')[0])
+        except ValueError: continue
+    return None
+
+def font_size_px(element,default):
+    if element is None: return default
+    raw=str(element.get('font-size') or '').strip().replace('px','')
+    if raw:
+        try: return float(raw)
+        except ValueError: pass
+    style=str(element.get('style') or '')
+    m=re.search(r'font-size\s*:\s*([0-9.]+)',style)
+    return float(m.group(1)) if m else default
+
+def set_font_size_px(element,value):
+    if element is None: return
+    px=f'{value:.4f}px'
+    style=str(element.get('style') or '')
+    if re.search(r'font-size\s*:',style):
+        element.set('style',re.sub(r'font-size\s*:\s*[-+0-9.eE]+(?:px)?',f'font-size:{px}',style))
+    else:
+        element.set('font-size',px)
+
+def estimated_text_width(element):
+    if element is None: return 0.0
+    text=''.join(element.itertext()).strip()
+    if not text: return 0.0
+    default=53.7 if CURRENT_FORMAT=='POST' else 60.5
+    return len(text)*font_size_px(element,default)*0.56
+
+def visible_goal_ids(root):
+    ids=[]
+    heading=find(root,'our_goals_heading')
+    if heading is not None and ''.join(heading.itertext()).strip(): ids.append('our_goals_heading')
+    for i in range(1,11):
+        id_=f'our_goals_line_{i}'; e=find(root,id_)
+        if e is not None and ''.join(e.itertext()).strip(): ids.append(id_)
+    return ids
+
+def goal_block_bounds(root,ids):
+    left=[]; right=[]; top=[]; bottom=[]
+    for id_ in ids:
+        e=find(root,id_); x=numeric_x(e); y=numeric_y(e)
+        if x is None or y is None: continue
+        default=46.0 if id_=='our_goals_heading' else (53.7 if CURRENT_FORMAT=='POST' else 36.0)
+        size=font_size_px(e,default)
+        left.append(x); right.append(x+estimated_text_width(e))
+        top.append(y-size*0.88); bottom.append(y+size*0.22)
+    if not left: return None
+    return min(left),min(top),max(right),max(bottom)
+
+def shift_goal_block(root,ids,dx=0.0,dy=0.0):
+    for id_ in ids:
+        e=find(root,id_)
+        if dx: shift_x(e,dx)
+        if dy: shift_y(e,dy)
+
+def fit_goal_font_width(root,ids,max_width):
+    base={}
+    for id_ in ids:
+        e=find(root,id_)
+        default=46.0 if id_=='our_goals_heading' else (53.7 if CURRENT_FORMAT=='POST' else 36.0)
+        base[id_]=font_size_px(e,default)
+    chosen=1.0
+    for factor in (1.0,0.95,0.90,0.85,0.80,0.75,0.70,0.65,0.60):
+        for id_,size in base.items(): set_font_size_px(find(root,id_),size*factor)
+        bounds=goal_block_bounds(root,ids)
+        chosen=factor
+        if bounds is None or bounds[2]-bounds[0]<=max_width: break
+    return chosen
+
+def place_story_goal_block(root,ids):
+    if not ids: return
+    canvas_w=941.0; margin=42.0; target_y=1045.0
+    fit_goal_font_width(root,ids,canvas_w-2*margin)
+    bounds=goal_block_bounds(root,ids)
+    if bounds is None: return
+    left,top,right,bottom=bounds
+    dx=canvas_w/2.0-(left+right)/2.0
+    dy=target_y-(top+bottom)/2.0
+    shift_goal_block(root,ids,dx,dy)
+
+def place_post_goal_block(root,home_away,ids):
+    if not ids: return
+    right_limit=1254.0-36.0
+    if str(home_away or '').upper()=='AWAY':
+        shift_goal_block(root,ids,560.0,0.0)
+        bounds=goal_block_bounds(root,ids)
+        if bounds is not None and bounds[2]>right_limit:
+            line_ids=ids[1:] if len(ids)>1 else ids
+            line_left=min((numeric_x(find(root,id_)) for id_ in line_ids if numeric_x(find(root,id_)) is not None),default=bounds[0])
+            pull=min(bounds[2]-right_limit,max(0.0,line_left-500.0))
+            if pull>0: shift_goal_block(root,ids,-pull,0.0)
+    bounds=goal_block_bounds(root,ids)
+    if bounds is None: return
+    if bounds[2]>right_limit:
+        fit_goal_font_width(root,ids,max(1.0,right_limit-bounds[0]))
+        bounds=goal_block_bounds(root,ids)
+    if bounds is not None and bounds[2]>right_limit:
+        shift_goal_block(root,ids,-(bounds[2]-right_limit),0.0)
+
 def place_goal_block(root,home_away):
-    if str(home_away or '').upper()!='AWAY': return
-    delta=logo_center_x(root,'logo_away')-logo_center_x(root,'logo_home')
-    shift_x(find(root,'our_goals_heading'),delta)
-    for i in range(1,11): shift_x(find(root,f'our_goals_line_{i}'),delta)
+    ids=visible_goal_ids(root)
+    if not ids: return
+    if CURRENT_FORMAT=='STORY':
+        place_story_goal_block(root,ids)
+    else:
+        place_post_goal_block(root,home_away,ids)
 
 def center_goal_block(root,lines):
     heading=find(root,'our_goals_heading'); final_anchor=find(root,'our_goals_line_10')
