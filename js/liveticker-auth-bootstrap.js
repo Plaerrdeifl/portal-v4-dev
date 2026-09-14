@@ -9,7 +9,7 @@ try {
     const app = document.getElementById("tickerApp");
     if (app) app.hidden = false;
     await import("./liveticker-bootstrap.js?v=20260909-game-mode2");
-    await import("./liveticker-graphics-inline.js?v=20260912-android-share-r1");
+    await import("./liveticker-graphics-inline.js?v=20260914-ios-share-r2");
   }
 } catch (error) {
   console.error(error);
