@@ -99,7 +99,8 @@ async function harness(artifacts = [artifact("POST"), artifact("STORY")], status
 
 test("Post/Story prefetch is deduplicated and sharing starts inside the original click", async () => {
   const h = await harness();
-  assert.deepEqual(h.box.children.map(button => button.textContent), ["Post", "Story"]);
+  assert.deepEqual(h.box.children.map(button => button.textContent), ["Post wird vorbereitet …", "Story wird vorbereitet …"]);
+  assert.deepEqual(h.box.children.map(button => button.disabled), [true, true]);
   assert.equal(h.requests.length, 2);
   assert.equal(h.requests[0].url, "https://cloud.plaerrdeifl.de/public.php/dav/files/TestOnlyPOST");
   assert.equal(h.requests[0].options.credentials, "omit");
@@ -125,11 +126,17 @@ test("Post/Story prefetch is deduplicated and sharing starts inside the original
   assert.deepEqual(h.downloads, []);
 });
 
-test("missing/pending cache immediately opens the direct download without fetching in the click", async () => {
+test("pending native-share artifacts stay disabled until the PNG is prepared", async () => {
   const h = await harness();
+  assert.equal(h.box.children[0].disabled, true);
+  assert.equal(h.box.children[0].textContent, "Post wird vorbereitet …");
+  assert.deepEqual(h.downloads, []);
+  await h.prepare(0);
+  assert.equal(h.box.children[0].disabled, false);
+  assert.equal(h.box.children[0].textContent, "Post");
   h.click();
-  assert.deepEqual(h.downloads, [artifact("POST").downloadUrl]);
-  assert.equal(h.shares.length, 0);
+  assert.equal(h.shares.length, 1);
+  assert.deepEqual(h.downloads, []);
   assert.equal(h.requests.length, 2);
 });
 
@@ -208,10 +215,12 @@ test("cache invalidates changed URL, digest or size and evicts old entries", asy
     const current = { ...post, ...change };
     h.snapshot.jobs[0].result.artifacts = [current];
     await h.sandbox.refreshGraphics();
+    assert.equal(h.box.children[0].disabled, true);
+    h.requests.at(-1).reject(new Error("test prefetch failure"));
+    await flush();
     h.click();
     assert.equal(h.downloads.at(-1), current.downloadUrl);
     assert.equal(h.shares.length, 0);
-    await flush();
   }
   assert.equal(h.requests.length, 4);
   for (let revision = 0; revision < 6; revision += 1) {
@@ -221,6 +230,9 @@ test("cache invalidates changed URL, digest or size and evicts old entries", asy
   h.snapshot.jobs[0].result.artifacts = [post];
   await h.sandbox.refreshGraphics();
   assert.equal(h.requests.length, 11, "evicted artifact must be prefetched again");
+  assert.equal(h.box.children[0].disabled, true);
+  h.requests.at(-1).reject(new Error("test evicted prefetch failure"));
+  await flush();
   h.click();
   assert.equal(h.shares.length, 0);
   assert.equal(h.downloads.at(-1), post.downloadUrl);
