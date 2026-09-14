@@ -180,23 +180,44 @@ function graphicArtifactCacheKey(artifact) {
   return JSON.stringify([artifact.downloadUrl, artifact.sha256, artifact.bytes]);
 }
 
+function graphicArtifactEntry(artifact) {
+  return graphicArtifactCache.get(graphicArtifactCacheKey(artifact)) || null;
+}
+
 function cachedGraphicArtifact(artifact) {
-  return graphicArtifactCache.get(graphicArtifactCacheKey(artifact))?.prepared || null;
+  return graphicArtifactEntry(artifact)?.prepared || null;
+}
+
+function supportsNativeGraphicShare() {
+  return typeof File === "function"
+    && typeof navigator?.share === "function"
+    && typeof navigator?.canShare === "function";
 }
 
 function prefetchGraphicArtifact(artifact) {
   const key = graphicArtifactCacheKey(artifact);
-  if (graphicArtifactCache.has(key)) return;
-  const entry = { prepared: null };
+  const existing = graphicArtifactCache.get(key);
+  if (existing) return existing;
+  const entry = { prepared: null, pending: true, failed: false };
   graphicArtifactCache.set(key, entry);
   if (graphicArtifactCache.size > GRAPHIC_ARTIFACT_CACHE_LIMIT) {
     graphicArtifactCache.delete(graphicArtifactCache.keys().next().value);
   }
-  // Deduplicate pending requests; a failed prefetch leaves direct download available.
+  // iOS file sharing must start from the original tap. Prepare the PNG before
+  // enabling the button so navigator.share() can run synchronously on tap.
   void fetchGraphicArtifact(artifact).then(
-    prepared => { entry.prepared = prepared; },
-    () => {}
+    prepared => {
+      entry.prepared = prepared;
+      entry.pending = false;
+      if (resultsOpen) renderArtifacts();
+    },
+    () => {
+      entry.pending = false;
+      entry.failed = true;
+      if (resultsOpen) renderArtifacts();
+    }
   );
+  return entry;
 }
 
 function downloadGraphicArtifact(artifact) {
@@ -238,22 +259,25 @@ function renderArtifacts() {
   if (job?.status === "SUCCEEDED") {
     const artifacts = artifactRowsFor(job);
     for (const artifact of artifacts) {
-      prefetchGraphicArtifact(artifact);
+      const entry = prefetchGraphicArtifact(artifact);
       const button = document.createElement("button");
       button.type = "button";
       button.className = "graphic-artifact-button";
       button.dataset.graphicArtifact = artifact.kind;
-      button.textContent = artifact.kind === "POST" ? "Post" : "Story";
+      const baseLabel = artifact.kind === "POST" ? "Post" : "Story";
+      const waitingForNativeShare = supportsNativeGraphicShare() && Boolean(entry?.pending) && !entry?.prepared && !entry?.failed;
+      button.disabled = waitingForNativeShare;
+      if (waitingForNativeShare) button.setAttribute("aria-busy", "true");
+      button.textContent = waitingForNativeShare ? `${baseLabel} wird vorbereitet …` : baseLabel;
       button.addEventListener("click", () => {
-        const label = `${kindLabel(kind)} · ${button.textContent}`;
-        const original = button.textContent;
+        const label = `${kindLabel(kind)} · ${baseLabel}`;
         button.disabled = true;
         button.setAttribute("aria-busy", "true");
         button.textContent = "Teilen …";
         const resetButton = () => {
           button.disabled = false;
           button.removeAttribute("aria-busy");
-          button.textContent = original;
+          button.textContent = baseLabel;
         };
         Promise.resolve(deliverGraphicArtifact(artifact, label)).then(resetButton, resetButton);
       });
