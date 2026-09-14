@@ -351,7 +351,7 @@ async function processJob(job) {
   try {
     const mediaAsset = mediaAssetForJob(job);
     if (mediaAsset && !sentRecord.media) {
-      const mediaRecord = mediaAsset.mimetype === "image/webp"
+      const mediaRecord = mediaAsset === MEDIA_ASSETS.goal
         ? await sendStickerToWaha(mediaAsset)
         : await sendImageToWaha(mediaAsset);
       sentRecord = { ...sentRecord, media: mediaRecord };

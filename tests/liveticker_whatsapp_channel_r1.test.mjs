@@ -105,7 +105,7 @@ test("WhatsApp worker uses public realtime plus token-authenticated gateway, nev
   assert.doesNotMatch(gateway, /WAHA_API_KEY|WAHA_CHANNEL_ID/);
 });
 
-test("WhatsApp worker sends goal and penalty PNG media before the text message", async () => {
+test("WhatsApp worker sends goal as sticker and penalty as image before the text message", async () => {
   const worker = await read("workers/liveticker-whatsapp/worker.mjs");
   const [goalPng, penaltyPng] = await Promise.all([
     fs.readFile(path.join(root, "workers/liveticker-whatsapp/assets/toooor.png")),
@@ -119,6 +119,8 @@ test("WhatsApp worker sends goal and penalty PNG media before the text message",
   assert.match(worker, /PENALTY_MEDIA_FILE = `\$\{MEDIA_ASSET_DIR\}\/strafe\.png`/);
   assert.match(worker, /goal: loadPngAsset\(GOAL_MEDIA_FILE, "toooor\.png"\)/);
   assert.match(worker, /penalty: loadPngAsset\(PENALTY_MEDIA_FILE, "strafe\.png"\)/);
+  assert.match(worker, /mediaAsset === MEDIA_ASSETS\.goal/);
+  assert.match(worker, /await sendStickerToWaha\(mediaAsset\)/);
   assert.match(worker, /await sendImageToWaha\(mediaAsset\)/);
   assert.match(worker, /log\("job_media_sent"/);
 
