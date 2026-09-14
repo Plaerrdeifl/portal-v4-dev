@@ -325,14 +325,52 @@ def fit_goal_font_width(root,ids,max_width):
 
 def place_story_goal_block(root,ids):
     if not ids: return
-    canvas_w=941.0; margin=42.0; target_y=1045.0
+    canvas_w=941.0; margin=42.0
+    # First keep the block safely inside the canvas. Exact centering happens
+    # after the SVG has been written and Inkscape can report real glyph bounds.
     fit_goal_font_width(root,ids,canvas_w-2*margin)
-    bounds=goal_block_bounds(root,ids)
+
+def query_svg_bounds(svg:Path,outdir:Path,ids):
+    cmd=[
+        'docker','run','--rm','--network','none','--cap-drop=ALL','--security-opt=no-new-privileges',
+        '--pids-limit=128','--user',f'{os.getuid()}:{os.getgid()}','-e','HOME=/tmp',
+        '-v',f'{outdir}:/work:ro','-v',f'{FONT_DIR}:/usr/share/fonts/truetype/plaerrdeifl:ro',
+        '--entrypoint','inkscape',RENDERER,f'/work/{svg.name}','--query-all'
+    ]
+    r=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,timeout=90)
+    if r.returncode: raise RuntimeError(f'inkscape query failed: {r.stderr[-800:]}')
+    wanted=set(ids); bounds=[]
+    for raw in r.stdout.splitlines():
+        parts=raw.rsplit(',',4)
+        if len(parts)!=5 or parts[0] not in wanted: continue
+        try:
+            x,y,w,h=map(float,parts[1:])
+        except ValueError:
+            continue
+        if w>0 and h>0: bounds.append((x,y,x+w,y+h))
+    if not bounds: return None
+    return min(v[0] for v in bounds),min(v[1] for v in bounds),max(v[2] for v in bounds),max(v[3] for v in bounds)
+
+def center_story_goal_block_exact(root,tree,svg:Path,outdir:Path,ids):
+    bounds=query_svg_bounds(svg,outdir,ids)
     if bounds is None: return
     left,top,right,bottom=bounds
-    dx=canvas_w/2.0-(left+right)/2.0
-    dy=target_y-(top+bottom)/2.0
-    shift_goal_block(root,ids,dx,dy)
+    max_width=941.0-84.0
+    width=right-left
+    if width>max_width:
+        factor=max(0.60,max_width/width)
+        for id_ in ids:
+            e=find(root,id_)
+            default=46.0 if id_=='our_goals_heading' else 36.0
+            set_font_size_px(e,font_size_px(e,default)*factor)
+        tree.write(svg,encoding='utf-8',xml_declaration=True)
+        bounds=query_svg_bounds(svg,outdir,ids)
+        if bounds is None: return
+        left,top,right,bottom=bounds
+    target_x=941.0/2.0
+    target_y=930.0
+    shift_goal_block(root,ids,target_x-(left+right)/2.0,target_y-(top+bottom)/2.0)
+    tree.write(svg,encoding='utf-8',xml_declaration=True)
 
 def place_post_goal_block(root,home_away,ids):
     if not ids: return
@@ -413,6 +451,8 @@ def render_one(state,kind,fmt,outdir):
     inject_logo(root,'logo_home',Path(home_team['logoPath'])); inject_logo(root,'logo_away',Path(away_team['logoPath']))
     stem=f"{kind.lower()}-{fmt.lower()}"; svg=outdir/f'{stem}.svg'; png=outdir/f'{stem}.png'
     tree.write(svg,encoding='utf-8',xml_declaration=True)
+    if fmt=='STORY' and lines:
+        center_story_goal_block_exact(root,tree,svg,outdir,visible_goal_ids(root))
     cmd=['docker','run','--rm','--network','none','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=256','--user',f'{os.getuid()}:{os.getgid()}','-e','HOME=/tmp','-v',f'{outdir}:/work','-v',f'{FONT_DIR}:/usr/share/fonts/truetype/plaerrdeifl:ro','--entrypoint','inkscape',RENDERER,f'/work/{svg.name}','--export-type=png',f'--export-filename=/work/{png.name}']
     r=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,timeout=180)
     if r.returncode: raise RuntimeError(f'inkscape failed {stem}: {r.stderr[-1000:]}')
