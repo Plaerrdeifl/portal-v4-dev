@@ -20,10 +20,11 @@ TEMPLATES={
 }
 EXPECTED={'POST':(1254,1254),'STORY':(941,1672)}
 BACKGROUND={'POST':ROOT/'assets/backgrounds/post-background.jpg','STORY':ROOT/'assets/backgrounds/story-background.jpg'}
-LOGO_HEIGHT={'POST':200.0,'STORY':200.0}
+LOGO_HEIGHT={'POST':250.0,'STORY':200.0}
 LOGO_TRIMMER=Path(__file__).with_name('trim_logo.py')
 OUR={'mighty','our','mighty_dogs','home_club'}
 OPP={'opponent','away','guest','other'}
+MAX_GOAL_LINES=7
 
 def q(tag): return f'{{{SVG_NS}}}{tag}'
 def find(root,id_):
@@ -190,7 +191,7 @@ def goal_lines(history,kind):
     for d in grouped.values():
         who=f"#{d['number']} {d['name']}" if d['number'] else d['name']
         out.append(f"{who} | {', '.join(d['mins'])}")
-    return out
+    return out[:MAX_GOAL_LINES]
 
 def apply_lines(root,lines):
     for i in range(1,11): set_text(root,f'our_goals_line_{i}',lines[i-1] if i<=len(lines) else '')
@@ -198,7 +199,6 @@ def apply_lines(root,lines):
 def apply_goal_block(root,lines,fmt):
     set_text(root,'our_goals_heading','UNSERE TORE' if lines else '')
     apply_lines(root,lines)
-    if fmt=='STORY' and lines: center_goal_block(root,lines)
 
 def numeric_y(element):
     if element is None: return None
@@ -224,6 +224,202 @@ def shift_y(element,delta):
             except ValueError:
                 pass
         if changed: node.set('y',''.join(parts))
+
+def shift_x(element,delta):
+    if element is None or abs(delta)<0.000001: return
+    for node in element.iter():
+        raw=str(node.get('x') or '').strip()
+        if not raw: continue
+        parts=re.split(r'([,\s]+)',raw)
+        for i in range(0,len(parts),2):
+            if not parts[i]: continue
+            try: parts[i]=f'{float(parts[i])+delta:.6f}'.rstrip('0').rstrip('.')
+            except ValueError: pass
+        node.set('x',''.join(parts))
+
+def logo_center_x(root,id_):
+    g=find(root,id_)
+    if g is None: raise RuntimeError(f'missing logo group: {id_}')
+    anchor=next((child for child in list(g) if child.tag==q('image')),None)
+    if anchor is None: raise RuntimeError(f'missing logo anchor image: {id_}')
+    x=float(anchor.get('x','0')); y=float(anchor.get('y','0'))
+    w=float(anchor.get('width','0')); h=float(anchor.get('height','0'))
+    cx,_=transform_point(g.get('transform'),x+w/2,y+h/2)
+    return cx
+
+def numeric_x(element):
+    if element is None: return None
+    for node in element.iter():
+        raw=str(node.get('x') or '').strip()
+        if not raw: continue
+        try: return float(raw.split()[0].split(',')[0])
+        except ValueError: continue
+    return None
+
+def font_size_px(element,default):
+    if element is None: return default
+    raw=str(element.get('font-size') or '').strip().replace('px','')
+    if raw:
+        try: return float(raw)
+        except ValueError: pass
+    style=str(element.get('style') or '')
+    m=re.search(r'font-size\s*:\s*([0-9.]+)',style)
+    return float(m.group(1)) if m else default
+
+def set_font_size_px(element,value):
+    if element is None: return
+    px=f'{value:.4f}px'
+    style=str(element.get('style') or '')
+    if re.search(r'font-size\s*:',style):
+        element.set('style',re.sub(r'font-size\s*:\s*[-+0-9.eE]+(?:px)?',f'font-size:{px}',style))
+    else:
+        element.set('font-size',px)
+
+def estimated_text_width(element):
+    if element is None: return 0.0
+    text=''.join(element.itertext()).strip()
+    if not text: return 0.0
+    default=53.7 if CURRENT_FORMAT=='POST' else 60.5
+    return len(text)*font_size_px(element,default)*0.56
+
+def visible_goal_ids(root):
+    ids=[]
+    heading=find(root,'our_goals_heading')
+    if heading is not None and ''.join(heading.itertext()).strip(): ids.append('our_goals_heading')
+    for i in range(1,11):
+        id_=f'our_goals_line_{i}'; e=find(root,id_)
+        if e is not None and ''.join(e.itertext()).strip(): ids.append(id_)
+    return ids
+
+def goal_block_bounds(root,ids):
+    left=[]; right=[]; top=[]; bottom=[]
+    for id_ in ids:
+        e=find(root,id_); x=numeric_x(e); y=numeric_y(e)
+        if x is None or y is None: continue
+        default=46.0 if id_=='our_goals_heading' else (53.7 if CURRENT_FORMAT=='POST' else 36.0)
+        size=font_size_px(e,default)
+        left.append(x); right.append(x+estimated_text_width(e))
+        top.append(y-size*0.88); bottom.append(y+size*0.22)
+    if not left: return None
+    return min(left),min(top),max(right),max(bottom)
+
+def shift_goal_block(root,ids,dx=0.0,dy=0.0):
+    for id_ in ids:
+        e=find(root,id_)
+        if dx: shift_x(e,dx)
+        if dy: shift_y(e,dy)
+
+def fit_goal_font_width(root,ids,max_width):
+    base={}
+    for id_ in ids:
+        e=find(root,id_)
+        default=46.0 if id_=='our_goals_heading' else (53.7 if CURRENT_FORMAT=='POST' else 36.0)
+        base[id_]=font_size_px(e,default)
+    chosen=1.0
+    for factor in (1.0,0.95,0.90,0.85,0.80,0.75,0.70,0.65,0.60):
+        for id_,size in base.items(): set_font_size_px(find(root,id_),size*factor)
+        bounds=goal_block_bounds(root,ids)
+        chosen=factor
+        if bounds is None or bounds[2]-bounds[0]<=max_width: break
+    return chosen
+
+def place_story_goal_block(root,ids):
+    if not ids: return
+    canvas_w=941.0; margin=42.0
+    # First keep the block safely inside the canvas. Exact centering happens
+    # after the SVG has been written and Inkscape can report real glyph bounds.
+    fit_goal_font_width(root,ids,canvas_w-2*margin)
+
+def query_svg_bounds(svg:Path,outdir:Path,ids):
+    cmd=[
+        'docker','run','--rm','--network','none','--cap-drop=ALL','--security-opt=no-new-privileges',
+        '--pids-limit=128','--user',f'{os.getuid()}:{os.getgid()}','-e','HOME=/tmp',
+        '-v',f'{outdir}:/work:ro','-v',f'{FONT_DIR}:/usr/share/fonts/truetype/plaerrdeifl:ro',
+        '--entrypoint','inkscape',RENDERER,f'/work/{svg.name}','--query-all'
+    ]
+    r=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,timeout=90)
+    if r.returncode: raise RuntimeError(f'inkscape query failed: {r.stderr[-800:]}')
+    wanted=set(ids); bounds=[]
+    for raw in r.stdout.splitlines():
+        parts=raw.rsplit(',',4)
+        if len(parts)!=5 or parts[0] not in wanted: continue
+        try:
+            x,y,w,h=map(float,parts[1:])
+        except ValueError:
+            continue
+        if w>0 and h>0: bounds.append((x,y,x+w,y+h))
+    if not bounds: return None
+    return min(v[0] for v in bounds),min(v[1] for v in bounds),max(v[2] for v in bounds),max(v[3] for v in bounds)
+
+def center_story_goal_block_exact(root,tree,svg:Path,outdir:Path,ids):
+    bounds=query_svg_bounds(svg,outdir,ids)
+    if bounds is None: return
+    left,top,right,bottom=bounds
+    max_width=941.0-84.0
+    width=right-left
+    if width>max_width:
+        factor=max(0.60,max_width/width)
+        for id_ in ids:
+            e=find(root,id_)
+            default=46.0 if id_=='our_goals_heading' else 36.0
+            set_font_size_px(e,font_size_px(e,default)*factor)
+        tree.write(svg,encoding='utf-8',xml_declaration=True)
+        bounds=query_svg_bounds(svg,outdir,ids)
+        if bounds is None: return
+        left,top,right,bottom=bounds
+
+    # Center the player lines as the actual content block. The heading is
+    # positioned separately over those lines so it is visually centered over
+    # the scorer text instead of only centering the union of heading + lines.
+    line_ids=[id_ for id_ in ids if id_.startswith('our_goals_line_')]
+    line_bounds=query_svg_bounds(svg,outdir,line_ids) if line_ids else None
+    heading_bounds=query_svg_bounds(svg,outdir,['our_goals_heading']) if 'our_goals_heading' in ids else None
+    target_x=941.0/2.0
+    target_y=930.0
+    if line_bounds is not None:
+        ll,lt,lr,lb=line_bounds
+        dx_lines=target_x-(ll+lr)/2.0
+        for id_ in line_ids:
+            shift_x(find(root,id_),dx_lines)
+        if heading_bounds is not None:
+            hl,ht,hr,hb=heading_bounds
+            shift_x(find(root,'our_goals_heading'),target_x-(hl+hr)/2.0)
+    else:
+        shift_goal_block(root,ids,target_x-(left+right)/2.0,0.0)
+
+    tree.write(svg,encoding='utf-8',xml_declaration=True)
+    bounds=query_svg_bounds(svg,outdir,ids)
+    if bounds is None: return
+    left,top,right,bottom=bounds
+    shift_goal_block(root,ids,0.0,target_y-(top+bottom)/2.0)
+    tree.write(svg,encoding='utf-8',xml_declaration=True)
+
+def place_post_goal_block(root,home_away,ids):
+    if not ids: return
+    right_limit=1254.0-36.0
+    if str(home_away or '').upper()=='AWAY':
+        shift_goal_block(root,ids,560.0,0.0)
+        bounds=goal_block_bounds(root,ids)
+        if bounds is not None and bounds[2]>right_limit:
+            line_ids=ids[1:] if len(ids)>1 else ids
+            line_left=min((numeric_x(find(root,id_)) for id_ in line_ids if numeric_x(find(root,id_)) is not None),default=bounds[0])
+            pull=min(bounds[2]-right_limit,max(0.0,line_left-500.0))
+            if pull>0: shift_goal_block(root,ids,-pull,0.0)
+    bounds=goal_block_bounds(root,ids)
+    if bounds is None: return
+    if bounds[2]>right_limit:
+        fit_goal_font_width(root,ids,max(1.0,right_limit-bounds[0]))
+        bounds=goal_block_bounds(root,ids)
+    if bounds is not None and bounds[2]>right_limit:
+        shift_goal_block(root,ids,-(bounds[2]-right_limit),0.0)
+
+def place_goal_block(root,home_away):
+    ids=visible_goal_ids(root)
+    if not ids: return
+    if CURRENT_FORMAT=='STORY':
+        place_story_goal_block(root,ids)
+    else:
+        place_post_goal_block(root,home_away,ids)
 
 def center_goal_block(root,lines):
     heading=find(root,'our_goals_heading'); final_anchor=find(root,'our_goals_line_10')
@@ -273,9 +469,12 @@ def render_one(state,kind,fmt,outdir):
     home_score,away_score,home_team,away_team=visual_sides(state,our,opp)
     set_text(root,'home_score',home_score); set_text(root,'away_score',away_score)
     lines=goal_lines(state['history'],kind); apply_goal_block(root,lines,fmt)
+    place_goal_block(root,state.get('homeAway'))
     inject_logo(root,'logo_home',Path(home_team['logoPath'])); inject_logo(root,'logo_away',Path(away_team['logoPath']))
     stem=f"{kind.lower()}-{fmt.lower()}"; svg=outdir/f'{stem}.svg'; png=outdir/f'{stem}.png'
     tree.write(svg,encoding='utf-8',xml_declaration=True)
+    if fmt=='STORY' and lines:
+        center_story_goal_block_exact(root,tree,svg,outdir,visible_goal_ids(root))
     cmd=['docker','run','--rm','--network','none','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=256','--user',f'{os.getuid()}:{os.getgid()}','-e','HOME=/tmp','-v',f'{outdir}:/work','-v',f'{FONT_DIR}:/usr/share/fonts/truetype/plaerrdeifl:ro','--entrypoint','inkscape',RENDERER,f'/work/{svg.name}','--export-type=png',f'--export-filename=/work/{png.name}']
     r=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,timeout=180)
     if r.returncode: raise RuntimeError(f'inkscape failed {stem}: {r.stderr[-1000:]}')
