@@ -7,6 +7,8 @@ const root = resolve(import.meta.dirname, "..");
 const read = path => readFile(resolve(root, path), "utf8");
 
 const paths = {
+  busOrgaPrerequisite:
+    "supabase/migrations/20260820064000_add_bus_orga_reference_team_m010_reset_r1.sql",
   authorization:
     "supabase/migrations/20260820065000_add_team_function_authorization_m010_r2.sql",
   operations:
@@ -21,8 +23,9 @@ const paths = {
     "supabase/migrations/20260820080000_dynamic_fanbus_org_recipients_m010_r2.sql"
 };
 
-const [authorization, operations, fanbusRead, memberRole, teamFunctions, recipients,
+const [busOrgaPrerequisite, authorization, operations, fanbusRead, memberRole, teamFunctions, recipients,
   fanbuses, teams, admin, sqlBehavior] = await Promise.all([
+  read(paths.busOrgaPrerequisite),
   read(paths.authorization),
   read(paths.operations),
   read(paths.fanbusRead),
@@ -45,10 +48,21 @@ function functionBody(source, signature, endMarker = "\n$$;") {
 test("M010-R2 migration package is forward-only and ordered", async () => {
   const names = Object.values(paths).map(path => path.split("/").at(-1));
   assert.deepEqual(names, [...names].sort());
-  for (const migration of [authorization, operations, fanbusRead, memberRole, teamFunctions, recipients]) {
+  for (const migration of [busOrgaPrerequisite, authorization, operations, fanbusRead, memberRole, teamFunctions, recipients]) {
     assert.match(migration, /M010-R2/);
     assert.doesNotMatch(migration, /tpieykhhawszlzsoflnl|wplescvhlgctynkfwvrj/);
   }
+});
+
+test("fresh resets create the required BUS_ORGA reference team before M010-R2", () => {
+  assert.ok(
+    paths.busOrgaPrerequisite < paths.authorization,
+    "BUS_ORGA prerequisite must run before the first dependent migration"
+  );
+  assert.match(busOrgaPrerequisite, /insert into app_portal\.teams/);
+  assert.match(busOrgaPrerequisite, /'BUS_ORGA'/);
+  assert.match(busOrgaPrerequisite, /on conflict \(code\) do nothing/);
+  assert.doesNotMatch(busOrgaPrerequisite, /team_memberships|auth\.users|app_portal\.users/);
 });
 
 test("TEAM_FUNCTION is a protected additive capability source", () => {

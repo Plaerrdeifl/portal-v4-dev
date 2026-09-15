@@ -126,7 +126,7 @@ async function loadStickerPicker() {
   const picker = document.getElementById(STICKER_PICKER_ID);
   if (!picker) return;
   try {
-    const { loadWhatsappStickerLibrary } = await import("./liveticker-whatsapp-stickers.js");
+    const { loadWhatsappStickerLibrary } = await import("./liveticker-whatsapp-stickers.js?v=20260915-sticker-server-r1");
     const stickers = activeWhatsappStickers(await loadWhatsappStickerLibrary({ includeInactive: false }));
     picker.innerHTML = `
       <legend>Optionaler Sticker</legend>

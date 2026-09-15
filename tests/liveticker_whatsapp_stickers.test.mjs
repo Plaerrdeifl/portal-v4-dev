@@ -76,17 +76,35 @@ test("migration uses private Supabase Storage, validates references and keeps st
   assert.doesNotMatch(sql, /service[_-]?role[_-]?(?:key|secret)|waha[_-]?api[_-]?key/i);
 });
 
-test("sticker upload is server-validated as static 512px WebP and browser code contains no service key", async () => {
-  const [upload, browserApi, stickerClient] = await Promise.all([
+test("sticker upload normalizes original images server-side and keeps browser code encoder-free", async () => {
+  const [upload, processor, dependencyConfig, authorizationMigration, browserApi, stickerClient, admin] = await Promise.all([
     read("supabase/functions/liveticker-whatsapp-stickers/index.ts"),
+    read("supabase/functions/liveticker-whatsapp-stickers/image-processing.mjs"),
+    read("supabase/functions/liveticker-whatsapp-stickers/deno.json"),
+    read("supabase/migrations/20260915110000_liveticker_whatsapp_sticker_server_processing_dev_r1.sql"),
     read("js/api.js"),
-    read("js/liveticker-whatsapp-stickers.js")
+    read("js/liveticker-whatsapp-stickers.js"),
+    read("js/modules/liveticker-admin.js")
   ]);
-  assert.match(upload, /MAX_STICKER_BYTES = 100 \* 1024/);
-  assert.match(upload, /dimensions\?\.width === STICKER_SIZE && dimensions\.height === STICKER_SIZE/);
-  assert.match(upload, /kind === "ANIM" \|\| kind === "ANMF"/);
+  assert.match(dependencyConfig, /npm:@imagemagick\/magick-wasm@0\.0\.43/);
+  assert.match(processor, /STICKER_WIDTH = 512/);
+  assert.match(processor, /STICKER_HEIGHT = 512/);
+  assert.match(processor, /STICKER_MAX_BYTES = 100 \* 1024/);
+  assert.match(processor, /MagickColors\.Transparent/);
+  assert.match(processor, /compositeGravity\(source, Gravity\.Center, CompositeOperator\.Over\)/);
+  assert.match(processor, /STICKER_WEBP_MIN_QUALITY = 20/);
+  assert.match(processor, /while \(lower <= upper\)/);
+  assert.match(processor, /kind === "ANIM" \|\| kind === "ANMF"/);
+  assert.match(processor, /kind === "acTL"/);
+  assert.match(upload, /normalizeStickerImage\(sourceBytes\)/);
   assert.match(upload, /storage\/v1\/object/);
-  assert.match(stickerClient, /Math\.min\(canvas\.width \/ width, canvas\.height \/ height\)/);
+  assert.match(authorizationMigration, /sourceMimeType/);
+  assert.match(authorizationMigration, /sourceSize/);
+  assert.doesNotMatch(authorizationMigration, /filename/);
+  assert.match(admin, /uploadLivetickerWhatsappSticker\(values\.name, source\)/);
+  assert.match(admin, /image\/png,image\/jpeg,image\/webp/);
+  assert.doesNotMatch(stickerClient, /canvas|toBlob|createImageBitmap|image\/webp.*quality/i);
+  assert.doesNotMatch(stickerClient, /Dieser Browser kann den Sticker nicht zuverlässig als WebP vorbereiten/);
   assert.doesNotMatch(browserApi, /SUPABASE_SERVICE_ROLE_KEY|SUPABASE_SECRET_KEYS/);
   assert.doesNotMatch(stickerClient, /SUPABASE_SERVICE_ROLE_KEY|SUPABASE_SECRET_KEYS/);
 });
