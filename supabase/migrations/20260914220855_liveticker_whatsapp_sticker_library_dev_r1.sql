@@ -446,7 +446,7 @@ set search_path = ''
 as $function$
   select case pg_catalog.lower(pg_catalog.btrim(coalesce(p_action, '')))
     when 'liveticker_whatsapp_stickers_list' then 'READ'
-    when 'liveticker_whatsapp_sticker_upload_authorize' then 'READ'
+    when 'liveticker_whatsapp_sticker_upload_authorize' then 'USER_MUTATION'
     when 'liveticker_whatsapp_sticker_asset_authorize' then 'READ'
     when 'liveticker_whatsapp_sticker_set_active' then 'USER_MUTATION'
     else app_private.platform_action_classification_before_liveticker_whatsapp_stickers_r1(p_action)

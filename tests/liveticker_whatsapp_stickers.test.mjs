@@ -69,6 +69,9 @@ test("migration uses private Supabase Storage, validates references and keeps st
   assert.match(sql, /where v_include_inactive or sticker\.active/i);
   assert.match(sql, /where sticker\.id = v_sticker_id and sticker\.active/i);
   assert.match(sql, /LIVETICKER_UNKNOWN_WHATSAPP_STICKER/i);
+  assert.match(sql, /when 'liveticker_whatsapp_sticker_upload_authorize' then 'USER_MUTATION'/i);
+  assert.match(sql, /when 'liveticker_whatsapp_sticker_asset_authorize' then 'READ'/i);
+  assert.match(sql, /when 'liveticker_whatsapp_sticker_set_active' then 'USER_MUTATION'/i);
   assert.match(sql, /v_item - '_whatsapp'/i);
   assert.doesNotMatch(sql, /service[_-]?role[_-]?(?:key|secret)|waha[_-]?api[_-]?key/i);
 });
