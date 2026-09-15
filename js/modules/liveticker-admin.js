@@ -21,8 +21,8 @@ import {
 } from "../liveticker-output-templates.js?v=20260906-prod-titlefix1";
 import {
   loadWhatsappStickerLibrary,
-  normalizeWhatsappStickerFile
-} from "../liveticker-whatsapp-stickers.js";
+  validateWhatsappStickerSourceFile
+} from "../liveticker-whatsapp-stickers.js?v=20260915-sticker-server-r1";
 
 let snapshot = null;
 let archiveSnapshot = null;
@@ -239,7 +239,7 @@ function stickerFileSize(value) {
 }
 
 function stickerUploadForm() {
-  return `<form class="liveticker-admin-form"><label>Name<input name="name" required maxlength="80" placeholder="z. B. TOOOOR"></label><label>Sticker-Datei<input name="stickerFile" type="file" accept="image/png,image/webp" required></label><div class="liveticker-sticker-upload-preview" data-sticker-upload-preview><span class="subtle">PNG oder WebP auswählen</span></div><p class="subtle">Die Datei wird ohne Zuschnitt transparent auf 512 × 512 Pixel gesetzt und als statisches WebP bis 100 KiB gespeichert.</p></form>`;
+  return `<form class="liveticker-admin-form"><label>Name<input name="name" required maxlength="80" placeholder="z. B. TOOOOR"></label><label>Sticker-Datei<input name="stickerFile" type="file" accept="image/png,image/jpeg,image/webp" required></label><div class="liveticker-sticker-upload-preview" data-sticker-upload-preview><span class="subtle">PNG, JPG oder WebP auswählen</span></div><p class="subtle">Die Datei wird beim Hochladen ohne Zuschnitt auf 512 × 512 Pixel gesetzt, transparent aufgefüllt und als statischer WebP-Sticker bis 100 KiB gespeichert.</p></form>`;
 }
 
 function bindStickerUploadPreview(dialog) {
@@ -248,8 +248,8 @@ function bindStickerUploadPreview(dialog) {
   input?.addEventListener("change", () => {
     const file = input.files?.[0] || null;
     preview?.replaceChildren();
-    if (!file || !["image/png", "image/webp"].includes(file.type)) {
-      if (preview) preview.textContent = "PNG oder WebP auswählen";
+    if (!file || !["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      if (preview) preview.textContent = "PNG, JPG oder WebP auswählen";
       return;
     }
     const reader = new FileReader();
@@ -271,9 +271,9 @@ function openWhatsappStickerUpload() {
     body: stickerUploadForm(),
     submitLabel: "Sticker speichern",
     onSubmit: async values => {
-      const normalized = await normalizeWhatsappStickerFile(values.stickerFile);
+      const source = validateWhatsappStickerSourceFile(values.stickerFile);
       await runWrite(
-        () => uploadLivetickerWhatsappSticker(values.name, normalized),
+        () => uploadLivetickerWhatsappSticker(values.name, source),
         "Sticker wurde gespeichert."
       );
       whatsappStickersSnapshot = await loadWhatsappStickerLibrary({ includeInactive: true });

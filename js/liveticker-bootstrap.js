@@ -81,7 +81,7 @@ try {
     } catch {}
   };
 
-  await import("./liveticker-whatsapp-publish.js?v=20260915-whatsapp-stickers-r1");
+  await import("./liveticker-whatsapp-publish.js?v=20260915-sticker-server-r1");
   await importRuntimeEngine();
   await import("./liveticker-v5-support.js?v=20260910-shootout60-r1");
 

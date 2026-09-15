@@ -96,6 +96,7 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260818194500_add_fanbus_trip_cancellation_m330_r1.sql",
     "20260818194600_add_fanbus_change_notifications_m330_r1.sql",
     "20260819151000_add_membership_portal_identity_m150_r2.sql",
+    "20260820064000_add_bus_orga_reference_team_m010_reset_r1.sql",
     "20260820065000_add_team_function_authorization_m010_r2.sql",
     "20260820070000_split_fanbus_operations_permissions_m010_r2.sql",
     "20260820071500_adjust_fanbus_read_permissions_m010_r2.sql",
@@ -127,8 +128,10 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260828161808_m326_manual_registration_before_public_open.sql",
     "20260828194202_m327_r1_fanbus_booking_selfservice.sql",
     "20260829090000_m328_r1_booking_management.sql",
+    "20260829161959_m328_rider_reactivation_reset_bridge.sql",
     "20260829162000_m328_r1_regular_rider_reactivate.sql",
     "20260829213946_m328_completion_public_trips_dev_booking_numbers.sql",
+    "20260829225222_m328_canonical_boarding_stops_reset_bridge.sql",
     "20260829225223_m328_fanbus_draft_defaults.sql",
     "20260830083113_m020_push_read_outbox_compat.sql",
     "20260830172000_m327_boarding_stop_public_details.sql",
@@ -179,7 +182,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260913134310_liveticker_whatsapp_outbox_dev_r1.sql",
     "20260913134341_liveticker_whatsapp_sync_wrapper_dev_r1.sql",
     "20260913134516_liveticker_whatsapp_worker_view_dev_r1.sql",
-    "20260914220855_liveticker_whatsapp_sticker_library_dev_r1.sql"
+    "20260914220855_liveticker_whatsapp_sticker_library_dev_r1.sql",
+    "20260915110000_liveticker_whatsapp_sticker_server_processing_dev_r1.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);

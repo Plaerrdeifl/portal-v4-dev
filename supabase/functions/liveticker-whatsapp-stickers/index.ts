@@ -1,9 +1,25 @@
+import {
+  STICKER_HEIGHT,
+  STICKER_SOURCE_MAX_BYTES,
+  STICKER_WIDTH,
+  StickerProcessingError,
+  inspectStickerSource,
+  normalizeStickerImage,
+  validateStaticStickerWebp
+} from "./image-processing.mjs";
+
 const SUPABASE_HOST = "tpieykhhawszlzsoflnl.supabase.co";
 const PORTAL_ORIGIN = "https://dev.plaerrdeifl.de";
 const BUCKET = "liveticker-whatsapp-stickers";
-const MAX_STICKER_BYTES = 100 * 1024;
-const MAX_REQUEST_BYTES = MAX_STICKER_BYTES + 32 * 1024;
-const STICKER_SIZE = 512;
+const MAX_REQUEST_BYTES = STICKER_SOURCE_MAX_BYTES + 64 * 1024;
+const DECLARED_SOURCE_MIME_TYPES = new Set([
+  "",
+  "application/octet-stream",
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp"
+]);
 
 type JsonObject = Record<string, unknown>;
 type RuntimeConfig = {
@@ -110,52 +126,6 @@ async function readBoundedBody(request: Request) {
   return body;
 }
 
-function ascii(bytes: Uint8Array, offset: number, length: number) {
-  return String.fromCharCode(...bytes.subarray(offset, offset + length));
-}
-
-function uint24(bytes: Uint8Array, offset: number) {
-  return bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16);
-}
-
-function validateStaticWebp(bytes: Uint8Array) {
-  if (bytes.byteLength < 20 || bytes.byteLength > MAX_STICKER_BYTES) return null;
-  if (ascii(bytes, 0, 4) !== "RIFF" || ascii(bytes, 8, 4) !== "WEBP") return null;
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  if (view.getUint32(4, true) !== bytes.byteLength - 8) return null;
-  let offset = 12;
-  let dimensions: { width: number; height: number } | null = null;
-  while (offset + 8 <= bytes.byteLength) {
-    const kind = ascii(bytes, offset, 4);
-    const length = view.getUint32(offset + 4, true);
-    const dataOffset = offset + 8;
-    const next = dataOffset + length + (length % 2);
-    if (next > bytes.byteLength) return null;
-    if (kind === "ANIM" || kind === "ANMF") return null;
-    if (kind === "VP8X" && length >= 10) {
-      if ((bytes[dataOffset] & 0x02) !== 0) return null;
-      dimensions = {
-        width: uint24(bytes, dataOffset + 4) + 1,
-        height: uint24(bytes, dataOffset + 7) + 1
-      };
-    } else if (kind === "VP8 " && length >= 10) {
-      if (bytes[dataOffset + 3] !== 0x9d || bytes[dataOffset + 4] !== 0x01 || bytes[dataOffset + 5] !== 0x2a) return null;
-      dimensions = {
-        width: view.getUint16(dataOffset + 6, true) & 0x3fff,
-        height: view.getUint16(dataOffset + 8, true) & 0x3fff
-      };
-    } else if (kind === "VP8L" && length >= 5) {
-      if (bytes[dataOffset] !== 0x2f) return null;
-      dimensions = {
-        width: 1 + bytes[dataOffset + 1] + ((bytes[dataOffset + 2] & 0x3f) << 8),
-        height: 1 + (bytes[dataOffset + 2] >> 6) + (bytes[dataOffset + 3] << 2) + ((bytes[dataOffset + 4] & 0x0f) << 10)
-      };
-    }
-    offset = next;
-  }
-  return dimensions?.width === STICKER_SIZE && dimensions.height === STICKER_SIZE ? dimensions : null;
-}
-
 async function sha256Hex(bytes: Uint8Array) {
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
   return [...digest].map(value => value.toString(16).padStart(2, "0")).join("");
@@ -214,7 +184,7 @@ async function storageDownload(config: RuntimeConfig, objectName: string) {
     return null;
   }
   const bytes = new Uint8Array(await response.arrayBuffer());
-  return validateStaticWebp(bytes) ? bytes : null;
+  return validateStaticStickerWebp(bytes) ? bytes : null;
 }
 
 async function storageDelete(config: RuntimeConfig, objectName: string) {
@@ -275,23 +245,54 @@ async function upload(config: RuntimeConfig, token: string, request: Request) {
   if (form.get("action") !== "upload") return fail(400, "INVALID_REQUEST", "Die Upload-Anfrage ist ungültig.", true);
   const name = String(form.get("name") || "").trim();
   const file = form.get("file");
-  if (name.length < 1 || name.length > 80 || !(file instanceof File) || !/^[A-Za-z0-9ÄÖÜäöüß._ -]+[.]webp$/.test(file.name)) {
-    return fail(400, "INVALID_FILE", "Bitte Name und einen gültigen WebP-Sticker angeben.", true);
+  if (name.length < 1 || name.length > 80 || !(file instanceof File)) {
+    return fail(400, "INVALID_FILE", "Bitte Name und eine gültige Sticker-Quelldatei angeben.", true);
   }
-  if (file.type && !["image/webp", "application/octet-stream"].includes(file.type)) {
-    return fail(400, "INVALID_FILE_TYPE", "Der finale Sticker muss WebP sein.", true);
+  const declaredMimeType = String(file.type || "").toLowerCase();
+  if (!DECLARED_SOURCE_MIME_TYPES.has(declaredMimeType)) {
+    return fail(400, "INVALID_FILE_TYPE", "Sticker können als PNG, JPG/JPEG oder WebP hochgeladen werden.", true);
   }
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const dimensions = validateStaticWebp(bytes);
-  if (!dimensions) {
-    return fail(400, "STICKER_CONTRACT_INVALID", "Der Sticker muss statisches WebP, exakt 512 × 512 Pixel und höchstens 100 KiB groß sein.", true);
+  if (file.size < 1 || file.size > STICKER_SOURCE_MAX_BYTES) {
+    return fail(413, "SOURCE_TOO_LARGE", "Die Quelldatei darf höchstens 5 MiB groß sein.", true);
   }
-  const authorization = await portalApi(config, token, "liveticker_whatsapp_sticker_upload_authorize", { name, filename: file.name });
+  const sourceBytes = new Uint8Array(await file.arrayBuffer());
+  let source;
+  try {
+    source = inspectStickerSource(sourceBytes);
+  } catch (error) {
+    if (error instanceof StickerProcessingError) return fail(
+      error.code === "SOURCE_TOO_LARGE" ? 413 : 400,
+      error.code,
+      error.message,
+      true
+    );
+    return fail(400, "INVALID_IMAGE", "Die Datei ist kein unterstütztes, lesbares Bild.", true);
+  }
+  const normalizedDeclaredMime = declaredMimeType === "image/jpg" ? "image/jpeg" : declaredMimeType;
+  if (normalizedDeclaredMime && normalizedDeclaredMime !== "application/octet-stream"
+      && normalizedDeclaredMime !== source.mimeType) {
+    return fail(400, "MIME_TYPE_MISMATCH", "Dateiinhalt und angegebener Bildtyp passen nicht zusammen.", true);
+  }
+  const authorization = await portalApi(config, token, "liveticker_whatsapp_sticker_upload_authorize", {
+    name,
+    sourceMimeType: source.mimeType,
+    sourceSize: sourceBytes.byteLength
+  });
   const actorId = String(authorization?.actorId || "");
-  if (!authorization || authorization.environment !== "DEV" || authorization.name !== name || authorization.filename !== file.name
+  if (!authorization || authorization.environment !== "DEV" || authorization.name !== name
+      || authorization.sourceMimeType !== source.mimeType
+      || Number(authorization.sourceSize) !== sourceBytes.byteLength
       || !/^[0-9a-f-]{36}$/i.test(actorId)) {
     return fail(403, "FORBIDDEN", "Der Sticker darf nicht hochgeladen werden.", true);
   }
+  let normalized;
+  try {
+    normalized = await normalizeStickerImage(sourceBytes);
+  } catch (error) {
+    if (error instanceof StickerProcessingError) return fail(422, error.code, error.message, true);
+    return fail(422, "STICKER_PROCESSING_FAILED", "Der Sticker konnte nicht sicher aufbereitet werden.", true);
+  }
+  const bytes = normalized.bytes;
   const stickerId = crypto.randomUUID();
   const storagePath = `stickers/dev/${stickerId}.webp`;
   const slug = stickerSlug(name, stickerId);
@@ -307,8 +308,8 @@ async function upload(config: RuntimeConfig, token: string, request: Request) {
       p_mime_type: "image/webp",
       p_sha256: sha256,
       p_file_size: bytes.byteLength,
-      p_width: dimensions.width,
-      p_height: dimensions.height
+      p_width: STICKER_WIDTH,
+      p_height: STICKER_HEIGHT
     });
     return jsonResponse(200, { ok: true, data: { sticker } }, true);
   } catch {
