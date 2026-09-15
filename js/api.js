@@ -241,6 +241,92 @@ export const api = Object.freeze({
     }
   },
 
+  async uploadLivetickerWhatsappSticker(name, file) {
+    const client = getSupabaseClient();
+    let transportFailure = false;
+    pendingRequests += 1;
+    lastError = null;
+    emitActivity();
+    try {
+      const { data: sessionData, error: sessionError } = await client.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (sessionError || !accessToken) {
+        throw new ApiError("Anmeldung erforderlich.", "AUTH_REQUIRED", sessionError);
+      }
+      const form = new FormData();
+      form.set("action", "upload");
+      form.set("name", String(name || "").trim());
+      form.set("file", file);
+      let response;
+      try {
+        response = await fetch(
+          `${CONFIG.supabase.url.replace(/\/+$/, "")}/functions/v1/liveticker-whatsapp-stickers`,
+          {
+            method: "POST",
+            headers: {
+              apikey: CONFIG.supabase.publishableKey,
+              Authorization: `Bearer ${accessToken}`
+            },
+            body: form
+          }
+        );
+      } catch (error) {
+        transportFailure = true;
+        throw error;
+      }
+      const result = await response.json().catch(() => null);
+      if (!response.ok || result?.ok !== true) {
+        const error = result?.error || {};
+        throw new ApiError(
+          platformMessage(error.code, error.message || "Der Sticker konnte nicht hochgeladen werden."),
+          error.code || `HTTP_${response.status}`,
+          error
+        );
+      }
+      return result.data;
+    } catch (error) {
+      lastError = transportFailure ? error : null;
+      throw error;
+    } finally {
+      pendingRequests = Math.max(0, pendingRequests - 1);
+      emitActivity();
+    }
+  },
+
+  async fetchLivetickerWhatsappSticker(stickerId) {
+    const client = getSupabaseClient();
+    const { data: sessionData, error: sessionError } = await client.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+    if (sessionError || !accessToken) {
+      throw new ApiError("Anmeldung erforderlich.", "AUTH_REQUIRED", sessionError);
+    }
+    const response = await fetch(
+      `${CONFIG.supabase.url.replace(/\/+$/, "")}/functions/v1/liveticker-whatsapp-stickers?stickerId=${encodeURIComponent(String(stickerId || ""))}`,
+      {
+        method: "GET",
+        cache: "no-store",
+        headers: {
+          apikey: CONFIG.supabase.publishableKey,
+          Authorization: `Bearer ${accessToken}`
+        }
+      }
+    );
+    if (!response.ok) {
+      const result = await response.json().catch(() => null);
+      const error = result?.error || {};
+      throw new ApiError(
+        platformMessage(error.code, error.message || "Die Sticker-Vorschau konnte nicht geladen werden."),
+        error.code || `HTTP_${response.status}`,
+        error
+      );
+    }
+    const blob = await response.blob();
+    if (blob.type !== "image/webp" || blob.size < 1 || blob.size > 100 * 1024) {
+      throw new ApiError("Die Sticker-Vorschau ist ungültig.", "STICKER_ASSET_INVALID");
+    }
+    return blob;
+  },
+
   activity() {
     return {
       pending: pendingRequests,

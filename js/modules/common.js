@@ -21,6 +21,14 @@ export function uploadM340Template(kind, file) {
   return api.uploadM340Template(kind, file);
 }
 
+export function uploadLivetickerWhatsappSticker(name, file) {
+  return api.uploadLivetickerWhatsappSticker(name, file);
+}
+
+export function fetchLivetickerWhatsappSticker(stickerId) {
+  return api.fetchLivetickerWhatsappSticker(stickerId);
+}
+
 export function currentUser() {
   return auth.current().user || {};
 }

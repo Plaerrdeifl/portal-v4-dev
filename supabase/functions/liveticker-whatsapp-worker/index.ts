@@ -5,6 +5,9 @@ const WORKER_TOKEN_HEADER = "X-Liveticker-Worker-Token";
 const EXPECTED_SUPABASE_HOST = "tpieykhhawszlzsoflnl.supabase.co";
 const EXPECTED_TOKEN_SHA256 = "8ad104a328042fe7a10854836c99f7b86ee6933c7de022516b29ab398299af16";
 const WORKER_VIEW = "pd_liveticker_whatsapp_jobs_worker";
+const STICKER_VIEW = "pd_liveticker_whatsapp_stickers_worker";
+const STICKER_BUCKET = "liveticker-whatsapp-stickers";
+const MAX_STICKER_BYTES = 100 * 1024;
 const PROCESSING_LEASE_MS = 120_000;
 const encoder = new TextEncoder();
 
@@ -73,6 +76,9 @@ async function readJson(request: Request): Promise<unknown> {
 function validBody(value: unknown): value is JsonObject {
   if (!isObject(value) || typeof value.action !== "string") return false;
   if (value.action === "claim") return exactKeys(value, ["action"]);
+  if (value.action === "sticker") {
+    return exactKeys(value, ["action", "stickerId"]) && isUuid(value.stickerId);
+  }
   if (value.action === "complete") {
     return exactKeys(value, ["action", "jobId", "attemptCount", "wahaMessageId", "sentAt"])
       && isUuid(value.jobId)
@@ -138,6 +144,7 @@ function jobPayload(row: JsonObject) {
     clientActionId: String(row.client_action_id || ""),
     publicationVersion: Number(row.publication_version || 1),
     message: String(row.message || ""),
+    stickerId: row.sticker_id ? String(row.sticker_id) : null,
     attemptCount: Number(row.attempt_count || 0),
     createdAt: String(row.created_at || ""),
     workerReceivedAt: String(row.worker_received_at || ""),
@@ -150,7 +157,7 @@ async function claim() {
     const nowIso = now.toISOString();
     const staleIso = new Date(now.getTime() - PROCESSING_LEASE_MS).toISOString();
     const rows = await rest(viewUrl({
-      select: "id,event_id,client_action_id,publication_version,message,status,attempt_count,next_attempt_at,claimed_at,created_at,worker_received_at",
+      select: "id,event_id,client_action_id,publication_version,message,sticker_id,status,attempt_count,next_attempt_at,claimed_at,created_at,worker_received_at",
       attempt_count: "lt.5",
       or: `(and(status.eq.PENDING,next_attempt_at.lte.${nowIso}),and(status.eq.FAILED,next_attempt_at.lte.${nowIso}),and(status.eq.PROCESSING,claimed_at.lt.${staleIso}))`,
       order: "created_at.asc,id.asc",
@@ -189,6 +196,68 @@ async function claim() {
     }
   }
   return { claimed: false };
+}
+
+function encodedObjectName(value: string) {
+  return value.split("/").map(segment => encodeURIComponent(segment)).join("/");
+}
+
+function bytesToBase64(bytes: Uint8Array) {
+  let binary = "";
+  for (let offset = 0; offset < bytes.byteLength; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+  }
+  return btoa(binary);
+}
+
+async function sha256Bytes(bytes: Uint8Array) {
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+  return Array.from(digest).map(value => value.toString(16).padStart(2, "0")).join("");
+}
+
+async function stickerAsset(stickerId: string) {
+  const rows = await rest(`${STICKER_VIEW}?${new URLSearchParams({
+    select: "id,storage_path,mime_type,width,height,file_size,sha256",
+    id: `eq.${stickerId}`,
+    limit: "1"
+  }).toString()}`);
+  if (Array.isArray(rows) && rows.length === 0) return { found: false, id: stickerId };
+  if (!Array.isArray(rows) || rows.length !== 1 || !isObject(rows[0])) throw new GatewayError();
+  const row = rows[0];
+  const storagePath = String(row.storage_path || "");
+  const mimeType = String(row.mime_type || "");
+  const fileSize = Number(row.file_size || 0);
+  const expectedSha = String(row.sha256 || "");
+  if (mimeType !== "image/webp"
+      || Number(row.width) !== 512
+      || Number(row.height) !== 512
+      || !Number.isSafeInteger(fileSize)
+      || fileSize < 1
+      || fileSize > MAX_STICKER_BYTES
+      || !/^stickers\/dev\/[0-9a-f-]{36}[.]webp$/i.test(storagePath)
+      || !/^[0-9a-f]{64}$/.test(expectedSha)) throw new GatewayError();
+  const config = runtime();
+  const response = await fetch(
+    `${config.url}/storage/v1/object/${STICKER_BUCKET}/${encodedObjectName(storagePath)}`,
+    { headers: { apikey: config.key }, signal: AbortSignal.timeout(10_000) }
+  );
+  if (!response.ok) {
+    await response.body?.cancel();
+    throw new GatewayError();
+  }
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.byteLength !== fileSize
+      || bytes.byteLength < 20
+      || String.fromCharCode(...bytes.subarray(0, 4)) !== "RIFF"
+      || String.fromCharCode(...bytes.subarray(8, 12)) !== "WEBP"
+      || await sha256Bytes(bytes) !== expectedSha) throw new GatewayError();
+  return {
+    found: true,
+    id: stickerId,
+    filename: `${stickerId}.webp`,
+    mimetype: mimeType,
+    data: bytesToBase64(bytes)
+  };
 }
 
 async function rowById(jobId: string) {
@@ -259,6 +328,8 @@ Deno.serve(async request => {
     if (!validBody(body)) return response(400, { ok: false, error: "Invalid request" });
     const data = body.action === "claim"
       ? await claim()
+      : body.action === "sticker"
+      ? await stickerAsset(String(body.stickerId))
       : body.action === "complete"
       ? await complete(body)
       : await fail(body);

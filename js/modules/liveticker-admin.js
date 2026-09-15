@@ -8,7 +8,8 @@ import {
   openDialog,
   optionList,
   runWrite,
-  showToast
+  showToast,
+  uploadLivetickerWhatsappSticker
 } from "./common.js";
 import {
   LIVETICKER_TEMPLATE_CONTEXTS,
@@ -18,6 +19,10 @@ import {
   templateToken,
   validateLivetickerTemplate
 } from "../liveticker-output-templates.js?v=20260906-prod-titlefix1";
+import {
+  loadWhatsappStickerLibrary,
+  normalizeWhatsappStickerFile
+} from "../liveticker-whatsapp-stickers.js";
 
 let snapshot = null;
 let archiveSnapshot = null;
@@ -25,6 +30,7 @@ let templateSnapshot = null;
 let graphicsGamesSnapshot = null;
 let graphicsStatusSnapshot = null;
 let graphicTemplatesSnapshot = null;
+let whatsappStickersSnapshot = null;
 let currentTeamId = "";
 let currentArchiveEventId = "";
 let currentGraphicsEventId = "";
@@ -79,7 +85,8 @@ function ensureLivetickerAdminStyles() {
     .liveticker-graphics-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px}.liveticker-graphics-summary>div,.liveticker-graphic-card{border:1px solid #d9e2ec;border-radius:14px;background:#fff;padding:12px}.liveticker-graphics-summary span,.liveticker-graphic-card small{display:block;color:#60748a;font-size:.72rem}.liveticker-graphics-summary strong{display:block;margin-top:4px;font-size:.95rem}
     .liveticker-graphic-template-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:18px}.liveticker-graphic-template-card{display:grid;gap:10px;padding:12px;border:1px solid #d9e2ec;border-radius:14px;background:#fff}.liveticker-graphic-template-card h3{margin:0;font-size:.95rem}.liveticker-graphic-template-card small{display:block;color:#60748a;font-size:.72rem}.liveticker-graphic-template-card code{font-size:.7rem;color:#38506a;word-break:break-all}.liveticker-graphic-grid{display:grid;gap:12px}.liveticker-graphic-card{display:grid;gap:10px}.liveticker-graphic-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.liveticker-graphic-card h3{margin:0;font-size:1rem}
     .liveticker-graphic-status{font-size:.72rem;font-weight:900;padding:5px 8px;border-radius:999px;background:#eef3f8;color:#38506a}.liveticker-graphic-status[data-status="SUCCEEDED"]{background:#e7f7ec;color:#16723a}.liveticker-graphic-status[data-status="PROCESSING"],.liveticker-graphic-status[data-status="QUEUED"]{background:#fff4d6;color:#8a5d00}.liveticker-graphic-status[data-status="FAILED"]{background:#fde8e8;color:#a22832}
-    @media(max-width:430px){.liveticker-graphics-summary,.liveticker-graphic-template-grid{grid-template-columns:1fr}.v4-dialog .liveticker-admin-form{gap:12px!important}.v4-dialog .liveticker-admin-form input:not([type="checkbox"]),.v4-dialog .liveticker-admin-form select{min-height:50px!important}.v4-dialog .liveticker-admin-form textarea{min-height:220px!important}.v4-dialog .liveticker-admin-form .checkbox-row{min-height:48px!important}.liveticker-variable-chip{min-height:42px}}
+    .liveticker-sticker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}.liveticker-sticker-card{display:grid;gap:10px;padding:12px;border:1px solid #d9e2ec;border-radius:15px;background:#fff}.liveticker-sticker-preview{display:grid;place-items:center;min-height:150px;border-radius:12px;background:linear-gradient(45deg,#f1f4f8 25%,transparent 25%),linear-gradient(-45deg,#f1f4f8 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#f1f4f8 75%),linear-gradient(-45deg,transparent 75%,#f1f4f8 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0}.liveticker-sticker-preview img{display:block;width:140px;height:140px;object-fit:contain}.liveticker-sticker-preview span{font-size:2rem}.liveticker-sticker-card h3{margin:0;font-size:.95rem}.liveticker-sticker-meta{display:flex;justify-content:space-between;gap:8px;color:#60748a;font-size:.7rem}.liveticker-sticker-state{font-weight:900}.liveticker-sticker-state[data-active="true"]{color:#16723a}.liveticker-sticker-state[data-active="false"]{color:#8a5d00}.liveticker-sticker-upload-preview{display:grid;place-items:center;min-height:180px;border:1px dashed #aebdcd;border-radius:13px;background:#f7faff}.liveticker-sticker-upload-preview img{display:block;width:160px;height:160px;object-fit:contain}
+    @media(max-width:430px){.liveticker-graphics-summary,.liveticker-graphic-template-grid{grid-template-columns:1fr}.liveticker-sticker-grid{grid-template-columns:1fr 1fr}.liveticker-sticker-preview{min-height:120px}.liveticker-sticker-preview img{width:110px;height:110px}.v4-dialog .liveticker-admin-form{gap:12px!important}.v4-dialog .liveticker-admin-form input:not([type="checkbox"]),.v4-dialog .liveticker-admin-form select{min-height:50px!important}.v4-dialog .liveticker-admin-form textarea{min-height:220px!important}.v4-dialog .liveticker-admin-form .checkbox-row{min-height:48px!important}.liveticker-variable-chip{min-height:42px}}
   `;
   document.head.appendChild(style);
 }
@@ -226,8 +233,104 @@ async function showGraphics(){currentView="graphics";currentTeamId="";currentArc
 async function enqueueGraphic(kind){if(!currentGraphicsEventId)return;try{await runWrite(()=>call("liveticker_graphics_enqueue",{eventId:currentGraphicsEventId,kind}),`${graphicKindLabel(kind)} wurde zur Erzeugung eingereiht.`);await loadGraphicsStatus()}catch(error){showToast(error?.message||"Grafik konnte nicht eingereiht werden.","error",6500)}}
 function renderGraphics(toolbar,panel){const games=graphicsGamesSnapshot?.games||[];const game=games.find(item=>item.eventId===currentGraphicsEventId)||null;const state=graphicsStatusSnapshot?.state||null;toolbar.innerHTML=`<div class="v4-section-heading"><div><span class="subtle">Liveticker</span><h2>Grafiken</h2><p class="subtle">SVG-Vorlagen verwalten sowie Zwischenstände und Endergebnis als POST + STORY erzeugen.</p></div><button class="button small secondary" type="button" data-back-teams>← Teams</button></div>`;if(!graphicsGamesSnapshot||!graphicTemplatesSnapshot)panel.innerHTML=loading("Grafikverwaltung wird geladen …");else{const gameArea=!games.length?'<div class="notice neutral">Aktuell ist kein Liveticker-Spiel verfügbar.</div>':`<div class="liveticker-graphics-controls"><label>Spiel<select data-graphics-game>${games.map(item=>`<option value="${escapeAttr(item.eventId)}" ${item.eventId===currentGraphicsEventId?"selected":""}>${escapeHtml(`${archiveDate(item.eventDate)} · ${item.displayTitle||"Spiel"}`)}</option>`).join("")}</select></label></div>${state&&game?`<div class="liveticker-graphics-summary"><div><span>Spiel</span><strong>${escapeHtml(game.displayTitle||"Spiel")}</strong></div><div><span>Minute</span><strong>${escapeHtml(state.minute||1)}</strong></div><div><span>Status</span><strong>${state.completedAt?"Beendet":"Läuft / vorbereitet"}</strong></div></div><div class="liveticker-graphic-grid">${["PERIOD_1","PERIOD_2","FINAL"].map(kind=>graphicCard(kind,state)).join("")}</div>`:loading("Grafikstatus wird geladen …")}`;panel.innerHTML=`${graphicTemplatesPanel()}${gameArea}`;bindGraphicTemplateActions(panel)}toolbar.querySelector("[data-back-teams]")?.addEventListener("click",()=>{currentView="teams";render()});panel.querySelector("[data-graphics-game]")?.addEventListener("change",async event=>{currentGraphicsEventId=event.currentTarget.value||"";graphicsStatusSnapshot=null;render();try{await loadGraphicsStatus()}catch(error){showToast(error?.message||"Grafikstatus konnte nicht geladen werden.","error",6500)}});panel.querySelectorAll("[data-generate-graphic]").forEach(button=>button.addEventListener("click",()=>enqueueGraphic(button.dataset.generateGraphic)))}
 
-function render(){const toolbar=document.getElementById("livetickerRosterToolbar");const panel=document.getElementById("livetickerRosterPanel");if(!toolbar||!panel)return;if(currentView==="archive"){renderArchive(toolbar,panel);return}if(currentView==="templates"){renderOutputTemplates(toolbar,panel);return}if(currentView==="graphics"){renderGraphics(toolbar,panel);return}const teams=snapshot?.teams||[];const currentTeam=currentTeamId?teams.find(team=>team.id===currentTeamId)||null:null;if(currentTeamId&&!currentTeam)currentTeamId="";if(currentTeam){toolbar.innerHTML=`<div class="v4-section-heading"><div><span class="subtle">Liveticker · Teams & Kader</span><h2>${escapeHtml(currentTeam.name)}</h2><p class="subtle">Mannschaft und Kader bearbeiten.</p></div><button class="button small secondary" type="button" data-back-teams>← Zurück</button></div>`;panel.innerHTML=teamDetail(currentTeam);toolbar.querySelector("[data-back-teams]")?.addEventListener("click",()=>{currentTeamId="";render()});bindTeamDetail(panel,currentTeam);return}toolbar.innerHTML=`<div class="v4-section-heading"><div><span class="subtle">Liveticker</span><h2>Teams & Kader</h2><p class="subtle">Team auswählen oder neu anlegen.</p></div><div class="button-row"><a class="button small secondary" href="./liveticker/" target="_blank" rel="noopener noreferrer">Ticker öffnen ↗</a><button class="button small secondary" type="button" data-open-graphics>Grafiken</button><button class="button small secondary" type="button" data-open-templates>Editor</button><button class="button small secondary" type="button" data-open-archive>Archiv</button><button class="button small primary" type="button" data-add-team>+ Team</button></div></div>`;panel.innerHTML=teams.length?`<div class="v4-team-list">${teams.map(teamListRow).join("")}</div>`:'<div class="notice neutral">Noch keine Liveticker-Teams angelegt.</div>';toolbar.querySelector("[data-open-graphics]")?.addEventListener("click",()=>showGraphics());toolbar.querySelector("[data-open-templates]")?.addEventListener("click",()=>{currentView="templates";currentTeamId="";render()});toolbar.querySelector("[data-open-archive]")?.addEventListener("click",()=>showArchive());toolbar.querySelector("[data-add-team]")?.addEventListener("click",()=>openTeam());panel.querySelectorAll("[data-team-id]").forEach(button=>button.addEventListener("click",()=>{currentTeamId=button.dataset.teamId||"";render()}))}
+function stickerFileSize(value) {
+  const bytes = Number(value || 0);
+  return bytes > 0 ? `${Math.ceil(bytes / 1024)} KiB` : "–";
+}
 
-export async function hydrateLivetickerAdmin(context={}){ensureLivetickerAdminStyles();currentView="teams";currentTeamId="";currentArchiveEventId="";currentGraphicsEventId="";archiveSnapshot=null;templateSnapshot=null;graphicsGamesSnapshot=null;graphicsStatusSnapshot=null;graphicTemplatesSnapshot=null;const panel=document.getElementById("livetickerRosterPanel");if(panel)panel.innerHTML=loading("Liveticker-Verwaltung wird geladen …");try{[snapshot,templateSnapshot]=await Promise.all([call("liveticker_teams_list"),call("liveticker_output_templates_list")]);if(context.isCurrent&&!context.isCurrent())return;render()}catch(error){if(context.isCurrent&&!context.isCurrent())return;if(panel)panel.innerHTML=errorPanel(error,"Liveticker-Verwaltung konnte nicht geladen werden");showToast(error?.message||"Liveticker-Verwaltung konnte nicht geladen werden.","error",6500)}}
+function stickerUploadForm() {
+  return `<form class="liveticker-admin-form"><label>Name<input name="name" required maxlength="80" placeholder="z. B. TOOOOR"></label><label>Sticker-Datei<input name="stickerFile" type="file" accept="image/png,image/webp" required></label><div class="liveticker-sticker-upload-preview" data-sticker-upload-preview><span class="subtle">PNG oder WebP auswählen</span></div><p class="subtle">Die Datei wird ohne Zuschnitt transparent auf 512 × 512 Pixel gesetzt und als statisches WebP bis 100 KiB gespeichert.</p></form>`;
+}
+
+function bindStickerUploadPreview(dialog) {
+  const input = dialog.querySelector('input[name="stickerFile"]');
+  const preview = dialog.querySelector("[data-sticker-upload-preview]");
+  input?.addEventListener("change", () => {
+    const file = input.files?.[0] || null;
+    preview?.replaceChildren();
+    if (!file || !["image/png", "image/webp"].includes(file.type)) {
+      if (preview) preview.textContent = "PNG oder WebP auswählen";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (!preview) return;
+      const image = document.createElement("img");
+      image.alt = "Vorschau des ausgewählten Stickers";
+      image.src = String(reader.result || "");
+      preview.replaceChildren(image);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function openWhatsappStickerUpload() {
+  const dialog = openDialog({
+    title: "Sticker hochladen",
+    kicker: "Liveticker · WhatsApp",
+    body: stickerUploadForm(),
+    submitLabel: "Sticker speichern",
+    onSubmit: async values => {
+      const normalized = await normalizeWhatsappStickerFile(values.stickerFile);
+      await runWrite(
+        () => uploadLivetickerWhatsappSticker(values.name, normalized),
+        "Sticker wurde gespeichert."
+      );
+      whatsappStickersSnapshot = await loadWhatsappStickerLibrary({ includeInactive: true });
+      render();
+    }
+  });
+  bindStickerUploadPreview(dialog);
+}
+
+async function setWhatsappStickerActive(sticker) {
+  try {
+    await runWrite(
+      () => call("liveticker_whatsapp_sticker_set_active", { stickerId: sticker.id, active: !sticker.active }),
+      sticker.active ? "Sticker wurde deaktiviert." : "Sticker wurde aktiviert."
+    );
+    whatsappStickersSnapshot = await loadWhatsappStickerLibrary({ includeInactive: true });
+    render();
+  } catch (error) {
+    showToast(error?.message || "Sticker-Status konnte nicht geändert werden.", "error", 6500);
+  }
+}
+
+function whatsappStickerCard(sticker) {
+  return `<article class="liveticker-sticker-card"><div class="liveticker-sticker-preview">${sticker.previewDataUrl ? `<img src="${escapeAttr(sticker.previewDataUrl)}" alt="${escapeAttr(sticker.name)}">` : '<span aria-hidden="true">🖼</span>'}</div><div><h3>${escapeHtml(sticker.name)}</h3><div class="liveticker-sticker-meta"><span>${escapeHtml(`${sticker.width} × ${sticker.height} · ${stickerFileSize(sticker.fileSize)}`)}</span><span class="liveticker-sticker-state" data-active="${sticker.active ? "true" : "false"}">${sticker.active ? "Aktiv" : "Inaktiv"}</span></div></div><button class="button small secondary" type="button" data-toggle-sticker="${escapeAttr(sticker.id)}">${sticker.active ? "Deaktivieren" : "Aktivieren"}</button></article>`;
+}
+
+async function showWhatsappStickers() {
+  currentView = "whatsapp-stickers";
+  currentTeamId = "";
+  whatsappStickersSnapshot = null;
+  render();
+  try {
+    whatsappStickersSnapshot = await loadWhatsappStickerLibrary({ includeInactive: true });
+    render();
+  } catch (error) {
+    const panel = document.getElementById("livetickerRosterPanel");
+    if (panel) panel.innerHTML = errorPanel(error, "Sticker-Bibliothek konnte nicht geladen werden");
+    showToast(error?.message || "Sticker-Bibliothek konnte nicht geladen werden.", "error", 6500);
+  }
+}
+
+function renderWhatsappStickers(toolbar, panel) {
+  toolbar.innerHTML = `<div class="v4-section-heading"><div><span class="subtle">Liveticker · WhatsApp</span><h2>Sticker</h2><p class="subtle">Statische Sticker für die manuelle Auswahl im Liveticker verwalten.</p></div><div class="button-row"><button class="button small secondary" type="button" data-back-teams>← Teams</button><button class="button small primary" type="button" data-upload-sticker>+ Sticker</button></div></div>`;
+  if (!whatsappStickersSnapshot) panel.innerHTML = loading("Sticker-Bibliothek wird geladen …");
+  else panel.innerHTML = whatsappStickersSnapshot.length
+    ? `<div class="liveticker-sticker-grid">${whatsappStickersSnapshot.map(whatsappStickerCard).join("")}</div>`
+    : '<div class="notice neutral">Noch keine WhatsApp-Sticker vorhanden.</div>';
+  toolbar.querySelector("[data-back-teams]")?.addEventListener("click", () => { currentView = "teams"; render(); });
+  toolbar.querySelector("[data-upload-sticker]")?.addEventListener("click", openWhatsappStickerUpload);
+  panel.querySelectorAll("[data-toggle-sticker]").forEach(button => button.addEventListener("click", () => {
+    const sticker = whatsappStickersSnapshot?.find(item => item.id === button.dataset.toggleSticker);
+    if (sticker) void setWhatsappStickerActive(sticker);
+  }));
+}
+
+function render(){const toolbar=document.getElementById("livetickerRosterToolbar");const panel=document.getElementById("livetickerRosterPanel");if(!toolbar||!panel)return;if(currentView==="archive"){renderArchive(toolbar,panel);return}if(currentView==="templates"){renderOutputTemplates(toolbar,panel);return}if(currentView==="graphics"){renderGraphics(toolbar,panel);return}if(currentView==="whatsapp-stickers"){renderWhatsappStickers(toolbar,panel);return}const teams=snapshot?.teams||[];const currentTeam=currentTeamId?teams.find(team=>team.id===currentTeamId)||null:null;if(currentTeamId&&!currentTeam)currentTeamId="";if(currentTeam){toolbar.innerHTML=`<div class="v4-section-heading"><div><span class="subtle">Liveticker · Teams & Kader</span><h2>${escapeHtml(currentTeam.name)}</h2><p class="subtle">Mannschaft und Kader bearbeiten.</p></div><button class="button small secondary" type="button" data-back-teams>← Zurück</button></div>`;panel.innerHTML=teamDetail(currentTeam);toolbar.querySelector("[data-back-teams]")?.addEventListener("click",()=>{currentTeamId="";render()});bindTeamDetail(panel,currentTeam);return}toolbar.innerHTML=`<div class="v4-section-heading"><div><span class="subtle">Liveticker</span><h2>Teams & Kader</h2><p class="subtle">Team auswählen oder neu anlegen.</p></div><div class="button-row"><a class="button small secondary" href="./liveticker/" target="_blank" rel="noopener noreferrer">Ticker öffnen ↗</a><button class="button small secondary" type="button" data-open-whatsapp-stickers>WhatsApp-Sticker</button><button class="button small secondary" type="button" data-open-graphics>Grafiken</button><button class="button small secondary" type="button" data-open-templates>Editor</button><button class="button small secondary" type="button" data-open-archive>Archiv</button><button class="button small primary" type="button" data-add-team>+ Team</button></div></div>`;panel.innerHTML=teams.length?`<div class="v4-team-list">${teams.map(teamListRow).join("")}</div>`:'<div class="notice neutral">Noch keine Liveticker-Teams angelegt.</div>';toolbar.querySelector("[data-open-whatsapp-stickers]")?.addEventListener("click",()=>showWhatsappStickers());toolbar.querySelector("[data-open-graphics]")?.addEventListener("click",()=>showGraphics());toolbar.querySelector("[data-open-templates]")?.addEventListener("click",()=>{currentView="templates";currentTeamId="";render()});toolbar.querySelector("[data-open-archive]")?.addEventListener("click",()=>showArchive());toolbar.querySelector("[data-add-team]")?.addEventListener("click",()=>openTeam());panel.querySelectorAll("[data-team-id]").forEach(button=>button.addEventListener("click",()=>{currentTeamId=button.dataset.teamId||"";render()}))}
+
+export async function hydrateLivetickerAdmin(context={}){ensureLivetickerAdminStyles();currentView="teams";currentTeamId="";currentArchiveEventId="";currentGraphicsEventId="";archiveSnapshot=null;templateSnapshot=null;graphicsGamesSnapshot=null;graphicsStatusSnapshot=null;graphicTemplatesSnapshot=null;whatsappStickersSnapshot=null;const panel=document.getElementById("livetickerRosterPanel");if(panel)panel.innerHTML=loading("Liveticker-Verwaltung wird geladen …");try{[snapshot,templateSnapshot]=await Promise.all([call("liveticker_teams_list"),call("liveticker_output_templates_list")]);if(context.isCurrent&&!context.isCurrent())return;render()}catch(error){if(context.isCurrent&&!context.isCurrent())return;if(panel)panel.innerHTML=errorPanel(error,"Liveticker-Verwaltung konnte nicht geladen werden");showToast(error?.message||"Liveticker-Verwaltung konnte nicht geladen werden.","error",6500)}}
 
 export function noop() {}

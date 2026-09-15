@@ -105,8 +105,11 @@ test("WhatsApp worker uses public realtime plus token-authenticated gateway, nev
   assert.doesNotMatch(gateway, /WAHA_API_KEY|WAHA_CHANNEL_ID/);
 });
 
-test("WhatsApp worker sends goal as sticker and penalty as image before the text message", async () => {
-  const worker = await read("workers/liveticker-whatsapp/worker.mjs");
+test("WhatsApp worker keeps legacy assets during migration but sends only explicitly selected stickers before text", async () => {
+  const [worker, delivery] = await Promise.all([
+    read("workers/liveticker-whatsapp/worker.mjs"),
+    read("workers/liveticker-whatsapp/delivery.mjs")
+  ]);
   const [goalPng, penaltyPng] = await Promise.all([
     fs.readFile(path.join(root, "workers/liveticker-whatsapp/assets/toooor.png")),
     fs.readFile(path.join(root, "workers/liveticker-whatsapp/assets/strafe.png"))
@@ -115,20 +118,16 @@ test("WhatsApp worker sends goal as sticker and penalty as image before the text
 
   assert.equal(goalPng.subarray(0, 8).equals(pngSignature), true);
   assert.equal(penaltyPng.subarray(0, 8).equals(pngSignature), true);
-  assert.match(worker, /GOAL_MEDIA_FILE = `\$\{MEDIA_ASSET_DIR\}\/toooor\.png`/);
-  assert.match(worker, /PENALTY_MEDIA_FILE = `\$\{MEDIA_ASSET_DIR\}\/strafe\.png`/);
-  assert.match(worker, /goal: loadPngAsset\(GOAL_MEDIA_FILE, "toooor\.png"\)/);
-  assert.match(worker, /penalty: loadPngAsset\(PENALTY_MEDIA_FILE, "strafe\.png"\)/);
-  assert.match(worker, /mediaAsset === MEDIA_ASSETS\.goal/);
-  assert.match(worker, /await sendStickerToWaha\(mediaAsset\)/);
-  assert.match(worker, /await sendImageToWaha\(mediaAsset\)/);
+  assert.match(worker, /await deliverWhatsappJob/);
+  assert.match(worker, /sendSticker: sendStickerToWaha/);
+  assert.doesNotMatch(worker, /sendImage|mediaAssetForJob|GOAL_MEDIA_FILE|PENALTY_MEDIA_FILE/);
   assert.match(worker, /MEDIA_TEXT_DELAY_MS = 2000/);
-  assert.match(worker, /await new Promise\(\(resolve\) => setTimeout\(resolve, MEDIA_TEXT_DELAY_MS\)\)/);
+  assert.match(worker, /setTimeout\(resolve, MEDIA_TEXT_DELAY_MS\)/);
   assert.match(worker, /log\("job_media_sent"/);
 
-  const mediaIndex = worker.indexOf("const mediaRecord =");
-  const delayIndex = worker.indexOf("setTimeout(resolve, MEDIA_TEXT_DELAY_MS)");
-  const textIndex = worker.indexOf("const textRecord = await sendTextToWaha(job);");
+  const mediaIndex = delivery.indexOf("const mediaRecord = await sendSticker(asset);");
+  const delayIndex = delivery.indexOf("await waitAfterSticker()");
+  const textIndex = delivery.indexOf("const textRecord = await sendText(job);");
   assert.notEqual(mediaIndex, -1);
   assert.notEqual(delayIndex, -1);
   assert.notEqual(textIndex, -1);
@@ -139,7 +138,7 @@ test("WhatsApp worker sends goal as sticker and penalty as image before the text
 test("Liveticker bootstrap defers state dispatch until generated output exists", async () => {
   const bootstrap = await read("js/liveticker-bootstrap.js");
   assert.match(bootstrap, /queueMicrotask\(\(\) => \{\s*window\.dispatchEvent\(new CustomEvent\("pd-liveticker-state-saved"/s);
-  assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260913-whatsapp-channel-r1/);
+  assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260915-whatsapp-stickers-r1/);
 });
 
 
@@ -149,6 +148,8 @@ test("DEV WhatsApp deploy script ships worker and authoritative media assets wit
   assert.match(deploy, /EXPECTED_PROJECT_REF=.*tpieykhhawszlzsoflnl/);
   assert.match(deploy, /WORKER_ENVIRONMENT=DEV/);
   assert.match(deploy, /node.*--check|NODE_BIN.*--check/s);
+  assert.match(deploy, /SOURCE_DELIVERY=.*delivery\.mjs/);
+  assert.match(deploy, /verify_same "\$\{SOURCE_DELIVERY\}" "\$\{TARGET_DELIVERY\}" "delivery\.mjs"/);
   assert.match(deploy, /rsync -a --delete[\s\S]*SOURCE_ASSETS[\s\S]*TARGET_ASSETS/);
   assert.match(deploy, /sha256sum/);
   assert.match(deploy, /Service was NOT restarted/);

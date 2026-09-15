@@ -6,6 +6,7 @@ import {
   writeFileSync
 } from "node:fs";
 import { dirname } from "node:path";
+import { deliverWhatsappJob, normalizeSentRecord } from "./delivery.mjs";
 
 const REQUIRED_ENV = [
   "SUPABASE_URL",
@@ -28,9 +29,6 @@ const JOURNAL_FILE = String(
   process.env.WHATSAPP_SENT_JOURNAL_FILE
   || "/srv/docker/liveticker/whatsapp-worker/sent-journal.json"
 );
-const MEDIA_ASSET_DIR = "/srv/docker/liveticker/whatsapp-worker/assets";
-const GOAL_MEDIA_FILE = `${MEDIA_ASSET_DIR}/toooor.png`;
-const PENALTY_MEDIA_FILE = `${MEDIA_ASSET_DIR}/strafe.png`;
 
 for (const name of REQUIRED_ENV) {
   if (!String(process.env[name] || "").trim()) throw new Error(`Missing required environment variable: ${name}`);
@@ -60,10 +58,6 @@ if (!Number.isInteger(EDGE_TIMEOUT_MS) || EDGE_TIMEOUT_MS < 1000) throw new Erro
 if (!Number.isInteger(WAHA_TIMEOUT_MS) || WAHA_TIMEOUT_MS < 1000) throw new Error("WAHA_TIMEOUT_MS must be at least 1000");
 
 const WORKER_TOKEN = readSecret(WORKER_TOKEN_FILE, 32);
-const MEDIA_ASSETS = Object.freeze({
-  goal: loadPngAsset(GOAL_MEDIA_FILE, "toooor.png"),
-  penalty: loadPngAsset(PENALTY_MEDIA_FILE, "strafe.png")
-});
 const sentJournal = loadSentJournal();
 
 let draining = false;
@@ -91,54 +85,6 @@ function readSecret(path, minimumBytes) {
     throw new Error(`Invalid secret file: ${path}`);
   }
   return value;
-}
-
-function loadPngAsset(path, filename) {
-  const data = readFileSync(path);
-  const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-  if (data.length < 1024 || !data.subarray(0, 8).equals(pngSignature)) {
-    throw new Error(`Invalid PNG media asset: ${path}`);
-  }
-  return Object.freeze({
-    filename,
-    mimetype: "image/png",
-    data: data.toString("base64")
-  });
-}
-
-function loadWebpAsset(path, filename) {
-  const data = readFileSync(path);
-  if (
-    data.length < 1024
-    || data.subarray(0, 4).toString("ascii") !== "RIFF"
-    || data.subarray(8, 12).toString("ascii") !== "WEBP"
-  ) {
-    throw new Error(`Invalid WebP media asset: ${path}`);
-  }
-  return Object.freeze({
-    filename,
-    mimetype: "image/webp",
-    data: data.toString("base64")
-  });
-}
-
-function mediaAssetForJob(job) {
-  const text = String(job?.message || "");
-  if (/(?:^|\n)Strafe\(n\)(?:\n|$)/i.test(text)) return MEDIA_ASSETS.penalty;
-  if (/to+or[\s\S]{0,160}mighty dogs/i.test(text)) return MEDIA_ASSETS.goal;
-  return null;
-}
-
-function normalizeSentRecord(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  if (value.text && typeof value.text === "object") return { ...value };
-  if (value.messageId || value.sentAt) {
-    return {
-      ...value,
-      text: { messageId: value.messageId || "", sentAt: value.sentAt || new Date().toISOString() }
-    };
-  }
-  return { ...value };
 }
 
 function loadSentJournal() {
@@ -217,6 +163,13 @@ async function claimJob() {
   return job;
 }
 
+async function resolveStickerAsset(stickerId) {
+  const asset = await edge({ action: "sticker", stickerId });
+  if (asset?.found === false) return null;
+  if (!asset?.id || asset.id !== stickerId) throw new Error("Worker gateway returned an invalid sticker asset");
+  return asset;
+}
+
 function extractWahaMessageId(data) {
   return String(
     data?.id
@@ -243,33 +196,6 @@ async function sendTextToWaha(job) {
   });
   const data = await parseResponse(response);
   if (!response.ok) throw new Error(`WAHA sendText failed (${response.status}): ${data?.message || data?.error || "request failed"}`);
-  return {
-    messageId: extractWahaMessageId(data),
-    sentAt: new Date().toISOString()
-  };
-}
-
-async function sendImageToWaha(asset) {
-  const response = await fetch(`${WAHA_BASE_URL}/api/sendImage`, {
-    method: "POST",
-    headers: {
-      "X-Api-Key": WAHA_API_KEY,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      session: WAHA_SESSION,
-      chatId: WAHA_CHANNEL_ID,
-      file: {
-        mimetype: asset.mimetype,
-        filename: asset.filename,
-        data: asset.data
-      },
-      caption: ""
-    }),
-    signal: AbortSignal.timeout(WAHA_TIMEOUT_MS)
-  });
-  const data = await parseResponse(response);
-  if (!response.ok) throw new Error(`WAHA sendImage failed (${response.status}): ${data?.message || data?.error || "request failed"}`);
   return {
     messageId: extractWahaMessageId(data),
     sentAt: new Date().toISOString()
@@ -350,38 +276,18 @@ async function processJob(job) {
   if (recovered) log("job_send_recovered", { jobId: job.id });
 
   try {
-    const mediaAsset = mediaAssetForJob(job);
-    let mediaSentThisRun = false;
-    if (mediaAsset && !sentRecord.media) {
-      const mediaRecord = mediaAsset === MEDIA_ASSETS.goal
-        ? await sendStickerToWaha(mediaAsset)
-        : await sendImageToWaha(mediaAsset);
-      sentRecord = { ...sentRecord, media: mediaRecord };
-      rememberSent(job.id, sentRecord);
-      log("job_media_sent", { jobId: job.id, media: mediaAsset.filename });
-      mediaSentThisRun = true;
-    }
-
-    if (mediaSentThisRun) {
-      await new Promise((resolve) => setTimeout(resolve, MEDIA_TEXT_DELAY_MS));
-    }
-
-    if (!sentRecord.text) {
-      const textRecord = await sendTextToWaha(job);
-      sentRecord = {
-        ...sentRecord,
-        text: textRecord,
-        messageId: textRecord.messageId,
-        sentAt: textRecord.sentAt
-      };
-      rememberSent(job.id, sentRecord);
-    } else if (!sentRecord.messageId || !sentRecord.sentAt) {
-      sentRecord = {
-        ...sentRecord,
-        messageId: sentRecord.text.messageId || "",
-        sentAt: sentRecord.text.sentAt || new Date().toISOString()
-      };
-      rememberSent(job.id, sentRecord);
+    const delivery = await deliverWhatsappJob({
+      job,
+      sentRecord,
+      resolveSticker: resolveStickerAsset,
+      sendSticker: sendStickerToWaha,
+      sendText: sendTextToWaha,
+      remember: record => rememberSent(job.id, record),
+      waitAfterSticker: () => new Promise(resolve => setTimeout(resolve, MEDIA_TEXT_DELAY_MS))
+    });
+    sentRecord = delivery.sentRecord;
+    if (delivery.stickerSentThisRun) {
+      log("job_media_sent", { jobId: job.id, stickerId: job.stickerId });
     }
   } catch (error) {
     const result = await markFailed(job, error);
