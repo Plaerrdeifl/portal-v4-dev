@@ -70,6 +70,13 @@ const ROUTES = Object.freeze({
     icon: "🛍️",
     order: 55
   },
+  "shop-orders": {
+    title: "Meine Bestellungen",
+    subtitle: "Deine Shop-Bestellungen",
+    page: "shop-orders.html",
+    icon: "📦",
+    order: 56
+  },
   "bus-orga": {
     title: "Bus-Orga",
     subtitle: "Fanbus-Verwaltungszentrale",
@@ -111,6 +118,7 @@ export function fixedAuthenticatedOrder() {
     "liveticker",
     "fanbuses",
     "shop",
+    "shop-orders",
     "admin"
   ];
 }

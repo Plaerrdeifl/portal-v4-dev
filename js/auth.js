@@ -329,7 +329,7 @@ export const auth = Object.freeze({
     if (!this.isActive()) return key === "profile" && this.isAuthenticated();
     if (key === "profile") return false;
     if (["dashboard", "dates"].includes(key)) return true;
-    if (key === "shop") return Boolean(CONFIG.shop?.baseUrl) && commercialCustomerClass() === "MEMBER";
+    if (["shop", "shop-orders"].includes(key)) return Boolean(CONFIG.shop?.baseUrl) && commercialCustomerClass() === "MEMBER";
     if (key === "bus-orga") {
       return BUS_ORGA_CAPABILITIES.some(code => this.hasCapability(code));
     }
