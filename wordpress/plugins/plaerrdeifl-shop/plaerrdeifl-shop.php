@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plärrdeifl Shop
  * Description: Plärrdeifl-specific WooCommerce integration layer.
- * Version: 0.2.0
+ * Version: 0.3.0
  * Requires PHP: 8.3
  * Requires Plugins: woocommerce
  */
@@ -15,13 +15,15 @@ if (!defined('ABSPATH')) {
 
 final class PD_Shop_Plugin
 {
-    public const VERSION = '0.2.0';
+    public const VERSION = '0.3.0';
 
     public const CUSTOMER_PUBLIC = 'PUBLIC';
     public const CUSTOMER_PORTAL = 'PORTAL';
     public const CUSTOMER_MEMBER = 'MEMBER';
 
     public const ORDER_STATUS_PICKUP_READY = 'wc-pd-pickup-ready';
+
+    private const ORDER_META_CUSTOMER_CLASS = '_pd_customer_class';
 
     private const CUSTOMER_CLASSES = array(
         self::CUSTOMER_PUBLIC,
@@ -66,6 +68,25 @@ final class PD_Shop_Plugin
         add_filter(
             'bulk_actions-woocommerce_page_wc-orders',
             array(self::class, 'add_pickup_ready_bulk_action')
+        );
+
+        add_action(
+            'woocommerce_checkout_create_order',
+            array(self::class, 'stamp_customer_class_on_order'),
+            20,
+            2
+        );
+        add_action(
+            'woocommerce_store_api_checkout_update_order_meta',
+            array(self::class, 'stamp_customer_class_on_store_api_order'),
+            20,
+            1
+        );
+        add_action(
+            'woocommerce_admin_order_data_after_billing_address',
+            array(self::class, 'render_admin_customer_class'),
+            20,
+            1
         );
     }
 
@@ -182,6 +203,63 @@ final class PD_Shop_Plugin
         return in_array($candidate, self::CUSTOMER_CLASSES, true)
             ? $candidate
             : self::CUSTOMER_PUBLIC;
+    }
+
+    /**
+     * @param mixed $order
+     * @param mixed $data
+     */
+    public static function stamp_customer_class_on_order($order, $data = null): void
+    {
+        self::stamp_order_customer_class($order);
+    }
+
+    /**
+     * @param mixed $order
+     */
+    public static function stamp_customer_class_on_store_api_order($order): void
+    {
+        self::stamp_order_customer_class($order);
+    }
+
+    /**
+     * @param mixed $order
+     */
+    private static function stamp_order_customer_class($order): void
+    {
+        if (!is_object($order) || !is_a($order, 'WC_Order')) {
+            return;
+        }
+
+        $order->update_meta_data(
+            self::ORDER_META_CUSTOMER_CLASS,
+            self::customer_class()
+        );
+    }
+
+    /**
+     * @param mixed $order
+     */
+    public static function render_admin_customer_class($order): void
+    {
+        if (!is_object($order) || !is_a($order, 'WC_Order')) {
+            return;
+        }
+
+        $stored = strtoupper(trim((string) $order->get_meta(
+            self::ORDER_META_CUSTOMER_CLASS,
+            true
+        )));
+
+        $label = match ($stored) {
+            self::CUSTOMER_MEMBER => 'Mitglied',
+            self::CUSTOMER_PORTAL => 'Portaluser',
+            default => 'Öffentlich',
+        };
+
+        echo '<p><strong>' . esc_html('Kundengruppe:') . '</strong> '
+            . esc_html($label)
+            . '</p>';
     }
 }
 
