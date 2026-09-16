@@ -13,7 +13,7 @@ const [plugin, css] = await Promise.all([
 
 test("shop plugin declares WooCommerce dependency and modern compatibility", () => {
   assert.match(plugin, /Plugin Name:\s*Plärrdeifl Shop/);
-  assert.match(plugin, /Version:\s*0\.2\.0/);
+  assert.match(plugin, /Version:\s*0\.3\.0/);
   assert.match(plugin, /Requires Plugins:\s*woocommerce/);
   assert.match(plugin, /declare_compatibility\(\s*'custom_order_tables'/);
   assert.match(plugin, /declare_compatibility\(\s*'cart_checkout_blocks'/);
@@ -27,6 +27,18 @@ test("shop customer classification is prepared without trusting browser flags", 
   assert.match(plugin, /return self::CUSTOMER_PUBLIC/);
   assert.doesNotMatch(plugin, /\$_(?:GET|POST|REQUEST|COOKIE)\s*\[/);
   assert.doesNotMatch(plugin, /member=true|portal=true/i);
+});
+
+test("shop persists server-resolved customer class for classic and Store API checkout", () => {
+  assert.match(plugin, /ORDER_META_CUSTOMER_CLASS\s*=\s*'_pd_customer_class'/);
+  assert.match(plugin, /woocommerce_checkout_create_order/);
+  assert.match(plugin, /woocommerce_store_api_checkout_update_order_meta/);
+  assert.match(plugin, /update_meta_data\(\s*self::ORDER_META_CUSTOMER_CLASS,\s*self::customer_class\(\)/);
+  assert.match(plugin, /woocommerce_admin_order_data_after_billing_address/);
+  assert.match(plugin, /Kundengruppe:/);
+  assert.match(plugin, /Mitglied/);
+  assert.match(plugin, /Portaluser/);
+  assert.match(plugin, /Öffentlich/);
 });
 
 test("shop adds one update-safe pickup-ready WooCommerce order status", () => {
