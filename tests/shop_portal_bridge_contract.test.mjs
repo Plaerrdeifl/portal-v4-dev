@@ -22,7 +22,7 @@ test("portal derives PUBLIC PORTAL MEMBER from authoritative bootstrap state", (
   assert.match(auth, /member\?\.status === "ACTIVE"/);
   assert.match(auth, /return "MEMBER"/);
   assert.match(auth, /return "PORTAL"/);
-  assert.match(auth, /key === "shop"/);
+  assert.match(auth, /\["shop", "shop-orders"\]\.includes\(key\)/);
 });
 
 test("shop route is an authenticated member-only app route", () => {
