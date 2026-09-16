@@ -23,13 +23,13 @@ const eventId = "11111111-1111-4111-8111-111111111111";
 const stickerId = "22222222-2222-4222-8222-222222222222";
 const opponentId = "33333333-3333-4333-8333-333333333333";
 
-test("Spieltagsmodus is an additive route and leaves the normal Liveticker reachable", async () => {
+test("Spielmodus is an additive route and leaves the klassische Ansicht reachable", async () => {
   const [html, bootstrap, admin] = await Promise.all([
     read("liveticker/index.html"),
     read("js/liveticker-bootstrap.js"),
     read("js/modules/liveticker-admin.js")
   ]);
-  assert.match(html, /href="\?mode=game-day"[^>]*>Spieltagsmodus/);
+  assert.match(html, /href="\?mode=game-day"[^>]*>SPIELMODUS/);
   assert.match(html, /id="tickerApp"/);
   assert.match(html, /id="gameDayRoot" hidden/);
   assert.match(bootstrap, /import\("\.\/liveticker-game-day\.js\?v=/);
@@ -153,7 +153,7 @@ test("mobile cockpit has large controls, three visual sticker groups and no obvi
     read("js/liveticker-game-day.js"),
     read("liveticker/game-day.css")
   ]);
-  for (const action of ["TOR", "GEGENTOR", "STRAFE", "INFO", "STICKER", "VIDEOBEWEIS", "DRITTEL / SPIELSTATUS"]) {
+  for (const action of ["TOR", "GEGENTOR", "STRAFE", "SONSTIGES"]) {
     assert.match(source, new RegExp(action.replace("/", "\\/")));
   }
   assert.match(source, /\["OUR_TEAM", "Unsere"\]/);
@@ -174,6 +174,23 @@ test("failed components are shown separately and unsafe all-components retry is 
   assert.doesNotMatch(source, /whatsapp_(?:sticker|text)_retry/);
 });
 
+test("game mode stays separate from the classic view and exposes only the four agreed actions", async () => {
+  const [source, html, authBootstrap] = await Promise.all([
+    read("js/liveticker-game-day.js"),
+    read("liveticker/index.html"),
+    read("js/liveticker-auth-bootstrap.js")
+  ]);
+  assert.match(source, /← Klassische Ansicht/);
+  assert.match(html, />SPIELMODUS<\/a>/);
+  assert.doesNotMatch(html, />PROD · INTERN</);
+  assert.match(authBootstrap, /if \(app && !isGameMode\) app\.hidden = false/);
+  assert.match(source, /data-open="misc">SONSTIGES/);
+  assert.doesNotMatch(source, /VIDEOBEWEIS|DRITTEL \/ SPIELSTATUS|data-open="info"|data-open="video"|data-open="phase"/);
+  assert.match(source, /<h2 id="gameDaySheetTitle">SONSTIGES<\/h2>/);
+  assert.match(source, /Info \/ Text/);
+  assert.match(source, /STICKER JETZT SENDEN/);
+});
+
 test("metadata editor uses the existing team snapshot and no second sticker administration", async () => {
   const admin = await read("js/modules/liveticker-admin.js");
   assert.match(admin, /setWhatsappStickerMetadata/);
@@ -190,15 +207,13 @@ test("game-day minute control reuses the native Liveticker minute state and deli
     read("js/liveticker-engine-v4.js"),
     read("liveticker/game-day.css")
   ]);
-  assert.match(source, /id="gameDayCurrentMinute"/);
-  assert.match(source, /data-game-minute-step="-1"/);
-  assert.match(source, /data-game-minute-step="1"/);
+  assert.match(source, /id="gameDayCurrentMinute" class="minute-input"/);
+  assert.match(source, /class="minute-button"[^>]*data-game-minute-step="-1"/);
+  assert.match(source, /class="minute-button"[^>]*data-game-minute-step="1"/);
   assert.match(source, /setNativeValue\("#gameMinute", minute\)/);
   assert.match(engine, /minuteInput\.addEventListener\("change", syncContext\)/);
   assert.match(engine, /Math\.max\(1, \(selectedMinute\(\) \|\| 1\) \+ Number\.parseInt\(button\.dataset\.minuteStep, 10\)\)/);
   assert.match(source, /const changed = await refreshDeliveries\(\);\s*if \(changed\) patchDeliveryUi\(\);/);
   assert.doesNotMatch(source, /await refreshDeliveries\(\);\s*renderMain\(\);\s*\}, 3000\)/);
-  assert.match(css, /\.game-day-minute-control\{/);
-  assert.match(css, /\.game-day-minute-button\{/);
-  assert.match(css, /\.game-day-minute-input\{/);
+  assert.match(css, /\.game-day-native-minute-field\{/);
 });
