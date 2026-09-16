@@ -43,10 +43,11 @@ export async function hydrateShop() {
     return;
   }
 
-  if (state.customerClass !== "MEMBER" || !accessToken) {
+  const canUseShop = state.customerClass === "MEMBER" || auth.isAdmin();
+  if (!canUseShop || !accessToken) {
     if (status) {
       status.className = "notice error";
-      status.textContent = "Der Shop ist nur für aktive Mitglieder verfügbar.";
+      status.textContent = "Der Shop ist nur für aktive Mitglieder und Administratoren verfügbar.";
     }
     if (external) external.hidden = true;
     return;
