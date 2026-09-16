@@ -13,7 +13,7 @@ const [plugin, css] = await Promise.all([
 
 test("shop plugin declares WooCommerce dependency and modern compatibility", () => {
   assert.match(plugin, /Plugin Name:\s*Plärrdeifl Shop/);
-  assert.match(plugin, /Version:\s*0\.6\.1/);
+  assert.match(plugin, /Version:\s*0\.7\.0/);
   assert.match(plugin, /Requires Plugins:\s*woocommerce/);
   assert.match(plugin, /declare_compatibility\(\s*'custom_order_tables'/);
   assert.match(plugin, /declare_compatibility\(\s*'cart_checkout_blocks'/);
@@ -123,4 +123,16 @@ test("embedded app shop suppresses the duplicate public WordPress chrome", () =>
   assert.match(plugin, /window\.self!==window\.top/);
   assert.match(css, /html\.pd-shop-embedded \.portal-topbar/);
   assert.match(css, /html\.pd-shop-embedded \.site-footer/);
+});
+
+
+test("shop exposes protected order history by verified Portal identity only", () => {
+  assert.match(plugin, /register_orders_rest_route/);
+  assert.match(plugin, /authorize_orders_rest_request/);
+  assert.match(plugin, /handle_orders_rest_request/);
+  assert.match(plugin, /get_header\('origin'\)/);
+  assert.match(plugin, /get_header\('authorization'\)/);
+  assert.match(plugin, /wc_get_orders\(/);
+  assert.match(plugin, /ORDER_META_PORTAL_USER_ID/);
+  assert.match(plugin, /'limit' => 20/);
 });

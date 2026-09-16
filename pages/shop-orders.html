@@ -1,0 +1,33 @@
+<section class="page module-shell v4-compact-page pd-shop-orders-page">
+  <header class="pd-shop-orders-head">
+    <div>
+      <span class="pd-shop-orders-kicker">MITGLIEDERBEREICH</span>
+      <h2>Meine Bestellungen</h2>
+      <p>Deine letzten Bestellungen zur Abholung am Fanstand im Icedome.</p>
+    </div>
+    <button id="pdShopOrdersOpenShop" class="button secondary small" type="button">Zum Shop</button>
+  </header>
+
+  <div id="pdShopOrdersStatus" class="notice">Bestellungen werden geladen …</div>
+  <div id="pdShopOrdersList" class="pd-shop-orders-list" hidden></div>
+</section>
+
+<style>
+  .pd-shop-orders-page{display:grid;gap:14px}
+  .pd-shop-orders-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+  .pd-shop-orders-head h2{margin:3px 0 4px}
+  .pd-shop-orders-head p{margin:0;color:var(--muted,#cbd5e1)}
+  .pd-shop-orders-kicker{font-size:12px;font-weight:800;letter-spacing:.12em;color:var(--accent-light,#49adff)}
+  .pd-shop-orders-list{display:grid;gap:12px}
+  .pd-shop-order-card{padding:16px;border:1px solid var(--border,rgba(179,217,245,.2));border-radius:var(--radius-lg,18px);background:var(--surface,rgba(0,20,38,.75));display:grid;gap:12px}
+  .pd-shop-order-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .pd-shop-order-number{font-weight:850;font-size:1.05rem}
+  .pd-shop-order-date,.pd-shop-order-pickup{color:var(--muted,#cbd5e1);font-size:.9rem}
+  .pd-shop-order-status{white-space:nowrap;font-size:.82rem;font-weight:800;padding:6px 9px;border-radius:999px;border:1px solid var(--border,rgba(179,217,245,.2));color:var(--accent-light,#49adff)}
+  .pd-shop-order-items{display:grid;gap:7px;margin:0;padding:0;list-style:none}
+  .pd-shop-order-item{display:flex;justify-content:space-between;gap:14px}
+  .pd-shop-order-item-name{font-weight:700}
+  .pd-shop-order-item-options{font-size:.86rem;color:var(--muted,#cbd5e1)}
+  .pd-shop-order-total{display:flex;justify-content:space-between;gap:12px;padding-top:10px;border-top:1px solid var(--border,rgba(179,217,245,.2));font-weight:850}
+  @media(max-width:700px){.pd-shop-orders-head{align-items:stretch;flex-direction:column}.pd-shop-order-item{gap:8px}}
+</style>

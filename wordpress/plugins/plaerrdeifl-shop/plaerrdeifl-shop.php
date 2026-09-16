@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plärrdeifl Shop
  * Description: Plärrdeifl-specific WooCommerce integration layer.
- * Version: 0.6.1
+ * Version: 0.7.0
  * Requires PHP: 8.3
  * Requires Plugins: woocommerce
  */
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 
 final class PD_Shop_Plugin
 {
-    public const VERSION = '0.6.1';
+    public const VERSION = '0.7.0';
 
     public const CUSTOMER_PUBLIC = 'PUBLIC';
     public const CUSTOMER_PORTAL = 'PORTAL';
@@ -33,6 +33,9 @@ final class PD_Shop_Plugin
     private const SETUP_VERSION = '2026-09-16-1';
     private const SESSION_COOKIE = 'pd_shop_session';
     private const SESSION_TTL_SECONDS = 900;
+
+    /** @var array{customerClass:string,userId:string,memberId:?string}|null */
+    private static ?array $orders_rest_identity = null;
 
     private const CUSTOMER_CLASSES = array(
         self::CUSTOMER_PUBLIC,
@@ -69,6 +72,7 @@ final class PD_Shop_Plugin
         add_action('init', array(self::class, 'register_order_status'));
         add_action('wp_enqueue_scripts', array(self::class, 'enqueue_storefront_assets'));
         add_action('template_redirect', array(self::class, 'handle_portal_bridge'), 0);
+        add_action('rest_api_init', array(self::class, 'register_orders_rest_route'));
         add_action('wp_head', array(self::class, 'render_embed_detection_script'), 1);
         add_filter('body_class', array(self::class, 'add_embedded_body_class'));
         add_action('template_redirect', array(self::class, 'enforce_member_only_frontend'), 1);
@@ -281,6 +285,121 @@ final class PD_Shop_Plugin
         nocache_headers();
         wp_safe_redirect(wc_get_page_permalink('shop'), 303);
         exit;
+    }
+
+    public static function register_orders_rest_route(): void
+    {
+        register_rest_route('plaerrdeifl-shop/v1', '/orders', array(
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => array(self::class, 'handle_orders_rest_request'),
+            'permission_callback' => array(self::class, 'authorize_orders_rest_request'),
+        ));
+    }
+
+    public static function authorize_orders_rest_request(WP_REST_Request $request)
+    {
+        self::$orders_rest_identity = null;
+        $config = self::bridge_config();
+        if ($config === null) {
+            return new WP_Error('pd_shop_not_configured', 'Shop ist nicht konfiguriert.', array('status' => 503));
+        }
+
+        $origin = strtolower(trim((string) $request->get_header('origin')));
+        if ($origin === '' || !hash_equals($config['portal_origin'], $origin)) {
+            return new WP_Error('pd_shop_orders_origin_rejected', 'Portal-Origin nicht erlaubt.', array('status' => 403));
+        }
+
+        $authorization = trim((string) $request->get_header('authorization'));
+        if (!preg_match('/^Bearer\s+([^\s]+)$/i', $authorization, $matches)) {
+            return new WP_Error('pd_shop_orders_unauthorized', 'Portal-Anmeldung erforderlich.', array('status' => 401));
+        }
+        $access_token = trim((string) ($matches[1] ?? ''));
+        if (strlen($access_token) < 40 || strlen($access_token) > 8192) {
+            return new WP_Error('pd_shop_orders_unauthorized', 'Portal-Anmeldung erforderlich.', array('status' => 401));
+        }
+
+        $identity = self::resolve_portal_identity($access_token, $config);
+        if ($identity === null || $identity['customerClass'] !== self::CUSTOMER_MEMBER) {
+            return new WP_Error('pd_shop_orders_members_only', 'Bestellungen sind nur für aktive Mitglieder verfügbar.', array('status' => 403));
+        }
+        self::$orders_rest_identity = $identity;
+        return true;
+    }
+
+    public static function handle_orders_rest_request(WP_REST_Request $request)
+    {
+        $identity = self::$orders_rest_identity;
+        self::$orders_rest_identity = null;
+        if ($identity === null || $identity['customerClass'] !== self::CUSTOMER_MEMBER) {
+            return new WP_Error('pd_shop_orders_unauthorized', 'Portal-Anmeldung erforderlich.', array('status' => 401));
+        }
+
+        $orders = wc_get_orders(array(
+            'limit' => 20,
+            'orderby' => 'date',
+            'order' => 'DESC',
+            'return' => 'objects',
+            'meta_query' => array(array(
+                'key' => self::ORDER_META_PORTAL_USER_ID,
+                'value' => $identity['userId'],
+                'compare' => '=',
+            )),
+        ));
+
+        $payload = array();
+        foreach ($orders as $order) {
+            if (!is_a($order, 'WC_Order')) {
+                continue;
+            }
+            $items = array();
+            foreach ($order->get_items('line_item') as $item) {
+                if (!is_a($item, 'WC_Order_Item_Product')) {
+                    continue;
+                }
+                $options = array();
+                $product = $item->get_product();
+                if (is_object($product) && is_a($product, 'WC_Product_Variation')) {
+                    foreach ($product->get_variation_attributes() as $attribute => $value) {
+                        $taxonomy = str_replace('attribute_', '', (string) $attribute);
+                        $display_value = (string) $value;
+                        if (taxonomy_exists($taxonomy) && $display_value !== '') {
+                            $term = get_term_by('slug', $display_value, $taxonomy);
+                            if ($term && !is_wp_error($term)) {
+                                $display_value = (string) $term->name;
+                            }
+                        }
+                        $label = wc_attribute_label($taxonomy, $product);
+                        if ($label !== '' && $display_value !== '') {
+                            $options[] = array(
+                                'label' => wp_strip_all_tags($label),
+                                'value' => wp_strip_all_tags($display_value),
+                            );
+                        }
+                    }
+                }
+
+                $items[] = array(
+                    'name' => wp_strip_all_tags((string) $item->get_name()),
+                    'quantity' => max(0, (int) $item->get_quantity()),
+                    'lineTotal' => wc_format_decimal((string) $item->get_total(), wc_get_price_decimals()),
+                    'options' => $options,
+                );
+            }
+            $created = $order->get_date_created();
+            $status = sanitize_key((string) $order->get_status());
+            $payload[] = array(
+                'orderNumber' => wp_strip_all_tags((string) $order->get_order_number()),
+                'createdAt' => $created ? gmdate('c', $created->getTimestamp()) : null,
+                'status' => $status,
+                'statusLabel' => wp_strip_all_tags((string) wc_get_order_status_name($status)),
+                'total' => wc_format_decimal((string) $order->get_total(), wc_get_price_decimals()),
+                'currency' => sanitize_text_field((string) $order->get_currency()),
+                'fulfillmentLabel' => 'Abholung am Fanstand im Icedome',
+                'items' => $items,
+            );
+        }
+
+        return new WP_REST_Response(array('orders' => $payload, 'limit' => 20), 200);
     }
 
     private static function valid_uuid(string $value): bool
