@@ -106,7 +106,6 @@ function initializeGameDay() {
     sheet: "",
     audience: "OUR_TEAM",
     selectedStickerId: "",
-    linkedActionId: "",
     galleryReturn: "",
     draft: null,
     request: null,
@@ -236,15 +235,6 @@ function initializeGameDay() {
     </div></section>`;
   }
 
-  function renderExistingActions() {
-    const actions = [...model.state.history].reverse().slice(0, 5);
-    if (!actions.length) return "";
-    return `<section class="game-day-card"><h2>Sticker nachträglich hinzufügen</h2><div class="game-day-existing-actions">${actions.map(action => {
-      const label = action.type === "goal" ? (action.team === "opponent" ? "Gegentor" : "Tor") : action.type === "penalty" ? "Strafe" : "Aktion";
-      return `<div class="game-day-existing-action"><span>${escapeHtml(`${action.minute ? `${action.minute}' · ` : ""}${label}${action.player?.name ? ` · ${action.player.name}` : ""}`)}</span><button type="button" data-add-sticker-action="${escapeHtml(action.id)}">Sticker</button></div>`;
-    }).join("")}</div></section>`;
-  }
-
   function renderFlyerActions() {
     return `<section class="game-day-card game-day-flyers">
       <h2>Flyer</h2>
@@ -268,7 +258,6 @@ function initializeGameDay() {
         <button class="game-day-action" data-kind="secondary" type="button" data-open="misc">SONSTIGES</button>
       </nav>
       ${renderFlyerActions()}
-      ${renderExistingActions()}
       <div data-game-day-timeline-slot>${renderTimeline()}</div>
       ${model.loading ? '<p class="game-day-muted">Sticker und Versandstatus werden geladen …</p>' : ""}
       <div data-game-day-delivery-error>${model.deliveryLoadError ? `<p class="game-day-status" data-tone="error">${escapeHtml(model.deliveryLoadError)}</p>` : ""}</div>
@@ -288,7 +277,7 @@ function initializeGameDay() {
       <div class="game-day-sheet-head"><h2 id="gameDaySheetTitle">Sticker</h2><button class="game-day-close" type="button" data-close-sheet aria-label="Schließen">×</button></div>
       ${galleryTabs()}
       <div class="game-day-sticker-grid">${stickerGrid(stickers)}</div>
-      ${sticker ? `<p class="game-day-status">Ausgewählt: ${escapeHtml(sticker.name)}${model.linkedActionId ? " · wird nur mit der vorhandenen Aktion verknüpft" : ""}</p>
+      ${sticker ? `<p class="game-day-status">Ausgewählt: ${escapeHtml(sticker.name)}</p>
         <button class="game-day-primary" type="button" data-send-sticker>STICKER JETZT SENDEN</button>` : ""}
       ${deliveryStatusSlotHtml()}
       ${model.requestError && model.request ? '<button class="game-day-secondary" type="button" data-retry-request>ANFRAGE SICHER ERNEUT SENDEN</button>' : ""}
@@ -400,6 +389,27 @@ function initializeGameDay() {
     }
   }
 
+  function resetOpenAction() {
+    model.draft = null;
+    model.request = null;
+    model.currentDeliveryId = "";
+    model.requestError = "";
+    model.selectedStickerId = "";
+    model.galleryReturn = "";
+  }
+
+  function closeSheet() {
+    captureSheetInputs();
+    if (model.galleryReturn && model.draft) {
+      model.sheet = model.galleryReturn;
+      model.galleryReturn = "";
+    } else {
+      if (model.draft && ["goal", "against", "penalty"].includes(model.sheet)) resetOpenAction();
+      model.sheet = "";
+    }
+    renderMain();
+  }
+
   function openAction(kind) {
     if (model.draft?.kind !== kind) {
       model.draft = { kind, minute: model.state.minute, publishText: true };
@@ -408,18 +418,6 @@ function initializeGameDay() {
       model.selectedStickerId = "";
     }
     model.sheet = kind;
-    model.requestError = "";
-    renderMain();
-  }
-
-  function openStickerGallery(linkedActionId = "") {
-    model.sheet = "stickers";
-    model.audience = "OUR_TEAM";
-    model.selectedStickerId = "";
-    model.linkedActionId = linkedActionId;
-    model.galleryReturn = "";
-    model.request = null;
-    model.currentDeliveryId = "";
     model.requestError = "";
     renderMain();
   }
@@ -491,12 +489,12 @@ function initializeGameDay() {
     renderMain();
   }
 
-  async function sendStickerOnly({ linkedActionId = model.linkedActionId, draft = null } = {}) {
+  async function sendStickerOnly({ draft = null } = {}) {
     if (!model.selectedStickerId) return;
     const request = draft?.request || createWhatsappStickerOnlyRequest({
       eventId: game.eventId,
       stickerId: model.selectedStickerId,
-      linkedActionId: linkedActionId || null
+      linkedActionId: null
     });
     if (draft) draft.request = request;
     await sendRequest(request, draft);
@@ -590,7 +588,6 @@ function initializeGameDay() {
         model.sheet = "misc";
         model.audience = "GENERAL";
         model.selectedStickerId = "";
-        model.linkedActionId = "";
         model.request = null;
         model.currentDeliveryId = "";
         model.requestError = "";
@@ -600,10 +597,7 @@ function initializeGameDay() {
       return;
     }
     if (button.matches("[data-close-sheet]")) {
-      captureSheetInputs();
-      model.sheet = model.galleryReturn || "";
-      model.galleryReturn = "";
-      renderMain();
+      closeSheet();
       return;
     }
     if (button.matches("[data-continue-draft]")) { model.sheet = model.draft.kind; renderMain(); return; }
@@ -667,22 +661,12 @@ function initializeGameDay() {
       return;
     }
     if (button.dataset.gameDayGraphic) {
-      const targetId = {
-        PERIOD_1: "period1OutputButton",
-        PERIOD_2: "period2OutputButton",
-        FINAL: "finalOutputButton"
-      }[button.dataset.gameDayGraphic];
-      const classicGraphicButton = targetId ? document.getElementById(targetId) : null;
-      if (!classicGraphicButton || classicGraphicButton.disabled) {
-        model.notice = "Flyer-Erstellung ist gerade noch nicht bereit.";
-        renderMain();
-        return;
-      }
       model.notice = "";
-      classicGraphicButton.click();
+      window.dispatchEvent(new CustomEvent("pd-liveticker-graphics-open", {
+        detail: { kind: button.dataset.gameDayGraphic }
+      }));
       return;
     }
-    if (button.dataset.addStickerAction) openStickerGallery(button.dataset.addStickerAction);
   });
 
   root.addEventListener("change", event => {

@@ -10,8 +10,8 @@ try {
   } else {
     const app = document.getElementById("tickerApp");
     if (app && !isGameMode) app.hidden = false;
-    await import("./liveticker-bootstrap.js?v=20260916-game-day-r3");
-    await import("./liveticker-graphics-inline.js?v=20260914-ios-share-r2");
+    await import("./liveticker-bootstrap.js?v=20260916-game-day-r4");
+    await import("./liveticker-graphics-inline.js?v=20260916-game-day-r4");
   }
 } catch (error) {
   console.error(error);

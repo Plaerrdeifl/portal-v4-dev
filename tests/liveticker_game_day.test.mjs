@@ -108,17 +108,31 @@ test("game-day source implements sticker-now then structured action without a se
   assert.match(storage, /pd-liveticker-server-synced/);
 });
 
-test("stand-alone and after-the-fact stickers never create or republish Liveticker actions", async () => {
+test("stand-alone stickers remain available while after-the-fact sticker controls are absent", async () => {
   const [source, migration] = await Promise.all([
     read("js/liveticker-game-day.js"),
     read("supabase/migrations/20260916064314_liveticker_whatsapp_delivery_components_dev_r1.sql")
   ]);
   assert.match(source, /createWhatsappStickerOnlyRequest/);
-  assert.match(source, /linkedActionId: linkedActionId \|\| null/);
+  assert.match(source, /linkedActionId: null/);
+  assert.doesNotMatch(source, /Sticker nachträglich hinzufügen|data-add-sticker-action|openStickerGallery/);
   const enqueue = migration.match(/create function app_private\.api_liveticker_whatsapp_sticker_enqueue[\s\S]+?\n\$function\$;/i)?.[0] || "";
   const link = migration.match(/create function app_private\.api_liveticker_whatsapp_delivery_link[\s\S]+?\n\$function\$;/i)?.[0] || "";
   assert.doesNotMatch(enqueue, /insert into app_modules\.liveticker_actions/i);
   assert.doesNotMatch(link, /text_status\s*=|message\s*=|insert into app_modules\.liveticker_whatsapp_jobs/i);
+});
+
+test("closing a structured action clears the complete open-action draft", async () => {
+  const source = await read("js/liveticker-game-day.js");
+  const reset = source.match(/function resetOpenAction\(\) \{[\s\S]+?\n  \}/)?.[0] || "";
+  const close = source.match(/function closeSheet\(\) \{[\s\S]+?\n  \}/)?.[0] || "";
+  assert.match(reset, /model\.draft = null/);
+  assert.match(reset, /model\.request = null/);
+  assert.match(reset, /model\.currentDeliveryId = ""/);
+  assert.match(reset, /model\.selectedStickerId = ""/);
+  assert.match(close, /\["goal", "against", "penalty"\]\.includes\(model\.sheet\)/);
+  assert.match(close, /resetOpenAction\(\)/);
+  assert.match(source, /if \(!model\.draft \|\| !\["goal", "against", "penalty"\]\.includes\(model\.draft\.kind\)\) return ""/);
 });
 
 test("sticker plus text is one explicit outbox job with server-side ordering", async () => {
@@ -218,7 +232,7 @@ test("game-day minute control reuses the native Liveticker minute state and deli
   assert.match(css, /\.game-day-native-minute-field\{/);
 });
 
-test("game mode exposes existing period and final flyer workflow without a second graphics implementation", async () => {
+test("game mode selects existing flyer contexts without enqueueing until explicit creation", async () => {
   const [source, graphics] = await Promise.all([
     read("js/liveticker-game-day.js"),
     read("js/liveticker-graphics-inline.js")
@@ -226,11 +240,17 @@ test("game mode exposes existing period and final flyer workflow without a secon
   assert.match(source, /data-game-day-graphic="PERIOD_1">1\. DRITTEL/);
   assert.match(source, /data-game-day-graphic="PERIOD_2">2\. DRITTEL/);
   assert.match(source, /data-game-day-graphic="FINAL">SPIELENDE/);
-  assert.match(source, /PERIOD_1: "period1OutputButton"/);
-  assert.match(source, /PERIOD_2: "period2OutputButton"/);
-  assert.match(source, /FINAL: "finalOutputButton"/);
+  assert.match(source, /new CustomEvent\("pd-liveticker-graphics-open"/);
+  assert.match(source, /detail: \{ kind: button\.dataset\.gameDayGraphic \}/);
+  assert.doesNotMatch(source, /classicGraphicButton|period1OutputButton|period2OutputButton|finalOutputButton/);
   assert.match(source, /graphicResultPanel\.classList\.add\("game-day-graphic-results"\)/);
   assert.match(source, /document\.body\.append\(graphicResultPanel\)/);
   assert.match(graphics, /const KINDS = Object\.freeze\(\["PERIOD_1", "PERIOD_2", "FINAL"\]\)/);
+  const openResults = graphics.match(/function openResults\(kind\) \{[\s\S]+?\n\}/)?.[0] || "";
+  assert.match(openResults, /selectedArtifactKind = kind/);
+  assert.match(openResults, /resultsOpen = true/);
+  assert.doesNotMatch(openResults, /enqueue|\.click\(/);
+  assert.match(graphics, /window\.addEventListener\("pd-liveticker-graphics-open"/);
+  assert.match(graphics, /resultGenerateButton\?\.addEventListener\("click"[\s\S]+?BUTTONS\[kind\]\?\.click\(\)/);
   assert.match(graphics, /api\.call\("liveticker_graphics_enqueue", \{ eventId, kind \}\)/);
 });

@@ -486,6 +486,13 @@ async function enqueue(kind) {
   }
 }
 
+function openResults(kind) {
+  if (!KINDS.includes(kind)) return;
+  selectedArtifactKind = kind;
+  resultsOpen = true;
+  render();
+}
+
 
 for (const kind of KINDS) {
   BUTTONS[kind]?.addEventListener("click", () => enqueue(kind));
@@ -499,10 +506,12 @@ primaryOutputButton?.addEventListener("click", () => {
 outputStatusButtons.forEach(button => button.addEventListener("click", () => {
   const kind = button.dataset.outputStatus || "";
   if (latestJob(kind)?.status !== "SUCCEEDED") return;
-  selectedArtifactKind = kind;
-  resultsOpen = true;
-  render();
+  openResults(kind);
 }));
+
+window.addEventListener("pd-liveticker-graphics-open", event => {
+  openResults(event.detail?.kind || "");
+});
 
 closeResults?.addEventListener("click", () => {
   resultsOpen = false;
