@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plärrdeifl Shop
  * Description: Plärrdeifl-specific WooCommerce integration layer.
- * Version: 0.4.0
+ * Version: 0.5.0
  * Requires PHP: 8.3
  * Requires Plugins: woocommerce
  */
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 
 final class PD_Shop_Plugin
 {
-    public const VERSION = '0.4.0';
+    public const VERSION = '0.5.0';
 
     public const CUSTOMER_PUBLIC = 'PUBLIC';
     public const CUSTOMER_PORTAL = 'PORTAL';
@@ -63,6 +63,7 @@ final class PD_Shop_Plugin
         add_action('init', array(self::class, 'apply_business_defaults'), 5);
         add_action('init', array(self::class, 'register_order_status'));
         add_action('wp_enqueue_scripts', array(self::class, 'enqueue_storefront_assets'));
+        add_action('template_redirect', array(self::class, 'enforce_member_only_frontend'), 1);
 
         add_filter('wc_order_statuses', array(self::class, 'add_order_status'));
         add_filter('woocommerce_product_needs_shipping', '__return_false', 1000, 2);
@@ -76,6 +77,30 @@ final class PD_Shop_Plugin
         add_filter(
             'woocommerce_cod_process_payment_order_status',
             static fn(): string => 'on-hold',
+            1000
+        );
+
+        add_filter(
+            'woocommerce_product_is_visible',
+            array(self::class, 'restrict_product_visibility'),
+            1000,
+            2
+        );
+        add_filter(
+            'wp_get_nav_menu_items',
+            array(self::class, 'hide_shop_navigation_for_non_members'),
+            1000,
+            3
+        );
+        add_filter(
+            'rest_pre_dispatch',
+            array(self::class, 'block_shop_rest_for_non_members'),
+            5,
+            3
+        );
+        add_filter(
+            'wp_sitemaps_post_types',
+            array(self::class, 'remove_products_from_public_sitemap'),
             1000
         );
 
@@ -166,6 +191,143 @@ final class PD_Shop_Plugin
     }
 
     /**
+     * Only active members may use or discover the shop.
+     *
+     * Until the signed Portal -> WordPress membership bridge is connected,
+     * administrators with WooCommerce management rights retain a local bypass
+     * for development. No browser query/body/cookie flag grants access.
+     */
+    public static function shop_access_allowed(): bool
+    {
+        if (is_user_logged_in() && current_user_can('manage_woocommerce')) {
+            return true;
+        }
+
+        $granted = apply_filters('pd_shop_member_access', false);
+        if ($granted === true) {
+            return true;
+        }
+
+        return self::customer_class() === self::CUSTOMER_MEMBER;
+    }
+
+    public static function enforce_member_only_frontend(): void
+    {
+        if (self::shop_access_allowed() || !self::is_shop_surface()) {
+            return;
+        }
+
+        global $wp_query;
+        if (is_object($wp_query)) {
+            $wp_query->set_404();
+        }
+
+        status_header(404);
+        nocache_headers();
+
+        $template = get_404_template();
+        if ($template) {
+            include $template;
+        }
+
+        exit;
+    }
+
+    /**
+     * @param bool $visible
+     * @param int $product_id
+     */
+    public static function restrict_product_visibility(bool $visible, int $product_id): bool
+    {
+        if (!self::shop_access_allowed()) {
+            return false;
+        }
+
+        return $visible;
+    }
+
+    /**
+     * @param array<int,mixed> $items
+     * @param mixed $menu
+     * @param mixed $args
+     * @return array<int,mixed>
+     */
+    public static function hide_shop_navigation_for_non_members(array $items, $menu, $args): array
+    {
+        if (self::shop_access_allowed()) {
+            return $items;
+        }
+
+        $page_ids = array_filter(array_map('absint', array(
+            get_option('woocommerce_shop_page_id'),
+            get_option('woocommerce_cart_page_id'),
+            get_option('woocommerce_checkout_page_id'),
+            get_option('woocommerce_myaccount_page_id'),
+        )));
+
+        return array_values(array_filter($items, static function ($item) use ($page_ids): bool {
+            if (!is_object($item)) {
+                return true;
+            }
+
+            $object_id = isset($item->object_id) ? absint($item->object_id) : 0;
+            if ($object_id > 0 && in_array($object_id, $page_ids, true)) {
+                return false;
+            }
+
+            $url = isset($item->url) ? (string) $item->url : '';
+            $path = strtolower((string) wp_parse_url($url, PHP_URL_PATH));
+
+            foreach (array('/shop', '/cart', '/checkout', '/my-account', '/product/') as $blocked) {
+                if ($path !== '' && str_starts_with($path, $blocked)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }));
+    }
+
+    /**
+     * @param mixed $result
+     * @param mixed $server
+     * @param mixed $request
+     * @return mixed
+     */
+    public static function block_shop_rest_for_non_members($result, $server, $request)
+    {
+        if (self::shop_access_allowed() || !is_object($request) || !method_exists($request, 'get_route')) {
+            return $result;
+        }
+
+        $route = (string) $request->get_route();
+        $blocked = str_starts_with($route, '/wc/store/')
+            || str_starts_with($route, '/wp/v2/product')
+            || str_starts_with($route, '/wp/v2/product_cat')
+            || str_starts_with($route, '/wp/v2/product_tag');
+
+        if (!$blocked) {
+            return $result;
+        }
+
+        return new WP_Error(
+            'pd_shop_members_only',
+            'Shop nur für Mitglieder.',
+            array('status' => 403)
+        );
+    }
+
+    /**
+     * @param array<string,mixed> $post_types
+     * @return array<string,mixed>
+     */
+    public static function remove_products_from_public_sitemap(array $post_types): array
+    {
+        unset($post_types['product']);
+        return $post_types;
+    }
+
+    /**
      * @param array<string,mixed> $gateways
      * @return array<string,mixed>
      */
@@ -212,6 +374,10 @@ final class PD_Shop_Plugin
     private static function is_shop_surface(): bool
     {
         return (function_exists('is_woocommerce') && is_woocommerce())
+            || (function_exists('is_shop') && is_shop())
+            || (function_exists('is_product') && is_product())
+            || (function_exists('is_product_category') && is_product_category())
+            || (function_exists('is_product_tag') && is_product_tag())
             || (function_exists('is_cart') && is_cart())
             || (function_exists('is_checkout') && is_checkout())
             || (function_exists('is_account_page') && is_account_page());
