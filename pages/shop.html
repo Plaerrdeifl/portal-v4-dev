@@ -3,10 +3,14 @@
     <div>
       <span class="pd-shop-app-kicker">MITGLIEDERBEREICH</span>
       <h2>Shop</h2>
-      <p>Exklusive Fanartikel für aktive Mitglieder.</p>
+      <p>Fanartikel, Bestellungen und Abholung am Fanstand im Icedome.</p>
     </div>
-    <button id="pdShopOpenExternal" class="button secondary small" type="button">Extern öffnen</button>
   </header>
+
+  <nav class="pd-shop-tabs" aria-label="Shop-Bereich">
+    <button class="pd-shop-tab is-active" type="button" aria-current="page">Shop</button>
+    <button id="pdShopTabOrders" class="pd-shop-tab" type="button">Meine Bestellungen</button>
+  </nav>
 
   <div id="pdShopBridgeStatus" class="notice">Mitgliedschaft wird sicher geprüft …</div>
   <iframe id="pdShopFrame" name="pdShopFrame" class="pd-shop-app-frame" title="Plärrdeifl Mitglieder-Shop" hidden></iframe>
@@ -14,10 +18,13 @@
 
 <style>
   .pd-shop-app-page{display:grid;gap:14px;min-height:calc(100dvh - 150px)}
-  .pd-shop-app-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
   .pd-shop-app-head h2{margin:3px 0 4px}
   .pd-shop-app-head p{margin:0;color:var(--muted,#cbd5e1)}
   .pd-shop-app-kicker{font-size:12px;font-weight:800;letter-spacing:.12em;color:var(--accent-light,#49adff)}
-  .pd-shop-app-frame{width:100%;min-height:calc(100dvh - 220px);border:1px solid var(--border,rgba(179,217,245,.2));border-radius:var(--radius-lg,18px);background:#001426}
-  @media(max-width:700px){.pd-shop-app-head{align-items:stretch;flex-direction:column}.pd-shop-app-frame{min-height:calc(100dvh - 235px);border-radius:var(--radius-md,13px)}}
+  .pd-shop-tabs{display:flex;gap:6px;padding:4px;border:1px solid var(--border,rgba(179,217,245,.2));border-radius:var(--radius-md,13px);background:rgba(0,20,38,.45);width:max-content;max-width:100%}
+  .pd-shop-tab{min-height:40px;padding:8px 14px;border:0;border-radius:10px;background:transparent;color:var(--muted,#cbd5e1);font:inherit;font-weight:750;cursor:pointer;white-space:nowrap}
+  .pd-shop-tab:hover{color:var(--text,#fff);background:rgba(255,255,255,.06)}
+  .pd-shop-tab.is-active{color:#fff;background:var(--accent,#208df2);box-shadow:0 6px 16px rgba(0,0,0,.16)}
+  .pd-shop-app-frame{width:100%;min-height:calc(100dvh - 245px);border:1px solid var(--border,rgba(179,217,245,.2));border-radius:var(--radius-lg,18px);background:#001426}
+  @media(max-width:700px){.pd-shop-tabs{width:100%}.pd-shop-tab{flex:1;padding-inline:8px}.pd-shop-app-frame{min-height:calc(100dvh - 260px);border-radius:var(--radius-md,13px)}}
 </style>

@@ -91,7 +91,7 @@ export async function hydrateShopOrders(context = {}) {
   const state = auth.current();
   const status = document.getElementById("pdShopOrdersStatus");
   const list = document.getElementById("pdShopOrdersList");
-  document.getElementById("pdShopOrdersOpenShop")
+  document.getElementById("pdShopTabShop")
     ?.addEventListener("click", () => navigate("shop"));
 
   const baseUrl = clean(CONFIG.shop?.baseUrl).replace(/\/$/, "");

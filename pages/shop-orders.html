@@ -2,22 +2,35 @@
   <header class="pd-shop-orders-head">
     <div>
       <span class="pd-shop-orders-kicker">MITGLIEDERBEREICH</span>
-      <h2>Meine Bestellungen</h2>
-      <p>Deine letzten Bestellungen zur Abholung am Fanstand im Icedome.</p>
+      <h2>Shop</h2>
+      <p>Fanartikel, Bestellungen und Abholung am Fanstand im Icedome.</p>
     </div>
-    <button id="pdShopOrdersOpenShop" class="button secondary small" type="button">Zum Shop</button>
   </header>
 
+  <nav class="pd-shop-tabs" aria-label="Shop-Bereich">
+    <button id="pdShopTabShop" class="pd-shop-tab" type="button">Shop</button>
+    <button class="pd-shop-tab is-active" type="button" aria-current="page">Meine Bestellungen</button>
+  </nav>
+
+  <div class="pd-shop-orders-section-head">
+    <h3>Meine Bestellungen</h3>
+    <p>Deine letzten Bestellungen zur Abholung am Fanstand im Icedome.</p>
+  </div>
   <div id="pdShopOrdersStatus" class="notice">Bestellungen werden geladen …</div>
   <div id="pdShopOrdersList" class="pd-shop-orders-list" hidden></div>
 </section>
 
 <style>
   .pd-shop-orders-page{display:grid;gap:14px}
-  .pd-shop-orders-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
   .pd-shop-orders-head h2{margin:3px 0 4px}
-  .pd-shop-orders-head p{margin:0;color:var(--muted,#cbd5e1)}
+  .pd-shop-orders-head p,.pd-shop-orders-section-head p{margin:0;color:var(--muted,#cbd5e1)}
   .pd-shop-orders-kicker{font-size:12px;font-weight:800;letter-spacing:.12em;color:var(--accent-light,#49adff)}
+  .pd-shop-tabs{display:flex;gap:6px;padding:4px;border:1px solid var(--border,rgba(179,217,245,.2));border-radius:var(--radius-md,13px);background:rgba(0,20,38,.45);width:max-content;max-width:100%}
+  .pd-shop-tab{min-height:40px;padding:8px 14px;border:0;border-radius:10px;background:transparent;color:var(--muted,#cbd5e1);font:inherit;font-weight:750;cursor:pointer;white-space:nowrap}
+  .pd-shop-tab:hover{color:var(--text,#fff);background:rgba(255,255,255,.06)}
+  .pd-shop-tab.is-active{color:#fff;background:var(--accent,#208df2);box-shadow:0 6px 16px rgba(0,0,0,.16)}
+  .pd-shop-orders-section-head{display:grid;gap:3px;margin-top:2px}
+  .pd-shop-orders-section-head h3{margin:0}
   .pd-shop-orders-list{display:grid;gap:12px}
   .pd-shop-order-card{padding:16px;border:1px solid var(--border,rgba(179,217,245,.2));border-radius:var(--radius-lg,18px);background:var(--surface,rgba(0,20,38,.75));display:grid;gap:12px}
   .pd-shop-order-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
@@ -29,5 +42,5 @@
   .pd-shop-order-item-name{font-weight:700}
   .pd-shop-order-item-options{font-size:.86rem;color:var(--muted,#cbd5e1)}
   .pd-shop-order-total{display:flex;justify-content:space-between;gap:12px;padding-top:10px;border-top:1px solid var(--border,rgba(179,217,245,.2));font-weight:850}
-  @media(max-width:700px){.pd-shop-orders-head{align-items:stretch;flex-direction:column}.pd-shop-order-item{gap:8px}}
+  @media(max-width:700px){.pd-shop-tabs{width:100%}.pd-shop-tab{flex:1;padding-inline:8px}.pd-shop-order-item{gap:8px}}
 </style>
