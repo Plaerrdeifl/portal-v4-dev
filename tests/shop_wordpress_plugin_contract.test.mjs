@@ -13,7 +13,7 @@ const [plugin, css] = await Promise.all([
 
 test("shop plugin declares WooCommerce dependency and modern compatibility", () => {
   assert.match(plugin, /Plugin Name:\s*Plärrdeifl Shop/);
-  assert.match(plugin, /Version:\s*0\.7\.0/);
+  assert.match(plugin, /Version:\s*0\.7\.1/);
   assert.match(plugin, /Requires Plugins:\s*woocommerce/);
   assert.match(plugin, /declare_compatibility\(\s*'custom_order_tables'/);
   assert.match(plugin, /declare_compatibility\(\s*'cart_checkout_blocks'/);
@@ -35,11 +35,12 @@ test("shop customer classification is prepared without trusting browser flags", 
   assert.doesNotMatch(plugin, /member=true|portal=true|customerClass=MEMBER/i);
 });
 
-test("shop is member-only across storefront, navigation, product visibility and public Store API", () => {
+test("shop is member-only with verified portal-admin override across storefront and Store API", () => {
   assert.match(plugin, /shop_access_allowed\(\)/);
   assert.match(plugin, /pd_shop_member_access/);
   assert.match(plugin, /self::customer_class\(\) === self::CUSTOMER_MEMBER/);
   assert.match(plugin, /current_user_can\('manage_woocommerce'\)/);
+  assert.match(plugin, /\$session\['class'\] === self::CUSTOMER_MEMBER \|\| \$session\['admin'\]/);
   assert.match(plugin, /template_redirect/);
   assert.match(plugin, /set_404\(\)/);
   assert.match(plugin, /woocommerce_product_is_visible/);
@@ -135,4 +136,12 @@ test("shop exposes protected order history by verified Portal identity only", ()
   assert.match(plugin, /wc_get_orders\(/);
   assert.match(plugin, /ORDER_META_PORTAL_USER_ID/);
   assert.match(plugin, /'limit' => 20/);
+});
+
+
+test("portal admin override is signed into the WordPress shop session and never changes customer class", () => {
+  assert.match(plugin, /\$is_admin = \(\$identity\['isAdmin'\] \?\? false\) === true/);
+  assert.match(plugin, /'admin' => \$identity\['isAdmin'\]/);
+  assert.match(plugin, /'class' => \$identity\['customerClass'\]/);
+  assert.doesNotMatch(plugin, /CUSTOMER_ADMIN|customerClass.*ADMIN/);
 });

@@ -23,6 +23,7 @@ test("portal derives PUBLIC PORTAL MEMBER from authoritative bootstrap state", (
   assert.match(auth, /return "MEMBER"/);
   assert.match(auth, /return "PORTAL"/);
   assert.match(auth, /\["shop", "shop-orders"\]\.includes\(key\)/);
+  assert.match(auth, /commercialCustomerClass\(\) === "MEMBER" \|\| this\.isAdmin\(\)/);
 });
 
 test("shop route is an authenticated member-only app route", () => {
@@ -35,15 +36,16 @@ test("shop route is an authenticated member-only app route", () => {
 test("portal bridge posts the real access token and never uses member browser flags", () => {
   assert.match(shopModule, /name = "pd_shop_access_token"/);
   assert.match(shopModule, /form\.method = "POST"/);
-  assert.match(shopModule, /state\.customerClass !== "MEMBER"/);
+  assert.match(shopModule, /state\.customerClass === "MEMBER" \|\| auth\.isAdmin\(\)/);
   assert.doesNotMatch(shopModule, /member=true|portal=true/i);
 });
 
 test("wordpress verifies portal token server-side through minimal authenticated shop identity RPC", () => {
-  assert.match(plugin, /Version:\s*0\.7\.0/);
+  assert.match(plugin, /Version:\s*0\.7\.1/);
   assert.match(plugin, /rest\/v1\/rpc\/pd_shop_identity/);
   assert.match(plugin, /'Authorization' => 'Bearer ' \. \$access_token/);
   assert.match(plugin, /customerClass/);
+  assert.match(plugin, /isAdmin/);
   assert.match(plugin, /HTTP_ORIGIN/);
 });
 
@@ -62,7 +64,7 @@ test("portal CSP allows only owned shop origins for frame and POST bridge", () =
 
 
 test("shop route also requires a configured shop origin", () => {
-  assert.match(auth, /Boolean\(CONFIG\.shop\?\.baseUrl\).*commercialCustomerClass\(\) === "MEMBER"/);
+  assert.match(auth, /Boolean\(CONFIG\.shop\?\.baseUrl\).*commercialCustomerClass\(\) === "MEMBER".*this\.isAdmin\(\)/);
   assert.match(shopModule, /if \(!CONFIG\.shop\?\.baseUrl\)/);
   assert.match(shopModule, /Shop ist in dieser Umgebung noch nicht freigeschaltet/);
 });
@@ -75,6 +77,7 @@ test("member order history is a protected native portal route", () => {
   assert.match(pages, /key === "shop-orders"/);
   assert.match(ordersPage, /Meine Bestellungen/);
   assert.match(ordersModule, /Authorization: `Bearer \$\{accessToken\}`/);
+  assert.match(ordersModule, /state\.customerClass === "MEMBER" \|\| auth\.isAdmin\(\)/);
   assert.match(ordersModule, /\/wp-json\/plaerrdeifl-shop\/v1\/orders/);
 });
 
@@ -93,4 +96,13 @@ test("orders API returns minimal order data without customer PII", () => {
   }
   assert.doesNotMatch(plugin, /get_billing_(?:email|phone|address|first_name|last_name)/i);
   assert.doesNotMatch(plugin, /get_shipping_(?:address|first_name|last_name|phone)/i);
+});
+
+
+test("portal admin override is verified server-side and order history remains self-only", () => {
+  assert.match(plugin, /\$identity\['customerClass'\] !== self::CUSTOMER_MEMBER && !\$identity\['isAdmin'\]/);
+  assert.match(plugin, /'admin' => \$identity\['isAdmin'\]/);
+  assert.match(plugin, /\$session\['class'\] === self::CUSTOMER_MEMBER \|\| \$session\['admin'\]/);
+  assert.match(plugin, /'value' => \$identity\['userId'\]/);
+  assert.doesNotMatch(plugin, /\$request->get_param\([^)]*(?:user|member|portal)/i);
 });

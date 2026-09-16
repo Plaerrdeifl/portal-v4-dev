@@ -96,10 +96,11 @@ export async function hydrateShopOrders(context = {}) {
 
   const baseUrl = clean(CONFIG.shop?.baseUrl).replace(/\/$/, "");
   const accessToken = clean(state.session?.access_token);
-  if (!baseUrl || state.customerClass !== "MEMBER" || !accessToken) {
+  const canReadOwnOrders = state.customerClass === "MEMBER" || auth.isAdmin();
+  if (!baseUrl || !canReadOwnOrders || !accessToken) {
     if (status) {
       status.className = "notice error";
-      status.textContent = "Bestellungen sind nur für aktive Mitglieder verfügbar.";
+      status.textContent = "Bestellungen sind nur für aktive Mitglieder und Administratoren verfügbar.";
     }
     return;
   }

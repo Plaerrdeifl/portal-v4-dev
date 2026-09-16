@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plärrdeifl Shop
  * Description: Plärrdeifl-specific WooCommerce integration layer.
- * Version: 0.7.0
+ * Version: 0.7.1
  * Requires PHP: 8.3
  * Requires Plugins: woocommerce
  */
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 
 final class PD_Shop_Plugin
 {
-    public const VERSION = '0.7.0';
+    public const VERSION = '0.7.1';
 
     public const CUSTOMER_PUBLIC = 'PUBLIC';
     public const CUSTOMER_PORTAL = 'PORTAL';
@@ -34,7 +34,7 @@ final class PD_Shop_Plugin
     private const SESSION_COOKIE = 'pd_shop_session';
     private const SESSION_TTL_SECONDS = 900;
 
-    /** @var array{customerClass:string,userId:string,memberId:?string}|null */
+    /** @var array{customerClass:string,userId:string,memberId:?string,isAdmin:bool}|null */
     private static ?array $orders_rest_identity = null;
 
     private const CUSTOMER_CLASSES = array(
@@ -274,11 +274,14 @@ final class PD_Shop_Plugin
         }
 
         $identity = self::resolve_portal_identity($access_token, $config);
-        if ($identity === null || $identity['customerClass'] !== self::CUSTOMER_MEMBER) {
+        if (
+            $identity === null
+            || ($identity['customerClass'] !== self::CUSTOMER_MEMBER && !$identity['isAdmin'])
+        ) {
             self::clear_shop_session();
             status_header(403);
             nocache_headers();
-            exit('Shop nur für aktive Mitglieder.');
+            exit('Shop nur für aktive Mitglieder und Administratoren.');
         }
 
         self::issue_shop_session($identity);
@@ -319,8 +322,11 @@ final class PD_Shop_Plugin
         }
 
         $identity = self::resolve_portal_identity($access_token, $config);
-        if ($identity === null || $identity['customerClass'] !== self::CUSTOMER_MEMBER) {
-            return new WP_Error('pd_shop_orders_members_only', 'Bestellungen sind nur für aktive Mitglieder verfügbar.', array('status' => 403));
+        if (
+            $identity === null
+            || ($identity['customerClass'] !== self::CUSTOMER_MEMBER && !$identity['isAdmin'])
+        ) {
+            return new WP_Error('pd_shop_orders_members_only', 'Bestellungen sind nur für aktive Mitglieder und Administratoren verfügbar.', array('status' => 403));
         }
         self::$orders_rest_identity = $identity;
         return true;
@@ -330,7 +336,10 @@ final class PD_Shop_Plugin
     {
         $identity = self::$orders_rest_identity;
         self::$orders_rest_identity = null;
-        if ($identity === null || $identity['customerClass'] !== self::CUSTOMER_MEMBER) {
+        if (
+            $identity === null
+            || ($identity['customerClass'] !== self::CUSTOMER_MEMBER && !$identity['isAdmin'])
+        ) {
             return new WP_Error('pd_shop_orders_unauthorized', 'Portal-Anmeldung erforderlich.', array('status' => 401));
         }
 
@@ -412,7 +421,7 @@ final class PD_Shop_Plugin
 
     /**
      * @param array{supabase_url:string,publishable_key:string,portal_origin:string} $config
-     * @return array{customerClass:string,userId:string,memberId:?string}|null
+     * @return array{customerClass:string,userId:string,memberId:?string,isAdmin:bool}|null
      */
     private static function resolve_portal_identity(string $access_token, array $config): ?array
     {
@@ -446,6 +455,7 @@ final class PD_Shop_Plugin
         $user_id = trim((string) ($identity['portalUserId'] ?? ''));
         $class = strtoupper(trim((string) ($identity['customerClass'] ?? '')));
         $member_id = trim((string) ($identity['memberId'] ?? ''));
+        $is_admin = ($identity['isAdmin'] ?? false) === true;
 
         if (!self::valid_uuid($user_id)
             || !in_array($class, array(self::CUSTOMER_PORTAL, self::CUSTOMER_MEMBER), true)
@@ -457,10 +467,11 @@ final class PD_Shop_Plugin
             'customerClass' => $class,
             'userId' => $user_id,
             'memberId' => self::valid_uuid($member_id) ? $member_id : null,
+            'isAdmin' => $is_admin,
         );
     }
 
-    /** @param array{customerClass:string,userId:string,memberId:?string} $identity */
+    /** @param array{customerClass:string,userId:string,memberId:?string,isAdmin:bool} $identity */
     private static function issue_shop_session(array $identity): void
     {
         $payload = array(
@@ -468,6 +479,7 @@ final class PD_Shop_Plugin
             'class' => $identity['customerClass'],
             'sub' => $identity['userId'],
             'member' => $identity['memberId'],
+            'admin' => $identity['isAdmin'],
             'exp' => time() + self::SESSION_TTL_SECONDS,
         );
         $json = wp_json_encode($payload);
@@ -505,7 +517,7 @@ final class PD_Shop_Plugin
         return wp_salt('auth') . '|pd-shop-session-v1';
     }
 
-    /** @return array{class:string,sub:string,member:?string,exp:int}|null */
+    /** @return array{class:string,sub:string,member:?string,admin:bool,exp:int}|null */
     private static function shop_session(): ?array
     {
         $raw = trim((string) ($_COOKIE[self::SESSION_COOKIE] ?? ''));
@@ -541,6 +553,7 @@ final class PD_Shop_Plugin
         $class = strtoupper(trim((string) ($payload['class'] ?? '')));
         $sub = trim((string) ($payload['sub'] ?? ''));
         $member = trim((string) ($payload['member'] ?? ''));
+        $admin = ($payload['admin'] ?? false) === true;
         $exp = (int) ($payload['exp'] ?? 0);
         if (!in_array($class, self::CUSTOMER_CLASSES, true)
             || !self::valid_uuid($sub)
@@ -553,6 +566,7 @@ final class PD_Shop_Plugin
             'class' => $class,
             'sub' => $sub,
             'member' => self::valid_uuid($member) ? $member : null,
+            'admin' => $admin,
             'exp' => $exp,
         );
     }
@@ -576,7 +590,7 @@ final class PD_Shop_Plugin
     }
 
     /**
-     * Only active members may use or discover the shop.
+     * Active members and Portal administrators may use or discover the shop.
      *
      * Access is granted by the signed Portal -> WordPress session.
      * Administrators with WooCommerce management rights retain a local bypass
@@ -585,6 +599,11 @@ final class PD_Shop_Plugin
     public static function shop_access_allowed(): bool
     {
         if (is_user_logged_in() && current_user_can('manage_woocommerce')) {
+            return true;
+        }
+
+        $session = self::shop_session();
+        if ($session !== null && ($session['class'] === self::CUSTOMER_MEMBER || $session['admin'])) {
             return true;
         }
 
