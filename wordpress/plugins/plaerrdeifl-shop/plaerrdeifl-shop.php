@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plärrdeifl Shop
  * Description: Plärrdeifl-specific WooCommerce integration layer.
- * Version: 0.3.0
+ * Version: 0.4.0
  * Requires PHP: 8.3
  * Requires Plugins: woocommerce
  */
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 
 final class PD_Shop_Plugin
 {
-    public const VERSION = '0.3.0';
+    public const VERSION = '0.4.0';
 
     public const CUSTOMER_PUBLIC = 'PUBLIC';
     public const CUSTOMER_PORTAL = 'PORTAL';
@@ -24,6 +24,10 @@ final class PD_Shop_Plugin
     public const ORDER_STATUS_PICKUP_READY = 'wc-pd-pickup-ready';
 
     private const ORDER_META_CUSTOMER_CLASS = '_pd_customer_class';
+    private const ORDER_META_FULFILLMENT = '_pd_fulfillment';
+    private const FULFILLMENT_PICKUP_ICEDOME = 'PICKUP_FANSTAND_ICEDOME';
+    private const SETUP_OPTION = 'pd_shop_setup_version';
+    private const SETUP_VERSION = '2026-09-16-1';
 
     private const CUSTOMER_CLASSES = array(
         self::CUSTOMER_PUBLIC,
@@ -56,10 +60,24 @@ final class PD_Shop_Plugin
             return;
         }
 
+        add_action('init', array(self::class, 'apply_business_defaults'), 5);
         add_action('init', array(self::class, 'register_order_status'));
         add_action('wp_enqueue_scripts', array(self::class, 'enqueue_storefront_assets'));
 
         add_filter('wc_order_statuses', array(self::class, 'add_order_status'));
+        add_filter('woocommerce_product_needs_shipping', '__return_false', 1000, 2);
+        add_filter('woocommerce_cart_needs_shipping', '__return_false', 1000);
+        add_filter('woocommerce_cart_needs_shipping_address', '__return_false', 1000);
+        add_filter(
+            'woocommerce_available_payment_gateways',
+            array(self::class, 'restrict_payment_gateways'),
+            1000
+        );
+        add_filter(
+            'woocommerce_cod_process_payment_order_status',
+            static fn(): string => 'on-hold',
+            1000
+        );
 
         add_filter(
             'bulk_actions-edit-shop_order',
@@ -70,21 +88,26 @@ final class PD_Shop_Plugin
             array(self::class, 'add_pickup_ready_bulk_action')
         );
 
+        add_action('woocommerce_before_shop_loop', array(self::class, 'render_pickup_notice'), 5);
+        add_action('woocommerce_before_single_product', array(self::class, 'render_pickup_notice'), 5);
+        add_action('woocommerce_before_cart', array(self::class, 'render_pickup_notice'), 5);
+        add_action('woocommerce_before_checkout_form', array(self::class, 'render_pickup_notice'), 5);
+
         add_action(
             'woocommerce_checkout_create_order',
-            array(self::class, 'stamp_customer_class_on_order'),
+            array(self::class, 'stamp_order_context'),
             20,
             2
         );
         add_action(
             'woocommerce_store_api_checkout_update_order_meta',
-            array(self::class, 'stamp_customer_class_on_store_api_order'),
+            array(self::class, 'stamp_order_context_store_api'),
             20,
             1
         );
         add_action(
             'woocommerce_admin_order_data_after_billing_address',
-            array(self::class, 'render_admin_customer_class'),
+            array(self::class, 'render_admin_order_context'),
             20,
             1
         );
@@ -99,6 +122,74 @@ final class PD_Shop_Plugin
         echo '<div class="notice notice-error"><p>'
             . esc_html('Plärrdeifl Shop benötigt ein aktives WooCommerce.')
             . '</p></div>';
+    }
+
+    public static function apply_business_defaults(): void
+    {
+        if ((string) get_option(self::SETUP_OPTION, '') === self::SETUP_VERSION) {
+            return;
+        }
+
+        update_option('woocommerce_enable_guest_checkout', 'yes');
+
+        $cod = get_option('woocommerce_cod_settings', array());
+        if (!is_array($cod)) {
+            $cod = array();
+        }
+        update_option('woocommerce_cod_settings', array_merge($cod, array(
+            'enabled' => 'yes',
+            'title' => 'Barzahlung bei Abholung',
+            'description' => 'Du bezahlst bar bei der Abholung am Fanstand im Icedome.',
+            'instructions' => 'Bitte bezahle bei der Abholung am Fanstand im Icedome.',
+            'enable_for_virtual' => 'yes',
+        )));
+
+        $cheque = get_option('woocommerce_cheque_settings', array());
+        if (!is_array($cheque)) {
+            $cheque = array();
+        }
+        update_option('woocommerce_cheque_settings', array_merge($cheque, array(
+            'enabled' => 'yes',
+            'title' => 'PayPal bei Abholung',
+            'description' => 'Du bezahlst per PayPal erst bei der Abholung am Fanstand im Icedome. Im Shop findet keine Online-Zahlung statt.',
+            'instructions' => 'Die PayPal-Zahlung erfolgt bei der Abholung am Fanstand im Icedome.',
+        )));
+
+        $bacs = get_option('woocommerce_bacs_settings', array());
+        if (!is_array($bacs)) {
+            $bacs = array();
+        }
+        $bacs['enabled'] = 'no';
+        update_option('woocommerce_bacs_settings', $bacs);
+
+        update_option(self::SETUP_OPTION, self::SETUP_VERSION, false);
+    }
+
+    /**
+     * @param array<string,mixed> $gateways
+     * @return array<string,mixed>
+     */
+    public static function restrict_payment_gateways(array $gateways): array
+    {
+        if (is_admin() && !wp_doing_ajax()) {
+            return $gateways;
+        }
+
+        foreach (array_keys($gateways) as $gateway_id) {
+            if (!in_array($gateway_id, array('cod', 'cheque'), true)) {
+                unset($gateways[$gateway_id]);
+            }
+        }
+
+        return $gateways;
+    }
+
+    public static function render_pickup_notice(): void
+    {
+        echo '<div class="pd-shop-pickup-note" role="note">'
+            . '<strong>' . esc_html('Nur Abholung') . '</strong>'
+            . '<span>' . esc_html('Kostenlose Abholung am Fanstand im Icedome. Kein Versand.') . '</span>'
+            . '</div>';
     }
 
     public static function enqueue_storefront_assets(): void
@@ -179,14 +270,6 @@ final class PD_Shop_Plugin
         return $actions;
     }
 
-    /**
-     * Resolve the commercial customer class for this request.
-     *
-     * V1 deliberately defaults to PUBLIC. A later authenticated shop bridge
-     * may supply PORTAL or MEMBER through the `pd_shop_customer_class` filter.
-     * Authorization must remain server-side; browser-provided flags are not
-     * accepted here.
-     */
     public static function customer_class(): string
     {
         $candidate = apply_filters(
@@ -209,23 +292,19 @@ final class PD_Shop_Plugin
      * @param mixed $order
      * @param mixed $data
      */
-    public static function stamp_customer_class_on_order($order, $data = null): void
+    public static function stamp_order_context($order, $data = null): void
     {
-        self::stamp_order_customer_class($order);
+        self::stamp_order_meta($order);
     }
 
-    /**
-     * @param mixed $order
-     */
-    public static function stamp_customer_class_on_store_api_order($order): void
+    /** @param mixed $order */
+    public static function stamp_order_context_store_api($order): void
     {
-        self::stamp_order_customer_class($order);
+        self::stamp_order_meta($order);
     }
 
-    /**
-     * @param mixed $order
-     */
-    private static function stamp_order_customer_class($order): void
+    /** @param mixed $order */
+    private static function stamp_order_meta($order): void
     {
         if (!is_object($order) || !is_a($order, 'WC_Order')) {
             return;
@@ -235,12 +314,14 @@ final class PD_Shop_Plugin
             self::ORDER_META_CUSTOMER_CLASS,
             self::customer_class()
         );
+        $order->update_meta_data(
+            self::ORDER_META_FULFILLMENT,
+            self::FULFILLMENT_PICKUP_ICEDOME
+        );
     }
 
-    /**
-     * @param mixed $order
-     */
-    public static function render_admin_customer_class($order): void
+    /** @param mixed $order */
+    public static function render_admin_order_context($order): void
     {
         if (!is_object($order) || !is_a($order, 'WC_Order')) {
             return;
@@ -259,6 +340,9 @@ final class PD_Shop_Plugin
 
         echo '<p><strong>' . esc_html('Kundengruppe:') . '</strong> '
             . esc_html($label)
+            . '</p>';
+        echo '<p><strong>' . esc_html('Übergabe:') . '</strong> '
+            . esc_html('Abholung am Fanstand im Icedome')
             . '</p>';
     }
 }
