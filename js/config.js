@@ -1,6 +1,10 @@
 const runtime =
   window.PD_RUNTIME_CONFIG || {};
 
+const runtimeEnvironment = String(
+  runtime.environment || "UNCONFIGURED"
+).trim().toUpperCase();
+
 export const CONFIG = Object.freeze({
   app: {
     name: "Plärrdeifl Portal",
@@ -22,9 +26,7 @@ export const CONFIG = Object.freeze({
       || ""
     ).trim(),
 
-    environment: String(
-      runtime.environment || "UNCONFIGURED"
-    ).trim().toUpperCase(),
+    environment: runtimeEnvironment,
 
     configured: Boolean(
       String(runtime.supabaseUrl || "").trim()
@@ -39,9 +41,7 @@ export const CONFIG = Object.freeze({
   shop: {
     baseUrl: String(
       runtime.shopBaseUrl
-      || (String(runtime.environment || "DEV").trim().toUpperCase() === "PROD"
-        ? "https://plaerrdeifl.de"
-        : "https://staging.plaerrdeifl.de")
+      || (runtimeEnvironment === "DEV" ? "https://staging.plaerrdeifl.de" : "")
     ).trim().replace(/\/$/, "")
   },
 

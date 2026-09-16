@@ -13,7 +13,7 @@ const [plugin, css] = await Promise.all([
 
 test("shop plugin declares WooCommerce dependency and modern compatibility", () => {
   assert.match(plugin, /Plugin Name:\s*Plärrdeifl Shop/);
-  assert.match(plugin, /Version:\s*0\.6\.0/);
+  assert.match(plugin, /Version:\s*0\.6\.1/);
   assert.match(plugin, /Requires Plugins:\s*woocommerce/);
   assert.match(plugin, /declare_compatibility\(\s*'custom_order_tables'/);
   assert.match(plugin, /declare_compatibility\(\s*'cart_checkout_blocks'/);
@@ -101,4 +101,20 @@ test("shop foundation contains no environment secret, Supabase binding or invent
   assert.doesNotMatch(plugin, /service[_-]?role|SUPABASE_SERVICE_ROLE|M150_INTAKE_HMAC_SECRET/i);
   assert.doesNotMatch(plugin, /tpieykhhawszlzsoflnl|wplescvhlgctynkfwvrj/);
   assert.doesNotMatch(plugin, /percent|percentage|coupon|discount amount|rabatt.*[0-9]/i);
+});
+
+
+test("shop bridge keeps its own runtime configuration and order identity linkage", () => {
+  assert.match(plugin, /SHOP_SETTINGS_OPTION\s*=\s*'plaerrdeifl_shop_settings'/);
+  assert.doesNotMatch(plugin, /plaerrdeifl_m310_fanbus_settings/);
+  assert.match(plugin, /ORDER_META_PORTAL_USER_ID\s*=\s*'_pd_portal_user_id'/);
+  assert.match(plugin, /ORDER_META_MEMBER_ID\s*=\s*'_pd_member_id'/);
+  assert.match(plugin, /pd_shop_identity/);
+});
+
+test("embedded app shop suppresses the duplicate public WordPress chrome", () => {
+  assert.match(plugin, /HTTP_SEC_FETCH_DEST/);
+  assert.match(plugin, /window\.self!==window\.top/);
+  assert.match(css, /html\.pd-shop-embedded \.portal-topbar/);
+  assert.match(css, /html\.pd-shop-embedded \.site-footer/);
 });

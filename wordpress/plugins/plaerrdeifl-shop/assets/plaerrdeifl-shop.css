@@ -219,3 +219,22 @@
     border-radius: var(--radius-md, 13px);
   }
 }
+
+
+html.pd-shop-embedded .portal-topbar,
+html.pd-shop-embedded .public-navigation,
+html.pd-shop-embedded .public-drawer,
+html.pd-shop-embedded .public-drawer-backdrop,
+html.pd-shop-embedded .site-footer,
+body.pd-shop-embedded .portal-topbar,
+body.pd-shop-embedded .public-navigation,
+body.pd-shop-embedded .public-drawer,
+body.pd-shop-embedded .public-drawer-backdrop,
+body.pd-shop-embedded .site-footer {
+  display: none !important;
+}
+
+html.pd-shop-embedded .page-shell,
+body.pd-shop-embedded .page-shell {
+  padding-top: 0 !important;
+}
