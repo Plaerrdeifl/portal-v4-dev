@@ -13,7 +13,7 @@ const [plugin, css] = await Promise.all([
 
 test("shop plugin declares WooCommerce dependency and modern compatibility", () => {
   assert.match(plugin, /Plugin Name:\s*Plärrdeifl Shop/);
-  assert.match(plugin, /Version:\s*0\.4\.0/);
+  assert.match(plugin, /Version:\s*0\.5\.0/);
   assert.match(plugin, /Requires Plugins:\s*woocommerce/);
   assert.match(plugin, /declare_compatibility\(\s*'custom_order_tables'/);
   assert.match(plugin, /declare_compatibility\(\s*'cart_checkout_blocks'/);
@@ -27,6 +27,23 @@ test("shop customer classification is prepared without trusting browser flags", 
   assert.match(plugin, /return self::CUSTOMER_PUBLIC/);
   assert.doesNotMatch(plugin, /\$_(?:GET|POST|REQUEST|COOKIE)\s*\[/);
   assert.doesNotMatch(plugin, /member=true|portal=true/i);
+});
+
+test("shop is member-only across storefront, navigation, product visibility and public Store API", () => {
+  assert.match(plugin, /shop_access_allowed\(\)/);
+  assert.match(plugin, /pd_shop_member_access/);
+  assert.match(plugin, /self::customer_class\(\) === self::CUSTOMER_MEMBER/);
+  assert.match(plugin, /current_user_can\('manage_woocommerce'\)/);
+  assert.match(plugin, /template_redirect/);
+  assert.match(plugin, /set_404\(\)/);
+  assert.match(plugin, /woocommerce_product_is_visible/);
+  assert.match(plugin, /wp_get_nav_menu_items/);
+  assert.match(plugin, /rest_pre_dispatch/);
+  assert.match(plugin, /str_starts_with\(\$route, '\/wc\/store\/'\)/);
+  assert.match(plugin, /pd_shop_members_only/);
+  assert.match(plugin, /Shop nur für Mitglieder\./);
+  assert.match(plugin, /wp_sitemaps_post_types/);
+  assert.match(plugin, /unset\(\$post_types\['product'\]\)/);
 });
 
 test("shop persists customer class and pickup fulfillment on classic and Store API orders", () => {
