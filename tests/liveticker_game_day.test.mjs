@@ -183,3 +183,22 @@ test("metadata editor uses the existing team snapshot and no second sticker admi
   assert.match(admin, /value="GENERAL"/);
   assert.match(admin, /value="VIDEO_REVIEW"/);
 });
+
+test("game-day minute control reuses the native Liveticker minute state and delivery polling stays non-destructive", async () => {
+  const [source, engine, css] = await Promise.all([
+    read("js/liveticker-game-day.js"),
+    read("js/liveticker-engine-v4.js"),
+    read("liveticker/game-day.css")
+  ]);
+  assert.match(source, /id="gameDayCurrentMinute"/);
+  assert.match(source, /data-game-minute-step="-1"/);
+  assert.match(source, /data-game-minute-step="1"/);
+  assert.match(source, /setNativeValue\("#gameMinute", minute\)/);
+  assert.match(engine, /minuteInput\.addEventListener\("change", syncContext\)/);
+  assert.match(engine, /Math\.max\(1, \(selectedMinute\(\) \|\| 1\) \+ Number\.parseInt\(button\.dataset\.minuteStep, 10\)\)/);
+  assert.match(source, /const changed = await refreshDeliveries\(\);\s*if \(changed\) patchDeliveryUi\(\);/);
+  assert.doesNotMatch(source, /await refreshDeliveries\(\);\s*renderMain\(\);\s*\}, 3000\)/);
+  assert.match(css, /\.game-day-minute-control\{/);
+  assert.match(css, /\.game-day-minute-button\{/);
+  assert.match(css, /\.game-day-minute-input\{/);
+});

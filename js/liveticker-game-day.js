@@ -152,6 +152,27 @@ function initializeGameDay() {
     </div>`;
   }
 
+  function deliveryStatusSlotHtml(delivery = currentDelivery()) {
+    return `<div data-game-day-delivery-status>${deliveryStatusHtml(delivery)}</div>`;
+  }
+
+  function deliveryFingerprint() {
+    return JSON.stringify({
+      error: model.deliveryLoadError,
+      deliveries: model.deliveries.map(item => [
+        item.id,
+        item.status,
+        item.stickerStatus,
+        item.textStatus,
+        item.linkedActionId || "",
+        item.stickerMessageId || "",
+        item.textMessageId || "",
+        item.stickerSentAt || "",
+        item.textSentAt || ""
+      ])
+    });
+  }
+
   function stickerGrid(stickers, selectedId = model.selectedStickerId) {
     if (!stickers.length) return '<p class="game-day-empty">Für diesen Kontext sind keine aktiven Sticker hinterlegt.</p>';
     return stickers.map(sticker => stickerCard(sticker, selectedId)).join("");
@@ -169,17 +190,28 @@ function initializeGameDay() {
         <span><strong class="game-day-score-value">${header.homeScore}</strong><span class="game-day-score-divider"> : </span><strong class="game-day-score-value">${header.awayScore}</strong></span>
         <span class="game-day-team">${escapeHtml(header.awayName)}</span>
       </div>
-      <div class="game-day-clock"><strong>${escapeHtml(model.phaseLabel || header.period.label)}</strong><span>${header.minute}. Spielminute</span></div>
-      <div class="game-day-health"><span>Liveticker <b>✓</b></span><span>WhatsApp <b>${model.deliveryLoadError ? "Status offen" : "✓"}</b></span></div>
+      <div class="game-day-clock">
+        <strong>${escapeHtml(model.phaseLabel || header.period.label)}</strong>
+        <div class="game-day-minute-control" aria-label="Spielminute einstellen">
+          <button class="game-day-minute-button" type="button" data-game-minute-step="-1" aria-label="Eine Minute zurück">−</button>
+          <label class="game-day-minute-value" for="gameDayCurrentMinute"><span>Spielminute</span><input id="gameDayCurrentMinute" class="game-day-minute-input" type="number" inputmode="numeric" min="1" step="1" value="${header.minute}"></label>
+          <button class="game-day-minute-button" type="button" data-game-minute-step="1" aria-label="Eine Minute weiter">+</button>
+        </div>
+      </div>
+      <div class="game-day-health"><span>Liveticker <b>✓</b></span><span>WhatsApp <b data-game-day-whatsapp-health>${model.deliveryLoadError ? "Status offen" : "✓"}</b></span></div>
     </section>`;
+  }
+
+  function openDraftStatusText() {
+    const delivery = currentDelivery();
+    return `Sticker ${delivery?.stickerStatus === "SENT" ? "✓" : delivery ? deliveryComponentStatus(delivery.stickerStatus).label : "noch nicht gesendet"} · Ticker-Daten noch offen`;
   }
 
   function renderOpenDraft() {
     if (!model.draft || !["goal", "against", "penalty"].includes(model.draft.kind)) return "";
-    const delivery = currentDelivery();
     return `<section class="game-day-card game-day-open">
       <h2>OFFENE AKTION · ${model.draft.kind === "goal" ? "TOR" : model.draft.kind === "against" ? "GEGENTOR" : "STRAFE"}</h2>
-      <p class="game-day-muted">Sticker ${delivery?.stickerStatus === "SENT" ? "✓" : delivery ? deliveryComponentStatus(delivery.stickerStatus).label : "noch nicht gesendet"} · Ticker-Daten noch offen</p>
+      <p class="game-day-muted" data-game-day-open-status>${escapeHtml(openDraftStatusText())}</p>
       <button class="game-day-secondary" type="button" data-continue-draft>WEITER BEARBEITEN</button>
     </section>`;
   }
@@ -221,9 +253,9 @@ function initializeGameDay() {
         <button class="game-day-action wide" data-kind="secondary" type="button" data-open="phase">DRITTEL / SPIELSTATUS</button>
       </nav>
       ${renderExistingActions()}
-      ${renderTimeline()}
+      <div data-game-day-timeline-slot>${renderTimeline()}</div>
       ${model.loading ? '<p class="game-day-muted">Sticker und Versandstatus werden geladen …</p>' : ""}
-      ${model.deliveryLoadError ? `<p class="game-day-status" data-tone="error">${escapeHtml(model.deliveryLoadError)}</p>` : ""}
+      <div data-game-day-delivery-error>${model.deliveryLoadError ? `<p class="game-day-status" data-tone="error">${escapeHtml(model.deliveryLoadError)}</p>` : ""}</div>
     </div></div>${renderSheet()}`;
   }
 
@@ -244,7 +276,7 @@ function initializeGameDay() {
         <button class="game-day-primary" type="button" data-send-sticker>JETZT SENDEN</button>
         ${model.linkedActionId ? "" : '<button class="game-day-secondary" type="button" data-show-sticker-text>MIT TEXT SENDEN</button>'}` : ""}
       ${model.sheet === "sticker-text" ? `<div class="game-day-field"><label for="gameDayFreeText">Freier Text</label><textarea id="gameDayFreeText" maxlength="4000" placeholder="Nachricht für WhatsApp">${escapeHtml(model.freeTextDraft)}</textarea></div><button class="game-day-primary" type="button" data-send-sticker-text>STICKER + TEXT SENDEN</button>` : ""}
-      ${deliveryStatusHtml()}
+      ${deliveryStatusSlotHtml()}
       ${model.requestError && model.request ? '<button class="game-day-secondary" type="button" data-retry-request>ANFRAGE SICHER ERNEUT SENDEN</button>' : ""}
     </section></div>`;
   }
@@ -260,7 +292,7 @@ function initializeGameDay() {
     return `<section><h3>Empfohlene Sticker</h3><div class="game-day-sticker-grid">${stickerGrid(stickers)}</div></section>
       <button class="game-day-secondary" type="button" data-all-action-stickers>ALLE STICKER</button>
       ${sticker ? `<button class="game-day-primary" type="button" data-send-action-sticker>STICKER JETZT SENDEN</button>` : ""}
-      ${deliveryStatusHtml(model.draft?.deliveryId ? deliveryForId(model.draft.deliveryId) : null)}`;
+      ${deliveryStatusSlotHtml(model.draft?.deliveryId ? deliveryForId(model.draft.deliveryId) : null)}`;
   }
 
   function renderGoalSheet(kind) {
@@ -318,7 +350,7 @@ function initializeGameDay() {
       ${video ? '<div class="game-day-duration"><button type="button" data-message-preset="Videobeweis läuft.">Review läuft</button><button type="button" data-message-preset="Tor bestätigt.">Tor bestätigt</button><button type="button" data-message-preset="Kein Tor.">Kein Tor</button><button type="button" data-message-preset="Entscheidung: ">Entscheidung</button></div>' : ""}
       <div class="game-day-field"><label for="gameDayMessage">Text</label><textarea id="gameDayMessage" maxlength="4000">${escapeHtml(model.messageDraft)}</textarea></div>
       <button class="game-day-primary" type="button" data-send-message>${model.selectedStickerId ? "STICKER + TEXT SENDEN" : "TEXT SENDEN"}</button>
-      ${deliveryStatusHtml()}
+      ${deliveryStatusSlotHtml()}
       ${model.requestError && model.request ? '<button class="game-day-secondary" type="button" data-retry-request>ANFRAGE SICHER ERNEUT SENDEN</button>' : ""}
     </section></div>`;
   }
@@ -326,7 +358,7 @@ function initializeGameDay() {
   function renderPhaseSheet() {
     return `<div class="game-day-sheet-backdrop" data-sheet-backdrop><section class="game-day-sheet" role="dialog" aria-modal="true" aria-labelledby="gameDaySheetTitle">
       <div class="game-day-sheet-head"><h2 id="gameDaySheetTitle">Drittel / Spielstatus</h2><button class="game-day-close" type="button" data-close-sheet aria-label="Schließen">×</button></div>
-      <p class="game-day-muted">Setzt die Spielminute als schnellen UX-Kontext. Sonderfälle bleiben über die normale Minutensteuerung möglich.</p>
+      <p class="game-day-muted">Die Spielminute lässt sich oben wie in der normalen Ansicht direkt eingeben oder mit − / + ändern. Die Schnellwahl setzt zusätzlich den passenden Spielstatus.</p>
       ${[[1, "Vor dem Spiel", "Vor dem Spiel"], [1, "1. Drittel", "1. Drittel"], [20, "Pause nach dem 1. Drittel", "Pause"], [21, "2. Drittel", "2. Drittel"], [40, "Pause nach dem 2. Drittel", "Pause"], [41, "3. Drittel", "3. Drittel"], [61, "Verlängerung", "Verlängerung"], [61, "Penaltyschießen", "Penaltyschießen"], [61, "Spielende (Anzeige)", "Spielende"]].map(([minute, label, phase]) => `<button class="game-day-secondary" type="button" data-set-minute="${minute}" data-phase-label="${escapeHtml(phase)}">${label}</button>`).join("")}
       <a class="game-day-secondary" href="./" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Weitere Spielstatus-Aktionen in normaler Ansicht</a>
     </section></div>`;
@@ -394,6 +426,7 @@ function initializeGameDay() {
   }
 
   async function refreshDeliveries() {
+    const before = deliveryFingerprint();
     try {
       const result = await loadWhatsappDeliveries(game.eventId);
       model.deliveries = Array.isArray(result?.deliveries) ? result.deliveries : [];
@@ -401,6 +434,45 @@ function initializeGameDay() {
     } catch {
       model.deliveryLoadError = "Versandstatus ist bis zur Aktivierung der neuen DEV-Migration noch nicht verfügbar.";
     }
+    return before !== deliveryFingerprint();
+  }
+
+  function visibleDeliveryStatus() {
+    if (model.draft?.deliveryId && ["goal", "against", "penalty"].includes(model.draft.kind)) {
+      return deliveryForId(model.draft.deliveryId);
+    }
+    return currentDelivery();
+  }
+
+  function patchDeliveryUi() {
+    const health = root.querySelector("[data-game-day-whatsapp-health]");
+    if (health) health.textContent = model.deliveryLoadError ? "Status offen" : "✓";
+
+    const timeline = root.querySelector("[data-game-day-timeline-slot]");
+    if (timeline) timeline.innerHTML = renderTimeline();
+
+    const openStatus = root.querySelector("[data-game-day-open-status]");
+    if (openStatus) openStatus.textContent = openDraftStatusText();
+
+    const deliveryStatus = root.querySelector("[data-game-day-delivery-status]");
+    if (deliveryStatus) deliveryStatus.innerHTML = deliveryStatusHtml(visibleDeliveryStatus());
+
+    const errorSlot = root.querySelector("[data-game-day-delivery-error]");
+    if (errorSlot) {
+      errorSlot.innerHTML = model.deliveryLoadError
+        ? `<p class="game-day-status" data-tone="error">${escapeHtml(model.deliveryLoadError)}</p>`
+        : "";
+    }
+  }
+
+  function setGameDayMinute(value, phaseLabel = "") {
+    const minute = Math.max(1, Number.parseInt(value, 10) || 1);
+    model.phaseLabel = phaseLabel;
+    const gameDayInput = root.querySelector("#gameDayCurrentMinute");
+    if (gameDayInput) gameDayInput.value = String(minute);
+    setNativeValue("#gameMinute", minute);
+    model.state = { ...readState(), completedAt: model.state.completedAt || null };
+    return minute;
   }
 
   async function sendRequest(request, draft = null) {
@@ -595,10 +667,14 @@ function initializeGameDay() {
       root.querySelector("#gameDayMessage")?.focus();
       return;
     }
+    if (button.dataset.gameMinuteStep) {
+      const input = root.querySelector("#gameDayCurrentMinute");
+      const current = Number.parseInt(input?.value, 10) || Number(model.state.minute) || 1;
+      setGameDayMinute(current + Number.parseInt(button.dataset.gameMinuteStep, 10));
+      return;
+    }
     if (button.dataset.setMinute) {
-      setNativeValue("#gameMinute", button.dataset.setMinute);
-      model.state = readState();
-      model.phaseLabel = button.dataset.phaseLabel || "";
+      setGameDayMinute(button.dataset.setMinute, button.dataset.phaseLabel || "");
       model.sheet = "";
       renderMain();
       return;
@@ -607,6 +683,10 @@ function initializeGameDay() {
   });
 
   root.addEventListener("change", event => {
+    if (event.target.matches("#gameDayCurrentMinute")) {
+      event.target.value = String(setGameDayMinute(event.target.value));
+      return;
+    }
     if (event.target.matches("#gameDayPenaltyTeam")) {
       captureDraft();
       model.draft.player = "";
@@ -625,9 +705,8 @@ function initializeGameDay() {
   });
 
   const poll = window.setInterval(async () => {
-    captureSheetInputs();
-    await refreshDeliveries();
-    renderMain();
+    const changed = await refreshDeliveries();
+    if (changed) patchDeliveryUi();
   }, 3000);
   window.addEventListener("pagehide", () => clearInterval(poll), { once: true });
 
