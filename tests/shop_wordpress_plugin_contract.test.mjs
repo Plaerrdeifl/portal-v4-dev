@@ -25,8 +25,14 @@ test("shop customer classification is prepared without trusting browser flags", 
   assert.match(plugin, /CUSTOMER_MEMBER\s*=\s*'MEMBER'/);
   assert.match(plugin, /apply_filters\(\s*'pd_shop_customer_class'/);
   assert.match(plugin, /return self::CUSTOMER_PUBLIC/);
-  assert.doesNotMatch(plugin, /\$_(?:GET|POST|REQUEST|COOKIE)\s*\[/);
-  assert.doesNotMatch(plugin, /member=true|portal=true/i);
+  // The signed Portal bridge legitimately receives one bearer token via POST.
+  // What must never be accepted is a browser-controlled membership/class flag.
+  assert.match(plugin, /\$_POST\['pd_shop_access_token'\]/);
+  assert.doesNotMatch(
+    plugin,
+    /\$_(?:GET|POST|REQUEST|COOKIE)\s*\[\s*['"](?:member|membership|portal|customerClass|customer_class|memberId|member_id)['"]\s*\]/i
+  );
+  assert.doesNotMatch(plugin, /member=true|portal=true|customerClass=MEMBER/i);
 });
 
 test("shop is member-only across storefront, navigation, product visibility and public Store API", () => {
