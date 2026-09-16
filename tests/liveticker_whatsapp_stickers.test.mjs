@@ -4,7 +4,12 @@ import path from "node:path";
 import test from "node:test";
 import { attachWhatsappPublishIntent } from "../js/liveticker-whatsapp-publish.js";
 import { activeWhatsappStickers } from "../js/liveticker-whatsapp-sticker-core.js";
-import { deliverWhatsappJob, UnknownStickerError } from "../workers/liveticker-whatsapp/delivery.mjs";
+import {
+  deliverWhatsappJob,
+  InvalidWhatsappJobError,
+  sentRecordFromJob,
+  UnknownStickerError
+} from "../workers/liveticker-whatsapp/delivery.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const read = relative => fs.readFile(path.join(root, relative), "utf8");
@@ -126,10 +131,45 @@ test("worker job without sticker sends only text", async () => {
   assert.equal(result.sentRecord.media, undefined);
 });
 
+test("explicit TEXT_ONLY sends exactly the text component", async () => {
+  const calls = [];
+  await deliverWhatsappJob({
+    job: { id: "job-text", deliveryMode: "TEXT_ONLY", message: "Nur Text", stickerId: null },
+    sentRecord: {},
+    ...deliveryDependencies({
+      resolveSticker: async () => { calls.push("resolve"); return stickerAsset; },
+      sendSticker: async () => { calls.push("sticker"); return mediaRecord; },
+      sendText: async () => { calls.push("text"); return textRecord; },
+      remember: async () => { calls.push("remember"); },
+      waitAfterSticker: async () => { calls.push("delay"); }
+    })
+  });
+  assert.deepEqual(calls, ["text", "remember"]);
+});
+
+test("STICKER_ONLY sends exactly the sticker component", async () => {
+  const calls = [];
+  const result = await deliverWhatsappJob({
+    job: { id: "job-sticker", deliveryMode: "STICKER_ONLY", message: null, stickerId },
+    sentRecord: {},
+    ...deliveryDependencies({
+      resolveSticker: async () => { calls.push("resolve"); return stickerAsset; },
+      sendSticker: async () => { calls.push("sticker"); return mediaRecord; },
+      sendText: async () => { calls.push("text"); return textRecord; },
+      remember: async () => { calls.push("remember"); },
+      waitAfterSticker: async () => { calls.push("delay"); }
+    })
+  });
+  assert.deepEqual(calls, ["resolve", "sticker", "remember"]);
+  assert.equal(result.sentRecord.media.messageId, "sticker-message");
+  assert.equal(result.sentRecord.text, undefined);
+  assert.equal(result.sentRecord.messageId, "sticker-message");
+});
+
 test("worker sends selected sticker before text", async () => {
   const calls = [];
   await deliverWhatsappJob({
-    job: { id: "job-2", message: "Sticker und Text", stickerId },
+    job: { id: "job-2", deliveryMode: "STICKER_THEN_TEXT", message: "Sticker und Text", stickerId },
     sentRecord: {},
     ...deliveryDependencies({
       resolveSticker: async id => { calls.push(`resolve:${id}`); return stickerAsset; },
@@ -166,6 +206,62 @@ test("text failure after sticker persists media and retry does not send the stic
   });
   assert.equal(stickerSends, 1);
   assert.equal(retry.sentRecord.text.messageId, "text-message");
+});
+
+test("persisted sticker success makes a combined retry send only text", async () => {
+  const calls = [];
+  const sentRecord = sentRecordFromJob({
+    stickerStatus: "SENT",
+    stickerMessageId: "durable-sticker-message",
+    stickerSentAt: "2026-09-15T10:00:00.000Z",
+    textStatus: "PENDING"
+  });
+  await deliverWhatsappJob({
+    job: { deliveryMode: "STICKER_THEN_TEXT", message: "Retry Text", stickerId },
+    sentRecord,
+    ...deliveryDependencies({
+      resolveSticker: async () => { calls.push("resolve"); return stickerAsset; },
+      sendSticker: async () => { calls.push("sticker"); return mediaRecord; },
+      sendText: async () => { calls.push("text"); return textRecord; },
+      remember: async () => { calls.push("remember"); },
+      waitAfterSticker: async () => { calls.push("delay"); }
+    })
+  });
+  assert.deepEqual(calls, ["text", "remember"]);
+});
+
+test("STICKER_ONLY retry never calls the text transport", async () => {
+  const calls = [];
+  await assert.rejects(() => deliverWhatsappJob({
+    job: { deliveryMode: "STICKER_ONLY", message: null, stickerId },
+    sentRecord: {},
+    ...deliveryDependencies({
+      sendSticker: async () => { calls.push("sticker-failed"); throw new Error("sticker failed"); },
+      sendText: async () => { calls.push("text"); return textRecord; }
+    })
+  }), /sticker failed/);
+  await deliverWhatsappJob({
+    job: { deliveryMode: "STICKER_ONLY", message: null, stickerId },
+    sentRecord: {},
+    ...deliveryDependencies({
+      sendSticker: async () => { calls.push("sticker-retry"); return mediaRecord; },
+      sendText: async () => { calls.push("text-retry"); return textRecord; }
+    })
+  });
+  assert.deepEqual(calls, ["sticker-failed", "sticker-retry"]);
+});
+
+test("job without a sendable component is rejected before a transport call", async () => {
+  let called = false;
+  await assert.rejects(() => deliverWhatsappJob({
+    job: { deliveryMode: "TEXT_ONLY", message: "   ", stickerId: null },
+    sentRecord: {},
+    ...deliveryDependencies({
+      sendSticker: async () => { called = true; return mediaRecord; },
+      sendText: async () => { called = true; return textRecord; }
+    })
+  }), error => error instanceof InvalidWhatsappJobError && error.code === "INVALID_WHATSAPP_JOB");
+  assert.equal(called, false);
 });
 
 test("sticker failure prevents text delivery and does not create a media journal entry", async () => {

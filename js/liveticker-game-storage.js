@@ -145,6 +145,7 @@ function writeEngineState(state) {
 function applyRemoteState(raw) {
   const next = normalizeState(raw);
   serverState = next;
+  window.PD_LIVETICKER_SERVER_STATE = next;
   applyingRemote = true;
   try {
     writeEngineState(next);
@@ -227,6 +228,9 @@ async function syncLocalState(localState) {
     }
     applyRemoteState(result);
     if (wakeWhatsapp) void broadcastWhatsappWake();
+    window.dispatchEvent(new CustomEvent("pd-liveticker-server-synced", {
+      detail: { state: normalizeState(result), changes }
+    }));
   } catch (error) {
     console.error(error);
     pendingLocalState = localState;
@@ -380,6 +384,15 @@ export async function prepareLivetickerGameStorage() {
   window.addEventListener("pd-liveticker-state-saved", event => {
     const localState = event.detail?.state || readEngineState();
     if (localState) queueMicrotask(() => syncLocalState(localState));
+  });
+
+  window.addEventListener("pd-api-after-call", event => {
+    if ([
+      "liveticker_whatsapp_sticker_enqueue",
+      "liveticker_whatsapp_delivery_enqueue"
+    ].includes(event.detail?.action)) {
+      void broadcastWhatsappWake();
+    }
   });
 
   document.addEventListener("click", event => {
