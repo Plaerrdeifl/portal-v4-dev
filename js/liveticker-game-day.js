@@ -93,6 +93,12 @@ function initializeGameDay() {
   document.body.classList.add("game-day-active");
   root.hidden = false;
 
+  const graphicResultPanel = document.querySelector("#graphicsResultPanel");
+  if (graphicResultPanel && graphicResultPanel.parentElement !== document.body) {
+    graphicResultPanel.classList.add("game-day-graphic-results");
+    document.body.append(graphicResultPanel);
+  }
+
   const model = {
     state: { ...readState(), completedAt: window.PD_LIVETICKER_SERVER_STATE?.completedAt || null },
     stickers: [],
@@ -239,6 +245,17 @@ function initializeGameDay() {
     }).join("")}</div></section>`;
   }
 
+  function renderFlyerActions() {
+    return `<section class="game-day-card game-day-flyers">
+      <h2>Flyer</h2>
+      <div class="game-day-flyer-actions">
+        <button class="game-day-secondary" type="button" data-game-day-graphic="PERIOD_1">1. DRITTEL</button>
+        <button class="game-day-secondary" type="button" data-game-day-graphic="PERIOD_2">2. DRITTEL</button>
+        <button class="game-day-primary" type="button" data-game-day-graphic="FINAL">SPIELENDE</button>
+      </div>
+    </section>`;
+  }
+
   function renderMain() {
     root.innerHTML = `<div class="game-day-root"><div class="game-day-shell">
       ${renderHeader()}
@@ -250,6 +267,7 @@ function initializeGameDay() {
         <button class="game-day-action" data-kind="penalty" type="button" data-open="penalty">STRAFE</button>
         <button class="game-day-action" data-kind="secondary" type="button" data-open="misc">SONSTIGES</button>
       </nav>
+      ${renderFlyerActions()}
       ${renderExistingActions()}
       <div data-game-day-timeline-slot>${renderTimeline()}</div>
       ${model.loading ? '<p class="game-day-muted">Sticker und Versandstatus werden geladen …</p>' : ""}
@@ -646,6 +664,22 @@ function initializeGameDay() {
       const input = root.querySelector("#gameDayCurrentMinute");
       const current = Number.parseInt(input?.value, 10) || Number(model.state.minute) || 1;
       setGameDayMinute(current + Number.parseInt(button.dataset.gameMinuteStep, 10));
+      return;
+    }
+    if (button.dataset.gameDayGraphic) {
+      const targetId = {
+        PERIOD_1: "period1OutputButton",
+        PERIOD_2: "period2OutputButton",
+        FINAL: "finalOutputButton"
+      }[button.dataset.gameDayGraphic];
+      const classicGraphicButton = targetId ? document.getElementById(targetId) : null;
+      if (!classicGraphicButton || classicGraphicButton.disabled) {
+        model.notice = "Flyer-Erstellung ist gerade noch nicht bereit.";
+        renderMain();
+        return;
+      }
+      model.notice = "";
+      classicGraphicButton.click();
       return;
     }
     if (button.dataset.addStickerAction) openStickerGallery(button.dataset.addStickerAction);

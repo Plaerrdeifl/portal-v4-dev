@@ -217,3 +217,20 @@ test("game-day minute control reuses the native Liveticker minute state and deli
   assert.doesNotMatch(source, /await refreshDeliveries\(\);\s*renderMain\(\);\s*\}, 3000\)/);
   assert.match(css, /\.game-day-native-minute-field\{/);
 });
+
+test("game mode exposes existing period and final flyer workflow without a second graphics implementation", async () => {
+  const [source, graphics] = await Promise.all([
+    read("js/liveticker-game-day.js"),
+    read("js/liveticker-graphics-inline.js")
+  ]);
+  assert.match(source, /data-game-day-graphic="PERIOD_1">1\. DRITTEL/);
+  assert.match(source, /data-game-day-graphic="PERIOD_2">2\. DRITTEL/);
+  assert.match(source, /data-game-day-graphic="FINAL">SPIELENDE/);
+  assert.match(source, /PERIOD_1: "period1OutputButton"/);
+  assert.match(source, /PERIOD_2: "period2OutputButton"/);
+  assert.match(source, /FINAL: "finalOutputButton"/);
+  assert.match(source, /graphicResultPanel\.classList\.add\("game-day-graphic-results"\)/);
+  assert.match(source, /document\.body\.append\(graphicResultPanel\)/);
+  assert.match(graphics, /const KINDS = Object\.freeze\(\["PERIOD_1", "PERIOD_2", "FINAL"\]\)/);
+  assert.match(graphics, /api\.call\("liveticker_graphics_enqueue", \{ eventId, kind \}\)/);
+});

@@ -23,3 +23,8 @@ body.game-day-active #tickerApp{display:none!important}
 
 
 .game-day-native-minute-field{width:min(300px,100%);margin:9px auto 0;display:grid;gap:6px}.game-day-minute-label{color:#c6dced;font-size:.78rem;font-weight:900}.game-day-native-minute-field .minute-control{width:100%}
+
+.game-day-flyers{gap:9px}.game-day-flyer-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.game-day-flyer-actions .game-day-primary,.game-day-flyer-actions .game-day-secondary{min-height:50px;padding:8px 6px;font-size:.78rem}
+body.game-day-active #graphicsResultPanel.game-day-graphic-results{position:fixed;z-index:70;left:50%;bottom:max(10px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(680px,calc(100% - 20px));max-height:min(78vh,720px);overflow-y:auto;margin:0;padding:16px;border:1px solid rgba(255,255,255,.16);border-radius:22px;background:#062039;color:#fff;box-shadow:0 22px 70px rgba(0,0,0,.55)}
+body.game-day-active #graphicsResultPanel .output-head h2{color:#fff}body.game-day-active #graphicsResultPanel .secondary{border-color:#52728e;background:#102f4a;color:#fff}body.game-day-active #graphicsResultPanel .graphic-status{background:#102f4a;color:#c6dced}body.game-day-active #graphicsResultPanel .graphic-artifact-button{border-color:#5eb2fa;background:#0d79e8;color:#fff}
+@media(max-width:420px){.game-day-flyer-actions{grid-template-columns:1fr}.game-day-flyer-actions .game-day-primary,.game-day-flyer-actions .game-day-secondary{min-height:46px}}
