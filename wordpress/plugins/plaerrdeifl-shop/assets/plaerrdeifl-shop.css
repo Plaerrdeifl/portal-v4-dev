@@ -6,6 +6,27 @@
   color: var(--text, #f8fafc);
 }
 
+.pd-shop-pickup-note {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--accent-light, #49adff) 45%, transparent);
+  border-radius: var(--radius-md, 13px);
+  background: var(--surface-strong, rgba(32, 141, 242, 0.17));
+  color: var(--text, #f8fafc);
+}
+
+.pd-shop-pickup-note strong {
+  color: var(--white, #fff);
+  white-space: nowrap;
+}
+
+.pd-shop-pickup-note span {
+  color: var(--muted, #cbd5e1);
+}
+
 .woocommerce .woocommerce-breadcrumb,
 .woocommerce .woocommerce-result-count,
 .woocommerce .woocommerce-ordering,
@@ -177,6 +198,12 @@
 @media (max-width: 560px) {
   .woocommerce ul.products {
     grid-template-columns: 1fr;
+  }
+
+  .pd-shop-pickup-note {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
   }
 
   .woocommerce ul.products li.product,
