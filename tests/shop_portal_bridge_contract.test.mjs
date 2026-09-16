@@ -49,6 +49,13 @@ test("shop stays embedded in the portal without an external-open action", () => 
   assert.doesNotMatch(shopModule, /pdShopOpenExternal|target, "_blank"|"_blank"/);
 });
 
+test("shop area avoids a redundant Mitgliederbereich and Shop header above its tabs", () => {
+  assert.doesNotMatch(shopPage, /pd-shop-app-head|pd-shop-app-kicker|MITGLIEDERBEREICH/);
+  assert.doesNotMatch(ordersPage, /pd-shop-orders-head|pd-shop-orders-kicker|MITGLIEDERBEREICH/);
+  assert.match(shopPage, /<nav class="pd-shop-tabs"/);
+  assert.match(ordersPage, /<nav class="pd-shop-tabs"/);
+});
+
 test("portal bridge posts the real access token and never uses member browser flags", () => {
   assert.match(shopModule, /name = "pd_shop_access_token"/);
   assert.match(shopModule, /form\.method = "POST"/);
