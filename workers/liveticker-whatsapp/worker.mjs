@@ -6,7 +6,13 @@ import {
   writeFileSync
 } from "node:fs";
 import { dirname } from "node:path";
-import { deliverWhatsappJob, normalizeSentRecord } from "./delivery.mjs";
+import {
+  deliverWhatsappJob,
+  failedComponentForJob,
+  mergeSentRecords,
+  normalizeSentRecord,
+  sentRecordFromJob
+} from "./delivery.mjs";
 
 const REQUIRED_ENV = [
   "SUPABASE_URL",
@@ -234,6 +240,20 @@ async function sendStickerToWaha(asset) {
   };
 }
 
+function sentComponents(record) {
+  const normalized = normalizeSentRecord(record);
+  return {
+    sticker: normalized.media ? {
+      messageId: normalized.media.messageId || "",
+      sentAt: normalized.media.sentAt
+    } : null,
+    text: normalized.text ? {
+      messageId: normalized.text.messageId || "",
+      sentAt: normalized.text.sentAt
+    } : null
+  };
+}
+
 async function markComplete(job, record) {
   let lastError = null;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
@@ -243,7 +263,8 @@ async function markComplete(job, record) {
         jobId: job.id,
         attemptCount: job.attemptCount,
         wahaMessageId: record.messageId || null,
-        sentAt: record.sentAt
+        sentAt: record.sentAt,
+        components: sentComponents(record)
       });
     } catch (error) {
       lastError = error;
@@ -253,13 +274,19 @@ async function markComplete(job, record) {
   throw lastError;
 }
 
-async function markFailed(job, error) {
+async function markFailed(job, error, record) {
+  let failedComponent = null;
+  try {
+    failedComponent = failedComponentForJob(job, record);
+  } catch {}
   try {
     return await edge({
       action: "fail",
       jobId: job.id,
       attemptCount: job.attemptCount,
-      error: safeError(error)
+      error: safeError(error),
+      failedComponent,
+      components: sentComponents(record)
     });
   } catch (failError) {
     log("job_fail_record_error", { jobId: job.id, error: safeError(failError) });
@@ -272,7 +299,10 @@ async function processJob(job) {
   log("job_claimed", { jobId: job.id, attempt: job.attemptCount });
 
   const recovered = sentJournal.has(job.id);
-  let sentRecord = normalizeSentRecord(sentJournal.get(job.id));
+  let sentRecord = mergeSentRecords(
+    sentJournal.get(job.id),
+    sentRecordFromJob(job)
+  );
   if (recovered) log("job_send_recovered", { jobId: job.id });
 
   try {
@@ -282,7 +312,10 @@ async function processJob(job) {
       resolveSticker: resolveStickerAsset,
       sendSticker: sendStickerToWaha,
       sendText: sendTextToWaha,
-      remember: record => rememberSent(job.id, record),
+      remember: record => {
+        sentRecord = normalizeSentRecord(record);
+        rememberSent(job.id, sentRecord);
+      },
       waitAfterSticker: () => new Promise(resolve => setTimeout(resolve, MEDIA_TEXT_DELAY_MS))
     });
     sentRecord = delivery.sentRecord;
@@ -290,7 +323,7 @@ async function processJob(job) {
       log("job_media_sent", { jobId: job.id, stickerId: job.stickerId });
     }
   } catch (error) {
-    const result = await markFailed(job, error);
+    const result = await markFailed(job, error, sentRecord);
     log("job_send_failed", {
       jobId: job.id,
       attempt: job.attemptCount,
