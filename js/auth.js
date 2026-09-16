@@ -97,6 +97,12 @@ function permissionSet() {
   return new Set(state.bootstrap?.permissions || []);
 }
 
+function commercialCustomerClass() {
+  if (state.bootstrap?.state !== "ACTIVE") return "PUBLIC";
+  if (state.bootstrap?.user?.member?.status === "ACTIVE") return "MEMBER";
+  return "PORTAL";
+}
+
 async function refreshBootstrap() {
   if (!state.session) {
     state.bootstrap = null;
@@ -257,6 +263,7 @@ export const auth = Object.freeze({
       request: state.bootstrap?.request || null,
       suggestions: state.bootstrap?.suggestions || {},
       system: state.bootstrap?.system || {},
+      customerClass: commercialCustomerClass(),
       renderRevision,
       busy: Boolean(state.busy),
       error: state.error
@@ -277,6 +284,10 @@ export const auth = Object.freeze({
 
   requiresProfile() {
     return Boolean(state.session) && !this.isActive();
+  },
+
+  customerClass() {
+    return commercialCustomerClass();
   },
 
   isAdmin() {
@@ -318,6 +329,7 @@ export const auth = Object.freeze({
     if (!this.isActive()) return key === "profile" && this.isAuthenticated();
     if (key === "profile") return false;
     if (["dashboard", "dates"].includes(key)) return true;
+    if (key === "shop") return commercialCustomerClass() === "MEMBER";
     if (key === "bus-orga") {
       return BUS_ORGA_CAPABILITIES.some(code => this.hasCapability(code));
     }
