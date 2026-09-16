@@ -31,18 +31,17 @@ test("shop route is an authenticated member-only app route", () => {
 });
 
 test("portal bridge posts the real access token and never uses member browser flags", () => {
-  assert.match(shopModule, /name = "access_token"/);
+  assert.match(shopModule, /name = "pd_shop_access_token"/);
   assert.match(shopModule, /form\.method = "POST"/);
   assert.match(shopModule, /state\.customerClass !== "MEMBER"/);
   assert.doesNotMatch(shopModule, /member=true|portal=true/i);
 });
 
-test("wordpress verifies portal token server-side through authenticated pd_api bootstrap", () => {
-  assert.match(plugin, /Version:\s*0\.6\.0/);
-  assert.match(plugin, /rest\/v1\/rpc\/pd_api/);
+test("wordpress verifies portal token server-side through minimal authenticated shop identity RPC", () => {
+  assert.match(plugin, /Version:\s*0\.6\.1/);
+  assert.match(plugin, /rest\/v1\/rpc\/pd_shop_identity/);
   assert.match(plugin, /'Authorization' => 'Bearer ' \. \$access_token/);
-  assert.match(plugin, /'p_action' => 'bootstrap'/);
-  assert.match(plugin, /member.*status.*ACTIVE/s);
+  assert.match(plugin, /customerClass/);
   assert.match(plugin, /HTTP_ORIGIN/);
 });
 
@@ -57,4 +56,11 @@ test("wordpress shop session is short-lived signed and HttpOnly", () => {
 test("portal CSP allows only owned shop origins for frame and POST bridge", () => {
   assert.match(index, /frame-src[^;]*https:\/\/staging\.plaerrdeifl\.de[^;]*https:\/\/plaerrdeifl\.de/);
   assert.match(index, /form-action[^"]*https:\/\/staging\.plaerrdeifl\.de[^"]*https:\/\/plaerrdeifl\.de/);
+});
+
+
+test("shop route also requires a configured shop origin", () => {
+  assert.match(auth, /Boolean\(CONFIG\.shop\?\.baseUrl\).*commercialCustomerClass\(\) === "MEMBER"/);
+  assert.match(shopModule, /if \(!CONFIG\.shop\?\.baseUrl\)/);
+  assert.match(shopModule, /Shop ist in dieser Umgebung noch nicht freigeschaltet/);
 });

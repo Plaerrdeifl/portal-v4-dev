@@ -3,7 +3,9 @@ import { CONFIG } from "../config.js";
 import { showToast } from "../ui.js";
 
 function bridgeAction() {
-  return `${CONFIG.shop.baseUrl.replace(/\/$/, "")}/?pd_shop_bridge=1`;
+  const baseUrl = String(CONFIG.shop?.baseUrl || "").trim().replace(/\/$/, "");
+  if (!baseUrl) throw new Error("Shop ist in dieser Umgebung nicht konfiguriert.");
+  return `${baseUrl}/?pd_shop_bridge=1`;
 }
 
 function submitBridge(accessToken, target) {
@@ -15,7 +17,7 @@ function submitBridge(accessToken, target) {
 
   const token = document.createElement("input");
   token.type = "hidden";
-  token.name = "access_token";
+  token.name = "pd_shop_access_token";
   token.value = accessToken;
   form.append(token);
   document.body.append(form);
@@ -31,6 +33,15 @@ export async function hydrateShop() {
   const frame = document.getElementById("pdShopFrame");
   const external = document.getElementById("pdShopOpenExternal");
   const accessToken = String(state.session?.access_token || "").trim();
+
+  if (!CONFIG.shop?.baseUrl) {
+    if (status) {
+      status.className = "notice error";
+      status.textContent = "Der Shop ist in dieser Umgebung noch nicht freigeschaltet.";
+    }
+    if (external) external.hidden = true;
+    return;
+  }
 
   if (state.customerClass !== "MEMBER" || !accessToken) {
     if (status) {
