@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plärrdeifl Shop
  * Description: Plärrdeifl-specific WooCommerce integration layer.
- * Version: 0.1.0
+ * Version: 0.2.0
  * Requires PHP: 8.3
  * Requires Plugins: woocommerce
  */
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 
 final class PD_Shop_Plugin
 {
-    public const VERSION = '0.1.0';
+    public const VERSION = '0.2.0';
 
     public const CUSTOMER_PUBLIC = 'PUBLIC';
     public const CUSTOMER_PORTAL = 'PORTAL';
@@ -55,6 +55,8 @@ final class PD_Shop_Plugin
         }
 
         add_action('init', array(self::class, 'register_order_status'));
+        add_action('wp_enqueue_scripts', array(self::class, 'enqueue_storefront_assets'));
+
         add_filter('wc_order_statuses', array(self::class, 'add_order_status'));
 
         add_filter(
@@ -76,6 +78,31 @@ final class PD_Shop_Plugin
         echo '<div class="notice notice-error"><p>'
             . esc_html('Plärrdeifl Shop benötigt ein aktives WooCommerce.')
             . '</p></div>';
+    }
+
+    public static function enqueue_storefront_assets(): void
+    {
+        if (!self::is_shop_surface()) {
+            return;
+        }
+
+        $path = plugin_dir_path(__FILE__) . 'assets/plaerrdeifl-shop.css';
+        $version = is_file($path) ? (string) filemtime($path) : self::VERSION;
+
+        wp_enqueue_style(
+            'plaerrdeifl-shop',
+            plugins_url('assets/plaerrdeifl-shop.css', __FILE__),
+            array(),
+            $version
+        );
+    }
+
+    private static function is_shop_surface(): bool
+    {
+        return (function_exists('is_woocommerce') && is_woocommerce())
+            || (function_exists('is_cart') && is_cart())
+            || (function_exists('is_checkout') && is_checkout())
+            || (function_exists('is_account_page') && is_account_page());
     }
 
     public static function register_order_status(): void
