@@ -13,7 +13,7 @@ const [plugin, css] = await Promise.all([
 
 test("shop plugin declares WooCommerce dependency and modern compatibility", () => {
   assert.match(plugin, /Plugin Name:\s*Plärrdeifl Shop/);
-  assert.match(plugin, /Version:\s*0\.5\.0/);
+  assert.match(plugin, /Version:\s*0\.6\.0/);
   assert.match(plugin, /Requires Plugins:\s*woocommerce/);
   assert.match(plugin, /declare_compatibility\(\s*'custom_order_tables'/);
   assert.match(plugin, /declare_compatibility\(\s*'cart_checkout_blocks'/);

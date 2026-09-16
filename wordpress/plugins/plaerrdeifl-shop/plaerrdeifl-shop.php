@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plärrdeifl Shop
  * Description: Plärrdeifl-specific WooCommerce integration layer.
- * Version: 0.5.0
+ * Version: 0.6.0
  * Requires PHP: 8.3
  * Requires Plugins: woocommerce
  */
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 
 final class PD_Shop_Plugin
 {
-    public const VERSION = '0.5.0';
+    public const VERSION = '0.6.0';
 
     public const CUSTOMER_PUBLIC = 'PUBLIC';
     public const CUSTOMER_PORTAL = 'PORTAL';
@@ -28,6 +28,8 @@ final class PD_Shop_Plugin
     private const FULFILLMENT_PICKUP_ICEDOME = 'PICKUP_FANSTAND_ICEDOME';
     private const SETUP_OPTION = 'pd_shop_setup_version';
     private const SETUP_VERSION = '2026-09-16-1';
+    private const SESSION_COOKIE = 'pd_shop_session';
+    private const SESSION_TTL_SECONDS = 900;
 
     private const CUSTOMER_CLASSES = array(
         self::CUSTOMER_PUBLIC,
@@ -63,6 +65,7 @@ final class PD_Shop_Plugin
         add_action('init', array(self::class, 'apply_business_defaults'), 5);
         add_action('init', array(self::class, 'register_order_status'));
         add_action('wp_enqueue_scripts', array(self::class, 'enqueue_storefront_assets'));
+        add_action('template_redirect', array(self::class, 'handle_portal_bridge'), 0);
         add_action('template_redirect', array(self::class, 'enforce_member_only_frontend'), 1);
 
         add_filter('wc_order_statuses', array(self::class, 'add_order_status'));
@@ -188,6 +191,227 @@ final class PD_Shop_Plugin
         update_option('woocommerce_bacs_settings', $bacs);
 
         update_option(self::SETUP_OPTION, self::SETUP_VERSION, false);
+    }
+
+    /** @return array{supabase_url:string,publishable_key:string,portal_origin:string}|null */
+    private static function bridge_config(): ?array
+    {
+        $settings = get_option('plaerrdeifl_m310_fanbus_settings', array());
+        if (!is_array($settings)) {
+            return null;
+        }
+
+        $url = defined('PD_SHOP_SUPABASE_URL')
+            ? (string) PD_SHOP_SUPABASE_URL
+            : (string) ($settings['supabase_url'] ?? '');
+        $key = defined('PD_SHOP_SUPABASE_PUBLISHABLE_KEY')
+            ? (string) PD_SHOP_SUPABASE_PUBLISHABLE_KEY
+            : (string) ($settings['publishable_key'] ?? '');
+        $portal = defined('PD_SHOP_PORTAL_ORIGIN')
+            ? (string) PD_SHOP_PORTAL_ORIGIN
+            : (string) ($settings['portal_registration_url'] ?? '');
+
+        $url = rtrim(esc_url_raw(trim($url)), '/');
+        $key = trim($key);
+        $portal_parts = wp_parse_url(trim($portal));
+        $portal_origin = '';
+        if (is_array($portal_parts) && isset($portal_parts['scheme'], $portal_parts['host'])) {
+            $portal_origin = strtolower($portal_parts['scheme'] . '://' . $portal_parts['host']);
+            if (isset($portal_parts['port'])) {
+                $portal_origin .= ':' . (int) $portal_parts['port'];
+            }
+        }
+
+        if (!str_starts_with($url, 'https://') || strlen($key) < 20 || $portal_origin === '') {
+            return null;
+        }
+
+        return array(
+            'supabase_url' => $url,
+            'publishable_key' => $key,
+            'portal_origin' => $portal_origin,
+        );
+    }
+
+    public static function handle_portal_bridge(): void
+    {
+        if (!isset($_GET['pd_shop_bridge'])) {
+            return;
+        }
+
+        if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? '')) !== 'POST') {
+            status_header(405);
+            nocache_headers();
+            exit('POST required');
+        }
+
+        $config = self::bridge_config();
+        $origin = strtolower(trim((string) ($_SERVER['HTTP_ORIGIN'] ?? '')));
+        if ($config === null || $origin === '' || !hash_equals($config['portal_origin'], $origin)) {
+            status_header(403);
+            nocache_headers();
+            exit('Bridge origin rejected');
+        }
+
+        $access_token = trim((string) wp_unslash($_POST['access_token'] ?? ''));
+        if (
+            strlen($access_token) < 40
+            || strlen($access_token) > 8192
+            || preg_match('/\s/', $access_token)
+        ) {
+            status_header(403);
+            nocache_headers();
+            exit('Invalid portal token');
+        }
+
+        $identity = self::resolve_portal_identity($access_token, $config);
+        if ($identity === null || $identity['customerClass'] !== self::CUSTOMER_MEMBER) {
+            self::clear_shop_session();
+            status_header(403);
+            nocache_headers();
+            exit('Shop nur für aktive Mitglieder.');
+        }
+
+        self::issue_shop_session($identity);
+        nocache_headers();
+        wp_safe_redirect(wc_get_page_permalink('shop'), 303);
+        exit;
+    }
+
+    /**
+     * @param array{supabase_url:string,publishable_key:string,portal_origin:string} $config
+     * @return array{customerClass:string,userId:string}|null
+     */
+    private static function resolve_portal_identity(string $access_token, array $config): ?array
+    {
+        $response = wp_remote_post(
+            $config['supabase_url'] . '/rest/v1/rpc/pd_api',
+            array(
+                'timeout' => 12,
+                'redirection' => 0,
+                'headers' => array(
+                    'apikey' => $config['publishable_key'],
+                    'Authorization' => 'Bearer ' . $access_token,
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                ),
+                'body' => wp_json_encode(array(
+                    'p_action' => 'bootstrap',
+                    'p_payload' => (object) array(),
+                )),
+            )
+        );
+
+        if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
+            return null;
+        }
+
+        $bootstrap = json_decode((string) wp_remote_retrieve_body($response), true);
+        if (!is_array($bootstrap) || ($bootstrap['state'] ?? '') !== 'ACTIVE') {
+            return null;
+        }
+
+        $user = $bootstrap['user'] ?? null;
+        if (!is_array($user) || empty($user['id'])) {
+            return null;
+        }
+
+        $member = $user['member'] ?? null;
+        $class = is_array($member) && ($member['status'] ?? '') === 'ACTIVE'
+            ? self::CUSTOMER_MEMBER
+            : self::CUSTOMER_PORTAL;
+
+        return array(
+            'customerClass' => $class,
+            'userId' => (string) $user['id'],
+        );
+    }
+
+    /** @param array{customerClass:string,userId:string} $identity */
+    private static function issue_shop_session(array $identity): void
+    {
+        $payload = array(
+            'v' => 1,
+            'class' => $identity['customerClass'],
+            'sub' => $identity['userId'],
+            'exp' => time() + self::SESSION_TTL_SECONDS,
+        );
+        $json = wp_json_encode($payload);
+        if (!is_string($json)) {
+            return;
+        }
+        $encoded = rtrim(strtr(base64_encode($json), '+/', '-_'), '=');
+        $signature = hash_hmac('sha256', $encoded, self::session_signing_key());
+        $value = $encoded . '.' . $signature;
+
+        setcookie(self::SESSION_COOKIE, $value, array(
+            'expires' => (int) $payload['exp'],
+            'path' => '/',
+            'secure' => is_ssl(),
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ));
+        $_COOKIE[self::SESSION_COOKIE] = $value;
+    }
+
+    private static function clear_shop_session(): void
+    {
+        setcookie(self::SESSION_COOKIE, '', array(
+            'expires' => time() - 3600,
+            'path' => '/',
+            'secure' => is_ssl(),
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ));
+        unset($_COOKIE[self::SESSION_COOKIE]);
+    }
+
+    private static function session_signing_key(): string
+    {
+        return wp_salt('auth') . '|pd-shop-session-v1';
+    }
+
+    /** @return array{class:string,sub:string,exp:int}|null */
+    private static function shop_session(): ?array
+    {
+        $raw = trim((string) ($_COOKIE[self::SESSION_COOKIE] ?? ''));
+        if ($raw === '' || !str_contains($raw, '.')) {
+            return null;
+        }
+
+        [$encoded, $signature] = explode('.', $raw, 2);
+        if ($encoded === '' || !preg_match('/^[a-f0-9]{64}$/', $signature)) {
+            return null;
+        }
+
+        $expected = hash_hmac('sha256', $encoded, self::session_signing_key());
+        if (!hash_equals($expected, $signature)) {
+            return null;
+        }
+
+        $base64 = strtr($encoded, '-_', '+/');
+        $padding = strlen($base64) % 4;
+        if ($padding !== 0) {
+            $base64 .= str_repeat('=', 4 - $padding);
+        }
+        $decoded = base64_decode($base64, true);
+        if (!is_string($decoded)) {
+            return null;
+        }
+
+        $payload = json_decode($decoded, true);
+        if (!is_array($payload)) {
+            return null;
+        }
+
+        $class = strtoupper(trim((string) ($payload['class'] ?? '')));
+        $sub = trim((string) ($payload['sub'] ?? ''));
+        $exp = (int) ($payload['exp'] ?? 0);
+        if (!in_array($class, self::CUSTOMER_CLASSES, true) || $sub === '' || $exp <= time()) {
+            return null;
+        }
+
+        return array('class' => $class, 'sub' => $sub, 'exp' => $exp);
     }
 
     /**
@@ -438,6 +662,11 @@ final class PD_Shop_Plugin
 
     public static function customer_class(): string
     {
+        $session = self::shop_session();
+        if ($session !== null) {
+            return $session['class'];
+        }
+
         $candidate = apply_filters(
             'pd_shop_customer_class',
             self::CUSTOMER_PUBLIC

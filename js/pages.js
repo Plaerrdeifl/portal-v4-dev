@@ -206,6 +206,7 @@ export async function hydratePage(key, context = {}) {
     await feature("./modules/m328-bus-orga-final-fixes.js?v=20260830-m328-create-publish1", "setupM328BusOrgaFinalFixes", context);
     return result;
   }
+  if (key === "shop") return feature("./modules/shop.js?v=20260916-member-bridge-r1", "hydrateShop", context);
   if (key === "fanclub") return feature("./modules/fanclub.js", "hydrateFanclub", context);
   if (key === "tasks") return feature("./modules/tasks.js", "hydrateTasks", context);
   if (key === "teams") return feature("./modules/teams.js", "hydrateTeams", context);

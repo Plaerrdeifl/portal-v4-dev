@@ -36,6 +36,15 @@ export const CONFIG = Object.freeze({
     )
   },
 
+  shop: {
+    baseUrl: String(
+      runtime.shopBaseUrl
+      || (String(runtime.environment || "DEV").trim().toUpperCase() === "PROD"
+        ? "https://plaerrdeifl.de"
+        : "https://staging.plaerrdeifl.de")
+    ).trim().replace(/\/$/, "")
+  },
+
   auth: {
     googleClientId: String(
       runtime.googleClientId
