@@ -33,6 +33,22 @@ test("shop route is an authenticated member-only app route", () => {
   assert.match(shopPage, /pdShopFrame/);
 });
 
+
+test("shop order history is internal to the shop area and not a global navigation item", () => {
+  const navBlock = /export function fixedAuthenticatedOrder\(\) \{[\s\S]*?\n\}/.exec(router)?.[0] || "";
+  assert.match(navBlock, /"shop"/);
+  assert.doesNotMatch(navBlock, /"shop-orders"/);
+  assert.match(shopPage, /pdShopTabOrders/);
+  assert.match(ordersPage, /pdShopTabShop/);
+  assert.match(shopPage, />Meine Bestellungen</);
+  assert.match(ordersPage, />Meine Bestellungen</);
+});
+
+test("shop stays embedded in the portal without an external-open action", () => {
+  assert.doesNotMatch(shopPage, /Extern öffnen|pdShopOpenExternal/);
+  assert.doesNotMatch(shopModule, /pdShopOpenExternal|target, "_blank"|"_blank"/);
+});
+
 test("portal bridge posts the real access token and never uses member browser flags", () => {
   assert.match(shopModule, /name = "pd_shop_access_token"/);
   assert.match(shopModule, /form\.method = "POST"/);

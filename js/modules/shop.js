@@ -1,6 +1,6 @@
 import { auth } from "../auth.js";
 import { CONFIG } from "../config.js";
-import { showToast } from "../ui.js";
+import { navigate } from "../router.js";
 
 function bridgeAction() {
   const baseUrl = String(CONFIG.shop?.baseUrl || "").trim().replace(/\/$/, "");
@@ -31,7 +31,8 @@ export async function hydrateShop() {
   const state = auth.current();
   const status = document.getElementById("pdShopBridgeStatus");
   const frame = document.getElementById("pdShopFrame");
-  const external = document.getElementById("pdShopOpenExternal");
+  document.getElementById("pdShopTabOrders")
+    ?.addEventListener("click", () => navigate("shop-orders"));
   const accessToken = String(state.session?.access_token || "").trim();
 
   if (!CONFIG.shop?.baseUrl) {
@@ -39,7 +40,6 @@ export async function hydrateShop() {
       status.className = "notice error";
       status.textContent = "Der Shop ist in dieser Umgebung noch nicht freigeschaltet.";
     }
-    if (external) external.hidden = true;
     return;
   }
 
@@ -49,7 +49,6 @@ export async function hydrateShop() {
       status.className = "notice error";
       status.textContent = "Der Shop ist nur für aktive Mitglieder und Administratoren verfügbar.";
     }
-    if (external) external.hidden = true;
     return;
   }
 
@@ -62,15 +61,6 @@ export async function hydrateShop() {
     }, { once: true });
   }
 
-  if (external) {
-    external.addEventListener("click", () => {
-      try {
-        submitBridge(accessToken, "_blank");
-      } catch (error) {
-        showToast(error?.message || "Shop konnte nicht geöffnet werden.", "error", 6000);
-      }
-    });
-  }
 
   submitted = true;
   submitBridge(accessToken, frame?.name || "pdShopFrame");

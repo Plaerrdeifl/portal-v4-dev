@@ -118,7 +118,6 @@ export function fixedAuthenticatedOrder() {
     "liveticker",
     "fanbuses",
     "shop",
-    "shop-orders",
     "admin"
   ];
 }
