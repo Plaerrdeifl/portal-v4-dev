@@ -1,5 +1,7 @@
 import { auth } from "./auth.js";
 
+const isGameMode = new URLSearchParams(window.location.search).get("mode") === "game-day";
+
 try {
   await auth.initialize();
   const state = auth.current();
@@ -7,8 +9,8 @@ try {
     window.location.replace("../#/login");
   } else {
     const app = document.getElementById("tickerApp");
-    if (app) app.hidden = false;
-    await import("./liveticker-bootstrap.js?v=20260916-game-day-r1");
+    if (app && !isGameMode) app.hidden = false;
+    await import("./liveticker-bootstrap.js?v=20260916-game-day-r2");
     await import("./liveticker-graphics-inline.js?v=20260914-ios-share-r2");
   }
 } catch (error) {
