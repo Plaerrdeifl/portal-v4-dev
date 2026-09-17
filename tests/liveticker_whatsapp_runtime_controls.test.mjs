@@ -31,4 +31,12 @@ test("WhatsApp runtime controls fail closed without exposing local WPP", async (
   assert.match(worker, /WAHA_BASE_URL \|\| "http:\/\/127\.0\.0\.1:3001"/);
   assert.match(worker, /if \(!workerEnabled \|\| !wppDesiredConnected \|\| wppState !== "CONNECTED"\) return/);
   assert.match(gateway, /if \(!isObject\(gate\) \|\| gate\.ready !== true\) return \{ claimed: false, blocked: true \}/);
+
+  assert.match(runtime, /Promise\.allSettled/);
+  assert.match(runtime, /STATUS_FAILURE_THRESHOLD = 3/);
+  assert.match(runtime, /TRANSITION_REFRESH_MS = 1000/);
+  assert.match(runtime, /state: targetConnected \? "CONNECTING" : "DISCONNECTING"/);
+  assert.match(runtime, /scheduleRefresh\(250\)/);
+  assert.match(worker, /lastWppActionTarget === desiredConnected/);
+  assert.match(worker, /lastWppActionTarget = desiredConnected/);
 });

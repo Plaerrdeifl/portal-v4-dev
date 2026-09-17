@@ -137,7 +137,7 @@ test("Liveticker exposes WA and WPP runtime controls beside the graphics control
   const html = await read("liveticker/index.html");
   const runtime = await read("js/liveticker-runtime-controls.js");
   const publish = await read("js/liveticker-whatsapp-publish.js");
-  const migration = await read("supabase/migrations/20260917212000_liveticker_whatsapp_runtime_controls_dev_r1.sql");
+  const migration = await read("supabase/migrations/20260917192915_liveticker_whatsapp_runtime_controls_dev_r1.sql");
   const gateway = await read("supabase/functions/liveticker-whatsapp-worker/index.ts");
   const worker = await read("workers/liveticker-whatsapp/worker.mjs");
 

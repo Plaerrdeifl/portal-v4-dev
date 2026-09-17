@@ -85,6 +85,7 @@ let workerEnabled = true;
 let wppDesiredConnected = true;
 let wppState = "UNKNOWN";
 let lastWppActionAt = 0;
+let lastWppActionTarget = null;
 
 function log(event, details = {}) {
   const safe = { ts: new Date().toISOString(), event, ...details };
@@ -202,7 +203,8 @@ async function readWppSnapshot() {
 }
 
 async function applyWppDesiredState(desiredConnected, observedState) {
-  if (Date.now() - lastWppActionAt < WPP_ACTION_RETRY_MS) return;
+  const sameDirectionRetry = lastWppActionTarget === desiredConnected;
+  if (sameDirectionRetry && Date.now() - lastWppActionAt < WPP_ACTION_RETRY_MS) return false;
   let path = "";
   if (desiredConnected && observedState === "DISCONNECTED") {
     path = `/api/sessions/${encodeURIComponent(WAHA_SESSION)}/start`;
@@ -213,6 +215,7 @@ async function applyWppDesiredState(desiredConnected, observedState) {
   }
   if (!path) return false;
   lastWppActionAt = Date.now();
+  lastWppActionTarget = desiredConnected;
   await wahaRequest(path, { method: "POST" });
   wppState = desiredConnected ? "CONNECTING" : "DISCONNECTING";
   log("wpp_control_action", { action: desiredConnected ? "connect" : "disconnect" });

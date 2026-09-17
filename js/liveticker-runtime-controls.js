@@ -2,6 +2,8 @@ import { api } from "./api.js";
 
 const WA_WORKER_CODE = "LIVETICKER_WHATSAPP";
 const REFRESH_MS = 5000;
+const TRANSITION_REFRESH_MS = 1000;
+const STATUS_FAILURE_THRESHOLD = 3;
 
 const wa = {
   control: document.getElementById("whatsappWorkerControl"),
@@ -23,6 +25,8 @@ let wppRuntime = { desiredConnected: true, ready: false, state: "UNREACHABLE", e
 let waBusy = false;
 let wppBusy = false;
 let refreshTimer = 0;
+let waStatusFailures = 0;
+let wppStatusFailures = 0;
 
 function workerLabel(state) {
   if (state === "ACTIVE") return "AKTIV";
@@ -100,25 +104,49 @@ function render() {
   publishSnapshot();
 }
 
-function scheduleRefresh(delay = REFRESH_MS) {
+function transitionActive() {
+  return ["CONNECTING", "DISCONNECTING"].includes(String(wppRuntime?.state || ""));
+}
+
+function scheduleRefresh(delay = transitionActive() ? TRANSITION_REFRESH_MS : REFRESH_MS) {
   if (refreshTimer) window.clearTimeout(refreshTimer);
   refreshTimer = window.setTimeout(() => void refresh(), delay);
 }
 
-async function refresh() {
-  if (waBusy || wppBusy) return scheduleRefresh(1500);
-  try {
-    const [waResult, wppResult] = await Promise.all([
-      api.call("worker_runtime_status", { workerCode: WA_WORKER_CODE }),
-      api.call("liveticker_wpp_runtime_status", {})
-    ]);
-    waRuntime = waResult || waRuntime;
-    wppRuntime = wppResult || wppRuntime;
-  } catch (error) {
-    console.error("WhatsApp runtime status refresh failed", error);
-    waRuntime = { ...waRuntime, ready: false, state: "UNREACHABLE" };
-    wppRuntime = { ...wppRuntime, ready: false, state: "UNREACHABLE", error: error?.message || "Status nicht verfügbar" };
+function applyWaRefresh(result) {
+  if (result.status === "fulfilled" && result.value) {
+    waStatusFailures = 0;
+    waRuntime = result.value;
+    return;
   }
+  waStatusFailures += 1;
+  console.warn("WA runtime status refresh failed", result.reason);
+  if (waStatusFailures >= STATUS_FAILURE_THRESHOLD) {
+    waRuntime = { ...waRuntime, ready: false, state: "UNREACHABLE" };
+  }
+}
+
+function applyWppRefresh(result) {
+  if (result.status === "fulfilled" && result.value) {
+    wppStatusFailures = 0;
+    wppRuntime = result.value;
+    return;
+  }
+  wppStatusFailures += 1;
+  console.warn("WPP runtime status refresh failed", result.reason);
+  if (wppStatusFailures >= STATUS_FAILURE_THRESHOLD) {
+    wppRuntime = { ...wppRuntime, ready: false, state: "UNREACHABLE", error: result.reason?.message || "Status nicht verfügbar" };
+  }
+}
+
+async function refresh() {
+  if (waBusy || wppBusy) return scheduleRefresh(TRANSITION_REFRESH_MS);
+  const [waResult, wppResult] = await Promise.allSettled([
+    api.call("worker_runtime_status", { workerCode: WA_WORKER_CODE }),
+    api.call("liveticker_wpp_runtime_status", {})
+  ]);
+  applyWaRefresh(waResult);
+  applyWppRefresh(wppResult);
   render();
   scheduleRefresh();
 }
@@ -144,18 +172,27 @@ async function toggleWa() {
 
 async function toggleWpp() {
   if (wppBusy) return;
+  const targetConnected = wppRuntime?.desiredConnected === false;
+  const previous = wppRuntime;
   wppBusy = true;
+  wppRuntime = {
+    ...wppRuntime,
+    desiredConnected: targetConnected,
+    ready: false,
+    state: targetConnected ? "CONNECTING" : "DISCONNECTING",
+    error: null
+  };
   render();
   try {
-    wppRuntime = await api.call("liveticker_wpp_runtime_set", {
-      connected: wppRuntime?.desiredConnected === false
-    });
+    wppRuntime = await api.call("liveticker_wpp_runtime_set", { connected: targetConnected });
+    wppStatusFailures = 0;
   } catch (error) {
-    wppRuntime = { ...wppRuntime, ready: false, state: "UNREACHABLE", error: error?.message || "WPP-Status konnte nicht geändert werden." };
+    wppRuntime = previous;
+    if (wpp.hint) wpp.hint.textContent = error?.message || "WPP-Status konnte nicht geändert werden.";
   } finally {
     wppBusy = false;
     render();
-    scheduleRefresh(1200);
+    scheduleRefresh(250);
   }
 }
 
