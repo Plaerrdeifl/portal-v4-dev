@@ -131,3 +131,48 @@ test("worker runtimes use 60 second disabled and 5 second active polling", async
   assert.match(livetickerWorker, /sleep_seconds = 60/);
   assert.match(livetickerWorker, /sleep_seconds = 5/);
 });
+
+
+test("Liveticker exposes WA and WPP runtime controls beside the graphics control", async () => {
+  const html = await read("liveticker/index.html");
+  const runtime = await read("js/liveticker-runtime-controls.js");
+  const publish = await read("js/liveticker-whatsapp-publish.js");
+  const migration = await read("supabase/migrations/20260917212000_liveticker_whatsapp_runtime_controls_dev_r1.sql");
+  const gateway = await read("supabase/functions/liveticker-whatsapp-worker/index.ts");
+  const worker = await read("workers/liveticker-whatsapp/worker.mjs");
+
+  assert.match(html, /id="graphicWorkerControl"[\s\S]*id="whatsappWorkerControl"[\s\S]*id="wppControl"/);
+  assert.match(html, /id="whatsappWorkerStatus"/);
+  assert.match(html, /id="wppStatus"/);
+  assert.match(runtime, /LIVETICKER_WHATSAPP/);
+  assert.match(runtime, /worker_runtime_status/);
+  assert.match(runtime, /worker_runtime_set/);
+  assert.match(runtime, /liveticker_wpp_runtime_status/);
+  assert.match(runtime, /liveticker_wpp_runtime_set/);
+  assert.match(runtime, /pd-liveticker-whatsapp-runtime/);
+  assert.match(publish, /transportReady\(\)/);
+  assert.match(publish, /WA ist ausgeschaltet/);
+  assert.match(publish, /WPP ist nicht verbunden/);
+
+  assert.match(migration, /'LIVETICKER_WHATSAPP'/);
+  assert.match(migration, /create table app_private\.liveticker_wpp_runtime_control/);
+  assert.match(migration, /pd_liveticker_wpp_runtime_control/);
+  assert.match(migration, /pd_liveticker_whatsapp_worker_can_claim/);
+  assert.match(migration, /liveticker_whatsapp_transport_assert_ready/);
+  assert.match(migration, /WHATSAPP_WORKER_DISABLED_FROM_PORTAL/);
+  assert.match(migration, /WPP_DISABLED_FROM_PORTAL/);
+  assert.match(migration, /status = 'PENDING'/);
+  assert.match(migration, /sticker_status = case when sticker_status = 'PENDING' then 'FAILED'/);
+  assert.match(migration, /text_status = case when text_status = 'PENDING' then 'FAILED'/);
+
+  assert.match(gateway, /value\.action === "control"/);
+  assert.match(gateway, /pd_worker_runtime_control/);
+  assert.match(gateway, /pd_liveticker_wpp_runtime_control/);
+  assert.match(gateway, /pd_liveticker_whatsapp_worker_can_claim/);
+  assert.match(worker, /api\/sessions\/\$\{encodeURIComponent\(WAHA_SESSION\)\}/);
+  assert.match(worker, /\/start/);
+  assert.match(worker, /\/stop/);
+  assert.match(worker, /\/restart/);
+  assert.match(worker, /action: "control"/);
+  assert.match(worker, /RUNTIME_CONTROL_INTERVAL_MS = 5000/);
+});

@@ -84,7 +84,7 @@ test("classic view sends contextual and Situation stickers through the existing 
   assert.match(publish, /window\.setInterval\(async \(\) => \{[\s\S]*await refreshDeliveries\(\);[\s\S]*await flushPendingLinks\(\);[\s\S]*\}, 1000\)/);
   const sendSticker = publish.match(/async function sendSticker\(area\) \{[\s\S]+?\n  \}/)?.[0] || "";
   assert.doesNotMatch(sendSticker, /requestSubmit|state\.history|message\s*:/);
-  assert.match(sendSticker, /if \(!state\?\.selectedStickerId \|\| state\.deliveryId \|\| state\.busy\) return/);
+  assert.match(sendSticker, /if \(!transportReady\(\) \|\| !state\?\.selectedStickerId \|\| state\.deliveryId \|\| state\.busy\) return/);
   assert.match(sendSticker, /state\.request \|\|= createWhatsappStickerOnlyRequest/);
   assert.match(sendSticker, /state\.request\.send\(\)/);
   assert.doesNotMatch(sendSticker, /requestSubmit|state\.history|message\s*:/);
@@ -94,7 +94,7 @@ test("classic view sends contextual and Situation stickers through the existing 
   assert.match(submitHandler, /event\.stopImmediatePropagation\(\)/);
 
   const saveHandler = publish.match(/window\.addEventListener\("pd-liveticker-state-saved"[\s\S]+?\n  \}\);/)?.[0] || "";
-  assert.match(saveHandler, /attachWhatsappPublishIntent\(\{[\s\S]*enabled: control\?\.checked !== false\s*\}\)/);
+  assert.match(saveHandler, /attachWhatsappPublishIntent\(\{[\s\S]*enabled: control\?\.checked !== false && transportReady\(\)\s*\}\)/);
   assert.doesNotMatch(saveHandler, /stickerId\s*:/);
   assert.match(saveHandler, /areas\.action\.sourceAction !== "SITUATION"[\s\S]*pendingLinks\.set\(actionId, areas\.action\.deliveryId\)/);
   assert.match(publish, /linkWhatsappStickerDelivery\(\{ jobId, actionId \}\)/);

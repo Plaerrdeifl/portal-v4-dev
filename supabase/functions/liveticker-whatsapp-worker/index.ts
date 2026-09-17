@@ -10,6 +10,7 @@ const STICKER_BUCKET = "liveticker-whatsapp-stickers";
 const MAX_STICKER_BYTES = 100 * 1024;
 const encoder = new TextEncoder();
 const DELIVERY_MODES = new Set(["TEXT_ONLY", "STICKER_THEN_TEXT", "STICKER_ONLY"]);
+const WPP_STATES = new Set(["CONNECTING", "CONNECTED", "DISCONNECTING", "DISCONNECTED", "ERROR"]);
 
 type JsonObject = Record<string, unknown>;
 class GatewayError extends Error {}
@@ -94,6 +95,12 @@ async function readJson(request: Request): Promise<unknown> {
 function validBody(value: unknown): value is JsonObject {
   if (!isObject(value) || typeof value.action !== "string") return false;
   if (value.action === "claim") return exactKeys(value, ["action"]);
+  if (value.action === "control") {
+    return exactKeys(value, ["action", "wppState", "wppError"])
+      && typeof value.wppState === "string"
+      && WPP_STATES.has(value.wppState)
+      && (value.wppError === null || (typeof value.wppError === "string" && value.wppError.length <= 500));
+  }
   if (value.action === "sticker") {
     return exactKeys(value, ["action", "stickerId"]) && isUuid(value.stickerId);
   }
@@ -165,6 +172,13 @@ async function rest(path: string, init: RequestInit = {}) {
   return data;
 }
 
+async function rpc(name: string, args: JsonObject = {}) {
+  return rest(`rpc/${name}`, {
+    method: "POST",
+    body: JSON.stringify(args),
+  });
+}
+
 function viewUrl(params: Record<string, string>) {
   const query = new URLSearchParams(params);
   return `${WORKER_VIEW}?${query.toString()}`;
@@ -192,7 +206,20 @@ function jobPayload(row: JsonObject) {
   };
 }
 
+async function control(body: JsonObject) {
+  const [worker, wpp] = await Promise.all([
+    rpc("pd_worker_runtime_control", { p_worker_code: "LIVETICKER_WHATSAPP" }),
+    rpc("pd_liveticker_wpp_runtime_control", {
+      p_state: String(body.wppState),
+      p_error: body.wppError === null ? null : String(body.wppError),
+    }),
+  ]);
+  return { worker, wpp };
+}
+
 async function claim() {
+  const gate = await rpc("pd_liveticker_whatsapp_worker_can_claim", {});
+  if (!isObject(gate) || gate.ready !== true) return { claimed: false, blocked: true };
   for (let pass = 0; pass < 5; pass += 1) {
     const now = new Date();
     const nowIso = now.toISOString();
@@ -474,6 +501,8 @@ Deno.serve(async request => {
     if (!validBody(body)) return response(400, { ok: false, error: "Invalid request" });
     const data = body.action === "claim"
       ? await claim()
+      : body.action === "control"
+      ? await control(body)
       : body.action === "sticker"
       ? await stickerAsset(String(body.stickerId))
       : body.action === "complete"

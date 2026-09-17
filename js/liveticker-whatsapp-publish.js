@@ -139,6 +139,7 @@ function startBrowserIntegration() {
   let textRequestPending = false;
   let textStatusInitialized = false;
   let textRetryBusy = false;
+  let transportRuntime = globalThis.PD_LIVETICKER_WHATSAPP_RUNTIME || { ready: false, wa: null, wpp: null };
   const pendingLinks = new Map();
   const areas = {
     action: { selectedStickerId: "", sourceAction: "", request: null, deliveryId: "", linkedActionId: "", requestError: "", busy: false }
@@ -155,6 +156,14 @@ function startBrowserIntegration() {
       && banner.querySelector("span")?.textContent?.trim() === "Aktion wird bearbeitet";
   };
   const deliveryFor = area => deliveries.find(delivery => delivery.id === areas[area].deliveryId) || null;
+  const transportReady = () => Boolean(transportRuntime?.ready);
+  const transportMessage = () => {
+    if (transportRuntime?.wa?.enabled === false) return "WA ist ausgeschaltet – Liveticker wird ohne WhatsApp gespeichert.";
+    if (transportRuntime?.wa?.ready === false) return "WA ist nicht bereit – Liveticker wird ohne WhatsApp gespeichert.";
+    if (transportRuntime?.wpp?.desiredConnected === false) return "WPP ist getrennt – Liveticker wird ohne WhatsApp gespeichert.";
+    if (transportRuntime?.wpp?.ready === false) return "WPP ist nicht verbunden – Liveticker wird ohne WhatsApp gespeichert.";
+    return "WhatsApp-Versand ist nicht bereit.";
+  };
 
   function stickersForArea() {
     if (selectedAction() === "SITUATION") {
@@ -190,7 +199,7 @@ function startBrowserIntegration() {
       : "";
     const status = whatsappStickerDeliveryStatus(delivery);
     const retry = status.retryable
-      ? `<button class="liveticker-whatsapp-sticker-retry" type="button" data-retry-sticker-delivery="${area}"${state.busy ? " disabled" : ""}>ERNEUT SENDEN</button>`
+      ? `<button class="liveticker-whatsapp-sticker-retry" type="button" data-retry-sticker-delivery="${area}"${state.busy || !transportReady() ? " disabled" : ""}>ERNEUT SENDEN</button>`
       : "";
     const clear = delivery.stickerStatus === "SENT" && (state.sourceAction === "SITUATION" || state.linkedActionId)
       ? `<button class="liveticker-whatsapp-sticker-retry" type="button" data-clear-sticker-area="${area}">WEITEREN STICKER AUSWÄHLEN</button>`
@@ -220,7 +229,7 @@ function startBrowserIntegration() {
     }
     const state = areas[area];
     const delivery = deliveryFor(area);
-    const locked = Boolean(state.request || state.deliveryId || state.busy);
+    const locked = Boolean(state.request || state.deliveryId || state.busy || !transportReady());
     const stickers = stickersForArea();
     const mixedPenalty = action === "PENALTY" && new Set(penaltyTeams()).size > 1;
     const contextCopy = action === "SITUATION"
@@ -233,7 +242,8 @@ function startBrowserIntegration() {
     const sendButton = state.selectedStickerId && !locked
       ? `<button class="liveticker-whatsapp-sticker-send-now" type="button" data-send-sticker-area="${area}">Sticker sofort senden</button>`
       : "";
-    body.innerHTML = `<p class="liveticker-sticker-area-copy">${escapeHtml(contextCopy)}</p>${stickerCards(stickers, area, locked)}${sendButton}${statusHtml(area)}${deliveryError && state.deliveryId ? `<p class="liveticker-whatsapp-sticker-status" data-tone="error">${escapeHtml(deliveryError)}</p>` : ""}`;
+    const transportCopy = transportReady() ? "" : `<p class="liveticker-whatsapp-sticker-status" data-tone="error">${escapeHtml(transportMessage())}</p>`;
+    body.innerHTML = `<p class="liveticker-sticker-area-copy">${escapeHtml(contextCopy)}</p>${transportCopy}${stickerCards(stickers, area, locked)}${sendButton}${statusHtml(area)}${deliveryError && state.deliveryId ? `<p class="liveticker-whatsapp-sticker-status" data-tone="error">${escapeHtml(deliveryError)}</p>` : ""}`;
   }
 
   function renderStickerAreas() {
@@ -267,7 +277,7 @@ function startBrowserIntegration() {
     root.dataset.tone = status.tone;
     label.textContent = `TEXT ${status.label}`;
     retry.hidden = !status.retryable;
-    retry.disabled = textRetryBusy;
+    retry.disabled = textRetryBusy || !transportReady();
     if (delivery) textRequestPending = delivery.textStatus === "PENDING";
   }
 
@@ -309,7 +319,7 @@ function startBrowserIntegration() {
 
   async function sendSticker(area) {
     const state = areas[area];
-    if (!state?.selectedStickerId || state.deliveryId || state.busy) return;
+    if (!transportReady() || !state?.selectedStickerId || state.deliveryId || state.busy) return;
     state.busy = true;
     state.requestError = "";
     renderArea(area);
@@ -336,7 +346,7 @@ function startBrowserIntegration() {
 
   async function retryTextDelivery() {
     const delivery = textDelivery();
-    if (!delivery || delivery.textStatus !== "FAILED" || textRetryBusy) return;
+    if (!transportReady() || !delivery || delivery.textStatus !== "FAILED" || textRetryBusy) return;
     textRetryBusy = true;
     renderTextDeliveryStatus();
     try {
@@ -356,7 +366,7 @@ function startBrowserIntegration() {
   async function retryDelivery(area) {
     const state = areas[area];
     const delivery = deliveryFor(area);
-    if (!delivery || delivery.stickerStatus !== "FAILED" || state.busy) return;
+    if (!transportReady() || !delivery || delivery.stickerStatus !== "FAILED" || state.busy) return;
     state.busy = true;
     renderArea(area);
     try {
@@ -463,6 +473,19 @@ function startBrowserIntegration() {
   if (editingBanner) new MutationObserver(() => renderArea("action"))
     .observe(editingBanner, { attributes: true, attributeFilter: ["hidden"] });
 
+  window.addEventListener("pd-liveticker-whatsapp-runtime", event => {
+    transportRuntime = event.detail || { ready: false, wa: null, wpp: null };
+    const control = document.getElementById(CONTROL_ID);
+    if (control) control.disabled = !transportReady();
+    if (!transportReady()) setControlStatus(transportMessage(), "error");
+    else setControlStatus("Neue Aktionen automatisch senden · Bearbeitungen werden nicht erneut veröffentlicht.", "ready");
+    renderStickerAreas();
+    renderTextDeliveryStatus();
+  });
+  const initialControl = document.getElementById(CONTROL_ID);
+  if (initialControl) initialControl.disabled = !transportReady();
+  if (!transportReady()) setControlStatus(transportMessage(), "error");
+
   void services().then(async ({ loadWhatsappStickerLibrary }) => {
     stickerLibrary = activeWhatsappStickers(await loadWhatsappStickerLibrary({ includeInactive: false }));
     libraryError = "";
@@ -490,7 +513,7 @@ function startBrowserIntegration() {
       previousHistory,
       state,
       text: output?.value || "",
-      enabled: control?.checked !== false
+      enabled: control?.checked !== false && transportReady()
     });
 
     previousHistory = cleanHistory(state.history);
@@ -512,6 +535,8 @@ function startBrowserIntegration() {
 
     if (result.reason === "too_long") {
       setControlStatus("Text ist länger als 4.000 Zeichen · Aktion wird gespeichert, aber nicht automatisch gesendet.", "error");
+    } else if (!transportReady()) {
+      setControlStatus(transportMessage(), "error");
     } else if (control?.checked === false) {
       setControlStatus("Automatisches Senden ist für neue Aktionen ausgeschaltet.", "ready");
     } else {

@@ -32,6 +32,8 @@ const EDGE_TIMEOUT_MS = Number.parseInt(process.env.EDGE_TIMEOUT_MS || "10000", 
 const WAHA_TIMEOUT_MS = Number.parseInt(process.env.WAHA_TIMEOUT_MS || "8000", 10);
 const MEDIA_TEXT_DELAY_MS = 2000;
 const REALTIME_HEARTBEAT_MS = 20000;
+const RUNTIME_CONTROL_INTERVAL_MS = 5000;
+const WPP_ACTION_RETRY_MS = 15000;
 const REALTIME_TOPIC = "realtime:liveticker-whatsapp-jobs";
 const WAHA_BASE_URL = String(process.env.WAHA_BASE_URL || "http://127.0.0.1:3001").replace(/\/$/, "");
 const WAHA_SESSION = String(process.env.WAHA_SESSION || "Liveticker_Test");
@@ -78,6 +80,11 @@ let reconnectTimer = null;
 let reconnectAttempt = 0;
 let messageRef = 0;
 let shuttingDown = false;
+let runtimeControlTimer = null;
+let workerEnabled = true;
+let wppDesiredConnected = true;
+let wppState = "UNKNOWN";
+let lastWppActionAt = 0;
 
 function log(event, details = {}) {
   const safe = { ts: new Date().toISOString(), event, ...details };
@@ -161,6 +168,76 @@ async function edge(body, timeoutMs = EDGE_TIMEOUT_MS) {
     throw new Error(`Worker gateway failed (${response.status})`);
   }
   return payload.data;
+}
+
+async function wahaRequest(path, { method = "GET" } = {}) {
+  const response = await fetch(`${WAHA_BASE_URL}${path}`, {
+    method,
+    headers: { "X-Api-Key": WAHA_API_KEY, "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(Math.max(1000, Math.min(WAHA_TIMEOUT_MS, 5000)))
+  });
+  const data = await parseResponse(response);
+  if (!response.ok) throw new Error(`WAHA ${method} ${path} failed (${response.status})`);
+  return data;
+}
+
+function normalizeWppState(session) {
+  const status = String(session?.status || "").toUpperCase();
+  const engineState = String(session?.engine?.state || "").toUpperCase();
+  if (status === "WORKING" && engineState === "CONNECTED") return "CONNECTED";
+  if (status === "STOPPED") return "DISCONNECTED";
+  if (status === "STARTING" || status === "SCAN_QR_CODE") return "CONNECTING";
+  if (status === "FAILED") return "ERROR";
+  if (engineState === "CONNECTED") return "CONNECTED";
+  return "ERROR";
+}
+
+async function readWppSnapshot() {
+  try {
+    const session = await wahaRequest(`/api/sessions/${encodeURIComponent(WAHA_SESSION)}`);
+    return { state: normalizeWppState(session), error: null };
+  } catch (error) {
+    return { state: "ERROR", error: safeError(error) };
+  }
+}
+
+async function applyWppDesiredState(desiredConnected, observedState) {
+  if (Date.now() - lastWppActionAt < WPP_ACTION_RETRY_MS) return;
+  let path = "";
+  if (desiredConnected && observedState === "DISCONNECTED") {
+    path = `/api/sessions/${encodeURIComponent(WAHA_SESSION)}/start`;
+  } else if (desiredConnected && observedState === "ERROR") {
+    path = `/api/sessions/${encodeURIComponent(WAHA_SESSION)}/restart`;
+  } else if (!desiredConnected && (observedState === "CONNECTED" || observedState === "CONNECTING")) {
+    path = `/api/sessions/${encodeURIComponent(WAHA_SESSION)}/stop`;
+  }
+  if (!path) return false;
+  lastWppActionAt = Date.now();
+  await wahaRequest(path, { method: "POST" });
+  wppState = desiredConnected ? "CONNECTING" : "DISCONNECTING";
+  log("wpp_control_action", { action: desiredConnected ? "connect" : "disconnect" });
+  return true;
+}
+
+async function refreshRuntimeControl(reason = "timer") {
+  const wasReady = workerEnabled && wppDesiredConnected && wppState === "CONNECTED";
+  const snapshot = await readWppSnapshot();
+  wppState = snapshot.state;
+  try {
+    const control = await edge({ action: "control", wppState, wppError: snapshot.error });
+    workerEnabled = control?.worker?.enabled !== false;
+    wppDesiredConnected = control?.wpp?.desiredConnected !== false;
+    const changed = await applyWppDesiredState(wppDesiredConnected, wppState);
+    if (changed) {
+      await edge({ action: "control", wppState, wppError: null });
+    }
+    const ready = workerEnabled && wppDesiredConnected && wppState === "CONNECTED";
+    if (!wasReady && ready) void drainQueue("runtime_ready");
+  } catch (error) {
+    // Backward-compatible during rollout: the process stays up, but the claim
+    // gateway will remain the final authority once runtime-control RPCs exist.
+    log("runtime_control_error", { reason, error: safeError(error) });
+  }
 }
 
 async function claimJob() {
@@ -402,6 +479,7 @@ async function processJob(job) {
 }
 
 async function drainQueue(reason = "wake") {
+  if (!workerEnabled || !wppDesiredConnected || wppState !== "CONNECTED") return;
   if (draining) {
     drainAgain = true;
     return;
@@ -536,6 +614,8 @@ function shutdown(signal) {
   shuttingDown = true;
   log("shutdown", { signal });
   clearRealtimeTimers();
+  if (runtimeControlTimer) clearInterval(runtimeControlTimer);
+  runtimeControlTimer = null;
   try { websocket?.close(1000, "shutdown"); } catch {}
   setTimeout(() => process.exit(0), draining ? 1500 : 50).unref();
 }
@@ -554,7 +634,10 @@ log("worker_started", {
   pollIntervalMs: POLL_INTERVAL_MS
 });
 
+await refreshRuntimeControl("startup");
 connectRealtime();
 void drainQueue("startup");
+runtimeControlTimer = setInterval(() => void refreshRuntimeControl("timer"), RUNTIME_CONTROL_INTERVAL_MS);
+runtimeControlTimer.unref();
 const pollTimer = setInterval(() => void drainQueue("recovery_poll"), POLL_INTERVAL_MS);
 pollTimer.unref();
