@@ -6,7 +6,7 @@ import test from "node:test";
 const root = path.resolve(import.meta.dirname, "..");
 const read = relative => fs.readFile(path.join(root, relative), "utf8");
 const migrationPath = "supabase/migrations/20260916064314_liveticker_whatsapp_delivery_components_dev_r1.sql";
-const retryMigrationPath = "supabase/migrations/20260917055731_liveticker_whatsapp_delivery_retry_dev_r1.sql";
+const retryMigrationPath = "supabase/migrations/20260917062900_liveticker_whatsapp_delivery_retry_dev_r1.sql";
 
 test("outbox contract supports exactly text, sticker, or sticker then text", async () => {
   const sql = await read(migrationPath);

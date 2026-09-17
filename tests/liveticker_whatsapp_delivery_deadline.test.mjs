@@ -77,7 +77,7 @@ test("gateway makes failures terminal until the explicit same-job retry RPC", as
   const [gateway, worker, migration] = await Promise.all([
     read("supabase/functions/liveticker-whatsapp-worker/index.ts"),
     read("workers/liveticker-whatsapp/worker.mjs"),
-    read("supabase/migrations/20260917055731_liveticker_whatsapp_delivery_retry_dev_r1.sql")
+    read("supabase/migrations/20260917062900_liveticker_whatsapp_delivery_retry_dev_r1.sql")
   ]);
   const claim = gateway.match(/async function claim\(\)[\s\S]+?\n\}/)?.[0] || "";
   const fail = gateway.match(/async function fail\(body: JsonObject\)[\s\S]+?\n\}/)?.[0] || "";
