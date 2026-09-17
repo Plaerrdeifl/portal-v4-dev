@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
-import { attachWhatsappPublishIntent } from "../js/liveticker-whatsapp-publish.js";
+import {
+  attachWhatsappPublishIntent,
+  scheduleStickerSuccessExpiry,
+  settleSentStickerState,
+  STICKER_SUCCESS_VISIBLE_MS
+} from "../js/liveticker-whatsapp-publish.js";
 import {
   activeWhatsappStickers,
   classicActionWhatsappStickers,
@@ -99,6 +104,81 @@ test("classic view sends contextual and Situation stickers through the existing 
   assert.match(saveHandler, /areas\.action\.sourceAction !== "SITUATION"[\s\S]*pendingLinks\.set\(actionId, areas\.action\.deliveryId\)/);
   assert.match(publish, /linkWhatsappStickerDelivery\(\{ jobId, actionId \}\)/);
   assert.match(publish, /if \(!state\.request \|\| state\.deliveryId\) return/);
+});
+
+test("successful Situation delivery releases active UI state for the next independent sticker", () => {
+  const firstRequest = { idempotencyKey: "request-one" };
+  const state = {
+    selectedStickerId: stickerId,
+    sourceAction: "SITUATION",
+    request: firstRequest,
+    deliveryId: "delivery-one",
+    linkedActionId: "",
+    requestError: "",
+    busy: false,
+    successMessage: "",
+    sentStatusAcknowledged: false,
+    sentStatusHidden: false
+  };
+  assert.equal(settleSentStickerState(state, { id: "delivery-one", stickerStatus: "SENT" }), "STANDALONE_RELEASED");
+  assert.equal(state.selectedStickerId, "");
+  assert.equal(state.request, null);
+  assert.equal(state.deliveryId, "");
+  assert.equal(state.successMessage, "Sticker GESENDET ✓");
+
+  const secondRequest = { idempotencyKey: "request-two" };
+  state.selectedStickerId = "22222222-2222-4222-8222-222222222222";
+  state.request = secondRequest;
+  state.deliveryId = "delivery-two";
+  assert.notEqual(state.request, firstRequest);
+  assert.notEqual(state.deliveryId, "delivery-one");
+});
+
+test("sticker success expires automatically after the short confirmation window", () => {
+  let callback = null;
+  let delay = 0;
+  const state = { successMessage: "Sticker GESENDET ✓" };
+  const timerId = scheduleStickerSuccessExpiry(() => { state.successMessage = ""; }, (fn, timeout) => {
+    callback = fn;
+    delay = timeout;
+    return 17;
+  });
+  assert.equal(timerId, 17);
+  assert.equal(delay, STICKER_SUCCESS_VISIBLE_MS);
+  assert.equal(delay, 2000);
+  callback();
+  assert.equal(state.successMessage, "");
+});
+
+test("successful action sticker remains retained until its action link succeeds", async () => {
+  const state = {
+    selectedStickerId: stickerId,
+    sourceAction: "GOAL_MIGHTY",
+    request: { idempotencyKey: "goal-request" },
+    deliveryId: "goal-delivery",
+    linkedActionId: "",
+    requestError: "",
+    busy: false,
+    successMessage: "",
+    sentStatusAcknowledged: false,
+    sentStatusHidden: false
+  };
+  assert.equal(settleSentStickerState(state, { id: "goal-delivery", stickerStatus: "SENT" }), "ACTION_RETAINED");
+  assert.equal(state.deliveryId, "goal-delivery");
+  assert.equal(state.request.idempotencyKey, "goal-request");
+
+  const publish = await read("js/liveticker-whatsapp-publish.js");
+  const linkLoop = publish.match(/for \(const \[actionId, jobId\][\s\S]+?\n      \}/)?.[0] || "";
+  assert.match(linkLoop, /linkWhatsappStickerDelivery\(\{ jobId, actionId \}\)/);
+  assert.match(linkLoop, /if \(areas\.action\.deliveryId === jobId\) resetArea\("action"\)/);
+  assert.doesNotMatch(linkLoop, /createWhatsappStickerOnlyRequest|retryWhatsappDelivery/);
+});
+
+test("successful Situation stickers need no manual clear control and failed retry keeps the same job", async () => {
+  const publish = await read("js/liveticker-whatsapp-publish.js");
+  assert.doesNotMatch(publish, /WEITEREN STICKER AUSWÄHLEN|data-clear-sticker-area/);
+  assert.match(publish, /settleCompletedStickerArea\("action"\)/);
+  assert.match(publish, /retryWhatsappDelivery\(\{ eventId: eventId\(\), jobId: delivery\.id \}\)/);
 });
 
 test("classic action stickers are active and match the selected team/action context", () => {

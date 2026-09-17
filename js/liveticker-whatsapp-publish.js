@@ -15,6 +15,30 @@ const WHATSAPP_PANEL_ID = "livetickerWhatsappPanel";
 const SUBMIT_ROW_ID = "livetickerSubmitRow";
 const TEXT_STATUS_ID = "livetickerTextDeliveryStatus";
 const MAX_MESSAGE_LENGTH = 4000;
+export const STICKER_SUCCESS_VISIBLE_MS = 2000;
+
+export function settleSentStickerState(state, delivery) {
+  if (!state || !delivery || state.deliveryId !== delivery.id || delivery.stickerStatus !== "SENT") return "NONE";
+  if (state.sentStatusAcknowledged) return "NONE";
+  state.successMessage = "Sticker GESENDET ✓";
+  state.sentStatusAcknowledged = true;
+  state.sentStatusHidden = false;
+  if (state.sourceAction !== "SITUATION") return "ACTION_RETAINED";
+  Object.assign(state, {
+    selectedStickerId: "",
+    sourceAction: "",
+    request: null,
+    deliveryId: "",
+    linkedActionId: "",
+    requestError: "",
+    busy: false
+  });
+  return "STANDALONE_RELEASED";
+}
+
+export function scheduleStickerSuccessExpiry(callback, scheduler = globalThis.setTimeout) {
+  return scheduler(callback, STICKER_SUCCESS_VISIBLE_MS);
+}
 
 function cleanAction(action) {
   if (!action || typeof action !== "object") return action;
@@ -139,10 +163,14 @@ function startBrowserIntegration() {
   let textRequestPending = false;
   let textStatusInitialized = false;
   let textRetryBusy = false;
+  let stickerSuccessTimer = null;
   let transportRuntime = globalThis.PD_LIVETICKER_WHATSAPP_RUNTIME || { ready: false, wa: null, wpp: null };
   const pendingLinks = new Map();
   const areas = {
-    action: { selectedStickerId: "", sourceAction: "", request: null, deliveryId: "", linkedActionId: "", requestError: "", busy: false }
+    action: {
+      selectedStickerId: "", sourceAction: "", request: null, deliveryId: "", linkedActionId: "",
+      requestError: "", busy: false, successMessage: "", sentStatusAcknowledged: false, sentStatusHidden: false
+    }
   };
 
   const eventId = () => String(globalThis.PD_LIVETICKER_GAME_CONTEXT?.eventId || "").trim();
@@ -177,6 +205,10 @@ function startBrowserIntegration() {
   }
 
   function resetArea(area) {
+    if (area === "action" && stickerSuccessTimer !== null) {
+      clearTimeout(stickerSuccessTimer);
+      stickerSuccessTimer = null;
+    }
     Object.assign(areas[area], {
       selectedStickerId: "",
       sourceAction: "",
@@ -184,8 +216,34 @@ function startBrowserIntegration() {
       deliveryId: "",
       linkedActionId: "",
       requestError: "",
-      busy: false
+      busy: false,
+      successMessage: "",
+      sentStatusAcknowledged: false,
+      sentStatusHidden: false
     });
+  }
+
+  function clearStickerSuccess(area, { render = true } = {}) {
+    const state = areas[area];
+    if (!state) return;
+    if (area === "action" && stickerSuccessTimer !== null) {
+      clearTimeout(stickerSuccessTimer);
+      stickerSuccessTimer = null;
+    }
+    state.successMessage = "";
+    state.sentStatusHidden = true;
+    if (render) renderArea(area);
+  }
+
+  function settleCompletedStickerArea(area) {
+    const state = areas[area];
+    const result = settleSentStickerState(state, deliveryFor(area));
+    if (result === "NONE") return;
+    if (area === "action" && stickerSuccessTimer !== null) clearTimeout(stickerSuccessTimer);
+    stickerSuccessTimer = scheduleStickerSuccessExpiry(() => {
+      stickerSuccessTimer = null;
+      clearStickerSuccess(area);
+    }, window.setTimeout.bind(window));
   }
 
   function statusHtml(area) {
@@ -193,18 +251,19 @@ function startBrowserIntegration() {
     if (state.requestError) {
       return `<p class="liveticker-whatsapp-sticker-status" data-tone="error">${escapeHtml(state.requestError)}</p><button class="liveticker-whatsapp-sticker-retry" type="button" data-retry-sticker-request="${area}"${state.busy ? " disabled" : ""}>ANFRAGE SICHER ERNEUT SENDEN</button>`;
     }
+    if (state.successMessage) {
+      return `<p class="liveticker-whatsapp-sticker-status" data-tone="success">${escapeHtml(state.successMessage)}</p>`;
+    }
     const delivery = deliveryFor(area);
     if (!delivery) return state.busy
       ? '<p class="liveticker-whatsapp-sticker-status" data-tone="pending">WIRD GESENDET …</p>'
       : "";
     const status = whatsappStickerDeliveryStatus(delivery);
+    if (delivery.stickerStatus === "SENT" && state.sentStatusHidden) return "";
     const retry = status.retryable
       ? `<button class="liveticker-whatsapp-sticker-retry" type="button" data-retry-sticker-delivery="${area}"${state.busy || !transportReady() ? " disabled" : ""}>ERNEUT SENDEN</button>`
       : "";
-    const clear = delivery.stickerStatus === "SENT" && (state.sourceAction === "SITUATION" || state.linkedActionId)
-      ? `<button class="liveticker-whatsapp-sticker-retry" type="button" data-clear-sticker-area="${area}">WEITEREN STICKER AUSWÄHLEN</button>`
-      : "";
-    return `<p class="liveticker-whatsapp-sticker-status" data-tone="${status.tone}">${escapeHtml(`Sticker ${status.label}`)}</p><div class="liveticker-whatsapp-sticker-actions">${retry}${clear}</div>`;
+    return `<p class="liveticker-whatsapp-sticker-status" data-tone="${status.tone}">${escapeHtml(`Sticker ${status.label}`)}</p><div class="liveticker-whatsapp-sticker-actions">${retry}</div>`;
   }
 
   function stickerCards(stickers, area, locked) {
@@ -234,11 +293,13 @@ function startBrowserIntegration() {
     const mixedPenalty = action === "PENALTY" && new Set(penaltyTeams()).size > 1;
     const contextCopy = action === "SITUATION"
       ? "Aktive Spiel-, Video- und allgemeine Sticker · immer separat ohne Liveticker-Aktion oder Text."
-      : state.linkedActionId
-        ? "Aktionssticker der zuletzt gespeicherten Aktion."
-        : mixedPenalty
-        ? "Für gemischte Strafen beider Teams ist kein eindeutiger Aktionssticker verfügbar."
-        : "Passender Sticker zur gewählten Aktion · immer separat ohne Text.";
+      : delivery?.stickerStatus === "SENT"
+        ? "Sticker gesendet · Aktion jetzt speichern."
+        : state.linkedActionId
+          ? "Aktionssticker der zuletzt gespeicherten Aktion."
+          : mixedPenalty
+            ? "Für gemischte Strafen beider Teams ist kein eindeutiger Aktionssticker verfügbar."
+            : "Passender Sticker zur gewählten Aktion · immer separat ohne Text.";
     const sendButton = state.selectedStickerId && !locked
       ? `<button class="liveticker-whatsapp-sticker-send-now" type="button" data-send-sticker-area="${area}">Sticker sofort senden</button>`
       : "";
@@ -313,6 +374,7 @@ function startBrowserIntegration() {
     } catch (error) {
       deliveryError = error?.message || "Versandstatus konnte nicht geladen werden.";
     }
+    settleCompletedStickerArea("action");
     renderStickerAreas();
     renderTextDeliveryStatus();
   }
@@ -320,6 +382,9 @@ function startBrowserIntegration() {
   async function sendSticker(area) {
     const state = areas[area];
     if (!transportReady() || !state?.selectedStickerId || state.deliveryId || state.busy) return;
+    clearStickerSuccess(area, { render: false });
+    state.sentStatusAcknowledged = false;
+    state.sentStatusHidden = false;
     state.busy = true;
     state.requestError = "";
     renderArea(area);
@@ -392,6 +457,7 @@ function startBrowserIntegration() {
           const result = await linkWhatsappStickerDelivery({ jobId, actionId });
           if (result?.delivery) deliveries = [result.delivery, ...deliveries.filter(item => item.id !== result.delivery.id)];
           pendingLinks.delete(actionId);
+          if (areas.action.deliveryId === jobId) resetArea("action");
         } catch (error) {
           console.warn("Sticker-Verknüpfung wird nach dem nächsten Sync erneut versucht.", error);
         }
@@ -410,12 +476,7 @@ function startBrowserIntegration() {
     const area = button.dataset.stickerAreaName;
     if (area && button.dataset.selectSticker) {
       const state = areas[area];
-      let delivery = deliveryFor(area);
-      const completed = delivery?.stickerStatus === "SENT" && (state.sourceAction === "SITUATION" || state.linkedActionId);
-      if (completed) {
-        resetArea(area);
-        delivery = null;
-      }
+      const delivery = deliveryFor(area);
       if (state.request || state.busy || delivery) return;
       state.selectedStickerId = button.dataset.selectSticker;
       renderArea(area);
@@ -425,7 +486,6 @@ function startBrowserIntegration() {
     if (button.dataset.retryStickerRequest) { void sendSticker(button.dataset.retryStickerRequest); return; }
     if (button.dataset.retryStickerDelivery) { void retryDelivery(button.dataset.retryStickerDelivery); return; }
     if (button.hasAttribute("data-retry-text-delivery")) { void retryTextDelivery(); return; }
-    if (button.dataset.clearStickerArea) { resetArea(button.dataset.clearStickerArea); renderArea(button.dataset.clearStickerArea); return; }
     if (button.dataset.edit) {
       textActionId = button.dataset.edit;
       textRequestPending = false;
@@ -459,10 +519,6 @@ function startBrowserIntegration() {
     if (event.target.name === "action" || event.target.matches?.('#penaltyRows [data-field="team"]')) {
       if (event.target.name === "action") {
         resetTextDeliveryStatus();
-        const situationDelivery = deliveryFor("action");
-        if (areas.action.sourceAction === "SITUATION" && situationDelivery?.stickerStatus === "SENT") {
-          resetArea("action");
-        }
       }
       if (!areas.action.request && !areas.action.deliveryId) areas.action.selectedStickerId = "";
       queueMicrotask(() => { syncActionModeUi(); renderArea("action"); });
