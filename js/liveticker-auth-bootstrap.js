@@ -9,7 +9,7 @@ try {
     const app = document.getElementById("tickerApp");
     if (app) app.hidden = false;
     await import("./liveticker-runtime-controls.js?v=20260917-wa-wpp-control-r2");
-    await import("./liveticker-bootstrap.js?v=20260917-sticker-mode-capture-r1");
+    await import("./liveticker-bootstrap.js?v=20260917-repeat-action-stickers-r1");
     await import("./liveticker-graphics-inline.js?v=20260917-classic-only-r1");
   }
 } catch (error) {

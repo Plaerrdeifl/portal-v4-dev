@@ -101,7 +101,7 @@ test("classic view sends contextual and Situation stickers through the existing 
   const saveHandler = publish.match(/window\.addEventListener\("pd-liveticker-state-saved"[\s\S]+?\n  \}\);/)?.[0] || "";
   assert.match(saveHandler, /attachWhatsappPublishIntent\(\{[\s\S]*enabled: control\?\.checked !== false && transportReady\(\)\s*\}\)/);
   assert.doesNotMatch(saveHandler, /stickerId\s*:/);
-  assert.match(saveHandler, /areas\.action\.sourceAction !== "SITUATION"[\s\S]*pendingLinks\.set\(actionId, areas\.action\.deliveryId\)/);
+  assert.match(saveHandler, /areas\.action\.sourceAction !== "SITUATION"[\s\S]*pendingActionDeliveryIds[\s\S]*queuePendingLink\(actionId, jobId\)/);
   assert.match(publish, /linkWhatsappStickerDelivery\(\{ jobId, actionId \}\)/);
   assert.match(publish, /if \(!state\.request \|\| state\.deliveryId\) return/);
 });
@@ -160,7 +160,7 @@ test("sticker success expires automatically after the short confirmation window"
   assert.equal(state.successMessage, "");
 });
 
-test("successful action sticker remains retained until its action link succeeds", async () => {
+test("successful action sticker releases the picker but retains its delivery for later action linking", async () => {
   const state = {
     selectedStickerId: stickerId,
     sourceAction: "GOAL_MIGHTY",
@@ -171,17 +171,19 @@ test("successful action sticker remains retained until its action link succeeds"
     busy: false,
     successMessage: "",
     sentStatusAcknowledged: false,
-    sentStatusHidden: false
+    sentStatusHidden: false,
+    pendingActionDeliveryIds: []
   };
-  assert.equal(settleSentStickerState(state, { id: "goal-delivery", stickerStatus: "SENT" }), "ACTION_RETAINED");
-  assert.equal(state.deliveryId, "goal-delivery");
-  assert.equal(state.request.idempotencyKey, "goal-request");
+  assert.equal(settleSentStickerState(state, { id: "goal-delivery", stickerStatus: "SENT" }), "ACTION_RELEASED");
+  assert.equal(state.deliveryId, "");
+  assert.equal(state.request, null);
+  assert.deepEqual(state.pendingActionDeliveryIds, ["goal-delivery"]);
 
   const publish = await read("js/liveticker-whatsapp-publish.js");
-  const linkLoop = publish.match(/for \(const \[actionId, jobId\][\s\S]+?\n      \}/)?.[0] || "";
-  assert.match(linkLoop, /linkWhatsappStickerDelivery\(\{ jobId, actionId \}\)/);
-  assert.match(linkLoop, /if \(areas\.action\.deliveryId === jobId\) resetArea\("action"\)/);
-  assert.doesNotMatch(linkLoop, /createWhatsappStickerOnlyRequest|retryWhatsappDelivery/);
+  assert.match(publish, /for \(const \[actionId, jobIds\] of \[\.\.\.pendingLinks\.entries\(\)\]\)/);
+  assert.match(publish, /for \(const jobId of \[\.\.\.jobIds\]\)/);
+  assert.match(publish, /linkWhatsappStickerDelivery\(\{ jobId, actionId \}\)/);
+  assert.doesNotMatch(publish, /pendingLinks\.set\(actionId, areas\.action\.deliveryId\)/);
 });
 
 test("successful Situation stickers need no manual clear control and failed retry keeps the same job", async () => {
@@ -525,4 +527,31 @@ test("runtime uses only explicit sticker_id and WAHA WPP sendSticker, never mess
   assert.match(gateway, /STICKER_BUCKET = "liveticker-whatsapp-stickers"/);
   assert.match(gateway, /stickerId: row\.sticker_id/);
   assert.match(gateway, /sha256Bytes\(bytes\) !== expectedSha/);
+});
+
+
+test("multiple successful action stickers release the picker immediately and retain all jobs for later linking", () => {
+  const state = {
+    selectedStickerId: "sticker-a", sourceAction: "GOAL_MIGHTY", request: { id: "req-a" }, deliveryId: "job-a", linkedActionId: "",
+    requestError: "", busy: false, successMessage: "", sentStatusAcknowledged: false, sentStatusHidden: false, pendingActionDeliveryIds: []
+  };
+  assert.equal(settleSentStickerState(state, { id: "job-a", stickerStatus: "SENT" }), "ACTION_RELEASED");
+  assert.equal(state.deliveryId, "");
+  assert.equal(state.request, null);
+  assert.deepEqual(state.pendingActionDeliveryIds, ["job-a"]);
+  state.selectedStickerId = "sticker-b";
+  state.request = { id: "req-b" };
+  state.deliveryId = "job-b";
+  state.sentStatusAcknowledged = false;
+  assert.equal(settleSentStickerState(state, { id: "job-b", stickerStatus: "SENT" }), "ACTION_RELEASED");
+  assert.equal(state.deliveryId, "");
+  assert.deepEqual(state.pendingActionDeliveryIds, ["job-a", "job-b"]);
+});
+
+test("action save queues every released action sticker for linking instead of blocking the picker", async () => {
+  const publish = await read("js/liveticker-whatsapp-publish.js");
+  assert.match(publish, /pendingActionDeliveryIds/);
+  assert.match(publish, /jobs\.forEach\(jobId => queuePendingLink\(actionId, jobId\)\)/);
+  assert.match(publish, /for \(const \[actionId, jobIds\] of \[\.\.\.pendingLinks\.entries\(\)\]\)/);
+  assert.match(publish, /for \(const jobId of \[\.\.\.jobIds\]\)/);
 });

@@ -23,7 +23,20 @@ export function settleSentStickerState(state, delivery) {
   state.successMessage = "Sticker GESENDET ✓";
   state.sentStatusAcknowledged = true;
   state.sentStatusHidden = false;
-  if (state.sourceAction !== "SITUATION") return "ACTION_RETAINED";
+  if (state.sourceAction !== "SITUATION") {
+    const pending = Array.isArray(state.pendingActionDeliveryIds) ? state.pendingActionDeliveryIds : [];
+    if (!pending.includes(delivery.id)) pending.push(delivery.id);
+    Object.assign(state, {
+      selectedStickerId: "",
+      request: null,
+      deliveryId: "",
+      linkedActionId: "",
+      requestError: "",
+      busy: false,
+      pendingActionDeliveryIds: pending
+    });
+    return "ACTION_RELEASED";
+  }
   Object.assign(state, {
     selectedStickerId: "",
     sourceAction: "",
@@ -166,10 +179,18 @@ function startBrowserIntegration() {
   let stickerSuccessTimer = null;
   let transportRuntime = globalThis.PD_LIVETICKER_WHATSAPP_RUNTIME || { ready: false, wa: null, wpp: null };
   const pendingLinks = new Map();
+
+  function queuePendingLink(actionId, jobId) {
+    if (!actionId || !jobId) return;
+    const jobs = pendingLinks.get(actionId) || new Set();
+    jobs.add(jobId);
+    pendingLinks.set(actionId, jobs);
+  }
   const areas = {
     action: {
       selectedStickerId: "", sourceAction: "", request: null, deliveryId: "", linkedActionId: "",
-      requestError: "", busy: false, successMessage: "", sentStatusAcknowledged: false, sentStatusHidden: false
+      requestError: "", busy: false, successMessage: "", sentStatusAcknowledged: false, sentStatusHidden: false,
+      pendingActionDeliveryIds: []
     }
   };
 
@@ -219,7 +240,8 @@ function startBrowserIntegration() {
       busy: false,
       successMessage: "",
       sentStatusAcknowledged: false,
-      sentStatusHidden: false
+      sentStatusHidden: false,
+      pendingActionDeliveryIds: []
     });
   }
 
@@ -455,15 +477,21 @@ function startBrowserIntegration() {
     linkingPending = true;
     try {
       const { linkWhatsappStickerDelivery } = await services();
-      for (const [actionId, jobId] of [...pendingLinks.entries()]) {
-        try {
-          const result = await linkWhatsappStickerDelivery({ jobId, actionId });
-          if (result?.delivery) deliveries = [result.delivery, ...deliveries.filter(item => item.id !== result.delivery.id)];
-          pendingLinks.delete(actionId);
-          if (areas.action.deliveryId === jobId) resetArea("action");
-        } catch (error) {
-          console.warn("Sticker-Verknüpfung wird nach dem nächsten Sync erneut versucht.", error);
+      for (const [actionId, jobIds] of [...pendingLinks.entries()]) {
+        for (const jobId of [...jobIds]) {
+          try {
+            const result = await linkWhatsappStickerDelivery({ jobId, actionId });
+            if (result?.delivery) deliveries = [result.delivery, ...deliveries.filter(item => item.id !== result.delivery.id)];
+            jobIds.delete(jobId);
+            if (areas.action.deliveryId === jobId) {
+              areas.action.deliveryId = "";
+              areas.action.request = null;
+            }
+          } catch (error) {
+            console.warn("Sticker-Verknüpfung wird nach dem nächsten Sync erneut versucht.", error);
+          }
         }
+        if (!jobIds.size) pendingLinks.delete(actionId);
       }
     } catch (error) {
       console.warn("Sticker-Verknüpfung wird nach dem nächsten Sync erneut versucht.", error);
@@ -522,6 +550,10 @@ function startBrowserIntegration() {
     if (event.target.name === "action" || event.target.matches?.('#penaltyRows [data-field="team"]')) {
       if (event.target.name === "action") {
         resetTextDeliveryStatus();
+        if (!areas.action.request && !areas.action.deliveryId) {
+          areas.action.pendingActionDeliveryIds = [];
+          areas.action.sourceAction = "";
+        }
       }
       if (!areas.action.request && !areas.action.deliveryId) areas.action.selectedStickerId = "";
       queueMicrotask(() => { syncActionModeUi(); renderArea("action"); });
@@ -583,12 +615,17 @@ function startBrowserIntegration() {
       textStatusInitialized = true;
       renderTextDeliveryStatus();
     }
-    if (actionId && areas.action.sourceAction !== "SITUATION" && areas.action.deliveryId && !areas.action.linkedActionId) {
+    if (actionId && areas.action.sourceAction !== "SITUATION") {
+      const jobs = [
+        ...(Array.isArray(areas.action.pendingActionDeliveryIds) ? areas.action.pendingActionDeliveryIds : []),
+        ...(areas.action.deliveryId ? [areas.action.deliveryId] : [])
+      ];
+      jobs.forEach(jobId => queuePendingLink(actionId, jobId));
+      areas.action.pendingActionDeliveryIds = [];
       areas.action.linkedActionId = actionId;
-      pendingLinks.set(actionId, areas.action.deliveryId);
     }
     if (actionId) {
-      if (!areas.action.deliveryId) resetArea("action");
+      resetArea("action");
       renderArea("action");
     }
 
