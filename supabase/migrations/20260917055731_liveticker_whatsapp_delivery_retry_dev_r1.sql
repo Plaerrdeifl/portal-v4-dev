@@ -68,7 +68,7 @@ end;
 $function$;
 
 alter function app_private.pd_api_dispatch_current(text, jsonb)
-  rename to pd_api_dispatch_current_before_liveticker_whatsapp_delivery_retry_r1;
+  rename to pd_api_dispatch_current_before_wa_delivery_retry_r1;
 
 create function app_private.pd_api_dispatch_current(p_action text, p_payload jsonb)
 returns jsonb
@@ -82,12 +82,12 @@ begin
   if v_action = 'liveticker_whatsapp_delivery_retry' then
     return app_private.api_liveticker_whatsapp_delivery_retry(coalesce(p_payload, '{}'::jsonb));
   end if;
-  return app_private.pd_api_dispatch_current_before_liveticker_whatsapp_delivery_retry_r1(p_action, p_payload);
+  return app_private.pd_api_dispatch_current_before_wa_delivery_retry_r1(p_action, p_payload);
 end;
 $function$;
 
 alter function app_private.platform_action_classification(text)
-  rename to platform_action_classification_before_liveticker_whatsapp_delivery_retry_r1;
+  rename to platform_action_classification_before_wa_delivery_retry_r1;
 
 create function app_private.platform_action_classification(p_action text)
 returns text
@@ -97,14 +97,14 @@ set search_path = ''
 as $function$
   select case pg_catalog.lower(pg_catalog.btrim(coalesce(p_action, '')))
     when 'liveticker_whatsapp_delivery_retry' then 'USER_MUTATION'
-    else app_private.platform_action_classification_before_liveticker_whatsapp_delivery_retry_r1(p_action)
+    else app_private.platform_action_classification_before_wa_delivery_retry_r1(p_action)
   end;
 $function$;
 
 revoke all on function
   app_private.api_liveticker_whatsapp_delivery_retry(jsonb),
-  app_private.pd_api_dispatch_current_before_liveticker_whatsapp_delivery_retry_r1(text, jsonb),
-  app_private.platform_action_classification_before_liveticker_whatsapp_delivery_retry_r1(text)
+  app_private.pd_api_dispatch_current_before_wa_delivery_retry_r1(text, jsonb),
+  app_private.platform_action_classification_before_wa_delivery_retry_r1(text)
 from public, anon, authenticated, service_role;
 
 commit;
