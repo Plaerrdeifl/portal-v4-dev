@@ -30,3 +30,14 @@ test("dedicated game-day implementation files are removed", async () => {
     await assert.rejects(fs.access(path.join(root, relative)));
   }
 });
+
+test("classic Liveticker owns the contextual and standalone sticker shelves", async () => {
+  const publish = await read("js/liveticker-whatsapp-publish.js");
+  assert.match(publish, /actionGrid\?\.insertAdjacentElement\("afterend", actionPanel\)/);
+  assert.match(publish, /Aktionssticker/);
+  assert.match(publish, /Weitere Spielsticker/);
+  assert.match(publish, /Allgemeine Sticker/);
+  assert.match(publish, /Sticker sofort senden/);
+  assert.match(publish, /createWhatsappStickerOnlyRequest/);
+  assert.doesNotMatch(publish, /mode=game-day|liveticker-game-day/i);
+});

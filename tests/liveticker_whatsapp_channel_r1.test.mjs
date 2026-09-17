@@ -138,7 +138,7 @@ test("WhatsApp worker keeps legacy assets during migration but sends only explic
 test("Liveticker bootstrap defers state dispatch until generated output exists", async () => {
   const bootstrap = await read("js/liveticker-bootstrap.js");
   assert.match(bootstrap, /queueMicrotask\(\(\) => \{\s*window\.dispatchEvent\(new CustomEvent\("pd-liveticker-state-saved"/s);
-  assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260917-player-fast-r1/);
+  assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260917-classic-action-stickers-r1/);
 });
 
 

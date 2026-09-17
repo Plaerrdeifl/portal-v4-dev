@@ -3,7 +3,13 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { attachWhatsappPublishIntent } from "../js/liveticker-whatsapp-publish.js";
-import { activeWhatsappStickers } from "../js/liveticker-whatsapp-sticker-core.js";
+import {
+  activeWhatsappStickers,
+  classicActionWhatsappStickers,
+  gameSituationWhatsappStickers,
+  generalWhatsappStickers,
+  whatsappStickerDeliveryStatus
+} from "../js/liveticker-whatsapp-sticker-core.js";
 import {
   deliverWhatsappJob,
   InvalidWhatsappJobError,
@@ -65,14 +71,90 @@ test("edit and deletion never create a new WhatsApp publish intent", () => {
   assert.equal(edited.history[0]._whatsapp, undefined);
 });
 
-test("classic view can enqueue a standalone sticker without text or a fake action", async () => {
+test("classic view sends contextual and standalone stickers through the existing STICKER_ONLY service", async () => {
   const publish = await read("js/liveticker-whatsapp-publish.js");
-  assert.match(publish, /STICKER OHNE TEXT SENDEN/);
-  assert.match(publish, /enqueueWhatsappStickerOnly/);
-  assert.match(publish, /enqueueWhatsappStickerOnly\(\{ eventId, stickerId, linkedActionId: null \}\)/);
-  assert.match(publish, /Sticker-Versandauftrag wurde angelegt/);
-  const standalone = publish.match(/async function sendStandaloneSticker\(\) \{[\s\S]+?\n\}/)?.[0] || "";
-  assert.doesNotMatch(standalone, /requestSubmit|tickerForm|state\.history|message\s*:/);
+  assert.match(publish, /Aktionssticker/);
+  assert.match(publish, /Weitere Spielsticker/);
+  assert.match(publish, /Allgemeine Sticker/);
+  assert.match(publish, /createWhatsappStickerOnlyRequest/);
+  assert.match(publish, /linkedActionId: null/);
+  assert.match(publish, /linkWhatsappStickerDelivery/);
+  assert.match(publish, /retryWhatsappDelivery/);
+  assert.match(publish, /window\.setInterval\(async \(\) => \{[\s\S]*await refreshDeliveries\(\);[\s\S]*await flushPendingLinks\(\);[\s\S]*\}, 1000\)/);
+  const sendSticker = publish.match(/async function sendSticker\(area\) \{[\s\S]+?\n  \}/)?.[0] || "";
+  assert.doesNotMatch(sendSticker, /requestSubmit|state\.history|message\s*:/);
+  assert.match(sendSticker, /if \(!state\?\.selectedStickerId \|\| state\.deliveryId \|\| state\.busy\) return/);
+  assert.match(sendSticker, /state\.request \|\|= createWhatsappStickerOnlyRequest/);
+  assert.match(sendSticker, /state\.request\.send\(\)/);
+
+  const saveHandler = publish.match(/window\.addEventListener\("pd-liveticker-state-saved"[\s\S]+?\n  \}\);/)?.[0] || "";
+  assert.match(saveHandler, /attachWhatsappPublishIntent\(\{[\s\S]*enabled: control\?\.checked !== false\s*\}\)/);
+  assert.doesNotMatch(saveHandler, /stickerId\s*:/);
+  assert.match(saveHandler, /pendingLinks\.set\(actionId, areas\.action\.deliveryId\)/);
+  assert.match(publish, /linkWhatsappStickerDelivery\(\{ jobId, actionId \}\)/);
+  assert.match(publish, /if \(!state\.request \|\| state\.deliveryId\) return/);
+});
+
+test("classic action stickers are active and match the selected team/action context", () => {
+  const opponentTeamId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const otherOpponentId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const stickers = [
+    { id: "our-goal", active: true, audience: "OUR_TEAM", category: "GOAL" },
+    { id: "inactive-goal", active: false, audience: "OUR_TEAM", category: "GOAL" },
+    { id: "against-current", active: true, audience: "OPPONENT", category: "AGAINST", opponentTeamId },
+    { id: "against-other", active: true, audience: "OPPONENT", category: "AGAINST", opponentTeamId: otherOpponentId },
+    { id: "our-penalty", active: true, audience: "OUR_TEAM", category: "PENALTY" },
+    { id: "their-penalty", active: true, audience: "OPPONENT", category: "PENALTY", opponentTeamId }
+  ];
+
+  assert.deepEqual(classicActionWhatsappStickers(stickers, { action: "GOAL_MIGHTY", opponentTeamId }).map(item => item.id), ["our-goal"]);
+  assert.deepEqual(classicActionWhatsappStickers(stickers, { action: "GOAL_OPPONENT", opponentTeamId }).map(item => item.id), ["against-current"]);
+  assert.deepEqual(classicActionWhatsappStickers(stickers, { action: "PENALTY", opponentTeamId, penaltyTeams: ["mighty"] }).map(item => item.id), ["our-penalty"]);
+  assert.deepEqual(classicActionWhatsappStickers(stickers, { action: "PENALTY", opponentTeamId, penaltyTeams: ["opponent"] }).map(item => item.id), ["their-penalty"]);
+  assert.deepEqual(classicActionWhatsappStickers(stickers, { action: "PENALTY", opponentTeamId, penaltyTeams: ["mighty", "opponent"] }), []);
+});
+
+test("game-situation and general sticker shelves stay separate and opponent-aware", () => {
+  const opponentTeamId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const stickers = [
+    { id: "game-own", active: true, audience: "OUR_TEAM", category: "GAME_SITUATION" },
+    { id: "game-general", active: true, audience: "GENERAL", category: "GAME_SITUATION" },
+    { id: "game-opponent", active: true, audience: "OPPONENT", category: "GAME_SITUATION", opponentTeamId },
+    { id: "game-wrong-opponent", active: true, audience: "OPPONENT", category: "GAME_SITUATION", opponentTeamId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" },
+    { id: "general", active: true, audience: "GENERAL", category: "GENERAL" },
+    { id: "inactive-general", active: false, audience: "GENERAL", category: "GENERAL" }
+  ];
+  assert.deepEqual(gameSituationWhatsappStickers(stickers, { opponentTeamId }).map(item => item.id), ["game-own", "game-general", "game-opponent"]);
+  assert.deepEqual(generalWhatsappStickers(stickers).map(item => item.id), ["general"]);
+});
+
+test("classic sticker status uses the persisted delivery component state", () => {
+  assert.equal(whatsappStickerDeliveryStatus({ stickerStatus: "PENDING", attemptCount: 1 }).label, "WIRD GESENDET …");
+  assert.equal(whatsappStickerDeliveryStatus({ stickerStatus: "PENDING", attemptCount: 2 }).label, "WIRD ERNEUT VERSUCHT …");
+  assert.equal(whatsappStickerDeliveryStatus({ stickerStatus: "SENT" }).label, "GESENDET ✓");
+  assert.deepEqual(whatsappStickerDeliveryStatus({ stickerStatus: "FAILED" }), {
+    label: "FEHLGESCHLAGEN – MANUELL EINGREIFEN",
+    tone: "error",
+    retryable: true
+  });
+});
+
+test("GAME_SITUATION is additive in client, admin and DEV migration contracts", async () => {
+  const [client, admin, sql] = await Promise.all([
+    read("js/liveticker-whatsapp-sticker-core.js"),
+    read("js/modules/liveticker-admin.js"),
+    read("supabase/migrations/20260917173757_liveticker_whatsapp_game_situation_stickers_dev_r1.sql")
+  ]);
+  assert.match(client, /"GAME_SITUATION"/);
+  assert.match(admin, /value="GAME_SITUATION"/);
+  assert.match(admin, /GAME_SITUATION: "Spielsituation"/);
+  assert.match(sql, /drop constraint liveticker_whatsapp_stickers_category_check/i);
+  assert.match(sql, /'GAME_SITUATION'/);
+  assert.match(sql, /create or replace function app_private\.api_liveticker_whatsapp_sticker_metadata_set/i);
+  assert.match(sql, /security definer[\s\S]*set search_path = ''/i);
+  assert.match(sql, /app_private\.liveticker_require_operator\(\)/i);
+  assert.match(sql, /platform_release_environment\(\) is distinct from 'DEV'/i);
+  assert.doesNotMatch(sql, /insert into app_modules\.liveticker_whatsapp_stickers/i);
 });
 
 test("migration uses private Supabase Storage, validates references and keeps sticker metadata secret-free", async () => {

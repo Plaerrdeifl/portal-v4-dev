@@ -23,7 +23,7 @@ import {
   loadWhatsappStickerLibrary,
   setWhatsappStickerMetadata,
   validateWhatsappStickerSourceFile
-} from "../liveticker-whatsapp-stickers.js?v=20260917-classic-only-r1";
+} from "../liveticker-whatsapp-stickers.js?v=20260917-classic-action-stickers-r1";
 
 let snapshot = null;
 let archiveSnapshot = null;
@@ -300,7 +300,14 @@ async function setWhatsappStickerActive(sticker) {
 
 function whatsappStickerCard(sticker) {
   const audience = { OUR_TEAM: "Unsere", OPPONENT: "Gegner", GENERAL: "Allgemein" }[sticker.audience] || "Allgemein";
-  const category = { GOAL: "Tor", AGAINST: "Gegentor", PENALTY: "Strafe", GENERAL: "Allgemein" }[sticker.category] || "Allgemein";
+  const category = {
+    GOAL: "Tor",
+    AGAINST: "Gegentor",
+    PENALTY: "Strafe",
+    GAME_SITUATION: "Spielsituation",
+    VIDEO_REVIEW: "Videobeweis",
+    GENERAL: "Allgemein"
+  }[sticker.category] || "Allgemein";
   const opponent = (snapshot?.teams || []).find(team => team.id === sticker.opponentTeamId);
   return `<article class="liveticker-sticker-card"><div class="liveticker-sticker-preview">${sticker.previewDataUrl ? `<img src="${escapeAttr(sticker.previewDataUrl)}" alt="${escapeAttr(sticker.name)}">` : '<span aria-hidden="true">🖼</span>'}</div><div><h3>${escapeHtml(sticker.name)}</h3><div class="liveticker-sticker-meta"><span>${escapeHtml(`${sticker.width} × ${sticker.height} · ${stickerFileSize(sticker.fileSize)}`)}</span><span class="liveticker-sticker-state" data-active="${sticker.active ? "true" : "false"}">${sticker.active ? "Aktiv" : "Inaktiv"}</span></div><p class="subtle">${escapeHtml(`${audience}${opponent ? ` · ${opponent.shortName || opponent.name}` : ""} · ${category}`)}</p></div><div class="button-row"><button class="button small secondary" type="button" data-edit-sticker="${escapeAttr(sticker.id)}">Zuordnung</button><button class="button small secondary" type="button" data-toggle-sticker="${escapeAttr(sticker.id)}">${sticker.active ? "Deaktivieren" : "Aktivieren"}</button></div></article>`;
 }
@@ -315,7 +322,7 @@ function openWhatsappStickerMetadata(sticker) {
   const dialog = openDialog({
     title: "Sticker zuordnen",
     kicker: "Liveticker · WhatsApp-Sticker",
-    body: `<form class="liveticker-admin-form"><label>Zielgruppe<select name="audience"><option value="OUR_TEAM" ${isOurTeam ? "selected" : ""}>Unsere (Mighty Dogs)</option><option value="OPPONENT" ${isOpponent ? "selected" : ""}>Gegner</option><option value="GENERAL" ${!sticker.audience || sticker.audience === "GENERAL" ? "selected" : ""}>Allgemein</option></select></label><div class="liveticker-sticker-auto-team" data-own-team ${isOurTeam ? "" : "hidden"}><span>Team</span><strong>${escapeHtml(homeTeamName)}</strong><small>Wird bei Zielgruppe „Unsere“ automatisch zugewiesen.</small></div><label data-opponent-team ${isOpponent ? "" : "hidden"}>Gegnerteam<select name="opponentTeamId"><option value="">Team wählen</option>${opponents.map(team => `<option value="${escapeAttr(team.id)}" ${team.id === sticker.opponentTeamId ? "selected" : ""}>${escapeHtml(team.shortName || team.name)}</option>`).join("")}</select></label><label>Kategorie<select name="category"><option value="GOAL" ${sticker.category === "GOAL" ? "selected" : ""}>Tor</option><option value="AGAINST" ${sticker.category === "AGAINST" ? "selected" : ""}>Gegentor</option><option value="PENALTY" ${sticker.category === "PENALTY" ? "selected" : ""}>Strafe</option><option value="GENERAL" ${!sticker.category || sticker.category === "GENERAL" ? "selected" : ""}>Allgemein</option></select></label></form>`,
+    body: `<form class="liveticker-admin-form"><label>Zielgruppe<select name="audience"><option value="OUR_TEAM" ${isOurTeam ? "selected" : ""}>Unsere (Mighty Dogs)</option><option value="OPPONENT" ${isOpponent ? "selected" : ""}>Gegner</option><option value="GENERAL" ${!sticker.audience || sticker.audience === "GENERAL" ? "selected" : ""}>Allgemein</option></select></label><div class="liveticker-sticker-auto-team" data-own-team ${isOurTeam ? "" : "hidden"}><span>Team</span><strong>${escapeHtml(homeTeamName)}</strong><small>Wird bei Zielgruppe „Unsere“ automatisch zugewiesen.</small></div><label data-opponent-team ${isOpponent ? "" : "hidden"}>Gegnerteam<select name="opponentTeamId"><option value="">Team wählen</option>${opponents.map(team => `<option value="${escapeAttr(team.id)}" ${team.id === sticker.opponentTeamId ? "selected" : ""}>${escapeHtml(team.shortName || team.name)}</option>`).join("")}</select></label><label>Kategorie<select name="category"><option value="GOAL" ${sticker.category === "GOAL" ? "selected" : ""}>Tor</option><option value="AGAINST" ${sticker.category === "AGAINST" ? "selected" : ""}>Gegentor</option><option value="PENALTY" ${sticker.category === "PENALTY" ? "selected" : ""}>Strafe</option><option value="GAME_SITUATION" ${sticker.category === "GAME_SITUATION" ? "selected" : ""}>Spielsituation</option><option value="VIDEO_REVIEW" ${sticker.category === "VIDEO_REVIEW" ? "selected" : ""}>Videobeweis</option><option value="GENERAL" ${!sticker.category || sticker.category === "GENERAL" ? "selected" : ""}>Allgemein</option></select></label></form>`,
     submitLabel: "Zuordnung speichern",
     onSubmit: async values => {
       await runWrite(() => setWhatsappStickerMetadata({
