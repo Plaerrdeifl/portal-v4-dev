@@ -167,22 +167,23 @@
       </section>
 
       <p id="formError" class="error" role="alert" hidden></p>
+
+    <section id="whatsappOutput" class="card output" aria-labelledby="outputTitle" hidden>
+      <div class="output-head"><h2 id="outputTitle">WhatsApp-Vorschau</h2><span id="outputCopyState" class="copy-state"></span></div>
+      <div id="tickerOutputPreview" class="output-preview"></div>
+      <textarea id="tickerOutput" spellcheck="true" hidden></textarea>
+      <div class="output-actions">
+        <button id="editOutputButton" class="secondary output-icon" type="button" aria-label="Text bearbeiten" title="Bearbeiten">✏️</button>
+        <button id="saveOutputButton" class="primary output-icon" type="button" hidden aria-label="Text übernehmen" title="Text übernehmen">✓</button>
+        <button id="copyButton" class="copy-button output-icon" type="button" hidden aria-label="Kopieren" title="Kopieren">📋</button>
+      </div>
+    </section>
+
       <div id="livetickerSubmitRow" class="liveticker-submit-row">
         <div id="livetickerTextDeliveryStatus" class="liveticker-text-delivery-status" role="status" aria-live="polite" hidden><span data-text-delivery-label></span><button type="button" data-retry-text-delivery hidden>ERNEUT SENDEN</button></div>
         <button id="submitButton" class="primary submit-compact" type="submit" aria-label="Speichern und kopieren" title="Speichern und kopieren"><span aria-hidden="true">💾 📋</span><span class="visually-hidden">Speichern und kopieren</span></button>
       </div>
     </form>
-
-    <section id="whatsappOutput" class="card output" aria-labelledby="outputTitle" hidden>
-      <div class="output-head"><h2 id="outputTitle">WhatsApp</h2><span id="outputCopyState" class="copy-state"></span></div>
-      <div id="tickerOutputPreview" class="output-preview"></div>
-      <textarea id="tickerOutput" spellcheck="true" hidden></textarea>
-      <div class="output-actions">
-        <button id="editOutputButton" class="secondary output-icon" type="button" aria-label="Text bearbeiten" title="Bearbeiten">✏️</button>
-        <button id="saveOutputButton" class="primary output-icon" type="button" hidden aria-label="Speichern und kopieren" title="Speichern und kopieren">💾 📋</button>
-        <button id="copyButton" class="copy-button output-icon" type="button" hidden aria-label="Kopieren" title="Kopieren">📋</button>
-      </div>
-    </section>
 
     <section class="card history">
       <h2>Letzte Ereignisse</h2>
@@ -195,6 +196,6 @@
   </main>
   <script src="../js/runtime-config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7"></script>
-  <script type="module" src="../js/liveticker-auth-bootstrap.js?v=20260917-repeat-action-stickers-r1"></script>
+  <script type="module" src="../js/liveticker-auth-bootstrap.js?v=20260917-live-editable-preview-r1"></script>
 </body>
 </html>

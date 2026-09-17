@@ -600,10 +600,13 @@ function startBrowserIntegration() {
 
     const control = document.getElementById(CONTROL_ID);
     const output = document.getElementById("tickerOutput");
+    const outputText = typeof event.detail?.outputText === "string"
+      ? event.detail.outputText
+      : (output?.value || "");
     const result = attachWhatsappPublishIntent({
       previousHistory,
       state,
-      text: output?.value || "",
+      text: outputText,
       enabled: control?.checked !== false && transportReady()
     });
 

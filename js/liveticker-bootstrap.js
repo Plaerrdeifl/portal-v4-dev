@@ -74,14 +74,15 @@ try {
     try {
       const state = JSON.parse(value);
       if (state && Array.isArray(state.history)) {
+        const outputText = String(document.getElementById("tickerOutput")?.value || "");
         queueMicrotask(() => {
-          window.dispatchEvent(new CustomEvent("pd-liveticker-state-saved", { detail: { state } }));
+          window.dispatchEvent(new CustomEvent("pd-liveticker-state-saved", { detail: { state, outputText } }));
         });
       }
     } catch {}
   };
 
-  await import("./liveticker-whatsapp-publish.js?v=20260917-repeat-action-stickers-r1");
+  await import("./liveticker-whatsapp-publish.js?v=20260917-live-editable-preview-r1");
   await importRuntimeEngine();
   await import("./liveticker-v5-support.js?v=20260910-shootout60-r1");
 

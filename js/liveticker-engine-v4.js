@@ -214,6 +214,18 @@ export function applyPenaltyStyleToDraft(draft, style) {
   return Object.freeze({ ...draft, style: selectedStyle, penalties: draft.penalties });
 }
 
+export function historyWithDraftEvent(history, editingId, tickerEvent) {
+  const next = Array.isArray(history) ? history.slice() : [];
+  const index = editingId ? next.findIndex(item => item.id === editingId) : -1;
+  if (index >= 0) next.splice(index, 1, tickerEvent);
+  else next.push(tickerEvent);
+  return next;
+}
+
+export function shouldCopyLivetickerOutput({ whatsappEnabled, transportReady }) {
+  return !(Boolean(whatsappEnabled) && Boolean(transportReady));
+}
+
 export function applyTickerSubmitLifecycle(state, editingId, tickerEvent) {
   const index = editingId ? state.history.findIndex(item => item.id === editingId) : -1;
   if (index >= 0) state.history.splice(index, 1, tickerEvent);
@@ -463,6 +475,8 @@ function initialize() {
   let preservedPenaltyDraftId = null;
   let historyExpanded = false;
   let outputEditing = false;
+  let outputManuallyEdited = false;
+  let previewDraftId = uid();
   const $ = selector => document.querySelector(selector);
   const opponentSelect = $("#opponentSelect");
   const minuteInput = $("#gameMinute");
@@ -543,7 +557,10 @@ function initialize() {
     });
   }
   syncTemplateStyleTitles();
-  window.addEventListener("pd-liveticker-output-templates-updated", syncTemplateStyleTitles);
+  window.addEventListener("pd-liveticker-output-templates-updated", () => {
+    syncTemplateStyleTitles();
+    refreshDraftOutput();
+  });
 
   function opponent() { return OPPONENTS[state.opponentId]; }
   function selectedAction() { return new FormData(form).get("action"); }
@@ -630,11 +647,15 @@ function initialize() {
       binding.syncFromSelect();
       syncTemplateStyleTitles();
     });
-    row.querySelector(".add-penalty").addEventListener("click", () => createPenaltyRow());
+    row.querySelector(".add-penalty").addEventListener("click", () => {
+      createPenaltyRow();
+      queueMicrotask(() => refreshDraftOutput());
+    });
     row.querySelector(".remove-penalty").addEventListener("click", () => {
       if (penaltyRows.children.length > 1) {
         row.remove();
         syncTemplateStyleTitles();
+        queueMicrotask(() => refreshDraftOutput());
       }
     });
     penaltyRows.append(row);
@@ -711,6 +732,25 @@ function initialize() {
     outputCopyState.classList.toggle("error", isError);
   }
 
+  function whatsappAutoSendReady() {
+    const control = document.getElementById("livetickerWhatsappPublish");
+    const runtime = globalThis.PD_LIVETICKER_WHATSAPP_RUNTIME;
+    return Boolean(control?.checked) && Boolean(runtime?.ready);
+  }
+
+  function syncSubmitModeLabel() {
+    if (!submitButton) return;
+    const label = whatsappAutoSendReady()
+      ? "Speichern und an WhatsApp senden"
+      : "Speichern und kopieren";
+    submitButton.setAttribute("aria-label", label);
+    submitButton.title = label;
+    const icon = submitButton.querySelector('[aria-hidden="true"]');
+    if (icon) icon.textContent = whatsappAutoSendReady() ? "💾 📲" : "💾 📋";
+    const hiddenLabel = submitButton.querySelector(".visually-hidden");
+    if (hiddenLabel) hiddenLabel.textContent = label;
+  }
+
   function renderOutputPreview() {
     if (outputPreview) outputPreview.textContent = output.value;
   }
@@ -768,6 +808,7 @@ function initialize() {
   function cancelEdit() {
     editingId = null;
     preservedPenaltyDraftId = null;
+    outputManuallyEdited = false;
     editingBanner.hidden = true;
     editingBanner.querySelector("span").textContent = "Aktion wird bearbeitet";
     submitButton.innerHTML = '<span aria-hidden="true">💾 📋</span><span class="visually-hidden">Speichern und kopieren</span>';
@@ -775,14 +816,18 @@ function initialize() {
     ensurePenaltyRow();
     if (assistDetails) assistDetails.open = false;
     syncActionFields();
+    syncSubmitModeLabel();
   }
 
   function preservePenaltyDraft(id) {
     editingId = id;
     preservedPenaltyDraftId = id;
+    previewDraftId = id;
+    outputManuallyEdited = false;
     editingBanner.hidden = false;
     editingBanner.querySelector("span").textContent = "Strafe gespeichert · Textoption kann gewechselt werden";
     submitButton.innerHTML = '<span aria-hidden="true">💾 📋</span><span class="visually-hidden">Speichern und kopieren</span>';
+    syncSubmitModeLabel();
   }
 
   function editEvent(id) {
@@ -790,6 +835,8 @@ function initialize() {
     if (!event) return;
     preservedPenaltyDraftId = null;
     editingId = id;
+    previewDraftId = id;
+    outputManuallyEdited = false;
     editingBanner.hidden = false;
     submitButton.innerHTML = '<span aria-hidden="true">💾 📋</span><span class="visually-hidden">Speichern und kopieren</span>';
     if (event.type !== "shootout") minuteInput.value = String(event.minute);
@@ -822,6 +869,7 @@ function initialize() {
       if (result) result.checked = true;
     }
     syncContext();
+    refreshDraftOutput({ force: true });
     window.scrollTo({ top: form.offsetTop - 10, behavior: "smooth" });
   }
 
@@ -836,10 +884,85 @@ function initialize() {
     if (new Set(names).size !== names.length) throw new Error("Torschütze und Assists müssen unterschiedliche Spieler sein.");
   }
 
+  function buildTickerEvent() {
+    const action = selectedAction();
+    if (action === "SITUATION") return null;
+    const eventId = editingId || previewDraftId;
+    if (action === "SHOOTOUT") {
+      const team = shootoutTeam.value;
+      const roster = rosterForTeam(team, opponent());
+      return {
+        id: eventId,
+        type: "shootout",
+        team,
+        player: playerFromSelect(shootoutPlayer, roster),
+        result: new FormData(form).get("shootoutResult") || "scored"
+      };
+    }
+
+    const minute = validateMinute();
+    if (action === "PENALTY") {
+      const penalties = [...penaltyRows.children].map(penaltyRowData);
+      if (!penalties.length) throw new Error("Bitte mindestens eine Strafe erfassen.");
+      return applyPenaltyStyleToDraft({
+        id: eventId,
+        type: "penalty",
+        minute,
+        penalties
+      }, new FormData(form).get("penaltyStyle") || "classic");
+    }
+
+    const team = selectedGoalTeam();
+    const roster = rosterForTeam(team, opponent());
+    const player = playerFromSelect(goalPlayer, roster);
+    const assists = [playerFromSelect(assist1, roster), playerFromSelect(assist2, roster)].filter(Boolean);
+    validateGoalPeople(player, assists);
+    return {
+      id: eventId,
+      type: "goal",
+      team,
+      minute,
+      player,
+      assists,
+      style: new FormData(form).get("goalStyle") || "classic"
+    };
+  }
+
+  function draftOutputText(tickerEvent) {
+    const previewHistory = historyWithDraftEvent(state.history, editingId, tickerEvent);
+    return formatEventText(tickerEvent, previewHistory, opponent());
+  }
+
+  function refreshDraftOutput({ force = false } = {}) {
+    if (outputManuallyEdited && !force) return;
+    if (selectedAction() === "SITUATION") {
+      output.value = "";
+      if (outputCard) outputCard.hidden = true;
+      return;
+    }
+    try {
+      const tickerEvent = buildTickerEvent();
+      if (!tickerEvent) return;
+      const text = draftOutputText(tickerEvent);
+      setOutput(text);
+    } catch {
+      output.value = "";
+      if (outputCard) outputCard.hidden = true;
+    }
+  }
+
   form.addEventListener("change", event => {
     if (event.target.name !== "action") return;
+    outputManuallyEdited = false;
+    if (!editingId) previewDraftId = uid();
     if (preservedPenaltyDraftId && selectedAction() !== "PENALTY") cancelEdit();
     else syncActionFields();
+    queueMicrotask(() => refreshDraftOutput({ force: true }));
+  });
+  form.addEventListener("input", () => queueMicrotask(() => refreshDraftOutput()));
+  form.addEventListener("change", event => {
+    if (event.target.name === "action") return;
+    queueMicrotask(() => refreshDraftOutput());
   });
   minuteInput.addEventListener("change", syncContext);
   opponentSelect.addEventListener("change", () => {
@@ -862,6 +985,7 @@ function initialize() {
     button.addEventListener("click", () => {
       minuteInput.value = String(Math.max(1, (selectedMinute() || 1) + Number.parseInt(button.dataset.minuteStep, 10)));
       syncContext();
+      queueMicrotask(() => refreshDraftOutput());
     });
   });
 
@@ -871,50 +995,41 @@ function initialize() {
     event.preventDefault();
     errorBox.hidden = true;
     try {
-      const action = selectedAction();
-      let tickerEvent;
-      if (action === "SHOOTOUT") {
-        const team = shootoutTeam.value;
-        const roster = rosterForTeam(team, opponent());
-        tickerEvent = {
-          id: editingId || uid(), type: "shootout", team,
-          player: playerFromSelect(shootoutPlayer, roster),
-          result: new FormData(form).get("shootoutResult") || "scored"
-        };
-      } else {
-        const minute = validateMinute();
-        if (action === "PENALTY") {
-          const penalties = [...penaltyRows.children].map(penaltyRowData);
-          if (!penalties.length) throw new Error("Bitte mindestens eine Strafe erfassen.");
-          tickerEvent = applyPenaltyStyleToDraft({
-            id: editingId || uid(), type: "penalty", minute, penalties,
-          }, new FormData(form).get("penaltyStyle") || "classic");
-        } else {
-          const team = selectedGoalTeam();
-          const roster = rosterForTeam(team, opponent());
-          const player = playerFromSelect(goalPlayer, roster);
-          const assists = [playerFromSelect(assist1, roster), playerFromSelect(assist2, roster)].filter(Boolean);
-          validateGoalPeople(player, assists);
-          tickerEvent = {
-            id: editingId || uid(), type: "goal", team, minute, player, assists,
-            style: new FormData(form).get("goalStyle") || "classic"
-          };
-        }
-      }
-      completeTickerSubmitLifecycle({
+      const tickerEvent = buildTickerEvent();
+      if (!tickerEvent) throw new Error("Für eine Spielsituation gibt es keine Textaktion zu speichern.");
+      if (!outputManuallyEdited) setOutput(draftOutputText(tickerEvent));
+      if (!output.value.trim()) throw new Error("Der Vorschautext darf nicht leer sein.");
+
+      const whatsappControl = document.getElementById("livetickerWhatsappPublish");
+      const runtime = globalThis.PD_LIVETICKER_WHATSAPP_RUNTIME;
+      const copyAfterSave = shouldCopyLivetickerOutput({
+        whatsappEnabled: !editingId && Boolean(whatsappControl?.checked),
+        transportReady: Boolean(runtime?.ready)
+      });
+
+      const lifecycle = completeTickerSubmitLifecycle({
         state,
         editingId,
         tickerEvent,
         persist: () => saveState(state),
         renderHistory,
         renderOutput: () => {
-          setOutput(formatEventText(tickerEvent, state.history, opponent()));
-          void copyCurrentOutput();
+          renderOutputPreview();
+          showOutputPreview();
+          if (copyAfterSave) {
+            void copyCurrentOutput();
+          } else {
+            setCopyState("Wird an WhatsApp gesendet …");
+            if (copyButton) copyButton.hidden = true;
+          }
         },
         preservePenaltyDraft,
         cancelEdit,
         syncContext
       });
+      previewDraftId = lifecycle.preservePenaltyDraft ? tickerEvent.id : uid();
+      outputManuallyEdited = false;
+      syncSubmitModeLabel();
     } catch (error) {
       errorBox.textContent = error.message || "Aktion konnte nicht gespeichert werden.";
       errorBox.hidden = false;
@@ -1000,11 +1115,17 @@ function initialize() {
     output.focus();
   });
 
-  saveOutputButton?.addEventListener("click", async () => {
+  output?.addEventListener("input", () => {
+    if (!outputEditing) return;
+    outputManuallyEdited = true;
+    setCopyState("Manuell geändert");
+  });
+
+  saveOutputButton?.addEventListener("click", () => {
     if (!output.value.trim()) return;
     renderOutputPreview();
     showOutputPreview();
-    await copyCurrentOutput();
+    setCopyState("Text übernommen");
   });
 
   $("#resetGame").addEventListener("click", () => {
@@ -1017,6 +1138,8 @@ function initialize() {
     output.value = "";
     historyExpanded = false;
     outputEditing = false;
+    outputManuallyEdited = false;
+    previewDraftId = uid();
     if (outputCard) outputCard.hidden = true;
     setCopyState("");
     goalNumber.value = "";
@@ -1035,6 +1158,10 @@ function initialize() {
   syncScore();
   syncActionFields();
   renderHistory();
+  syncSubmitModeLabel();
+  refreshDraftOutput({ force: true });
+  window.addEventListener("pd-liveticker-whatsapp-runtime", syncSubmitModeLabel);
+  document.getElementById("livetickerWhatsappPublish")?.addEventListener("change", syncSubmitModeLabel);
 }
 
 if (typeof document !== "undefined") initialize();

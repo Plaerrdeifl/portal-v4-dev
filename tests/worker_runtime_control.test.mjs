@@ -32,7 +32,7 @@ test("Liveticker game mode keeps the live workflow compact and one-tap", async (
   assert.match(html, /💾 📋/);
   assert.match(html, /id="tickerOutputPreview"/);
   assert.match(html, /id="editOutputButton"[^>]*>✏️<\/button>/);
-  assert.match(html, /id="saveOutputButton"[^>]*>💾 📋<\/button>/);
+  assert.match(html, /id="saveOutputButton"[^>]*>✓<\/button>/);
   assert.match(html, /id="historyToggle"/);
   assert.match(html, /class="live-game-row"[\s\S]*class="score-top compact-score"[\s\S]*id="gameMinute"/);
   assert.match(html, /id="mightyScoreName"[^>]*>Heim<\/span>/);
@@ -64,7 +64,7 @@ test("Liveticker game mode keeps the live workflow compact and one-tap", async (
   assert.match(html, /<select id="goalPlayer"><option value="">Spieler wählen<\/option>/);
   assert.doesNotMatch(html, /id="addPenalty"/);
   assert.match(engine, /class="add-penalty" type="button">Hinzufügen<\/button>/);
-  assert.match(engine, /querySelector\("\.add-penalty"\)\.addEventListener\("click", \(\) => createPenaltyRow\(\)\)/);
+  assert.match(engine, /querySelector\("\.add-penalty"\)\.addEventListener\("click"[\s\S]*createPenaltyRow\(\);[\s\S]*refreshDraftOutput\(\)/);
   assert.match(graphics, /function currentOutputKind\(\)/);
   assert.match(graphics, /BUTTONS\[kind\]\?\.click\(\)/);
   assert.match(html, /data-output-status="PERIOD_1"/);
