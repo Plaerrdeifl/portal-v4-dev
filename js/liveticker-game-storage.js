@@ -8,6 +8,7 @@ const VENUE_KEY = "plaerrdeifl.livetickerPrototype.venue";
 const CLIENT_KEY = "plaerrdeifl.livetickerPrototype.clientId";
 const WHATSAPP_WAKE_TOPIC = "liveticker-whatsapp-jobs";
 const SUPPORTED_ENVIRONMENTS = new Set(["DEV", "PROD"]);
+const LIVETICKER_REVISION_CONFLICT_CODE = "PT409";
 
 let config = null;
 let selectedGame = null;
@@ -210,7 +211,7 @@ async function syncLocalState(localState) {
         p_client_id: clientId()
       });
     } catch (error) {
-      if (error.code !== "40001") throw error;
+      if (error.code !== LIVETICKER_REVISION_CONFLICT_CODE) throw error;
       const fresh = await rpc("pd_public_liveticker_state", { p_event_id: selectedGame.eventId });
       serverState = normalizeState(fresh);
       const retryChanges = diffChanges(localState);
@@ -233,7 +234,6 @@ async function syncLocalState(localState) {
     }));
   } catch (error) {
     console.error(error);
-    pendingLocalState = localState;
     renderSyncStatus("Speicherfehler", "error");
   } finally {
     syncing = false;
@@ -256,7 +256,7 @@ async function completeSelectedGame() {
         p_client_id: clientId()
       });
     } catch (error) {
-      if (error.code !== "40001") throw error;
+      if (error.code !== LIVETICKER_REVISION_CONFLICT_CODE) throw error;
       const fresh = await rpc("pd_public_liveticker_state", { p_event_id: selectedGame.eventId });
       serverState = normalizeState(fresh);
       result = await rpc("pd_public_liveticker_complete", {
