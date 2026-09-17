@@ -4,8 +4,9 @@ import {
   linkWhatsappStickerDelivery,
   loadWhatsappDeliveries,
   loadWhatsappStickerLibrary,
+  retryWhatsappDelivery,
   WHATSAPP_DELIVERY_MODES
-} from "./liveticker-whatsapp-stickers.js?v=20260916-game-day-r1";
+} from "./liveticker-whatsapp-stickers.js?v=20260917-delivery-status-r1";
 import {
   activeGameDayStickers,
   deliveryComponentStatus,
@@ -51,9 +52,9 @@ function stickerCard(sticker, selectedId = "") {
   </button>`;
 }
 
-function componentBadge(label, status) {
-  const component = deliveryComponentStatus(status);
-  return `<span class="game-day-component" data-tone="${component.tone}">${escapeHtml(label)} ${component.tone === "success" ? "✓" : escapeHtml(component.label)}</span>`;
+function componentBadge(label, status, delivery = null) {
+  const component = deliveryComponentStatus(status, { attemptCount: delivery?.attemptCount || 0 });
+  return `<span class="game-day-component" data-tone="${component.tone}">${escapeHtml(label)} ${escapeHtml(component.label)}</span>`;
 }
 
 function selectedValue(root, selector) {
@@ -114,6 +115,7 @@ function initializeGameDay() {
     loading: true,
     deliveryLoadError: "",
     pendingLinks: new Map(),
+    retryingDeliveries: new Set(),
     notice: "",
     messageDraft: "",
   };
@@ -151,8 +153,17 @@ function initializeGameDay() {
     if (model.requestError) return `<p class="game-day-status" data-tone="error">${escapeHtml(model.requestError)}</p>`;
     if (!delivery) return "";
     return `<div class="game-day-status" data-tone="${delivery.status === "SUCCEEDED" ? "success" : delivery.status === "FAILED" ? "error" : "pending"}">
-      ${componentBadge("Sticker", delivery.stickerStatus)} ${componentBadge("Text", delivery.textStatus)}
+      <div class="game-day-component-row">${componentBadge("Sticker", delivery.stickerStatus, delivery)} ${componentBadge("Text", delivery.textStatus, delivery)}</div>
+      ${manualRetryButton(delivery)}
     </div>`;
+  }
+
+  function manualRetryButton(delivery) {
+    const failed = delivery?.status === "FAILED"
+      && [delivery.stickerStatus, delivery.textStatus].includes("FAILED");
+    if (!failed) return "";
+    const busy = model.retryingDeliveries.has(delivery.id);
+    return `<button class="game-day-secondary game-day-retry" type="button" data-retry-delivery="${escapeHtml(delivery.id)}"${busy ? " disabled" : ""}>${busy ? "WIRD ANGEFORDERT …" : "ERNEUT SENDEN"}</button>`;
   }
 
   function deliveryStatusSlotHtml(delivery = currentDelivery()) {
@@ -171,7 +182,8 @@ function initializeGameDay() {
         item.stickerMessageId || "",
         item.textMessageId || "",
         item.stickerSentAt || "",
-        item.textSentAt || ""
+        item.textSentAt || "",
+        item.attemptCount || 0
       ])
     });
   }
@@ -210,7 +222,7 @@ function initializeGameDay() {
 
   function openDraftStatusText() {
     const delivery = currentDelivery();
-    return `Sticker ${delivery?.stickerStatus === "SENT" ? "✓" : delivery ? deliveryComponentStatus(delivery.stickerStatus).label : "noch nicht gesendet"} · Ticker-Daten noch offen`;
+    return `Sticker ${delivery?.stickerStatus === "SENT" ? "GESENDET ✓" : delivery ? deliveryComponentStatus(delivery.stickerStatus, { attemptCount: delivery.attemptCount }).label : "noch nicht gesendet"} · Ticker-Daten noch offen`;
   }
 
   function renderOpenDraft() {
@@ -223,14 +235,20 @@ function initializeGameDay() {
   }
 
   function renderTimeline() {
-    const items = gameDayTimeline(model.state.history, model.deliveries).slice(0, 10);
+    const items = gameDayTimeline(model.state.history, model.deliveries)
+      .filter(item => item.kind === "action" || !item.actionId)
+      .slice(0, 10);
     return `<section class="game-day-card"><h2>Verlauf</h2><div class="game-day-timeline">
       ${items.length ? items.map(item => {
         if (item.kind === "action") {
-          return `<article class="game-day-timeline-item"><div class="game-day-timeline-head"><span>${escapeHtml(item.minute ? `${item.minute}'` : "Spiel")}</span><span>${escapeHtml(item.label)}</span></div><div class="game-day-component-row"><span class="game-day-component" data-tone="success">Liveticker ✓</span></div></article>`;
+          const linked = model.deliveries.filter(delivery => delivery.linkedActionId === item.actionId);
+          const sticker = linked.find(delivery => delivery.stickerStatus !== "NOT_REQUESTED") || null;
+          const text = linked.find(delivery => delivery.textStatus !== "NOT_REQUESTED") || null;
+          const failed = [...new Map(linked.filter(delivery => delivery.status === "FAILED").map(delivery => [delivery.id, delivery])).values()];
+          return `<article class="game-day-timeline-item"><div class="game-day-timeline-head"><span>${escapeHtml(item.minute ? `${item.minute}'` : "Spiel")}</span><span>${escapeHtml(item.label)}</span></div><div class="game-day-component-row"><span class="game-day-component" data-tone="success">Liveticker ✓</span>${sticker ? componentBadge("Sticker", sticker.stickerStatus, sticker) : ""}${text ? componentBadge("Text", text.textStatus, text) : ""}</div>${failed.map(manualRetryButton).join("")}</article>`;
         }
         const delivery = item.delivery;
-        return `<article class="game-day-timeline-item"><div class="game-day-timeline-head"><span>${new Date(delivery.createdAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}</span><span>${escapeHtml(item.label)}</span></div><div class="game-day-component-row">${componentBadge("Sticker", delivery.stickerStatus)}${componentBadge("Text", delivery.textStatus)}</div><p class="game-day-muted">${delivery.linkedActionId ? "↳ Mit Liveticker-Aktion verknüpft" : "Keine Aktion"}</p></article>`;
+        return `<article class="game-day-timeline-item"><div class="game-day-timeline-head"><span>${new Date(delivery.createdAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}</span><span>${escapeHtml(item.label)}</span></div><div class="game-day-component-row">${componentBadge("Sticker", delivery.stickerStatus, delivery)}${componentBadge("Text", delivery.textStatus, delivery)}</div><p class="game-day-muted">Keine Aktion</p>${manualRetryButton(delivery)}</article>`;
       }).join("") : '<p class="game-day-muted">Noch keine Aktionen oder Sticker-Versände.</p>'}
     </div></section>`;
   }
@@ -500,6 +518,26 @@ function initializeGameDay() {
     await sendRequest(request, draft);
   }
 
+  async function retryDelivery(jobId) {
+    const delivery = deliveryForId(jobId);
+    if (!delivery || delivery.status !== "FAILED" || model.retryingDeliveries.has(jobId)) return;
+    model.retryingDeliveries.add(jobId);
+    renderMain();
+    try {
+      const result = await retryWhatsappDelivery({ eventId: game.eventId, jobId });
+      if (result?.delivery) {
+        model.deliveries = [result.delivery, ...model.deliveries.filter(item => item.id !== result.delivery.id)];
+      }
+      model.deliveryLoadError = "";
+    } catch (error) {
+      model.deliveryLoadError = error?.message || "Der manuelle Versandversuch konnte nicht gestartet werden.";
+    } finally {
+      model.retryingDeliveries.delete(jobId);
+      await refreshDeliveries();
+      renderMain();
+    }
+  }
+
   async function sendCombined(message, { linkedActionId = null } = {}) {
     captureSheetInputs();
     const mode = model.selectedStickerId
@@ -639,6 +677,7 @@ function initializeGameDay() {
     if (button.matches("[data-send-action-sticker]")) { captureDraft(); void sendStickerOnly({ draft: model.draft }); return; }
     if (button.matches("[data-send-message]")) { void sendCombined(selectedValue(root, "#gameDayMessage")); return; }
     if (button.matches("[data-retry-request]") && model.request) { void sendRequest(model.request, model.draft); return; }
+    if (button.dataset.retryDelivery) { void retryDelivery(button.dataset.retryDelivery); return; }
     if (button.matches("[data-save-action]")) { saveStructuredAction(); return; }
     if (button.matches("[data-all-action-stickers]")) {
       captureDraft();
@@ -694,7 +733,7 @@ function initializeGameDay() {
   const poll = window.setInterval(async () => {
     const changed = await refreshDeliveries();
     if (changed) patchDeliveryUi();
-  }, 3000);
+  }, 1000);
   window.addEventListener("pagehide", () => clearInterval(poll), { once: true });
 
   renderMain();

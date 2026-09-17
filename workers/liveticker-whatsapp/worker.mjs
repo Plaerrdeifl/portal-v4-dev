@@ -9,9 +9,13 @@ import { dirname } from "node:path";
 import {
   deliverWhatsappJob,
   failedComponentForJob,
+  isNewsletterChatStoreError,
   mergeSentRecords,
   normalizeSentRecord,
-  sentRecordFromJob
+  sendWithNewsletterRecovery,
+  sentRecordFromJob,
+  WHATSAPP_DELIVERY_WINDOW_MS,
+  WHATSAPP_SEND_BUDGET_MS
 } from "./delivery.mjs";
 
 const REQUIRED_ENV = [
@@ -141,7 +145,7 @@ async function parseResponse(response) {
   try { return JSON.parse(text); } catch { return text; }
 }
 
-async function edge(body) {
+async function edge(body, timeoutMs = EDGE_TIMEOUT_MS) {
   const response = await fetch(EDGE_URL, {
     method: "POST",
     headers: {
@@ -150,7 +154,7 @@ async function edge(body) {
       "User-Agent": "Plaerrdeifl-Liveticker-WhatsApp-DEV-Worker/1"
     },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(EDGE_TIMEOUT_MS)
+    signal: AbortSignal.timeout(Math.max(1, Math.min(EDGE_TIMEOUT_MS, Math.floor(timeoutMs))))
   });
   const payload = await parseResponse(response);
   if (!response.ok || payload?.ok !== true || !payload?.data || typeof payload.data !== "object") {
@@ -169,8 +173,8 @@ async function claimJob() {
   return job;
 }
 
-async function resolveStickerAsset(stickerId) {
-  const asset = await edge({ action: "sticker", stickerId });
+async function resolveStickerAsset(stickerId, timeoutMs = EDGE_TIMEOUT_MS) {
+  const asset = await edge({ action: "sticker", stickerId }, timeoutMs);
   if (asset?.found === false) return null;
   if (!asset?.id || asset.id !== stickerId) throw new Error("Worker gateway returned an invalid sticker asset");
   return asset;
@@ -186,7 +190,7 @@ function extractWahaMessageId(data) {
   ).trim();
 }
 
-async function sendTextToWaha(job) {
+async function sendTextToWaha(job, timeoutMs = WAHA_TIMEOUT_MS) {
   const response = await fetch(`${WAHA_BASE_URL}/api/sendText`, {
     method: "POST",
     headers: {
@@ -198,7 +202,7 @@ async function sendTextToWaha(job) {
       chatId: WAHA_CHANNEL_ID,
       text: job.message
     }),
-    signal: AbortSignal.timeout(WAHA_TIMEOUT_MS)
+    signal: AbortSignal.timeout(Math.max(1, Math.min(WAHA_TIMEOUT_MS, Math.floor(timeoutMs))))
   });
   const data = await parseResponse(response);
   if (!response.ok) throw new Error(`WAHA sendText failed (${response.status}): ${data?.message || data?.error || "request failed"}`);
@@ -208,7 +212,7 @@ async function sendTextToWaha(job) {
   };
 }
 
-async function sendStickerToWaha(asset) {
+async function sendStickerToWaha(asset, timeoutMs = WAHA_TIMEOUT_MS) {
   const response = await fetch(`${WAHA_BASE_URL}/api/sendSticker`, {
     method: "POST",
     headers: {
@@ -224,7 +228,7 @@ async function sendStickerToWaha(asset) {
         data: asset.data
       }
     }),
-    signal: AbortSignal.timeout(WAHA_TIMEOUT_MS)
+    signal: AbortSignal.timeout(Math.max(1, Math.min(WAHA_TIMEOUT_MS, Math.floor(timeoutMs))))
   });
   const data = await parseResponse(response);
   if (!response.ok) {
@@ -238,6 +242,36 @@ async function sendStickerToWaha(asset) {
     messageId: extractWahaMessageId(data),
     sentAt: new Date().toISOString()
   };
+}
+
+async function resolveNewsletterChannel(timeoutMs) {
+  const response = await fetch(
+    `${WAHA_BASE_URL}/api/${encodeURIComponent(WAHA_SESSION)}/channels/${encodeURIComponent(WAHA_CHANNEL_ID)}`,
+    {
+      method: "GET",
+      headers: { "X-Api-Key": WAHA_API_KEY },
+      signal: AbortSignal.timeout(Math.max(1, Math.min(WAHA_TIMEOUT_MS, Math.floor(timeoutMs))))
+    }
+  );
+  if (!response.ok) {
+    await response.body?.cancel();
+    throw new Error(`WPP newsletter resolve failed (${response.status})`);
+  }
+  await response.body?.cancel();
+}
+
+async function markRetrying(job, error, timeoutMs) {
+  if (!isNewsletterChatStoreError(error)) return job.attemptCount;
+  const result = await edge({
+    action: "retrying",
+    jobId: job.id,
+    attemptCount: job.attemptCount
+  }, timeoutMs);
+  if (!Number.isInteger(result?.attemptCount) || result.attemptCount <= job.attemptCount) {
+    throw new Error("Worker gateway returned an invalid retry state");
+  }
+  job.attemptCount = result.attemptCount;
+  return job.attemptCount;
 }
 
 function sentComponents(record) {
@@ -254,7 +288,11 @@ function sentComponents(record) {
   };
 }
 
-async function markComplete(job, record) {
+function remainingUntil(deadlineAt) {
+  return Math.max(1, deadlineAt - Date.now());
+}
+
+async function markComplete(job, record, deadlineAt) {
   let lastError = null;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
@@ -265,16 +303,21 @@ async function markComplete(job, record) {
         wahaMessageId: record.messageId || null,
         sentAt: record.sentAt,
         components: sentComponents(record)
-      });
+      }, remainingUntil(deadlineAt));
     } catch (error) {
       lastError = error;
-      if (attempt < 3) await new Promise(resolve => setTimeout(resolve, attempt * 500));
+      const delay = attempt * 250;
+      if (attempt < 3 && Date.now() + delay < deadlineAt) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        break;
+      }
     }
   }
   throw lastError;
 }
 
-async function markFailed(job, error, record) {
+async function markFailed(job, error, record, deadlineAt) {
   let failedComponent = null;
   try {
     failedComponent = failedComponentForJob(job, record);
@@ -287,7 +330,7 @@ async function markFailed(job, error, record) {
       error: safeError(error),
       failedComponent,
       components: sentComponents(record)
-    });
+    }, remainingUntil(deadlineAt));
   } catch (failError) {
     log("job_fail_record_error", { jobId: job.id, error: safeError(failError) });
     return null;
@@ -296,6 +339,8 @@ async function markFailed(job, error, record) {
 
 async function processJob(job) {
   const startedAt = Date.now();
+  const deadlineAt = startedAt + WHATSAPP_DELIVERY_WINDOW_MS;
+  const sendDeadlineAt = startedAt + WHATSAPP_SEND_BUDGET_MS;
   log("job_claimed", { jobId: job.id, attempt: job.attemptCount });
 
   const recovered = sentJournal.has(job.id);
@@ -305,13 +350,24 @@ async function processJob(job) {
   );
   if (recovered) log("job_send_recovered", { jobId: job.id });
 
+  const sendWithRecovery = send => sendWithNewsletterRecovery({
+    send,
+    remainingMs: () => sendDeadlineAt - Date.now(),
+    resolveNewsletter: timeoutMs => resolveNewsletterChannel(timeoutMs),
+    markRetrying: async error => {
+      const timeoutMs = Math.max(1, Math.min(750, sendDeadlineAt - Date.now()));
+      await markRetrying(job, error, timeoutMs);
+      log("job_send_retrying", { jobId: job.id, attempt: job.attemptCount });
+    }
+  });
+
   try {
     const delivery = await deliverWhatsappJob({
       job,
       sentRecord,
-      resolveSticker: resolveStickerAsset,
-      sendSticker: sendStickerToWaha,
-      sendText: sendTextToWaha,
+      resolveSticker: stickerId => resolveStickerAsset(stickerId, Math.max(1, sendDeadlineAt - Date.now())),
+      sendSticker: asset => sendWithRecovery(timeoutMs => sendStickerToWaha(asset, timeoutMs)),
+      sendText: currentJob => sendWithRecovery(timeoutMs => sendTextToWaha(currentJob, timeoutMs)),
       remember: record => {
         sentRecord = normalizeSentRecord(record);
         rememberSent(job.id, sentRecord);
@@ -323,11 +379,11 @@ async function processJob(job) {
       log("job_media_sent", { jobId: job.id, stickerId: job.stickerId });
     }
   } catch (error) {
-    const result = await markFailed(job, error, sentRecord);
+    await markFailed(job, error, sentRecord, deadlineAt);
     log("job_send_failed", {
       jobId: job.id,
       attempt: job.attemptCount,
-      retryable: Boolean(result?.retryable),
+      retryable: false,
       error: safeError(error),
       durationMs: Date.now() - startedAt
     });
@@ -335,13 +391,12 @@ async function processJob(job) {
   }
 
   try {
-    await markComplete(job, sentRecord);
+    await markComplete(job, sentRecord, deadlineAt);
     forgetSent(job.id);
     log("job_succeeded", { jobId: job.id, durationMs: Date.now() - startedAt });
   } catch (error) {
-    // The local sent journal is intentionally kept. If this PROCESSING lease
-    // is reclaimed later, the already delivered WhatsApp post is not sent a
-    // second time; only completion is retried.
+    // The local journal is intentionally retained. A later controlled
+    // reconciliation can complete the same job without resending a component.
     log("job_complete_error", { jobId: job.id, error: safeError(error), durationMs: Date.now() - startedAt });
   }
 }

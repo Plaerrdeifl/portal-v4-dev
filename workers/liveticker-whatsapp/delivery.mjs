@@ -20,6 +20,59 @@ export const WHATSAPP_DELIVERY_MODES = Object.freeze({
   STICKER_ONLY: "STICKER_ONLY"
 });
 
+export const WHATSAPP_DELIVERY_WINDOW_MS = 5000;
+export const WHATSAPP_SEND_BUDGET_MS = 4000;
+export const NEWSLETTER_RECOVERY_DELAYS_MS = Object.freeze([600, 900]);
+
+export function isNewsletterChatStoreError(error) {
+  return /chat not found in chatstore for\s+[^\s]+@newsletter/i.test(
+    String(error?.message || error || "")
+  );
+}
+
+export async function sendWithNewsletterRecovery({
+  send,
+  resolveNewsletter,
+  markRetrying,
+  remainingMs,
+  sleep = delay => new Promise(resolve => setTimeout(resolve, delay))
+}) {
+  if (typeof send !== "function" || typeof remainingMs !== "function") {
+    throw new TypeError("Invalid WhatsApp recovery configuration");
+  }
+
+  let lastError = null;
+  for (let attempt = 0; attempt <= NEWSLETTER_RECOVERY_DELAYS_MS.length; attempt += 1) {
+    const available = Math.floor(remainingMs());
+    if (available <= 0) {
+      throw lastError || new Error("WhatsApp delivery window exceeded");
+    }
+    try {
+      return await send(available);
+    } catch (error) {
+      lastError = error;
+      const delay = NEWSLETTER_RECOVERY_DELAYS_MS[attempt];
+      if (!isNewsletterChatStoreError(error) || delay == null) throw error;
+
+      const beforeRecovery = Math.floor(remainingMs());
+      if (beforeRecovery <= delay) throw error;
+      if (typeof markRetrying === "function") await markRetrying(error, attempt + 2);
+      if (attempt === 0 && typeof resolveNewsletter === "function") {
+        try {
+          await resolveNewsletter(Math.max(1, Math.min(750, Math.floor(remainingMs()) - delay)));
+        } catch {
+          // A failed resolve must not open a second retry policy. The same
+          // bounded WPP send path below remains the authoritative result.
+        }
+      }
+      const afterRecovery = Math.floor(remainingMs());
+      if (afterRecovery <= delay) throw error;
+      await sleep(delay);
+    }
+  }
+  throw lastError || new Error("WhatsApp delivery failed");
+}
+
 export function normalizeSentRecord(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   if (value.text && typeof value.text === "object") return { ...value };

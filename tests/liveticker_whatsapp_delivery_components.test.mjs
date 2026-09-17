@@ -6,6 +6,7 @@ import test from "node:test";
 const root = path.resolve(import.meta.dirname, "..");
 const read = relative => fs.readFile(path.join(root, relative), "utf8");
 const migrationPath = "supabase/migrations/20260916064314_liveticker_whatsapp_delivery_components_dev_r1.sql";
+const retryMigrationPath = "supabase/migrations/20260917055731_liveticker_whatsapp_delivery_retry_dev_r1.sql";
 
 test("outbox contract supports exactly text, sticker, or sticker then text", async () => {
   const sql = await read(migrationPath);
@@ -114,4 +115,25 @@ test("new RPCs stay behind the existing dispatcher and capability boundary", asy
   assert.match(sql, /when 'liveticker_whatsapp_delivery_enqueue' then 'USER_MUTATION'/i);
   assert.match(sql, /revoke all on function[\s\S]*from public, anon, authenticated, service_role/i);
   assert.doesNotMatch(sql, /service[_-]?role[_-]?(?:key|secret)|waha[_-]?api[_-]?key/i);
+});
+
+test("manual delivery retry atomically reactivates only failed components on the same job", async () => {
+  const [sql, client, storage] = await Promise.all([
+    read(retryMigrationPath),
+    read("js/liveticker-whatsapp-stickers.js"),
+    read("js/liveticker-game-storage.js")
+  ]);
+  const retry = sql.match(/create function app_private\.api_liveticker_whatsapp_delivery_retry[\s\S]+?\n\$function\$;/i)?.[0] || "";
+  assert.match(retry, /app_private\.liveticker_require_operator\(\)/i);
+  assert.match(retry, /platform_release_environment\(\) is distinct from 'DEV'/i);
+  assert.match(retry, /liveticker_assert_supported_game\(v_event_id\)/i);
+  assert.match(retry, /where job\.id = v_job_id[\s\S]*job\.event_id = v_event_id[\s\S]*for update/i);
+  assert.match(retry, /v_job\.status <> 'FAILED'/i);
+  assert.match(retry, /status = 'PENDING'[\s\S]*attempt_count = 0[\s\S]*next_attempt_at = pg_catalog\.now\(\)/i);
+  assert.match(retry, /case when sticker_status = 'FAILED' then 'PENDING' else sticker_status end/i);
+  assert.match(retry, /case when text_status = 'FAILED' then 'PENDING' else text_status end/i);
+  assert.doesNotMatch(retry, /insert into|delete from|sticker_waha_message_id\s*=|text_waha_message_id\s*=|sticker_sent_at\s*=|text_sent_at\s*=/i);
+  assert.match(sql, /when 'liveticker_whatsapp_delivery_retry' then 'USER_MUTATION'/i);
+  assert.match(client, /api\.call\("liveticker_whatsapp_delivery_retry"/);
+  assert.match(storage, /"liveticker_whatsapp_delivery_retry"/);
 });

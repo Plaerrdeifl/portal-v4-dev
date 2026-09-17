@@ -1,8 +1,9 @@
 const COMPONENT_STATUSES = Object.freeze({
   NOT_REQUESTED: Object.freeze({ label: "nicht angefordert", tone: "muted" }),
-  PENDING: Object.freeze({ label: "wird gesendet …", tone: "pending" }),
-  SENT: Object.freeze({ label: "gesendet", tone: "success" }),
-  FAILED: Object.freeze({ label: "fehlgeschlagen", tone: "error" })
+  PENDING: Object.freeze({ label: "WIRD GESENDET …", tone: "pending" }),
+  RETRYING: Object.freeze({ label: "WIRD ERNEUT VERSUCHT …", tone: "pending" }),
+  SENT: Object.freeze({ label: "GESENDET ✓", tone: "success" }),
+  FAILED: Object.freeze({ label: "FEHLGESCHLAGEN – MANUELL EINGREIFEN", tone: "error" })
 });
 
 function upper(value, fallback = "") {
@@ -63,8 +64,9 @@ export function gameDayHeaderModel({ state, game }) {
   };
 }
 
-export function deliveryComponentStatus(status) {
-  const key = upper(status, "NOT_REQUESTED");
+export function deliveryComponentStatus(status, { attemptCount = 0 } = {}) {
+  const normalized = upper(status, "NOT_REQUESTED");
+  const key = normalized === "PENDING" && Number(attemptCount) > 1 ? "RETRYING" : normalized;
   return COMPONENT_STATUSES[key] || COMPONENT_STATUSES.NOT_REQUESTED;
 }
 

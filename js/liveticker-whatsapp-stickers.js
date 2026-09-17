@@ -203,6 +203,13 @@ export async function loadWhatsappDeliveries(eventId) {
   });
 }
 
+export async function retryWhatsappDelivery({ eventId, jobId }) {
+  return api.call("liveticker_whatsapp_delivery_retry", {
+    eventId: requireUuid(eventId, "Das Spiel"),
+    jobId: requireUuid(jobId, "Der Versandauftrag")
+  });
+}
+
 export async function setWhatsappStickerMetadata({
   stickerId,
   audience,

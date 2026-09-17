@@ -8,7 +8,6 @@ const WORKER_VIEW = "pd_liveticker_whatsapp_jobs_worker";
 const STICKER_VIEW = "pd_liveticker_whatsapp_stickers_worker";
 const STICKER_BUCKET = "liveticker-whatsapp-stickers";
 const MAX_STICKER_BYTES = 100 * 1024;
-const PROCESSING_LEASE_MS = 120_000;
 const encoder = new TextEncoder();
 const DELIVERY_MODES = new Set(["TEXT_ONLY", "STICKER_THEN_TEXT", "STICKER_ONLY"]);
 
@@ -109,6 +108,12 @@ function validBody(value: unknown): value is JsonObject {
       && !Number.isNaN(Date.parse(value.sentAt))
       && (!("components" in value) || validComponents(value.components));
   }
+  if (value.action === "retrying") {
+    return exactKeys(value, ["action", "jobId", "attemptCount"])
+      && isUuid(value.jobId)
+      && isAttemptCount(value.attemptCount)
+      && Number(value.attemptCount) < 5;
+  }
   if (value.action === "fail") {
     const keysValid = exactKeys(value, ["action", "jobId", "attemptCount", "error"])
       || exactKeys(value, ["action", "jobId", "attemptCount", "error", "failedComponent", "components"]);
@@ -191,11 +196,11 @@ async function claim() {
   for (let pass = 0; pass < 5; pass += 1) {
     const now = new Date();
     const nowIso = now.toISOString();
-    const staleIso = new Date(now.getTime() - PROCESSING_LEASE_MS).toISOString();
     const rows = await rest(viewUrl({
       select: "id,event_id,client_action_id,publication_version,message,sticker_id,delivery_mode,sticker_status,text_status,sticker_waha_message_id,sticker_sent_at,text_waha_message_id,text_sent_at,linked_action_id,status,attempt_count,next_attempt_at,claimed_at,created_at,worker_received_at",
       attempt_count: "lt.5",
-      or: `(and(status.eq.PENDING,next_attempt_at.lte.${nowIso}),and(status.eq.FAILED,next_attempt_at.lte.${nowIso}),and(status.eq.PROCESSING,claimed_at.lt.${staleIso}))`,
+      status: "eq.PENDING",
+      next_attempt_at: `lte.${nowIso}`,
       order: "created_at.asc,id.asc",
       limit: "1",
     }));
@@ -207,7 +212,7 @@ async function claim() {
     const deliveryMode = String(candidate.delivery_mode || "");
     const attemptCount = Number(candidate.attempt_count || 0);
     if (!isUuid(id)
-        || !["PENDING", "FAILED", "PROCESSING"].includes(status)
+        || status !== "PENDING"
         || !DELIVERY_MODES.has(deliveryMode)
         || !Number.isSafeInteger(attemptCount)) throw new GatewayError();
 
@@ -216,8 +221,7 @@ async function claim() {
       status: `eq.${status}`,
       attempt_count: `eq.${attemptCount}`,
     };
-    if (status === "PROCESSING") params.claimed_at = `lt.${staleIso}`;
-    else params.next_attempt_at = `lte.${nowIso}`;
+    params.next_attempt_at = `lte.${nowIso}`;
 
     const claimed = await rest(viewUrl(params), {
       method: "PATCH",
@@ -227,8 +231,6 @@ async function claim() {
         attempt_count: attemptCount + 1,
         claimed_at: nowIso,
         worker_received_at: nowIso,
-        sticker_status: candidate.sticker_status === "FAILED" ? "PENDING" : candidate.sticker_status,
-        text_status: candidate.text_status === "FAILED" ? "PENDING" : candidate.text_status,
         last_error: null,
         updated_at: nowIso,
       }),
@@ -238,6 +240,26 @@ async function claim() {
     }
   }
   return { claimed: false };
+}
+
+async function retrying(body: JsonObject) {
+  const currentAttempt = Number(body.attemptCount);
+  const nextAttempt = currentAttempt + 1;
+  const nowIso = new Date().toISOString();
+  const rows = await rest(viewUrl({
+    id: `eq.${String(body.jobId)}`,
+    status: "eq.PROCESSING",
+    attempt_count: `eq.${currentAttempt}`,
+  }), {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({
+      attempt_count: nextAttempt,
+      updated_at: nowIso,
+    }),
+  });
+  if (!Array.isArray(rows) || rows.length !== 1) throw new GatewayError();
+  return { retrying: true, attemptCount: nextAttempt };
 }
 
 function encodedObjectName(value: string) {
@@ -417,10 +439,8 @@ async function complete(body: JsonObject) {
 
 async function fail(body: JsonObject) {
   const attemptCount = Number(body.attemptCount);
-  const delaySeconds = attemptCount === 1 ? 1 : attemptCount === 2 ? 5 : attemptCount === 3 ? 15 : 60;
-  const retryable = attemptCount < 5;
   const now = new Date();
-  const nextAttemptAt = retryable ? new Date(now.getTime() + delaySeconds * 1000).toISOString() : now.toISOString();
+  const nextAttemptAt = now.toISOString();
   const current = await rowById(String(body.jobId));
   if (!current) throw new GatewayError();
   if (current.status === "SUCCEEDED") return { failed: false, retryable: false, nextAttemptAt: null };
@@ -440,7 +460,7 @@ async function fail(body: JsonObject) {
       ...components,
     }),
   });
-  if (Array.isArray(rows) && rows.length === 1) return { failed: true, retryable, nextAttemptAt: retryable ? nextAttemptAt : null };
+  if (Array.isArray(rows) && rows.length === 1) return { failed: true, retryable: false, nextAttemptAt: null };
   const after = await rowById(String(body.jobId));
   if (after?.status === "SUCCEEDED") return { failed: false, retryable: false, nextAttemptAt: null };
   throw new GatewayError();
@@ -458,6 +478,8 @@ Deno.serve(async request => {
       ? await stickerAsset(String(body.stickerId))
       : body.action === "complete"
       ? await complete(body)
+      : body.action === "retrying"
+      ? await retrying(body)
       : await fail(body);
     return response(200, { ok: true, data });
   } catch {

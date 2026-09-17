@@ -389,7 +389,8 @@ export async function prepareLivetickerGameStorage() {
   window.addEventListener("pd-api-after-call", event => {
     if ([
       "liveticker_whatsapp_sticker_enqueue",
-      "liveticker_whatsapp_delivery_enqueue"
+      "liveticker_whatsapp_delivery_enqueue",
+      "liveticker_whatsapp_delivery_retry"
     ].includes(event.detail?.action)) {
       void broadcastWhatsappWake();
     }

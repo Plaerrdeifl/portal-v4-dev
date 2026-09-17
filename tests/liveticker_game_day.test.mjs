@@ -150,8 +150,10 @@ test("sticker plus text is one explicit outbox job with server-side ordering", a
 });
 
 test("component statuses and combined timeline remain separate", () => {
-  assert.deepEqual(deliveryComponentStatus("SENT"), { label: "gesendet", tone: "success" });
-  assert.deepEqual(deliveryComponentStatus("FAILED"), { label: "fehlgeschlagen", tone: "error" });
+  assert.deepEqual(deliveryComponentStatus("PENDING"), { label: "WIRD GESENDET …", tone: "pending" });
+  assert.deepEqual(deliveryComponentStatus("PENDING", { attemptCount: 2 }), { label: "WIRD ERNEUT VERSUCHT …", tone: "pending" });
+  assert.deepEqual(deliveryComponentStatus("SENT"), { label: "GESENDET ✓", tone: "success" });
+  assert.deepEqual(deliveryComponentStatus("FAILED"), { label: "FEHLGESCHLAGEN – MANUELL EINGREIFEN", tone: "error" });
   const timeline = gameDayTimeline(
     [{ id: "goal-1", type: "goal", team: "mighty", minute: 9, createdAt: 10 }],
     [{ id: "job-1", deliveryMode: "STICKER_ONLY", linkedActionId: "goal-1", createdAt: "2026-09-16T10:00:00Z", stickerStatus: "SENT", textStatus: "NOT_REQUESTED" }]
@@ -181,9 +183,12 @@ test("mobile cockpit has large controls, three visual sticker groups and no obvi
 
 test("failed components are shown separately and unsafe all-components retry is absent", async () => {
   const source = await read("js/liveticker-game-day.js");
-  assert.match(source, /componentBadge\("Sticker", delivery\.stickerStatus\)/);
-  assert.match(source, /componentBadge\("Text", delivery\.textStatus\)/);
+  assert.match(source, /componentBadge\("Sticker", delivery\.stickerStatus, delivery\)/);
+  assert.match(source, /componentBadge\("Text", delivery\.textStatus, delivery\)/);
   assert.match(source, /ANFRAGE SICHER ERNEUT SENDEN/);
+  assert.match(source, /data-retry-delivery/);
+  assert.match(source, /retryWhatsappDelivery\(\{ eventId: game\.eventId, jobId \}\)/);
+  assert.match(source, /\}, 1000\)/);
   assert.doesNotMatch(source, /ALLES (?:NOCHMAL|ERNEUT) SENDEN/i);
   assert.doesNotMatch(source, /whatsapp_(?:sticker|text)_retry/);
 });

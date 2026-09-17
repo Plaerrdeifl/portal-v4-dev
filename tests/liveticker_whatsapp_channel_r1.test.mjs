@@ -119,7 +119,7 @@ test("WhatsApp worker keeps legacy assets during migration but sends only explic
   assert.equal(goalPng.subarray(0, 8).equals(pngSignature), true);
   assert.equal(penaltyPng.subarray(0, 8).equals(pngSignature), true);
   assert.match(worker, /await deliverWhatsappJob/);
-  assert.match(worker, /sendSticker: sendStickerToWaha/);
+  assert.match(worker, /sendSticker: asset => sendWithRecovery\(timeoutMs => sendStickerToWaha\(asset, timeoutMs\)\)/);
   assert.doesNotMatch(worker, /sendImage|mediaAssetForJob|GOAL_MEDIA_FILE|PENALTY_MEDIA_FILE/);
   assert.match(worker, /MEDIA_TEXT_DELAY_MS = 2000/);
   assert.match(worker, /setTimeout\(resolve, MEDIA_TEXT_DELAY_MS\)/);
