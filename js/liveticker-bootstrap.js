@@ -84,7 +84,7 @@ try {
   await import("./liveticker-whatsapp-publish.js?v=20260915-sticker-server-r1");
   await importRuntimeEngine();
   await import("./liveticker-v5-support.js?v=20260910-shootout60-r1");
-  await import("./liveticker-game-day.js?v=20260917-delivery-status-r1");
+  await import("./liveticker-game-day.js?v=20260917-history-actions-r1");
 
   const opponentSelect = document.querySelector("#opponentSelect");
   if (opponentSelect) {

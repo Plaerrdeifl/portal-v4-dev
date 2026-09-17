@@ -77,31 +77,90 @@ function actionLabel(action) {
     const name = action.player?.name ? ` ${action.player.name}` : "";
     return `${prefix}${number}${name}`;
   }
-  if (action?.type === "penalty") return "STRAFE";
+  if (action?.type === "penalty") {
+    const first = action.penalties?.[0] || null;
+    const number = first?.player?.number ? ` #${first.player.number}` : "";
+    const name = first?.player?.name ? ` ${first.player.name}` : "";
+    return `STRAFE${number}${name}`;
+  }
   if (action?.type === "shootout") return "PENALTYSCHIESSEN";
   return "LIVETICKER-AKTION";
 }
 
 export function gameDayTimeline(history, deliveries) {
-  const actions = (Array.isArray(history) ? history : []).map(action => ({
+  const deliveryList = Array.isArray(deliveries) ? deliveries : [];
+  const linkedByAction = new Map();
+  deliveryList.forEach(delivery => {
+    const actionId = String(delivery?.linkedActionId || "").trim();
+    if (!actionId) return;
+    const linked = linkedByAction.get(actionId) || [];
+    linked.push(delivery);
+    linkedByAction.set(actionId, linked);
+  });
+  const actions = (Array.isArray(history) ? history : []).map((action, historyIndex) => ({
     kind: "action",
     id: `action:${action.id}`,
     actionId: action.id,
     minute: action.minute || null,
-    timestamp: Number(action.createdAt || action.updatedAt || 0),
+    historyIndex,
     label: actionLabel(action),
-    action
-  }));
-  const deliveryItems = (Array.isArray(deliveries) ? deliveries : []).map(delivery => ({
+    action,
+    deliveries: linkedByAction.get(String(action.id || "")) || []
+  })).reverse();
+  const deliveryItems = deliveryList.filter(delivery => !delivery?.linkedActionId).map(delivery => ({
     kind: "delivery",
     id: `delivery:${delivery.id}`,
-    actionId: delivery.linkedActionId || null,
+    actionId: null,
     minute: null,
     timestamp: Date.parse(delivery.createdAt || "") || 0,
     label: delivery.deliveryMode === "STICKER_ONLY" ? "Sticker" : "WhatsApp",
     delivery
-  }));
-  return [...actions, ...deliveryItems].sort((left, right) => right.timestamp - left.timestamp);
+  })).sort((left, right) => right.timestamp - left.timestamp);
+  return [...actions, ...deliveryItems];
+}
+
+export function gameDayEditDraft(action) {
+  if (!action?.id) return null;
+  const common = {
+    editingActionId: action.id,
+    minute: Math.max(1, Number.parseInt(action.minute, 10) || 1),
+    publishText: false
+  };
+  if (action.type === "goal") {
+    return {
+      ...common,
+      kind: action.team === "opponent" ? "against" : "goal",
+      scorer: action.player?.name || "",
+      assist1: action.assists?.[0]?.name || "",
+      assist2: action.assists?.[1]?.name || ""
+    };
+  }
+  if (action.type === "penalty") {
+    const first = action.penalties?.[0] || {};
+    return {
+      ...common,
+      kind: "penalty",
+      team: first.team || "mighty",
+      player: first.player?.name || "",
+      duration: String(first.duration || "2"),
+      reason: first.reason || ""
+    };
+  }
+  return null;
+}
+
+export function savedGameDayActionId(beforeHistory, afterHistory, editingActionId = "") {
+  const editId = String(editingActionId || "").trim();
+  if (editId) {
+    const before = Array.isArray(beforeHistory) ? beforeHistory : [];
+    const after = Array.isArray(afterHistory) ? afterHistory : [];
+    return before.some(item => item?.id === editId)
+      && after.some(item => item?.id === editId)
+      && before.length === after.length
+      ? editId
+      : null;
+  }
+  return newActionId(beforeHistory, afterHistory);
 }
 
 export function newActionId(beforeHistory, afterHistory) {

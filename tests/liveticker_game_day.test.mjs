@@ -5,10 +5,12 @@ import test from "node:test";
 import {
   activeGameDayStickers,
   deliveryComponentStatus,
+  gameDayEditDraft,
   gameDayHeaderModel,
   gameDayTimeline,
   newActionId,
   periodFromMinute,
+  savedGameDayActionId,
   scoreFromHistory
 } from "../js/liveticker-game-day-core.js";
 globalThis.window = { PD_RUNTIME_CONFIG: {} };
@@ -149,19 +151,103 @@ test("sticker plus text is one explicit outbox job with server-side ordering", a
   assert.match(delivery, /await sendSticker\([\s\S]*await waitAfterSticker\([\s\S]*await sendText\(/);
 });
 
-test("component statuses and combined timeline remain separate", () => {
+test("component statuses and linked deliveries stay on their action", () => {
   assert.deepEqual(deliveryComponentStatus("PENDING"), { label: "WIRD GESENDET …", tone: "pending" });
   assert.deepEqual(deliveryComponentStatus("PENDING", { attemptCount: 2 }), { label: "WIRD ERNEUT VERSUCHT …", tone: "pending" });
   assert.deepEqual(deliveryComponentStatus("SENT"), { label: "GESENDET ✓", tone: "success" });
   assert.deepEqual(deliveryComponentStatus("FAILED"), { label: "FEHLGESCHLAGEN – MANUELL EINGREIFEN", tone: "error" });
   const timeline = gameDayTimeline(
-    [{ id: "goal-1", type: "goal", team: "mighty", minute: 9, createdAt: 10 }],
+    [{ id: "goal-1", type: "goal", team: "mighty", minute: 9 }],
     [{ id: "job-1", deliveryMode: "STICKER_ONLY", linkedActionId: "goal-1", createdAt: "2026-09-16T10:00:00Z", stickerStatus: "SENT", textStatus: "NOT_REQUESTED" }]
   );
-  assert.equal(timeline[0].kind, "delivery");
+  assert.equal(timeline[0].kind, "action");
   assert.equal(timeline[0].actionId, "goal-1");
+  assert.equal(timeline[0].deliveries[0].id, "job-1");
   assert.equal(newActionId([], [{ id: "goal-1" }]), "goal-1");
   assert.equal(newActionId([], [{ id: "a" }, { id: "b" }]), null);
+});
+
+test("latest actions use stable history order even without timestamps", () => {
+  const history = Array.from({ length: 12 }, (_, index) => ({
+    id: `action-${index + 1}`,
+    type: "goal",
+    team: "mighty",
+    minute: index + 1
+  }));
+  const deliveries = [
+    { id: "linked", linkedActionId: "action-12", deliveryMode: "TEXT_ONLY", createdAt: "2026-09-17T18:00:00Z", textStatus: "SENT" },
+    { id: "standalone", linkedActionId: null, deliveryMode: "STICKER_ONLY", createdAt: "2026-09-17T18:01:00Z", stickerStatus: "SENT" }
+  ];
+  const timeline = gameDayTimeline(history, deliveries);
+  assert.deepEqual(timeline.slice(0, 3).map(item => item.actionId), ["action-12", "action-11", "action-10"]);
+  assert.equal(timeline[0].deliveries[0].id, "linked");
+  assert.equal(timeline.filter(item => item.id === "delivery:linked").length, 0);
+  assert.equal(timeline.at(-1).id, "delivery:standalone");
+});
+
+test("game-day edit drafts cover goal, against and penalty without republishing", () => {
+  assert.deepEqual(gameDayEditDraft({
+    id: "our-goal",
+    type: "goal",
+    team: "mighty",
+    minute: 20,
+    player: { name: "Thomáš Pribyl" },
+    assists: [{ name: "Assist Eins" }, { name: "Assist Zwei" }]
+  }), {
+    editingActionId: "our-goal",
+    minute: 20,
+    publishText: false,
+    kind: "goal",
+    scorer: "Thomáš Pribyl",
+    assist1: "Assist Eins",
+    assist2: "Assist Zwei"
+  });
+  assert.equal(gameDayEditDraft({ id: "against", type: "goal", team: "opponent", minute: 21 }).kind, "against");
+  assert.deepEqual(gameDayEditDraft({
+    id: "penalty",
+    type: "penalty",
+    minute: 22,
+    penalties: [{ team: "opponent", player: { name: "Gegner" }, duration: "5", reason: "Check" }]
+  }), {
+    editingActionId: "penalty",
+    minute: 22,
+    publishText: false,
+    kind: "penalty",
+    team: "opponent",
+    player: "Gegner",
+    duration: "5",
+    reason: "Check"
+  });
+});
+
+test("saving an edit keeps the same action id and never creates a second entry", () => {
+  const before = [{ id: "goal-1", type: "goal", minute: 20 }];
+  const after = [{ id: "goal-1", type: "goal", minute: 21 }];
+  assert.equal(savedGameDayActionId(before, after, "goal-1"), "goal-1");
+  assert.equal(savedGameDayActionId(before, [...after, { id: "goal-2" }], "goal-1"), null);
+  assert.equal(savedGameDayActionId(before, [], "goal-1"), null);
+});
+
+test("game-day edit and undo delegate to the classic engine controls", async () => {
+  const [source, engine, publish] = await Promise.all([
+    read("js/liveticker-game-day.js"),
+    read("js/liveticker-engine-v4.js"),
+    read("js/liveticker-whatsapp-publish.js")
+  ]);
+  assert.match(source, /classicHistoryControl\("edit", actionId\)/);
+  assert.match(source, /editControl\.click\(\)/);
+  assert.match(source, /classicHistoryControl\("delete", actionId\)/);
+  assert.match(source, /deleteControl\.click\(\)/);
+  assert.match(source, /model\.state = \{ \.\.\.readState\(\), completedAt:/);
+  assert.match(source, /window\.addEventListener\("pd-liveticker-state-saved"/);
+  assert.match(source, /savedGameDayActionId\(before, after\.history, draft\.editingActionId\)/);
+  assert.match(source, /!draft\.editingActionId && draft\.deliveryId/);
+  assert.match(source, /model\.draft\.editingActionId\s*\?\s*false/);
+  assert.doesNotMatch(source, /model\.state\.history\s*=\s*model\.state\.history\.filter/);
+  assert.match(engine, /state\.history\.splice\(index, 1, tickerEvent\)/);
+  assert.match(engine, /window\.confirm\(`Aktion/);
+  assert.match(engine, /state\.history = state\.history\.filter\(entry => entry\.id !== deleteId\)/);
+  assert.match(publish, /filter\(item => item\?\.id && !previous\.has\(item\.id\)\)/);
 });
 
 test("mobile cockpit has large controls, three visual sticker groups and no obvious horizontal overflow", async () => {

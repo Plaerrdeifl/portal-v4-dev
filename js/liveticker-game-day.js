@@ -10,10 +10,11 @@ import {
 import {
   activeGameDayStickers,
   deliveryComponentStatus,
+  gameDayEditDraft,
   gameDayHeaderModel,
   gameDayTimeline,
-  newActionId
-} from "./liveticker-game-day-core.js";
+  savedGameDayActionId
+} from "./liveticker-game-day-core.js?v=20260917-history-actions-r1";
 
 const STATE_KEY = "plaerrdeifl.livetickerPrototype.v3";
 const GAME_DAY_QUERY = "game-day";
@@ -235,17 +236,22 @@ function initializeGameDay() {
   }
 
   function renderTimeline() {
-    const items = gameDayTimeline(model.state.history, model.deliveries)
-      .filter(item => item.kind === "action" || !item.actionId)
-      .slice(0, 10);
+    const timeline = gameDayTimeline(model.state.history, model.deliveries);
+    const items = [
+      ...timeline.filter(item => item.kind === "action").slice(0, 10),
+      ...timeline.filter(item => item.kind === "delivery").slice(0, 10)
+    ];
     return `<section class="game-day-card"><h2>Verlauf</h2><div class="game-day-timeline">
       ${items.length ? items.map(item => {
         if (item.kind === "action") {
-          const linked = model.deliveries.filter(delivery => delivery.linkedActionId === item.actionId);
+          const linked = item.deliveries;
           const sticker = linked.find(delivery => delivery.stickerStatus !== "NOT_REQUESTED") || null;
           const text = linked.find(delivery => delivery.textStatus !== "NOT_REQUESTED") || null;
           const failed = [...new Map(linked.filter(delivery => delivery.status === "FAILED").map(delivery => [delivery.id, delivery])).values()];
-          return `<article class="game-day-timeline-item"><div class="game-day-timeline-head"><span>${escapeHtml(item.minute ? `${item.minute}'` : "Spiel")}</span><span>${escapeHtml(item.label)}</span></div><div class="game-day-component-row"><span class="game-day-component" data-tone="success">Liveticker ✓</span>${sticker ? componentBadge("Sticker", sticker.stickerStatus, sticker) : ""}${text ? componentBadge("Text", text.textStatus, text) : ""}</div>${failed.map(manualRetryButton).join("")}</article>`;
+          const editButton = ["goal", "penalty"].includes(item.action?.type)
+            ? `<button class="game-day-secondary" type="button" data-edit-action="${escapeHtml(item.actionId)}">Bearbeiten</button>`
+            : "";
+          return `<article class="game-day-timeline-item" data-timeline-action="${escapeHtml(item.actionId)}"><div class="game-day-timeline-head"><span>${escapeHtml(item.minute ? `${item.minute}'` : "Spiel")}</span><span>${escapeHtml(item.label)}</span></div><div class="game-day-component-row"><span class="game-day-component" data-tone="success">Liveticker ✓</span>${sticker ? componentBadge("Sticker", sticker.stickerStatus, sticker) : ""}${text ? componentBadge("Text", text.textStatus, text) : ""}</div>${failed.map(manualRetryButton).join("")}<div class="game-day-timeline-actions">${editButton}<button class="game-day-danger" type="button" data-delete-action="${escapeHtml(item.actionId)}">Zurücknehmen</button></div></article>`;
         }
         const delivery = item.delivery;
         return `<article class="game-day-timeline-item"><div class="game-day-timeline-head"><span>${new Date(delivery.createdAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}</span><span>${escapeHtml(item.label)}</span></div><div class="game-day-component-row">${componentBadge("Sticker", delivery.stickerStatus, delivery)}${componentBadge("Text", delivery.textStatus, delivery)}</div><p class="game-day-muted">Keine Aktion</p>${manualRetryButton(delivery)}</article>`;
@@ -318,6 +324,9 @@ function initializeGameDay() {
   }
 
   function actionStickerSection(kind) {
+    if (model.draft?.editingActionId) {
+      return '<p class="game-day-status">Bearbeitung aktualisiert nur den Liveticker. Bereits veröffentlichte WhatsApp-Inhalte werden nicht erneut gesendet.</p>';
+    }
     const config = kind === "goal"
       ? { audience: "OUR_TEAM", category: "GOAL" }
       : kind === "against"
@@ -344,8 +353,8 @@ function initializeGameDay() {
         <div class="game-day-field"><label for="gameDayAssist2">2. Assist</label><select id="gameDayAssist2">${playerOptions(players, draft.assist2, "Kein / offen")}</select></div>
         <div class="game-day-field full"><label for="gameDayMinute">Spielminute</label><input id="gameDayMinute" type="number" inputmode="numeric" min="1" value="${escapeHtml(draft.minute)}"></div>
       </div>
-      <label class="game-day-status"><input id="gameDayPublishText" type="checkbox"${draft.publishText !== false ? " checked" : ""}> WhatsApp-Text nach dem Speichern veröffentlichen</label>
-      <button class="game-day-primary" type="button" data-save-action>${isOpponent ? "GEGENTOR" : "TOR"} EINTRAGEN</button>
+      ${draft.editingActionId ? '<p class="game-day-status">WhatsApp wird bei dieser Bearbeitung nicht erneut veröffentlicht.</p>' : `<label class="game-day-status"><input id="gameDayPublishText" type="checkbox"${draft.publishText !== false ? " checked" : ""}> WhatsApp-Text nach dem Speichern veröffentlichen</label>`}
+      <button class="game-day-primary" type="button" data-save-action>${isOpponent ? "GEGENTOR" : "TOR"} ${draft.editingActionId ? "AKTUALISIEREN" : "EINTRAGEN"}</button>
       <p class="game-day-status" data-tone="error" data-form-error hidden></p>
     </section></div>`;
   }
@@ -369,8 +378,8 @@ function initializeGameDay() {
         <div class="game-day-field full"><label for="gameDayPenaltyReason">Strafgrund</label><select id="gameDayPenaltyReason">${penaltySourceOptions("reason", draft.reason)}</select></div>
         <div class="game-day-field full"><label for="gameDayMinute">Spielminute</label><input id="gameDayMinute" type="number" inputmode="numeric" min="1" value="${escapeHtml(draft.minute)}"></div>
       </div>
-      <label class="game-day-status"><input id="gameDayPublishText" type="checkbox"${draft.publishText !== false ? " checked" : ""}> WhatsApp-Text nach dem Speichern veröffentlichen</label>
-      <button class="game-day-primary" type="button" data-save-action>STRAFE EINTRAGEN</button>
+      ${draft.editingActionId ? '<p class="game-day-status">WhatsApp wird bei dieser Bearbeitung nicht erneut veröffentlicht.</p>' : `<label class="game-day-status"><input id="gameDayPublishText" type="checkbox"${draft.publishText !== false ? " checked" : ""}> WhatsApp-Text nach dem Speichern veröffentlichen</label>`}
+      <button class="game-day-primary" type="button" data-save-action>STRAFE ${draft.editingActionId ? "AKTUALISIEREN" : "EINTRAGEN"}</button>
       <p class="game-day-status" data-tone="error" data-form-error hidden></p>
     </section></div>`;
   }
@@ -387,7 +396,9 @@ function initializeGameDay() {
   function captureDraft() {
     if (!model.draft) return;
     model.draft.minute = Math.max(1, Number.parseInt(selectedValue(root, "#gameDayMinute"), 10) || model.state.minute);
-    model.draft.publishText = root.querySelector("#gameDayPublishText")?.checked !== false;
+    model.draft.publishText = model.draft.editingActionId
+      ? false
+      : root.querySelector("#gameDayPublishText")?.checked !== false;
     if (["goal", "against"].includes(model.draft.kind)) {
       model.draft.scorer = selectedValue(root, "#gameDayScorer");
       model.draft.assist1 = selectedValue(root, "#gameDayAssist1");
@@ -408,6 +419,7 @@ function initializeGameDay() {
   }
 
   function resetOpenAction() {
+    if (model.draft?.editingActionId) document.querySelector("#cancelEdit")?.click();
     model.draft = null;
     model.request = null;
     model.currentDeliveryId = "";
@@ -437,6 +449,52 @@ function initializeGameDay() {
     }
     model.sheet = kind;
     model.requestError = "";
+    renderMain();
+  }
+
+  function classicHistoryControl(attribute, actionId) {
+    const find = () => [...document.querySelectorAll(`#historyList [data-${attribute}]`)]
+      .find(control => control.dataset[attribute] === actionId) || null;
+    let control = find();
+    const toggle = document.querySelector("#historyToggle");
+    if (!control && toggle && !toggle.hidden) {
+      toggle.click();
+      control = find();
+    }
+    return control;
+  }
+
+  function editStructuredAction(actionId) {
+    const action = model.state.history.find(item => item?.id === actionId);
+    const draft = gameDayEditDraft(action);
+    const editControl = classicHistoryControl("edit", actionId);
+    if (!draft || !editControl) {
+      model.notice = "Diese Aktion kann im Spielmodus nicht bearbeitet werden.";
+      renderMain();
+      return;
+    }
+    editControl.click();
+    model.draft = draft;
+    model.sheet = draft.kind;
+    model.selectedStickerId = "";
+    model.request = null;
+    model.currentDeliveryId = "";
+    model.requestError = "";
+    model.notice = "";
+    renderMain();
+  }
+
+  function deleteStructuredAction(actionId) {
+    const deleteControl = classicHistoryControl("delete", actionId);
+    if (!deleteControl) {
+      model.notice = "Diese Aktion kann im Spielmodus nicht zurückgenommen werden.";
+      renderMain();
+      return;
+    }
+    deleteControl.click();
+    model.state = { ...readState(), completedAt: model.state.completedAt || null };
+    if (model.draft?.editingActionId === actionId
+      && !model.state.history.some(item => item?.id === actionId)) resetOpenAction();
     renderMain();
   }
 
@@ -579,14 +637,15 @@ function initializeGameDay() {
       if (noSticker) noSticker.checked = true;
       document.querySelector("#tickerForm")?.requestSubmit();
       const after = readState();
-      const actionId = newActionId(before, after.history);
+      const actionId = savedGameDayActionId(before, after.history, draft.editingActionId);
       if (!actionId) {
         const nativeError = document.querySelector("#formError");
         throw new Error(nativeError?.textContent || "Die Aktion konnte nicht gespeichert werden.");
       }
       model.state = after;
-      if (draft.deliveryId) model.pendingLinks.set(actionId, draft.deliveryId);
-      model.notice = `${draft.kind === "goal" ? "Tor" : draft.kind === "against" ? "Gegentor" : "Strafe"} gespeichert.`;
+      if (!draft.editingActionId && draft.deliveryId) model.pendingLinks.set(actionId, draft.deliveryId);
+      document.querySelector("#cancelEdit")?.click();
+      model.notice = `${draft.kind === "goal" ? "Tor" : draft.kind === "against" ? "Gegentor" : "Strafe"} ${draft.editingActionId ? "aktualisiert" : "gespeichert"}.`;
       model.draft = null;
       model.request = null;
       model.selectedStickerId = "";
@@ -678,6 +737,8 @@ function initializeGameDay() {
     if (button.matches("[data-send-message]")) { void sendCombined(selectedValue(root, "#gameDayMessage")); return; }
     if (button.matches("[data-retry-request]") && model.request) { void sendRequest(model.request, model.draft); return; }
     if (button.dataset.retryDelivery) { void retryDelivery(button.dataset.retryDelivery); return; }
+    if (button.dataset.editAction) { editStructuredAction(button.dataset.editAction); return; }
+    if (button.dataset.deleteAction) { deleteStructuredAction(button.dataset.deleteAction); return; }
     if (button.matches("[data-save-action]")) { saveStructuredAction(); return; }
     if (button.matches("[data-all-action-stickers]")) {
       captureDraft();
