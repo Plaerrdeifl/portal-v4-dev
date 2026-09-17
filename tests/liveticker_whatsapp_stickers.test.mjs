@@ -65,6 +65,16 @@ test("edit and deletion never create a new WhatsApp publish intent", () => {
   assert.equal(edited.history[0]._whatsapp, undefined);
 });
 
+test("classic view can enqueue a standalone sticker without text or a fake action", async () => {
+  const publish = await read("js/liveticker-whatsapp-publish.js");
+  assert.match(publish, /STICKER OHNE TEXT SENDEN/);
+  assert.match(publish, /enqueueWhatsappStickerOnly/);
+  assert.match(publish, /enqueueWhatsappStickerOnly\(\{ eventId, stickerId, linkedActionId: null \}\)/);
+  assert.match(publish, /Sticker-Versandauftrag wurde angelegt/);
+  const standalone = publish.match(/async function sendStandaloneSticker\(\) \{[\s\S]+?\n\}/)?.[0] || "";
+  assert.doesNotMatch(standalone, /requestSubmit|tickerForm|state\.history|message\s*:/);
+});
+
 test("migration uses private Supabase Storage, validates references and keeps sticker metadata secret-free", async () => {
   const sql = await read("supabase/migrations/20260914220855_liveticker_whatsapp_sticker_library_dev_r1.sql");
   assert.match(sql, /create table app_modules\.liveticker_whatsapp_stickers/i);

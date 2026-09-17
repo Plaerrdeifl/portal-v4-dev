@@ -44,6 +44,29 @@ function playerOptions(players, selected = "", empty = "Noch offen") {
   }).join("")}`;
 }
 
+function normalizeJerseyNumber(value) {
+  return String(value ?? "").trim().replace(/^#/, "").trim();
+}
+
+function playerByName(players, name) {
+  const selected = String(name || "");
+  return (Array.isArray(players) ? players : []).find(player => String(player?.name || "") === selected) || null;
+}
+
+function playerByNumber(players, number) {
+  const selected = normalizeJerseyNumber(number);
+  if (!selected) return null;
+  return (Array.isArray(players) ? players : []).find(player => String(player?.number || "").trim() === selected) || null;
+}
+
+function playerEntryControls(players, selected, empty, selectId, numberId, numberLabel) {
+  const current = playerByName(players, selected);
+  return `<div class="game-day-player-entry">
+    <input id="${escapeHtml(numberId)}" class="game-day-number-input" type="text" inputmode="numeric" autocomplete="off" placeholder="#" aria-label="${escapeHtml(numberLabel)}" data-player-select="${escapeHtml(selectId)}" value="${escapeHtml(current?.number || "")}">
+    <select id="${escapeHtml(selectId)}" data-player-number="${escapeHtml(numberId)}">${playerOptions(players, selected, empty)}</select>
+  </div>`;
+}
+
 function stickerCard(sticker, selectedId = "") {
   return `<button class="game-day-sticker" type="button" data-sticker-id="${escapeHtml(sticker.id)}" aria-pressed="${String(sticker.id === selectedId)}">
     ${sticker.previewDataUrl
@@ -339,9 +362,13 @@ function initializeGameDay() {
         : { audience: model.draft?.team === "opponent" ? "OPPONENT" : "OUR_TEAM", category: "PENALTY" };
     const stickers = relevantStickers({ ...config, strictCategory: true });
     const sticker = selectedSticker();
-    return `<section><h3>Passende Sticker</h3><div class="game-day-sticker-grid">${stickerGrid(stickers)}</div></section>
-      ${sticker ? `<button class="game-day-primary" type="button" data-send-action-sticker>STICKER JETZT SENDEN</button>` : ""}
-      ${deliveryStatusSlotHtml(model.draft?.deliveryId ? deliveryForId(model.draft.deliveryId) : null)}`;
+    const delivery = model.draft?.deliveryId ? deliveryForId(model.draft.deliveryId) : null;
+    const locked = Boolean(model.draft?.deliveryId);
+    const visibleStickers = locked && sticker ? [sticker] : stickers;
+    return `<section><h3>Passende Sticker</h3><div class="game-day-sticker-grid">${stickerGrid(visibleStickers)}</div></section>
+      ${sticker && !locked ? `<button class="game-day-primary" type="button" data-send-action-sticker>STICKER JETZT SENDEN</button>` : ""}
+      ${locked ? '<p class="game-day-status">Für diese Aktion wurde bereits ein Sticker-Auftrag angelegt. Ein neuer Sticker kann nicht zusätzlich gesendet werden.</p>' : ""}
+      ${deliveryStatusSlotHtml(delivery)}`;
   }
 
   function renderGoalSheet(kind) {
@@ -352,9 +379,9 @@ function initializeGameDay() {
       <div class="game-day-sheet-head"><h2 id="gameDaySheetTitle">${isOpponent ? "GEGENTOR" : "TOR"}</h2><button class="game-day-close" type="button" data-close-sheet aria-label="Schließen">×</button></div>
       ${actionStickerSection(kind)}
       <div class="game-day-form-grid">
-        <div class="game-day-field full"><label for="gameDayScorer">Torschütze${isOpponent ? " (optional)" : ""}</label><select id="gameDayScorer">${playerOptions(players, draft.scorer, "Noch unbekannt")}</select></div>
-        <div class="game-day-field"><label for="gameDayAssist1">1. Assist</label><select id="gameDayAssist1">${playerOptions(players, draft.assist1, "Kein / offen")}</select></div>
-        <div class="game-day-field"><label for="gameDayAssist2">2. Assist</label><select id="gameDayAssist2">${playerOptions(players, draft.assist2, "Kein / offen")}</select></div>
+        <div class="game-day-field full"><label for="gameDayScorer">Torschütze${isOpponent ? " (optional)" : ""}</label>${playerEntryControls(players, draft.scorer, "Noch unbekannt", "gameDayScorer", "gameDayScorerNumber", "Trikotnummer Torschütze")}</div>
+        <div class="game-day-field"><label for="gameDayAssist1">1. Assist</label>${playerEntryControls(players, draft.assist1, "Kein / offen", "gameDayAssist1", "gameDayAssist1Number", "Trikotnummer 1. Assist")}</div>
+        <div class="game-day-field"><label for="gameDayAssist2">2. Assist</label>${playerEntryControls(players, draft.assist2, "Kein / offen", "gameDayAssist2", "gameDayAssist2Number", "Trikotnummer 2. Assist")}</div>
         <div class="game-day-field full"><label for="gameDayMinute">Spielminute</label><input id="gameDayMinute" type="number" inputmode="numeric" min="1" value="${escapeHtml(draft.minute)}"></div>
       </div>
       ${draft.editingActionId ? '<p class="game-day-status">WhatsApp wird bei dieser Bearbeitung nicht erneut veröffentlicht.</p>' : `<label class="game-day-status"><input id="gameDayPublishText" type="checkbox"${draft.publishText !== false ? " checked" : ""}> WhatsApp-Text nach dem Speichern veröffentlichen</label>`}
@@ -377,7 +404,7 @@ function initializeGameDay() {
       ${actionStickerSection("penalty")}
       <div class="game-day-form-grid">
         <div class="game-day-field"><label for="gameDayPenaltyTeam">Team</label><select id="gameDayPenaltyTeam"><option value="mighty"${draft.team === "mighty" ? " selected" : ""}>Mighty Dogs</option><option value="opponent"${draft.team === "opponent" ? " selected" : ""}>${escapeHtml(game.opponentTeam?.shortName || "Gegner")}</option></select></div>
-        <div class="game-day-field"><label for="gameDayPenaltyPlayer">Spieler</label><select id="gameDayPenaltyPlayer">${playerOptions(players, draft.player, "Noch unbekannt")}</select></div>
+        <div class="game-day-field"><label for="gameDayPenaltyPlayer">Spieler</label>${playerEntryControls(players, draft.player, "Noch unbekannt", "gameDayPenaltyPlayer", "gameDayPenaltyNumber", "Trikotnummer Strafe")}</div>
         <div class="game-day-field full"><span class="game-day-label">Strafdauer</span><div class="game-day-duration">${["2", "5", "10"].map(value => `<button type="button" data-duration="${value}" aria-pressed="${String(draft.duration === value)}">${value}</button>`).join("")}<button type="button" data-duration="other" aria-pressed="${String(!["2", "5", "10"].includes(draft.duration))}">andere</button></div><select id="gameDayPenaltyDuration">${penaltySourceOptions("duration", draft.duration)}</select></div>
         <div class="game-day-field full"><label for="gameDayPenaltyReason">Strafgrund</label><select id="gameDayPenaltyReason">${penaltySourceOptions("reason", draft.reason)}</select></div>
         <div class="game-day-field full"><label for="gameDayMinute">Spielminute</label><input id="gameDayMinute" type="number" inputmode="numeric" min="1" value="${escapeHtml(draft.minute)}"></div>
@@ -570,7 +597,7 @@ function initializeGameDay() {
   }
 
   async function sendStickerOnly({ draft = null } = {}) {
-    if (!model.selectedStickerId) return;
+    if (!model.selectedStickerId || draft?.deliveryId) return;
     const request = draft?.request || createWhatsappStickerOnlyRequest({
       eventId: game.eventId,
       stickerId: model.selectedStickerId,
@@ -747,7 +774,12 @@ function initializeGameDay() {
       }
       return;
     }
-    if (button.matches("[data-send-action-sticker]")) { captureDraft(); void sendStickerOnly({ draft: model.draft }); return; }
+    if (button.matches("[data-send-action-sticker]")) {
+      captureDraft();
+      if (model.draft?.deliveryId) return;
+      void sendStickerOnly({ draft: model.draft });
+      return;
+    }
     if (button.matches("[data-send-message]")) { void sendCombined(selectedValue(root, "#gameDayMessage")); return; }
     if (button.matches("[data-retry-request]") && model.request) { void sendRequest(model.request, model.draft); return; }
     if (button.dataset.retryDelivery) { void retryDelivery(button.dataset.retryDelivery); return; }
@@ -775,9 +807,32 @@ function initializeGameDay() {
     }
   });
 
+  root.addEventListener("input", event => {
+    const numberInput = event.target.closest?.("input[data-player-select]");
+    if (!numberInput) return;
+    const selectId = numberInput.dataset.playerSelect || "";
+    const select = root.querySelector(`#${selectId}`);
+    if (!(select instanceof HTMLSelectElement)) return;
+    const players = selectId === "gameDayPenaltyPlayer"
+      ? (model.draft?.team === "opponent" ? opponentPlayers() : ownPlayers())
+      : (model.draft?.kind === "against" ? opponentPlayers() : ownPlayers());
+    const player = playerByNumber(players, numberInput.value);
+    select.value = player?.name || "";
+  });
+
   root.addEventListener("change", event => {
     if (event.target.matches("#gameDayCurrentMinute")) {
       event.target.value = String(setGameDayMinute(event.target.value));
+      return;
+    }
+    if (event.target.matches("select[data-player-number]")) {
+      const inputId = event.target.dataset.playerNumber || "";
+      const numberInput = root.querySelector(`#${inputId}`);
+      const players = event.target.id === "gameDayPenaltyPlayer"
+        ? (model.draft?.team === "opponent" ? opponentPlayers() : ownPlayers())
+        : (model.draft?.kind === "against" ? opponentPlayers() : ownPlayers());
+      const player = playerByName(players, event.target.value);
+      if (numberInput instanceof HTMLInputElement) numberInput.value = player?.number || "";
       return;
     }
     if (event.target.matches("#gameDayPenaltyTeam")) {

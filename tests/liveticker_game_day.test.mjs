@@ -363,6 +363,31 @@ test("structured actions expose only their matching sticker category and penalty
   assert.doesNotMatch(source, /data-all-action-stickers|ALLE STICKER/);
   assert.match(source, /model\.selectedStickerId = "";\s*renderMain\(\);\s*}\s*}\);/);
 });
+test("structured action sticker becomes locked after the first delivery job", async () => {
+  const source = await read("js/liveticker-game-day.js");
+  assert.match(source, /const locked = Boolean\(model\.draft\?\.deliveryId\)/);
+  assert.match(source, /sticker && !locked \? `<button class="game-day-primary"[^>]*data-send-action-sticker/);
+  assert.match(source, /if \(!model\.selectedStickerId \|\| draft\?\.deliveryId\) return/);
+  assert.match(source, /if \(model\.draft\?\.deliveryId\) return/);
+  assert.match(source, /bereits ein Sticker-Auftrag angelegt/);
+});
+
+test("game mode offers coupled jersey number and player selects for goals assists and penalties", async () => {
+  const [source, css] = await Promise.all([
+    read("js/liveticker-game-day.js"),
+    read("liveticker/game-day.css")
+  ]);
+  assert.match(source, /gameDayScorerNumber/);
+  assert.match(source, /gameDayAssist1Number/);
+  assert.match(source, /gameDayAssist2Number/);
+  assert.match(source, /gameDayPenaltyNumber/);
+  assert.match(source, /data-player-select=/);
+  assert.match(source, /data-player-number=/);
+  assert.match(source, /playerByNumber\(players, numberInput\.value\)/);
+  assert.match(source, /playerByName\(players, event\.target\.value\)/);
+  assert.match(css, /\.game-day-player-entry\{display:grid;grid-template-columns:64px minmax\(0,1fr\)/);
+});
+
 test("game mode selects existing flyer contexts without enqueueing until explicit creation", async () => {
   const [source, graphics] = await Promise.all([
     read("js/liveticker-game-day.js"),

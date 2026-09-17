@@ -4,6 +4,8 @@ const STORAGE_KEY = "plaerrdeifl.livetickerPrototype.v3";
 const CONTROL_ID = "livetickerWhatsappPublish";
 const STATUS_ID = "livetickerWhatsappPublishStatus";
 const STICKER_PICKER_ID = "livetickerWhatsappStickerPicker";
+const STICKER_SEND_NOW_ID = "livetickerWhatsappStickerSendNow";
+const STICKER_SEND_NOW_STATUS_ID = "livetickerWhatsappStickerSendNowStatus";
 const MAX_MESSAGE_LENGTH = 4000;
 
 function cleanAction(action) {
@@ -63,9 +65,50 @@ function setControlStatus(text, state = "ready") {
   node.dataset.state = state;
 }
 
+function selectedStickerId() {
+  return String(document.querySelector('input[name="livetickerWhatsappSticker"]:checked')?.value || "").trim();
+}
+
+function syncStandaloneStickerButton() {
+  const button = document.getElementById(STICKER_SEND_NOW_ID);
+  const control = document.getElementById(CONTROL_ID);
+  if (!(button instanceof HTMLButtonElement)) return;
+  if (button.dataset.busy === "true") return;
+  button.disabled = !selectedStickerId() || control?.checked === false;
+}
+
 function resetStickerPicker() {
   const none = document.getElementById("livetickerWhatsappStickerNone");
   if (none instanceof HTMLInputElement) none.checked = true;
+  syncStandaloneStickerButton();
+}
+
+function setStandaloneStickerStatus(text, state = "ready") {
+  const node = document.getElementById(STICKER_SEND_NOW_STATUS_ID);
+  if (!node) return;
+  node.textContent = text;
+  node.dataset.state = state;
+}
+
+async function sendStandaloneSticker() {
+  const button = document.getElementById(STICKER_SEND_NOW_ID);
+  const stickerId = selectedStickerId();
+  const eventId = String(globalThis.PD_LIVETICKER_GAME_CONTEXT?.eventId || "").trim();
+  if (!(button instanceof HTMLButtonElement) || !stickerId || !eventId || button.dataset.busy === "true") return;
+  button.dataset.busy = "true";
+  button.disabled = true;
+  setStandaloneStickerStatus("Sticker-Versand wird gestartet …", "pending");
+  try {
+    const { enqueueWhatsappStickerOnly } = await import("./liveticker-whatsapp-stickers.js?v=20260917-player-fast-r1");
+    await enqueueWhatsappStickerOnly({ eventId, stickerId, linkedActionId: null });
+    resetStickerPicker();
+    setStandaloneStickerStatus("Sticker-Versandauftrag wurde angelegt.", "success");
+  } catch (error) {
+    setStandaloneStickerStatus(error?.message || "Sticker konnte nicht gesendet werden.", "error");
+  } finally {
+    button.dataset.busy = "false";
+    syncStandaloneStickerButton();
+  }
 }
 
 function installStyles() {
@@ -81,7 +124,7 @@ function installStyles() {
     .liveticker-whatsapp-stickers{display:grid;gap:6px;min-width:0;border:0;padding:0;margin:0}.liveticker-whatsapp-stickers>legend{padding:0;font-size:.72rem;font-weight:900}
     .liveticker-whatsapp-sticker-options{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(78px,92px);gap:7px;overflow-x:auto;padding:2px 1px 5px;overscroll-behavior-inline:contain;scroll-snap-type:inline proximity}
     .liveticker-whatsapp-sticker-option{position:relative;scroll-snap-align:start}.liveticker-whatsapp-sticker-option input{position:absolute;width:1px;height:1px;opacity:0}.liveticker-whatsapp-sticker-option label{min-height:82px;padding:6px;border:1px solid #b9d7f5;border-radius:11px;background:#fff;display:grid;grid-template-rows:50px auto;gap:4px;place-items:center;color:#274760;font-size:.65rem;font-weight:900;text-align:center;line-height:1.05;cursor:pointer}.liveticker-whatsapp-sticker-option input:checked+label{border-color:#0d79e8;box-shadow:inset 0 0 0 2px rgba(13,121,232,.18)}
-    .liveticker-whatsapp-sticker-option img{display:block;width:50px;height:50px;object-fit:contain}.liveticker-whatsapp-sticker-none{font-size:1.35rem;color:#7890a5}.liveticker-whatsapp-stickers:disabled{opacity:.58}.liveticker-whatsapp-sticker-empty{margin:0;color:#526d86;font-size:.68rem}
+    .liveticker-whatsapp-sticker-option img{display:block;width:50px;height:50px;object-fit:contain}.liveticker-whatsapp-sticker-none{font-size:1.35rem;color:#7890a5}.liveticker-whatsapp-stickers:disabled{opacity:.58}.liveticker-whatsapp-sticker-empty{margin:0;color:#526d86;font-size:.68rem}.liveticker-whatsapp-sticker-send-now{min-height:40px;padding:7px 10px;border:1px solid #0d79e8;border-radius:10px;background:#0d79e8;color:#fff;font-size:.74rem;font-weight:950}.liveticker-whatsapp-sticker-send-now:disabled{opacity:.5}.liveticker-whatsapp-sticker-send-status{margin:0;color:#526d86;font-size:.68rem;line-height:1.35}.liveticker-whatsapp-sticker-send-status[data-state="success"]{color:#087747;font-weight:850}.liveticker-whatsapp-sticker-send-status[data-state="error"]{color:#a92932;font-weight:850}
   `;
   document.head.append(style);
 }
@@ -113,6 +156,7 @@ function installControl() {
   form.insertBefore(panel, submit);
   label.querySelector("input")?.addEventListener("change", event => {
     picker.disabled = event.currentTarget.checked === false;
+    syncStandaloneStickerButton();
   });
 }
 
@@ -145,7 +189,12 @@ async function loadStickerPicker() {
           </span>
         `).join("")}
       </div>
+      <button id="${STICKER_SEND_NOW_ID}" class="liveticker-whatsapp-sticker-send-now" type="button" disabled>STICKER OHNE TEXT SENDEN</button>
+      <small id="${STICKER_SEND_NOW_STATUS_ID}" class="liveticker-whatsapp-sticker-send-status" data-state="ready">Sticker auswählen und direkt senden, ohne eine Liveticker-Aktion anzulegen.</small>
     `;
+    picker.addEventListener("change", syncStandaloneStickerButton);
+    document.getElementById(STICKER_SEND_NOW_ID)?.addEventListener("click", () => { void sendStandaloneSticker(); });
+    syncStandaloneStickerButton();
   } catch {
     picker.innerHTML = '<legend>Optionaler Sticker</legend><p class="liveticker-whatsapp-sticker-empty">Sticker konnten nicht geladen werden · Versand bleibt ohne Sticker möglich.</p>';
   }
@@ -167,7 +216,7 @@ function startBrowserIntegration() {
       state,
       text: output?.value || "",
       enabled: control?.checked !== false,
-      stickerId: document.querySelector('input[name="livetickerWhatsappSticker"]:checked')?.value || ""
+      stickerId: selectedStickerId()
     });
 
     previousHistory = cleanHistory(state.history);
