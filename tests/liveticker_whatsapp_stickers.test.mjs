@@ -90,7 +90,7 @@ test("classic view sends contextual and Situation stickers through the existing 
   const sendSticker = publish.match(/async function sendSticker\(area\) \{[\s\S]+?\n  \}/)?.[0] || "";
   assert.doesNotMatch(sendSticker, /requestSubmit|state\.history|message\s*:/);
   assert.match(sendSticker, /if \(!transportReady\(\) \|\| !state\?\.selectedStickerId \|\| state\.deliveryId \|\| state\.busy\) return/);
-  assert.match(sendSticker, /state\.request \|\|= createWhatsappStickerOnlyRequest/);
+  assert.match(sendSticker, /if \(!state\.request\) \{[\s\S]*state\.request = createWhatsappStickerOnlyRequest/);
   assert.match(sendSticker, /state\.request\.send\(\)/);
   assert.doesNotMatch(sendSticker, /requestSubmit|state\.history|message\s*:/);
 
@@ -104,6 +104,16 @@ test("classic view sends contextual and Situation stickers through the existing 
   assert.match(saveHandler, /areas\.action\.sourceAction !== "SITUATION"[\s\S]*pendingLinks\.set\(actionId, areas\.action\.deliveryId\)/);
   assert.match(publish, /linkWhatsappStickerDelivery\(\{ jobId, actionId \}\)/);
   assert.match(publish, /if \(!state\.request \|\| state\.deliveryId\) return/);
+});
+
+test("new sticker request captures the selected action before async service loading and overwrites stale sourceAction", async () => {
+  const publish = await read("js/liveticker-whatsapp-publish.js");
+  const sendBlock = publish.match(/async function sendSticker\(area\) \{[\s\S]*?\n  \}/)?.[0] || "";
+  const captureIndex = sendBlock.indexOf("const sourceAction = selectedAction();");
+  const awaitIndex = sendBlock.indexOf("await services()");
+  assert.ok(captureIndex >= 0 && awaitIndex > captureIndex, "action mode must be captured before the first await");
+  assert.match(sendBlock, /if \(!state\.request\) \{[\s\S]*state\.sourceAction = sourceAction;[\s\S]*state\.request = createWhatsappStickerOnlyRequest/);
+  assert.doesNotMatch(sendBlock, /state\.sourceAction \|\|=/);
 });
 
 test("successful Situation delivery releases active UI state for the next independent sticker", () => {

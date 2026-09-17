@@ -382,6 +382,7 @@ function startBrowserIntegration() {
   async function sendSticker(area) {
     const state = areas[area];
     if (!transportReady() || !state?.selectedStickerId || state.deliveryId || state.busy) return;
+    const sourceAction = selectedAction();
     clearStickerSuccess(area, { render: false });
     state.sentStatusAcknowledged = false;
     state.sentStatusHidden = false;
@@ -390,12 +391,14 @@ function startBrowserIntegration() {
     renderArea(area);
     try {
       const { createWhatsappStickerOnlyRequest } = await services();
-      state.sourceAction ||= selectedAction();
-      state.request ||= createWhatsappStickerOnlyRequest({
-        eventId: eventId(),
-        stickerId: state.selectedStickerId,
-        linkedActionId: null
-      });
+      if (!state.request) {
+        state.sourceAction = sourceAction;
+        state.request = createWhatsappStickerOnlyRequest({
+          eventId: eventId(),
+          stickerId: state.selectedStickerId,
+          linkedActionId: null
+        });
+      }
       const result = await state.request.send();
       if (!result?.delivery?.id) throw new Error("Der Sticker-Versandauftrag konnte nicht bestätigt werden.");
       state.deliveryId = result.delivery.id;
