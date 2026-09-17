@@ -16,7 +16,7 @@ const previewCache = new Map();
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ACTION_ID_PATTERN = /^[A-Za-z0-9._:-]{1,100}$/;
 const STICKER_AUDIENCES = new Set(["OUR_TEAM", "OPPONENT", "GENERAL"]);
-const STICKER_CATEGORIES = new Set(["GOAL", "AGAINST", "PENALTY", "VIDEO_REVIEW", "GENERAL"]);
+const STICKER_CATEGORIES = new Set(["GOAL", "AGAINST", "PENALTY", "GENERAL"]);
 const DELIVERY_MODES = new Set(["TEXT_ONLY", "STICKER_THEN_TEXT", "STICKER_ONLY"]);
 const MAX_MESSAGE_LENGTH = 4000;
 

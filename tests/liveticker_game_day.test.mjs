@@ -35,6 +35,9 @@ test("Spielmodus is an additive route and leaves the klassische Ansicht reachabl
   assert.match(html, /id="tickerApp"/);
   assert.match(html, /id="gameDayRoot" hidden/);
   assert.match(bootstrap, /import\("\.\/liveticker-game-day\.js\?v=/);
+  const gameDay = await read("js/liveticker-game-day.js");
+  assert.match(gameDay, /href="\.\.\/#\/liveticker"[^>]*>← Liveticker<\/a>/);
+  assert.match(gameDay, /href="\.\/"[^>]*>Klassische Ansicht<\/a>/);
   assert.match(admin, /href="\.\/liveticker\/\?mode=game-day"/);
   assert.match(admin, /href="\.\/liveticker\/"/);
 });
@@ -279,13 +282,32 @@ test("failed components are shown separately and unsafe all-components retry is 
   assert.doesNotMatch(source, /whatsapp_(?:sticker|text)_retry/);
 });
 
+test("game-day history shows only three entries until explicitly expanded", async () => {
+  const source = await read("js/liveticker-game-day.js");
+  assert.match(source, /model\.historyExpanded \? timeline : timeline\.slice\(0, 3\)/);
+  assert.match(source, /data-toggle-history/);
+  assert.match(source, /Mehr anzeigen …/);
+  assert.match(source, /Weniger anzeigen/);
+  assert.match(source, /model\.historyExpanded = !model\.historyExpanded/);
+});
+
+test("flyer generator is collapsed by default and expands on demand", async () => {
+  const source = await read("js/liveticker-game-day.js");
+  assert.match(source, /flyersExpanded: false/);
+  assert.match(source, />Flyer-Generator<\/span>/);
+  assert.match(source, /data-toggle-flyers/);
+  assert.match(source, /model\.flyersExpanded \? `<div class="game-day-flyer-actions">/);
+  assert.doesNotMatch(source, /<h2>Flyer<\/h2>/);
+});
+
 test("game mode stays separate from the classic view and exposes only the four agreed actions", async () => {
   const [source, html, authBootstrap] = await Promise.all([
     read("js/liveticker-game-day.js"),
     read("liveticker/index.html"),
     read("js/liveticker-auth-bootstrap.js")
   ]);
-  assert.match(source, /← Klassische Ansicht/);
+  assert.match(source, /href="\.\.\/#\/liveticker"[^>]*>← Liveticker<\/a>/);
+  assert.match(source, /href="\.\/"[^>]*>Klassische Ansicht<\/a>/);
   assert.match(html, />SPIELMODUS<\/a>/);
   assert.doesNotMatch(html, />PROD · INTERN</);
   assert.match(authBootstrap, /if \(app && !isGameMode\) app\.hidden = false/);
@@ -303,7 +325,13 @@ test("metadata editor uses the existing team snapshot and no second sticker admi
   assert.match(admin, /value="OUR_TEAM"/);
   assert.match(admin, /value="OPPONENT"/);
   assert.match(admin, /value="GENERAL"/);
-  assert.match(admin, /value="VIDEO_REVIEW"/);
+  assert.doesNotMatch(admin, /value="VIDEO_REVIEW"|Videobeweis/);
+  assert.match(admin, />Unsere \(Mighty Dogs\)<\/option>/);
+  assert.match(admin, /data-opponent-team \$\{isOpponent \? "" : "hidden"\}/);
+  assert.match(admin, /data-own-team \$\{isOurTeam \? "" : "hidden"\}/);
+  assert.match(admin, /opponent\.hidden = value !== "OPPONENT"/);
+  assert.match(admin, /ownTeam\.hidden = value !== "OUR_TEAM"/);
+  assert.match(admin, /opponentTeamId: values\.audience === "OPPONENT" \? values\.opponentTeamId : null/);
 });
 
 test("game-day minute control reuses the native Liveticker minute state and delivery polling stays non-destructive", async () => {
@@ -323,6 +351,18 @@ test("game-day minute control reuses the native Liveticker minute state and deli
   assert.match(css, /\.game-day-native-minute-field\{/);
 });
 
+
+
+test("structured actions expose only their matching sticker category and penalty follows the selected team", async () => {
+  const source = await read("js/liveticker-game-day.js");
+  assert.match(source, /kind === "goal"[\s\S]*?audience: "OUR_TEAM", category: "GOAL"/);
+  assert.match(source, /kind === "against"[\s\S]*?audience: "OPPONENT", category: "AGAINST"/);
+  assert.match(source, /model\.draft\?\.team === "opponent" \? "OPPONENT" : "OUR_TEAM"[\s\S]*?category: "PENALTY"/);
+  assert.match(source, /strictCategory: true/);
+  assert.match(source, />Passende Sticker<\/h3>/);
+  assert.doesNotMatch(source, /data-all-action-stickers|ALLE STICKER/);
+  assert.match(source, /model\.selectedStickerId = "";\s*renderMain\(\);\s*}\s*}\);/);
+});
 test("game mode selects existing flyer contexts without enqueueing until explicit creation", async () => {
   const [source, graphics] = await Promise.all([
     read("js/liveticker-game-day.js"),

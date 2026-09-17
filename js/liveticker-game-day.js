@@ -119,6 +119,8 @@ function initializeGameDay() {
     retryingDeliveries: new Set(),
     notice: "",
     messageDraft: "",
+    historyExpanded: false,
+    flyersExpanded: false,
   };
 
   function opponentPlayers() {
@@ -197,7 +199,10 @@ function initializeGameDay() {
   function renderHeader() {
     const header = gameDayHeaderModel({ state: model.state, game });
     return `<header class="game-day-topbar">
-      <a class="game-day-back" href="./">← Klassische Ansicht</a>
+      <nav class="game-day-nav" aria-label="Liveticker-Navigation">
+        <a class="game-day-back" href="../#/liveticker">← Liveticker</a>
+        <a class="game-day-mode-link" href="./">Klassische Ansicht</a>
+      </nav>
       <span class="game-day-live" data-state="${header.completed ? "final" : "live"}">${header.completed ? "SPIELENDE" : "● LIVE"}</span>
     </header>
     <section class="game-day-score-card" aria-label="Aktueller Spielstand">
@@ -237,10 +242,8 @@ function initializeGameDay() {
 
   function renderTimeline() {
     const timeline = gameDayTimeline(model.state.history, model.deliveries);
-    const items = [
-      ...timeline.filter(item => item.kind === "action").slice(0, 10),
-      ...timeline.filter(item => item.kind === "delivery").slice(0, 10)
-    ];
+    const items = model.historyExpanded ? timeline : timeline.slice(0, 3);
+    const canExpand = timeline.length > 3;
     return `<section class="game-day-card"><h2>Verlauf</h2><div class="game-day-timeline">
       ${items.length ? items.map(item => {
         if (item.kind === "action") {
@@ -256,17 +259,19 @@ function initializeGameDay() {
         const delivery = item.delivery;
         return `<article class="game-day-timeline-item"><div class="game-day-timeline-head"><span>${new Date(delivery.createdAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}</span><span>${escapeHtml(item.label)}</span></div><div class="game-day-component-row">${componentBadge("Sticker", delivery.stickerStatus, delivery)}${componentBadge("Text", delivery.textStatus, delivery)}</div><p class="game-day-muted">Keine Aktion</p>${manualRetryButton(delivery)}</article>`;
       }).join("") : '<p class="game-day-muted">Noch keine Aktionen oder Sticker-Versände.</p>'}
-    </div></section>`;
+    </div>${canExpand ? `<button class="game-day-collapse-toggle" type="button" data-toggle-history aria-expanded="${String(model.historyExpanded)}">${model.historyExpanded ? "Weniger anzeigen" : "Mehr anzeigen …"}</button>` : ""}</section>`;
   }
 
   function renderFlyerActions() {
     return `<section class="game-day-card game-day-flyers">
-      <h2>Flyer</h2>
-      <div class="game-day-flyer-actions">
+      <button class="game-day-section-toggle" type="button" data-toggle-flyers aria-expanded="${String(model.flyersExpanded)}">
+        <span>Flyer-Generator</span><span class="game-day-toggle-chevron" aria-hidden="true">⌄</span>
+      </button>
+      ${model.flyersExpanded ? `<div class="game-day-flyer-actions">
         <button class="game-day-secondary" type="button" data-game-day-graphic="PERIOD_1">1. DRITTEL</button>
         <button class="game-day-secondary" type="button" data-game-day-graphic="PERIOD_2">2. DRITTEL</button>
         <button class="game-day-primary" type="button" data-game-day-graphic="FINAL">SPIELENDE</button>
-      </div>
+      </div>` : ""}
     </section>`;
   }
 
@@ -331,11 +336,10 @@ function initializeGameDay() {
       ? { audience: "OUR_TEAM", category: "GOAL" }
       : kind === "against"
         ? { audience: "OPPONENT", category: "AGAINST" }
-        : { audience: "OUR_TEAM", category: "PENALTY" };
+        : { audience: model.draft?.team === "opponent" ? "OPPONENT" : "OUR_TEAM", category: "PENALTY" };
     const stickers = relevantStickers({ ...config, strictCategory: true });
     const sticker = selectedSticker();
-    return `<section><h3>Empfohlene Sticker</h3><div class="game-day-sticker-grid">${stickerGrid(stickers)}</div></section>
-      <button class="game-day-secondary" type="button" data-all-action-stickers>ALLE STICKER</button>
+    return `<section><h3>Passende Sticker</h3><div class="game-day-sticker-grid">${stickerGrid(stickers)}</div></section>
       ${sticker ? `<button class="game-day-primary" type="button" data-send-action-sticker>STICKER JETZT SENDEN</button>` : ""}
       ${deliveryStatusSlotHtml(model.draft?.deliveryId ? deliveryForId(model.draft.deliveryId) : null)}`;
   }
@@ -693,6 +697,16 @@ function initializeGameDay() {
       }
       return;
     }
+    if (button.matches("[data-toggle-history]")) {
+      model.historyExpanded = !model.historyExpanded;
+      renderMain();
+      return;
+    }
+    if (button.matches("[data-toggle-flyers]")) {
+      model.flyersExpanded = !model.flyersExpanded;
+      renderMain();
+      return;
+    }
     if (button.matches("[data-close-sheet]")) {
       closeSheet();
       return;
@@ -740,14 +754,6 @@ function initializeGameDay() {
     if (button.dataset.editAction) { editStructuredAction(button.dataset.editAction); return; }
     if (button.dataset.deleteAction) { deleteStructuredAction(button.dataset.deleteAction); return; }
     if (button.matches("[data-save-action]")) { saveStructuredAction(); return; }
-    if (button.matches("[data-all-action-stickers]")) {
-      captureDraft();
-      model.audience = model.draft.kind === "against" ? "OPPONENT" : "OUR_TEAM";
-      model.galleryReturn = model.draft.kind;
-      model.sheet = "stickers";
-      renderMain();
-      return;
-    }
     if (button.dataset.duration) {
       captureDraft();
       if (button.dataset.duration !== "other") model.draft.duration = button.dataset.duration;
@@ -777,6 +783,7 @@ function initializeGameDay() {
     if (event.target.matches("#gameDayPenaltyTeam")) {
       captureDraft();
       model.draft.player = "";
+      model.selectedStickerId = "";
       renderMain();
     }
   });

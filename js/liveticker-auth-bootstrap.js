@@ -10,7 +10,7 @@ try {
   } else {
     const app = document.getElementById("tickerApp");
     if (app && !isGameMode) app.hidden = false;
-    await import("./liveticker-bootstrap.js?v=20260917-history-actions-r1");
+    await import("./liveticker-bootstrap.js?v=20260917-game-day-compact-r1");
     await import("./liveticker-graphics-inline.js?v=20260916-game-day-r4");
   }
 } catch (error) {

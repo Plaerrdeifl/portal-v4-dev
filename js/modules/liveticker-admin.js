@@ -87,6 +87,7 @@ function ensureLivetickerAdminStyles() {
     .liveticker-graphic-template-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:18px}.liveticker-graphic-template-card{display:grid;gap:10px;padding:12px;border:1px solid #d9e2ec;border-radius:14px;background:#fff}.liveticker-graphic-template-card h3{margin:0;font-size:.95rem}.liveticker-graphic-template-card small{display:block;color:#60748a;font-size:.72rem}.liveticker-graphic-template-card code{font-size:.7rem;color:#38506a;word-break:break-all}.liveticker-graphic-grid{display:grid;gap:12px}.liveticker-graphic-card{display:grid;gap:10px}.liveticker-graphic-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.liveticker-graphic-card h3{margin:0;font-size:1rem}
     .liveticker-graphic-status{font-size:.72rem;font-weight:900;padding:5px 8px;border-radius:999px;background:#eef3f8;color:#38506a}.liveticker-graphic-status[data-status="SUCCEEDED"]{background:#e7f7ec;color:#16723a}.liveticker-graphic-status[data-status="PROCESSING"],.liveticker-graphic-status[data-status="QUEUED"]{background:#fff4d6;color:#8a5d00}.liveticker-graphic-status[data-status="FAILED"]{background:#fde8e8;color:#a22832}
     .liveticker-sticker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}.liveticker-sticker-card{display:grid;gap:10px;padding:12px;border:1px solid #d9e2ec;border-radius:15px;background:#fff}.liveticker-sticker-preview{display:grid;place-items:center;min-height:150px;border-radius:12px;background:linear-gradient(45deg,#f1f4f8 25%,transparent 25%),linear-gradient(-45deg,#f1f4f8 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#f1f4f8 75%),linear-gradient(-45deg,transparent 75%,#f1f4f8 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0}.liveticker-sticker-preview img{display:block;width:140px;height:140px;object-fit:contain}.liveticker-sticker-preview span{font-size:2rem}.liveticker-sticker-card h3{margin:0;font-size:.95rem}.liveticker-sticker-meta{display:flex;justify-content:space-between;gap:8px;color:#60748a;font-size:.7rem}.liveticker-sticker-state{font-weight:900}.liveticker-sticker-state[data-active="true"]{color:#16723a}.liveticker-sticker-state[data-active="false"]{color:#8a5d00}.liveticker-sticker-upload-preview{display:grid;place-items:center;min-height:180px;border:1px dashed #aebdcd;border-radius:13px;background:#f7faff}.liveticker-sticker-upload-preview img{display:block;width:160px;height:160px;object-fit:contain}
+    .liveticker-sticker-auto-team{display:grid;gap:3px;padding:10px 12px;border:1px solid #cbdced;border-radius:12px;background:#f7faff}.liveticker-sticker-auto-team span,.liveticker-sticker-auto-team small{color:#60748a;font-size:.72rem}.liveticker-sticker-auto-team strong{font-size:.88rem}
     @media(max-width:430px){.liveticker-graphics-summary,.liveticker-graphic-template-grid{grid-template-columns:1fr}.liveticker-sticker-grid{grid-template-columns:1fr 1fr}.liveticker-sticker-preview{min-height:120px}.liveticker-sticker-preview img{width:110px;height:110px}.v4-dialog .liveticker-admin-form{gap:12px!important}.v4-dialog .liveticker-admin-form input:not([type="checkbox"]),.v4-dialog .liveticker-admin-form select{min-height:50px!important}.v4-dialog .liveticker-admin-form textarea{min-height:220px!important}.v4-dialog .liveticker-admin-form .checkbox-row{min-height:48px!important}.liveticker-variable-chip{min-height:42px}}
   `;
   document.head.appendChild(style);
@@ -299,17 +300,22 @@ async function setWhatsappStickerActive(sticker) {
 
 function whatsappStickerCard(sticker) {
   const audience = { OUR_TEAM: "Unsere", OPPONENT: "Gegner", GENERAL: "Allgemein" }[sticker.audience] || "Allgemein";
-  const category = { GOAL: "Tor", AGAINST: "Gegentor", PENALTY: "Strafe", VIDEO_REVIEW: "Videobeweis", GENERAL: "Allgemein" }[sticker.category] || "Allgemein";
+  const category = { GOAL: "Tor", AGAINST: "Gegentor", PENALTY: "Strafe", GENERAL: "Allgemein" }[sticker.category] || "Allgemein";
   const opponent = (snapshot?.teams || []).find(team => team.id === sticker.opponentTeamId);
   return `<article class="liveticker-sticker-card"><div class="liveticker-sticker-preview">${sticker.previewDataUrl ? `<img src="${escapeAttr(sticker.previewDataUrl)}" alt="${escapeAttr(sticker.name)}">` : '<span aria-hidden="true">🖼</span>'}</div><div><h3>${escapeHtml(sticker.name)}</h3><div class="liveticker-sticker-meta"><span>${escapeHtml(`${sticker.width} × ${sticker.height} · ${stickerFileSize(sticker.fileSize)}`)}</span><span class="liveticker-sticker-state" data-active="${sticker.active ? "true" : "false"}">${sticker.active ? "Aktiv" : "Inaktiv"}</span></div><p class="subtle">${escapeHtml(`${audience}${opponent ? ` · ${opponent.shortName || opponent.name}` : ""} · ${category}`)}</p></div><div class="button-row"><button class="button small secondary" type="button" data-edit-sticker="${escapeAttr(sticker.id)}">Zuordnung</button><button class="button small secondary" type="button" data-toggle-sticker="${escapeAttr(sticker.id)}">${sticker.active ? "Deaktivieren" : "Aktivieren"}</button></div></article>`;
 }
 
 function openWhatsappStickerMetadata(sticker) {
-  const opponents = (snapshot?.teams || []).filter(team => team.active !== false && !team.homeClub);
+  const teams = snapshot?.teams || [];
+  const homeTeam = teams.find(team => team.active !== false && team.homeClub) || teams.find(team => team.homeClub) || null;
+  const homeTeamName = homeTeam?.shortName || homeTeam?.name || "Mighty Dogs";
+  const opponents = teams.filter(team => team.active !== false && !team.homeClub);
+  const isOpponent = sticker.audience === "OPPONENT";
+  const isOurTeam = sticker.audience === "OUR_TEAM";
   const dialog = openDialog({
     title: "Sticker zuordnen",
     kicker: "Liveticker · Spielmodus",
-    body: `<form class="liveticker-admin-form"><label>Zielgruppe<select name="audience"><option value="OUR_TEAM" ${sticker.audience === "OUR_TEAM" ? "selected" : ""}>Unsere</option><option value="OPPONENT" ${sticker.audience === "OPPONENT" ? "selected" : ""}>Gegner</option><option value="GENERAL" ${!sticker.audience || sticker.audience === "GENERAL" ? "selected" : ""}>Allgemein</option></select></label><label data-opponent-team>Gegnerteam<select name="opponentTeamId"><option value="">Team wählen</option>${opponents.map(team => `<option value="${escapeAttr(team.id)}" ${team.id === sticker.opponentTeamId ? "selected" : ""}>${escapeHtml(team.shortName || team.name)}</option>`).join("")}</select></label><label>Kategorie<select name="category"><option value="GOAL" ${sticker.category === "GOAL" ? "selected" : ""}>Tor</option><option value="AGAINST" ${sticker.category === "AGAINST" ? "selected" : ""}>Gegentor</option><option value="PENALTY" ${sticker.category === "PENALTY" ? "selected" : ""}>Strafe</option><option value="VIDEO_REVIEW" ${sticker.category === "VIDEO_REVIEW" ? "selected" : ""}>Videobeweis</option><option value="GENERAL" ${!sticker.category || sticker.category === "GENERAL" ? "selected" : ""}>Allgemein</option></select></label></form>`,
+    body: `<form class="liveticker-admin-form"><label>Zielgruppe<select name="audience"><option value="OUR_TEAM" ${isOurTeam ? "selected" : ""}>Unsere (Mighty Dogs)</option><option value="OPPONENT" ${isOpponent ? "selected" : ""}>Gegner</option><option value="GENERAL" ${!sticker.audience || sticker.audience === "GENERAL" ? "selected" : ""}>Allgemein</option></select></label><div class="liveticker-sticker-auto-team" data-own-team ${isOurTeam ? "" : "hidden"}><span>Team</span><strong>${escapeHtml(homeTeamName)}</strong><small>Wird bei Zielgruppe „Unsere“ automatisch zugewiesen.</small></div><label data-opponent-team ${isOpponent ? "" : "hidden"}>Gegnerteam<select name="opponentTeamId"><option value="">Team wählen</option>${opponents.map(team => `<option value="${escapeAttr(team.id)}" ${team.id === sticker.opponentTeamId ? "selected" : ""}>${escapeHtml(team.shortName || team.name)}</option>`).join("")}</select></label><label>Kategorie<select name="category"><option value="GOAL" ${sticker.category === "GOAL" ? "selected" : ""}>Tor</option><option value="AGAINST" ${sticker.category === "AGAINST" ? "selected" : ""}>Gegentor</option><option value="PENALTY" ${sticker.category === "PENALTY" ? "selected" : ""}>Strafe</option><option value="GENERAL" ${!sticker.category || sticker.category === "GENERAL" ? "selected" : ""}>Allgemein</option></select></label></form>`,
     submitLabel: "Zuordnung speichern",
     onSubmit: async values => {
       await runWrite(() => setWhatsappStickerMetadata({
@@ -324,7 +330,12 @@ function openWhatsappStickerMetadata(sticker) {
   });
   const audience = dialog.querySelector('select[name="audience"]');
   const opponent = dialog.querySelector("[data-opponent-team]");
-  const sync = () => { if (opponent) opponent.hidden = audience?.value !== "OPPONENT"; };
+  const ownTeam = dialog.querySelector("[data-own-team]");
+  const sync = () => {
+    const value = audience?.value || "GENERAL";
+    if (opponent) opponent.hidden = value !== "OPPONENT";
+    if (ownTeam) ownTeam.hidden = value !== "OUR_TEAM";
+  };
   audience?.addEventListener("change", sync);
   sync();
 }
