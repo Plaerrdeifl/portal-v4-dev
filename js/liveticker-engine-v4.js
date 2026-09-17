@@ -569,7 +569,7 @@ function initialize() {
     const score = calculateScore(state.history);
     mightyScore.textContent = String(score.mighty);
     opponentScore.textContent = String(score.opponent);
-    $("#actionGoalOpponentLabel").innerHTML = "🥅<br>Gegner";
+    $("#actionGoalOpponentLabel").innerHTML = '<span aria-hidden="true">🥅</span><span>Tor Gegner</span>';
     const opponentShootoutOption = shootoutTeam.querySelector("option[value='opponent']");
     if (opponentShootoutOption) opponentShootoutOption.textContent = opponent().shortName;
     const shootout = calculateShootout(state.history);

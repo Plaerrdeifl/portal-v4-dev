@@ -57,21 +57,18 @@ export function classicActionWhatsappStickers(stickers, {
       : [];
 }
 
-export function gameSituationWhatsappStickers(stickers, { opponentTeamId = "" } = {}) {
+export function situationWhatsappStickers(stickers, { opponentTeamId = "" } = {}) {
   const expectedOpponent = String(opponentTeamId || "").trim();
   return activeWhatsappStickers(stickers).filter(sticker => {
-    if (upper(sticker.category, "GENERAL") !== "GAME_SITUATION") return false;
+    if (["GOAL", "AGAINST", "PENALTY"].includes(upper(sticker.category, "GENERAL"))) return false;
     return upper(sticker.audience, "GENERAL") !== "OPPONENT"
       || String(sticker.opponentTeamId || "") === expectedOpponent;
   });
 }
 
-export function generalWhatsappStickers(stickers) {
-  return stickersFor(stickers, { audience: "GENERAL", category: "GENERAL" });
-}
-
-export function whatsappStickerDeliveryStatus(delivery) {
-  const status = upper(delivery?.stickerStatus, "NOT_REQUESTED");
+export function whatsappDeliveryComponentStatus(delivery, component) {
+  const field = upper(component) === "TEXT" ? "textStatus" : "stickerStatus";
+  const status = upper(delivery?.[field], "NOT_REQUESTED");
   if (status === "SENT") return Object.freeze({ label: "GESENDET ✓", tone: "success", retryable: false });
   if (status === "FAILED") {
     return Object.freeze({ label: "FEHLGESCHLAGEN – MANUELL EINGREIFEN", tone: "error", retryable: true });
@@ -81,4 +78,19 @@ export function whatsappStickerDeliveryStatus(delivery) {
   }
   if (status === "PENDING") return Object.freeze({ label: "WIRD GESENDET …", tone: "pending", retryable: false });
   return Object.freeze({ label: "NOCH NICHT GESENDET", tone: "muted", retryable: false });
+}
+
+export function whatsappStickerDeliveryStatus(delivery) {
+  return whatsappDeliveryComponentStatus(delivery, "STICKER");
+}
+
+export function whatsappTextDeliveryStatus(delivery) {
+  return whatsappDeliveryComponentStatus(delivery, "TEXT");
+}
+
+export function whatsappTextDeliveryForAction(deliveries, actionId) {
+  const expectedActionId = String(actionId || "").trim();
+  if (!expectedActionId || !Array.isArray(deliveries)) return null;
+  return deliveries.find(delivery => String(delivery?.linkedActionId || "") === expectedActionId
+    && upper(delivery?.textStatus, "NOT_REQUESTED") !== "NOT_REQUESTED") || null;
 }

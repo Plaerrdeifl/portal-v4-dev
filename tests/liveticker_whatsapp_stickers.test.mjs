@@ -6,9 +6,10 @@ import { attachWhatsappPublishIntent } from "../js/liveticker-whatsapp-publish.j
 import {
   activeWhatsappStickers,
   classicActionWhatsappStickers,
-  gameSituationWhatsappStickers,
-  generalWhatsappStickers,
-  whatsappStickerDeliveryStatus
+  situationWhatsappStickers,
+  whatsappStickerDeliveryStatus,
+  whatsappTextDeliveryForAction,
+  whatsappTextDeliveryStatus
 } from "../js/liveticker-whatsapp-sticker-core.js";
 import {
   deliverWhatsappJob,
@@ -71,11 +72,11 @@ test("edit and deletion never create a new WhatsApp publish intent", () => {
   assert.equal(edited.history[0]._whatsapp, undefined);
 });
 
-test("classic view sends contextual and standalone stickers through the existing STICKER_ONLY service", async () => {
+test("classic view sends contextual and Situation stickers through the existing STICKER_ONLY service", async () => {
   const publish = await read("js/liveticker-whatsapp-publish.js");
   assert.match(publish, /Aktionssticker/);
-  assert.match(publish, /Weitere Spielsticker/);
-  assert.match(publish, /Allgemeine Sticker/);
+  assert.match(publish, /Situationssticker/);
+  assert.doesNotMatch(publish, /Weitere Spielsticker|Allgemeine Sticker/);
   assert.match(publish, /createWhatsappStickerOnlyRequest/);
   assert.match(publish, /linkedActionId: null/);
   assert.match(publish, /linkWhatsappStickerDelivery/);
@@ -86,11 +87,16 @@ test("classic view sends contextual and standalone stickers through the existing
   assert.match(sendSticker, /if \(!state\?\.selectedStickerId \|\| state\.deliveryId \|\| state\.busy\) return/);
   assert.match(sendSticker, /state\.request \|\|= createWhatsappStickerOnlyRequest/);
   assert.match(sendSticker, /state\.request\.send\(\)/);
+  assert.doesNotMatch(sendSticker, /requestSubmit|state\.history|message\s*:/);
+
+  const submitHandler = publish.match(/form\?\.addEventListener\("submit"[\s\S]+?\}, \{ capture: true \}\);/)?.[0] || "";
+  assert.match(submitHandler, /selectedAction\(\) === "SITUATION"/);
+  assert.match(submitHandler, /event\.stopImmediatePropagation\(\)/);
 
   const saveHandler = publish.match(/window\.addEventListener\("pd-liveticker-state-saved"[\s\S]+?\n  \}\);/)?.[0] || "";
   assert.match(saveHandler, /attachWhatsappPublishIntent\(\{[\s\S]*enabled: control\?\.checked !== false\s*\}\)/);
   assert.doesNotMatch(saveHandler, /stickerId\s*:/);
-  assert.match(saveHandler, /pendingLinks\.set\(actionId, areas\.action\.deliveryId\)/);
+  assert.match(saveHandler, /areas\.action\.sourceAction !== "SITUATION"[\s\S]*pendingLinks\.set\(actionId, areas\.action\.deliveryId\)/);
   assert.match(publish, /linkWhatsappStickerDelivery\(\{ jobId, actionId \}\)/);
   assert.match(publish, /if \(!state\.request \|\| state\.deliveryId\) return/);
 });
@@ -114,7 +120,7 @@ test("classic action stickers are active and match the selected team/action cont
   assert.deepEqual(classicActionWhatsappStickers(stickers, { action: "PENALTY", opponentTeamId, penaltyTeams: ["mighty", "opponent"] }), []);
 });
 
-test("game-situation and general sticker shelves stay separate and opponent-aware", () => {
+test("Situation includes every active non-action category and remains opponent-aware", () => {
   const opponentTeamId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   const stickers = [
     { id: "game-own", active: true, audience: "OUR_TEAM", category: "GAME_SITUATION" },
@@ -122,13 +128,18 @@ test("game-situation and general sticker shelves stay separate and opponent-awar
     { id: "game-opponent", active: true, audience: "OPPONENT", category: "GAME_SITUATION", opponentTeamId },
     { id: "game-wrong-opponent", active: true, audience: "OPPONENT", category: "GAME_SITUATION", opponentTeamId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" },
     { id: "general", active: true, audience: "GENERAL", category: "GENERAL" },
+    { id: "video", active: true, audience: "GENERAL", category: "VIDEO_REVIEW" },
+    { id: "goal", active: true, audience: "OUR_TEAM", category: "GOAL" },
+    { id: "against", active: true, audience: "OPPONENT", category: "AGAINST", opponentTeamId },
+    { id: "penalty", active: true, audience: "OUR_TEAM", category: "PENALTY" },
     { id: "inactive-general", active: false, audience: "GENERAL", category: "GENERAL" }
   ];
-  assert.deepEqual(gameSituationWhatsappStickers(stickers, { opponentTeamId }).map(item => item.id), ["game-own", "game-general", "game-opponent"]);
-  assert.deepEqual(generalWhatsappStickers(stickers).map(item => item.id), ["general"]);
+  assert.deepEqual(situationWhatsappStickers(stickers, { opponentTeamId }).map(item => item.id), [
+    "game-own", "game-general", "game-opponent", "general", "video"
+  ]);
 });
 
-test("classic sticker status uses the persisted delivery component state", () => {
+test("classic sticker and text status use the persisted delivery component state", () => {
   assert.equal(whatsappStickerDeliveryStatus({ stickerStatus: "PENDING", attemptCount: 1 }).label, "WIRD GESENDET …");
   assert.equal(whatsappStickerDeliveryStatus({ stickerStatus: "PENDING", attemptCount: 2 }).label, "WIRD ERNEUT VERSUCHT …");
   assert.equal(whatsappStickerDeliveryStatus({ stickerStatus: "SENT" }).label, "GESENDET ✓");
@@ -137,6 +148,30 @@ test("classic sticker status uses the persisted delivery component state", () =>
     tone: "error",
     retryable: true
   });
+  assert.equal(whatsappTextDeliveryStatus({ textStatus: "PENDING", attemptCount: 1 }).label, "WIRD GESENDET …");
+  assert.equal(whatsappTextDeliveryStatus({ textStatus: "PENDING", attemptCount: 2 }).label, "WIRD ERNEUT VERSUCHT …");
+  assert.equal(whatsappTextDeliveryStatus({ textStatus: "SENT" }).label, "GESENDET ✓");
+  assert.equal(whatsappTextDeliveryStatus({ textStatus: "FAILED" }).retryable, true);
+});
+
+test("text delivery lookup ignores standalone stickers and uses the linked action", () => {
+  const stickerOnly = { id: "sticker", linkedActionId: "goal-1", textStatus: "NOT_REQUESTED" };
+  const otherText = { id: "other", linkedActionId: "goal-2", textStatus: "SENT" };
+  const goalText = { id: "text", linkedActionId: "goal-1", textStatus: "PENDING" };
+  assert.equal(whatsappTextDeliveryForAction([stickerOnly, otherText, goalText], "goal-1"), goalText);
+  assert.equal(whatsappTextDeliveryForAction([stickerOnly], "goal-1"), null);
+  assert.equal(whatsappTextDeliveryForAction(null, "goal-1"), null);
+});
+
+test("classic text delivery status follows linked outbox jobs and retries the same job", async () => {
+  const publish = await read("js/liveticker-whatsapp-publish.js");
+  assert.match(publish, /whatsappTextDeliveryForAction\(deliveries, textActionId\)/);
+  assert.match(publish, /whatsappTextDeliveryStatus\(delivery\)/);
+  assert.match(publish, /label\.textContent = `TEXT \$\{status\.label\}`/);
+  assert.match(publish, /delivery\.textStatus !== "FAILED"/);
+  assert.match(publish, /retryWhatsappDelivery\(\{ eventId: eventId\(\), jobId: delivery\.id \}\)/);
+  assert.match(publish, /if \(result\.attached && actionId\)[\s\S]*textActionId = actionId[\s\S]*textRequestPending = true/);
+  assert.doesNotMatch(publish, /createWhatsappDeliveryRequest|enqueueWhatsappDelivery/);
 });
 
 test("GAME_SITUATION is additive in client, admin and DEV migration contracts", async () => {

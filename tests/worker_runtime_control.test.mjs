@@ -39,7 +39,7 @@ test("Liveticker game mode keeps the live workflow compact and one-tap", async (
   assert.match(html, /id="opponentScoreName"[^>]*>Gast<\/span>/);
   assert.match(html, /class="status-bar"[\s\S]*id="segmentLabel"[\s\S]*id="graphicWorkerControl"/);
   assert.match(html, /class="action-grid"[\s\S]*actionGoalMighty[\s\S]*actionPenalty[\s\S]*actionGoalOpponent/);
-  assert.match(html, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(html, /grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
   assert.match(html, /id="assistDetails" class="assist-details"/);
   assert.match(html, /output-preview\{[^}]*overflow:visible/);
   assert.match(html, /input,select,textarea\{font-size:16px/);
@@ -55,7 +55,7 @@ test("Liveticker game mode keeps the live workflow compact and one-tap", async (
   assert.match(engine, /ordered\.slice\(0, 5\)/);
   assert.match(engine, /data-expand=/);
   assert.match(engine, /void copyCurrentOutput\(\)/);
-  assert.match(engine, /actionGoalOpponentLabel"\)\.innerHTML = "🥅<br>Gegner"/);
+  assert.match(engine, /actionGoalOpponentLabel"\)\.innerHTML = '<span aria-hidden="true">🥅<\/span><span>Tor Gegner<\/span>'/);
   assert.match(html, /id="primaryOutputButton"/);
   assert.match(html, /class="live-control-label">Spielstand<\/span>/);
   assert.match(html, /class="live-control-label" for="gameMinute">Spielminute<\/label>/);

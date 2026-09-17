@@ -31,13 +31,18 @@ test("dedicated game-day implementation files are removed", async () => {
   }
 });
 
-test("classic Liveticker owns the contextual and standalone sticker shelves", async () => {
-  const publish = await read("js/liveticker-whatsapp-publish.js");
+test("classic Liveticker owns contextual and Situation sticker sending", async () => {
+  const [html, publish] = await Promise.all([
+    read("liveticker/index.html"),
+    read("js/liveticker-whatsapp-publish.js")
+  ]);
   assert.match(publish, /actionGrid\?\.insertAdjacentElement\("afterend", actionPanel\)/);
   assert.match(publish, /Aktionssticker/);
-  assert.match(publish, /Weitere Spielsticker/);
-  assert.match(publish, /Allgemeine Sticker/);
+  assert.match(publish, /Situationssticker/);
+  assert.doesNotMatch(publish, /Weitere Spielsticker|Allgemeine Sticker/);
   assert.match(publish, /Sticker sofort senden/);
   assert.match(publish, /createWhatsappStickerOnlyRequest/);
+  assert.match(html, /value="GOAL_MIGHTY"[\s\S]*Tor Dogs[\s\S]*value="PENALTY"[\s\S]*Strafe[\s\S]*value="GOAL_OPPONENT"[\s\S]*Tor Gegner[\s\S]*value="SITUATION"[\s\S]*Situation/);
+  assert.match(html, /\.action-grid\{[^}]*grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
   assert.doesNotMatch(publish, /mode=game-day|liveticker-game-day/i);
 });
