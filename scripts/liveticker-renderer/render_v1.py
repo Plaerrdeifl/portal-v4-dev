@@ -107,6 +107,7 @@ def inject_logo(root,id_,path:Path):
     w=h*src_w/src_h
     x=cx-w/2; y=cy-h/2
     img=ET.Element(q('image'),{
+        'id':f'{id_}_image',
         'x':f'{x:.6f}','y':f'{y:.6f}','width':f'{w:.6f}','height':f'{h:.6f}',
         'preserveAspectRatio':'xMidYMid meet','href':data_uri(path)
     })
@@ -330,7 +331,7 @@ def place_story_goal_block(root,ids):
     # after the SVG has been written and Inkscape can report real glyph bounds.
     fit_goal_font_width(root,ids,canvas_w-2*margin)
 
-def query_svg_bounds(svg:Path,outdir:Path,ids):
+def query_svg_bounds_map(svg:Path,outdir:Path,ids):
     cmd=[
         'docker','run','--rm','--network','none','--cap-drop=ALL','--security-opt=no-new-privileges',
         '--pids-limit=128','--user',f'{os.getuid()}:{os.getgid()}','-e','HOME=/tmp',
@@ -339,7 +340,7 @@ def query_svg_bounds(svg:Path,outdir:Path,ids):
     ]
     r=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,timeout=90)
     if r.returncode: raise RuntimeError(f'inkscape query failed: {r.stderr[-800:]}')
-    wanted=set(ids); bounds=[]
+    wanted=set(ids); bounds={}
     for raw in r.stdout.splitlines():
         parts=raw.rsplit(',',4)
         if len(parts)!=5 or parts[0] not in wanted: continue
@@ -347,9 +348,81 @@ def query_svg_bounds(svg:Path,outdir:Path,ids):
             x,y,w,h=map(float,parts[1:])
         except ValueError:
             continue
-        if w>0 and h>0: bounds.append((x,y,x+w,y+h))
+        if w>0 and h>0: bounds[parts[0]]=(x,y,x+w,y+h)
+    return bounds
+
+def query_svg_bounds(svg:Path,outdir:Path,ids):
+    bounds=list(query_svg_bounds_map(svg,outdir,ids).values())
     if not bounds: return None
     return min(v[0] for v in bounds),min(v[1] for v in bounds),max(v[2] for v in bounds),max(v[3] for v in bounds)
+
+def ensure_score_separator_id(root):
+    separator=find(root,'score_separator')
+    if separator is not None: return separator
+    for node in root.iter(q('text')):
+        if ''.join(node.itertext()).strip()==':':
+            node.set('id','score_separator')
+            return node
+    raise RuntimeError('missing score separator')
+
+def center_score_exact(root,tree,svg:Path,outdir:Path,fmt):
+    separator=ensure_score_separator_id(root)
+    tree.write(svg,encoding='utf-8',xml_declaration=True)
+    ids=['home_score','score_separator','away_score']
+    bounds=query_svg_bounds_map(svg,outdir,ids)
+    if any(id_ not in bounds for id_ in ids):
+        raise RuntimeError('score geometry query failed')
+    home=bounds['home_score']; sep=bounds['score_separator']; away=bounds['away_score']
+    target_x=EXPECTED[fmt][0]/2.0
+    target_y=((home[1]+home[3])/2.0+(away[1]+away[3])/2.0)/2.0
+    left_gap=max(0.0,sep[0]-home[2])
+    right_gap=max(0.0,away[0]-sep[2])
+    gap=(left_gap+right_gap)/2.0
+    dx_sep=target_x-(sep[0]+sep[2])/2.0
+    dy_sep=target_y-(sep[1]+sep[3])/2.0
+    shift_x(separator,dx_sep)
+    shift_y(separator,dy_sep)
+    sep=(sep[0]+dx_sep,sep[1]+dy_sep,sep[2]+dx_sep,sep[3]+dy_sep)
+    shift_x(find(root,'home_score'),(sep[0]-gap)-home[2])
+    shift_x(find(root,'away_score'),(sep[2]+gap)-away[0])
+    tree.write(svg,encoding='utf-8',xml_declaration=True)
+
+    checked=query_svg_bounds_map(svg,outdir,ids)
+    if any(id_ not in checked for id_ in ids):
+        raise RuntimeError('score geometry verification failed')
+    home=checked['home_score']; sep=checked['score_separator']; away=checked['away_score']
+    sep_cx=(sep[0]+sep[2])/2.0
+    score_cy=((home[1]+home[3])/2.0+(away[1]+away[3])/2.0)/2.0
+    sep_cy=(sep[1]+sep[3])/2.0
+    left_gap=sep[0]-home[2]
+    right_gap=away[0]-sep[2]
+    if abs(sep_cx-target_x)>0.75 or abs(left_gap-right_gap)>0.75 or abs(sep_cy-score_cy)>0.75:
+        raise RuntimeError('score geometry verification failed')
+
+def equalize_logo_edge_margins_exact(root,tree,svg:Path,outdir:Path,fmt):
+    ids=['logo_home_image','logo_away_image']
+    bounds=query_svg_bounds_map(svg,outdir,ids)
+    if any(id_ not in bounds for id_ in ids):
+        raise RuntimeError('logo geometry query failed')
+    home=bounds['logo_home_image']; away=bounds['logo_away_image']
+    canvas_w=float(EXPECTED[fmt][0])
+    left_margin=home[0]
+    right_margin=canvas_w-away[2]
+    dx=(right_margin-left_margin)/2.0
+    shift_x(find(root,'logo_home_image'),dx)
+    shift_x(find(root,'logo_away_image'),dx)
+    tree.write(svg,encoding='utf-8',xml_declaration=True)
+
+    checked=query_svg_bounds_map(svg,outdir,ids)
+    if any(id_ not in checked for id_ in ids):
+        raise RuntimeError('logo geometry verification failed')
+    home=checked['logo_home_image']; away=checked['logo_away_image']
+    left_margin=home[0]
+    right_margin=canvas_w-away[2]
+    home_h=home[3]-home[1]
+    away_h=away[3]-away[1]
+    if abs(left_margin-right_margin)>0.75 or abs(home_h-away_h)>0.75:
+        raise RuntimeError('logo geometry verification failed')
 
 def center_story_goal_block_exact(root,tree,svg:Path,outdir:Path,ids):
     bounds=query_svg_bounds(svg,outdir,ids)
@@ -473,6 +546,8 @@ def render_one(state,kind,fmt,outdir):
     inject_logo(root,'logo_home',Path(home_team['logoPath'])); inject_logo(root,'logo_away',Path(away_team['logoPath']))
     stem=f"{kind.lower()}-{fmt.lower()}"; svg=outdir/f'{stem}.svg'; png=outdir/f'{stem}.png'
     tree.write(svg,encoding='utf-8',xml_declaration=True)
+    center_score_exact(root,tree,svg,outdir,fmt)
+    equalize_logo_edge_margins_exact(root,tree,svg,outdir,fmt)
     if fmt=='STORY' and lines:
         center_story_goal_block_exact(root,tree,svg,outdir,visible_goal_ids(root))
     cmd=['docker','run','--rm','--network','none','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=256','--user',f'{os.getuid()}:{os.getgid()}','-e','HOME=/tmp','-v',f'{outdir}:/work','-v',f'{FONT_DIR}:/usr/share/fonts/truetype/plaerrdeifl:ro','--entrypoint','inkscape',RENDERER,f'/work/{svg.name}','--export-type=png',f'--export-filename=/work/{png.name}']
