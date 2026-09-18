@@ -21,6 +21,8 @@ TEMPLATES={
 EXPECTED={'POST':(1254,1254),'STORY':(941,1672)}
 BACKGROUND={'POST':ROOT/'assets/backgrounds/post-background.jpg','STORY':ROOT/'assets/backgrounds/story-background.jpg'}
 LOGO_HEIGHT={'POST':250.0,'STORY':200.0}
+STORY_LOGO_EDGE_MIN=20.0
+STORY_SCORE_LOGO_GAP=20.0
 LOGO_TRIMMER=Path(__file__).with_name('trim_logo.py')
 OUR={'mighty','our','mighty_dogs','home_club'}
 OPP={'opponent','away','guest','other'}
@@ -381,22 +383,61 @@ def align_score_and_logos_exact(root,tree,svg:Path,outdir:Path,fmt):
     target_y=((home[1]+home[3])/2.0+(away[1]+away[3])/2.0)/2.0
     left_gap=max(0.0,sep[0]-home[2])
     right_gap=max(0.0,away[0]-sep[2])
-    gap=(left_gap+right_gap)/2.0
+    desired_gap=(left_gap+right_gap)/2.0
     dx_sep=target_x-(sep[0]+sep[2])/2.0
     dy_sep=target_y-(sep[1]+sep[3])/2.0
     shift_x(separator,dx_sep)
     shift_y(separator,dy_sep)
     shifted_sep=(sep[0]+dx_sep,sep[1]+dy_sep,sep[2]+dx_sep,sep[3]+dy_sep)
-    shift_x(find(root,'home_score'),(shifted_sep[0]-gap)-home[2])
-    shift_x(find(root,'away_score'),(shifted_sep[2]+gap)-away[0])
 
     logo_home=bounds['logo_home_image']; logo_away=bounds['logo_away_image']
     canvas_w=float(EXPECTED[fmt][0])
     left_margin=logo_home[0]
     right_margin=canvas_w-logo_away[2]
     logo_dx=(right_margin-left_margin)/2.0
-    shift_x(find(root,'logo_home_image'),logo_dx)
-    shift_x(find(root,'logo_away_image'),logo_dx)
+
+    if fmt!='STORY':
+        # POST intentionally keeps the existing geometry unchanged.
+        shift_x(find(root,'home_score'),(shifted_sep[0]-desired_gap)-home[2])
+        shift_x(find(root,'away_score'),(shifted_sep[2]+desired_gap)-away[0])
+        shift_x(find(root,'logo_home_image'),logo_dx)
+        shift_x(find(root,'logo_away_image'),logo_dx)
+        tree.write(svg,encoding='utf-8',xml_declaration=True)
+        return
+
+    # STORY: keep equal edge margins, but move both logos outward when a
+    # two-digit score needs more room. Only after that compress the equal
+    # score-to-colon gap as much as necessary. This preserves the centered
+    # colon and equal score spacing without ever pushing a score into a logo.
+    equal_edge_margin=(left_margin+right_margin)/2.0
+    equal_home_right=logo_home[2]+logo_dx
+    equal_away_left=logo_away[0]+logo_dx
+    home_width=home[2]-home[0]
+    away_width=away[2]-away[0]
+
+    desired_home_left=shifted_sep[0]-desired_gap-home_width
+    desired_away_right=shifted_sep[2]+desired_gap+away_width
+    need_home=max(0.0,equal_home_right+STORY_SCORE_LOGO_GAP-desired_home_left)
+    need_away=max(0.0,desired_away_right+STORY_SCORE_LOGO_GAP-equal_away_left)
+    max_outward=max(0.0,equal_edge_margin-STORY_LOGO_EDGE_MIN)
+    outward=min(max(need_home,need_away),max_outward)
+
+    home_logo_dx=logo_dx-outward
+    away_logo_dx=logo_dx+outward
+    final_home_right=logo_home[2]+home_logo_dx
+    final_away_left=logo_away[0]+away_logo_dx
+
+    max_gap_left=shifted_sep[0]-home_width-(final_home_right+STORY_SCORE_LOGO_GAP)
+    max_gap_right=(final_away_left-STORY_SCORE_LOGO_GAP)-away_width-shifted_sep[2]
+    available_gap=min(max_gap_left,max_gap_right)
+    if available_gap<0:
+        raise RuntimeError('story score does not fit between logos')
+    gap=min(desired_gap,available_gap)
+
+    shift_x(find(root,'home_score'),(shifted_sep[0]-gap)-home[2])
+    shift_x(find(root,'away_score'),(shifted_sep[2]+gap)-away[0])
+    shift_x(find(root,'logo_home_image'),home_logo_dx)
+    shift_x(find(root,'logo_away_image'),away_logo_dx)
     tree.write(svg,encoding='utf-8',xml_declaration=True)
 
 def bounds_union(bounds_by_id,ids):
@@ -408,9 +449,25 @@ def bounds_union(bounds_by_id,ids):
     )
 
 def center_story_goal_block_exact(root,tree,svg:Path,outdir:Path,ids):
-    bounds_by_id=query_svg_bounds_map(svg,outdir,ids)
+    layout_ids=[
+        *ids,
+        'home_score','score_separator','away_score',
+        'logo_home_image','logo_away_image','footer',
+    ]
+    bounds_by_id=query_svg_bounds_map(svg,outdir,layout_ids)
     bounds=bounds_union(bounds_by_id,ids)
     if bounds is None: return
+
+    required=['home_score','score_separator','away_score','logo_home_image','logo_away_image','footer']
+    if any(id_ not in bounds_by_id for id_ in required):
+        raise RuntimeError('story goal area geometry query failed')
+
+    score_region_bottom=max(bounds_by_id[id_][3] for id_ in required[:-1])
+    footer_top=bounds_by_id['footer'][1]
+    if footer_top<=score_region_bottom:
+        raise RuntimeError('story goal area invalid')
+    target_y=(score_region_bottom+footer_top)/2.0
+
     left,top,right,bottom=bounds
     max_width=941.0-84.0
     width=right-left
@@ -421,18 +478,19 @@ def center_story_goal_block_exact(root,tree,svg:Path,outdir:Path,ids):
             default=46.0 if id_=='our_goals_heading' else 36.0
             set_font_size_px(e,font_size_px(e,default)*factor)
         tree.write(svg,encoding='utf-8',xml_declaration=True)
-        bounds_by_id=query_svg_bounds_map(svg,outdir,ids)
-        bounds=bounds_union(bounds_by_id,ids)
+        goal_bounds=query_svg_bounds_map(svg,outdir,ids)
+        bounds=bounds_union(goal_bounds,ids)
         if bounds is None: return
+        for id_,value in goal_bounds.items():
+            bounds_by_id[id_]=value
         left,top,right,bottom=bounds
 
-    # Keep the existing scorer layout semantics: center the scorer lines as
-    # one content block and the heading independently above that block.
+    # Keep the existing horizontal scorer layout semantics: center the scorer
+    # lines as one content block and the heading independently above them.
     line_ids=[id_ for id_ in ids if id_.startswith('our_goals_line_')]
     line_bounds=bounds_union(bounds_by_id,line_ids)
     heading_bounds=bounds_by_id.get('our_goals_heading')
     target_x=941.0/2.0
-    target_y=930.0
     if line_bounds is not None:
         ll,lt,lr,lb=line_bounds
         dx_lines=target_x-(ll+lr)/2.0
@@ -444,9 +502,8 @@ def center_story_goal_block_exact(root,tree,svg:Path,outdir:Path,ids):
     else:
         shift_goal_block(root,ids,target_x-(left+right)/2.0,0.0)
 
-    # Horizontal shifts do not change vertical glyph bounds, so the exact
-    # vertical centering can use the same measured bounds without another
-    # expensive Inkscape query.
+    # Vertically center the complete visible "UNSERE TORE" block in the
+    # actual free STORY area between the score/logo row and the homepage footer.
     shift_goal_block(root,ids,0.0,target_y-(top+bottom)/2.0)
     tree.write(svg,encoding='utf-8',xml_declaration=True)
 
