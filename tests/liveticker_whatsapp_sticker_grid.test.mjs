@@ -26,7 +26,7 @@ test("sticker grid cache marker is propagated through the liveticker module chai
     read("js/liveticker-auth-bootstrap.js"),
     read("js/liveticker-bootstrap.js")
   ]);
-  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260918-direct-whatsapp-intent-r1/);
-  assert.match(auth, /liveticker-bootstrap\.js\?v=20260918-direct-whatsapp-intent-r1/);
-  assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260918-direct-whatsapp-intent-r1/);
+  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260918-penalty-shot-r1/);
+  assert.match(auth, /liveticker-bootstrap\.js\?v=20260918-penalty-shot-r1/);
+  assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260918-penalty-shot-r1/);
 });

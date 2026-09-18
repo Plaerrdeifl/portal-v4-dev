@@ -197,6 +197,8 @@ function startBrowserIntegration() {
   const eventId = () => String(globalThis.PD_LIVETICKER_GAME_CONTEXT?.eventId || "").trim();
   const opponentTeamId = () => String(globalThis.PD_LIVETICKER_GAME_CONTEXT?.opponentTeam?.id || "").trim();
   const selectedAction = () => String(document.querySelector('input[name="action"]:checked')?.value || "");
+  const penaltyShotSituationSelected = () => selectedAction() === "SITUATION"
+    && Boolean(document.getElementById("situationPenaltyShot")?.checked);
   const penaltyTeams = () => [...document.querySelectorAll('#penaltyRows [data-field="team"]')]
     .map(select => String(select.value || ""));
   const actionStickerBlockedByEdit = () => {
@@ -398,9 +400,9 @@ function startBrowserIntegration() {
   }
 
   function syncActionModeUi() {
-    const situation = selectedAction() === "SITUATION";
+    const situationStickerOnly = selectedAction() === "SITUATION" && !penaltyShotSituationSelected();
     const submitRow = document.getElementById(SUBMIT_ROW_ID);
-    if (submitRow) submitRow.hidden = situation;
+    if (submitRow) submitRow.hidden = situationStickerOnly;
   }
 
   async function refreshDeliveries() {
@@ -567,7 +569,7 @@ function startBrowserIntegration() {
 
   const form = document.querySelector("#tickerForm");
   form?.addEventListener("submit", event => {
-    if (selectedAction() === "SITUATION") {
+    if (selectedAction() === "SITUATION" && !penaltyShotSituationSelected()) {
       event.preventDefault();
       event.stopImmediatePropagation();
       return;
@@ -585,7 +587,7 @@ function startBrowserIntegration() {
     }
   }, { capture: true });
   form?.addEventListener("change", event => {
-    if (event.target.name === "action" || event.target.matches?.('#penaltyRows [data-field="team"]')) {
+    if (event.target.name === "action" || event.target.name === "situationType" || event.target.matches?.('#penaltyRows [data-field="team"]')) {
       if (event.target.name === "action") {
         resetTextDeliveryStatus();
         if (!areas.action.request && !areas.action.deliveryId) {
@@ -601,6 +603,11 @@ function startBrowserIntegration() {
   const editingBanner = document.getElementById("editingBanner");
   if (editingBanner) new MutationObserver(() => renderArea("action"))
     .observe(editingBanner, { attributes: true, attributeFilter: ["hidden"] });
+
+  window.addEventListener("pd-liveticker-action-mode-changed", () => {
+    syncActionModeUi();
+    renderArea("action");
+  });
 
   window.addEventListener("pd-liveticker-whatsapp-runtime", event => {
     transportRuntime = event.detail || { ready: false, wa: null, wpp: null };
