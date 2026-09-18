@@ -198,20 +198,6 @@ async function storageDelete(config: RuntimeConfig, objectName: string) {
   } catch { /* best-effort upload rollback */ }
 }
 
-async function storageDeleteManaged(config: RuntimeConfig, objectName: string) {
-  try {
-    const response = await fetch(`${config.supabaseUrl}/storage/v1/object/${BUCKET}/${encodedObjectName(objectName)}`, {
-      method: "DELETE",
-      headers: { apikey: config.serviceRoleKey },
-      signal: AbortSignal.timeout(10_000)
-    });
-    await response.body?.cancel();
-    return response.ok || response.status === 404;
-  } catch {
-    return false;
-  }
-}
-
 function stickerSlug(name: string, id: string) {
   const base = name.normalize("NFKD").replace(/ß/g, "ss").replace(/[\u0300-\u036f]/g, "")
     .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48).replace(/-+$/g, "") || "sticker";
@@ -361,18 +347,21 @@ async function removeSticker(config: RuntimeConfig, token: string, request: Requ
       p_sticker_id: stickerId
     });
   } catch {
-    return fail(409, "STICKER_DELETE_FAILED", "Der Sticker wird bereits verwendet oder konnte nicht gelöscht werden.", true);
+    return fail(409, "STICKER_DELETE_FAILED", "Der Sticker konnte nicht gelöscht werden.", true);
   }
 
   if (deleted.deleted !== true
-      || String(deleted.stickerId || "") !== stickerId
-      || String(deleted.storagePath || "") !== storagePath) {
+      || deleted.archived !== true
+      || deleted.assetRetained !== true
+      || String(deleted.stickerId || "") !== stickerId) {
     return fail(500, "STICKER_DELETE_FAILED", "Der Sticker konnte nicht sicher gelöscht werden.", true);
   }
 
-  const storageDeleted = await storageDeleteManaged(config, storagePath);
-  if (!storageDeleted) console.warn("Sticker metadata deleted but storage cleanup failed", { stickerId });
-  return jsonResponse(200, { ok: true, data: { deleted: true, stickerId, storageDeleted } }, true);
+  return jsonResponse(200, {
+    ok: true,
+    data: { deleted: true, archived: true, stickerId, assetRetained: true }
+  }, true);
+
 }
 
 Deno.serve(async request => {

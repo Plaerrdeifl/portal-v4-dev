@@ -25,7 +25,7 @@ import {
   renameWhatsappSticker,
   setWhatsappStickerMetadata,
   validateWhatsappStickerSourceFile
-} from "../liveticker-whatsapp-stickers.js?v=20260918-sticker-admin-r1";
+} from "../liveticker-whatsapp-stickers.js?v=20260918-sticker-admin-r2";
 
 let snapshot = null;
 let archiveSnapshot = null;
@@ -311,7 +311,7 @@ function whatsappStickerCard(sticker) {
     GENERAL: "Allgemein"
   }[sticker.category] || "Allgemein";
   const opponent = (snapshot?.teams || []).find(team => team.id === sticker.opponentTeamId);
-  return `<article class="liveticker-sticker-card"><div class="liveticker-sticker-preview">${sticker.previewDataUrl ? `<img src="${escapeAttr(sticker.previewDataUrl)}" alt="${escapeAttr(sticker.name)}">` : '<span aria-hidden="true">🖼</span>'}</div><div><h3>${escapeHtml(sticker.name)}</h3><div class="liveticker-sticker-meta"><span>${escapeHtml(`${sticker.width} × ${sticker.height} · ${stickerFileSize(sticker.fileSize)}`)}</span><span class="liveticker-sticker-state" data-active="${sticker.active ? "true" : "false"}">${sticker.active ? "Aktiv" : "Inaktiv"}</span></div><p class="subtle">${escapeHtml(`${audience}${opponent ? ` · ${opponent.shortName || opponent.name}` : ""} · ${category}`)}</p></div><div class="button-row"><button class="button small secondary" type="button" data-rename-sticker="${escapeAttr(sticker.id)}">Umbenennen</button><button class="button small secondary" type="button" data-edit-sticker="${escapeAttr(sticker.id)}">Zuordnung</button><button class="button small secondary" type="button" data-toggle-sticker="${escapeAttr(sticker.id)}">${sticker.active ? "Deaktivieren" : "Aktivieren"}</button><button class="button small danger" type="button" data-delete-sticker="${escapeAttr(sticker.id)}" ${sticker.canDelete === false ? 'disabled title="Bereits verwendete Sticker können nicht gelöscht werden."' : ""}>Löschen</button></div></article>`;
+  return `<article class="liveticker-sticker-card"><div class="liveticker-sticker-preview">${sticker.previewDataUrl ? `<img src="${escapeAttr(sticker.previewDataUrl)}" alt="${escapeAttr(sticker.name)}">` : '<span aria-hidden="true">🖼</span>'}</div><div><h3>${escapeHtml(sticker.name)}</h3><div class="liveticker-sticker-meta"><span>${escapeHtml(`${sticker.width} × ${sticker.height} · ${stickerFileSize(sticker.fileSize)}`)}</span><span class="liveticker-sticker-state" data-active="${sticker.active ? "true" : "false"}">${sticker.active ? "Aktiv" : "Inaktiv"}</span></div><p class="subtle">${escapeHtml(`${audience}${opponent ? ` · ${opponent.shortName || opponent.name}` : ""} · ${category}`)}</p></div><div class="button-row"><button class="button small secondary" type="button" data-rename-sticker="${escapeAttr(sticker.id)}">Umbenennen</button><button class="button small secondary" type="button" data-edit-sticker="${escapeAttr(sticker.id)}">Zuordnung</button><button class="button small secondary" type="button" data-toggle-sticker="${escapeAttr(sticker.id)}">${sticker.active ? "Deaktivieren" : "Aktivieren"}</button><button class="button small danger" type="button" data-delete-sticker="${escapeAttr(sticker.id)}">Löschen</button></div></article>`;
 }
 
 function openWhatsappStickerRename(sticker) {
@@ -332,12 +332,8 @@ function openWhatsappStickerRename(sticker) {
 }
 
 async function removeWhatsappSticker(sticker) {
-  if (sticker.canDelete === false) {
-    showToast("Dieser Sticker wurde bereits verwendet und kann deshalb nicht gelöscht werden.", "error", 6500);
-    return;
-  }
   const confirmed = await confirmAction(
-    `Sticker „${sticker.name}“ wirklich löschen? Die Sticker-Datei wird dauerhaft entfernt.`,
+    `Sticker „${sticker.name}“ wirklich löschen? Er verschwindet aus der Sticker-Verwaltung. Bereits vorhandene Versandhistorien bleiben erhalten.`,
     { title: "Sticker löschen?", submitLabel: "Sticker löschen", danger: true }
   );
   if (!confirmed) return;
