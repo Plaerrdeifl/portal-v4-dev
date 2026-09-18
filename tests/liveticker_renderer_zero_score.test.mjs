@@ -129,8 +129,9 @@ test("Liveticker renderer normalizes logo assets before rendering POST and STORY
 test("Liveticker renderer centers goal block only for STORY and keeps POST template positions", () => {
   const source = readFileSync(resolve("scripts/liveticker-renderer/render_v1.py"), "utf8");
   assert.match(source, /apply_goal_block\(root,lines,fmt\)/);
-  assert.match(source, /if fmt==\'STORY\' and lines: center_goal_block\(root,lines\)/);
-  assert.doesNotMatch(source, /apply_lines\(root,lines\); center_goal_block\(root,lines\)/);
+  assert.match(source, /if fmt==\'STORY\' and lines:/);
+  assert.match(source, /center_story_goal_block_exact\(root,tree,svg,outdir,visible_goal_ids\(root\)\)/);
+  assert.match(source, /if fmt!='STORY':[\s\S]*POST intentionally keeps the existing geometry unchanged/);
 });
 test("Liveticker renderer vertically centers the visible goal block in the template goal area", () => {
   const renderer = resolve("scripts/liveticker-renderer/render_v1.py");
@@ -154,4 +155,21 @@ assert abs(float(module.find(root2,"our_goals_heading").get("y"))-350.0)<0.00000
 `;
   const result = spawnSync("python3", ["-c", source, renderer], { encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr || result.stdout);
+});
+
+
+test("STORY score layout protects logos and keeps equal score-to-colon spacing", () => {
+  const source = readFileSync(resolve("scripts/liveticker-renderer/render_v1.py"), "utf8");
+  assert.match(source, /STORY_LOGO_EDGE_MIN=20\.0/);
+  assert.match(source, /STORY_SCORE_LOGO_GAP=20\.0/);
+  assert.match(source, /gap=min\(desired_gap,available_gap\)/);
+  assert.match(source, /home_logo_dx=logo_dx-outward/);
+  assert.match(source, /away_logo_dx=logo_dx\+outward/);
+});
+
+test("STORY goal block is vertically centered between score row and footer", () => {
+  const source = readFileSync(resolve("scripts/liveticker-renderer/render_v1.py"), "utf8");
+  assert.match(source, /score_region_bottom=max\(/);
+  assert.match(source, /footer_top=bounds_by_id\['footer'\]\[1\]/);
+  assert.match(source, /target_y=\(score_region_bottom\+footer_top\)\/2\.0/);
 });
