@@ -226,6 +226,13 @@ export function shouldCopyLivetickerOutput({ whatsappEnabled, transportReady }) 
   return !(Boolean(whatsappEnabled) && Boolean(transportReady));
 }
 
+export function attachSubmitWhatsappIntent(tickerEvent, text, { editingId = null, enabled = false } = {}) {
+  const message = String(text ?? "");
+  if (!tickerEvent || editingId || !enabled || !message.trim() || message.length > 4000) return false;
+  tickerEvent._whatsapp = Object.freeze({ publish: true, text: message });
+  return true;
+}
+
 export function applyTickerSubmitLifecycle(state, editingId, tickerEvent) {
   const index = editingId ? state.history.findIndex(item => item.id === editingId) : -1;
   if (index >= 0) state.history.splice(index, 1, tickerEvent);
@@ -1001,8 +1008,13 @@ function initialize() {
       if (!output.value.trim()) throw new Error("Der Vorschautext darf nicht leer sein.");
 
       const runtime = globalThis.PD_LIVETICKER_WHATSAPP_RUNTIME;
+      const whatsappEnabled = !editingId && whatsappAutoSendReady();
+      attachSubmitWhatsappIntent(tickerEvent, output.value, {
+        editingId,
+        enabled: whatsappEnabled
+      });
       const copyAfterSave = shouldCopyLivetickerOutput({
-        whatsappEnabled: !editingId && whatsappAutoSendReady(),
+        whatsappEnabled,
         transportReady: Boolean(runtime?.ready)
       });
 
