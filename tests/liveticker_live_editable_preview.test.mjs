@@ -66,7 +66,7 @@ test("submit sends when WhatsApp is ready and otherwise copies exactly the curre
   const engine = await read("js/liveticker-engine-v4.js");
   const submit = engine.match(/form\.addEventListener\("submit",[\s\S]*?\n  \}\);/)?.[0] || "";
   assert.match(submit, /const copyAfterSave = shouldCopyLivetickerOutput/);
-  assert.match(submit, /whatsappEnabled: !editingId && Boolean\(whatsappControl\?\.checked\)/);
+  assert.match(submit, /whatsappEnabled: !editingId/);
   assert.match(submit, /if \(copyAfterSave\) \{[\s\S]*void copyCurrentOutput\(\);[\s\S]*\} else \{[\s\S]*Wird an WhatsApp gesendet/);
   assert.doesNotMatch(submit, /setOutput\(formatEventText/);
 });

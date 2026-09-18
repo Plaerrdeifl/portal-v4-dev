@@ -733,9 +733,8 @@ function initialize() {
   }
 
   function whatsappAutoSendReady() {
-    const control = document.getElementById("livetickerWhatsappPublish");
     const runtime = globalThis.PD_LIVETICKER_WHATSAPP_RUNTIME;
-    return Boolean(control?.checked) && Boolean(runtime?.ready);
+    return Boolean(runtime?.ready);
   }
 
   function syncSubmitModeLabel() {
@@ -1000,10 +999,9 @@ function initialize() {
       if (!outputManuallyEdited) setOutput(draftOutputText(tickerEvent));
       if (!output.value.trim()) throw new Error("Der Vorschautext darf nicht leer sein.");
 
-      const whatsappControl = document.getElementById("livetickerWhatsappPublish");
       const runtime = globalThis.PD_LIVETICKER_WHATSAPP_RUNTIME;
       const copyAfterSave = shouldCopyLivetickerOutput({
-        whatsappEnabled: !editingId && Boolean(whatsappControl?.checked),
+        whatsappEnabled: !editingId,
         transportReady: Boolean(runtime?.ready)
       });
 
@@ -1161,7 +1159,6 @@ function initialize() {
   syncSubmitModeLabel();
   refreshDraftOutput({ force: true });
   window.addEventListener("pd-liveticker-whatsapp-runtime", syncSubmitModeLabel);
-  document.getElementById("livetickerWhatsappPublish")?.addEventListener("change", syncSubmitModeLabel);
 }
 
 if (typeof document !== "undefined") initialize();

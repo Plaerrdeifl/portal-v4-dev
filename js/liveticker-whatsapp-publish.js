@@ -8,7 +8,6 @@ import {
 } from "./liveticker-whatsapp-sticker-core.js?v=20260917-classic-situation-status-r1";
 
 const STORAGE_KEY = "plaerrdeifl.livetickerPrototype.v3";
-const CONTROL_ID = "livetickerWhatsappPublish";
 const STATUS_ID = "livetickerWhatsappPublishStatus";
 const ACTION_STICKER_AREA_ID = "livetickerWhatsappActionStickers";
 const WHATSAPP_PANEL_ID = "livetickerWhatsappPanel";
@@ -130,7 +129,7 @@ function installStyles() {
 function installControl() {
   const form = document.querySelector("#tickerForm");
   const submitRow = document.getElementById(SUBMIT_ROW_ID);
-  if (!form || !submitRow || document.getElementById(CONTROL_ID)) return;
+  if (!form || !submitRow || document.getElementById(WHATSAPP_PANEL_ID)) return;
 
   installStyles();
   const actionGrid = form.querySelector(".action-grid");
@@ -144,17 +143,15 @@ function installControl() {
   const panel = document.createElement("section");
   panel.id = WHATSAPP_PANEL_ID;
   panel.className = "liveticker-whatsapp-panel";
-  const label = document.createElement("label");
-  label.className = "liveticker-whatsapp-publish";
-  label.htmlFor = CONTROL_ID;
-  label.innerHTML = `
-    <input id="${CONTROL_ID}" type="checkbox" checked>
+  const status = document.createElement("div");
+  status.className = "liveticker-whatsapp-publish";
+  status.innerHTML = `
     <span class="liveticker-whatsapp-publish-copy">
       <strong>WhatsApp-Kanal</strong>
-      <small id="${STATUS_ID}" data-state="ready">Neue Aktionen automatisch senden · Bearbeitungen werden nicht erneut veröffentlicht.</small>
+      <small id="${STATUS_ID}" data-state="ready">WA aktiv · neue Aktionen werden automatisch gesendet. Bearbeitungen werden nicht erneut veröffentlicht.</small>
     </span>
   `;
-  panel.append(label);
+  panel.append(status);
   form.insertBefore(panel, submitRow);
 }
 
@@ -566,15 +563,11 @@ function startBrowserIntegration() {
 
   window.addEventListener("pd-liveticker-whatsapp-runtime", event => {
     transportRuntime = event.detail || { ready: false, wa: null, wpp: null };
-    const control = document.getElementById(CONTROL_ID);
-    if (control) control.disabled = !transportReady();
     if (!transportReady()) setControlStatus(transportMessage(), "error");
-    else setControlStatus("Neue Aktionen automatisch senden · Bearbeitungen werden nicht erneut veröffentlicht.", "ready");
+    else setControlStatus("WA aktiv · neue Aktionen werden automatisch gesendet. Bearbeitungen werden nicht erneut veröffentlicht.", "ready");
     renderStickerAreas();
     renderTextDeliveryStatus();
   });
-  const initialControl = document.getElementById(CONTROL_ID);
-  if (initialControl) initialControl.disabled = !transportReady();
   if (!transportReady()) setControlStatus(transportMessage(), "error");
 
   void services().then(async ({ loadWhatsappStickerLibrary }) => {
@@ -598,7 +591,6 @@ function startBrowserIntegration() {
     const state = event.detail?.state;
     if (!state || !Array.isArray(state.history)) return;
 
-    const control = document.getElementById(CONTROL_ID);
     const output = document.getElementById("tickerOutput");
     const outputText = typeof event.detail?.outputText === "string"
       ? event.detail.outputText
@@ -607,7 +599,7 @@ function startBrowserIntegration() {
       previousHistory,
       state,
       text: outputText,
-      enabled: control?.checked !== false && transportReady()
+      enabled: transportReady()
     });
 
     previousHistory = cleanHistory(state.history);
@@ -636,10 +628,8 @@ function startBrowserIntegration() {
       setControlStatus("Text ist länger als 4.000 Zeichen · Aktion wird gespeichert, aber nicht automatisch gesendet.", "error");
     } else if (!transportReady()) {
       setControlStatus(transportMessage(), "error");
-    } else if (control?.checked === false) {
-      setControlStatus("Automatisches Senden ist für neue Aktionen ausgeschaltet.", "ready");
     } else {
-      setControlStatus("Neue Aktionen automatisch senden · Bearbeitungen werden nicht erneut veröffentlicht.", "ready");
+      setControlStatus("WA aktiv · neue Aktionen werden automatisch gesendet. Bearbeitungen werden nicht erneut veröffentlicht.", "ready");
     }
   });
 
