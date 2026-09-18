@@ -63,7 +63,7 @@ test("storage wakes WhatsApp only after a durable sync and wake failures stay no
   const storage = await read("js/liveticker-game-storage.js");
   assert.match(storage, /WHATSAPP_WAKE_TOPIC = "liveticker-whatsapp-jobs"/);
   assert.match(storage, /hasWhatsappPublishIntent\(changes\)/);
-  assert.match(storage, /applyRemoteState\(result\);\s*if \(wakeWhatsapp\) void broadcastWhatsappWake\(\);/s);
+  assert.match(storage, /applyRemoteState\(result\);\s*clientState = snapshotClientState\(localState\);\s*if \(wakeWhatsapp\) void broadcastWhatsappWake\(\);/s);
   assert.match(storage, /channel\.httpSend\("wake", \{\}\)/);
   assert.match(storage, /await client\.removeChannel\(channel\)/);
   assert.match(storage, /catch \(error\) \{[\s\S]*console\.warn\("WhatsApp-Worker konnte nicht sofort geweckt werden\./);
@@ -138,7 +138,7 @@ test("WhatsApp worker keeps legacy assets during migration but sends only explic
 test("Liveticker bootstrap defers state dispatch until generated output exists", async () => {
   const bootstrap = await read("js/liveticker-bootstrap.js");
   assert.match(bootstrap, /queueMicrotask\(\(\) => \{\s*window\.dispatchEvent\(new CustomEvent\("pd-liveticker-state-saved"/s);
-  assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260918-whatsapp-frozen-r1/);
+  assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260918-concurrent-merge-r1/);
 });
 
 

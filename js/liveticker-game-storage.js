@@ -13,6 +13,7 @@ const LIVETICKER_REVISION_CONFLICT_CODE = "PT409";
 let config = null;
 let selectedGame = null;
 let serverState = null;
+let clientState = null;
 let syncing = false;
 let applyingRemote = false;
 let pendingLocalState = null;
@@ -164,8 +165,15 @@ function sameJson(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-function diffChanges(localState) {
-  const previous = historyMap(serverState?.history || []);
+function snapshotClientState(raw) {
+  return {
+    minute: Math.max(1, Number(raw?.minute || 1)),
+    history: JSON.parse(JSON.stringify(Array.isArray(raw?.history) ? raw.history : []))
+  };
+}
+
+function diffChanges(localState, baseState = clientState || serverState) {
+  const previous = historyMap(baseState?.history || []);
   const current = historyMap(localState.history || []);
   const upserts = [];
   const deletes = [];
@@ -180,7 +188,24 @@ function diffChanges(localState) {
   const changes = {};
   if (upserts.length) changes.upserts = upserts;
   if (deletes.length) changes.deletes = deletes;
-  if (Number(localState.minute || 1) !== Number(serverState?.minute || 1)) changes.minute = Number(localState.minute || 1);
+  if (Number(localState.minute || 1) !== Number(baseState?.minute || 1)) changes.minute = Number(localState.minute || 1);
+  return changes;
+}
+
+function rebaseChanges(intent, freshState) {
+  const fresh = historyMap(freshState?.history || []);
+  const changes = {};
+  const upserts = (Array.isArray(intent?.upserts) ? intent.upserts : [])
+    .filter(item => item?.id && (!fresh.has(item.id) || !sameJson(fresh.get(item.id), item)));
+  const deletes = (Array.isArray(intent?.deletes) ? intent.deletes : [])
+    .filter(id => fresh.has(id));
+
+  if (upserts.length) changes.upserts = upserts;
+  if (deletes.length) changes.deletes = deletes;
+  if (Object.prototype.hasOwnProperty.call(intent || {}, "minute")
+      && Number(intent.minute || 1) !== Number(freshState?.minute || 1)) {
+    changes.minute = Number(intent.minute || 1);
+  }
   return changes;
 }
 
@@ -214,9 +239,10 @@ async function syncLocalState(localState) {
       if (error.code !== LIVETICKER_REVISION_CONFLICT_CODE) throw error;
       const fresh = await rpc("pd_public_liveticker_state", { p_event_id: selectedGame.eventId });
       serverState = normalizeState(fresh);
-      const retryChanges = diffChanges(localState);
+      const retryChanges = rebaseChanges(changes, serverState);
       if (!hasChanges(retryChanges)) {
         applyRemoteState(fresh);
+        clientState = snapshotClientState(localState);
         return;
       }
       wakeWhatsapp = hasWhatsappPublishIntent(retryChanges);
@@ -228,6 +254,7 @@ async function syncLocalState(localState) {
       });
     }
     applyRemoteState(result);
+    clientState = snapshotClientState(localState);
     if (wakeWhatsapp) void broadcastWhatsappWake();
     window.dispatchEvent(new CustomEvent("pd-liveticker-server-synced", {
       detail: { state: normalizeState(result), changes }
@@ -318,12 +345,14 @@ function installStyles() {
 async function loadSelectedGame(game) {
   selectedGame = game;
   pendingLocalState = null;
+  clientState = null;
   exposeGameContext(game);
   localStorage.setItem(SELECTED_EVENT_KEY, game.eventId);
   localStorage.setItem(VENUE_KEY, game.homeAway === "AWAY" ? "away" : "home");
   renderSyncStatus("Lädt …", "pending");
   const state = await rpc("pd_public_liveticker_state", { p_event_id: game.eventId });
   applyRemoteState(state);
+  clientState = snapshotClientState(normalizeState(state));
 }
 
 async function poll() {

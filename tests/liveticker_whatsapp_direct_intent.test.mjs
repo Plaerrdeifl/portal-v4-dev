@@ -27,7 +27,7 @@ test("direct intent rollout cache marker reaches the liveticker bootstrap chain"
     read("js/liveticker-auth-bootstrap.js"),
     read("js/liveticker-bootstrap.js")
   ]);
-  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260918-whatsapp-frozen-r1/);
-  assert.match(auth, /liveticker-bootstrap\.js\?v=20260918-whatsapp-frozen-r1/);
-  assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260918-whatsapp-frozen-r1/);
+  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260918-concurrent-merge-r1/);
+  assert.match(auth, /liveticker-bootstrap\.js\?v=20260918-concurrent-merge-r1/);
+  assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260918-concurrent-merge-r1/);
 });

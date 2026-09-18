@@ -79,7 +79,7 @@ async function storageHarness(responses) {
   vm.createContext(context);
   vm.runInContext(`${source}\n;globalThis.__syncTest = {\n` +
     `  syncLocalState,\n` +
-    `  setState(game, state) { config = window.PD_RUNTIME_CONFIG; selectedGame = game; serverState = normalizeState(state); },\n` +
+    `  setState(game, state) { config = window.PD_RUNTIME_CONFIG; selectedGame = game; serverState = normalizeState(state); clientState = snapshotClientState(state); },\n` +
     `  pending() { return pendingLocalState; },\n` +
     `  syncing() { return syncing; }\n` +
     `};`, context, { filename: storagePath });
@@ -116,6 +116,64 @@ test("PT409 refreshes state and performs exactly one controlled retry", async ()
   assert.match(harness.calls[2].url, /pd_public_liveticker_sync$/);
   assert.equal(harness.calls[2].body.p_expected_revision, 16);
   assert.equal(harness.queued.length, 0);
+});
+
+
+test("PT409 retry preserves a remote goal that the stale browser has never seen", async () => {
+  const remoteGoal = { id: "remote-goal-4", type: "goal", team: "mighty", minute: 31 };
+  const localPenalty = { id: "local-penalty", type: "penalty", minute: 32, penalties: [] };
+  const harness = await storageHarness([
+    { ok: false, status: 409, body: { code: "PT409", message: "LIVETICKER_STALE_REVISION" } },
+    { eventId: game.eventId, revision: 16, minute: 31, history: [remoteGoal] },
+    { eventId: game.eventId, revision: 17, minute: 32, history: [remoteGoal, localPenalty] }
+  ]);
+  harness.hooks.setState(game, initial);
+
+  await harness.hooks.syncLocalState({ minute: 32, history: [localPenalty] });
+
+  assert.equal(harness.calls.length, 3);
+  const retry = harness.calls[2].body.p_changes;
+  assert.deepEqual(retry.deletes, undefined);
+  assert.deepEqual(JSON.parse(JSON.stringify(retry.upserts)), [localPenalty]);
+});
+
+test("PT409 retry keeps an explicit local delete but never deletes a newly arrived remote action", async () => {
+  const existingGoal = { id: "existing-goal", type: "goal", team: "mighty", minute: 10 };
+  const remoteGoal = { id: "remote-goal-4", type: "goal", team: "mighty", minute: 31 };
+  const base = { eventId: game.eventId, revision: 15, minute: 30, history: [existingGoal] };
+  const harness = await storageHarness([
+    { ok: false, status: 409, body: { code: "PT409", message: "LIVETICKER_STALE_REVISION" } },
+    { eventId: game.eventId, revision: 16, minute: 31, history: [existingGoal, remoteGoal] },
+    { eventId: game.eventId, revision: 17, minute: 31, history: [remoteGoal] }
+  ]);
+  harness.hooks.setState(game, base);
+
+  await harness.hooks.syncLocalState({ minute: 30, history: [] });
+
+  const retry = harness.calls[2].body.p_changes;
+  assert.deepEqual(JSON.parse(JSON.stringify(retry.deletes)), ["existing-goal"]);
+  assert.equal(retry.deletes.includes("remote-goal-4"), false);
+});
+
+test("a later save from the same stale browser still cannot delete remote actions merged by the server", async () => {
+  const remoteGoal = { id: "remote-goal-4", type: "goal", team: "mighty", minute: 31 };
+  const firstLocal = { id: "local-penalty-1", type: "penalty", minute: 32, penalties: [] };
+  const secondLocal = { id: "local-penalty-2", type: "penalty", minute: 33, penalties: [] };
+  const harness = await storageHarness([
+    { ok: false, status: 409, body: { code: "PT409", message: "LIVETICKER_STALE_REVISION" } },
+    { eventId: game.eventId, revision: 16, minute: 31, history: [remoteGoal] },
+    { eventId: game.eventId, revision: 17, minute: 32, history: [remoteGoal, firstLocal] },
+    { eventId: game.eventId, revision: 18, minute: 33, history: [remoteGoal, firstLocal, secondLocal] }
+  ]);
+  harness.hooks.setState(game, initial);
+
+  await harness.hooks.syncLocalState({ minute: 32, history: [firstLocal] });
+  await harness.hooks.syncLocalState({ minute: 33, history: [firstLocal, secondLocal] });
+
+  assert.equal(harness.calls.length, 4);
+  const secondSave = harness.calls[3].body.p_changes;
+  assert.deepEqual(secondSave.deletes, undefined);
+  assert.deepEqual(JSON.parse(JSON.stringify(secondSave.upserts)), [secondLocal]);
 });
 
 test("a second PT409 stops without a third sync attempt", async () => {
