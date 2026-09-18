@@ -400,9 +400,7 @@ function startBrowserIntegration() {
   function syncActionModeUi() {
     const situation = selectedAction() === "SITUATION";
     const submitRow = document.getElementById(SUBMIT_ROW_ID);
-    const whatsappPanel = document.getElementById(WHATSAPP_PANEL_ID);
     if (submitRow) submitRow.hidden = situation;
-    if (whatsappPanel) whatsappPanel.hidden = situation;
   }
 
   async function refreshDeliveries() {
