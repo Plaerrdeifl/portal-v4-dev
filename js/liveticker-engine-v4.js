@@ -481,7 +481,9 @@ function rosterForTeam(team, opponent) {
 }
 
 function goalieRosterForTeam(team, opponent) {
-  return rosterForTeam(team, opponent).filter(player => player.position === "Tor");
+  return rosterForTeam(team, opponent)
+    .filter(player => player.position === "Tor" || player.position === "GOALIE")
+    .map(player => player.position === "GOALIE" ? { ...player, position: "Tor" } : player);
 }
 
 function fillPlayerSelect(select, roster, selected = "", placeholder = "Spieler noch unbekannt", positionOrder = GOAL_POSITION_ORDER) {

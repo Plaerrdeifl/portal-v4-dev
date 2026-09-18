@@ -48,7 +48,7 @@ async function importRuntimeEngine() {
   );
   source = replaceEngineSection(
     source,
-    /function rosterForTeam\(team,[^)]*\)\s*\{[\s\S]*?\}\s*(?=function fillPlayerSelect)/,
+    /function rosterForTeam\(team,[^)]*\)\s*\{[\s\S]*?\}\s*(?=function goalieRosterForTeam)/,
     `function rosterForTeam(team, opponent) {
   const ownRoster = globalThis.PD_LIVETICKER_GAME_CONTEXT?.ownTeam?.players;
   return team === "mighty" ? (Array.isArray(ownRoster) ? ownRoster : MIGHTY_ROSTER) : opponent.roster;
@@ -82,7 +82,7 @@ try {
     } catch {}
   };
 
-  await import("./liveticker-whatsapp-publish.js?v=20260918-penalty-shot-r1");
+  await import("./liveticker-whatsapp-publish.js?v=20260918-penalty-goalie-r1");
   await importRuntimeEngine();
   await import("./liveticker-v5-support.js?v=20260910-shootout60-r1");
 

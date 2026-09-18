@@ -79,7 +79,7 @@ test("Situation UI exposes Straf-Penalty with attacking shooter, defending goali
   assert.match(engine, /fillPlayerSelect\(penaltyShotGoalie,[\s\S]*\["Tor"\]\)/);
   assert.match(publish, /penaltyShotSituationSelected/);
   assert.match(publish, /selectedAction\(\) === "SITUATION" && !penaltyShotSituationSelected\(\)/);
-  assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260918-penalty-shot-r1/);
+  assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260918-penalty-goalie-r1/);
 });
 
 test("Straf-Penalty reuses the existing penalty action type", async () => {

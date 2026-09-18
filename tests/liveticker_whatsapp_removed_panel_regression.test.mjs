@@ -16,6 +16,6 @@ test("removed WhatsApp panel identifier is not referenced after compact mode mig
   assert.doesNotMatch(publish, /WHATSAPP_PANEL_ID/);
   assert.doesNotMatch(publish, /livetickerWhatsappPanel/);
   assert.match(publish, /function syncActionModeUi\(\)[\s\S]*submitRow\.hidden = situation/);
-  assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260918-penalty-shot-r1/);
-  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260918-penalty-shot-r1/);
+  assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260918-penalty-goalie-r1/);
+  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260918-penalty-goalie-r1/);
 });
