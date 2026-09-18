@@ -628,6 +628,24 @@ function initialize() {
     refreshDraftOutput();
   });
 
+  window.addEventListener("pd-liveticker-remote-state", event => {
+    const remote = event.detail || {};
+    if (!Array.isArray(remote.history)) return;
+    const normalized = normalizeLoadedState({
+      opponentId: state.opponentId,
+      minute: remote.minute,
+      history: remote.history
+    });
+    if (!normalized) return;
+    state = normalized;
+    minuteInput.value = String(state.minute);
+    segmentLabel.textContent = segmentForMinute(state.minute).label;
+    if (editingId && !state.history.some(item => item.id === editingId)) cancelEdit();
+    syncScore();
+    renderHistory();
+    if (!outputManuallyEdited) queueMicrotask(() => refreshDraftOutput({ force: true }));
+  });
+
   function opponent() { return OPPONENTS[state.opponentId]; }
   function selectedAction() { return new FormData(form).get("action"); }
   function selectedSituation() { return new FormData(form).get("situationType") || ""; }

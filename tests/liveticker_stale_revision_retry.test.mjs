@@ -168,7 +168,7 @@ test("a later save from the same stale browser still cannot delete remote action
   harness.hooks.setState(game, initial);
 
   await harness.hooks.syncLocalState({ minute: 32, history: [firstLocal] });
-  await harness.hooks.syncLocalState({ minute: 33, history: [firstLocal, secondLocal] });
+  await harness.hooks.syncLocalState({ minute: 33, history: [remoteGoal, firstLocal, secondLocal] });
 
   assert.equal(harness.calls.length, 4);
   const secondSave = harness.calls[3].body.p_changes;

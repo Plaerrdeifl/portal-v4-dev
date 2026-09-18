@@ -151,6 +151,9 @@ function applyRemoteState(raw) {
   applyingRemote = true;
   try {
     writeEngineState(next);
+    window.dispatchEvent(new CustomEvent("pd-liveticker-remote-state", {
+      detail: { minute: next.minute, history: next.history }
+    }));
   } finally {
     applyingRemote = false;
   }
@@ -165,10 +168,17 @@ function sameJson(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+function cleanSyncAction(item) {
+  if (!item || typeof item !== "object" || Array.isArray(item)) return item;
+  const clean = { ...item };
+  delete clean._whatsapp;
+  return clean;
+}
+
 function snapshotClientState(raw) {
   return {
     minute: Math.max(1, Number(raw?.minute || 1)),
-    history: JSON.parse(JSON.stringify(Array.isArray(raw?.history) ? raw.history : []))
+    history: (Array.isArray(raw?.history) ? raw.history : []).map(item => JSON.parse(JSON.stringify(cleanSyncAction(item))))
   };
 }
 
@@ -177,17 +187,24 @@ function diffChanges(localState, baseState = clientState || serverState) {
   const current = historyMap(localState.history || []);
   const upserts = [];
   const deletes = [];
+  const deleteGuards = [];
 
   for (const [id, item] of current) {
     if (!previous.has(id) || !sameJson(previous.get(id), item)) upserts.push(item);
   }
-  for (const id of previous.keys()) {
-    if (!current.has(id)) deletes.push(id);
+  for (const [id, item] of previous) {
+    if (!current.has(id)) {
+      deletes.push(id);
+      deleteGuards.push({ id, expected: cleanSyncAction(item) });
+    }
   }
 
   const changes = {};
   if (upserts.length) changes.upserts = upserts;
-  if (deletes.length) changes.deletes = deletes;
+  if (deletes.length) {
+    changes.deletes = deletes;
+    changes.deleteGuards = deleteGuards;
+  }
   if (Number(localState.minute || 1) !== Number(baseState?.minute || 1)) changes.minute = Number(localState.minute || 1);
   return changes;
 }
@@ -197,11 +214,19 @@ function rebaseChanges(intent, freshState) {
   const changes = {};
   const upserts = (Array.isArray(intent?.upserts) ? intent.upserts : [])
     .filter(item => item?.id && (!fresh.has(item.id) || !sameJson(fresh.get(item.id), item)));
+  const guardMap = new Map(
+    (Array.isArray(intent?.deleteGuards) ? intent.deleteGuards : [])
+      .filter(guard => guard?.id && guard?.expected)
+      .map(guard => [guard.id, guard])
+  );
   const deletes = (Array.isArray(intent?.deletes) ? intent.deletes : [])
-    .filter(id => fresh.has(id));
+    .filter(id => fresh.has(id) && guardMap.has(id));
 
   if (upserts.length) changes.upserts = upserts;
-  if (deletes.length) changes.deletes = deletes;
+  if (deletes.length) {
+    changes.deletes = deletes;
+    changes.deleteGuards = deletes.map(id => guardMap.get(id));
+  }
   if (Object.prototype.hasOwnProperty.call(intent || {}, "minute")
       && Number(intent.minute || 1) !== Number(freshState?.minute || 1)) {
     changes.minute = Number(intent.minute || 1);
@@ -242,7 +267,7 @@ async function syncLocalState(localState) {
       const retryChanges = rebaseChanges(changes, serverState);
       if (!hasChanges(retryChanges)) {
         applyRemoteState(fresh);
-        clientState = snapshotClientState(localState);
+        clientState = snapshotClientState(normalizeState(fresh));
         return;
       }
       wakeWhatsapp = hasWhatsappPublishIntent(retryChanges);
@@ -254,7 +279,7 @@ async function syncLocalState(localState) {
       });
     }
     applyRemoteState(result);
-    clientState = snapshotClientState(localState);
+    clientState = snapshotClientState(normalizeState(result));
     if (wakeWhatsapp) void broadcastWhatsappWake();
     window.dispatchEvent(new CustomEvent("pd-liveticker-server-synced", {
       detail: { state: normalizeState(result), changes }

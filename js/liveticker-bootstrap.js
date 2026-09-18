@@ -2,7 +2,7 @@ await import("./runtime-config.js");
 await import("./liveticker-output-templates.js?v=20260906-prod-titlefix1");
 
 const STORAGE_KEY = "plaerrdeifl.livetickerPrototype.v3";
-const { prepareLivetickerGameStorage } = await import("./liveticker-game-storage.js?v=20260917-stale-revision-r1");
+const { prepareLivetickerGameStorage } = await import("./liveticker-game-storage.js?v=20260918-delete-guard-r1");
 
 function runtimeOpponentSource() {
   return `const runtimeGame = globalThis.PD_LIVETICKER_GAME_CONTEXT || {};
@@ -82,7 +82,7 @@ try {
     } catch {}
   };
 
-  await import("./liveticker-whatsapp-publish.js?v=20260918-concurrent-merge-r1");
+  await import("./liveticker-whatsapp-publish.js?v=20260918-delete-guard-r1");
   await importRuntimeEngine();
   await import("./liveticker-v5-support.js?v=20260910-shootout60-r1");
 
