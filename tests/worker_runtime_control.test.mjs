@@ -37,7 +37,12 @@ test("Liveticker game mode keeps the live workflow compact and one-tap", async (
   assert.match(html, /class="live-game-row"[\s\S]*class="score-top compact-score"[\s\S]*id="gameMinute"/);
   assert.match(html, /id="mightyScoreName"[^>]*>Heim<\/span>/);
   assert.match(html, /id="opponentScoreName"[^>]*>Gast<\/span>/);
-  assert.match(html, /class="status-bar"[\s\S]*id="segmentLabel"[\s\S]*id="graphicWorkerControl"/);
+  assert.match(html, /class="worker-status-bar"[\s\S]*id="graphicWorkerControl"/);
+  assert.match(html, /class="segment-status-bar"[\s\S]*id="segmentLabel"/);
+  assert.doesNotMatch(html, /class="segment-status-bar"[\s\S]*id="graphicWorkerControl"/);
+  assert.match(html, /status-bar-tools\{[^}]*flex-wrap:wrap/);
+  assert.match(html, /segment-status-bar\{[^}]*justify-content:center/);
+  assert.match(html, /data-header-layout="split-status-period-r1"/);
   assert.match(html, /class="action-grid"[\s\S]*actionGoalMighty[\s\S]*actionPenalty[\s\S]*actionGoalOpponent/);
   assert.match(html, /grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
   assert.match(html, /id="assistDetails" class="assist-details"/);
