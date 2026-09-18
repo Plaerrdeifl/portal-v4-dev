@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse, base64, hashlib, json, mimetypes, os, re, struct, subprocess
+import argparse, base64, hashlib, json, mimetypes, multiprocessing, os, re, struct, subprocess
 from collections import OrderedDict
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -538,6 +538,10 @@ def render_one(state,kind,fmt,outdir):
     if png_dims(png)!=EXPECTED[fmt]: raise RuntimeError(f'bad dimensions {stem}: {png_dims(png)}')
     return {'kind':kind,'format':fmt,'svg':str(svg),'png':str(png),'score':f'{home_score}:{away_score}','suffix':suffix,'goalLines':lines,'bytes':png.stat().st_size,'backgroundApplied':background_applied}
 
+def render_one_process(args):
+    state,kind,fmt,outdir=args
+    return render_one(state,kind,fmt,Path(outdir))
+
 def main():
     ap=argparse.ArgumentParser(); ap.add_argument('state'); ap.add_argument('--out',required=True); args=ap.parse_args()
     state=json.loads(Path(args.state).read_text(encoding='utf-8'))
@@ -545,8 +549,12 @@ def main():
     normalize_logo_assets(state,out)
     kind=str(state.get('kind') or '').upper()
     if kind not in ('PERIOD_1','PERIOD_2','FINAL'): raise RuntimeError('invalid graphic kind')
-    results=[]
-    for fmt in ('POST','STORY'): results.append(render_one(state,kind,fmt,out))
+    ctx=multiprocessing.get_context('fork')
+    with ctx.Pool(processes=2) as pool:
+        results=pool.map(render_one_process,[
+            (state,kind,'POST',str(out)),
+            (state,kind,'STORY',str(out)),
+        ])
     (out/'manifest.json').write_text(json.dumps(results,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps(results,ensure_ascii=False,indent=2))
 if __name__=='__main__': main()
