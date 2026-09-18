@@ -99,7 +99,7 @@ test("classic view sends contextual and Situation stickers through the existing 
   assert.match(submitHandler, /event\.stopImmediatePropagation\(\)/);
 
   const saveHandler = publish.match(/window\.addEventListener\("pd-liveticker-state-saved"[\s\S]+?\n  \}\);/)?.[0] || "";
-  assert.match(saveHandler, /attachWhatsappPublishIntent\(\{[\s\S]*enabled: transportReady\(\)\s*\}\)/);
+  assert.match(saveHandler, /attachWhatsappPublishIntent\(\{[\s\S]*enabled: effectiveTextMode\(\) === "WHATSAPP"\s*\}\)/);
   assert.doesNotMatch(saveHandler, /stickerId\s*:/);
   assert.match(saveHandler, /areas\.action\.sourceAction !== "SITUATION"[\s\S]*pendingActionDeliveryIds[\s\S]*queuePendingLink\(actionId, jobId\)/);
   assert.match(publish, /linkWhatsappStickerDelivery\(\{ jobId, actionId \}\)/);

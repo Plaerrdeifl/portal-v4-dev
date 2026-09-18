@@ -8,9 +8,9 @@ import {
 } from "./liveticker-whatsapp-sticker-core.js?v=20260917-classic-situation-status-r1";
 
 const STORAGE_KEY = "plaerrdeifl.livetickerPrototype.v3";
-const STATUS_ID = "livetickerWhatsappPublishStatus";
+const STATUS_ID = "livetickerTextModeStatus";
+const TEXT_MODE_ID = "livetickerTextMode";
 const ACTION_STICKER_AREA_ID = "livetickerWhatsappActionStickers";
-const WHATSAPP_PANEL_ID = "livetickerWhatsappPanel";
 const SUBMIT_ROW_ID = "livetickerSubmitRow";
 const TEXT_STATUS_ID = "livetickerTextDeliveryStatus";
 const MAX_MESSAGE_LENGTH = 4000;
@@ -114,12 +114,16 @@ function installStyles() {
   const style = document.createElement("style");
   style.dataset.livetickerWhatsappPublish = "true";
   style.textContent = `
-    .liveticker-whatsapp-panel,.liveticker-sticker-area{display:grid;gap:10px;padding:10px 11px;border:1px solid #b9d7f5;border-radius:13px;background:#eef7ff;color:#073c68}
-    .liveticker-whatsapp-publish{display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;align-items:start;cursor:pointer}
-    .liveticker-whatsapp-publish input{width:20px;height:20px;min-width:20px;margin:1px 0 0;accent-color:#0d79e8}
-    .liveticker-whatsapp-publish-copy{display:grid;gap:2px;min-width:0}.liveticker-whatsapp-publish-copy strong{font-size:.79rem}.liveticker-whatsapp-publish-copy small{color:#526d86;font-size:.69rem;line-height:1.35}
-    .liveticker-whatsapp-publish-copy small[data-state="error"]{color:#a92932;font-weight:850}
-    .liveticker-sticker-area{padding:9px}.liveticker-sticker-area h3{margin:0;font-size:.82rem}.liveticker-sticker-area-copy{margin:0;color:#526d86;font-size:.69rem;line-height:1.35}
+    .liveticker-sticker-area{display:grid;gap:10px;padding:9px;border:1px solid #b9d7f5;border-radius:13px;background:#eef7ff;color:#073c68}
+    .liveticker-text-mode{grid-column:1;grid-row:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:3px;min-width:0;padding:3px;border:1px solid #cbd9e8;border-radius:11px;background:#f4f7fb}
+    .liveticker-text-mode button{min-width:0;min-height:36px;padding:5px 7px;border:0;border-radius:8px;background:transparent;color:#40566d;font-size:.67rem;font-weight:950;line-height:1.05;white-space:nowrap}
+    .liveticker-text-mode button[aria-pressed="true"]{background:#fff;color:#073c68;box-shadow:0 2px 7px rgba(4,28,51,.08)}
+    .liveticker-text-mode button[data-text-mode="WHATSAPP"][aria-pressed="true"]{color:#087747}
+    .liveticker-text-mode button:disabled{opacity:.45}
+    .liveticker-submit-row .liveticker-text-delivery-status{grid-column:1/-1;grid-row:2}
+    .liveticker-submit-row .submit-compact{grid-column:2;grid-row:1}
+    @media(max-width:440px){.liveticker-text-mode button{padding:5px 5px;font-size:.61rem}}
+    .liveticker-sticker-area h3{margin:0;font-size:.82rem}.liveticker-sticker-area-copy{margin:0;color:#526d86;font-size:.69rem;line-height:1.35}
     .liveticker-whatsapp-sticker-options{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(78px,92px);gap:7px;min-width:0;max-width:100%;overflow-x:auto;padding:2px 1px 5px;overscroll-behavior-inline:contain;scroll-snap-type:inline proximity}
     .liveticker-whatsapp-sticker-option{min-height:82px;padding:6px;border:1px solid #b9d7f5;border-radius:11px;background:#fff;display:grid;grid-template-rows:50px auto;gap:4px;place-items:center;color:#274760;font-size:.65rem;font-weight:900;text-align:center;line-height:1.05;scroll-snap-align:start}.liveticker-whatsapp-sticker-option[aria-pressed="true"]{border-color:#0d79e8;box-shadow:inset 0 0 0 2px rgba(13,121,232,.2);background:#f6fbff}.liveticker-whatsapp-sticker-option:disabled{opacity:.58}.liveticker-whatsapp-sticker-option img{display:block;width:50px;height:50px;object-fit:contain}.liveticker-whatsapp-sticker-empty{margin:0;color:#526d86;font-size:.68rem}.liveticker-whatsapp-sticker-send-now{min-height:42px;padding:7px 10px;border:1px solid #0d79e8;border-radius:10px;background:#0d79e8;color:#fff;font-size:.74rem;font-weight:950}.liveticker-whatsapp-sticker-send-now:disabled{opacity:.5}.liveticker-whatsapp-sticker-status{margin:0;padding:7px 9px;border-radius:10px;background:#f7faff;color:#526d86;font-size:.69rem;font-weight:850;line-height:1.35}.liveticker-whatsapp-sticker-status[data-tone="success"]{background:#eaf8f1;color:#087747}.liveticker-whatsapp-sticker-status[data-tone="pending"]{background:#fff8df;color:#725800}.liveticker-whatsapp-sticker-status[data-tone="error"]{background:#fff1f1;color:#a92932}.liveticker-whatsapp-sticker-actions{display:flex;gap:7px}.liveticker-whatsapp-sticker-actions button{flex:1}.liveticker-whatsapp-sticker-retry{min-height:40px;padding:7px 10px;border:1px solid #b9d7f5;border-radius:10px;background:#fff;color:#073c68;font-size:.72rem;font-weight:950}
   `;
@@ -129,30 +133,28 @@ function installStyles() {
 function installControl() {
   const form = document.querySelector("#tickerForm");
   const submitRow = document.getElementById(SUBMIT_ROW_ID);
-  if (!form || !submitRow || document.getElementById(WHATSAPP_PANEL_ID)) return;
+  if (!form || !submitRow) return;
 
   installStyles();
   const actionGrid = form.querySelector(".action-grid");
-  const actionPanel = document.createElement("section");
-  actionPanel.id = ACTION_STICKER_AREA_ID;
-  actionPanel.className = "liveticker-sticker-area";
-  actionPanel.dataset.stickerArea = "action";
-  actionPanel.innerHTML = '<h3>Aktionssticker</h3><div data-sticker-area-body><p class="liveticker-whatsapp-sticker-empty">Sticker werden geladen …</p></div>';
-  actionGrid?.insertAdjacentElement("afterend", actionPanel);
+  if (!document.getElementById(ACTION_STICKER_AREA_ID)) {
+    const actionPanel = document.createElement("section");
+    actionPanel.id = ACTION_STICKER_AREA_ID;
+    actionPanel.className = "liveticker-sticker-area";
+    actionPanel.dataset.stickerArea = "action";
+    actionPanel.innerHTML = '<h3>Aktionssticker</h3><div data-sticker-area-body><p class="liveticker-whatsapp-sticker-empty">Sticker werden geladen …</p></div>';
+    actionGrid?.insertAdjacentElement("afterend", actionPanel);
+  }
 
-  const panel = document.createElement("section");
-  panel.id = WHATSAPP_PANEL_ID;
-  panel.className = "liveticker-whatsapp-panel";
-  const status = document.createElement("div");
-  status.className = "liveticker-whatsapp-publish";
-  status.innerHTML = `
-    <span class="liveticker-whatsapp-publish-copy">
-      <strong>WhatsApp-Kanal</strong>
-      <small id="${STATUS_ID}" data-state="ready">WA aktiv · neue Aktionen werden automatisch gesendet. Bearbeitungen werden nicht erneut veröffentlicht.</small>
-    </span>
-  `;
-  panel.append(status);
-  form.insertBefore(panel, submitRow);
+  if (!document.getElementById(TEXT_MODE_ID)) {
+    const mode = document.createElement("div");
+    mode.id = TEXT_MODE_ID;
+    mode.className = "liveticker-text-mode";
+    mode.setAttribute("role", "group");
+    mode.setAttribute("aria-label", "Textausgabe");
+    mode.innerHTML = '<button type="button" data-text-mode="WHATSAPP" aria-pressed="false">📲 WhatsApp</button><button type="button" data-text-mode="COPY" aria-pressed="true">📋 Nur kopieren</button><span id="livetickerTextModeStatus" class="visually-hidden" role="status" aria-live="polite"></span>';
+    submitRow.insertBefore(mode, submitRow.firstChild);
+  }
 }
 
 function escapeHtml(value) {
@@ -175,6 +177,7 @@ function startBrowserIntegration() {
   let textRetryBusy = false;
   let stickerSuccessTimer = null;
   let transportRuntime = globalThis.PD_LIVETICKER_WHATSAPP_RUNTIME || { ready: false, wa: null, wpp: null };
+  let manualCopyMode = false;
   const pendingLinks = new Map();
 
   function queuePendingLink(actionId, jobId) {
@@ -203,6 +206,31 @@ function startBrowserIntegration() {
   };
   const deliveryFor = area => deliveries.find(delivery => delivery.id === areas[area].deliveryId) || null;
   const transportReady = () => Boolean(transportRuntime?.ready);
+  const effectiveTextMode = () => transportReady() && !manualCopyMode ? "WHATSAPP" : "COPY";
+  function syncTextModeUi({ announce = false } = {}) {
+    const mode = effectiveTextMode();
+    globalThis.PD_LIVETICKER_TEXT_MODE = mode;
+    const root = document.getElementById(TEXT_MODE_ID);
+    root?.querySelectorAll("[data-text-mode]").forEach(button => {
+      const buttonMode = String(button.dataset.textMode || "");
+      button.setAttribute("aria-pressed", String(buttonMode === mode));
+      if (buttonMode === "WHATSAPP") button.disabled = !transportReady();
+    });
+    if (root) {
+      root.dataset.mode = mode;
+      root.title = mode === "WHATSAPP"
+        ? "Speichern sendet den Text automatisch an WhatsApp."
+        : transportReady()
+          ? "Speichern kopiert den Text nur in die Zwischenablage."
+          : "WhatsApp ist nicht bereit. Speichern kopiert den Text.";
+    }
+    if (announce) {
+      setControlStatus(mode === "WHATSAPP"
+        ? "Textmodus WhatsApp: Speichern sendet automatisch."
+        : "Textmodus Nur kopieren: Speichern sendet nicht an WhatsApp.");
+    }
+    window.dispatchEvent(new CustomEvent("pd-liveticker-text-mode", { detail: { mode, transportReady: transportReady() } }));
+  }
   const transportMessage = () => {
     if (transportRuntime?.wa?.enabled === false) return "WA ist ausgeschaltet – Liveticker wird ohne WhatsApp gespeichert.";
     if (transportRuntime?.wa?.ready === false) return "WA ist nicht bereit – Liveticker wird ohne WhatsApp gespeichert.";
@@ -524,6 +552,21 @@ function startBrowserIntegration() {
     if (button.matches(".add-penalty,.remove-penalty,#cancelEdit")) queueMicrotask(renderStickerAreas);
   });
 
+  document.getElementById(TEXT_MODE_ID)?.addEventListener("click", event => {
+    const button = event.target.closest?.("[data-text-mode]");
+    if (!button) return;
+    const requested = String(button.dataset.textMode || "");
+    if (requested === "WHATSAPP") {
+      if (!transportReady()) return;
+      manualCopyMode = false;
+    } else if (requested === "COPY") {
+      manualCopyMode = true;
+    } else {
+      return;
+    }
+    syncTextModeUi({ announce: true });
+  });
+
   const form = document.querySelector("#tickerForm");
   form?.addEventListener("submit", event => {
     if (selectedAction() === "SITUATION") {
@@ -563,11 +606,12 @@ function startBrowserIntegration() {
 
   window.addEventListener("pd-liveticker-whatsapp-runtime", event => {
     transportRuntime = event.detail || { ready: false, wa: null, wpp: null };
+    syncTextModeUi();
     if (!transportReady()) setControlStatus(transportMessage(), "error");
-    else setControlStatus("WA aktiv · neue Aktionen werden automatisch gesendet. Bearbeitungen werden nicht erneut veröffentlicht.", "ready");
     renderStickerAreas();
     renderTextDeliveryStatus();
   });
+  syncTextModeUi();
   if (!transportReady()) setControlStatus(transportMessage(), "error");
 
   void services().then(async ({ loadWhatsappStickerLibrary }) => {
@@ -599,7 +643,7 @@ function startBrowserIntegration() {
       previousHistory,
       state,
       text: outputText,
-      enabled: transportReady()
+      enabled: effectiveTextMode() === "WHATSAPP"
     });
 
     previousHistory = cleanHistory(state.history);
@@ -628,8 +672,8 @@ function startBrowserIntegration() {
       setControlStatus("Text ist länger als 4.000 Zeichen · Aktion wird gespeichert, aber nicht automatisch gesendet.", "error");
     } else if (!transportReady()) {
       setControlStatus(transportMessage(), "error");
-    } else {
-      setControlStatus("WA aktiv · neue Aktionen werden automatisch gesendet. Bearbeitungen werden nicht erneut veröffentlicht.", "ready");
+    } else if (effectiveTextMode() === "COPY") {
+      setControlStatus("Nur kopieren aktiv · Text wurde nicht an WhatsApp gesendet.", "ready");
     }
   });
 

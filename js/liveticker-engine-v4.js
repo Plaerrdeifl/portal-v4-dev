@@ -734,7 +734,8 @@ function initialize() {
 
   function whatsappAutoSendReady() {
     const runtime = globalThis.PD_LIVETICKER_WHATSAPP_RUNTIME;
-    return Boolean(runtime?.ready);
+    const mode = globalThis.PD_LIVETICKER_TEXT_MODE || (runtime?.ready ? "WHATSAPP" : "COPY");
+    return Boolean(runtime?.ready) && mode === "WHATSAPP";
   }
 
   function syncSubmitModeLabel() {
@@ -1001,7 +1002,7 @@ function initialize() {
 
       const runtime = globalThis.PD_LIVETICKER_WHATSAPP_RUNTIME;
       const copyAfterSave = shouldCopyLivetickerOutput({
-        whatsappEnabled: !editingId,
+        whatsappEnabled: !editingId && whatsappAutoSendReady(),
         transportReady: Boolean(runtime?.ready)
       });
 
@@ -1159,6 +1160,7 @@ function initialize() {
   syncSubmitModeLabel();
   refreshDraftOutput({ force: true });
   window.addEventListener("pd-liveticker-whatsapp-runtime", syncSubmitModeLabel);
+  window.addEventListener("pd-liveticker-text-mode", syncSubmitModeLabel);
 }
 
 if (typeof document !== "undefined") initialize();

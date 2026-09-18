@@ -6,20 +6,38 @@ import test from "node:test";
 const root = path.resolve(import.meta.dirname, "..");
 const read = relative => fs.readFile(path.join(root, relative), "utf8");
 
-test("WhatsApp text auto-send depends only on runtime readiness, not a second checkbox", async () => {
+test("compact text mode switch controls WhatsApp auto-send and copy fallback", async () => {
   const [publish, engine, bootstrap, html] = await Promise.all([
     read("js/liveticker-whatsapp-publish.js"),
     read("js/liveticker-engine-v4.js"),
     read("js/liveticker-bootstrap.js"),
     read("liveticker/index.html")
   ]);
-  assert.doesNotMatch(publish, /type="checkbox"[^>]*livetickerWhatsappPublish/);
-  assert.doesNotMatch(publish, /control\?\.checked/);
-  assert.match(publish, /enabled: transportReady\(\)/);
-  assert.match(publish, /WA aktiv · neue Aktionen werden automatisch gesendet/);
-  assert.doesNotMatch(engine, /livetickerWhatsappPublish/);
-  assert.match(engine, /function whatsappAutoSendReady\(\)[\s\S]*Boolean\(runtime\?\.ready\)/);
-  assert.match(engine, /whatsappEnabled: !editingId/);
-  assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260918-text-autosend-r1/);
-  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260918-text-autosend-r1/);
+
+  assert.doesNotMatch(publish, /liveticker-whatsapp-panel/);
+  assert.match(publish, /TEXT_MODE_ID = "livetickerTextMode"/);
+  assert.match(publish, /data-text-mode="WHATSAPP"/);
+  assert.match(publish, /data-text-mode="COPY"/);
+  assert.match(publish, /📲 WhatsApp/);
+  assert.match(publish, /📋 Nur kopieren/);
+  assert.match(publish, /manualCopyMode = true/);
+  assert.match(publish, /transportReady\(\) && !manualCopyMode \? "WHATSAPP" : "COPY"/);
+  assert.match(publish, /enabled: effectiveTextMode\(\) === "WHATSAPP"/);
+  assert.match(publish, /PD_LIVETICKER_TEXT_MODE = mode/);
+
+  assert.match(engine, /PD_LIVETICKER_TEXT_MODE/);
+  assert.match(engine, /return Boolean\(runtime\?\.ready\) && mode === "WHATSAPP"/);
+  assert.match(engine, /whatsappEnabled: !editingId && whatsappAutoSendReady\(\)/);
+  assert.match(engine, /pd-liveticker-text-mode/);
+
+  assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260918-text-mode-r1/);
+  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260918-text-mode-r1/);
+});
+
+test("compact switch sits in submit row and delivery status moves below it", async () => {
+  const publish = await read("js/liveticker-whatsapp-publish.js");
+  assert.match(publish, /submitRow\.insertBefore\(mode, submitRow\.firstChild\)/);
+  assert.match(publish, /\.liveticker-text-mode\{grid-column:1;grid-row:1/);
+  assert.match(publish, /\.liveticker-submit-row \.liveticker-text-delivery-status\{grid-column:1\/-1;grid-row:2\}/);
+  assert.match(publish, /\.liveticker-submit-row \.submit-compact\{grid-column:2;grid-row:1\}/);
 });
