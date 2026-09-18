@@ -218,6 +218,24 @@ export async function retryWhatsappDelivery({ eventId, jobId }) {
   });
 }
 
+export async function renameWhatsappSticker({ stickerId, name }) {
+  const normalizedName = String(name || "").trim();
+  if (normalizedName.length < 1 || normalizedName.length > 80) {
+    throw new Error("Der Stickername muss zwischen 1 und 80 Zeichen lang sein.");
+  }
+  return api.call("liveticker_whatsapp_sticker_rename", {
+    stickerId: requireUuid(stickerId, "Der Sticker"),
+    name: normalizedName
+  });
+}
+
+export async function deleteWhatsappSticker(stickerId) {
+  const id = requireUuid(stickerId, "Der Sticker");
+  const result = await api.deleteLivetickerWhatsappSticker(id);
+  clearWhatsappStickerPreview(id);
+  return result;
+}
+
 export async function setWhatsappStickerMetadata({
   stickerId,
   audience,

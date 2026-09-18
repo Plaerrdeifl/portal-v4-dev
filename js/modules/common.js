@@ -29,6 +29,10 @@ export function fetchLivetickerWhatsappSticker(stickerId) {
   return api.fetchLivetickerWhatsappSticker(stickerId);
 }
 
+export function deleteLivetickerWhatsappSticker(stickerId) {
+  return api.deleteLivetickerWhatsappSticker(stickerId);
+}
+
 export function currentUser() {
   return auth.current().user || {};
 }

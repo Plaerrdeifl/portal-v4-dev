@@ -35,7 +35,7 @@ function isObject(value: unknown): value is JsonObject {
 function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": PORTAL_ORIGIN,
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "authorization, apikey, content-type",
     "Access-Control-Max-Age": "600",
     "Vary": "Origin"
@@ -198,6 +198,20 @@ async function storageDelete(config: RuntimeConfig, objectName: string) {
   } catch { /* best-effort upload rollback */ }
 }
 
+async function storageDeleteManaged(config: RuntimeConfig, objectName: string) {
+  try {
+    const response = await fetch(`${config.supabaseUrl}/storage/v1/object/${BUCKET}/${encodedObjectName(objectName)}`, {
+      method: "DELETE",
+      headers: { apikey: config.serviceRoleKey },
+      signal: AbortSignal.timeout(10_000)
+    });
+    await response.body?.cancel();
+    return response.ok || response.status === 404;
+  } catch {
+    return false;
+  }
+}
+
 function stickerSlug(name: string, id: string) {
   const base = name.normalize("NFKD").replace(/ß/g, "ss").replace(/[\u0300-\u036f]/g, "")
     .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48).replace(/-+$/g, "") || "sticker";
@@ -318,6 +332,49 @@ async function upload(config: RuntimeConfig, token: string, request: Request) {
   }
 }
 
+async function removeSticker(config: RuntimeConfig, token: string, request: Request) {
+  const stickerId = new URL(request.url).searchParams.get("stickerId") || "";
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(stickerId)) {
+    return fail(400, "INVALID_STICKER_ID", "Die Sticker-ID ist ungültig.", true);
+  }
+
+  const authorization = await portalApi(
+    config,
+    token,
+    "liveticker_whatsapp_sticker_delete_authorize",
+    { stickerId }
+  );
+  const actorId = String(authorization?.actorId || "");
+  const storagePath = String(authorization?.storagePath || "");
+  if (!authorization
+      || authorization.environment !== "DEV"
+      || authorization.stickerId !== stickerId
+      || !/^[0-9a-f-]{36}$/i.test(actorId)
+      || !/^stickers\/dev\/[0-9a-f-]{36}[.]webp$/i.test(storagePath)) {
+    return fail(403, "FORBIDDEN", "Der Sticker darf nicht gelöscht werden.", true);
+  }
+
+  let deleted;
+  try {
+    deleted = await serviceRpc(config, "pd_liveticker_whatsapp_sticker_delete", {
+      p_actor: actorId,
+      p_sticker_id: stickerId
+    });
+  } catch {
+    return fail(409, "STICKER_DELETE_FAILED", "Der Sticker wird bereits verwendet oder konnte nicht gelöscht werden.", true);
+  }
+
+  if (deleted.deleted !== true
+      || String(deleted.stickerId || "") !== stickerId
+      || String(deleted.storagePath || "") !== storagePath) {
+    return fail(500, "STICKER_DELETE_FAILED", "Der Sticker konnte nicht sicher gelöscht werden.", true);
+  }
+
+  const storageDeleted = await storageDeleteManaged(config, storagePath);
+  if (!storageDeleted) console.warn("Sticker metadata deleted but storage cleanup failed", { stickerId });
+  return jsonResponse(200, { ok: true, data: { deleted: true, stickerId, storageDeleted } }, true);
+}
+
 Deno.serve(async request => {
   const config = loadConfig();
   if (!config) return fail(500, "CONFIG_INVALID", "Der DEV-Stickerdienst ist nicht konfiguriert.");
@@ -328,5 +385,6 @@ Deno.serve(async request => {
   if (!token) return fail(401, "AUTH_REQUIRED", "Anmeldung erforderlich.", true);
   if (request.method === "GET") return preview(config, token, request);
   if (request.method === "POST") return upload(config, token, request);
+  if (request.method === "DELETE") return removeSticker(config, token, request);
   return fail(405, "METHOD_NOT_ALLOWED", "Die Anfrage ist nicht zulässig.", true);
 });
