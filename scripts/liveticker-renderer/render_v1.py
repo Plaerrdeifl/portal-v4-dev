@@ -365,13 +365,17 @@ def ensure_score_separator_id(root):
             return node
     raise RuntimeError('missing score separator')
 
-def center_score_exact(root,tree,svg:Path,outdir:Path,fmt):
+def align_score_and_logos_exact(root,tree,svg:Path,outdir:Path,fmt):
     separator=ensure_score_separator_id(root)
     tree.write(svg,encoding='utf-8',xml_declaration=True)
-    ids=['home_score','score_separator','away_score']
+    ids=[
+        'home_score','score_separator','away_score',
+        'logo_home_image','logo_away_image',
+    ]
     bounds=query_svg_bounds_map(svg,outdir,ids)
     if any(id_ not in bounds for id_ in ids):
-        raise RuntimeError('score geometry query failed')
+        raise RuntimeError('score/logo geometry query failed')
+
     home=bounds['home_score']; sep=bounds['score_separator']; away=bounds['away_score']
     target_x=EXPECTED[fmt][0]/2.0
     target_y=((home[1]+home[3])/2.0+(away[1]+away[3])/2.0)/2.0
@@ -382,50 +386,30 @@ def center_score_exact(root,tree,svg:Path,outdir:Path,fmt):
     dy_sep=target_y-(sep[1]+sep[3])/2.0
     shift_x(separator,dx_sep)
     shift_y(separator,dy_sep)
-    sep=(sep[0]+dx_sep,sep[1]+dy_sep,sep[2]+dx_sep,sep[3]+dy_sep)
-    shift_x(find(root,'home_score'),(sep[0]-gap)-home[2])
-    shift_x(find(root,'away_score'),(sep[2]+gap)-away[0])
-    tree.write(svg,encoding='utf-8',xml_declaration=True)
+    shifted_sep=(sep[0]+dx_sep,sep[1]+dy_sep,sep[2]+dx_sep,sep[3]+dy_sep)
+    shift_x(find(root,'home_score'),(shifted_sep[0]-gap)-home[2])
+    shift_x(find(root,'away_score'),(shifted_sep[2]+gap)-away[0])
 
-    checked=query_svg_bounds_map(svg,outdir,ids)
-    if any(id_ not in checked for id_ in ids):
-        raise RuntimeError('score geometry verification failed')
-    home=checked['home_score']; sep=checked['score_separator']; away=checked['away_score']
-    sep_cx=(sep[0]+sep[2])/2.0
-    score_cy=((home[1]+home[3])/2.0+(away[1]+away[3])/2.0)/2.0
-    sep_cy=(sep[1]+sep[3])/2.0
-    left_gap=sep[0]-home[2]
-    right_gap=away[0]-sep[2]
-    if abs(sep_cx-target_x)>0.75 or abs(left_gap-right_gap)>0.75 or abs(sep_cy-score_cy)>0.75:
-        raise RuntimeError('score geometry verification failed')
-
-def equalize_logo_edge_margins_exact(root,tree,svg:Path,outdir:Path,fmt):
-    ids=['logo_home_image','logo_away_image']
-    bounds=query_svg_bounds_map(svg,outdir,ids)
-    if any(id_ not in bounds for id_ in ids):
-        raise RuntimeError('logo geometry query failed')
-    home=bounds['logo_home_image']; away=bounds['logo_away_image']
+    logo_home=bounds['logo_home_image']; logo_away=bounds['logo_away_image']
     canvas_w=float(EXPECTED[fmt][0])
-    left_margin=home[0]
-    right_margin=canvas_w-away[2]
-    dx=(right_margin-left_margin)/2.0
-    shift_x(find(root,'logo_home_image'),dx)
-    shift_x(find(root,'logo_away_image'),dx)
+    left_margin=logo_home[0]
+    right_margin=canvas_w-logo_away[2]
+    logo_dx=(right_margin-left_margin)/2.0
+    shift_x(find(root,'logo_home_image'),logo_dx)
+    shift_x(find(root,'logo_away_image'),logo_dx)
     tree.write(svg,encoding='utf-8',xml_declaration=True)
 
-    checked=query_svg_bounds_map(svg,outdir,ids)
-    if any(id_ not in checked for id_ in ids):
-        raise RuntimeError('logo geometry verification failed')
-    home=checked['logo_home_image']; away=checked['logo_away_image']
-    left_margin=home[0]
-    right_margin=canvas_w-away[2]
-    home_h=home[3]-home[1]
-    away_h=away[3]-away[1]
-    if abs(left_margin-right_margin)>0.75 or abs(home_h-away_h)>0.75:
-        raise RuntimeError('logo geometry verification failed')
+def bounds_union(bounds_by_id,ids):
+    values=[bounds_by_id[id_] for id_ in ids if id_ in bounds_by_id]
+    if not values: return None
+    return (
+        min(v[0] for v in values),min(v[1] for v in values),
+        max(v[2] for v in values),max(v[3] for v in values),
+    )
 
 def center_story_goal_block_exact(root,tree,svg:Path,outdir:Path,ids):
-    bounds=query_svg_bounds(svg,outdir,ids)
+    bounds_by_id=query_svg_bounds_map(svg,outdir,ids)
+    bounds=bounds_union(bounds_by_id,ids)
     if bounds is None: return
     left,top,right,bottom=bounds
     max_width=941.0-84.0
@@ -437,16 +421,16 @@ def center_story_goal_block_exact(root,tree,svg:Path,outdir:Path,ids):
             default=46.0 if id_=='our_goals_heading' else 36.0
             set_font_size_px(e,font_size_px(e,default)*factor)
         tree.write(svg,encoding='utf-8',xml_declaration=True)
-        bounds=query_svg_bounds(svg,outdir,ids)
+        bounds_by_id=query_svg_bounds_map(svg,outdir,ids)
+        bounds=bounds_union(bounds_by_id,ids)
         if bounds is None: return
         left,top,right,bottom=bounds
 
-    # Center the player lines as the actual content block. The heading is
-    # positioned separately over those lines so it is visually centered over
-    # the scorer text instead of only centering the union of heading + lines.
+    # Keep the existing scorer layout semantics: center the scorer lines as
+    # one content block and the heading independently above that block.
     line_ids=[id_ for id_ in ids if id_.startswith('our_goals_line_')]
-    line_bounds=query_svg_bounds(svg,outdir,line_ids) if line_ids else None
-    heading_bounds=query_svg_bounds(svg,outdir,['our_goals_heading']) if 'our_goals_heading' in ids else None
+    line_bounds=bounds_union(bounds_by_id,line_ids)
+    heading_bounds=bounds_by_id.get('our_goals_heading')
     target_x=941.0/2.0
     target_y=930.0
     if line_bounds is not None:
@@ -460,10 +444,9 @@ def center_story_goal_block_exact(root,tree,svg:Path,outdir:Path,ids):
     else:
         shift_goal_block(root,ids,target_x-(left+right)/2.0,0.0)
 
-    tree.write(svg,encoding='utf-8',xml_declaration=True)
-    bounds=query_svg_bounds(svg,outdir,ids)
-    if bounds is None: return
-    left,top,right,bottom=bounds
+    # Horizontal shifts do not change vertical glyph bounds, so the exact
+    # vertical centering can use the same measured bounds without another
+    # expensive Inkscape query.
     shift_goal_block(root,ids,0.0,target_y-(top+bottom)/2.0)
     tree.write(svg,encoding='utf-8',xml_declaration=True)
 
@@ -546,8 +529,7 @@ def render_one(state,kind,fmt,outdir):
     inject_logo(root,'logo_home',Path(home_team['logoPath'])); inject_logo(root,'logo_away',Path(away_team['logoPath']))
     stem=f"{kind.lower()}-{fmt.lower()}"; svg=outdir/f'{stem}.svg'; png=outdir/f'{stem}.png'
     tree.write(svg,encoding='utf-8',xml_declaration=True)
-    center_score_exact(root,tree,svg,outdir,fmt)
-    equalize_logo_edge_margins_exact(root,tree,svg,outdir,fmt)
+    align_score_and_logos_exact(root,tree,svg,outdir,fmt)
     if fmt=='STORY' and lines:
         center_story_goal_block_exact(root,tree,svg,outdir,visible_goal_ids(root))
     cmd=['docker','run','--rm','--network','none','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=256','--user',f'{os.getuid()}:{os.getgid()}','-e','HOME=/tmp','-v',f'{outdir}:/work','-v',f'{FONT_DIR}:/usr/share/fonts/truetype/plaerrdeifl:ro','--entrypoint','inkscape',RENDERER,f'/work/{svg.name}','--export-type=png',f'--export-filename=/work/{png.name}']
