@@ -9,7 +9,7 @@ const read = relative => fs.readFile(path.join(root, relative), "utf8");
 test("new text actions carry the WhatsApp publish intent before persistence", async () => {
   const engine = await read("js/liveticker-engine-v4.js");
   assert.match(engine, /export function attachSubmitWhatsappIntent\(tickerEvent, text,/);
-  assert.match(engine, /tickerEvent\._whatsapp = Object\.freeze\(\{ publish: true, text: message \}\)/);
+  assert.match(engine, /return \{[\s\S]*\.\.\.tickerEvent,[\s\S]*_whatsapp: Object\.freeze\(\{ publish: true, text: message \}\)/);
   assert.match(engine, /if \(!tickerEvent \|\| editingId \|\| !enabled/);
 
   const submitStart = engine.indexOf('form.addEventListener("submit"');
@@ -27,7 +27,7 @@ test("direct intent rollout cache marker reaches the liveticker bootstrap chain"
     read("js/liveticker-auth-bootstrap.js"),
     read("js/liveticker-bootstrap.js")
   ]);
-  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260918-penalty-goalie-r1/);
-  assert.match(auth, /liveticker-bootstrap\.js\?v=20260918-penalty-goalie-r1/);
-  assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260918-penalty-goalie-r1/);
+  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260918-whatsapp-frozen-r1/);
+  assert.match(auth, /liveticker-bootstrap\.js\?v=20260918-whatsapp-frozen-r1/);
+  assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260918-whatsapp-frozen-r1/);
 });

@@ -240,9 +240,11 @@ export function shouldCopyLivetickerOutput({ whatsappEnabled, transportReady }) 
 
 export function attachSubmitWhatsappIntent(tickerEvent, text, { editingId = null, enabled = false } = {}) {
   const message = String(text ?? "");
-  if (!tickerEvent || editingId || !enabled || !message.trim() || message.length > 4000) return false;
-  tickerEvent._whatsapp = Object.freeze({ publish: true, text: message });
-  return true;
+  if (!tickerEvent || editingId || !enabled || !message.trim() || message.length > 4000) return tickerEvent;
+  return {
+    ...tickerEvent,
+    _whatsapp: Object.freeze({ publish: true, text: message })
+  };
 }
 
 export function applyTickerSubmitLifecycle(state, editingId, tickerEvent) {
@@ -1137,14 +1139,14 @@ function initialize() {
     event.preventDefault();
     errorBox.hidden = true;
     try {
-      const tickerEvent = buildTickerEvent();
+      let tickerEvent = buildTickerEvent();
       if (!tickerEvent) throw new Error("Für eine Spielsituation gibt es keine Textaktion zu speichern.");
       if (!outputManuallyEdited) setOutput(draftOutputText(tickerEvent));
       if (!output.value.trim()) throw new Error("Der Vorschautext darf nicht leer sein.");
 
       const runtime = globalThis.PD_LIVETICKER_WHATSAPP_RUNTIME;
       const whatsappEnabled = !editingId && whatsappAutoSendReady();
-      attachSubmitWhatsappIntent(tickerEvent, output.value, {
+      tickerEvent = attachSubmitWhatsappIntent(tickerEvent, output.value, {
         editingId,
         enabled: whatsappEnabled
       });
