@@ -4,7 +4,7 @@ import test from "node:test";
 
 const read = path => fs.readFileSync(new URL(path, import.meta.url), "utf8");
 const ui = read("../js/modules/bus-orga-bookings.js");
-const migration = read("../supabase/migrations/20260919220126_fanbus_booking_primary_and_compact_ui.sql");
+const migration = read("../supabase/migrations/20260919220959_fanbus_booking_primary_and_compact_ui.sql");
 const worker = read("../service-worker.js");
 const pages = read("../js/pages.js");
 const app = read("../js/app.js");
