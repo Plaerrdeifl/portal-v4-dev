@@ -1,0 +1,111 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+
+const root = resolve(import.meta.dirname, "..");
+import { homeAwayScore } from "../js/liveticker-engine-v4.js";
+import {
+  renderLivetickerTemplate,
+  validateLivetickerTemplate
+} from "../js/liveticker-output-templates.js";
+import {
+  whatsappStickerActionContext,
+  whatsappStickerActionMatches
+} from "../js/liveticker-whatsapp-sticker-core.js";
+import { settleSentStickerState } from "../js/liveticker-whatsapp-publish.js";
+
+test("score is always rendered home : away independent of Mighty Dogs venue", () => {
+  assert.deepEqual(
+    homeAwayScore({ mighty: 1, opponent: 0 }, "HOME"),
+    { home: 1, away: 0 }
+  );
+  assert.deepEqual(
+    homeAwayScore({ mighty: 1, opponent: 0 }, "AWAY"),
+    { home: 0, away: 1 }
+  );
+  assert.deepEqual(
+    homeAwayScore({ mighty: 2, opponent: 3 }, "AWAY"),
+    { home: 3, away: 2 }
+  );
+});
+
+test("canonical score placeholder is valid while legacy team score placeholders remain compatible", () => {
+  const own = "Spielminute {{minute}}\nNeuer Spielstand: {{score}}";
+  const opponent = "Spielminute {{minute}}\nTor {{opponent_name}}\nNeuer Spielstand: {{score}}";
+  const legacy = "Spielminute {{minute}}\n{{mighty_score}} : {{opponent_score}}";
+
+  assert.equal(validateLivetickerTemplate(own, "own").valid, true);
+  assert.equal(validateLivetickerTemplate(opponent, "opponent").valid, true);
+  assert.equal(validateLivetickerTemplate(legacy, "own").valid, true);
+  assert.equal(
+    renderLivetickerTemplate(own, { minute: 23, score: "0 : 1" }),
+    "Spielminute 23\nNeuer Spielstand: 0 : 1"
+  );
+});
+
+test("action sticker context matches only the intended saved action", () => {
+  const ownGoal = whatsappStickerActionContext({ action: "GOAL_MIGHTY" });
+  const opponentGoal = whatsappStickerActionContext({ action: "GOAL_OPPONENT" });
+  const ownPenalty = whatsappStickerActionContext({ action: "PENALTY", penaltyTeams: ["mighty"] });
+
+  assert.equal(whatsappStickerActionMatches(ownGoal, { type: "goal", team: "mighty" }), true);
+  assert.equal(whatsappStickerActionMatches(ownGoal, { type: "goal", team: "opponent" }), false);
+  assert.equal(whatsappStickerActionMatches(opponentGoal, { type: "goal", team: "opponent" }), true);
+  assert.equal(
+    whatsappStickerActionMatches(ownPenalty, {
+      type: "penalty",
+      penalties: [{ team: "mighty" }, { team: "mighty" }]
+    }),
+    true
+  );
+  assert.equal(
+    whatsappStickerActionMatches(ownPenalty, {
+      type: "penalty",
+      penalties: [{ team: "mighty" }, { team: "opponent" }]
+    }),
+    false
+  );
+});
+
+test("sent action sticker keeps the exact draft id and action context for later linking", () => {
+  const expectedActionId = "11111111-1111-4111-8111-111111111111";
+  const context = whatsappStickerActionContext({ action: "GOAL_MIGHTY" });
+  const state = {
+    selectedStickerId: "22222222-2222-4222-8222-222222222222",
+    sourceAction: "GOAL_MIGHTY",
+    expectedActionId,
+    expectedActionContext: context,
+    request: { id: "request-1" },
+    deliveryId: "job-1",
+    linkedActionId: "",
+    requestError: "",
+    busy: false,
+    successMessage: "",
+    sentStatusAcknowledged: false,
+    sentStatusHidden: false,
+    pendingActionDeliveryIds: [],
+    pendingActionTargets: {}
+  };
+
+  assert.equal(
+    settleSentStickerState(state, { id: "job-1", stickerStatus: "SENT" }),
+    "ACTION_RELEASED"
+  );
+  assert.deepEqual(state.pendingActionDeliveryIds, ["job-1"]);
+  assert.deepEqual(state.pendingActionTargets["job-1"], {
+    actionId: expectedActionId,
+    context
+  });
+});
+
+
+test("save button stays locked until the exact action is acknowledged by the server", async () => {
+  const source = await readFile(resolve(root, "js/liveticker-engine-v4.js"), "utf8");
+  assert.match(source, /setPendingServerSave\(tickerEvent\);[\s\S]*completeTickerSubmitLifecycle/);
+  assert.match(source, /if \(pendingServerActionId\)[\s\S]*Speichern läuft bereits/);
+  assert.match(source, /serverActionFingerprint\(saved\) !== pendingServerActionFingerprint/);
+  assert.match(source, /pd-liveticker-server-synced[\s\S]*confirmPendingServerSave/);
+  assert.match(source, /pd-liveticker-server-sync-error[\s\S]*failPendingServerSave/);
+  assert.match(source, /pd-liveticker-sync-circuit-open[\s\S]*failPendingServerSave/);
+});
