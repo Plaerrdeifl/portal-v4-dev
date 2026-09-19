@@ -46,6 +46,7 @@ test("calendar adapter accepts the current compact engine and injects calendar r
 
 test("PROD output templates stay authenticated and capability-gated", async () => {
   const migration = await read("supabase/migrations/20260906115000_liveticker_output_templates_prod_r1.sql");
+  const v2Migration = await read("supabase/migrations/20260919190000_liveticker_textsystem_v2.sql");
   const storage = await read("js/liveticker-game-storage.js");
   const admin = await read("js/modules/liveticker-admin.js");
 
@@ -57,16 +58,19 @@ test("PROD output templates stay authenticated and capability-gated", async () =
   assert.match(storage, /Authorization: `Bearer \$\{token\}`/);
   assert.match(storage, /auth\.hasCapability\("liveticker\.manage"\)/);
   assert.match(admin, /call\("liveticker_output_templates_list"\)/);
-  assert.match(admin, /call\("liveticker_output_template_save"/);
+  assert.match(admin, /call\("liveticker_output_variant_save"/);
+  assert.match(v2Migration, /perform app_private\.liveticker_require_operator\(\)/);
+  assert.match(v2Migration, /revoke all on table app_modules\.liveticker_output_types, app_modules\.liveticker_output_variants/);
 });
 
-test("PROD editor ships the frozen four output contexts", async () => {
+test("V2 editor groups independent output types while retaining the legacy read model", async () => {
   const admin = await read("js/modules/liveticker-admin.js");
   const templates = await read("js/liveticker-output-templates.js");
-  assert.match(admin, /Tore – Wir/);
-  assert.match(admin, /Strafen – Wir/);
-  assert.match(admin, /Tore – Die anderen/);
-  assert.match(admin, /Strafen – Die anderen/);
+  assert.match(templates, /GOAL_MIGHTY: "goal_mighty"/);
+  assert.match(templates, /GOAL_OPPONENT: "goal_opponent"/);
+  assert.match(templates, /PENALTY: "penalty"/);
+  assert.match(admin, /Textausgaben/);
+  assert.doesNotMatch(admin, /Strafen – Wir|Strafen – Die anderen/);
   assert.match(templates, /ownPenaltyTemplate/);
   assert.match(templates, /opponentPenaltyTemplate/);
 });
@@ -93,12 +97,11 @@ test("PROD Liveticker hotfix keeps option titles independent per output context"
   assert.match(templates, /titleField: "ownPenaltyTitle"/);
   assert.match(templates, /titleField: "opponentGoalTitle"/);
   assert.match(templates, /titleField: "opponentPenaltyTitle"/);
-  assert.match(admin, /template\[context\.titleField\]/);
-  assert.match(admin, /Sichtbarer Buttonname/);
-  assert.match(engine, /currentPenaltyTitleContext/);
-  assert.match(engine, /selectedAction\(\) === "GOAL_OPPONENT" \? "opponent" : "own"/);
-  assert.match(engine, /opponentPenaltyTitle/);
-  assert.match(engine, /ownPenaltyTitle/);
+  assert.match(templates, /normalizeLegacyTemplates/);
+  assert.match(engine, /Transitional read path for historical classic\/emotional\/short actions/);
+  assert.match(engine, /event\.style \|\| "classic"/);
+  assert.match(admin, /Name der Variante/);
+  assert.doesNotMatch(admin, /Technischer Key · nicht editierbar/);
 });
 
 

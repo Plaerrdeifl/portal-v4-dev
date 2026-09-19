@@ -1,3 +1,13 @@
+const {
+  LIVETICKER_DEFAULT_TEXTSYSTEM,
+  LIVETICKER_OUTPUT_TYPE_KEYS,
+  defaultLivetickerVariant,
+  livetickerVariantById,
+  livetickerVariantsForType,
+  renderLivetickerTemplate,
+  semanticLivetickerVariant
+} = globalThis.PD_LIVETICKER_TEXTSYSTEM || await import("./liveticker-output-templates.js");
+
 export const MIGHTY_ROSTER = Object.freeze([
   { number: "40", name: "Leon Pöhlmann", position: "Tor" },
   { number: "42", name: "Benedict Roßberg", position: "Tor" },
@@ -189,6 +199,32 @@ function teamName(team, opponent) {
   return team === "mighty" ? "Mighty Dogs" : opponent.shortName;
 }
 
+function textsystemSnapshot() {
+  return globalThis.PD_LIVETICKER_OUTPUT_TEMPLATES || LIVETICKER_DEFAULT_TEXTSYSTEM;
+}
+
+function actionOutputType(event) {
+  if (event?.type === "goal") return event.team === "opponent"
+    ? LIVETICKER_OUTPUT_TYPE_KEYS.GOAL_OPPONENT
+    : LIVETICKER_OUTPUT_TYPE_KEYS.GOAL_MIGHTY;
+  if (isPenaltyShotEvent(event)) return LIVETICKER_OUTPUT_TYPE_KEYS.PENALTY_SHOT;
+  if (event?.type === "penalty") return LIVETICKER_OUTPUT_TYPE_KEYS.PENALTY;
+  if (event?.type === "shootout") return LIVETICKER_OUTPUT_TYPE_KEYS.SHOOTOUT_ATTEMPT;
+  return "";
+}
+
+export function resolveLivetickerVariant(outputType, variantId = "") {
+  const snapshot = textsystemSnapshot();
+  return livetickerVariantById(snapshot, outputType, variantId)
+    || defaultLivetickerVariant(snapshot, outputType);
+}
+
+function renderOutputVariant(outputType, values, variantId = "") {
+  const variant = resolveLivetickerVariant(outputType, variantId);
+  if (!variant) throw new Error("Liveticker-Ausgabevariante konnte nicht geladen werden.");
+  return renderLivetickerTemplate(variant.template, values);
+}
+
 function goalPlayerLine(event) {
   return event.player ? playerText(event.player) : "";
 }
@@ -213,6 +249,23 @@ function eventSegment(event) {
 
 export function formatGoalText(event, history, opponent) {
   const score = scoreAtEvent(history, event.id);
+  const displayScore = homeAwayScore(score);
+  const values = {
+    minute: event.minute,
+    scorer: goalPlayerLine(event),
+    assists: assistTemplateValue(event),
+    mighty_score: score.mighty,
+    opponent_score: score.opponent,
+    home_score: displayScore.home,
+    away_score: displayScore.away,
+    score: `${displayScore.home} : ${displayScore.away}`,
+    opponent_name: opponent.shortName
+  };
+  if (event.outputVariantId) {
+    return renderOutputVariant(actionOutputType(event), values, event.outputVariantId);
+  }
+
+  // Transitional read path for historical classic/emotional/short actions.
   const templates = globalThis.PD_LIVETICKER_OUTPUT_TEMPLATES?.templates;
   const variant = Array.isArray(templates)
     ? templates.find(template => template.key === (event.style || "classic"))
@@ -227,18 +280,7 @@ export function formatGoalText(event, history, opponent) {
     ? variant.opponentGoalTemplate
     : variant.ownGoalTemplate;
 
-  const displayScore = homeAwayScore(score);
-  return renderer(template, {
-    minute: event.minute,
-    scorer: goalPlayerLine(event),
-    assists: assistTemplateValue(event),
-    mighty_score: score.mighty,
-    opponent_score: score.opponent,
-    home_score: displayScore.home,
-    away_score: displayScore.away,
-    score: `${displayScore.home} : ${displayScore.away}`,
-    opponent_name: opponent.shortName
-  });
+  return renderer(template, values);
 }
 
 function formatPenaltyEntry(penalty, opponent) {
@@ -329,6 +371,15 @@ export function penaltyTemplateValues(event, penalties, opponent) {
 }
 
 export function formatPenaltyText(event, opponent) {
+  if (event.outputVariantId) {
+    return renderOutputVariant(
+      LIVETICKER_OUTPUT_TYPE_KEYS.PENALTY,
+      penaltyTemplateValues(event, event.penalties, opponent),
+      event.outputVariantId
+    );
+  }
+
+  // Transitional read path for historical classic/emotional/short actions.
   const templates = globalThis.PD_LIVETICKER_OUTPUT_TEMPLATES?.templates;
   const variant = Array.isArray(templates)
     ? templates.find(template => template.key === (event.style || "classic"))
@@ -356,7 +407,12 @@ export function formatPenaltyText(event, opponent) {
 export function formatShootoutText(event, opponent) {
   const result = event.result === "scored" ? "✅ verwandelt" : "❌ vergeben";
   const shooter = event.player ? playerText(event.player) : "Schütze noch offen";
-  return ["*Penaltyschießen*", `${teamName(event.team, opponent)} · ${shooter}`, result].join("\n");
+  return renderOutputVariant(LIVETICKER_OUTPUT_TYPE_KEYS.SHOOTOUT_ATTEMPT, {
+    team_name: teamName(event.team, opponent),
+    opponent_name: opponent.shortName,
+    shooter,
+    result
+  }, event.outputVariantId);
 }
 
 export function formatPenaltyShotText(event, opponent) {
@@ -364,13 +420,14 @@ export function formatPenaltyShotText(event, opponent) {
   const shooter = event.player ? playerText(event.player) : "Schütze noch offen";
   const defendingTeam = event.team === "mighty" ? "opponent" : "mighty";
   const goalie = event.goalie ? playerText(event.goalie) : "Goalie noch offen";
-  return [
-    "🏒 *Straf-Penalty*",
-    `${event.minute} Spielminute`,
-    `${teamName(event.team, opponent)} · Schütze: ${shooter}`,
-    `${teamName(defendingTeam, opponent)} · Goalie: ${goalie}`,
+  return renderOutputVariant(LIVETICKER_OUTPUT_TYPE_KEYS.PENALTY_SHOT, {
+    minute: event.minute,
+    team_name: teamName(event.team, opponent),
+    opponent_name: teamName(defendingTeam, opponent),
+    shooter,
+    goalie,
     result
-  ].join("\n");
+  }, event.outputVariantId);
 }
 
 export function formatEventText(event, history, opponent) {
@@ -400,13 +457,18 @@ function goalSummaryLines(history, team, segmentKey = null) {
       && (!targetSegment || eventSegment(event).order <= targetSegment.order)
     )
     .map(event => {
-      if (isPenaltyShotEvent(event)) {
-        const shooter = event.player ? playerText(event.player) : "Schütze offen";
-        return `${event.minute} Spielminute – 🏒 Straf-Penalty · ${shooter}`;
-      }
-      const scorer = goalPlayerLine(event);
-      return scorer ? `${event.minute} Spielminute – ${scorer}` : `${event.minute} Spielminute`;
+      const scorer = isPenaltyShotEvent(event)
+        ? `🏒 Straf-Penalty · ${event.player ? playerText(event.player) : "Schütze offen"}`
+        : (goalPlayerLine(event) || "Torschütze offen");
+      return renderOutputVariant(LIVETICKER_OUTPUT_TYPE_KEYS.GOAL_SUMMARY_LINE, {
+        minute: event.minute,
+        scorer
+      });
     });
+}
+
+function emptySummaryText(outputType) {
+  return renderOutputVariant(outputType, {});
 }
 
 export function formatSegmentSummary(history, segmentKey, opponent) {
@@ -419,10 +481,13 @@ export function formatSegmentSummary(history, segmentKey, opponent) {
   const mighty = goalSummaryLines(history, "mighty", segment.key);
   const away = goalSummaryLines(history, "opponent", segment.key);
   const displayScore = homeAwayScore(score);
-  const headline = segment.key === "OT"
-    ? `*Ende Overtime – ${displayScore.home}:${displayScore.away}*`
-    : `*Ende ${segment.label} – ${displayScore.home}:${displayScore.away}*`;
-  return [headline, "", "🥅 *Mighty Dogs*", ...(mighty.length ? mighty : ["Keine Tore"]), "", `🥅 *${opponent.shortName}*`, ...(away.length ? away : ["Keine Tore"])].join("\n");
+  return renderOutputVariant(LIVETICKER_OUTPUT_TYPE_KEYS.PERIOD_SUMMARY, {
+    period_label: segment.key === "OT" ? "Overtime" : segment.label,
+    score_line: `${displayScore.home}:${displayScore.away}`,
+    own_goals: (mighty.length ? mighty : [emptySummaryText(LIVETICKER_OUTPUT_TYPE_KEYS.NO_GOALS)]).join("\n"),
+    opponent_goals: (away.length ? away : [emptySummaryText(LIVETICKER_OUTPUT_TYPE_KEYS.NO_GOALS)]).join("\n"),
+    opponent_name: opponent.shortName
+  });
 }
 
 export function formatPeriodSummary(history, period, opponent) {
@@ -440,23 +505,43 @@ function penaltySummaryLines(history, team) {
       if (defendingTeam === team) {
         const shooter = event.player ? playerText(event.player) : "Schütze offen";
         const goalie = event.goalie ? playerText(event.goalie) : "Goalie offen";
-        lines.push(`${event.minute} Spielminute – Straf-Penalty · ${shooter} gegen ${goalie} · ${event.result === "scored" ? "verwandelt" : "vergeben"}`);
+        lines.push(renderOutputVariant(LIVETICKER_OUTPUT_TYPE_KEYS.PENALTY_SHOT_SUMMARY_LINE, {
+          minute: event.minute,
+          shooter,
+          goalie,
+          result: event.result === "scored" ? "verwandelt" : "vergeben"
+        }));
       }
       continue;
     }
     for (const penalty of event.penalties.filter(entry => entry.team === team)) {
-      const base = `${event.minute} Spielminute – ${penalty.player ? playerText(penalty.player) : "ohne Spieler"} – ${penalty.duration} min ${penalty.reason}`;
+      const base = renderOutputVariant(LIVETICKER_OUTPUT_TYPE_KEYS.PENALTY_SUMMARY_LINE, {
+        minute: event.minute,
+        player: penalty.player ? playerText(penalty.player) : "ohne Spieler",
+        penalty_duration: `${penalty.duration} min`,
+        penalty_reason: penalty.reason
+      });
       lines.push(isMajorPenalty(penalty.duration) ? `🚨 *${base}*` : base);
     }
   }
-  return lines.length ? lines : ["Keine Strafen"];
+  return lines.length ? lines : [emptySummaryText(LIVETICKER_OUTPUT_TYPE_KEYS.NO_PENALTIES)];
 }
 
 function shootoutSummaryLines(history, opponent) {
   const attempts = historyByMinute(history).filter(event => event.type === "shootout");
-  if (!attempts.length) return [];
+  if (!attempts.length) return "";
   const score = calculateShootout(history);
-  return ["", "🏒 *Penaltyschießen*", `Treffer: Mighty Dogs ${score.mighty}:${score.opponent} ${opponent.shortName}`, ...attempts.map(event => `${teamName(event.team, opponent)} · ${event.player ? playerText(event.player) : "Schütze offen"} · ${event.result === "scored" ? "verwandelt" : "vergeben"}`)];
+  const attemptLines = attempts.map(event => renderOutputVariant(LIVETICKER_OUTPUT_TYPE_KEYS.SHOOTOUT_SUMMARY_LINE, {
+    team_name: teamName(event.team, opponent),
+    shooter: event.player ? playerText(event.player) : "Schütze offen",
+    result: event.result === "scored" ? "verwandelt" : "vergeben"
+  }));
+  return renderOutputVariant(LIVETICKER_OUTPUT_TYPE_KEYS.SHOOTOUT_SUMMARY, {
+    mighty_score: score.mighty,
+    opponent_score: score.opponent,
+    opponent_name: opponent.shortName,
+    shootout_attempts: attemptLines.join("\n")
+  });
 }
 
 export function formatFinalSummary(history, opponent) {
@@ -469,23 +554,15 @@ export function formatFinalSummary(history, opponent) {
     : `Mighty Dogs ${displayScore.home}:${displayScore.away} ${opponent.shortName}${suffix}`;
   const mightyGoals = goalSummaryLines(history, "mighty");
   const opponentGoals = goalSummaryLines(history, "opponent");
-  return [
-    "*ENDSTAND*",
-    scoreLine,
-    "",
-    "🥅 *Tore Mighty Dogs*",
-    ...(mightyGoals.length ? mightyGoals : ["Keine Tore"]),
-    "",
-    `🥅 *Tore ${opponent.shortName}*`,
-    ...(opponentGoals.length ? opponentGoals : ["Keine Tore"]),
-    "",
-    "🚨 *Strafen Mighty Dogs*",
-    ...penaltySummaryLines(history, "mighty"),
-    "",
-    `🚨 *Strafen ${opponent.shortName}*`,
-    ...penaltySummaryLines(history, "opponent"),
-    ...shootoutSummaryLines(history, opponent)
-  ].join("\n");
+  return renderOutputVariant(LIVETICKER_OUTPUT_TYPE_KEYS.FINAL_SUMMARY, {
+    score_line: scoreLine,
+    own_goals: (mightyGoals.length ? mightyGoals : [emptySummaryText(LIVETICKER_OUTPUT_TYPE_KEYS.NO_GOALS)]).join("\n"),
+    opponent_goals: (opponentGoals.length ? opponentGoals : [emptySummaryText(LIVETICKER_OUTPUT_TYPE_KEYS.NO_GOALS)]).join("\n"),
+    own_penalties: penaltySummaryLines(history, "mighty").join("\n"),
+    opponent_penalties: penaltySummaryLines(history, "opponent").join("\n"),
+    shootout_summary: shootoutSummaryLines(history, opponent),
+    opponent_name: opponent.shortName
+  });
 }
 
 function defaultState() {
@@ -631,42 +708,95 @@ function initialize() {
   opponentSelect.value = state.opponentId;
   minuteInput.value = String(state.minute);
 
-  function contextualTemplateTitle(variant, contextKey) {
-    const fields = {
-      own: "ownGoalTitle",
-      opponent: "opponentGoalTitle",
-      ownPenalty: "ownPenaltyTitle",
-      opponentPenalty: "opponentPenaltyTitle"
-    };
-    return variant?.[fields[contextKey]] || variant?.title || "Option";
+  const manuallySelectedVariantTypes = new Set();
+
+  function selectedGoalOutputType() {
+    return selectedAction() === "GOAL_OPPONENT"
+      ? LIVETICKER_OUTPUT_TYPE_KEYS.GOAL_OPPONENT
+      : LIVETICKER_OUTPUT_TYPE_KEYS.GOAL_MIGHTY;
   }
 
-  function currentPenaltyTitleContext() {
-    const teams = new Set([...penaltyRows.children]
-      .map(row => row.querySelector("[data-field='team']")?.value)
-      .filter(Boolean));
-    if (teams.size !== 1) return "";
-    return teams.has("opponent") ? "opponentPenalty" : "ownPenalty";
+  function recommendedVariantSemantic(outputType) {
+    if (outputType === LIVETICKER_OUTPUT_TYPE_KEYS.PENALTY) {
+      const penalties = [...penaltyRows.children].map(penaltyRowData);
+      if (new Set(penalties.map(item => item.team)).size > 1) return "both";
+      if (penalties.some(item => isMajorPenalty(item.duration))) return "major";
+      return "normal";
+    }
+    if ([LIVETICKER_OUTPUT_TYPE_KEYS.GOAL_MIGHTY, LIVETICKER_OUTPUT_TYPE_KEYS.GOAL_OPPONENT].includes(outputType)) {
+      const playerName = goalPlayer.value;
+      const team = outputType === LIVETICKER_OUTPUT_TYPE_KEYS.GOAL_OPPONENT ? "opponent" : "mighty";
+      const priorGoals = state.history.filter(event => event.id !== editingId && event.type === "goal" && event.team === team && event.player?.name === playerName).length;
+      return playerName && priorGoals >= 2 ? "hattrick" : "normal";
+    }
+    return "normal";
   }
 
-  function syncTemplateStyleTitles() {
-    const outputTemplates = globalThis.PD_LIVETICKER_OUTPUT_TEMPLATES?.templates || [];
-    const goalContext = selectedAction() === "GOAL_OPPONENT" ? "opponent" : "own";
-    const penaltyContext = currentPenaltyTitleContext();
-    document.querySelectorAll("input[name='goalStyle']").forEach(input => {
-      const variant = outputTemplates.find(template => template.key === input.value);
-      const label = document.querySelector(`label[for='${input.id}']`);
-      if (variant && label) label.textContent = contextualTemplateTitle(variant, goalContext);
+  function renderVariantOptions(container, inputName, outputType) {
+    if (!container) return;
+    const variants = livetickerVariantsForType(textsystemSnapshot(), outputType);
+    const selected = container.querySelector(`input[name='${inputName}']:checked`)?.value || "";
+    const recommended = semanticLivetickerVariant(textsystemSnapshot(), outputType, recommendedVariantSemantic(outputType));
+    const fallback = defaultLivetickerVariant(textsystemSnapshot(), outputType);
+    const target = variants.some(variant => variant.id === selected)
+      ? selected
+      : (recommended?.id || fallback?.id || variants[0]?.id || "");
+    container.replaceChildren();
+    variants.forEach((variant, index) => {
+      const id = `${inputName}-${index}`;
+      const input = document.createElement("input");
+      input.id = id;
+      input.name = inputName;
+      input.type = "radio";
+      input.value = variant.id;
+      input.checked = variant.id === target;
+      const label = document.createElement("label");
+      label.htmlFor = id;
+      label.textContent = variant.name;
+      container.append(input, label);
     });
-    document.querySelectorAll("input[name='penaltyStyle']").forEach(input => {
-      const variant = outputTemplates.find(template => template.key === input.value);
-      const label = document.querySelector(`label[for='${input.id}']`);
-      if (variant && label) label.textContent = penaltyContext
-        ? contextualTemplateTitle(variant, penaltyContext)
-        : (variant.title || "Option");
-    });
+    container.dataset.outputType = outputType;
+    if (!container.dataset.variantBound) {
+      container.dataset.variantBound = "true";
+      container.addEventListener("change", () => {
+        manuallySelectedVariantTypes.add(container.dataset.outputType || outputType);
+      });
+    }
   }
-  syncTemplateStyleTitles();
+
+  function syncTemplateStyleTitles({ allowRecommendation = false } = {}) {
+    const goalType = selectedGoalOutputType();
+    if (allowRecommendation && !manuallySelectedVariantTypes.has(goalType)) {
+      const container = $("#goalVariantOptions");
+      if (container) container.replaceChildren();
+    }
+    if (allowRecommendation && !manuallySelectedVariantTypes.has(LIVETICKER_OUTPUT_TYPE_KEYS.PENALTY)) {
+      const container = $("#penaltyVariantOptions");
+      if (container) container.replaceChildren();
+    }
+    renderVariantOptions($("#goalVariantOptions"), "goalOutputVariantId", goalType);
+    renderVariantOptions($("#penaltyVariantOptions"), "penaltyOutputVariantId", LIVETICKER_OUTPUT_TYPE_KEYS.PENALTY);
+    renderVariantOptions($("#penaltyShotVariantOptions"), "penaltyShotOutputVariantId", LIVETICKER_OUTPUT_TYPE_KEYS.PENALTY_SHOT);
+    renderVariantOptions($("#shootoutVariantOptions"), "shootoutOutputVariantId", LIVETICKER_OUTPUT_TYPE_KEYS.SHOOTOUT_ATTEMPT);
+  }
+
+  function legacyVariantSemantic(outputType, style) {
+    const legacyStyle = ["classic", "emotional", "short"].includes(style) ? style : "classic";
+    if (outputType === LIVETICKER_OUTPUT_TYPE_KEYS.GOAL_MIGHTY) return { classic: "normal", emotional: "emotional", short: "hattrick" }[legacyStyle];
+    if (outputType === LIVETICKER_OUTPUT_TYPE_KEYS.GOAL_OPPONENT) return { classic: "normal", emotional: "with_scorer", short: "hattrick" }[legacyStyle];
+    if (outputType === LIVETICKER_OUTPUT_TYPE_KEYS.PENALTY) return { classic: "normal", emotional: "both", short: "major" }[legacyStyle];
+    return "normal";
+  }
+
+  function selectEventOutputVariant(event, inputName, outputType) {
+    const snapshot = textsystemSnapshot();
+    const variant = livetickerVariantById(snapshot, outputType, event.outputVariantId)
+      || semanticLivetickerVariant(snapshot, outputType, legacyVariantSemantic(outputType, event.style));
+    const input = [...document.querySelectorAll(`input[name='${inputName}']`)]
+      .find(item => item.value === variant?.id);
+    if (input) input.checked = true;
+  }
+  syncTemplateStyleTitles({ allowRecommendation: true });
   window.addEventListener("pd-liveticker-output-templates-updated", () => {
     syncTemplateStyleTitles();
     refreshDraftOutput();
@@ -796,7 +926,7 @@ function initialize() {
     team.addEventListener("change", () => {
       fillPlayerSelect(player, getRoster(), "", "Spieler noch unbekannt", PENALTY_POSITION_ORDER);
       binding.syncFromSelect();
-      syncTemplateStyleTitles();
+      syncTemplateStyleTitles({ allowRecommendation: true });
     });
     row.querySelector(".add-penalty").addEventListener("click", () => {
       createPenaltyRow();
@@ -805,12 +935,12 @@ function initialize() {
     row.querySelector(".remove-penalty").addEventListener("click", () => {
       if (penaltyRows.children.length > 1) {
         row.remove();
-        syncTemplateStyleTitles();
+        syncTemplateStyleTitles({ allowRecommendation: true });
         queueMicrotask(() => refreshDraftOutput());
       }
     });
     penaltyRows.append(row);
-    syncTemplateStyleTitles();
+    syncTemplateStyleTitles({ allowRecommendation: true });
   }
 
   function ensurePenaltyRow() { if (!penaltyRows.children.length) createPenaltyRow(); }
@@ -1057,8 +1187,7 @@ function initialize() {
       goalBinding.syncFromSelect();
       assist1Binding.syncFromSelect();
       assist2Binding.syncFromSelect();
-      const style = $(`input[name='goalStyle'][value='${event.style || "classic"}']`);
-      if (style) style.checked = true;
+      selectEventOutputVariant(event, "goalOutputVariantId", actionOutputType(event));
     } else if (isPenaltyShotEvent(event)) {
       $("#actionSituation").checked = true;
       situationPenaltyShot.checked = true;
@@ -1067,14 +1196,14 @@ function initialize() {
       syncPenaltyShotRosters(event.player?.name || "", event.goalie?.name || "");
       const result = $(`input[name='penaltyShotResult'][value='${event.result || "missed"}']`);
       if (result) result.checked = true;
+      selectEventOutputVariant(event, "penaltyShotOutputVariantId", LIVETICKER_OUTPUT_TYPE_KEYS.PENALTY_SHOT);
     } else if (event.type === "penalty") {
       $("#actionPenalty").checked = true;
       situationPenaltyShot.checked = false;
       syncActionFields();
       penaltyRows.replaceChildren();
       event.penalties.forEach(createPenaltyRow);
-      const style = $(`input[name='penaltyStyle'][value='${event.style || "classic"}']`);
-      if (style) style.checked = true;
+      selectEventOutputVariant(event, "penaltyOutputVariantId", LIVETICKER_OUTPUT_TYPE_KEYS.PENALTY);
     } else {
       $("#actionShootout").checked = true;
       syncActionFields();
@@ -1082,6 +1211,7 @@ function initialize() {
       syncShootoutRoster(event.player?.name || "");
       const result = $(`input[name='shootoutResult'][value='${event.result}']`);
       if (result) result.checked = true;
+      selectEventOutputVariant(event, "shootoutOutputVariantId", LIVETICKER_OUTPUT_TYPE_KEYS.SHOOTOUT_ATTEMPT);
     }
     syncContext();
     refreshDraftOutput({ force: true });
@@ -1116,6 +1246,7 @@ function initialize() {
         player: playerFromSelect(penaltyShotPlayer, currentPenaltyShotShooterRoster()),
         goalie: playerFromSelect(penaltyShotGoalie, currentPenaltyShotGoalieRoster()),
         result: new FormData(form).get("penaltyShotResult") || "missed",
+        outputVariantId: new FormData(form).get("penaltyShotOutputVariantId") || resolveLivetickerVariant(LIVETICKER_OUTPUT_TYPE_KEYS.PENALTY_SHOT)?.id,
         penalties: [{ team: defending, duration: "Penalty", reason: "Straf-Penalty", player: null }]
       };
     }
@@ -1127,7 +1258,8 @@ function initialize() {
         type: "shootout",
         team,
         player: playerFromSelect(shootoutPlayer, roster),
-        result: new FormData(form).get("shootoutResult") || "scored"
+        result: new FormData(form).get("shootoutResult") || "scored",
+        outputVariantId: new FormData(form).get("shootoutOutputVariantId") || resolveLivetickerVariant(LIVETICKER_OUTPUT_TYPE_KEYS.SHOOTOUT_ATTEMPT)?.id
       };
     }
 
@@ -1135,12 +1267,13 @@ function initialize() {
     if (action === "PENALTY") {
       const penalties = [...penaltyRows.children].map(penaltyRowData);
       if (!penalties.length) throw new Error("Bitte mindestens eine Strafe erfassen.");
-      return applyPenaltyStyleToDraft({
+      return {
         id: eventId,
         type: "penalty",
         minute,
-        penalties
-      }, new FormData(form).get("penaltyStyle") || "classic");
+        penalties,
+        outputVariantId: new FormData(form).get("penaltyOutputVariantId") || resolveLivetickerVariant(LIVETICKER_OUTPUT_TYPE_KEYS.PENALTY)?.id
+      };
     }
 
     const team = selectedGoalTeam();
@@ -1155,7 +1288,7 @@ function initialize() {
       minute,
       player,
       assists,
-      style: new FormData(form).get("goalStyle") || "classic"
+      outputVariantId: new FormData(form).get("goalOutputVariantId") || resolveLivetickerVariant(selectedGoalOutputType())?.id
     };
   }
 
@@ -1190,9 +1323,13 @@ function initialize() {
     else syncActionFields();
     queueMicrotask(() => refreshDraftOutput({ force: true }));
   });
-  form.addEventListener("input", () => queueMicrotask(() => refreshDraftOutput()));
+  form.addEventListener("input", () => {
+    syncTemplateStyleTitles({ allowRecommendation: true });
+    queueMicrotask(() => refreshDraftOutput());
+  });
   form.addEventListener("change", event => {
     if (event.target.name === "action") return;
+    syncTemplateStyleTitles({ allowRecommendation: true });
     queueMicrotask(() => refreshDraftOutput());
   });
   minuteInput.addEventListener("change", syncContext);
