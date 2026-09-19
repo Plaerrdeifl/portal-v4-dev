@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-import { canonicalServerActionFingerprint, homeAwayScore } from "../js/liveticker-engine-v4.js";
+import { canonicalServerActionFingerprint, formatSegmentSummary, homeAwayScore } from "../js/liveticker-engine-v4.js";
 import {
   renderLivetickerTemplate,
   validateLivetickerTemplate
@@ -28,6 +28,56 @@ test("score is always rendered home : away independent of Mighty Dogs venue", ()
     homeAwayScore({ mighty: 2, opponent: 3 }, "AWAY"),
     { home: 3, away: 2 }
   );
+});
+
+test("period summaries list goals cumulatively like the flyer", () => {
+  const history = [
+    {
+      id: "g1",
+      type: "goal",
+      team: "mighty",
+      minute: 3,
+      player: { id: "p1", name: "Kevin Heckenberger", number: "10", position: "Sturm" },
+      assists: [],
+      style: "classic"
+    },
+    {
+      id: "g2",
+      type: "goal",
+      team: "opponent",
+      minute: 25,
+      player: { id: "p2", name: "Luca Schneider", number: "21", position: "Sturm" },
+      assists: [],
+      style: "classic"
+    },
+    {
+      id: "g3",
+      type: "goal",
+      team: "mighty",
+      minute: 45,
+      player: { id: "p3", name: "Tomas Cermak", number: "41", position: "Sturm" },
+      assists: [],
+      style: "classic"
+    }
+  ];
+  const opponent = { shortName: "Chemnitz" };
+
+  const p1 = formatSegmentSummary(history, "P1", opponent);
+  assert.match(p1, /3 Spielminute/);
+  assert.doesNotMatch(p1, /25 Spielminute/);
+  assert.doesNotMatch(p1, /45 Spielminute/);
+
+  const p2 = formatSegmentSummary(history, "P2", opponent);
+  assert.match(p2, /3 Spielminute/);
+  assert.match(p2, /25 Spielminute/);
+  assert.doesNotMatch(p2, /45 Spielminute/);
+  assert.match(p2, /\*Ende 2\. Drittel – 1:1\*/);
+
+  const p3 = formatSegmentSummary(history, "P3", opponent);
+  assert.match(p3, /3 Spielminute/);
+  assert.match(p3, /25 Spielminute/);
+  assert.match(p3, /45 Spielminute/);
+  assert.match(p3, /\*Ende 3\. Drittel – 2:1\*/);
 });
 
 test("canonical score placeholder is valid while legacy team score placeholders remain compatible", () => {
