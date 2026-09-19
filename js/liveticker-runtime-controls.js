@@ -1,4 +1,5 @@
 import { api } from "./api.js";
+import { wppTogglePresentation } from "./liveticker-wpp-state.js?v=20260919-wpp-toggle-r1";
 
 const WA_WORKER_CODE = "LIVETICKER_WHATSAPP";
 const REFRESH_MS = 5000;
@@ -44,25 +45,6 @@ function wppLabel(state) {
   return "NICHT ERREICHBAR";
 }
 
-export function wppTogglePresentation(runtime = {}, busy = false) {
-  const state = String(runtime?.state || "UNREACHABLE");
-
-  if (state === "CONNECTING") {
-    return Object.freeze({ disabled: true, label: "Verbindet …", targetConnected: null });
-  }
-  if (state === "DISCONNECTING") {
-    return Object.freeze({ disabled: true, label: "Trennt …", targetConnected: null });
-  }
-  if (busy) {
-    return Object.freeze({ disabled: true, label: "Speichert …", targetConnected: null });
-  }
-
-  if (state === "CONNECTED") {
-    return Object.freeze({ disabled: false, label: "Trennen", targetConnected: false });
-  }
-
-  return Object.freeze({ disabled: false, label: "Verbinden", targetConnected: true });
-}
 
 function setDot(node, state, activeStates) {
   if (!node) return;
