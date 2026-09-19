@@ -25,11 +25,13 @@ test("normal Fanbus view is fail-closed to public, published and available trips
   assert.match(overview, /renderTrips\(items\)/);
 });
 
-test("public database list, direct detail and boarding stops expose published trips only", () => {
+test("public database projection keeps published and cancelled trips while normal UI stays published-only", () => {
+  const uiFilter = fanbuses.match(/function publicFanbusTrips\(items\) \{[\s\S]*?\n\}/)?.[0] || "";
+  assert.match(uiFilter, /trip\?\.status === "PUBLISHED"/);
   assert.match(completionMigration, /rename to pd_public_fanbus_trip_before_m328_completion/);
   assert.match(completionMigration, /rename to pd_public_fanbus_trips_before_m328_completion/);
-  assert.match(completionMigration, /item\.value ->> 'tripStatus' = 'PUBLISHED'/);
-  assert.match(completionMigration, /coalesce\(v_base ->> 'tripStatus', ''\) <> 'PUBLISHED'/);
+  assert.match(completionMigration, /item\.value ->> 'tripStatus' in \('PUBLISHED', 'CANCELLED'\)/);
+  assert.match(completionMigration, /coalesce\(v_base ->> 'tripStatus', ''\) not in \('PUBLISHED', 'CANCELLED'\)/);
   assert.match(completionMigration, /jsonb_build_object\('available', false\)/);
   assert.match(completionMigration, /pd_public_fanbus_trip_boarding_stops_before_m328_completion/);
   assert.match(completionMigration, /jsonb_build_object\('stops', '\[\]'::jsonb\)/);

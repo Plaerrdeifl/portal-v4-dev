@@ -1,3 +1,21 @@
+-- Die beiden fachlich verpflichtenden Standard-Zustiegsorte muessen bereits
+-- waehrend der Migration existieren: seed.sql laeuft bei einem lokalen Reset
+-- erst nach dem gesamten Migrationsstapel.
+insert into app_modules.fanbus_boarding_stops (
+  id,
+  label,
+  position,
+  is_active
+)
+values
+  ('00000000-0000-4328-8100-000000000001', 'Pendlerparkplatz', 1, true),
+  ('00000000-0000-4328-8100-000000000002', 'Icedome', 2, true)
+on conflict (id) do update
+set
+  label = excluded.label,
+  position = excluded.position,
+  is_active = true;
+
 create or replace function app_private.api_fanbus_trip_create(p_payload jsonb)
 returns jsonb
 language plpgsql

@@ -44,6 +44,9 @@ insert into app_modules.fanbus_trips(
   ('00000000-0000-4327-8200-000000000003','00000000-0000-4327-8100-000000000003',clock_timestamp()+interval '72 hours','Testabfahrt',clock_timestamp()-interval '10 days',clock_timestamp()+interval '1 day',2500,20,'privacy','terms','PUBLISHED',false,null,null),
   ('00000000-0000-4327-8200-000000000004','00000000-0000-4327-8100-000000000004',clock_timestamp()+interval '10 days','Testabfahrt',clock_timestamp()-interval '10 days',clock_timestamp()+interval '2 days',2500,20,'privacy','terms','CANCELLED',false,'Testabsage',clock_timestamp());
 
+-- Isolierte Fixture: lokale Standardhalte aus seed.sql sind fuer diesen Test
+-- nicht Teil des erwarteten Drei-Halte-Szenarios.
+delete from app_modules.fanbus_boarding_stops;
 insert into app_modules.fanbus_boarding_stops(id,label,position,is_active) values
   ('00000000-0000-4327-8300-000000000001','Nord',1,true),
   ('00000000-0000-4327-8300-000000000002','Süd',2,true),

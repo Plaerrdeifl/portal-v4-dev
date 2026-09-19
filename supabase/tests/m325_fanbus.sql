@@ -23,6 +23,10 @@ select has_column('app_modules', 'fanbus_registrations', 'operational_note', 'Fa
 select has_column('app_modules', 'fanbus_registrations', 'companion_list_member_id', 'Template-Herkunft vorhanden');
 select ok(not exists (select 1 from app_portal.capabilities where code='fanbus.checkin.manage'), 'Keine neue Check-in-Capability');
 
+-- Der lokale Seed enthaelt die produktiv benoetigten Standardhalte. Diese
+-- isolierte CRUD-Suite prueft weiterhin eine bewusst leere Stammdatenbasis.
+delete from app_modules.fanbus_boarding_stops;
+
 insert into auth.users (id,email) values
   ('00000000-0000-4325-8000-000000000001','m325-owner@example.invalid'),
   ('00000000-0000-4325-8000-000000000002','m325-other@example.invalid'),
