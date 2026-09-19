@@ -87,7 +87,7 @@ async function openAssignmentPreview(state) {
     const proposals = Array.isArray(preview?.participantProposals) ? preview.participantProposals : [];
     const editable = proposals.filter(item => item.assignmentState === "PROPOSED_AUTO");
     const editableGroups = Array.from(editable.reduce((groups, proposal) => {
-      const key = proposal.bookingId || proposal.participantId;
+      const key = proposal.travelGroupId || proposal.bookingId || proposal.participantId;
       const group = groups.get(key) || {
         unitKey: key,
         bookingId: proposal.bookingId || key,

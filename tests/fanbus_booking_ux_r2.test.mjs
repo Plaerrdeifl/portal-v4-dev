@@ -40,8 +40,8 @@ test("booking facts are compact and empty saved-group noise is removed", () => {
 
 test("merge dialog is forced into a single mobile-safe column", () => {
   assert.match(ui, /m328-merge-form/);
-  assert.match(ui, /\.m328-merge-form\{grid-template-columns:1fr!important\}/);
-  assert.match(ui, /\.m328-merge-form>\*\{grid-column:1!important;width:100%!important\}/);
+  assert.match(ui, /\.m328-merge-form,\.m328-override-form,\.m328-travel-group-form\{grid-template-columns:1fr!important\}/);
+  assert.match(ui, /\.m328-merge-form>\*,\.m328-override-form>\*,\.m328-travel-group-form>\*\{grid-column:1!important;width:100%!important\}/);
 });
 
 test("group editing keeps its groupRules in the form save scope", () => {

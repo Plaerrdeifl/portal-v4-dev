@@ -74,7 +74,7 @@ test("M328 booking overview has the same compact status filter and trip return",
   assert.match(bookings, /← Fahrt/);
   assert.match(bookings, /view: "trip-detail"/);
   assert.match(bookings, /Einzelbuchung/);
-  assert.match(bookings, /return person.bookingRole === "PRIMARY" \? "Hauptperson" : "Mitfahrer"/);
+  assert.match(bookings, /return person.bookingRole === "PRIMARY" \? "" : "Mitfahrer"/);
 });
 
 test("M328 operations filter is native and no longer inherits the broken legacy M325 grid", () => {
