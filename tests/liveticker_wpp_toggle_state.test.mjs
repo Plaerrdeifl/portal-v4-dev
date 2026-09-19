@@ -40,9 +40,11 @@ test("error and unreachable states offer reconnect", () => {
   }
 });
 
-test("runtime toggle uses the tested presentation target rather than desiredConnected inversion", async () => {
+test("DEV runtime no longer exposes a WPP connect/disconnect action", async () => {
   const source = await readFile(resolve(root, "js/liveticker-runtime-controls.js"), "utf8");
-  assert.match(source, /const presentation = wppTogglePresentation\(wppRuntime, false\)/);
-  assert.match(source, /const targetConnected = presentation\.targetConnected/);
+  assert.match(source, /const WPP_CONTROL_OWNER = false/);
+  assert.match(source, /wpp\.toggle\.disabled = true/);
+  assert.match(source, /"Nur PROD"/);
+  assert.doesNotMatch(source, /liveticker_wpp_runtime_set/);
   assert.doesNotMatch(source, /const targetConnected = wppRuntime\?\.desiredConnected === false/);
 });

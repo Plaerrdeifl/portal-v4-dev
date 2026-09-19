@@ -1,10 +1,10 @@
 import { api } from "./api.js";
-import { wppTogglePresentation } from "./liveticker-wpp-state.js?v=20260919-wpp-toggle-r1";
 
 const WA_WORKER_CODE = "LIVETICKER_WHATSAPP";
 const REFRESH_MS = 5000;
 const TRANSITION_REFRESH_MS = 1000;
 const STATUS_FAILURE_THRESHOLD = 3;
+const WPP_CONTROL_OWNER = false;
 
 const wa = {
   control: document.getElementById("whatsappWorkerControl"),
@@ -60,6 +60,10 @@ function transportSnapshot() {
   });
 }
 
+function closeStatusControl(control) {
+  globalThis.PD_LIVETICKER_STATUS_POPOVERS?.close?.(control);
+}
+
 function publishSnapshot() {
   const snapshot = transportSnapshot();
   globalThis.PD_LIVETICKER_WHATSAPP_RUNTIME = snapshot;
@@ -87,13 +91,15 @@ function render() {
   if (wpp.status) wpp.status.textContent = wppLabel(wppState);
   setDot(wpp.dot, wppState, ["CONNECTED"]);
   if (wpp.toggle) {
-    const presentation = wppTogglePresentation(wppRuntime, wppBusy);
-    wpp.toggle.disabled = presentation.disabled;
-    wpp.toggle.textContent = presentation.label;
+    wpp.toggle.disabled = true;
+    wpp.toggle.textContent = WPP_CONTROL_OWNER ? "…" : "Nur PROD";
+    wpp.toggle.title = WPP_CONTROL_OWNER ? "" : "Die gemeinsame WPP-Session wird ausschließlich von PROD gesteuert.";
   }
   if (wpp.hint) {
     if (wppRuntime?.ready || wppState === "CONNECTED") {
-      wpp.hint.textContent = "WPP-Session verbunden.";
+      wpp.hint.textContent = WPP_CONTROL_OWNER
+        ? "WPP-Session verbunden."
+        : "WPP-Session verbunden · Steuerung erfolgt zentral über PROD.";
     } else if (wppState === "CONNECTING") {
       wpp.hint.textContent = "WPP-Session wird verbunden.";
     } else if (wppState === "DISCONNECTING") {
@@ -168,6 +174,7 @@ async function toggleWa() {
       workerCode: WA_WORKER_CODE,
       enabled: !Boolean(waRuntime?.enabled)
     });
+    closeStatusControl(wa.control);
   } catch (error) {
     waRuntime = { ...waRuntime, ready: false, state: "UNREACHABLE" };
     if (wa.hint) wa.hint.textContent = error?.message || "WA-Status konnte nicht geändert werden.";
@@ -178,36 +185,17 @@ async function toggleWa() {
   }
 }
 
-async function toggleWpp() {
-  if (wppBusy) return;
-  const presentation = wppTogglePresentation(wppRuntime, false);
-  if (presentation.disabled || typeof presentation.targetConnected !== "boolean") return;
-  const targetConnected = presentation.targetConnected;
-  const previous = wppRuntime;
-  wppBusy = true;
-  wppRuntime = {
-    ...wppRuntime,
-    desiredConnected: targetConnected,
-    ready: false,
-    state: targetConnected ? "CONNECTING" : "DISCONNECTING",
-    error: null
-  };
-  render();
-  try {
-    wppRuntime = await api.call("liveticker_wpp_runtime_set", { connected: targetConnected });
-    wppStatusFailures = 0;
-  } catch (error) {
-    wppRuntime = previous;
-    if (wpp.hint) wpp.hint.textContent = error?.message || "WPP-Status konnte nicht geändert werden.";
-  } finally {
-    wppBusy = false;
-    render();
-    scheduleRefresh(250);
-  }
+function closeReadOnlyWppControl() {
+  closeStatusControl(wpp.control);
 }
 
 wa.toggle?.addEventListener("click", () => void toggleWa());
-wpp.toggle?.addEventListener("click", () => void toggleWpp());
+wpp.control?.querySelector("summary")?.addEventListener("click", event => {
+  if (!WPP_CONTROL_OWNER && wpp.control?.open) {
+    event.preventDefault();
+    closeReadOnlyWppControl();
+  }
+});
 window.addEventListener("pagehide", () => {
   if (refreshTimer) window.clearTimeout(refreshTimer);
 }, { once: true });

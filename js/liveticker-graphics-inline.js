@@ -392,6 +392,7 @@ async function toggleWorker() {
   renderWorker();
   try {
     workerRuntime = await api.call("worker_runtime_set", { workerCode: WORKER_CODE, enabled: !Boolean(workerRuntime?.enabled) });
+    globalThis.PD_LIVETICKER_STATUS_POPOVERS?.close?.(workerControl);
     renderWorker();
     scheduleWorkerRefresh(workerRuntime?.enabled ? 1500 : 10000);
   } catch (error) {
