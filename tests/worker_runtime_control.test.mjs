@@ -153,7 +153,9 @@ test("Liveticker exposes WA and WPP runtime controls beside the graphics control
   assert.match(runtime, /worker_runtime_status/);
   assert.match(runtime, /worker_runtime_set/);
   assert.match(runtime, /liveticker_wpp_runtime_status/);
-  assert.match(runtime, /liveticker_wpp_runtime_set/);
+  assert.doesNotMatch(runtime, /liveticker_wpp_runtime_set/);
+  assert.match(runtime, /const WPP_CONTROL_OWNER = false/);
+  assert.match(runtime, /Steuerung nur in PROD/);
   assert.match(runtime, /pd-liveticker-whatsapp-runtime/);
   assert.match(publish, /transportReady\(\)/);
   assert.match(publish, /WA ist ausgeschaltet/);
