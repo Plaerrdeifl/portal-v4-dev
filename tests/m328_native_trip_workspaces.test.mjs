@@ -70,7 +70,7 @@ test("M328 participant cards expose booking context and compact cancellation fil
 
 test("M328 booking overview has the same compact status filter and trip return", () => {
   assert.match(bookings, /m328-bookings-filter/);
-  assert.match(bookings, /value="CURRENT">Nicht storniert/);
+  assert.match(bookings, /value="CURRENT" selected>Nicht storniert/);
   assert.match(bookings, /← Fahrt/);
   assert.match(bookings, /view: "trip-detail"/);
   assert.match(bookings, /Einzelbuchung/);

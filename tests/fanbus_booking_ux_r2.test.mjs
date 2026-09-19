@@ -55,10 +55,15 @@ test("group editing keeps its groupRules in the form save scope", () => {
   assert.doesNotMatch(ui.slice(cancelStart, bookingById), /groupField|groupRules/);
 });
 
+test("booking overview defaults to non-cancelled bookings", () => {
+  assert.match(ui, /<option value="CURRENT" selected>Nicht storniert<\/option>/);
+  assert.match(ui, /statusFilter: "CURRENT"/);
+});
+
 test("PWA cache chain rotates for booking UX R2", () => {
   assert.match(worker, /FANBUS_BOOKING_UX_R2_CACHE_VERSION/);
   assert.match(worker, /APP_CACHE = `\$\{FANBUS_BOOKING_UX_R2_CACHE_VERSION\}-shell`/);
-  assert.match(pages, /bookingux=20260919-r2/);
-  assert.match(app, /bookingux=20260919-r2/);
-  assert.match(index, /bookingux=20260919-r2/);
+  assert.match(pages, /bookingux=20260920-r2a/);
+  assert.match(app, /bookingux=20260920-r2a/);
+  assert.match(index, /bookingux=20260920-r2a/);
 });

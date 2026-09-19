@@ -766,7 +766,7 @@ function renderList(state) {
 function renderPage(root, state) {
   ensureStyle();
   const venue = String(state.trip.venue || "").trim() || "Fahrt";
-  root.innerHTML = `<div class="m328-bookings"><header class="m328-bookings-head"><button id="m328BookingsBack" class="button small ghost" type="button">← Fahrt</button><div class="m328-bookings-title"><h2>Buchungen • ${escapeHtml(venue)}</h2><span>${escapeHtml(shortDate(state.trip.eventDate))} · ${escapeHtml(eventTime(state.trip.eventTime))}</span></div></header><section class="m328-bookings-tools"><input id="m328BookingSearch" type="search" autocomplete="off" placeholder="Buchungsnummer oder Name suchen …" aria-label="Buchungen durchsuchen"><span id="m328BookingCount" class="m328-bookings-count"></span><div class="m328-booking-tools-actions"><button id="m328MergeBookings" class="button primary" type="button" hidden>Buchungen zusammenführen</button></div><details class="m328-bookings-filter"><summary class="button small secondary">Filter</summary><div class="m328-bookings-filter-body"><label>Status<select id="m328BookingStatusFilter"><option value="ALL">Alle</option><option value="CURRENT">Nicht storniert</option><option value="ACTIVE">Aktiv</option><option value="WAITLISTED">Warteliste</option><option value="CANCELLED">Storniert</option></select></label></div></details></section><section id="m328BookingList" class="m328-booking-list" aria-live="polite"></section></div>`;
+  root.innerHTML = `<div class="m328-bookings"><header class="m328-bookings-head"><button id="m328BookingsBack" class="button small ghost" type="button">← Fahrt</button><div class="m328-bookings-title"><h2>Buchungen • ${escapeHtml(venue)}</h2><span>${escapeHtml(shortDate(state.trip.eventDate))} · ${escapeHtml(eventTime(state.trip.eventTime))}</span></div></header><section class="m328-bookings-tools"><input id="m328BookingSearch" type="search" autocomplete="off" placeholder="Buchungsnummer oder Name suchen …" aria-label="Buchungen durchsuchen"><span id="m328BookingCount" class="m328-bookings-count"></span><div class="m328-booking-tools-actions"><button id="m328MergeBookings" class="button primary" type="button" hidden>Buchungen zusammenführen</button></div><details class="m328-bookings-filter"><summary class="button small secondary">Filter</summary><div class="m328-bookings-filter-body"><label>Status<select id="m328BookingStatusFilter"><option value="ALL">Alle</option><option value="CURRENT" selected>Nicht storniert</option><option value="ACTIVE">Aktiv</option><option value="WAITLISTED">Warteliste</option><option value="CANCELLED">Storniert</option></select></label></div></details></section><section id="m328BookingList" class="m328-booking-list" aria-live="polite"></section></div>`;
   document.getElementById("m328BookingsBack")?.addEventListener("click", () => { location.hash = tripDetailHash(state.trip.id); });
   document.getElementById("m328BookingSearch")?.addEventListener("input", event => {
     state.query = event.currentTarget.value || "";
@@ -811,7 +811,7 @@ export async function hydrateBusOrgaBookings(context = {}) {
       buses: Array.isArray(registrationData?.buses) ? registrationData.buses : [],
       bookings: groupBookings(registrations),
       query: "",
-      statusFilter: "ALL",
+      statusFilter: "CURRENT",
       editingBookingId: null,
       selectedBookingIds: new Set()
     });

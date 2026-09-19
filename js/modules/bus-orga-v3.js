@@ -1,6 +1,6 @@
 import { hydrateBusOrgaV2 } from "./bus-orga-v2.js?v=20260829-m328-r1-next-trip-venue1&completion=20260829-m328-final1&m340=20260907-m340-publishing-bus-orga1";
-import { hydrateBusOrgaRegistrationV3 } from "./bus-orga-registration-v3.js?v=20260829-m328-r1-prepared-density1&correction=20260830-m328-c1&groups=20260919-operational-groups1&bookingux=20260919-r2";
-import { hydrateBusOrgaBookings } from "./bus-orga-bookings.js?v=20260919-fanbus-operator-append-r5&groups=20260919-operational-groups1&bookingux=20260919-r2";
+import { hydrateBusOrgaRegistrationV3 } from "./bus-orga-registration-v3.js?v=20260829-m328-r1-prepared-density1&correction=20260830-m328-c1&groups=20260919-operational-groups1&bookingux=20260920-r2a";
+import { hydrateBusOrgaBookings } from "./bus-orga-bookings.js?v=20260919-fanbus-operator-append-r5&groups=20260919-operational-groups1&bookingux=20260920-r2a";
 import { hydrateBusOrgaTripDetail } from "./bus-orga-trip-detail.js?v=20260829-m328-completion1";
 import { hydrateBusOrgaTripEdit } from "./bus-orga-trip-edit.js?v=20260829-m328-r1-native-actions1&completion=20260829-m328-final1&defaults=20260830-m328-draft-defaults1";
 
