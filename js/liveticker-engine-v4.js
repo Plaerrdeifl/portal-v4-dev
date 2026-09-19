@@ -890,11 +890,21 @@ function initialize() {
     if (hiddenLabel) hiddenLabel.textContent = label;
   }
 
+  function canonicalizeServerAction(value) {
+    if (Array.isArray(value)) return value.map(canonicalizeServerAction);
+    if (!value || typeof value !== "object") return value;
+    return Object.keys(value)
+      .filter(key => key !== "_whatsapp")
+      .sort()
+      .reduce((result, key) => {
+        result[key] = canonicalizeServerAction(value[key]);
+        return result;
+      }, {});
+  }
+
   function serverActionFingerprint(action) {
     if (!action || typeof action !== "object") return "";
-    const clean = { ...action };
-    delete clean._whatsapp;
-    return JSON.stringify(clean);
+    return JSON.stringify(canonicalizeServerAction(action));
   }
 
   function setPendingServerSave(action) {
