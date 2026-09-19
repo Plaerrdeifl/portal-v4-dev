@@ -134,10 +134,6 @@ function groupBookings(registrations) {
 }
 
 function bookingCurrentCount(booking) {
-  const reported = booking.participants
-    .map(person => Number(person?.bookingParticipantCount))
-    .filter(Number.isFinite);
-  if (reported.length) return Math.max(...reported);
   return booking.participants.filter(cancellable).length;
 }
 
