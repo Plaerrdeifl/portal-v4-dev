@@ -37,6 +37,9 @@ const WPP_ACTION_RETRY_MS = 15000;
 const REALTIME_TOPIC = "realtime:liveticker-whatsapp-jobs";
 const WAHA_BASE_URL = String(process.env.WAHA_BASE_URL || "http://127.0.0.1:3001").replace(/\/$/, "");
 const WAHA_SESSION = String(process.env.WAHA_SESSION || "Liveticker_Test");
+const WPP_CONTROL_OWNER = !["0", "false", "no", "observer"].includes(
+  String(process.env.WPP_CONTROL_OWNER || "true").trim().toLowerCase()
+);
 const JOURNAL_FILE = String(
   process.env.WHATSAPP_SENT_JOURNAL_FILE
   || "/srv/docker/liveticker/whatsapp-worker/sent-journal.json"
@@ -229,8 +232,11 @@ async function refreshRuntimeControl(reason = "timer") {
   try {
     const control = await edge({ action: "control", wppState, wppError: snapshot.error });
     workerEnabled = control?.worker?.enabled !== false;
-    wppDesiredConnected = control?.wpp?.desiredConnected !== false;
-    const changed = await applyWppDesiredState(wppDesiredConnected, wppState);
+    const requestedConnected = control?.wpp?.desiredConnected !== false;
+    wppDesiredConnected = WPP_CONTROL_OWNER ? requestedConnected : true;
+    const changed = WPP_CONTROL_OWNER
+      ? await applyWppDesiredState(wppDesiredConnected, wppState)
+      : false;
     if (changed) {
       await edge({ action: "control", wppState, wppError: null });
     }
@@ -634,7 +640,8 @@ process.on("uncaughtException", error => {
 log("worker_started", {
   environment: process.env.WORKER_ENVIRONMENT || "UNKNOWN",
   projectRef: EXPECTED_PROJECT_REF,
-  pollIntervalMs: POLL_INTERVAL_MS
+  pollIntervalMs: POLL_INTERVAL_MS,
+  wppControlOwner: WPP_CONTROL_OWNER
 });
 
 await refreshRuntimeControl("startup");
