@@ -9,7 +9,7 @@ const STICKER_VIEW = "pd_liveticker_whatsapp_stickers_worker";
 const STICKER_BUCKET = "liveticker-whatsapp-stickers";
 const MAX_STICKER_BYTES = 100 * 1024;
 const encoder = new TextEncoder();
-const DELIVERY_MODES = new Set(["TEXT_ONLY", "STICKER_THEN_TEXT", "STICKER_ONLY"]);
+const DELIVERY_MODES = new Set(["TEXT_ONLY", "STICKER_THEN_TEXT", "STICKER_ONLY", "IMAGE_WITH_CAPTION"]);
 const WPP_STATES = new Set(["CONNECTING", "CONNECTED", "DISCONNECTING", "DISCONNECTED", "ERROR"]);
 
 type JsonObject = Record<string, unknown>;
@@ -53,9 +53,10 @@ function validSentComponent(value: unknown) {
 
 function validComponents(value: unknown) {
   return isObject(value)
-    && exactKeys(value, ["sticker", "text"])
+    && exactKeys(value, ["sticker", "text", "image"])
     && validSentComponent(value.sticker)
-    && validSentComponent(value.text);
+    && validSentComponent(value.text)
+    && validSentComponent(value.image);
 }
 
 async function sha256Hex(value: string) {
@@ -132,7 +133,7 @@ function validBody(value: unknown): value is JsonObject {
       && value.error.length <= 1000
       && (!("failedComponent" in value)
         || value.failedComponent === null
-        || ["STICKER", "TEXT"].includes(String(value.failedComponent)))
+        || ["STICKER", "TEXT", "IMAGE"].includes(String(value.failedComponent)))
       && (!("components" in value) || validComponents(value.components));
   }
   return false;
@@ -199,6 +200,11 @@ function jobPayload(row: JsonObject) {
     stickerSentAt: row.sticker_sent_at == null ? null : String(row.sticker_sent_at),
     textMessageId: row.text_waha_message_id == null ? null : String(row.text_waha_message_id),
     textSentAt: row.text_sent_at == null ? null : String(row.text_sent_at),
+    imageUrl: row.image_url == null ? null : String(row.image_url),
+    imageFilename: row.image_filename == null ? null : String(row.image_filename),
+    imageStatus: String(row.image_status || ""),
+    imageMessageId: row.image_waha_message_id == null ? null : String(row.image_waha_message_id),
+    imageSentAt: row.image_sent_at == null ? null : String(row.image_sent_at),
     linkedActionId: row.linked_action_id == null ? null : String(row.linked_action_id),
     attemptCount: Number(row.attempt_count || 0),
     createdAt: String(row.created_at || ""),
@@ -224,7 +230,7 @@ async function claim() {
     const now = new Date();
     const nowIso = now.toISOString();
     const rows = await rest(viewUrl({
-      select: "id,event_id,client_action_id,publication_version,message,sticker_id,delivery_mode,sticker_status,text_status,sticker_waha_message_id,sticker_sent_at,text_waha_message_id,text_sent_at,linked_action_id,status,attempt_count,next_attempt_at,claimed_at,created_at,worker_received_at",
+      select: "id,event_id,client_action_id,publication_version,message,sticker_id,delivery_mode,sticker_status,text_status,sticker_waha_message_id,sticker_sent_at,text_waha_message_id,text_sent_at,image_url,image_filename,image_status,image_waha_message_id,image_sent_at,linked_action_id,status,attempt_count,next_attempt_at,claimed_at,created_at,worker_received_at",
       attempt_count: "lt.5",
       status: "eq.PENDING",
       next_attempt_at: `lte.${nowIso}`,
@@ -353,14 +359,16 @@ async function stickerAsset(stickerId: string) {
 
 async function rowById(jobId: string) {
   const rows = await rest(viewUrl({
-    select: "id,status,attempt_count,completed_at,next_attempt_at,delivery_mode,sticker_status,text_status,sticker_waha_message_id,sticker_sent_at,text_waha_message_id,text_sent_at",
+    select: "id,status,attempt_count,completed_at,next_attempt_at,delivery_mode,sticker_status,text_status,sticker_waha_message_id,sticker_sent_at,text_waha_message_id,text_sent_at,image_status,image_waha_message_id,image_sent_at",
     id: `eq.${jobId}`,
     limit: "1",
   }));
   return Array.isArray(rows) && rows.length && isObject(rows[0]) ? rows[0] : null;
 }
 
-function componentRequested(deliveryMode: string, component: "STICKER" | "TEXT") {
+function componentRequested(deliveryMode: string, component: "STICKER" | "TEXT" | "IMAGE") {
+  if (component === "IMAGE") return deliveryMode === "IMAGE_WITH_CAPTION";
+  if (deliveryMode === "IMAGE_WITH_CAPTION") return false;
   if (component === "STICKER") return deliveryMode !== "TEXT_ONLY";
   return deliveryMode !== "STICKER_ONLY";
 }
@@ -377,12 +385,15 @@ function componentPatch(row: JsonObject, body: JsonObject, completing: boolean) 
   const components = isObject(body.components) ? body.components : null;
   let sticker = components ? sentComponent(components.sticker) : null;
   let text = components ? sentComponent(components.text) : null;
-  let failedComponent: "STICKER" | "TEXT" | null = body.failedComponent === "STICKER" || body.failedComponent === "TEXT"
-    ? body.failedComponent
-    : null;
+  let image = components ? sentComponent(components.image) : null;
+  let failedComponent: "STICKER" | "TEXT" | "IMAGE" | null =
+    body.failedComponent === "STICKER" || body.failedComponent === "TEXT" || body.failedComponent === "IMAGE"
+      ? body.failedComponent
+      : null;
 
   if ((sticker && !componentRequested(deliveryMode, "STICKER"))
-      || (text && !componentRequested(deliveryMode, "TEXT"))) {
+      || (text && !componentRequested(deliveryMode, "TEXT"))
+      || (image && !componentRequested(deliveryMode, "IMAGE"))) {
     throw new GatewayError();
   }
 
@@ -395,17 +406,23 @@ function componentPatch(row: JsonObject, body: JsonObject, completing: boolean) 
       sticker = deliveryMode === "STICKER_ONLY" ? legacy : { messageId: "", sentAt: legacy.sentAt };
     }
     if (componentRequested(deliveryMode, "TEXT")) text = legacy;
+    if (componentRequested(deliveryMode, "IMAGE")) image = legacy;
   }
 
   if (!completing && !failedComponent) {
-    failedComponent = componentRequested(deliveryMode, "STICKER") && !sticker ? "STICKER" : "TEXT";
+    failedComponent = componentRequested(deliveryMode, "IMAGE") && !image
+      ? "IMAGE"
+      : componentRequested(deliveryMode, "STICKER") && !sticker
+        ? "STICKER"
+        : "TEXT";
   }
   if (!completing && failedComponent && !componentRequested(deliveryMode, failedComponent)) {
     throw new GatewayError();
   }
   if (completing
       && ((componentRequested(deliveryMode, "STICKER") && !sticker)
-        || (componentRequested(deliveryMode, "TEXT") && !text))) {
+        || (componentRequested(deliveryMode, "TEXT") && !text)
+        || (componentRequested(deliveryMode, "IMAGE") && !image))) {
     throw new GatewayError();
   }
   if (!completing && failedComponent === "TEXT"
@@ -414,7 +431,7 @@ function componentPatch(row: JsonObject, body: JsonObject, completing: boolean) 
   }
 
   const state = (
-    component: "STICKER" | "TEXT",
+    component: "STICKER" | "TEXT" | "IMAGE",
     sent: { messageId: string; sentAt: string } | null
   ) => {
     if (!componentRequested(deliveryMode, component)) return "NOT_REQUESTED";
@@ -424,6 +441,7 @@ function componentPatch(row: JsonObject, body: JsonObject, completing: boolean) 
   };
   const stickerStatus = state("STICKER", sticker);
   const textStatus = state("TEXT", text);
+  const imageStatus = state("IMAGE", image);
   return {
     sticker_status: stickerStatus,
     sticker_waha_message_id: stickerStatus === "SENT" ? sticker?.messageId || null : null,
@@ -431,6 +449,9 @@ function componentPatch(row: JsonObject, body: JsonObject, completing: boolean) 
     text_status: textStatus,
     text_waha_message_id: textStatus === "SENT" ? text?.messageId || null : null,
     text_sent_at: textStatus === "SENT" ? text?.sentAt || null : null,
+    image_status: imageStatus,
+    image_waha_message_id: imageStatus === "SENT" ? image?.messageId || null : null,
+    image_sent_at: imageStatus === "SENT" ? image?.sentAt || null : null,
   };
 }
 

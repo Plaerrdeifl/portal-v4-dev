@@ -515,7 +515,7 @@ test("unknown sticker ID fails in a controlled way without sending another asset
   assert.equal(textSent, false);
 });
 
-test("runtime uses only explicit sticker_id and WAHA WPP sendSticker, never message guessing or sendImage", async () => {
+test("runtime keeps sticker sends explicit while summary images use the dedicated sendImage path", async () => {
   const [worker, gateway] = await Promise.all([
     read("workers/liveticker-whatsapp/worker.mjs"),
     read("supabase/functions/liveticker-whatsapp-worker/index.ts")
@@ -523,7 +523,9 @@ test("runtime uses only explicit sticker_id and WAHA WPP sendSticker, never mess
   assert.match(worker, /deliverWhatsappJob/);
   assert.match(worker, /action: "sticker", stickerId/);
   assert.match(worker, /\/api\/sendSticker/);
-  assert.doesNotMatch(worker, /\/api\/sendImage|mediaAssetForJob|TO\+OR|Strafe\\\(n\\\)/i);
+  assert.match(worker, /\/api\/sendImage/);
+  assert.match(worker, /caption: String\(job\?\.message \|\| ""\)/);
+  assert.doesNotMatch(worker, /mediaAssetForJob|TO\+OR|Strafe\\\(n\\\)/i);
   assert.match(gateway, /STICKER_BUCKET = "liveticker-whatsapp-stickers"/);
   assert.match(gateway, /stickerId: row\.sticker_id/);
   assert.match(gateway, /sha256Bytes\(bytes\) !== expectedSha/);

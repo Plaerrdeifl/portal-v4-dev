@@ -17,7 +17,8 @@ export class InvalidWhatsappJobError extends Error {
 export const WHATSAPP_DELIVERY_MODES = Object.freeze({
   TEXT_ONLY: "TEXT_ONLY",
   STICKER_THEN_TEXT: "STICKER_THEN_TEXT",
-  STICKER_ONLY: "STICKER_ONLY"
+  STICKER_ONLY: "STICKER_ONLY",
+  IMAGE_WITH_CAPTION: "IMAGE_WITH_CAPTION"
 });
 
 export const WHATSAPP_DELIVERY_WINDOW_MS = 5000;
@@ -76,7 +77,7 @@ export async function sendWithNewsletterRecovery({
 export function normalizeSentRecord(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   if (value.text && typeof value.text === "object") return { ...value };
-  if (!value.media && (value.messageId || value.sentAt)) {
+  if (!value.media && !value.image && (value.messageId || value.sentAt)) {
     return {
       ...value,
       text: { messageId: value.messageId || "", sentAt: value.sentAt || new Date().toISOString() }
@@ -93,10 +94,23 @@ function stickerReference(job) {
   return job?.stickerId == null ? "" : String(job.stickerId).trim();
 }
 
+function imageReference(job) {
+  const url = String(job?.imageUrl || "").trim();
+  const filename = String(job?.imageFilename || "").trim();
+  return {
+    url,
+    filename,
+    valid: /^https:\/\/cloud[.]plaerrdeifl[.]de\/s\/[A-Za-z0-9]{8,128}\/download$/.test(url)
+      && /^[A-Za-z0-9._-]{1,96}[.]png$/.test(filename)
+  };
+}
+
 export function deliveryModeForJob(job) {
   const stickerId = stickerReference(job);
   const hasSticker = Boolean(stickerId);
   const hasText = nonEmptyMessage(job);
+  const image = imageReference(job);
+  const hasImage = image.valid;
   const explicit = String(job?.deliveryMode || "").trim().toUpperCase();
   const mode = explicit || (hasSticker && hasText
     ? WHATSAPP_DELIVERY_MODES.STICKER_THEN_TEXT
@@ -104,14 +118,18 @@ export function deliveryModeForJob(job) {
     ? WHATSAPP_DELIVERY_MODES.STICKER_ONLY
     : hasText
     ? WHATSAPP_DELIVERY_MODES.TEXT_ONLY
+    : hasImage
+    ? WHATSAPP_DELIVERY_MODES.IMAGE_WITH_CAPTION
     : "");
 
   const valid = mode === WHATSAPP_DELIVERY_MODES.TEXT_ONLY
-    ? hasText && !hasSticker
+    ? hasText && !hasSticker && !hasImage
     : mode === WHATSAPP_DELIVERY_MODES.STICKER_THEN_TEXT
-    ? hasText && hasSticker
+    ? hasText && hasSticker && !hasImage
     : mode === WHATSAPP_DELIVERY_MODES.STICKER_ONLY
-    ? hasSticker && !hasText
+    ? hasSticker && !hasText && !hasImage
+    : mode === WHATSAPP_DELIVERY_MODES.IMAGE_WITH_CAPTION
+    ? hasImage && !hasSticker && hasText
     : false;
   if (!valid) throw new InvalidWhatsappJobError();
   return mode;
@@ -131,7 +149,13 @@ export function sentRecordFromJob(job) {
       sentAt: String(job.textSentAt)
     };
   }
-  const finalRecord = record.text || record.media;
+  if (job?.imageStatus === "SENT" && job?.imageSentAt) {
+    record.image = {
+      messageId: String(job.imageMessageId || ""),
+      sentAt: String(job.imageSentAt)
+    };
+  }
+  const finalRecord = record.text || record.image || record.media;
   if (finalRecord) {
     record.messageId = finalRecord.messageId;
     record.sentAt = finalRecord.sentAt;
@@ -144,12 +168,14 @@ export function mergeSentRecords(primary, fallback) {
   const second = normalizeSentRecord(fallback);
   const media = first.media || second.media;
   const text = first.text || second.text;
-  const finalRecord = text || media;
+  const image = first.image || second.image;
+  const finalRecord = text || image || media;
   return {
     ...second,
     ...first,
     ...(media ? { media } : {}),
     ...(text ? { text } : {}),
+    ...(image ? { image } : {}),
     ...(finalRecord ? { messageId: finalRecord.messageId || "", sentAt: finalRecord.sentAt } : {})
   };
 }
@@ -157,6 +183,7 @@ export function mergeSentRecords(primary, fallback) {
 export function failedComponentForJob(job, sentRecord) {
   const mode = deliveryModeForJob(job);
   const normalized = normalizeSentRecord(sentRecord);
+  if (mode === WHATSAPP_DELIVERY_MODES.IMAGE_WITH_CAPTION) return normalized.image ? null : "IMAGE";
   if (mode !== WHATSAPP_DELIVERY_MODES.TEXT_ONLY && !normalized.media) return "STICKER";
   if (mode !== WHATSAPP_DELIVERY_MODES.STICKER_ONLY && !normalized.text) return "TEXT";
   return null;
@@ -179,15 +206,31 @@ export async function deliverWhatsappJob({
   resolveSticker,
   sendSticker,
   sendText,
+  sendImage,
   remember,
   waitAfterSticker
 }) {
   const deliveryMode = deliveryModeForJob(job);
-  const wantsSticker = deliveryMode !== WHATSAPP_DELIVERY_MODES.TEXT_ONLY;
-  const wantsText = deliveryMode !== WHATSAPP_DELIVERY_MODES.STICKER_ONLY;
+  const wantsImage = deliveryMode === WHATSAPP_DELIVERY_MODES.IMAGE_WITH_CAPTION;
+  const wantsSticker = !wantsImage && deliveryMode !== WHATSAPP_DELIVERY_MODES.TEXT_ONLY;
+  const wantsText = !wantsImage && deliveryMode !== WHATSAPP_DELIVERY_MODES.STICKER_ONLY;
   let sentRecord = normalizeSentRecord(initialSentRecord);
   let stickerSentThisRun = false;
+  let imageSentThisRun = false;
   const stickerId = stickerReference(job);
+
+  if (wantsImage && !sentRecord.image) {
+    if (typeof sendImage !== "function") throw new InvalidWhatsappJobError();
+    const imageRecord = await sendImage(job);
+    sentRecord = {
+      ...sentRecord,
+      image: imageRecord,
+      messageId: imageRecord.messageId || "",
+      sentAt: imageRecord.sentAt
+    };
+    await remember(sentRecord);
+    imageSentThisRun = true;
+  }
 
   if (wantsSticker && !sentRecord.media) {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(stickerId)) {
@@ -232,5 +275,5 @@ export async function deliverWhatsappJob({
     await remember(sentRecord);
   }
 
-  return { sentRecord, stickerSentThisRun, deliveryMode };
+  return { sentRecord, stickerSentThisRun, imageSentThisRun, deliveryMode };
 }

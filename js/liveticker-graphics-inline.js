@@ -40,9 +40,131 @@ let workerRequestInFlight = false;
 let workerRefreshTimer = 0;
 let selectedArtifactKind = "";
 let resultsOpen = false;
+let queuedSummary = null;
+let pendingSummary = null;
+let summaryPublishInFlight = false;
+let summaryStatus = null;
+
+const SUMMARY_PENDING_KEY = "plaerrdeifl.liveticker.summary-whatsapp.v1";
 
 function currentEventId() {
   return String(globalThis.PD_LIVETICKER_GAME_CONTEXT?.eventId || "").trim();
+}
+
+function validUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
+}
+
+function summaryStorageKey(eventId = currentEventId()) {
+  return `${SUMMARY_PENDING_KEY}:${eventId}`;
+}
+
+function validPendingSummary(value) {
+  return value
+    && typeof value === "object"
+    && value.eventId === currentEventId()
+    && KINDS.includes(value.kind)
+    && validUuid(value.jobId)
+    && typeof value.text === "string"
+    && value.text.trim().length > 0
+    && value.text.length <= 4000;
+}
+
+function loadPendingSummary() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(summaryStorageKey()) || "null");
+    return validPendingSummary(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function savePendingSummary(value) {
+  pendingSummary = value;
+  try {
+    localStorage.setItem(summaryStorageKey(value.eventId), JSON.stringify(value));
+  } catch {}
+}
+
+function clearPendingSummary() {
+  const eventId = pendingSummary?.eventId || currentEventId();
+  pendingSummary = null;
+  try { localStorage.removeItem(summaryStorageKey(eventId)); } catch {}
+}
+
+function postArtifactForJob(job) {
+  return artifactRowsFor(job).find(item => item?.kind === "POST") || null;
+}
+
+function whatsappImageFilename(artifact, kind, jobId) {
+  const raw = String(artifact?.filename || "").split(/[\\/]/).pop() || "";
+  const cleaned = raw.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^_+|_+$/g, "");
+  if (/^[A-Za-z0-9._-]{1,96}[.]png$/i.test(cleaned)) return cleaned;
+  return `liveticker_${String(kind || "summary").toLowerCase()}_${String(jobId || "").slice(0, 8)}.png`;
+}
+
+async function maybePublishPendingSummary() {
+  if (summaryPublishInFlight) return;
+  const request = pendingSummary || loadPendingSummary();
+  if (!validPendingSummary(request)) return;
+  pendingSummary = request;
+
+  const job = jobs.find(item => item?.jobId === request.jobId) || null;
+  if (!job || job.status === "QUEUED" || job.status === "PROCESSING") return;
+  if (job.status !== "SUCCEEDED") {
+    summaryStatus = {
+      kind: request.kind,
+      state: "error",
+      text: `${kindLabel(request.kind)} · Flyer fehlgeschlagen – WhatsApp nicht gesendet.`
+    };
+    render();
+    return;
+  }
+
+  const post = postArtifactForJob(job);
+  if (!post || !validArtifactUrl(post.downloadUrl, true)) {
+    summaryStatus = {
+      kind: request.kind,
+      state: "error",
+      text: `${kindLabel(request.kind)} · POST-Flyer fehlt – WhatsApp nicht gesendet.`
+    };
+    render();
+    return;
+  }
+
+  summaryPublishInFlight = true;
+  summaryStatus = {
+    kind: request.kind,
+    state: "active",
+    text: `${kindLabel(request.kind)} · Text + POST werden an WhatsApp gesendet …`
+  };
+  render();
+  try {
+    await api.call("liveticker_whatsapp_delivery_enqueue", {
+      eventId: request.eventId,
+      deliveryMode: "IMAGE_WITH_CAPTION",
+      idempotencyKey: request.jobId,
+      imageUrl: post.downloadUrl,
+      imageFilename: whatsappImageFilename(post, request.kind, request.jobId),
+      message: request.text
+    });
+    clearPendingSummary();
+    summaryStatus = {
+      kind: request.kind,
+      state: "success",
+      text: `${kindLabel(request.kind)} · Text + POST an WhatsApp übergeben.`
+    };
+  } catch (error) {
+    console.error("Liveticker summary WhatsApp enqueue failed", error);
+    summaryStatus = {
+      kind: request.kind,
+      state: "error",
+      text: `${kindLabel(request.kind)} · WhatsApp-Versand fehlgeschlagen: ${error?.message || "Unbekannter Fehler"}`
+    };
+  } finally {
+    summaryPublishInFlight = false;
+    render();
+  }
 }
 
 function currentOutputKind() {
@@ -315,8 +437,8 @@ function renderPrimaryOutput() {
   const atOutputMoment = minute === 20 || minute === 40 || minute >= 60;
   if (primaryOutputWrap) primaryOutputWrap.hidden = !atOutputMoment || resultsOpen;
   primaryOutputButton.disabled = !ready || active;
-  if (active) primaryOutputButton.textContent = `🏁 ${kindLabel(kind)} wird erstellt …`;
-  else primaryOutputButton.textContent = `🏁 ${kindLabel(kind)} ausgeben`;
+  if (active) primaryOutputButton.textContent = `🏁 ${kindLabel(kind)} · Text + POST werden erstellt …`;
+  else primaryOutputButton.textContent = `🏁 ${kindLabel(kind)} · Text + POST senden`;
 }
 
 function renderResultGenerate() {
@@ -413,9 +535,15 @@ function render() {
   if (statusLine) {
     const kind = selectedArtifactKind || currentOutputKind();
     const job = latestJob(kind);
-    statusLine.textContent = `${kindLabel(kind)} · ${jobStatus(job)}`;
-    statusLine.dataset.state = isActive(job) ? "active" : job?.status === "FAILED" ? "error" : "idle";
-    statusLine.hidden = job?.status === "SUCCEEDED";
+    if (summaryStatus?.kind === kind) {
+      statusLine.textContent = summaryStatus.text;
+      statusLine.dataset.state = summaryStatus.state === "error" ? "error" : summaryStatus.state === "active" ? "active" : "idle";
+      statusLine.hidden = false;
+    } else {
+      statusLine.textContent = `${kindLabel(kind)} · ${jobStatus(job)}`;
+      statusLine.dataset.state = isActive(job) ? "active" : job?.status === "FAILED" ? "error" : "idle";
+      statusLine.hidden = job?.status === "SUCCEEDED";
+    }
   }
   renderArtifacts();
 }
@@ -439,6 +567,7 @@ async function refreshStatusOnly() {
     const snapshot = await api.call("liveticker_graphics_status", { eventId });
     jobs = Array.isArray(snapshot?.jobs) ? snapshot.jobs : [];
     render();
+    await maybePublishPendingSummary();
     scheduleActiveRefresh();
   } catch (error) {
     console.error("Liveticker graphics status refresh failed", error);
@@ -473,7 +602,22 @@ async function enqueue(kind) {
   resultsOpen = true;
   render();
   try {
-    await api.call("liveticker_graphics_enqueue", { eventId, kind });
+    const queued = await api.call("liveticker_graphics_enqueue", { eventId, kind });
+    const jobId = String(queued?.jobId || "");
+    if (queuedSummary?.kind === kind && validUuid(jobId)) {
+      savePendingSummary({
+        eventId,
+        kind,
+        text: queuedSummary.text,
+        jobId
+      });
+      queuedSummary = null;
+      summaryStatus = {
+        kind,
+        state: "active",
+        text: `${kindLabel(kind)} · POST-Flyer wird erstellt; Versand folgt automatisch.`
+      };
+    }
     await refreshAll();
   } catch (error) {
     console.error("Liveticker graphic enqueue failed", error);
@@ -514,6 +658,18 @@ window.addEventListener("pd-liveticker-graphics-open", event => {
   openResults(event.detail?.kind || "");
 });
 
+window.addEventListener("pd-liveticker-summary-requested", event => {
+  const kind = String(event.detail?.kind || "");
+  const text = String(event.detail?.text || "").trim();
+  if (!KINDS.includes(kind) || !text || text.length > 4000) return;
+  queuedSummary = { kind, text };
+  summaryStatus = {
+    kind,
+    state: "active",
+    text: `${kindLabel(kind)} · Text + POST werden vorbereitet …`
+  };
+});
+
 closeResults?.addEventListener("click", () => {
   resultsOpen = false;
   renderArtifacts();
@@ -521,7 +677,8 @@ closeResults?.addEventListener("click", () => {
 
 resultGenerateButton?.addEventListener("click", () => {
   const kind = resultGenerateButton.dataset.graphicKind || selectedArtifactKind || currentOutputKind();
-  BUTTONS[kind]?.click();
+  queuedSummary = null;
+  void enqueue(kind);
 });
 
 minuteInput?.addEventListener("input", renderPrimaryOutput);
@@ -535,5 +692,7 @@ window.addEventListener("pagehide", () => {
   clearWorkerRefreshTimer();
 });
 
+pendingSummary = loadPendingSummary();
 render();
 await Promise.all([refreshWorkerStatus(), refreshAll()]);
+await maybePublishPendingSummary();

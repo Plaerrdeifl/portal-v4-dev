@@ -1313,11 +1313,18 @@ function initialize() {
     renderHistory();
   });
 
+  function requestSummaryOutput(kind, text) {
+    setOutput(text);
+    void copyCurrentOutput();
+    errorBox.hidden = true;
+    window.dispatchEvent(new CustomEvent("pd-liveticker-summary-requested", {
+      detail: { kind, text }
+    }));
+  }
+
   $("#period1OutputButton")?.addEventListener("click", () => {
     try {
-      setOutput(formatSegmentSummary(state.history, "P1", opponent()));
-      void copyCurrentOutput();
-      errorBox.hidden = true;
+      requestSummaryOutput("PERIOD_1", formatSegmentSummary(state.history, "P1", opponent()));
     } catch (error) {
       errorBox.textContent = error.message;
       errorBox.hidden = false;
@@ -1325,9 +1332,7 @@ function initialize() {
   });
   $("#period2OutputButton")?.addEventListener("click", () => {
     try {
-      setOutput(formatSegmentSummary(state.history, "P2", opponent()));
-      void copyCurrentOutput();
-      errorBox.hidden = true;
+      requestSummaryOutput("PERIOD_2", formatSegmentSummary(state.history, "P2", opponent()));
     } catch (error) {
       errorBox.textContent = error.message;
       errorBox.hidden = false;
@@ -1335,9 +1340,7 @@ function initialize() {
   });
   $("#finalOutputButton")?.addEventListener("click", () => {
     try {
-      setOutput(formatFinalSummary(state.history, opponent()));
-      void copyCurrentOutput();
-      errorBox.hidden = true;
+      requestSummaryOutput("FINAL", formatFinalSummary(state.history, opponent()));
     } catch (error) {
       errorBox.textContent = error.message;
       errorBox.hidden = false;
