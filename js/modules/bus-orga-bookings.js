@@ -1,5 +1,6 @@
 import {
   call,
+  closeAllDialogs,
   confirmAction,
   empty,
   escapeAttr,
@@ -84,6 +85,18 @@ function preferenceOptions(selected = "EGAL") {
   return BUS_PREFERENCES.map(option => `<option value="${option.value}"${option.value === String(selected || "EGAL") ? " selected" : ""}>${escapeHtml(option.label)}</option>`).join("");
 }
 
+function preferenceLabel(value) {
+  return BUS_PREFERENCES.find(option => option.value === value)?.label || value || "Egal";
+}
+
+function currentParticipants(booking) {
+  return booking.participants.filter(cancellable);
+}
+
+function activeParticipants(booking) {
+  return booking.participants.filter(person => person.status === "ACTIVE");
+}
+
 function ensureStyle() {
   if (document.getElementById("m328BookingOverviewStyle")) return;
   const style = document.createElement("style");
@@ -98,13 +111,14 @@ function ensureStyle() {
     .m328-booking-list{display:grid;gap:7px}.m328-booking-card{border:1px solid var(--line);border-radius:13px;background:var(--surface);overflow:hidden}
     .m328-booking-card summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:10px 11px;cursor:pointer;list-style:none}.m328-booking-card summary::-webkit-details-marker{display:none}
     .m328-booking-main{display:grid;gap:3px}.m328-booking-number{font-size:.9rem;font-weight:900;letter-spacing:.02em}.m328-booking-meta{display:flex;flex-wrap:wrap;gap:3px 8px;color:var(--muted);font-size:.68rem}.m328-booking-primary{font-size:.79rem;font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .m328-booking-select{display:flex;align-items:center;gap:7px}.m328-booking-select input{width:18px;height:18px}.m328-booking-group-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:9px 10px;border-top:1px solid var(--line);background:var(--surface-2)}.m328-booking-group-facts span{display:grid;gap:2px;color:var(--muted);font-size:.65rem}.m328-booking-group-facts strong{color:var(--ink-900);font-size:.76rem}.m328-booking-override{color:#9a5b00;font-weight:850}.m328-booking-tools-actions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:7px}.m328-booking-tools-actions[hidden]{display:none!important}
     .m328-booking-side{display:flex;align-items:center;gap:6px}.m328-booking-chevron{color:var(--muted);font-size:1.2rem;transition:transform .16s ease}.m328-booking-card[open] .m328-booking-chevron{transform:rotate(90deg)}
     .m328-booking-body{display:grid;gap:0;border-top:1px solid var(--line)}.m328-booking-person{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:9px 10px;border-bottom:1px solid var(--line)}.m328-booking-person strong{display:block;font-size:.8rem}.m328-booking-person small{display:block;color:var(--muted);font-size:.67rem;margin-top:2px}.m328-booking-person-status{font-size:.68rem;font-weight:800;white-space:nowrap}
     .m328-booking-person-actions{display:flex;align-items:center;gap:6px;justify-content:flex-end}.m328-booking-person-actions .button{min-height:30px;padding:4px 7px;font-size:.66rem}
-    .m328-booking-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:9px 10px;border-top:1px solid var(--line);background:var(--surface-2)}.m328-booking-actions .button{width:100%;min-height:38px;font-size:.72rem}
+    .m328-booking-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:9px 10px;border-top:1px solid var(--line);background:var(--surface-2)}.m328-booking-actions .button{width:100%;min-height:38px;font-size:.72rem}.m328-booking-person-override{display:inline-flex;margin-top:4px;padding:2px 6px;border-radius:999px;background:color-mix(in srgb,#f7b955 24%,var(--surface));color:#7a4700;font-size:.62rem;font-weight:850}
     .m328-append-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.m328-append-fields label{display:grid;gap:4px;font-size:.72rem;font-weight:750}.m328-append-fields input,.m328-append-fields select{width:100%;min-height:42px}.m328-append-full{grid-column:1/-1}.m328-append-consent{grid-column:1/-1;display:flex!important;grid-template-columns:auto 1fr!important;align-items:flex-start;gap:8px!important}.m328-append-consent input{width:auto!important;min-height:auto!important;margin-top:3px}
     .m328-booking-edit{display:grid;gap:8px;padding:9px 10px;border-top:1px solid var(--line)}.m328-booking-edit-person{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:9px;border:1px solid var(--line);border-radius:11px;background:var(--surface-2)}.m328-booking-edit-person h4{grid-column:1/-1;margin:0;font-size:.82rem}.m328-booking-edit-person label{display:grid;gap:3px;font-size:.68rem;font-weight:750}.m328-booking-edit-person input,.m328-booking-edit-person select{width:100%;min-height:39px}.m328-booking-edit-note{grid-column:1/-1}.m328-booking-edit-status{grid-column:1/-1;color:var(--muted);font-size:.68rem}.m328-booking-edit-footer{display:grid;grid-template-columns:1fr 1fr;gap:6px}.m328-booking-edit-footer .button{width:100%;min-height:40px}
-    @media(max-width:520px){.m328-bookings-tools{grid-template-columns:1fr}.m328-bookings-count{justify-self:start}.m328-booking-card summary{padding:9px 10px}.m328-booking-side .badge{font-size:.63rem;padding-inline:7px}.m328-booking-person{grid-template-columns:1fr}.m328-booking-person-actions{justify-content:space-between}.m328-booking-actions{grid-template-columns:1fr}.m328-booking-edit-person,.m328-append-fields{grid-template-columns:1fr}.m328-booking-edit-person h4,.m328-booking-edit-note,.m328-booking-edit-status,.m328-append-full,.m328-append-consent{grid-column:auto}}
+    @media(max-width:520px){.m328-bookings-tools{grid-template-columns:1fr}.m328-bookings-count{justify-self:start}.m328-booking-card summary{padding:9px 10px}.m328-booking-side .badge{font-size:.63rem;padding-inline:7px}.m328-booking-person{grid-template-columns:1fr}.m328-booking-person-actions{justify-content:space-between}.m328-booking-actions{grid-template-columns:1fr}.m328-booking-edit-person,.m328-append-fields{grid-template-columns:1fr}.m328-booking-edit-person h4,.m328-booking-edit-note,.m328-booking-edit-status,.m328-append-full,.m328-append-consent{grid-column:auto}.m328-booking-group-facts{grid-template-columns:1fr}}
   `;
   document.head.appendChild(style);
 }
@@ -120,6 +134,11 @@ function groupBookings(registrations) {
         id: key,
         number: registration.bookingNumber || key,
         source: registration.source,
+        personGroupId: registration.personGroupId || null,
+        personGroupName: registration.personGroupName || "",
+        groupBusPreference: registration.groupBusPreference || registration.busPreference || "EGAL",
+        groupBusId: registration.groupBusId || null,
+        revision: Number(registration.bookingRevision || 1),
         participants: []
       };
       map.set(key, booking);
@@ -129,6 +148,8 @@ function groupBookings(registrations) {
   return Array.from(map.values()).map(booking => {
     booking.participants.sort((a, b) => Number(a.participantSequence || 0) - Number(b.participantSequence || 0));
     booking.primary = booking.participants.find(person => person.bookingRole === "PRIMARY") || booking.participants[0] || null;
+    booking.current = currentParticipants(booking);
+    booking.overrideCount = booking.current.filter(person => person.hasIndividualOverride).length;
     return booking;
   }).sort((a, b) => String(b.number).localeCompare(String(a.number), "de"));
 }
@@ -179,7 +200,13 @@ function personRow(person, booking) {
   const waitlist = person.waitlistPosition ? ` · WL ${person.waitlistPosition}` : "";
   const stop = person.boardingStopLabel ? ` · ${person.boardingStopLabel}` : "";
   const canCancel = cancellable(person);
-  return `<div class="m328-booking-person"><div><strong>${escapeHtml(personName(person))}</strong><small>${escapeHtml(`${bookingPersonRole(person, booking)}${person.email ? ` · ${person.email}` : ""}${stop}${bus}${waitlist}`)}</small></div><div class="m328-booking-person-actions"><span class="m328-booking-person-status">${escapeHtml(statusLabel(person.status))}</span>${canCancel && booking.participants.length > 1 ? `<button class="button small danger" type="button" data-m328-cancel-person="${escapeAttr(person.id)}" data-booking-id="${escapeAttr(booking.id)}">Person stornieren</button>` : ""}</div></div>`;
+  const override = person.hasIndividualOverride
+    ? `<span class="m328-booking-person-override">Individuelle Abweichung</span>`
+    : "";
+  const actions = canCancel && booking.current.length > 1
+    ? `<button class="button small secondary" type="button" data-m328-person-override="${escapeAttr(person.id)}" data-booking-id="${escapeAttr(booking.id)}">${person.hasIndividualOverride ? "Abweichung ändern" : "Nur diese Person abweichend"}</button><button class="button small secondary" type="button" data-m328-split-person="${escapeAttr(person.id)}" data-booking-id="${escapeAttr(booking.id)}">Aus Gruppe lösen</button><button class="button small danger" type="button" data-m328-cancel-person="${escapeAttr(person.id)}" data-booking-id="${escapeAttr(booking.id)}">Stornieren</button>`
+    : "";
+  return `<div class="m328-booking-person"><div><strong>${escapeHtml(personName(person))}</strong><small>${escapeHtml(`${bookingPersonRole(person, booking)}${person.email ? ` · ${person.email}` : ""}${stop}${bus}${waitlist}`)}</small>${override}</div><div class="m328-booking-person-actions"><span class="m328-booking-person-status">${escapeHtml(statusLabel(person.status))}</span>${actions}</div></div>`;
 }
 
 function editPerson(state, person) {
@@ -188,10 +215,7 @@ function editPerson(state, person) {
   }
   const fixed = linkedIdentity(person);
   const hasStops = activeStops(state).length > 0;
-  const busPreference = state.trip.busPreferenceSelectionEnabled === true
-    ? `<label>Buswunsch<select data-edit-field="busPreference">${preferenceOptions(person.busPreference || "EGAL")}</select></label>`
-    : `<input data-edit-field="busPreference" type="hidden" value="${escapeAttr(person.busPreference || "EGAL")}">`;
-  return `<div class="m328-booking-edit-person" data-edit-participant="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.revision)}"><h4>${escapeHtml(personName(person))}</h4><label>Vorname<input data-edit-field="firstName" maxlength="120" value="${escapeAttr(person.firstName || "")}"${fixed ? " readonly" : " required"}></label><label>Nachname<input data-edit-field="lastName" maxlength="120" value="${escapeAttr(person.lastName || "")}"${fixed ? " readonly" : " required"}></label><label>E-Mail<input data-edit-field="email" type="email" value="${escapeAttr(person.email || "")}"${fixed ? " readonly" : ""}></label>${hasStops ? `<label>Zustieg<select data-edit-field="tripBoardingStopId" required>${stopOptions(state, person.tripBoardingStopId)}</select></label>` : `<input data-edit-field="tripBoardingStopId" type="hidden" value="">`}${busPreference}<label class="m328-booking-edit-note">Hinweis<input data-edit-field="operationalNote" maxlength="240" value="${escapeAttr(person.operationalNote || "")}" placeholder="Optional"></label></div>`;
+  return `<div class="m328-booking-edit-person" data-edit-participant="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.revision)}"><h4>${escapeHtml(personName(person))}</h4><label>Vorname<input data-edit-field="firstName" maxlength="120" value="${escapeAttr(person.firstName || "")}"${fixed ? " readonly" : " required"}></label><label>Nachname<input data-edit-field="lastName" maxlength="120" value="${escapeAttr(person.lastName || "")}"${fixed ? " readonly" : " required"}></label><label>E-Mail<input data-edit-field="email" type="email" value="${escapeAttr(person.email || "")}"${fixed ? " readonly" : ""}></label>${hasStops ? `<label>Zustieg<select data-edit-field="tripBoardingStopId" required>${stopOptions(state, person.tripBoardingStopId)}</select></label>` : `<input data-edit-field="tripBoardingStopId" type="hidden" value="">`}<input data-edit-field="busPreference" type="hidden" value="${escapeAttr(person.busPreference || "EGAL")}"><label class="m328-booking-edit-note">Hinweis<input data-edit-field="operationalNote" maxlength="240" value="${escapeAttr(person.operationalNote || "")}" placeholder="Optional"></label></div>`;
 }
 
 
@@ -352,28 +376,44 @@ async function openAppendParticipant(state, booking) {
 
 function bookingCard(state, booking) {
   const status = bookingStatus(booking);
-  const count = bookingCurrentCount(booking);
+  const count = booking.current.length;
   const primary = booking.primary ? personName(booking.primary) : "–";
   const editing = state.editingBookingId === booking.id;
-  const active = booking.participants.filter(cancellable);
+  const active = booking.current;
+  const groupBus = state.buses.find(bus => bus.id === booking.groupBusId)?.label || "Nicht zugeordnet";
+  const groupName = booking.personGroupName || "Keine gespeicherte Personengruppe";
+  const overrideText = booking.overrideCount
+    ? `<span class="m328-booking-override">${booking.overrideCount} individuelle ${booking.overrideCount === 1 ? "Abweichung" : "Abweichungen"}</span>`
+    : "";
   const actions = active.length
-    ? `<div class="m328-booking-actions"><button class="button primary" type="button" data-m328-append-booking="${escapeAttr(booking.id)}">+ Person hinzufügen</button><button class="button secondary" type="button" data-m328-edit-booking="${escapeAttr(booking.id)}">Bearbeiten</button><button class="button danger" type="button" data-m328-cancel-booking="${escapeAttr(booking.id)}">${active.length === 1 ? "Buchung stornieren" : "Gesamte Buchung stornieren"}</button></div>`
+    ? `<div class="m328-booking-actions"><button class="button primary" type="button" data-m328-add-person="${escapeAttr(booking.id)}">＋ Person hinzufügen</button><button class="button secondary" type="button" data-m328-edit-booking="${escapeAttr(booking.id)}">Gruppenwerte bearbeiten</button><button class="button danger" type="button" data-m328-cancel-booking="${escapeAttr(booking.id)}">${active.length === 1 ? "Buchung stornieren" : "Gesamte Buchung stornieren"}</button></div>`
     : "";
   const edit = editing
-    ? `<form class="m328-booking-edit" data-m328-edit-form="${escapeAttr(booking.id)}">${booking.participants.map(person => editPerson(state, person)).join("")}<div class="m328-booking-edit-footer"><button class="button ghost" type="button" data-m328-edit-cancel="${escapeAttr(booking.id)}">Abbrechen</button><button class="button primary" type="submit">Änderungen speichern</button></div></form>`
+    ? `<form class="m328-booking-edit" data-m328-edit-form="${escapeAttr(booking.id)}"><section class="m328-booking-edit-person"><h4>Gruppenregel</h4>${state.trip.busPreferenceSelectionEnabled === true ? `<label>Buswunsch für gesamte Buchung<select data-group-field="busPreference">${preferenceOptions(booking.groupBusPreference)}</select></label>` : `<input data-group-field="busPreference" type="hidden" value="EGAL">`}<label>Bus für gesamte Buchung<select data-group-field="busId"><option value="">Nicht zugeordnet</option>${state.buses.filter(bus => bus.isActive !== false).map(bus => `<option value="${escapeAttr(bus.id)}"${bus.id === booking.groupBusId ? " selected" : ""}>${escapeHtml(`${bus.label} · ${Number(bus.remainingCapacity ?? 0)} frei`)}</option>`).join("")}</select></label>${booking.overrideCount ? '<label class="m328-booking-edit-note"><span><input data-group-field="alignOverrides" type="checkbox"> Individuelle Abweichungen an die Gruppenregel angleichen</span></label>' : ""}</section>${booking.participants.map(person => editPerson(state, person)).join("")}<div class="m328-booking-edit-footer"><button class="button ghost" type="button" data-m328-edit-cancel="${escapeAttr(booking.id)}">Abbrechen</button><button class="button primary" type="submit">Änderungen speichern</button></div></form>`
     : "";
-  return `<details class="m328-booking-card" data-booking-card="${escapeAttr(booking.id)}"${editing ? " open" : ""}><summary><span class="m328-booking-main"><span class="m328-booking-number">${escapeHtml(booking.number)}</span><span class="m328-booking-primary">${escapeHtml(primary)}</span><span class="m328-booking-meta"><span>${count} ${count === 1 ? "Person" : "Personen"}</span><span>${escapeHtml(sourceLabel(booking.source))}</span></span></span><span class="m328-booking-side">${statusBadge(status)}<span class="m328-booking-chevron" aria-hidden="true">›</span></span></summary><div class="m328-booking-body">${booking.participants.map(person => personRow(person, booking)).join("")}</div>${editing ? edit : actions}</details>`;
+  return `<details class="m328-booking-card" data-booking-card="${escapeAttr(booking.id)}"${editing ? " open" : ""}><summary><span class="m328-booking-select"><input type="checkbox" data-m328-select-booking="${escapeAttr(booking.id)}" aria-label="${escapeAttr(`Buchung ${booking.number} auswählen`)}"${state.selectedBookingIds.has(booking.id) ? " checked" : ""}><span class="m328-booking-main"><span class="m328-booking-number">${escapeHtml(booking.number)}</span><span class="m328-booking-primary">${escapeHtml(primary)}</span><span class="m328-booking-meta"><span>${count} ${count === 1 ? "Person" : "Personen"}</span><span>${escapeHtml(sourceLabel(booking.source))}</span></span></span></span><span class="m328-booking-side">${statusBadge(status)}<span class="m328-booking-chevron" aria-hidden="true">›</span></span></summary><div class="m328-booking-group-facts"><span>Gespeicherte Gruppe<strong>${escapeHtml(groupName)}</strong></span><span>Gruppen-Buswunsch<strong>${escapeHtml(preferenceLabel(booking.groupBusPreference))}</strong></span><span>Gruppen-Bus<strong>${escapeHtml(groupBus)}</strong></span><span>Abweichungen<strong>${overrideText || "Keine"}</strong></span></div><div class="m328-booking-body">${booking.participants.map(person => personRow(person, booking)).join("")}</div>${editing ? edit : actions}</details>`;
 }
 
 function applyRegistrationResult(state, result) {
   const registrations = Array.isArray(result?.registrations) ? result.registrations : [];
   state.bookings = groupBookings(registrations);
+  if (Array.isArray(result?.buses)) state.buses = result.buses;
+  state.selectedBookingIds = new Set(
+    [...state.selectedBookingIds].filter(id => state.bookings.some(booking => booking.id === id))
+  );
   state.editingBookingId = null;
   renderList(state);
 }
 
 async function cancelParticipants(state, booking, participants, label) {
   if (!participants.length) return;
+  const groupField = name => form.querySelector(`[data-group-field="${name}"]`);
+  const groupRules = {
+    bookingId: booking.id,
+    busPreference: groupField("busPreference")?.value || booking.groupBusPreference || "EGAL",
+    busId: groupField("busId")?.value || null,
+    alignOverrides: groupField("alignOverrides")?.checked === true
+  };
   const names = participants.length === 1 ? personName(participants[0]) : `${participants.length} Personen`;
   const confirmed = await confirmAction(
     participants.length === booking.participants.filter(cancellable).length && participants.length > 1
@@ -400,6 +440,182 @@ function bookingById(state, id) {
   return state.bookings.find(booking => booking.id === id) || null;
 }
 
+function appendParticipantPayload(person = {}) {
+  return {
+    ...(person.portalUserId ? { portalUserId: person.portalUserId } : {}),
+    ...(person.memberId ? { memberId: person.memberId } : {}),
+    ...(person.regularRiderId ? { regularRiderId: person.regularRiderId } : {}),
+    firstName: person.firstName || "",
+    lastName: person.lastName || "",
+    email: person.email || null,
+    tripBoardingStopId: person.tripBoardingStopId || null,
+    operationalNote: person.operationalNote || null
+  };
+}
+
+async function appendPerson(state, booking, participant) {
+  try {
+    const result = await runWrite(
+      () => call("fanbus_booking_operator_append", {
+        bookingId: booking.id,
+        participant: appendParticipantPayload(participant)
+      }),
+      `Person zu ${booking.number} hinzugefügt.`
+    );
+    closeAllDialogs();
+    applyRegistrationResult(state, result);
+  } catch (error) {
+    showToast(error?.message || "Person konnte nicht hinzugefügt werden.", "error", 5600);
+  }
+}
+
+async function openAddPerson(state, booking) {
+  try {
+    const [groupData, peopleData, riderData] = await Promise.all([
+      call("fanbus_booking_group_candidates", { bookingId: booking.id }),
+      call("fanbus_registration_people_list"),
+      call("fanbus_regular_riders_list")
+    ]);
+    const groupMembers = (Array.isArray(groupData?.members) ? groupData.members : [])
+      .filter(member => member.available && !member.conflict && !member.booked);
+    const known = [
+      ...(Array.isArray(peopleData?.people) ? peopleData.people : []),
+      ...(Array.isArray(riderData?.regularRiders) ? riderData.regularRiders.map(rider => ({
+        ...rider,
+        personType: "REGULAR_RIDER",
+        regularRiderId: rider.regularRiderId || rider.id
+      })) : [])
+    ];
+    const dialog = openDialog({
+      title: "Person hinzufügen",
+      kicker: `${booking.number} · ${booking.current.length} aktuelle Personen`,
+      body: `<div class="form-grid v4-smart-form">
+        ${booking.personGroupId ? `<section class="v4-field-full"><h3>${escapeHtml(groupData.personGroupName || booking.personGroupName)}</h3><p class="subtle">Noch nicht gebuchte Gruppenmitglieder werden zuerst angeboten.</p><div class="m328-dialog-actions" data-m328-group-candidates>${groupMembers.map((member, index) => `<button class="button primary" type="button" data-m328-group-candidate="${index}">${escapeHtml(personName(member))}</button>`).join("") || '<p class="subtle">Alle verfügbaren Gruppenmitglieder sind bereits gebucht.</p>'}</div></section>` : `<p class="subtle v4-field-full">Diese operative Gruppe ist nicht mit einer gespeicherten Personengruppe verknüpft.</p>`}
+        <details class="v4-field-full"><summary class="button secondary">Andere bekannte Person hinzufügen</summary><div class="form-grid v4-smart-form"><label class="v4-field-full">Person<select data-m328-known-person><option value="">Bitte wählen</option>${known.map((person, index) => `<option value="${index}">${escapeHtml(`${personName(person)} · ${person.personType || "Bekannte Person"}`)}</option>`).join("")}</select></label><button class="button secondary" type="button" data-m328-append-known>Ausgewählte Person hinzufügen</button></div></details>
+        <details class="v4-field-full"><summary class="button secondary">Manuellen Gast hinzufügen</summary><form class="form-grid v4-smart-form" data-m328-append-guest><label>Vorname<input name="firstName" maxlength="160" required></label><label>Nachname<input name="lastName" maxlength="160" required></label><label class="v4-field-full">E-Mail (optional)<input name="email" type="email" maxlength="320"></label><label class="v4-field-full">Zustieg<select name="tripBoardingStopId"><option value="">Kein strukturierter Zustieg</option>${stopOptions(state)}</select></label><button class="button primary" type="submit">Gast hinzufügen</button></form></details>
+      </div>`
+    });
+    dialog.querySelectorAll("[data-m328-group-candidate]").forEach(button => button.addEventListener("click", () => {
+      const member = groupMembers[Number(button.dataset.m328GroupCandidate)];
+      if (member) void appendPerson(state, booking, member);
+    }));
+    dialog.querySelector("[data-m328-append-known]")?.addEventListener("click", () => {
+      const index = Number(dialog.querySelector("[data-m328-known-person]")?.value);
+      if (!Number.isInteger(index) || !known[index]) {
+        showToast("Bitte wähle eine Person aus.", "warning", 2600);
+        return;
+      }
+      void appendPerson(state, booking, known[index]);
+    });
+    dialog.querySelector("[data-m328-append-guest]")?.addEventListener("submit", event => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      if (!form.reportValidity()) return;
+      const values = Object.fromEntries(new FormData(form));
+      void appendPerson(state, booking, values);
+    });
+  } catch (error) {
+    showToast(error?.message || "Personenauswahl konnte nicht geladen werden.", "error", 5200);
+  }
+}
+
+function openParticipantOverride(state, booking, person) {
+  const dialog = openDialog({
+    title: "Nur diese Person abweichend behandeln",
+    kicker: `${personName(person)} · ${booking.number}`,
+    body: `<form class="form-grid v4-smart-form" data-m328-override-form>
+      <label>Individueller Buswunsch<select name="busPreference">${preferenceOptions(person.busPreference || booking.groupBusPreference)}</select></label>
+      <label>Individueller Bus<select name="busId"><option value="">Bewusst nicht zugeordnet</option>${state.buses.filter(bus => bus.isActive !== false).map(bus => `<option value="${escapeAttr(bus.id)}"${bus.id === person.busId ? " selected" : ""}>${escapeHtml(bus.label)}</option>`).join("")}</select></label>
+      <p class="subtle v4-field-full">Diese Aktion setzt eine sichtbare, auditierte Ausnahme von der Buchungsregel.</p>
+    </form>`,
+    submitLabel: "Abweichung speichern",
+    onSubmit: async values => {
+      const result = await runWrite(() => call("fanbus_booking_participant_override_set", {
+        participantId: person.id,
+        busPreference: values.busPreference,
+        busId: values.busId || null
+      }), "Individuelle Abweichung gespeichert.");
+      applyRegistrationResult(state, result);
+    }
+  });
+  if (person.hasIndividualOverride) {
+    const action = document.createElement("button");
+    action.type = "button";
+    action.className = "button secondary";
+    action.textContent = "An Gruppenregel angleichen";
+    action.addEventListener("click", async () => {
+      try {
+        const result = await runWrite(() => call("fanbus_booking_participant_override_clear", {
+          participantId: person.id,
+          kind: "ALL"
+        }), "Person folgt wieder der Gruppenregel.");
+        closeAllDialogs();
+        applyRegistrationResult(state, result);
+      } catch (error) {
+        showToast(error?.message || "Abweichung konnte nicht aufgehoben werden.", "error", 5200);
+      }
+    });
+    dialog.querySelector(".dialog-actions")?.prepend(action);
+  }
+}
+
+async function splitPerson(state, booking, person) {
+  const confirmed = await confirmAction(
+    `${personName(person)} aus ${booking.number} lösen und eine neue Buchungsnummer erzeugen?`,
+    { title: "Person aus Gruppe lösen", submitLabel: "Neue Buchung anlegen" }
+  );
+  if (!confirmed) return;
+  try {
+    const result = await runWrite(() => call("fanbus_booking_split", {
+      bookingId: booking.id,
+      participantIds: [person.id]
+    }), "Person wurde in eine neue Buchung verschoben.");
+    applyRegistrationResult(state, result);
+  } catch (error) {
+    showToast(error?.message || "Buchung konnte nicht aufgeteilt werden.", "error", 5200);
+  }
+}
+
+function updateMergeAction(state) {
+  const button = document.getElementById("m328MergeBookings");
+  if (!button) return;
+  button.hidden = state.selectedBookingIds.size < 2;
+  button.textContent = state.selectedBookingIds.size < 2
+    ? "Buchungen zusammenführen"
+    : `${state.selectedBookingIds.size} Buchungen zusammenführen`;
+}
+
+function openMergeDialog(state) {
+  const selected = state.bookings.filter(booking => state.selectedBookingIds.has(booking.id));
+  if (selected.length < 2) return;
+  const target = selected[0];
+  const preferences = new Set(selected.map(booking => booking.groupBusPreference));
+  const buses = new Set(selected.map(booking => booking.groupBusId || ""));
+  openDialog({
+    title: "Buchungen zusammenführen",
+    kicker: `${selected.length} Buchungen · Ziel ${target.number}`,
+    body: `<form class="form-grid v4-smart-form" data-m328-merge-form>
+      <div class="notice ${preferences.size > 1 || buses.size > 1 ? "warning" : "info"} v4-field-full">${preferences.size > 1 || buses.size > 1 ? "Die Buchungen besitzen unterschiedliche Gruppenwerte. Bitte entscheide bewusst." : "Die Buchungen besitzen übereinstimmende Gruppenwerte."}</div>
+      <label>Buswunsch der neuen Gruppe<select name="busPreference">${preferenceOptions(target.groupBusPreference)}</select></label>
+      <label>Bus der neuen Gruppe<select name="busId"><option value="">Zunächst nicht zugeordnet</option>${state.buses.filter(bus => bus.isActive !== false).map(bus => `<option value="${escapeAttr(bus.id)}"${bus.id === target.groupBusId ? " selected" : ""}>${escapeHtml(bus.label)}</option>`).join("")}</select></label>
+      <label class="v4-field-full">Bestehende individuelle Abweichungen<select name="overrideMode"><option value="KEEP">Beibehalten</option><option value="ALIGN">An neue Gruppenregel angleichen</option></select></label>
+      <p class="subtle v4-field-full">Alte Buchungsnummern bleiben historisch als „zusammengeführt in ${escapeHtml(target.number)}“ erhalten.</p>
+    </form>`,
+    submitLabel: "Zusammenführen",
+    onSubmit: async values => {
+      const result = await runWrite(() => call("fanbus_bookings_merge", {
+        targetBookingId: target.id,
+        sourceBookingIds: selected.slice(1).map(booking => booking.id),
+        busPreference: values.busPreference,
+        busId: values.busId || null,
+        overrideMode: values.overrideMode
+      }), `${selected.length} Buchungen wurden zusammengeführt.`);
+      state.selectedBookingIds.clear();
+      applyRegistrationResult(state, result);
+    }
+  });
+}
+
 async function saveBookingEdit(state, form) {
   if (!form.reportValidity()) return;
   const booking = bookingById(state, form.dataset.m328EditForm);
@@ -423,8 +639,9 @@ async function saveBookingEdit(state, form) {
   const button = form.querySelector("button[type=submit]");
   if (button) button.disabled = true;
   try {
+    await call("fanbus_booking_operator_update", { bookingId: booking.id, participants });
     const result = await runWrite(
-      () => call("fanbus_booking_operator_update", { bookingId: booking.id, participants }),
+      () => call("fanbus_booking_group_rules_set", groupRules),
       `Buchung ${booking.number} wurde aktualisiert.`
     );
     applyRegistrationResult(state, result);
@@ -445,6 +662,18 @@ function bindList(state) {
     state.editingBookingId = button.dataset.m328EditBooking;
     renderList(state);
   }));
+  target.querySelectorAll("[data-m328-select-booking]").forEach(input => {
+    input.addEventListener("click", event => event.stopPropagation());
+    input.addEventListener("change", () => {
+      if (input.checked) state.selectedBookingIds.add(input.dataset.m328SelectBooking);
+      else state.selectedBookingIds.delete(input.dataset.m328SelectBooking);
+      updateMergeAction(state);
+    });
+  });
+  target.querySelectorAll("[data-m328-add-person]").forEach(button => button.addEventListener("click", () => {
+    const booking = bookingById(state, button.dataset.m328AddPerson);
+    if (booking) void openAddPerson(state, booking);
+  }));
   target.querySelectorAll("[data-m328-edit-cancel]").forEach(button => button.addEventListener("click", () => {
     state.editingBookingId = null;
     renderList(state);
@@ -457,6 +686,16 @@ function bindList(state) {
     const booking = bookingById(state, button.dataset.bookingId);
     const person = booking?.participants.find(item => item.id === button.dataset.m328CancelPerson);
     if (booking && person) void cancelParticipants(state, booking, [person], "Person stornieren");
+  }));
+  target.querySelectorAll("[data-m328-person-override]").forEach(button => button.addEventListener("click", () => {
+    const booking = bookingById(state, button.dataset.bookingId);
+    const person = booking?.participants.find(item => item.id === button.dataset.m328PersonOverride);
+    if (booking && person) openParticipantOverride(state, booking, person);
+  }));
+  target.querySelectorAll("[data-m328-split-person]").forEach(button => button.addEventListener("click", () => {
+    const booking = bookingById(state, button.dataset.bookingId);
+    const person = booking?.participants.find(item => item.id === button.dataset.m328SplitPerson);
+    if (booking && person) void splitPerson(state, booking, person);
   }));
   target.querySelectorAll("[data-m328-edit-form]").forEach(form => form.addEventListener("submit", event => {
     event.preventDefault();
@@ -472,12 +711,13 @@ function renderList(state) {
   if (count) count.textContent = `${visible.length} von ${state.bookings.length} Buchungen`;
   target.innerHTML = visible.length ? visible.map(booking => bookingCard(state, booking)).join("") : empty("Keine passende Buchung gefunden.");
   bindList(state);
+  updateMergeAction(state);
 }
 
 function renderPage(root, state) {
   ensureStyle();
   const venue = String(state.trip.venue || "").trim() || "Fahrt";
-  root.innerHTML = `<div class="m328-bookings"><header class="m328-bookings-head"><button id="m328BookingsBack" class="button small ghost" type="button">← Fahrt</button><div class="m328-bookings-title"><h2>Buchungen • ${escapeHtml(venue)}</h2><span>${escapeHtml(shortDate(state.trip.eventDate))} · ${escapeHtml(eventTime(state.trip.eventTime))}</span></div></header><section class="m328-bookings-tools"><input id="m328BookingSearch" type="search" autocomplete="off" placeholder="Buchungsnummer oder Name suchen …" aria-label="Buchungen durchsuchen"><span id="m328BookingCount" class="m328-bookings-count"></span><details class="m328-bookings-filter"><summary class="button small secondary">Filter</summary><div class="m328-bookings-filter-body"><label>Status<select id="m328BookingStatusFilter"><option value="ALL">Alle</option><option value="CURRENT">Nicht storniert</option><option value="ACTIVE">Aktiv</option><option value="WAITLISTED">Warteliste</option><option value="CANCELLED">Storniert</option></select></label></div></details></section><section id="m328BookingList" class="m328-booking-list" aria-live="polite"></section></div>`;
+  root.innerHTML = `<div class="m328-bookings"><header class="m328-bookings-head"><button id="m328BookingsBack" class="button small ghost" type="button">← Fahrt</button><div class="m328-bookings-title"><h2>Buchungen • ${escapeHtml(venue)}</h2><span>${escapeHtml(shortDate(state.trip.eventDate))} · ${escapeHtml(eventTime(state.trip.eventTime))}</span></div></header><section class="m328-bookings-tools"><input id="m328BookingSearch" type="search" autocomplete="off" placeholder="Buchungsnummer oder Name suchen …" aria-label="Buchungen durchsuchen"><span id="m328BookingCount" class="m328-bookings-count"></span><div class="m328-booking-tools-actions"><button id="m328MergeBookings" class="button primary" type="button" hidden>Buchungen zusammenführen</button></div><details class="m328-bookings-filter"><summary class="button small secondary">Filter</summary><div class="m328-bookings-filter-body"><label>Status<select id="m328BookingStatusFilter"><option value="ALL">Alle</option><option value="CURRENT">Nicht storniert</option><option value="ACTIVE">Aktiv</option><option value="WAITLISTED">Warteliste</option><option value="CANCELLED">Storniert</option></select></label></div></details></section><section id="m328BookingList" class="m328-booking-list" aria-live="polite"></section></div>`;
   document.getElementById("m328BookingsBack")?.addEventListener("click", () => { location.hash = tripDetailHash(state.trip.id); });
   document.getElementById("m328BookingSearch")?.addEventListener("input", event => {
     state.query = event.currentTarget.value || "";
@@ -489,6 +729,7 @@ function renderPage(root, state) {
     state.editingBookingId = null;
     renderList(state);
   });
+  document.getElementById("m328MergeBookings")?.addEventListener("click", () => openMergeDialog(state));
   renderList(state);
 }
 
@@ -518,10 +759,12 @@ export async function hydrateBusOrgaBookings(context = {}) {
     renderPage(root, {
       trip,
       stops: Array.isArray(stopData?.stops) ? stopData.stops : [],
+      buses: Array.isArray(registrationData?.buses) ? registrationData.buses : [],
       bookings: groupBookings(registrations),
       query: "",
       statusFilter: "ALL",
-      editingBookingId: null
+      editingBookingId: null,
+      selectedBookingIds: new Set()
     });
   } catch (error) {
     if (context.isCurrent && !context.isCurrent()) return;

@@ -24,6 +24,7 @@ const BUS_PREFERENCES = Object.freeze([
 export const ASSIGNMENT_WARNING_LABELS = Object.freeze({
   BOOKING_ALREADY_SPLIT_FIXED: "Buchung ist durch bestehende Zuordnungen bereits aufgeteilt.",
   BOOKING_SPLIT_REQUIRED: "Buchung kann nicht vollständig in einem Bus bleiben.",
+  GROUP_CAPACITY_CONFLICT: "Die komplette Buchung passt in keinen gemeinsamen Bus und bleibt unzugeordnet.",
   PREFERENCE_MISMATCH: "Buswunsch kann nicht vollständig erfüllt werden.",
   STOP_NO_COMPATIBLE_BUS: "Kein Bus bedient den erforderlichen Zustieg.",
   NO_CAPACITY: "Keine passende freie Buskapazität vorhanden.",

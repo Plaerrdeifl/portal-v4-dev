@@ -180,7 +180,7 @@ export async function hydratePage(key, context = {}) {
       return result;
     }
     if (view === "bookings") {
-      return feature("./modules/bus-orga-bookings.js?v=20260919-fanbus-operator-append-r5", "hydrateBusOrgaBookings", context);
+      return feature("./modules/bus-orga-bookings.js?v=20260919-fanbus-operator-append-r5&groups=20260919-operational-groups1", "hydrateBusOrgaBookings", context);
     }
     if (view === "trip-edit") {
       return feature("./modules/bus-orga-trip-edit.js?v=20260830-m328-final-bus-management1", "hydrateBusOrgaTripEdit", context);

@@ -23,18 +23,20 @@ function participantDetailMarkup(state, registration) {
   const bus = state.buses.find(item => item.id === registration.busId);
   const occupancy = item => Number(item.occupancy ?? item.occupied ?? 0);
   const assignment = registration.status === "ACTIVE"
-    ? `<label>Buszuordnung<select data-m328-participant-assignment><option value="">Nicht zugeordnet</option>${state.buses.filter(item => item.isActive !== false).map(item => `<option value="${escapeAttr(item.id)}"${item.id === registration.busId ? " selected" : ""}>${escapeHtml(`${item.label} · ${occupancy(item)}/${item.capacity}`)}</option>`).join("")}</select><small>Aktuell: ${escapeHtml(bus?.label || "Nicht zugeordnet")}</small></label>`
+    ? `<label>Bus für gesamte Buchung<select data-m328-participant-assignment><option value="">Nicht zugeordnet</option>${state.buses.filter(item => item.isActive !== false).map(item => `<option value="${escapeAttr(item.id)}"${item.id === registration.groupBusId ? " selected" : ""}>${escapeHtml(`${item.label} · ${occupancy(item)}/${item.capacity}`)}</option>`).join("")}</select><small>Gruppenwert: ${escapeHtml(state.buses.find(item => item.id === registration.groupBusId)?.label || "Nicht zugeordnet")}</small></label>`
     : "";
   return `<div class="m328-dialog-facts">
       <div><span>Status</span><strong>${escapeHtml(statusLabel(registration.status))}</strong></div>
       <div><span>Quelle</span><strong>${escapeHtml(sourceLabel(registration.source))}</strong></div>
-      <div><span>Buswunsch</span><strong>${escapeHtml(busPreferenceLabel(registration.busPreference))}</strong></div>
+      <div><span>Gruppen-Buswunsch</span><strong>${escapeHtml(busPreferenceLabel(registration.groupBusPreference || registration.busPreference))}</strong></div>
+      <div><span>Individuelle Abweichung</span><strong>${registration.hasIndividualOverride ? "Ja" : "Nein"}</strong></div>
       <div><span>Angemeldet</span><strong>${escapeHtml(formatDateTime(registration.registeredAt))}</strong></div>
       ${registration.status === "WAITLISTED" ? `<div><span>Warteliste</span><strong>Position ${escapeHtml(registration.waitlistPosition || "–")}</strong></div>` : ""}
     </div>
     ${assignment}
     <div class="m328-dialog-actions">
       <button class="button secondary" type="button" data-m328-participant-edit>Bearbeiten</button>
+      <button class="button secondary" type="button" data-m328-participant-override>Nur diese Person abweichend</button>
       <button class="button secondary" type="button" data-m328-participant-more>Weitere Aktionen</button>
       ${registration.status === "WAITLISTED" && Number(registration.waitlistPosition) === 1 ? '<button class="button primary" type="button" data-m328-participant-promote>Promotion bestätigen</button>' : ""}
     </div>`;
@@ -48,6 +50,7 @@ export function openParticipantDetail(state, registration) {
   });
   dialog.querySelector("[data-m328-participant-edit]")?.addEventListener("click", () => void openParticipantEdit(state, registration));
   dialog.querySelector("[data-m328-participant-more]")?.addEventListener("click", () => openParticipantMore(state, registration));
+  dialog.querySelector("[data-m328-participant-override]")?.addEventListener("click", () => openParticipantOverride(state, registration));
   dialog.querySelector("[data-m328-participant-promote]")?.addEventListener("click", async () => {
     try {
       await runWrite(() => call("fanbus_waitlist_promote", {
@@ -66,8 +69,9 @@ export function openParticipantDetail(state, registration) {
     try {
       await runWrite(() => call("fanbus_bus_assignment_set", {
         participantId: registration.id,
-        busId: assignment.value || null
-      }), "Buszuordnung gespeichert.");
+        busId: assignment.value || null,
+        scope: "BOOKING"
+      }), "Buszuordnung für die gesamte Buchung gespeichert.");
       await state.refresh();
       closeAllDialogs();
     } catch (error) {
@@ -75,6 +79,46 @@ export function openParticipantDetail(state, registration) {
       showToast(error?.message || "Buszuordnung konnte nicht gespeichert werden.", "error", 5200);
     }
   });
+}
+
+function openParticipantOverride(state, registration) {
+  const dialog = openDialog({
+    title: "Individuelle Abweichung",
+    kicker: `${registration.firstName} ${registration.lastName}`,
+    body: `<form class="form-grid v4-smart-form" data-m328-participant-override-form>
+      <label>Individueller Buswunsch<select name="busPreference">${preferenceOptions(registration.busPreference)}</select></label>
+      <label>Individueller Bus<select name="busId"><option value="">Bewusst nicht zugeordnet</option>${state.buses.filter(item => item.isActive !== false).map(item => `<option value="${escapeAttr(item.id)}"${item.id === registration.busId ? " selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}</select></label>
+      <p class="subtle v4-field-full">Diese Ausnahme wird sichtbar markiert und auditierbar gespeichert.</p>
+    </form>`,
+    submitLabel: "Abweichung speichern",
+    onSubmit: async values => {
+      await runWrite(() => call("fanbus_booking_participant_override_set", {
+        participantId: registration.id,
+        busPreference: values.busPreference,
+        busId: values.busId || null
+      }), "Individuelle Abweichung gespeichert.");
+      await state.refresh();
+    }
+  });
+  if (!registration.hasIndividualOverride) return dialog;
+  const align = document.createElement("button");
+  align.type = "button";
+  align.className = "button secondary";
+  align.textContent = "An Gruppenregel angleichen";
+  align.addEventListener("click", async () => {
+    try {
+      await runWrite(() => call("fanbus_booking_participant_override_clear", {
+        participantId: registration.id,
+        kind: "ALL"
+      }), "Person folgt wieder der Gruppenregel.");
+      await state.refresh();
+      closeAllDialogs();
+    } catch (error) {
+      showToast(error?.message || "Abweichung konnte nicht aufgehoben werden.", "error", 5200);
+    }
+  });
+  dialog.querySelector(".dialog-actions")?.prepend(align);
+  return dialog;
 }
 
 async function openParticipantEdit(state, registration) {
@@ -92,7 +136,6 @@ async function openParticipantEdit(state, registration) {
         <label class="v4-field-half">Vorname<input name="firstName" maxlength="120" value="${escapeAttr(registration.firstName || "")}" required${linked ? " readonly" : ""}></label>
         <label class="v4-field-half">Nachname<input name="lastName" maxlength="120" value="${escapeAttr(registration.lastName || "")}" required${linked ? " readonly" : ""}></label>
         <label class="v4-field-full">E-Mail<input name="email" type="email" maxlength="320" value="${escapeAttr(registration.email || "")}"${linked ? " readonly" : ""}></label>
-        <label class="v4-field-half">Buswunsch<select name="busPreference">${preferenceOptions(registration.busPreference)}</select></label>
         <label class="v4-field-half">Zustiegsort<select name="tripBoardingStopId"><option value="">Kein strukturierter Zustieg</option>${stops.map(stop => {
           const id = stop.tripBoardingStopId || stop.id;
           return `<option value="${escapeAttr(id)}"${id === operational.tripBoardingStopId ? " selected" : ""}>${escapeHtml(`${formatBoardingTime(stop.departureAt) || "Zeit offen"} · ${stop.label}`)}</option>`;
@@ -108,7 +151,7 @@ async function openParticipantEdit(state, registration) {
           firstName: linked ? registration.firstName : values.firstName,
           lastName: linked ? registration.lastName : values.lastName,
           email: linked ? registration.email : values.email,
-          busPreference: values.busPreference,
+          busPreference: registration.busPreference,
           tripBoardingStopId: values.tripBoardingStopId || null,
           operationalNote: values.operationalNote || null
         }), "Teilnehmer wurde aktualisiert.");

@@ -174,7 +174,7 @@ function addToTargetOrNew(state, participant) {
   renderTarget(state);
 }
 
-function addManyToTargetOrNew(state, participants) {
+function addManyToTargetOrNew(state, participants, personGroup = null) {
   assertBookingDecisionResolved(state);
   if (!participants.length) throw new Error("Die Gruppe enthält keine verfügbaren Personen.");
   if (totalParticipantCount(state) + participants.length > 20) {
@@ -193,10 +193,16 @@ function addManyToTargetOrNew(state, participants) {
       identityKey: participantIdentity(person)
     })));
     target.kind = "GROUP";
+    if (personGroup?.id) {
+      target.personGroupId = personGroup.id;
+      target.personGroupName = personGroup.name || "";
+    }
   } else {
     const booking = {
       clientId: crypto.randomUUID(),
       kind: "GROUP",
+      personGroupId: personGroup?.id || null,
+      personGroupName: personGroup?.name || "",
       participants: participants.map(person => ({
         ...person,
         identityKey: participantIdentity(person)
@@ -531,9 +537,10 @@ function renderGroupPanel(state) {
       const collisions = members.filter(member => member.conflict || selectedKeys.has(member.identityKey));
       const eligible = members.filter(member => member.available && !member.conflict && !selectedKeys.has(member.identityKey));
       const participants = eligible.map(member => groupMemberParticipant(state, member));
+      const personGroup = { id: resolved.id, name: resolved.name };
 
       if (!unavailable.length && !collisions.length) {
-        addManyToTargetOrNew(state, participants);
+        addManyToTargetOrNew(state, participants, personGroup);
         closeSpecialPanel(state);
         showToast(`${participants.length} Personen als Buchung übernommen.`, "success", 2800);
         return;
@@ -542,7 +549,7 @@ function renderGroupPanel(state) {
       review.innerHTML = `<div class="m328-reg3-group-review"><strong>Gruppe prüfen</strong><p>${eligible.length} von ${members.length} Personen können übernommen werden.</p>${unavailable.length ? `<p><strong>Nicht verfügbar:</strong> ${unavailable.map(personName).map(escapeHtml).join(", ")}</p>` : ""}${collisions.length ? `<p><strong>Bereits erfasst/Konflikt:</strong> ${collisions.map(personName).map(escapeHtml).join(", ")}</p>` : ""}${eligible.length ? `<button class="button small secondary" type="button" data-m328-reg3-accept-group>Verfügbare übernehmen</button>` : ""}</div>`;
       review.querySelector("[data-m328-reg3-accept-group]")?.addEventListener("click", () => {
         try {
-          addManyToTargetOrNew(state, participants);
+          addManyToTargetOrNew(state, participants, personGroup);
           closeSpecialPanel(state);
           showToast(`${participants.length} Personen übernommen.`, "success", 2800);
         } catch (error) {
@@ -796,6 +803,7 @@ async function submitRegistration(state, form) {
   const payload = {
     tripId: state.trip.id,
     bookings: state.bookings.map(booking => ({
+      personGroupId: booking.personGroupId || null,
       participants: booking.participants.map(person => participantPayload(state, person))
     })),
     termsConfirmed: form.elements.consentConfirmed.checked

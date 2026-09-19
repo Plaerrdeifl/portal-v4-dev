@@ -9,7 +9,7 @@ import {
 } from "./common.js";
 import { queueM328FanbusAction } from "../m328-bus-orga-shell.js?v=20260829-m328-r1-flow2";
 import { hydrateBusOrgaRegistrationV2 } from "./bus-orga-registration-v2.js?v=20260829-m328-r1-booking-stack1";
-import { hydrateBusOrgaBookings } from "./bus-orga-bookings.js?v=20260829-m328-r1-bookings1";
+import { hydrateBusOrgaBookings } from "./bus-orga-bookings.js?v=20260829-m328-r1-bookings1&groups=20260919-operational-groups1";
 
 const DATE_FORMAT = new Intl.DateTimeFormat("de-DE", {
   day: "2-digit",

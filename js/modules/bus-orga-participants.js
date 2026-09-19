@@ -7,7 +7,7 @@ import {
   showToast
 } from "./common.js";
 import { downloadFanbusRegistrationsXlsx } from "./fanbus-xlsx.js";
-import { openParticipantDetail } from "./bus-orga-participant-dialogs.js";
+import { openParticipantDetail } from "./bus-orga-participant-dialogs.js?v=20260919-operational-groups1";
 import {
   bindWorkspaceBack,
   busPreferenceLabel,
@@ -28,7 +28,7 @@ function participantBookingContexts(registrations) {
     const key = bookingKey(registration);
     if (!key) continue;
     const group = grouped.get(key) || [];
-    group.push(registration);
+    if (["ACTIVE", "WAITLISTED"].includes(registration.status)) group.push(registration);
     grouped.set(key, group);
   }
   const contexts = new Map();
@@ -67,7 +67,8 @@ function registrationCard(registration, buses, contexts, readOnly) {
   const meta = [
     bookingRoleLabel(registration, contexts),
     sourceLabel(registration.source),
-    `Buswunsch: ${busPreferenceLabel(registration.busPreference)}`,
+    `Gruppen-Buswunsch: ${busPreferenceLabel(registration.groupBusPreference || registration.busPreference)}`,
+    registration.hasIndividualOverride ? "Individuelle Abweichung" : "",
     registration.status === "ACTIVE" ? `Bus: ${bus?.label || "Nicht zugeordnet"}` : "",
     registration.status === "WAITLISTED" ? `Warteliste ${registration.waitlistPosition || "–"}` : ""
   ].filter(Boolean);

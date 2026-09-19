@@ -382,13 +382,13 @@ select throws_ok('select app_private.api_fanbus_companion_lists_list()','42501',
 select set_config('request.jwt.claim.sub','00000000-0000-4325-8000-000000000003',true);
 select lives_ok(format('select app_private.api_fanbus_bus_assignment_set(%L::jsonb)',jsonb_build_object(
   'participantId',(select id from app_modules.fanbus_registrations where trip_id='00000000-0000-4325-8200-000000000001' and booking_role='PRIMARY'),
-  'busId','00000000-0000-4325-8400-000000000001')::text),'Primary wird passendem Bus zugeordnet');
+  'busId','00000000-0000-4325-8400-000000000001','scope','PARTICIPANT')::text),'Primary wird passendem Bus zugeordnet');
 select lives_ok(format('select app_private.api_fanbus_bus_assignment_set(%L::jsonb)',jsonb_build_object(
   'participantId',(select id from app_modules.fanbus_registrations where trip_id='00000000-0000-4325-8200-000000000001' and booking_role='COMPANION'),
-  'busId','00000000-0000-4325-8400-000000000002')::text),'Companion wird passendem Bus zugeordnet');
+  'busId','00000000-0000-4325-8400-000000000002','scope','PARTICIPANT')::text),'Companion wird passendem Bus zugeordnet');
 select throws_ok(format($q$select app_private.api_fanbus_bus_assignment_set(%L::jsonb)$q$,jsonb_build_object(
   'participantId',(select id from app_modules.fanbus_registrations where trip_id='00000000-0000-4325-8200-000000000001' and booking_role='COMPANION'),
-  'busId','00000000-0000-4325-8400-000000000001')::text),'22023','FANBUS_BUS_DOES_NOT_SERVE_BOARDING_STOP','Assignment lehnt nicht bedienten Halt ab');
+  'busId','00000000-0000-4325-8400-000000000001','scope','PARTICIPANT')::text),'22023','FANBUS_BUS_DOES_NOT_SERVE_BOARDING_STOP','Assignment lehnt nicht bedienten Halt ab');
 select throws_ok(format($q$select app_private.api_fanbus_registration_operational_update(%L::jsonb)$q$,jsonb_build_object(
   'participantId',(select id from app_modules.fanbus_registrations where trip_id='00000000-0000-4325-8200-000000000001' and booking_role='COMPANION'),
   'expectedRevision',1,'tripBoardingStopId',(select result->>'id' from m325_results where name='trip_a'),'operationalNote','Falscher Bus')::text),

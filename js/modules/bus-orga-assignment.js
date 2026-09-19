@@ -86,11 +86,25 @@ async function openAssignmentPreview(state) {
     const buses = Array.isArray(preview?.buses) ? preview.buses : [];
     const proposals = Array.isArray(preview?.participantProposals) ? preview.participantProposals : [];
     const editable = proposals.filter(item => item.assignmentState === "PROPOSED_AUTO");
+    const editableGroups = Array.from(editable.reduce((groups, proposal) => {
+      const key = proposal.bookingId || proposal.participantId;
+      const group = groups.get(key) || { bookingId: key, proposals: [] };
+      group.proposals.push(proposal);
+      groups.set(key, group);
+      return groups;
+    }, new Map()).values());
     const existing = proposals.filter(item => item.assignmentState !== "PROPOSED_AUTO");
     const conflicts = Array.isArray(preview?.conflicts) ? preview.conflicts : [];
     const summary = preview?.summary || {};
     const previewBusRows = buses.map(bus => `<div class="m328-assignment-row"><div><strong>${escapeHtml(bus.label)}</strong><small>${escapeHtml(bus.category)} · ${Number(bus.existingOccupancy || 0)} bereits zugeordnet${Number(bus.proposedNew || 0) ? ` · ${Number(bus.proposedNew)} neu` : ""}</small></div><strong>${Number(bus.afterApply || 0)}/${Number(bus.capacity || 0)} · ${Number(bus.freeAfter || 0)} frei</strong></div>`).join("");
-    const proposalsMarkup = editable.map(proposal => `<article class="m328-assignment-proposal"><div class="m328-card-head"><strong>${escapeHtml(participantName(registrations, proposal.participantId))}</strong><span class="badge neutral">Vorschlag</span></div><small>Buswunsch ${escapeHtml(proposal.busPreference || "EGAL")}</small><label>Bus<select name="assignment_${escapeAttr(proposal.participantId)}"><option value="">Nicht zuordnen</option>${buses.map(bus => `<option value="${escapeAttr(bus.busId)}"${bus.busId === proposal.proposedBusId ? " selected" : ""}>${escapeHtml(`${bus.label} · ${Number(bus.freeAfter || 0)} frei`)}</option>`).join("")}</select></label>${(proposal.warnings || []).map(code => `<p class="notice warning m328-assignment-warning">${escapeHtml(ASSIGNMENT_WARNING_LABELS[code] || code)}</p>`).join("")}</article>`).join("");
+    const proposalsMarkup = editableGroups.map(group => {
+      const proposal = group.proposals[0];
+      const names = group.proposals.map(item => participantName(registrations, item.participantId)).join(", ");
+      const proposedBusIds = new Set(group.proposals.map(item => item.proposedBusId || ""));
+      const selectedBusId = proposedBusIds.size === 1 ? proposal.proposedBusId : null;
+      const warnings = [...new Set(group.proposals.flatMap(item => item.warnings || []))];
+      return `<article class="m328-assignment-proposal"><div class="m328-card-head"><strong>${escapeHtml(group.proposals.length > 1 ? `Buchung · ${group.proposals.length} Personen` : names)}</strong><span class="badge neutral">Vorschlag</span></div><small>${escapeHtml(names)}</small><label>Gemeinsamer Bus<select name="assignment_${escapeAttr(group.bookingId)}"><option value="">Gruppe nicht zuordnen</option>${buses.map(bus => `<option value="${escapeAttr(bus.busId)}"${bus.busId === selectedBusId ? " selected" : ""}>${escapeHtml(`${bus.label} · ${Number(bus.freeAfter || 0)} frei`)}</option>`).join("")}</select></label>${warnings.map(code => `<p class="notice warning m328-assignment-warning">${escapeHtml(ASSIGNMENT_WARNING_LABELS[code] || code)}</p>`).join("")}</article>`;
+    }).join("");
     const existingMarkup = existing.map(proposal => `<div class="m328-assignment-row"><div><strong>${escapeHtml(participantName(registrations, proposal.participantId))}</strong><small>Bestehend · ${escapeHtml(proposal.assignmentState === "FIXED_MANUAL" ? "MANUAL" : "AUTO")}</small></div><strong>${escapeHtml(previewBusName(buses, proposal.currentBusId))}</strong></div>`).join("");
     const conflictMarkup = conflicts.map(conflict => `<div class="notice ${conflict.severity === "BLOCKING" ? "error" : "warning"}"><strong>${conflict.severity === "BLOCKING" ? "Blockierender Konflikt" : "Hinweis"}</strong><p>${escapeHtml(ASSIGNMENT_WARNING_LABELS[conflict.code] || conflict.code)}</p></div>`).join("");
     openDialog({
@@ -100,10 +114,10 @@ async function openAssignmentPreview(state) {
       submitLabel: preview.canApply ? "Zuordnung anwenden" : "Keine Zuordnung anwendbar",
       onSubmit: preview.canApply ? async values => {
         try {
-          const finalAssignments = editable.map(proposal => ({
+          const finalAssignments = editableGroups.flatMap(group => group.proposals.map(proposal => ({
             participantId: proposal.participantId,
-            busId: values[`assignment_${proposal.participantId}`] || null
-          }));
+            busId: values[`assignment_${group.bookingId}`] || null
+          })));
           const result = await call("fanbus_assignment_apply", {
             tripId: state.trip.id,
             algorithmVersion: preview.algorithmVersion,

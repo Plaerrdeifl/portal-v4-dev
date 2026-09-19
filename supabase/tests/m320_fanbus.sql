@@ -442,7 +442,8 @@ select is(
 insert into m320_results
 select 'assign', app_private.api_fanbus_bus_assignment_set(jsonb_build_object(
   'participantId', id,
-  'busId', (select result ->> 'id' from m320_results where name = 'bus_normal')
+  'busId', (select result ->> 'id' from m320_results where name = 'bus_normal'),
+  'scope', 'PARTICIPANT'
 )) from app_modules.fanbus_registrations
 where trip_id = '00000000-0000-4320-8200-000000000001' and participant_sequence = 2;
 select is((select count(*)::integer from app_modules.fanbus_bus_assignments where bus_id = ((select result ->> 'id' from m320_results where name = 'bus_normal')::uuid)), 1, 'ACTIVE kann zugeordnet werden');
@@ -456,7 +457,8 @@ select ok(exists (
 insert into m320_results
 select 'move', app_private.api_fanbus_bus_assignment_set(jsonb_build_object(
   'participantId', id,
-  'busId', (select result ->> 'id' from m320_results where name = 'bus_party')
+  'busId', (select result ->> 'id' from m320_results where name = 'bus_party'),
+  'scope', 'PARTICIPANT'
 )) from app_modules.fanbus_registrations
 where trip_id = '00000000-0000-4320-8200-000000000001' and participant_sequence = 2;
 select is((select count(*)::integer from app_modules.fanbus_bus_assignments where bus_id = ((select result ->> 'id' from m320_results where name = 'bus_party')::uuid)), 1, 'Move ersetzt die aktuelle Zuordnung');
@@ -464,7 +466,8 @@ do $m320_unassign$
 begin
   perform app_private.api_fanbus_bus_assignment_set(jsonb_build_object(
     'participantId', (select id from app_modules.fanbus_registrations where trip_id = '00000000-0000-4320-8200-000000000001' and participant_sequence = 2),
-    'busId', null
+    'busId', null,
+    'scope', 'PARTICIPANT'
   ));
 end
 $m320_unassign$;
@@ -520,7 +523,8 @@ insert into m320_results values (
     jsonb_build_object(
       'participantId', '00000000-0000-4320-8400-000000000002',
       'busId', (select result ->> 'id' from m320_results
-        where name = 'audit_bus_a')
+        where name = 'audit_bus_a'),
+      'scope', 'PARTICIPANT'
     )
   )
 );
@@ -549,7 +553,8 @@ insert into m320_results values (
     jsonb_build_object(
       'participantId', '00000000-0000-4320-8400-000000000002',
       'busId', (select result ->> 'id' from m320_results
-        where name = 'audit_bus_b')
+        where name = 'audit_bus_b'),
+      'scope', 'PARTICIPANT'
     )
   )
 );
@@ -579,7 +584,8 @@ insert into m320_results values (
   'audit_unassign_b', app_private.api_fanbus_bus_assignment_set(
     jsonb_build_object(
       'participantId', '00000000-0000-4320-8400-000000000002',
-      'busId', null
+      'busId', null,
+      'scope', 'PARTICIPANT'
     )
   )
 );
@@ -607,7 +613,8 @@ insert into m320_results values (
     jsonb_build_object(
       'participantId', '00000000-0000-4320-8400-000000000002',
       'busId', (select result ->> 'id' from m320_results
-        where name = 'audit_bus_a')
+        where name = 'audit_bus_a'),
+      'scope', 'PARTICIPANT'
     )
   )
 );
@@ -699,7 +706,8 @@ select throws_ok(
     'select app_private.api_fanbus_bus_assignment_set(%L::jsonb)',
     jsonb_build_object(
       'participantId', (select id from app_modules.fanbus_registrations where trip_id = '00000000-0000-4320-8200-000000000002' and status = 'WAITLISTED' limit 1),
-      'busId', (select result ->> 'id' from m320_results where name = 'bus_other_trip')
+      'busId', (select result ->> 'id' from m320_results where name = 'bus_other_trip'),
+      'scope', 'PARTICIPANT'
     )::text
   ),
   '22023', 'FANBUS_ASSIGNMENT_REQUIRES_ACTIVE_PARTICIPANT', 'WAITLISTED kann nicht zugeordnet werden'
@@ -709,11 +717,13 @@ do $m320_assign_full$
 begin
   perform app_private.api_fanbus_bus_assignment_set(jsonb_build_object(
     'participantId', (select id from app_modules.fanbus_registrations where trip_id = '00000000-0000-4320-8200-000000000001' and participant_sequence = 1),
-    'busId', (select result ->> 'id' from m320_results where name = 'bus_full')
+    'busId', (select result ->> 'id' from m320_results where name = 'bus_full'),
+    'scope', 'PARTICIPANT'
   ));
   perform app_private.api_fanbus_bus_assignment_set(jsonb_build_object(
     'participantId', (select id from app_modules.fanbus_registrations where trip_id = '00000000-0000-4320-8200-000000000001' and participant_sequence = 2),
-    'busId', (select result ->> 'id' from m320_results where name = 'bus_full')
+    'busId', (select result ->> 'id' from m320_results where name = 'bus_full'),
+    'scope', 'PARTICIPANT'
   ));
 end
 $m320_assign_full$;
@@ -722,7 +732,8 @@ select throws_ok(
     'select app_private.api_fanbus_bus_assignment_set(%L::jsonb)',
     jsonb_build_object(
       'participantId', (select id from app_modules.fanbus_registrations where trip_id = '00000000-0000-4320-8200-000000000001' and participant_sequence = 3),
-      'busId', (select result ->> 'id' from m320_results where name = 'bus_full')
+      'busId', (select result ->> 'id' from m320_results where name = 'bus_full'),
+      'scope', 'PARTICIPANT'
     )::text
   ),
   'P3204', 'FANBUS_BUS_CAPACITY_EXHAUSTED', 'Voller Bus wird nicht überbucht'
@@ -757,7 +768,8 @@ select throws_ok(
     'select app_private.api_fanbus_bus_assignment_set(%L::jsonb)',
     jsonb_build_object(
       'participantId', (select id from app_modules.fanbus_registrations where trip_id = '00000000-0000-4320-8200-000000000001' and participant_sequence = 2),
-      'busId', (select result ->> 'id' from m320_results where name = 'bus_other_trip')
+      'busId', (select result ->> 'id' from m320_results where name = 'bus_other_trip'),
+      'scope', 'PARTICIPANT'
     )::text
   ),
   '22023', 'FANBUS_ASSIGNMENT_BUS_UNAVAILABLE', 'Cross-Trip-Assignment wird abgewiesen'
@@ -770,7 +782,8 @@ select throws_ok(
         where trip_id = '00000000-0000-4320-8200-000000000001'
           and participant_sequence = 4),
       'busId', (select result ->> 'id' from m320_results
-        where name = 'bus_inactive')
+        where name = 'bus_inactive'),
+      'scope', 'PARTICIPANT'
     )::text
   ),
   '22023', 'FANBUS_ASSIGNMENT_BUS_UNAVAILABLE',
@@ -782,7 +795,8 @@ begin
     'participantId', (select id from app_modules.fanbus_registrations
       where trip_id = '00000000-0000-4320-8200-000000000001'
         and participant_sequence = 2),
-    'busId', null
+    'busId', null,
+    'scope', 'PARTICIPANT'
   ));
 end
 $m320_unassign_second$;
@@ -966,7 +980,8 @@ select 'capability_assignment',
   app_private.api_fanbus_bus_assignment_set(jsonb_build_object(
     'participantId', id,
     'busId', (select result ->> 'id' from m320_results
-      where name = 'capability_bus_manage')
+      where name = 'capability_bus_manage'),
+    'scope', 'PARTICIPANT'
   ))
 from app_modules.fanbus_registrations
 where email = 'legacy-guest@example.invalid';
