@@ -69,10 +69,18 @@ test("travel-group warnings are translated for operators", () => {
   assert.match(workspace, /TRAVEL_GROUP_KEPT_TOGETHER/);
 });
 
+test("collapsed booking cards show travel-group name without growing vertically", () => {
+  assert.match(bookings, /m328-travel-group-chip/);
+  assert.match(bookings, /booking\.travelGroupName \? `<span class="m328-travel-group-chip"/);
+  assert.match(bookings, /m328-booking-meta\{display:flex;flex-wrap:nowrap/);
+  assert.match(bookings, /m328-travel-group-chip\{[^}]*height:18px/);
+  assert.match(bookings, /m328-travel-group-chip\{[^}]*text-overflow:ellipsis/);
+});
+
 test("PWA cache chain rotates for travel groups", () => {
   assert.match(worker, /FANBUS_TRAVEL_GROUPS_CACHE_VERSION/);
   assert.match(worker, /APP_CACHE = `\$\{FANBUS_TRAVEL_GROUPS_CACHE_VERSION\}-shell`/);
-  assert.match(pages, /travelgroups=20260920-r1/);
-  assert.match(app, /travelgroups=20260920-r1/);
-  assert.match(index, /travelgroups=20260920-r1/);
+  assert.match(pages, /travelgroups=20260920-r1a/);
+  assert.match(app, /travelgroups=20260920-r1a/);
+  assert.match(index, /travelgroups=20260920-r1a/);
 });
