@@ -183,7 +183,7 @@ async function sendSummaryToWhatsapp(kind) {
   const post = postArtifactForJob(job);
   if (!post || !validArtifactUrl(post.downloadUrl, true)) return;
 
-  const text = loadSummaryCaption(job.jobId) || summaryTextFromOutput(kind);
+  const text = summaryTextFromOutput(kind) || loadSummaryCaption(job.jobId);
   if (!text || text.length > 4000) {
     summaryStatusByKind.set(kind, {
       state: "error",
