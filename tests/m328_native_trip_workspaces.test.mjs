@@ -113,9 +113,9 @@ test("M328 final bus management cache chain remains explicit", () => {
   assert.match(index, new RegExp(`m328-trip-subpage-back\\.js\\?v=${key}`));
   assert.match(index, new RegExp(`app\\.js[^\"]*m328final=${key}`));
   assert.match(app, new RegExp(`pages\\.js[^\"]*m328final=${key}`));
-  for (const moduleName of ["bus-orga-bookings", "bus-orga-trip-edit", "bus-orga-trip-workspaces"]) {
-    assert.match(pages, new RegExp(`${moduleName}\\.js\\?v=${key}`));
-  }
+  assert.match(pages, /bus-orga-bookings\.js\?v=20260919-fanbus-operator-append-r5&groups=20260919-operational-groups1/);
+  assert.match(pages, new RegExp(`bus-orga-trip-edit\\.js\\?v=${key}`));
+  assert.match(pages, new RegExp(`bus-orga-trip-workspaces\\.js\\?v=${key}`));
   assert.match(pages, /bus-orga-trip-detail\.js\?v=20260908-m328-ios-modal-recovery1/);
   assert.match(pages, /bus-orga-v3\.js\?[^"\n]*final=20260830-m328-final-bus-management1&registration=20260830-m328-registration-flow2/);
   assert.match(pages, /if \(view === "registration"\)[\s\S]*"hydrateBusOrgaV3"/);

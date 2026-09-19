@@ -50,7 +50,8 @@ test("Liveticker game mode keeps the live workflow compact and one-tap", async (
   assert.match(html, /input,select,textarea\{font-size:16px/);
   assert.match(html, /class="field opponent-field" hidden/);
   assert.doesNotMatch(html, /primary-output-wrap\{position:sticky/);
-  assert.match(storage, /liveticker-sync-status\[data-state="error"\]\{display:block/);
+  assert.match(storage, /\.liveticker-sync-status\{display:block/);
+  assert.match(storage, /liveticker-sync-status\[data-state="error"\]\{color:var\(--red\)\}/);
   assert.doesNotMatch(support, /<span class="label">Spielort<\/span>/);
   assert.match(html, /id="actionShootout"[\s\S]*Penalty-<br>schießen/);
   assert.match(support, /const available = \(Number\.parseInt\(minuteInput\.value \|\| "0", 10\) \|\| 0\) >= 60/);
@@ -80,8 +81,12 @@ test("Liveticker game mode keeps the live workflow compact and one-tap", async (
   const primaryOutputIndex = html.indexOf('id="primaryOutputWrap"');
   assert.ok(statusStripIndex >= 0 && graphicsPanelIndex > statusStripIndex && primaryOutputIndex > graphicsPanelIndex);
   assert.match(html, /id="graphicsResultPanel" class="summary-actions score-inline-output" hidden/);
-  assert.match(graphics, /button\.disabled = !\(done \|\| failed\)/);
-  assert.match(graphics, /latestJob\(kind\)\?\.status !== "SUCCEEDED"/);
+  assert.match(graphics, /button\.disabled = !hasEvent/);
+  assert.match(
+    graphics,
+    /outputStatusButtons\.forEach\(button => button\.addEventListener\("click", \(\) => \{[\s\S]*summaryTextFromOutput\(kind\);[\s\S]*openResults\(kind\);/
+  );
+  assert.doesNotMatch(graphics, /latestJob\(kind\)\?\.status !== "SUCCEEDED"/);
   assert.doesNotMatch(html, /Spiel schnell mittickern/);
 });
 
@@ -92,7 +97,9 @@ test("Liveticker result panel shares cached Post/Story files synchronously with 
   const auth = await read("js/liveticker-auth-bootstrap.js");
   assert.match(html, /connect-src[^;]*https:\/\/cloud\.plaerrdeifl\.de/);
   assert.match(html, /graphic-artifacts\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
-  assert.match(graphics, /button\.textContent = artifact\.kind === "POST" \? "Post" : "Story"/);
+  assert.match(graphics, /const baseLabel = artifact\.kind === "POST" \? "Post" : "Story"/);
+  assert.match(graphics, /button\.disabled = waitingForNativeShare/);
+  assert.match(graphics, /button\.textContent = waitingForNativeShare \? `\$\{baseLabel\} wird vorbereitet …` : baseLabel/);
   assert.match(graphics, /navigator\.canShare\(\{ files: \[file\] \}\)/);
   assert.match(graphics, /navigator\.share\(\{ files: \[file\], title: label \}\)/);
   assert.match(graphics, /const graphicArtifactCache = new Map\(\)/);
@@ -110,8 +117,9 @@ test("Liveticker result panel shares cached Post/Story files synchronously with 
   assert.match(graphics, /if \(error\?\.name === "AbortError"\) return "cancelled";\s*return downloadGraphicArtifact\(artifact\)/);
   assert.doesNotMatch(graphics, /downloadGraphicBlob|createObjectURL|window\.open\(|Fehler – erneut/);
   assert.match(graphics, /statusLine\.hidden = job\?\.status === "SUCCEEDED"/);
-  assert.match(graphics, /primaryOutputWrap\.hidden = !atOutputMoment \|\| resultsOpen/);
-  assert.match(auth, /liveticker-graphics-inline\.js\?v=20260912-android-share-r1/);
+  assert.match(graphics, /const visible = Boolean\(kind\) && !resultsOpen/);
+  assert.match(graphics, /primaryOutputWrap\.hidden = !visible/);
+  assert.match(auth, /liveticker-graphics-inline\.js\?v=20260919-summary-caption-r2/);
 });
 
 test("Fanbus Social Media exposes manual worker control and blocks flyer generation until ready", async () => {

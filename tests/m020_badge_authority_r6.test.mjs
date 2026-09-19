@@ -37,8 +37,9 @@ test("M020 R6 stale push payloads are followed by server-authoritative sync", ()
 test("M020 R6 rotates the service-worker shell cache while retaining R6 compatibility markers", () => {
   assert.match(worker, /const CACHE_VERSION = "pd-portal-v4-m900-platform-mode-r1-20260823"/);
   assert.match(worker, /const R6_CACHE_VERSION = "pd-portal-v4-prod-r6-final-20260830"/);
-  assert.match(worker, /const M020_PUSH_NAVIGATION_CACHE_VERSION = "pd-portal-v4-m020-push-navigation-badge-r1-20260901"/);
-  assert.match(worker, /const APP_CACHE = `\$\{M020_PUSH_NAVIGATION_CACHE_VERSION\}-shell`/);
+  assert.match(worker, /const M020_PUSH_NAVIGATION_CACHE_VERSION = "pd-portal-v4-fanbus-booking-count-authority-r1-20260919"/);
+  assert.match(worker, /const M020_PUSH_NAVIGATION_COMPAT_CACHE_VERSION = "pd-portal-v4-m020-push-navigation-badge-r1-20260901"/);
+  assert.match(worker, /const APP_CACHE = `\$\{FANBUS_OPERATIONAL_GROUPS_CACHE_VERSION\}-shell`/);
   assert.match(
     worker,
     /keys\.filter\(key => key\.startsWith\("pd-portal-"\) && key !== APP_CACHE\)/

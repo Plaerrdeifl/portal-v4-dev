@@ -15,7 +15,7 @@ test("standalone Liveticker stays hidden until active authorized login", async (
   const html = await read("liveticker/index.html");
   const gate = await read("js/liveticker-auth-bootstrap.js");
 
-  assert.match(html, /<main id="tickerApp" class="shell" hidden>/);
+  assert.match(html, /<main id="tickerApp" class="shell"[^>]* hidden>/);
   assert.match(html, /liveticker-auth-bootstrap\.js/);
   assert.match(gate, /await auth\.initialize\(\)/);
   assert.match(gate, /!state\?\.authenticated/);
@@ -148,7 +148,10 @@ test("PROD Liveticker exposes exactly three repeatable manual output buttons", a
   assert.match(graphics, /FINAL: document\.getElementById\("finalOutputButton"\)/);
   assert.match(graphics, /api\.call\("liveticker_graphics_enqueue", \{ eventId, kind \}\)/);
   assert.doesNotMatch(graphics, /latestPeriodKind|currentGame\?\.completedAt|minute >= 20|minute >= 40/);
-  assert.match(graphics, /job\?\.status === "SUCCEEDED"[\s\S]*`\$\{base\} · neu`/);
+  assert.match(graphics, /const done = job\?\.status === "SUCCEEDED"/);
+  assert.match(graphics, /button\.textContent = `\$\{short\} \$\{done \? "✓"/);
+  assert.match(graphics, /resultGenerateButton\.disabled = !Boolean\(workerRuntime\?\.ready\) \|\| active/);
+  assert.match(graphics, /job\?\.status === "FAILED"[\s\S]*"Erneut erstellen"[\s\S]*"Neu erstellen"/);
 
   assert.match(migration, /v_kind not in \('PERIOD_1','PERIOD_2','FINAL'\)/);
   assert.doesNotMatch(migration, /v_state\.minute < 20|v_state\.minute < 40|v_state\.completed_at is null/);
