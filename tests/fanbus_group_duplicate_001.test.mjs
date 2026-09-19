@@ -137,3 +137,10 @@ test("DUPLICATE-001 booking back returns to the same review instead of trip deta
   assert.match(ui, /function restoreRequestedDuplicateReview\(route, data, registrations\)/);
   assert.match(ui, /queueMicrotask\(\(\) => openDuplicateReview\(candidate, registrations\)\)/);
 });
+
+
+test("legacy integrity patch must not overwrite native booking counts or role labels", () => {
+  assert.match(ui, /function applyBookingGroups\(\) \{/);
+  assert.doesNotMatch(ui, /m328-booking-meta span:first-child/);
+  assert.doesNotMatch(ui, /replaceOperationalRolePrefix\(/);
+});
