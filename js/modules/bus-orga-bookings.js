@@ -6,6 +6,7 @@ import {
   escapeHtml,
   hasCapability,
   loading,
+  openDialog,
   runWrite,
   showToast
 } from "./common.js";
@@ -100,9 +101,10 @@ function ensureStyle() {
     .m328-booking-side{display:flex;align-items:center;gap:6px}.m328-booking-chevron{color:var(--muted);font-size:1.2rem;transition:transform .16s ease}.m328-booking-card[open] .m328-booking-chevron{transform:rotate(90deg)}
     .m328-booking-body{display:grid;gap:0;border-top:1px solid var(--line)}.m328-booking-person{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:9px 10px;border-bottom:1px solid var(--line)}.m328-booking-person strong{display:block;font-size:.8rem}.m328-booking-person small{display:block;color:var(--muted);font-size:.67rem;margin-top:2px}.m328-booking-person-status{font-size:.68rem;font-weight:800;white-space:nowrap}
     .m328-booking-person-actions{display:flex;align-items:center;gap:6px;justify-content:flex-end}.m328-booking-person-actions .button{min-height:30px;padding:4px 7px;font-size:.66rem}
-    .m328-booking-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:9px 10px;border-top:1px solid var(--line);background:var(--surface-2)}.m328-booking-actions .button{width:100%;min-height:38px;font-size:.72rem}
+    .m328-booking-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:9px 10px;border-top:1px solid var(--line);background:var(--surface-2)}.m328-booking-actions .button{width:100%;min-height:38px;font-size:.72rem}
+    .m328-append-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.m328-append-fields label{display:grid;gap:4px;font-size:.72rem;font-weight:750}.m328-append-fields input,.m328-append-fields select{width:100%;min-height:42px}.m328-append-full{grid-column:1/-1}.m328-append-consent{grid-column:1/-1;display:flex!important;grid-template-columns:auto 1fr!important;align-items:flex-start;gap:8px!important}.m328-append-consent input{width:auto!important;min-height:auto!important;margin-top:3px}
     .m328-booking-edit{display:grid;gap:8px;padding:9px 10px;border-top:1px solid var(--line)}.m328-booking-edit-person{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:9px;border:1px solid var(--line);border-radius:11px;background:var(--surface-2)}.m328-booking-edit-person h4{grid-column:1/-1;margin:0;font-size:.82rem}.m328-booking-edit-person label{display:grid;gap:3px;font-size:.68rem;font-weight:750}.m328-booking-edit-person input,.m328-booking-edit-person select{width:100%;min-height:39px}.m328-booking-edit-note{grid-column:1/-1}.m328-booking-edit-status{grid-column:1/-1;color:var(--muted);font-size:.68rem}.m328-booking-edit-footer{display:grid;grid-template-columns:1fr 1fr;gap:6px}.m328-booking-edit-footer .button{width:100%;min-height:40px}
-    @media(max-width:520px){.m328-bookings-tools{grid-template-columns:1fr}.m328-bookings-count{justify-self:start}.m328-booking-card summary{padding:9px 10px}.m328-booking-side .badge{font-size:.63rem;padding-inline:7px}.m328-booking-person{grid-template-columns:1fr}.m328-booking-person-actions{justify-content:space-between}.m328-booking-edit-person{grid-template-columns:1fr}.m328-booking-edit-person h4,.m328-booking-edit-note,.m328-booking-edit-status{grid-column:auto}}
+    @media(max-width:520px){.m328-bookings-tools{grid-template-columns:1fr}.m328-bookings-count{justify-self:start}.m328-booking-card summary{padding:9px 10px}.m328-booking-side .badge{font-size:.63rem;padding-inline:7px}.m328-booking-person{grid-template-columns:1fr}.m328-booking-person-actions{justify-content:space-between}.m328-booking-actions{grid-template-columns:1fr}.m328-booking-edit-person,.m328-append-fields{grid-template-columns:1fr}.m328-booking-edit-person h4,.m328-booking-edit-note,.m328-booking-edit-status,.m328-append-full,.m328-append-consent{grid-column:auto}}
   `;
   document.head.appendChild(style);
 }
@@ -187,6 +189,160 @@ function editPerson(state, person) {
   return `<div class="m328-booking-edit-person" data-edit-participant="${escapeAttr(person.id)}" data-revision="${escapeAttr(person.revision)}"><h4>${escapeHtml(personName(person))}</h4><label>Vorname<input data-edit-field="firstName" maxlength="120" value="${escapeAttr(person.firstName || "")}"${fixed ? " readonly" : " required"}></label><label>Nachname<input data-edit-field="lastName" maxlength="120" value="${escapeAttr(person.lastName || "")}"${fixed ? " readonly" : " required"}></label><label>E-Mail<input data-edit-field="email" type="email" value="${escapeAttr(person.email || "")}"${fixed ? " readonly" : ""}></label>${hasStops ? `<label>Zustieg<select data-edit-field="tripBoardingStopId" required>${stopOptions(state, person.tripBoardingStopId)}</select></label>` : `<input data-edit-field="tripBoardingStopId" type="hidden" value="">`}${busPreference}<label class="m328-booking-edit-note">Hinweis<input data-edit-field="operationalNote" maxlength="240" value="${escapeAttr(person.operationalNote || "")}" placeholder="Optional"></label></div>`;
 }
 
+
+function appendPersonKey(person) {
+  if (person?.personType === "MEMBER" && person.memberId) return `MEMBER:${person.memberId}`;
+  if (person?.personType === "PORTAL_USER" && person.portalUserId) return `PORTAL_USER:${person.portalUserId}`;
+  if (person?.id) return `REGULAR_RIDER:${person.id}`;
+  return "";
+}
+
+function appendPersonLabel(person) {
+  const name = `${person?.firstName || ""} ${person?.lastName || ""}`.trim() || "Unbenannte Person";
+  const type = person?.personType === "MEMBER"
+    ? "Mitglied"
+    : person?.personType === "PORTAL_USER"
+      ? "Portaluser"
+      : "Stammfahrer";
+  return `${name} · ${type}`;
+}
+
+function appendParticipantFromChoice(choice) {
+  if (!choice) return null;
+  if (choice.personType === "MEMBER") {
+    return { source: "MEMBER", memberId: choice.memberId };
+  }
+  if (choice.personType === "PORTAL_USER") {
+    return { source: "PORTAL_USER", portalUserId: choice.portalUserId };
+  }
+  return { source: "REGULAR_RIDER", regularRiderId: choice.id };
+}
+
+function appendStopByDefault(state, choice) {
+  const defaultStopId = String(choice?.defaultBoardingStopId || "");
+  if (!defaultStopId) return "";
+  return stopId(activeStops(state).find(stop => String(stop?.boardingStopId || "") === defaultStopId) || {});
+}
+
+function setAppendMode(dialog, mode) {
+  const existing = dialog.querySelector("[data-m328-append-existing]");
+  const guest = dialog.querySelector("[data-m328-append-guest]");
+  const existingSelect = dialog.querySelector('[name="personKey"]');
+  const guestFirst = dialog.querySelector('[name="firstName"]');
+  const guestLast = dialog.querySelector('[name="lastName"]');
+  const isGuest = mode === "GUEST";
+  if (existing) existing.hidden = isGuest;
+  if (guest) guest.hidden = !isGuest;
+  if (existingSelect) existingSelect.required = !isGuest;
+  if (guestFirst) guestFirst.required = isGuest;
+  if (guestLast) guestLast.required = isGuest;
+}
+
+async function openAppendParticipant(state, booking) {
+  try {
+    const [peopleData, riderData] = await Promise.all([
+      call("fanbus_registration_people_list"),
+      call("fanbus_regular_riders_list", {})
+    ]);
+    const people = Array.isArray(peopleData?.people) ? peopleData.people : [];
+    const portalIds = new Set(people.map(person => person.portalUserId).filter(Boolean));
+    const riders = (Array.isArray(riderData?.regularRiders) ? riderData.regularRiders : [])
+      .filter(rider => rider.isActive !== false && (!rider.linkedPortalUserId || !portalIds.has(rider.linkedPortalUserId)));
+    const choices = [...people, ...riders].filter(person => appendPersonKey(person));
+    const choiceMap = new Map(choices.map(person => [appendPersonKey(person), person]));
+    const personOptions = choices.map(person =>
+      `<option value="${escapeAttr(appendPersonKey(person))}">${escapeHtml(appendPersonLabel(person))}</option>`
+    ).join("");
+    const hasStops = activeStops(state).length > 0;
+    const busPreference = state.trip.busPreferenceSelectionEnabled === true
+      ? `<label>Buswunsch<select name="busPreference">${preferenceOptions("EGAL")}</select></label>`
+      : '<input name="busPreference" type="hidden" value="EGAL">';
+    const stopField = hasStops
+      ? `<label>Zustieg<select name="boardingStopId" required>${stopOptions(state)}</select></label>`
+      : '<input name="boardingStopId" type="hidden" value="">';
+
+    const dialog = openDialog({
+      title: "Person hinzufügen",
+      kicker: `${booking.number} · ${booking.participants.length} ${booking.participants.length === 1 ? "Person" : "Personen"}`,
+      body: `<form class="m328-append-fields" data-m328-append-form>
+        <label class="m328-append-full">Art
+          <select name="mode" required>
+            <option value="EXISTING">Mitglied / Portaluser / Stammfahrer</option>
+            <option value="GUEST">Gast manuell eintragen</option>
+          </select>
+        </label>
+        <label class="m328-append-full" data-m328-append-existing>Person
+          <select name="personKey" required>
+            <option value="">Bitte wählen</option>
+            ${personOptions}
+          </select>
+        </label>
+        <div class="m328-append-full m328-append-fields" data-m328-append-guest hidden>
+          <label>Vorname<input name="firstName" maxlength="160" autocomplete="given-name"></label>
+          <label>Nachname<input name="lastName" maxlength="160" autocomplete="family-name"></label>
+          <label class="m328-append-full">E-Mail optional<input name="email" type="email" maxlength="320" autocomplete="email"></label>
+        </div>
+        ${stopField}
+        ${busPreference}
+        <label class="m328-append-full">Hinweis optional<input name="operationalNote" maxlength="240" placeholder="Interner Hinweis für die Bus-Orga"></label>
+        <label class="m328-append-consent"><input name="consentConfirmed" type="checkbox" required><span>Die Person wurde auf Teilnahmebedingungen und Datenschutzhinweise hingewiesen.</span></label>
+      </form>`,
+      submitLabel: "Person hinzufügen",
+      onSubmit: async values => {
+        const mode = String(values.mode || "");
+        let participant;
+        if (mode === "GUEST") {
+          participant = {
+            source: "GUEST",
+            firstName: String(values.firstName || "").trim(),
+            lastName: String(values.lastName || "").trim(),
+            email: String(values.email || "").trim() || null
+          };
+        } else {
+          participant = appendParticipantFromChoice(choiceMap.get(String(values.personKey || "")));
+          if (!participant) throw new Error("Bitte eine Person auswählen.");
+        }
+        participant.boardingStopId = String(values.boardingStopId || "") || null;
+        participant.busPreference = String(values.busPreference || "EGAL");
+        participant.operationalNote = String(values.operationalNote || "").trim() || null;
+
+        const result = await runWrite(
+          () => call("fanbus_booking_operator_append", {
+            bookingId: booking.id,
+            idempotencyKey: crypto.randomUUID(),
+            participant,
+            consentConfirmed: values.consentConfirmed === "on"
+          }),
+          "Person wurde zur Buchung hinzugefügt."
+        );
+        const next = await call("fanbus_registrations_list", { tripId: state.trip.id });
+        applyRegistrationResult(state, next);
+        if (result?.status === "WAITLISTED") {
+          showToast("Die neue Person wurde auf die Warteliste gesetzt.", "warning", 5200);
+        }
+      }
+    });
+
+    const modeSelect = dialog.querySelector('[name="mode"]');
+    const personSelect = dialog.querySelector('[name="personKey"]');
+    const stopSelect = dialog.querySelector('[name="boardingStopId"]');
+    const preferenceSelect = dialog.querySelector('[name="busPreference"]');
+    modeSelect?.addEventListener("change", () => setAppendMode(dialog, modeSelect.value));
+    personSelect?.addEventListener("change", () => {
+      const choice = choiceMap.get(personSelect.value);
+      if (!choice) return;
+      const defaultStop = appendStopByDefault(state, choice);
+      if (stopSelect && defaultStop) stopSelect.value = defaultStop;
+      if (preferenceSelect && choice.defaultBusPreference) {
+        preferenceSelect.value = choice.defaultBusPreference;
+      }
+    });
+    setAppendMode(dialog, modeSelect?.value || "EXISTING");
+  } catch (error) {
+    showToast(error?.message || "Person konnte nicht hinzugefügt werden.", "error", 5200);
+  }
+}
+
 function bookingCard(state, booking) {
   const status = bookingStatus(booking);
   const count = booking.participants.length;
@@ -194,7 +350,7 @@ function bookingCard(state, booking) {
   const editing = state.editingBookingId === booking.id;
   const active = booking.participants.filter(cancellable);
   const actions = active.length
-    ? `<div class="m328-booking-actions"><button class="button secondary" type="button" data-m328-edit-booking="${escapeAttr(booking.id)}">Bearbeiten</button><button class="button danger" type="button" data-m328-cancel-booking="${escapeAttr(booking.id)}">${active.length === 1 ? "Buchung stornieren" : "Gesamte Buchung stornieren"}</button></div>`
+    ? `<div class="m328-booking-actions"><button class="button primary" type="button" data-m328-append-booking="${escapeAttr(booking.id)}">+ Person hinzufügen</button><button class="button secondary" type="button" data-m328-edit-booking="${escapeAttr(booking.id)}">Bearbeiten</button><button class="button danger" type="button" data-m328-cancel-booking="${escapeAttr(booking.id)}">${active.length === 1 ? "Buchung stornieren" : "Gesamte Buchung stornieren"}</button></div>`
     : "";
   const edit = editing
     ? `<form class="m328-booking-edit" data-m328-edit-form="${escapeAttr(booking.id)}">${booking.participants.map(person => editPerson(state, person)).join("")}<div class="m328-booking-edit-footer"><button class="button ghost" type="button" data-m328-edit-cancel="${escapeAttr(booking.id)}">Abbrechen</button><button class="button primary" type="submit">Änderungen speichern</button></div></form>`
@@ -274,6 +430,10 @@ async function saveBookingEdit(state, form) {
 function bindList(state) {
   const target = document.getElementById("m328BookingList");
   if (!target) return;
+  target.querySelectorAll("[data-m328-append-booking]").forEach(button => button.addEventListener("click", () => {
+    const booking = bookingById(state, button.dataset.m328AppendBooking);
+    if (booking) void openAppendParticipant(state, booking);
+  }));
   target.querySelectorAll("[data-m328-edit-booking]").forEach(button => button.addEventListener("click", () => {
     state.editingBookingId = button.dataset.m328EditBooking;
     renderList(state);
