@@ -3,7 +3,7 @@ import fs from "node:fs";
 import test from "node:test";
 
 const read = path => fs.readFileSync(new URL(path, import.meta.url), "utf8");
-const migration = read("../supabase/migrations/20260919225256_fanbus_travel_groups_r1.sql");
+const migration = read("../supabase/migrations/20260919231602_fanbus_travel_groups_r1.sql");
 const bookings = read("../js/modules/bus-orga-bookings.js");
 const assignment = read("../js/modules/bus-orga-assignment.js");
 const workspace = read("../js/modules/bus-orga-workspace-base.js");
