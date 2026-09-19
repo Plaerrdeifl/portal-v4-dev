@@ -13,6 +13,7 @@ const closeResults = document.getElementById("closeGraphicsResults");
 const primaryOutputWrap = document.getElementById("primaryOutputWrap");
 const primaryOutputButton = document.getElementById("primaryOutputButton");
 const resultGenerateButton = document.getElementById("resultGenerateButton");
+const resultWhatsappButton = document.getElementById("resultWhatsappButton");
 const outputStatusButtons = [...document.querySelectorAll("[data-output-status]")];
 const minuteInput = document.getElementById("gameMinute");
 const workerControl = document.getElementById("graphicWorkerControl");
@@ -40,12 +41,22 @@ let workerRequestInFlight = false;
 let workerRefreshTimer = 0;
 let selectedArtifactKind = "";
 let resultsOpen = false;
-let queuedSummary = null;
-let pendingSummary = null;
-let summaryPublishInFlight = false;
-let summaryStatus = null;
+let summarySendInFlight = new Set();
+let summaryTextByKind = new Map();
+let summaryStatusByKind = new Map();
+let momentPromptKind = "";
+let seenMomentEventId = "";
+let seenOutputMoments = new Set();
 
-const SUMMARY_PENDING_KEY = "plaerrdeifl.liveticker.summary-whatsapp.v1";
+const SUMMARY_CAPTION_KEY = "plaerrdeifl.liveticker.summary-caption.v1";
+const SUMMARY_SENT_KEY = "plaerrdeifl.liveticker.summary-sent.v1";
+const OUTPUT_MOMENT_KEY = "plaerrdeifl.liveticker.output-moment.v1";
+const LEGACY_SUMMARY_PENDING_KEY = "plaerrdeifl.liveticker.summary-whatsapp.v1";
+const OUTPUT_MOMENTS = Object.freeze({
+  20: "PERIOD_1",
+  40: "PERIOD_2",
+  60: "FINAL"
+});
 
 function currentEventId() {
   return String(globalThis.PD_LIVETICKER_GAME_CONTEXT?.eventId || "").trim();
@@ -55,41 +66,91 @@ function validUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
 }
 
-function summaryStorageKey(eventId = currentEventId()) {
-  return `${SUMMARY_PENDING_KEY}:${eventId}`;
+function newRequestId() {
+  if (typeof globalThis.crypto?.randomUUID === "function") return globalThis.crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  globalThis.crypto?.getRandomValues?.(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map(value => value.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
 }
 
-function validPendingSummary(value) {
-  return value
-    && typeof value === "object"
-    && value.eventId === currentEventId()
-    && KINDS.includes(value.kind)
-    && validUuid(value.jobId)
-    && typeof value.text === "string"
-    && value.text.trim().length > 0
-    && value.text.length <= 4000;
+function localSummaryKey(prefix, jobId, eventId = currentEventId()) {
+  return `${prefix}:${eventId}:${jobId}`;
 }
 
-function loadPendingSummary() {
+function saveSummaryCaption(jobId, text) {
+  if (!validUuid(jobId) || !text) return;
+  try { localStorage.setItem(localSummaryKey(SUMMARY_CAPTION_KEY, jobId), text); } catch {}
+}
+
+function loadSummaryCaption(jobId) {
+  if (!validUuid(jobId)) return "";
+  try { return String(localStorage.getItem(localSummaryKey(SUMMARY_CAPTION_KEY, jobId)) || "").trim(); } catch { return ""; }
+}
+
+function markSummarySent(jobId) {
+  if (!validUuid(jobId)) return;
+  try { localStorage.setItem(localSummaryKey(SUMMARY_SENT_KEY, jobId), "1"); } catch {}
+}
+
+function wasSummarySent(jobId) {
+  if (!validUuid(jobId)) return false;
+  try { return localStorage.getItem(localSummaryKey(SUMMARY_SENT_KEY, jobId)) === "1"; } catch { return false; }
+}
+
+function clearLegacyPendingSummary() {
+  const eventId = currentEventId();
+  if (!eventId) return;
+  try { localStorage.removeItem(`${LEGACY_SUMMARY_PENDING_KEY}:${eventId}`); } catch {}
+}
+
+function outputMomentStorageKey(eventId = currentEventId()) {
+  return `${OUTPUT_MOMENT_KEY}:${eventId}`;
+}
+
+function ensureOutputMomentState() {
+  const eventId = currentEventId();
+  if (eventId === seenMomentEventId) return;
+  seenMomentEventId = eventId;
+  momentPromptKind = "";
+  seenOutputMoments = new Set();
+  if (!eventId) return;
   try {
-    const parsed = JSON.parse(localStorage.getItem(summaryStorageKey()) || "null");
-    return validPendingSummary(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-function savePendingSummary(value) {
-  pendingSummary = value;
-  try {
-    localStorage.setItem(summaryStorageKey(value.eventId), JSON.stringify(value));
+    const parsed = JSON.parse(localStorage.getItem(outputMomentStorageKey(eventId)) || "[]");
+    if (Array.isArray(parsed)) {
+      for (const kind of parsed) if (KINDS.includes(kind)) seenOutputMoments.add(kind);
+    }
   } catch {}
 }
 
-function clearPendingSummary() {
-  const eventId = pendingSummary?.eventId || currentEventId();
-  pendingSummary = null;
-  try { localStorage.removeItem(summaryStorageKey(eventId)); } catch {}
+function persistOutputMoments() {
+  if (!seenMomentEventId) return;
+  try { localStorage.setItem(outputMomentStorageKey(seenMomentEventId), JSON.stringify([...seenOutputMoments])); } catch {}
+}
+
+function exactOutputMomentKind() {
+  const minute = Math.max(1, Number.parseInt(minuteInput?.value || "1", 10) || 1);
+  return OUTPUT_MOMENTS[minute] || "";
+}
+
+function syncOutputMomentPrompt() {
+  ensureOutputMomentState();
+  const kind = exactOutputMomentKind();
+  if (!kind) {
+    momentPromptKind = "";
+    return "";
+  }
+  if (momentPromptKind === kind) return kind;
+  if (seenOutputMoments.has(kind)) {
+    momentPromptKind = "";
+    return "";
+  }
+  seenOutputMoments.add(kind);
+  persistOutputMoments();
+  momentPromptKind = kind;
+  return kind;
 }
 
 function postArtifactForJob(job) {
@@ -103,66 +164,64 @@ function whatsappImageFilename(artifact, kind, jobId) {
   return `liveticker_${String(kind || "summary").toLowerCase()}_${String(jobId || "").slice(0, 8)}.png`;
 }
 
-async function maybePublishPendingSummary() {
-  if (summaryPublishInFlight) return;
-  const request = pendingSummary || loadPendingSummary();
-  if (!validPendingSummary(request)) return;
-  pendingSummary = request;
+function summaryTextFromOutput(kind) {
+  if (!KINDS.includes(kind)) return "";
+  BUTTONS[kind]?.click();
+  const text = String(document.getElementById("tickerOutput")?.value || "").trim();
+  if (text) summaryTextByKind.set(kind, text);
+  return text || summaryTextByKind.get(kind) || "";
+}
 
-  const job = jobs.find(item => item?.jobId === request.jobId) || null;
-  if (!job || job.status === "QUEUED" || job.status === "PROCESSING") return;
-  if (job.status !== "SUCCEEDED") {
-    summaryStatus = {
-      kind: request.kind,
-      state: "error",
-      text: `${kindLabel(request.kind)} · Flyer fehlgeschlagen – WhatsApp nicht gesendet.`
-    };
-    render();
-    return;
-  }
+function summaryStatus(kind) {
+  return summaryStatusByKind.get(kind) || null;
+}
 
+async function sendSummaryToWhatsapp(kind) {
+  if (!KINDS.includes(kind) || summarySendInFlight.has(kind)) return;
+  const job = latestJob(kind);
+  if (job?.status !== "SUCCEEDED") return;
   const post = postArtifactForJob(job);
-  if (!post || !validArtifactUrl(post.downloadUrl, true)) {
-    summaryStatus = {
-      kind: request.kind,
+  if (!post || !validArtifactUrl(post.downloadUrl, true)) return;
+
+  const text = loadSummaryCaption(job.jobId) || summaryTextFromOutput(kind);
+  if (!text || text.length > 4000) {
+    summaryStatusByKind.set(kind, {
       state: "error",
-      text: `${kindLabel(request.kind)} · POST-Flyer fehlt – WhatsApp nicht gesendet.`
-    };
+      text: `${kindLabel(kind)} · Text fehlt – WhatsApp nicht gesendet.`
+    });
     render();
     return;
   }
 
-  summaryPublishInFlight = true;
-  summaryStatus = {
-    kind: request.kind,
+  summarySendInFlight.add(kind);
+  summaryStatusByKind.set(kind, {
     state: "active",
-    text: `${kindLabel(request.kind)} · Text + POST werden an WhatsApp gesendet …`
-  };
+    text: `${kindLabel(kind)} · POST + Text werden an WhatsApp übergeben …`
+  });
   render();
   try {
     await api.call("liveticker_whatsapp_delivery_enqueue", {
-      eventId: request.eventId,
+      eventId: currentEventId(),
       deliveryMode: "IMAGE_WITH_CAPTION",
-      idempotencyKey: request.jobId,
+      idempotencyKey: newRequestId(),
       imageUrl: post.downloadUrl,
-      imageFilename: whatsappImageFilename(post, request.kind, request.jobId),
-      message: request.text
+      imageFilename: whatsappImageFilename(post, kind, job.jobId),
+      message: text
     });
-    clearPendingSummary();
-    summaryStatus = {
-      kind: request.kind,
+    saveSummaryCaption(job.jobId, text);
+    markSummarySent(job.jobId);
+    summaryStatusByKind.set(kind, {
       state: "success",
-      text: `${kindLabel(request.kind)} · Text + POST an WhatsApp übergeben.`
-    };
+      text: `${kindLabel(kind)} · POST + Text an WhatsApp übergeben.`
+    });
   } catch (error) {
     console.error("Liveticker summary WhatsApp enqueue failed", error);
-    summaryStatus = {
-      kind: request.kind,
+    summaryStatusByKind.set(kind, {
       state: "error",
-      text: `${kindLabel(request.kind)} · WhatsApp-Versand fehlgeschlagen: ${error?.message || "Unbekannter Fehler"}`
-    };
+      text: `${kindLabel(kind)} · WhatsApp-Versand fehlgeschlagen: ${error?.message || "Unbekannter Fehler"}`
+    });
   } finally {
-    summaryPublishInFlight = false;
+    summarySendInFlight.delete(kind);
     render();
   }
 }
