@@ -5,6 +5,7 @@ import test from "node:test";
 const read = path => fs.readFileSync(new URL(path, import.meta.url), "utf8");
 const ui = read("../js/modules/bus-orga-bookings.js");
 const pages = read("../js/pages.js");
+const app = read("../js/app.js");
 const v3 = read("../js/modules/bus-orga-v3.js");
 const index = read("../index.html");
 const serviceWorker = read("../service-worker.js");
@@ -73,10 +74,11 @@ test("booking count updates from the authoritative append response", () => {
 
 
 test("operator append cache versions force the current booking module into the PWA", () => {
+  assert.match(app, /pages\.js[^"]*fanbusappend=20260919-r4/);
   assert.match(pages, /bus-orga-bookings\.js\?v=20260919-fanbus-operator-append-r3/);
   assert.match(v3, /bus-orga-bookings\.js\?v=20260919-fanbus-operator-append-r3/);
-  assert.match(index, /fanbusappend=20260919-r3/);
-  assert.match(serviceWorker, /pd-portal-v4-fanbus-operator-append-r3-20260919/);
+  assert.match(index, /fanbusappend=20260919-r4/);
+  assert.match(serviceWorker, /pd-portal-v4-fanbus-operator-append-r4-20260919/);
 });
 
 
