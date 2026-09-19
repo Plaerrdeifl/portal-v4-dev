@@ -39,7 +39,7 @@ test("WhatsApp runtime controls fail closed without exposing local WPP", async (
   assert.match(runtime, /STATUS_FAILURE_THRESHOLD = 3/);
   assert.match(runtime, /TRANSITION_REFRESH_MS = 1000/);
   assert.match(runtime, /closeStatusControl\(wa\.control\)/);
-  assert.match(runtime, /Steuerung erfolgt zentral über PROD/);
+  assert.match(runtime, /Steuerung nur in PROD/);
   assert.match(worker, /lastWppActionTarget === desiredConnected/);
   assert.match(worker, /lastWppActionTarget = desiredConnected/);
   assert.match(worker, /WPP_CONTROL_OWNER/);
