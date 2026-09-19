@@ -196,8 +196,8 @@ begin
   if not found
      or v_job.requested_by <> v_actor
      or v_job.delivery_mode <> 'IMAGE_ONLY'
-     or v_job.image_url is distinct from v_image_url
-     or v_job.image_filename is distinct from v_image_filename
+     or (v_job.status <> 'SUCCEEDED' and v_job.image_url is distinct from v_image_url)
+     or (v_job.status <> 'SUCCEEDED' and v_job.image_filename is distinct from v_image_filename)
      or v_job.message is not null
      or v_job.sticker_id is not null
      or v_job.linked_action_id is not null then
