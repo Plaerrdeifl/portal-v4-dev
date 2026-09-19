@@ -127,6 +127,18 @@ test("sent action sticker keeps the exact draft id and action context for later 
 });
 
 
+test("leaving a saved penalty draft allocates a fresh id for the next action", async () => {
+  const source = await readFile(resolve(root, "js/liveticker-engine-v4.js"), "utf8");
+  assert.match(
+    source,
+    /function cancelEdit\(\) \{[\s\S]*editingId = null;[\s\S]*preservedPenaltyDraftId = null;[\s\S]*previewDraftId = uid\(\);/
+  );
+  assert.match(
+    source,
+    /preservedPenaltyDraftId && selectedAction\(\) !== "PENALTY"\) cancelEdit\(\)/
+  );
+});
+
 test("save button stays locked until the exact action is acknowledged by the server", async () => {
   const source = await readFile(resolve(root, "js/liveticker-engine-v4.js"), "utf8");
   assert.match(source, /setPendingServerSave\(tickerEvent\);[\s\S]*completeTickerSubmitLifecycle/);
