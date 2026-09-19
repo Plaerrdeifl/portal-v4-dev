@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const read = path => readFileSync(new URL(path, import.meta.url), "utf8");
-const migration = read("../supabase/migrations/20260919111232_fanbus_booking_operational_groups.sql");
+const migration = read("../supabase/migrations/20260919183200_fanbus_booking_operational_groups.sql");
 const bookings = read("../js/modules/bus-orga-bookings.js");
 const assignment = read("../js/modules/bus-orga-assignment.js");
 const participants = read("../js/modules/bus-orga-participants.js");
@@ -18,6 +18,12 @@ test("booking_id is the canonical operational group with optional saved-group pr
   assert.match(migration, /status in \('ACTIVE','WAITLISTED'\)/);
   assert.match(registration, /personGroupId: booking\.personGroupId \|\| null/);
   assert.match(migration, /FANBUS_BOOKING_PERSON_GROUP_LINKED/);
+});
+
+test("group migration upgrades the existing operator append baseline", () => {
+  assert.match(migration, /create or replace function app_private\.api_fanbus_booking_operator_append/);
+  const actionsBlock = migration.match(/pd_api_current_actions_before_booking_groups\(\)\|\|array\[([\s\S]*?)\]::text\[\]/)?.[1] || "";
+  assert.doesNotMatch(actionsBlock, /fanbus_booking_operator_append/);
 });
 
 test("append prioritizes unbooked saved-group members and inherits group rules", () => {

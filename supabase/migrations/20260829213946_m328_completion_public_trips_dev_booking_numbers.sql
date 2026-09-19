@@ -19,7 +19,7 @@ declare
   v_base jsonb := public.pd_public_fanbus_trip_before_m328_completion(p_trip_id);
 begin
   if coalesce((v_base ->> 'available')::boolean, false) is not true
-     or coalesce(v_base ->> 'tripStatus', '') not in ('PUBLISHED', 'CANCELLED') then
+     or coalesce(v_base ->> 'tripStatus', '') <> 'PUBLISHED' then
     return jsonb_build_object('available', false);
   end if;
 
@@ -45,7 +45,7 @@ begin
       select jsonb_agg(item.value order by item.ordinality)
       from jsonb_array_elements(coalesce(v_base -> 'trips', '[]'::jsonb))
         with ordinality as item(value, ordinality)
-      where item.value ->> 'tripStatus' in ('PUBLISHED', 'CANCELLED')
+      where item.value ->> 'tripStatus' = 'PUBLISHED'
     ), '[]'::jsonb)
   );
 end;

@@ -128,28 +128,6 @@ set
 -- BUS_KASSE bleibt absichtlich unverändert und erhält in M010-R2
 -- keine Capability-Zuordnung.
 
--- Ein vollständiger lokaler Neuaufbau startet ohne fachliche Stammdaten, weil
--- seed.sql erst nach allen Migrationen ausgeführt wird. BUS_ORGA ist jedoch ab
--- dieser Migration eine strukturelle Voraussetzung für die Autorisierung und
--- muss deshalb migrationsseitig deterministisch vorhanden sein.
-insert into app_portal.teams (
-  code,
-  name,
-  description,
-  is_active
-)
-values (
-  'BUS_ORGA',
-  'Bus-Orga',
-  'Organisation und operativer Betrieb der Fanbusfahrten.',
-  true
-)
-on conflict (code) do update
-set
-  name = excluded.name,
-  description = excluded.description,
-  is_active = true;
-
 do $$
 begin
   if not exists (

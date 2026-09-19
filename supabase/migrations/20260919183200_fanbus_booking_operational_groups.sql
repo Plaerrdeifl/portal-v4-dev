@@ -441,7 +441,7 @@ exception when invalid_text_representation then
 end;
 $function$;
 
-create function app_private.api_fanbus_booking_operator_append(p_payload jsonb)
+create or replace function app_private.api_fanbus_booking_operator_append(p_payload jsonb)
 returns jsonb
 language plpgsql
 security definer
@@ -1106,7 +1106,7 @@ create function app_private.pd_api_current_actions()
 returns text[] language sql stable set search_path=''
 as $function$
   select app_private.pd_api_current_actions_before_booking_groups()||array[
-    'fanbus_booking_group_candidates','fanbus_booking_operator_append',
+    'fanbus_booking_group_candidates',
     'fanbus_booking_group_rules_set','fanbus_booking_participant_override_set',
     'fanbus_booking_participant_override_clear','fanbus_bookings_merge','fanbus_booking_split'
   ]::text[]

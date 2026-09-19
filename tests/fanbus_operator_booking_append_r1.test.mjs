@@ -47,14 +47,16 @@ test("operator append is idempotent and audited", () => {
   assert.match(migration, /FANBUS_BOOKING_OPERATOR_PARTICIPANT_ADDED/);
 });
 
-test("bus orga booking UI offers append with existing people or guest", () => {
-  assert.match(ui, /data-m328-append-booking/);
-  assert.match(ui, /\+ Person hinzufügen/);
+test("bus orga booking UI adds people in group context with fallbacks", () => {
+  assert.match(ui, /data-m328-add-person/);
+  assert.match(ui, /Person hinzufügen/);
+  assert.match(ui, /fanbus_booking_group_candidates/);
+  assert.match(ui, /Noch nicht gebuchte Gruppenmitglieder werden zuerst angeboten/);
   assert.match(ui, /fanbus_registration_people_list/);
   assert.match(ui, /fanbus_regular_riders_list/);
-  assert.match(ui, /Gast manuell eintragen/);
+  assert.match(ui, /Andere bekannte Person hinzufügen/);
+  assert.match(ui, /Manuellen Gast hinzufügen/);
   assert.match(ui, /fanbus_booking_operator_append/);
-  assert.match(ui, /consentConfirmed/);
 });
 
 test("append controls remain usable on mobile", () => {
@@ -64,21 +66,19 @@ test("append controls remain usable on mobile", () => {
 });
 
 
-test("booking view reloads from the server immediately after append", () => {
-  assert.match(ui, /const addedStatus = result\?\.addedStatus \|\| "";/);
-  assert.match(ui, /await hydrateBusOrgaBookings\(\);/);
-  assert.match(ui, /bookingParticipantCount/);
+test("booking view applies the authoritative append response immediately", () => {
+  assert.match(ui, /const result = await runWrite\([\s\S]*fanbus_booking_operator_append/);
+  assert.match(ui, /closeAllDialogs\(\);\s*applyRegistrationResult\(state, result\);/);
   assert.doesNotMatch(ui, /booking\.participants\.push\(optimistic\)/);
   assert.doesNotMatch(ui, /window\.setTimeout\(async \(\) =>/);
 });
 
-
-test("operator append cache versions force the current booking module into the PWA", () => {
-  assert.match(app, /pages\.js[^"]*fanbusappend=20260919-r6/);
-  assert.match(pages, /bus-orga-bookings\.js\?v=20260919-fanbus-operator-append-r5/);
-  assert.match(v3, /bus-orga-bookings\.js\?v=20260919-fanbus-operator-append-r5/);
-  assert.match(index, /fanbusappend=20260919-r6/);
-  assert.match(serviceWorker, /pd-portal-v4-fanbus-operator-append-r6-20260919/);
+test("operator group cache versions force the current booking module into the PWA", () => {
+  assert.match(app, /pages\.js[^"]*fanbusappend=20260919-r6&groups=20260919-operational-groups1/);
+  assert.match(pages, /bus-orga-bookings\.js\?v=20260919-fanbus-operator-append-r5&groups=20260919-operational-groups1/);
+  assert.match(v3, /bus-orga-bookings\.js\?v=20260919-fanbus-operator-append-r5&groups=20260919-operational-groups1/);
+  assert.match(index, /fanbusappend=20260919-r6&groups=20260919-operational-groups1/);
+  assert.match(serviceWorker, /pd-portal-v4-fanbus-operational-groups-r1-20260919/);
 });
 
 
