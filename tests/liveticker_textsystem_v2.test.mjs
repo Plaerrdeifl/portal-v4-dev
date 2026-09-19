@@ -13,7 +13,8 @@ import {
   LIVETICKER_DEFAULT_TEXTSYSTEM,
   LIVETICKER_OUTPUT_TYPE_KEYS,
   livetickerVariantsForType,
-  normalizeLivetickerTemplateSnapshot
+  normalizeLivetickerTemplateSnapshot,
+  validateLivetickerTemplate
 } from "../js/liveticker-output-templates.js";
 
 const root = resolve(import.meta.dirname, "..");
@@ -136,6 +137,17 @@ test("historical classic emotional and short actions retain the legacy renderer"
   const penalty = { id: "old-p", type: "penalty", minute: 9, style: "short", penalties: [{ team: "mighty", duration: "2", reason: "Haken", player }] };
   assert.equal(formatGoalText(goal, [goal], opponent), "EMOTIONAL 7 1 : 0");
   assert.match(formatPenaltyText(penalty, opponent), /^SHORT 9/);
+});
+
+test("V2 goal variants follow the new type contract without the legacy score requirement", () => {
+  const ownV2 = validateLivetickerTemplate("{{minute}} Spielminute\nTOOOOR!", "goal_mighty");
+  const opponentV2 = validateLivetickerTemplate("{{minute}} Spielminute\nTor {{opponent_name}}", "goal_opponent");
+  const legacyOwn = validateLivetickerTemplate("{{minute}} Spielminute\nTOOOOR!", "own");
+
+  assert.equal(ownV2.valid, true);
+  assert.equal(opponentV2.valid, true);
+  assert.equal(legacyOwn.valid, false);
+  assert.match(legacyOwn.errors.join(" "), /Spielstand-Platzhalter fehlt/);
 });
 
 test("migration and portal expose full variant CRUD without changing the legacy table", async () => {

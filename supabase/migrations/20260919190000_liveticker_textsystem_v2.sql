@@ -122,12 +122,10 @@ begin
   end if;
   select * into v_type from app_modules.liveticker_output_types where type_key=new.output_type_key;
   if not found then raise exception 'Unbekannter Ausgabetyp.' using errcode='22023'; end if;
+  -- V2 variants are validated only against their own output-type contract.
+  -- Legacy classic/emotional/short templates keep their stricter historical
+  -- score validation in the legacy table trigger.
   perform app_private.liveticker_validate_output_variant(new.template_text,v_type.allowed_variables,v_type.required_variables);
-  if new.output_type_key='goal_mighty' then
-    perform app_private.liveticker_validate_output_template(new.template_text,array['minute','mighty_score','opponent_score']);
-  elsif new.output_type_key='goal_opponent' then
-    perform app_private.liveticker_validate_output_template(new.template_text,array['minute','mighty_score','opponent_score','opponent_name']);
-  end if;
   return new;
 end $$;
 

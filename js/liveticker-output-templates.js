@@ -76,8 +76,8 @@ export const LIVETICKER_TEMPLATE_CONTEXTS = Object.freeze({
     required: Object.freeze(["minute", "opponent_name"]),
     scoreRequired: true
   }),
-  goal_mighty: Object.freeze({ label: "Tor Mighty Dogs", required: Object.freeze(["minute"]), scoreRequired: true }),
-  goal_opponent: Object.freeze({ label: "Tor Gegner", required: Object.freeze(["minute", "opponent_name"]), scoreRequired: true }),
+  goal_mighty: Object.freeze({ label: "Tor Mighty Dogs", required: Object.freeze(["minute"]) }),
+  goal_opponent: Object.freeze({ label: "Tor Gegner", required: Object.freeze(["minute", "opponent_name"]) }),
   penalty: Object.freeze({ label: "Strafe", required: Object.freeze(["minute", "penalties"]) }),
   penalty_shot: Object.freeze({ label: "Straf-Penalty", required: Object.freeze(["minute", "team_name", "shooter", "goalie", "result"]) }),
   shootout_attempt: Object.freeze({ label: "Penaltyschießen", required: Object.freeze(["team_name", "shooter", "result"]) }),
