@@ -315,8 +315,60 @@ async function openAppendParticipant(state, booking) {
           }),
           "Person wurde zur Buchung hinzugefügt."
         );
-        const next = await call("fanbus_registrations_list", { tripId: state.trip.id });
-        applyRegistrationResult(state, next);
+
+        const selectedChoice = mode === "GUEST"
+          ? null
+          : choiceMap.get(String(values.personKey || ""));
+        const selectedStop = activeStops(state).find(
+          stop => stopId(stop) === String(values.boardingStopId || "")
+        );
+        const optimistic = {
+          id: result?.participantId,
+          bookingId: booking.id,
+          bookingNumber: booking.number,
+          bookingRole: "COMPANION",
+          participantSequence: Number(result?.participantSequence || booking.participants.length + 1),
+          status: result?.status || "ACTIVE",
+          revision: Number(result?.revision || 1),
+          source: "MANUAL",
+          portalUserId: participant.portalUserId || null,
+          memberId: participant.memberId || null,
+          regularRiderId: participant.regularRiderId || null,
+          firstName: mode === "GUEST"
+            ? participant.firstName
+            : selectedChoice?.firstName || selectedChoice?.effectiveFirstName || "",
+          lastName: mode === "GUEST"
+            ? participant.lastName
+            : selectedChoice?.lastName || selectedChoice?.effectiveLastName || "",
+          email: mode === "GUEST"
+            ? participant.email
+            : selectedChoice?.email || null,
+          busPreference: participant.busPreference,
+          tripBoardingStopId: participant.boardingStopId,
+          boardingStopLabel: selectedStop?.label || null,
+          operationalNote: participant.operationalNote
+        };
+        if (optimistic.id && !booking.participants.some(person => person.id === optimistic.id)) {
+          booking.participants.push(optimistic);
+          booking.participants.sort(
+            (a, b) => Number(a.participantSequence || 0) - Number(b.participantSequence || 0)
+          );
+          renderList(state);
+        }
+
+        window.setTimeout(async () => {
+          try {
+            const next = await call("fanbus_registrations_list", { tripId: state.trip.id });
+            const registrations = Array.isArray(next?.registrations) ? next.registrations : [];
+            if (!result?.participantId
+                || registrations.some(person => person.id === result.participantId)) {
+              applyRegistrationResult(state, next);
+            }
+          } catch {
+            // Der erfolgreiche lokale Stand bleibt sichtbar; der nächste Seitenabruf synchronisiert erneut.
+          }
+        }, 350);
+
         if (result?.status === "WAITLISTED") {
           showToast("Die neue Person wurde auf die Warteliste gesetzt.", "warning", 5200);
         }
