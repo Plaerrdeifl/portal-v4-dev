@@ -125,6 +125,15 @@ export function calculateScore(history) {
   }, { mighty: 0, opponent: 0 });
 }
 
+export function homeAwayScore(score, homeAway = globalThis.PD_LIVETICKER_GAME_CONTEXT?.homeAway) {
+  const normalized = String(homeAway || "HOME").trim().toUpperCase();
+  const mighty = Number(score?.mighty || 0);
+  const opponent = Number(score?.opponent || 0);
+  return normalized === "AWAY"
+    ? Object.freeze({ home: opponent, away: mighty })
+    : Object.freeze({ home: mighty, away: opponent });
+}
+
 export function calculateShootout(history) {
   return history.reduce((score, event) => {
     if (event.type === "shootout" && event.result === "scored" && (event.team === "mighty" || event.team === "opponent")) score[event.team] += 1;
@@ -201,12 +210,16 @@ export function formatGoalText(event, history, opponent) {
     ? variant.opponentGoalTemplate
     : variant.ownGoalTemplate;
 
+  const displayScore = homeAwayScore(score);
   return renderer(template, {
     minute: event.minute,
     scorer: goalPlayerLine(event),
     assists: assistTemplateValue(event),
     mighty_score: score.mighty,
     opponent_score: score.opponent,
+    home_score: displayScore.home,
+    away_score: displayScore.away,
+    score: `${displayScore.home} : ${displayScore.away}`,
     opponent_name: opponent.shortName
   });
 }
@@ -383,9 +396,10 @@ export function formatSegmentSummary(history, segmentKey, opponent) {
   }, { mighty: 0, opponent: 0 });
   const mighty = goalSummaryLines(history, "mighty", segment.key);
   const away = goalSummaryLines(history, "opponent", segment.key);
+  const displayScore = homeAwayScore(score);
   const headline = segment.key === "OT"
-    ? `*Ende Overtime – ${score.mighty}:${score.opponent}*`
-    : `*Ende ${segment.label} – ${score.mighty}:${score.opponent}*`;
+    ? `*Ende Overtime – ${displayScore.home}:${displayScore.away}*`
+    : `*Ende ${segment.label} – ${displayScore.home}:${displayScore.away}*`;
   return [headline, "", "🥅 *Mighty Dogs*", ...(mighty.length ? mighty : ["Keine Tore"]), "", `🥅 *${opponent.shortName}*`, ...(away.length ? away : ["Keine Tore"])].join("\n");
 }
 
@@ -426,11 +440,16 @@ function shootoutSummaryLines(history, opponent) {
 export function formatFinalSummary(history, opponent) {
   const finalScore = calculateOfficialFinalScore(history);
   const suffix = finalScore.suffix ? ` ${finalScore.suffix}` : "";
+  const displayScore = homeAwayScore(finalScore);
+  const awayGame = String(globalThis.PD_LIVETICKER_GAME_CONTEXT?.homeAway || "HOME").trim().toUpperCase() === "AWAY";
+  const scoreLine = awayGame
+    ? `${opponent.shortName} ${displayScore.home}:${displayScore.away} Mighty Dogs${suffix}`
+    : `Mighty Dogs ${displayScore.home}:${displayScore.away} ${opponent.shortName}${suffix}`;
   const mightyGoals = goalSummaryLines(history, "mighty");
   const opponentGoals = goalSummaryLines(history, "opponent");
   return [
     "*ENDSTAND*",
-    `Mighty Dogs ${finalScore.mighty}:${finalScore.opponent} ${opponent.shortName}${suffix}`,
+    scoreLine,
     "",
     "🥅 *Tore Mighty Dogs*",
     ...(mightyGoals.length ? mightyGoals : ["Keine Tore"]),
@@ -533,6 +552,9 @@ function initialize() {
   let outputEditing = false;
   let outputManuallyEdited = false;
   let previewDraftId = uid();
+  globalThis.PD_LIVETICKER_DRAFT_ACTION_ID = () => editingId || previewDraftId;
+  let pendingServerActionId = "";
+  let pendingServerActionFingerprint = "";
   const $ = selector => document.querySelector(selector);
   const opponentSelect = $("#opponentSelect");
   const minuteInput = $("#gameMinute");
@@ -868,6 +890,41 @@ function initialize() {
     if (hiddenLabel) hiddenLabel.textContent = label;
   }
 
+  function serverActionFingerprint(action) {
+    if (!action || typeof action !== "object") return "";
+    const clean = { ...action };
+    delete clean._whatsapp;
+    return JSON.stringify(clean);
+  }
+
+  function setPendingServerSave(action) {
+    pendingServerActionId = String(action?.id || "");
+    pendingServerActionFingerprint = serverActionFingerprint(action);
+    if (submitButton) submitButton.disabled = Boolean(pendingServerActionId);
+  }
+
+  function clearPendingServerSave() {
+    pendingServerActionId = "";
+    pendingServerActionFingerprint = "";
+    if (submitButton) submitButton.disabled = false;
+    syncSubmitModeLabel();
+  }
+
+  function confirmPendingServerSave(serverState) {
+    if (!pendingServerActionId || !Array.isArray(serverState?.history)) return false;
+    const saved = serverState.history.find(item => String(item?.id || "") === pendingServerActionId);
+    if (!saved || serverActionFingerprint(saved) !== pendingServerActionFingerprint) return false;
+    clearPendingServerSave();
+    return true;
+  }
+
+  function failPendingServerSave(message) {
+    if (!pendingServerActionId) return;
+    clearPendingServerSave();
+    errorBox.textContent = String(message || "Aktion konnte nicht auf dem Server gespeichert werden.");
+    errorBox.hidden = false;
+  }
+
   function renderOutputPreview() {
     if (outputPreview) outputPreview.textContent = output.value;
   }
@@ -1155,6 +1212,11 @@ function initialize() {
 
   form.addEventListener("submit", event => {
     event.preventDefault();
+    if (pendingServerActionId) {
+      errorBox.textContent = "Speichern läuft bereits – bitte die Serverbestätigung abwarten.";
+      errorBox.hidden = false;
+      return;
+    }
     errorBox.hidden = true;
     try {
       let tickerEvent = buildTickerEvent();
@@ -1173,6 +1235,7 @@ function initialize() {
         transportReady: Boolean(runtime?.ready)
       });
 
+      setPendingServerSave(tickerEvent);
       const lifecycle = completeTickerSubmitLifecycle({
         state,
         editingId,
@@ -1198,6 +1261,7 @@ function initialize() {
       outputManuallyEdited = false;
       syncSubmitModeLabel();
     } catch (error) {
+      clearPendingServerSave();
       errorBox.textContent = error.message || "Aktion konnte nicht gespeichert werden.";
       errorBox.hidden = false;
     }
@@ -1330,6 +1394,15 @@ function initialize() {
   renderHistory();
   syncSubmitModeLabel();
   refreshDraftOutput({ force: true });
+  window.addEventListener("pd-liveticker-server-synced", event => {
+    confirmPendingServerSave(event.detail?.state);
+  });
+  window.addEventListener("pd-liveticker-server-sync-error", event => {
+    failPendingServerSave(event.detail?.message || "Speicherfehler");
+  });
+  window.addEventListener("pd-liveticker-sync-circuit-open", () => {
+    failPendingServerSave("Synchronisation wurde wegen ungewöhnlich vieler Änderungen gestoppt. Bitte Seite neu laden.");
+  });
   window.addEventListener("pd-liveticker-whatsapp-runtime", syncSubmitModeLabel);
   window.addEventListener("pd-liveticker-text-mode", syncSubmitModeLabel);
 }
