@@ -7,6 +7,9 @@ export const LIVETICKER_TEMPLATE_VARIABLES = Object.freeze([
   Object.freeze({ key: "assists", label: "Assists (mit Trikotnummern)", optional: true, contexts: GOAL_CONTEXT_KEYS }),
   Object.freeze({ key: "mighty_score", label: "Tore Mighty Dogs", optional: false, contexts: GOAL_CONTEXT_KEYS }),
   Object.freeze({ key: "opponent_score", label: "Tore Gegner", optional: false, contexts: GOAL_CONTEXT_KEYS }),
+  Object.freeze({ key: "home_score", label: "Tore Heimmannschaft", optional: false, contexts: GOAL_CONTEXT_KEYS }),
+  Object.freeze({ key: "away_score", label: "Tore Auswärtsmannschaft", optional: false, contexts: GOAL_CONTEXT_KEYS }),
+  Object.freeze({ key: "score", label: "Spielstand Heim : Auswärts", optional: false, contexts: GOAL_CONTEXT_KEYS }),
   Object.freeze({ key: "opponent_name", label: "Kurzname Gegner", optional: true, contexts: Object.freeze(["opponent", ...PENALTY_CONTEXT_KEYS]) }),
   Object.freeze({ key: "player_name", label: "Spielername · nur bei einer Strafzeile", optional: true, contexts: PENALTY_CONTEXT_KEYS }),
   Object.freeze({ key: "jersey_number", label: "Trikotnummer · nur bei einer Strafzeile", optional: true, contexts: PENALTY_CONTEXT_KEYS }),
@@ -23,7 +26,8 @@ export const LIVETICKER_TEMPLATE_CONTEXTS = Object.freeze({
     field: "ownGoalTemplate",
     titleField: "ownGoalTitle",
     label: "Tor – Wir",
-    required: Object.freeze(["minute", "mighty_score", "opponent_score"])
+    required: Object.freeze(["minute"]),
+    scoreRequired: true
   }),
   ownPenalty: Object.freeze({
     field: "ownPenaltyTemplate",
@@ -41,7 +45,8 @@ export const LIVETICKER_TEMPLATE_CONTEXTS = Object.freeze({
     field: "opponentGoalTemplate",
     titleField: "opponentGoalTitle",
     label: "Tor – Die anderen",
-    required: Object.freeze(["minute", "mighty_score", "opponent_score", "opponent_name"])
+    required: Object.freeze(["minute", "opponent_name"]),
+    scoreRequired: true
   })
 });
 
@@ -126,6 +131,10 @@ export function validateLivetickerTemplate(template, contextKey) {
   const variables = [...body.matchAll(TOKEN_PATTERN)].map(match => match[1].trim());
   const unknownVariables = [...new Set(variables.filter(variable => !allowedVariables.includes(variable)))];
   const missingVariables = context.required.filter(variable => !variables.includes(variable));
+  const hasScoreVariables = !context.scoreRequired
+    || variables.includes("score")
+    || (variables.includes("home_score") && variables.includes("away_score"))
+    || (variables.includes("mighty_score") && variables.includes("opponent_score"));
   const withoutValidTokens = body.replace(EXACT_TOKEN_PATTERN, "");
   const malformed = /\{\{|\}\}/.test(withoutValidTokens);
   const errors = [];
@@ -135,6 +144,7 @@ export function validateLivetickerTemplate(template, contextKey) {
   if (malformed) errors.push("Mindestens ein Platzhalter ist technisch ungültig.");
   if (unknownVariables.length) errors.push(`Unbekannte Platzhalter: ${unknownVariables.map(templateToken).join(", ")}.`);
   if (missingVariables.length) errors.push(`Pflichtplatzhalter fehlen: ${missingVariables.map(templateToken).join(", ")}.`);
+  if (!hasScoreVariables) errors.push("Spielstand-Platzhalter fehlt: verwende {{score}}, {{home_score}} + {{away_score}} oder die bisherigen Team-Platzhalter.");
 
   return Object.freeze({
     valid: errors.length === 0,

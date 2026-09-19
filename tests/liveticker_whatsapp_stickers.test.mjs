@@ -101,7 +101,7 @@ test("classic view sends contextual and Situation stickers through the existing 
   const saveHandler = publish.match(/window\.addEventListener\("pd-liveticker-state-saved"[\s\S]+?\n  \}\);/)?.[0] || "";
   assert.match(saveHandler, /attachWhatsappPublishIntent\(\{[\s\S]*enabled: effectiveTextMode\(\) === "WHATSAPP"\s*\}\)/);
   assert.doesNotMatch(saveHandler, /stickerId\s*:/);
-  assert.match(saveHandler, /areas\.action\.sourceAction !== "SITUATION"[\s\S]*pendingActionDeliveryIds[\s\S]*queuePendingLink\(actionId, jobId\)/);
+  assert.match(saveHandler, /areas\.action\.sourceAction !== "SITUATION"[\s\S]*pendingActionTargets[\s\S]*targetActionId[\s\S]*whatsappStickerActionMatches[\s\S]*queuePendingLink\(targetActionId, jobId\)/);
   assert.match(publish, /linkWhatsappStickerDelivery\(\{ jobId, actionId \}\)/);
   assert.match(publish, /if \(!state\.request \|\| state\.deliveryId\) return/);
 });
@@ -551,7 +551,10 @@ test("multiple successful action stickers release the picker immediately and ret
 test("action save queues every released action sticker for linking instead of blocking the picker", async () => {
   const publish = await read("js/liveticker-whatsapp-publish.js");
   assert.match(publish, /pendingActionDeliveryIds/);
-  assert.match(publish, /jobs\.forEach\(jobId => queuePendingLink\(actionId, jobId\)\)/);
+  assert.match(publish, /pendingActionTargets/);
+  assert.match(publish, /targetActionId/);
+  assert.match(publish, /whatsappStickerActionMatches\(target\?\.context, targetAction\)/);
+  assert.match(publish, /queuePendingLink\(targetActionId, jobId\)/);
   assert.match(publish, /for \(const \[actionId, jobIds\] of \[\.\.\.pendingLinks\.entries\(\)\]\)/);
   assert.match(publish, /for \(const jobId of \[\.\.\.jobIds\]\)/);
 });

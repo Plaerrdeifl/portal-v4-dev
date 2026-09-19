@@ -2,10 +2,12 @@ import {
   activeWhatsappStickers,
   classicActionWhatsappStickers,
   situationWhatsappStickers,
+  whatsappStickerActionContext,
+  whatsappStickerActionMatches,
   whatsappStickerDeliveryStatus,
   whatsappTextDeliveryForAction,
   whatsappTextDeliveryStatus
-} from "./liveticker-whatsapp-sticker-core.js?v=20260917-classic-situation-status-r1";
+} from "./liveticker-whatsapp-sticker-core.js?v=20260919-live-safety-r1";
 
 const STORAGE_KEY = "plaerrdeifl.livetickerPrototype.v3";
 const STATUS_ID = "livetickerTextModeStatus";
@@ -25,6 +27,13 @@ export function settleSentStickerState(state, delivery) {
   if (state.sourceAction !== "SITUATION") {
     const pending = Array.isArray(state.pendingActionDeliveryIds) ? state.pendingActionDeliveryIds : [];
     if (!pending.includes(delivery.id)) pending.push(delivery.id);
+    const pendingTargets = state.pendingActionTargets && typeof state.pendingActionTargets === "object"
+      ? { ...state.pendingActionTargets }
+      : {};
+    pendingTargets[delivery.id] = {
+      actionId: String(state.expectedActionId || ""),
+      context: state.expectedActionContext || null
+    };
     Object.assign(state, {
       selectedStickerId: "",
       request: null,
@@ -32,7 +41,8 @@ export function settleSentStickerState(state, delivery) {
       linkedActionId: "",
       requestError: "",
       busy: false,
-      pendingActionDeliveryIds: pending
+      pendingActionDeliveryIds: pending,
+      pendingActionTargets: pendingTargets
     });
     return "ACTION_RELEASED";
   }
@@ -188,14 +198,16 @@ function startBrowserIntegration() {
   }
   const areas = {
     action: {
-      selectedStickerId: "", sourceAction: "", request: null, deliveryId: "", linkedActionId: "",
-      requestError: "", busy: false, successMessage: "", sentStatusAcknowledged: false, sentStatusHidden: false,
-      pendingActionDeliveryIds: []
+      selectedStickerId: "", sourceAction: "", expectedActionId: "", expectedActionContext: null,
+      request: null, deliveryId: "", linkedActionId: "", requestError: "", linkWarning: "",
+      busy: false, successMessage: "", sentStatusAcknowledged: false, sentStatusHidden: false,
+      pendingActionDeliveryIds: [], pendingActionTargets: {}
     }
   };
 
   const eventId = () => String(globalThis.PD_LIVETICKER_GAME_CONTEXT?.eventId || "").trim();
   const opponentTeamId = () => String(globalThis.PD_LIVETICKER_GAME_CONTEXT?.opponentTeam?.id || "").trim();
+  const currentDraftActionId = () => String(globalThis.PD_LIVETICKER_DRAFT_ACTION_ID?.() || "").trim();
   const selectedAction = () => String(document.querySelector('input[name="action"]:checked')?.value || "");
   const penaltyShotSituationSelected = () => selectedAction() === "SITUATION"
     && Boolean(document.getElementById("situationPenaltyShot")?.checked);
@@ -260,15 +272,19 @@ function startBrowserIntegration() {
     Object.assign(areas[area], {
       selectedStickerId: "",
       sourceAction: "",
+      expectedActionId: "",
+      expectedActionContext: null,
       request: null,
       deliveryId: "",
       linkedActionId: "",
       requestError: "",
+      linkWarning: "",
       busy: false,
       successMessage: "",
       sentStatusAcknowledged: false,
       sentStatusHidden: false,
-      pendingActionDeliveryIds: []
+      pendingActionDeliveryIds: [],
+      pendingActionTargets: {}
     });
   }
 
@@ -297,6 +313,9 @@ function startBrowserIntegration() {
 
   function statusHtml(area) {
     const state = areas[area];
+    if (state.linkWarning) {
+      return `<p class="liveticker-whatsapp-sticker-status" data-tone="error">${escapeHtml(state.linkWarning)}</p>`;
+    }
     if (state.requestError) {
       return `<p class="liveticker-whatsapp-sticker-status" data-tone="error">${escapeHtml(state.requestError)}</p><button class="liveticker-whatsapp-sticker-retry" type="button" data-retry-sticker-request="${area}"${state.busy ? " disabled" : ""}>ANFRAGE SICHER ERNEUT SENDEN</button>`;
     }
@@ -430,6 +449,15 @@ function startBrowserIntegration() {
     const state = areas[area];
     if (!transportReady() || !state?.selectedStickerId || state.deliveryId || state.busy) return;
     const sourceAction = selectedAction();
+    const expectedActionId = sourceAction === "SITUATION" ? "" : currentDraftActionId();
+    const expectedActionContext = sourceAction === "SITUATION"
+      ? null
+      : whatsappStickerActionContext({ action: sourceAction, penaltyTeams: penaltyTeams() });
+    if (sourceAction !== "SITUATION" && (!expectedActionId || !expectedActionContext)) {
+      state.requestError = "Sticker konnte keiner eindeutigen Liveticker-Aktion zugeordnet werden. Bitte Aktion neu auswählen.";
+      renderArea(area);
+      return;
+    }
     clearStickerSuccess(area, { render: false });
     state.sentStatusAcknowledged = false;
     state.sentStatusHidden = false;
@@ -440,6 +468,9 @@ function startBrowserIntegration() {
       const { createWhatsappStickerOnlyRequest } = await services();
       if (!state.request) {
         state.sourceAction = sourceAction;
+        state.expectedActionId = expectedActionId;
+        state.expectedActionContext = expectedActionContext;
+        state.linkWarning = "";
         state.request = createWhatsappStickerOnlyRequest({
           eventId: eventId(),
           stickerId: state.selectedStickerId,
@@ -590,9 +621,10 @@ function startBrowserIntegration() {
     if (event.target.name === "action" || event.target.name === "situationType" || event.target.matches?.('#penaltyRows [data-field="team"]')) {
       if (event.target.name === "action") {
         resetTextDeliveryStatus();
-        if (!areas.action.request && !areas.action.deliveryId) {
-          areas.action.pendingActionDeliveryIds = [];
+        if (!areas.action.request && !areas.action.deliveryId && !areas.action.pendingActionDeliveryIds.length) {
           areas.action.sourceAction = "";
+          areas.action.expectedActionId = "";
+          areas.action.expectedActionContext = null;
         }
       }
       if (!areas.action.request && !areas.action.deliveryId) areas.action.selectedStickerId = "";
@@ -659,17 +691,43 @@ function startBrowserIntegration() {
       textStatusInitialized = true;
       renderTextDeliveryStatus();
     }
-    if (actionId && areas.action.sourceAction !== "SITUATION") {
+    let stickerLinkMismatch = false;
+    let matchedStickerActionId = "";
+    if (areas.action.sourceAction !== "SITUATION") {
       const jobs = [
         ...(Array.isArray(areas.action.pendingActionDeliveryIds) ? areas.action.pendingActionDeliveryIds : []),
         ...(areas.action.deliveryId ? [areas.action.deliveryId] : [])
       ];
-      jobs.forEach(jobId => queuePendingLink(actionId, jobId));
-      areas.action.pendingActionDeliveryIds = [];
-      areas.action.linkedActionId = actionId;
+      const targets = areas.action.pendingActionTargets && typeof areas.action.pendingActionTargets === "object"
+        ? areas.action.pendingActionTargets
+        : {};
+      jobs.forEach(jobId => {
+        const target = targets[jobId] || {
+          actionId: areas.action.expectedActionId,
+          context: areas.action.expectedActionContext
+        };
+        const targetActionId = String(target?.actionId || "");
+        const targetAction = targetActionId
+          ? state.history.find(item => String(item?.id || "") === targetActionId)
+          : null;
+        if (targetAction && whatsappStickerActionMatches(target?.context, targetAction)) {
+          queuePendingLink(targetActionId, jobId);
+          matchedStickerActionId = targetActionId;
+          return;
+        }
+        if (result.changedIds.length) stickerLinkMismatch = true;
+      });
+      if (matchedStickerActionId || stickerLinkMismatch) {
+        areas.action.pendingActionDeliveryIds = [];
+        areas.action.pendingActionTargets = {};
+      }
+      if (matchedStickerActionId) areas.action.linkedActionId = matchedStickerActionId;
     }
-    if (actionId) {
+    if (actionId || matchedStickerActionId || stickerLinkMismatch) {
       resetArea("action");
+      if (stickerLinkMismatch) {
+        areas.action.linkWarning = "Sticker wurde gesendet, aber nicht mit der gespeicherten Aktion verknüpft, weil Aktionstyp oder Aktions-ID nicht übereinstimmen.";
+      }
       renderArea("action");
     }
 
