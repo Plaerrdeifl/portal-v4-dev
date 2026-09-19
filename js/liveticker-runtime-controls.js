@@ -44,6 +44,26 @@ function wppLabel(state) {
   return "NICHT ERREICHBAR";
 }
 
+export function wppTogglePresentation(runtime = {}, busy = false) {
+  const state = String(runtime?.state || "UNREACHABLE");
+
+  if (state === "CONNECTING") {
+    return Object.freeze({ disabled: true, label: "Verbindet …", targetConnected: null });
+  }
+  if (state === "DISCONNECTING") {
+    return Object.freeze({ disabled: true, label: "Trennt …", targetConnected: null });
+  }
+  if (busy) {
+    return Object.freeze({ disabled: true, label: "Speichert …", targetConnected: null });
+  }
+
+  if (state === "CONNECTED") {
+    return Object.freeze({ disabled: false, label: "Trennen", targetConnected: false });
+  }
+
+  return Object.freeze({ disabled: false, label: "Verbinden", targetConnected: true });
+}
+
 function setDot(node, state, activeStates) {
   if (!node) return;
   node.classList.toggle("active", activeStates.includes(state));
@@ -86,19 +106,26 @@ function render() {
   if (wpp.status) wpp.status.textContent = wppLabel(wppState);
   setDot(wpp.dot, wppState, ["CONNECTED"]);
   if (wpp.toggle) {
-    wpp.toggle.disabled = wppBusy;
-    wpp.toggle.textContent = wppBusy
-      ? "Speichert …"
-      : wppRuntime?.desiredConnected === false ? "Verbinden" : "Trennen";
+    const presentation = wppTogglePresentation(wppRuntime, wppBusy);
+    wpp.toggle.disabled = presentation.disabled;
+    wpp.toggle.textContent = presentation.label;
   }
   if (wpp.hint) {
-    wpp.hint.textContent = wppRuntime?.ready
-      ? "WPP-Session verbunden."
-      : wppRuntime?.desiredConnected === false
+    if (wppRuntime?.ready || wppState === "CONNECTED") {
+      wpp.hint.textContent = "WPP-Session verbunden.";
+    } else if (wppState === "CONNECTING") {
+      wpp.hint.textContent = "WPP-Session wird verbunden.";
+    } else if (wppState === "DISCONNECTING") {
+      wpp.hint.textContent = "WPP-Session wird getrennt.";
+    } else if (wppState === "DISCONNECTED") {
+      wpp.hint.textContent = wppRuntime?.desiredConnected === false
         ? "WPP-Session absichtlich getrennt."
-        : wppRuntime?.error
-          ? `WPP nicht bereit: ${wppRuntime.error}`
-          : "WPP-Session wird verbunden oder ist nicht erreichbar.";
+        : "WPP-Session ist getrennt. Erneut verbinden möglich.";
+    } else if (wppRuntime?.error) {
+      wpp.hint.textContent = `WPP nicht bereit: ${wppRuntime.error}`;
+    } else {
+      wpp.hint.textContent = "WPP-Session ist nicht erreichbar. Erneut verbinden möglich.";
+    }
   }
 
   publishSnapshot();
@@ -172,7 +199,9 @@ async function toggleWa() {
 
 async function toggleWpp() {
   if (wppBusy) return;
-  const targetConnected = wppRuntime?.desiredConnected === false;
+  const presentation = wppTogglePresentation(wppRuntime, false);
+  if (presentation.disabled || typeof presentation.targetConnected !== "boolean") return;
+  const targetConnected = presentation.targetConnected;
   const previous = wppRuntime;
   wppBusy = true;
   wppRuntime = {
