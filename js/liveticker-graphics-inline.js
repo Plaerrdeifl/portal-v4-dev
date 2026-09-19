@@ -593,12 +593,14 @@ function render() {
   renderOutputStatus();
   renderPrimaryOutput();
   renderResultGenerate();
+  renderResultWhatsapp();
   if (statusLine) {
     const kind = selectedArtifactKind || currentOutputKind();
     const job = latestJob(kind);
-    if (summaryStatus?.kind === kind) {
-      statusLine.textContent = summaryStatus.text;
-      statusLine.dataset.state = summaryStatus.state === "error" ? "error" : summaryStatus.state === "active" ? "active" : "idle";
+    const notice = summaryStatus(kind);
+    if (notice) {
+      statusLine.textContent = notice.text;
+      statusLine.dataset.state = notice.state === "error" ? "error" : notice.state === "active" ? "active" : "idle";
       statusLine.hidden = false;
     } else {
       statusLine.textContent = `${kindLabel(kind)} · ${jobStatus(job)}`;
@@ -628,7 +630,6 @@ async function refreshStatusOnly() {
     const snapshot = await api.call("liveticker_graphics_status", { eventId });
     jobs = Array.isArray(snapshot?.jobs) ? snapshot.jobs : [];
     render();
-    await maybePublishPendingSummary();
     scheduleActiveRefresh();
   } catch (error) {
     console.error("Liveticker graphics status refresh failed", error);
@@ -654,38 +655,40 @@ function scheduleFullRefresh(delay = 700) {
   }, delay);
 }
 
-async function enqueue(kind) {
+async function enqueue(kind, captionText = "") {
   const eventId = currentEventId();
   if (!eventId || !KINDS.includes(kind) || enqueueInFlight) return;
 
   enqueueInFlight = kind;
   selectedArtifactKind = kind;
   resultsOpen = true;
+  summaryStatusByKind.set(kind, {
+    state: "active",
+    text: `${kindLabel(kind)} · Flyer wird neu erstellt …`
+  });
   render();
   try {
     const queued = await api.call("liveticker_graphics_enqueue", { eventId, kind });
     const jobId = String(queued?.jobId || "");
-    if (queuedSummary?.kind === kind && validUuid(jobId)) {
-      savePendingSummary({
-        eventId,
-        kind,
-        text: queuedSummary.text,
-        jobId
-      });
-      queuedSummary = null;
-      summaryStatus = {
-        kind,
-        state: "active",
-        text: `${kindLabel(kind)} · POST-Flyer wird erstellt; Versand folgt automatisch.`
-      };
-    }
+    if (validUuid(jobId) && captionText) saveSummaryCaption(jobId, captionText);
+    summaryStatusByKind.set(kind, {
+      state: "active",
+      text: `${kindLabel(kind)} · Flyer wird erstellt; WhatsApp-Versand erfolgt erst nach Klick.`
+    });
     await refreshAll();
+    const job = latestJob(kind);
+    if (job?.status === "SUCCEEDED") {
+      summaryStatusByKind.set(kind, {
+        state: "success",
+        text: `${kindLabel(kind)} · Flyer fertig. Jetzt an WhatsApp senden oder manuell teilen.`
+      });
+    }
   } catch (error) {
     console.error("Liveticker graphic enqueue failed", error);
-    if (statusLine) {
-      statusLine.textContent = `${kindLabel(kind)} · Grafik konnte nicht erzeugt werden: ${error?.message || "Unbekannter Fehler"}`;
-      statusLine.dataset.state = "error";
-    }
+    summaryStatusByKind.set(kind, {
+      state: "error",
+      text: `${kindLabel(kind)} · Grafik konnte nicht erzeugt werden: ${error?.message || "Unbekannter Fehler"}`
+    });
   } finally {
     enqueueInFlight = "";
     render();
@@ -700,50 +703,55 @@ function openResults(kind) {
 }
 
 
-for (const kind of KINDS) {
-  BUTTONS[kind]?.addEventListener("click", () => enqueue(kind));
-}
-
 primaryOutputButton?.addEventListener("click", () => {
-  const kind = currentOutputKind();
-  BUTTONS[kind]?.click();
+  const kind = momentPromptKind;
+  if (!KINDS.includes(kind)) return;
+  momentPromptKind = "";
+  summaryTextFromOutput(kind);
+  openResults(kind);
 });
 
 outputStatusButtons.forEach(button => button.addEventListener("click", () => {
   const kind = button.dataset.outputStatus || "";
-  if (latestJob(kind)?.status !== "SUCCEEDED") return;
+  if (!KINDS.includes(kind)) return;
+  summaryTextFromOutput(kind);
   openResults(kind);
 }));
 
 window.addEventListener("pd-liveticker-graphics-open", event => {
-  openResults(event.detail?.kind || "");
+  const kind = String(event.detail?.kind || "");
+  if (!KINDS.includes(kind)) return;
+  summaryTextFromOutput(kind);
+  openResults(kind);
 });
 
 window.addEventListener("pd-liveticker-summary-requested", event => {
   const kind = String(event.detail?.kind || "");
   const text = String(event.detail?.text || "").trim();
   if (!KINDS.includes(kind) || !text || text.length > 4000) return;
-  queuedSummary = { kind, text };
-  summaryStatus = {
-    kind,
-    state: "active",
-    text: `${kindLabel(kind)} · Text + POST werden vorbereitet …`
-  };
+  summaryTextByKind.set(kind, text);
 });
 
 closeResults?.addEventListener("click", () => {
   resultsOpen = false;
-  renderArtifacts();
+  render();
 });
 
 resultGenerateButton?.addEventListener("click", () => {
   const kind = resultGenerateButton.dataset.graphicKind || selectedArtifactKind || currentOutputKind();
-  queuedSummary = null;
-  summaryStatus = null;
-  void enqueue(kind);
+  if (!KINDS.includes(kind)) return;
+  const text = summaryTextFromOutput(kind);
+  summaryStatusByKind.delete(kind);
+  void enqueue(kind, text);
+});
+
+resultWhatsappButton?.addEventListener("click", () => {
+  const kind = resultWhatsappButton.dataset.graphicKind || selectedArtifactKind || currentOutputKind();
+  void sendSummaryToWhatsapp(kind);
 });
 
 function handleMinuteDisplayChange() {
+  syncOutputMomentPrompt();
   render();
   if (resultsOpen) void refreshStatusOnly();
 }
@@ -764,7 +772,7 @@ window.addEventListener("pagehide", () => {
   clearWorkerRefreshTimer();
 });
 
-pendingSummary = loadPendingSummary();
+clearLegacyPendingSummary();
+syncOutputMomentPrompt();
 render();
 await Promise.all([refreshWorkerStatus(), refreshAll()]);
-await maybePublishPendingSummary();
