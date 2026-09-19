@@ -57,3 +57,11 @@ test("append controls remain usable on mobile", () => {
   assert.match(ui, /m328-booking-actions\{grid-template-columns:1fr\}/);
   assert.match(ui, /m328-append-fields\{grid-template-columns:1fr\}/);
 });
+
+
+test("booking count updates immediately after successful append and ignores stale refreshes", () => {
+  assert.match(ui, /booking\.participants\.push\(optimistic\)/);
+  assert.match(ui, /renderList\(state\)/);
+  assert.match(ui, /registrations\.some\(person => person\.id === result\.participantId\)/);
+  assert.match(ui, /window\.setTimeout\(async \(\) =>/);
+});
