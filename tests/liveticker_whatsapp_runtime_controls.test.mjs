@@ -39,4 +39,8 @@ test("WhatsApp runtime controls fail closed without exposing local WPP", async (
   assert.match(runtime, /scheduleRefresh\(250\)/);
   assert.match(worker, /lastWppActionTarget === desiredConnected/);
   assert.match(worker, /lastWppActionTarget = desiredConnected/);
+  assert.match(worker, /WPP_CONTROL_OWNER/);
+  assert.match(worker, /wppDesiredConnected = WPP_CONTROL_OWNER \? requestedConnected : true/);
+  assert.match(worker, /WPP_CONTROL_OWNER[\s\S]*\? await applyWppDesiredState/);
+  assert.match(worker, /wppControlOwner: WPP_CONTROL_OWNER/);
 });
