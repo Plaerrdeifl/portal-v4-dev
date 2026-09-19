@@ -63,17 +63,27 @@ test("append controls remain usable on mobile", () => {
 });
 
 
-test("booking count updates immediately after successful append and ignores stale refreshes", () => {
-  assert.match(ui, /booking\.participants\.push\(optimistic\)/);
-  assert.match(ui, /renderList\(state\)/);
-  assert.match(ui, /registrations\.some\(person => person\.id === result\.participantId\)/);
-  assert.match(ui, /window\.setTimeout\(async \(\) =>/);
+test("booking count updates from the authoritative append response", () => {
+  assert.match(ui, /applyRegistrationResult\(state, result\)/);
+  assert.match(ui, /bookingParticipantCount/);
+  assert.match(ui, /addedStatus/);
+  assert.doesNotMatch(ui, /booking\.participants\.push\(optimistic\)/);
+  assert.doesNotMatch(ui, /window\.setTimeout\(async \(\) =>/);
 });
 
 
 test("operator append cache versions force the current booking module into the PWA", () => {
-  assert.match(pages, /bus-orga-bookings\.js\?v=20260919-fanbus-operator-append-r2/);
-  assert.match(v3, /bus-orga-bookings\.js\?v=20260919-fanbus-operator-append-r2/);
-  assert.match(index, /fanbusappend=20260919-r2/);
-  assert.match(serviceWorker, /pd-portal-v4-fanbus-operator-append-r2-20260919/);
+  assert.match(pages, /bus-orga-bookings\.js\?v=20260919-fanbus-operator-append-r3/);
+  assert.match(v3, /bus-orga-bookings\.js\?v=20260919-fanbus-operator-append-r3/);
+  assert.match(index, /fanbusappend=20260919-r3/);
+  assert.match(serviceWorker, /pd-portal-v4-fanbus-operator-append-r3-20260919/);
+});
+
+
+const authoritativeMigration = read("../supabase/migrations/20260919115000_fanbus_operator_append_authoritative_response_r2.sql");
+
+test("authoritative append migration returns the refreshed registrations list", () => {
+  assert.match(authoritativeMigration, /api_fanbus_registrations_list/);
+  assert.match(authoritativeMigration, /addedParticipantId/);
+  assert.match(authoritativeMigration, /addedStatus/);
 });
