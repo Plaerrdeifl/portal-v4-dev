@@ -4,6 +4,7 @@ const M020_PUSH_NAVIGATION_CACHE_VERSION = "pd-portal-v4-fanbus-booking-count-au
 const M020_PUSH_NAVIGATION_COMPAT_CACHE_VERSION = "pd-portal-v4-m020-push-navigation-badge-r1-20260901";
 const FANBUS_OPERATIONAL_GROUPS_CACHE_VERSION = "pd-portal-v4-fanbus-operational-groups-r1-20260919";
 const FANBUS_BOOKING_UX_R2_CACHE_VERSION = "pd-portal-v4-fanbus-booking-ux-r2a-20260920";
+const FANBUS_TRAVEL_GROUPS_CACHE_VERSION = "pd-portal-v4-fanbus-travel-groups-r1-20260920";
 const M010_CENTRAL_CAPABILITIES_CACHE_VERSION = "pd-portal-v4-m010-central-capabilities-r1-20260810";
 const PREVIOUS_CACHE_VERSION = "pd-portal-v4-m150-withdrawn-r1-20260810";
 const PWA_INSTALL_GUIDANCE_CACHE_VERSION = "pd-portal-v4-pwa-install-guidance-r1-20260802";
@@ -17,7 +18,7 @@ const ADMIN_TASK_ACCESS_CACHE_VERSION = "pd-portal-v4-admin-task-access-r1-20260
 const OFFICES_CACHE_VERSION = "pd-portal-v4-offices-save-corr1-20260724";
 const TASK_ACCESS_CACHE_VERSION = "pd-portal-v4-task-access-push-r3-20260724";
 const LEGACY_CACHE_VERSION = "pd-portal-v4-push-newtasks-quiettime-r1-20260723";
-const APP_CACHE = `${FANBUS_BOOKING_UX_R2_CACHE_VERSION}-shell`;
+const APP_CACHE = `${FANBUS_TRAVEL_GROUPS_CACHE_VERSION}-shell`;
 const SHELL = [
   "./",
   "./index.html",
