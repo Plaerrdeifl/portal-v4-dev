@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-import { homeAwayScore } from "../js/liveticker-engine-v4.js";
+import { canonicalServerActionFingerprint, homeAwayScore } from "../js/liveticker-engine-v4.js";
 import {
   renderLivetickerTemplate,
   validateLivetickerTemplate
@@ -41,6 +41,33 @@ test("canonical score placeholder is valid while legacy team score placeholders 
   assert.equal(
     renderLivetickerTemplate(own, { minute: 23, score: "0 : 1" }),
     "Spielminute 23\nNeuer Spielstand: 0 : 1"
+  );
+});
+
+test("server acknowledgement fingerprint ignores object key order and transient WhatsApp metadata", () => {
+  const local = {
+    id: "c56efdce-fec4-4524-8a49-33f2847a0e55",
+    type: "goal",
+    team: "mighty",
+    minute: 3,
+    player: { id: "p1", name: "Kevin Heckenberger", number: "10", position: "Sturm" },
+    assists: [],
+    style: "emotional",
+    _whatsapp: { publish: true, text: "ignored" }
+  };
+  const server = {
+    id: "c56efdce-fec4-4524-8a49-33f2847a0e55",
+    team: "mighty",
+    type: "goal",
+    style: "emotional",
+    minute: 3,
+    player: { position: "Sturm", number: "10", name: "Kevin Heckenberger", id: "p1" },
+    assists: []
+  };
+
+  assert.equal(
+    canonicalServerActionFingerprint(local),
+    canonicalServerActionFingerprint(server)
   );
 });
 
