@@ -80,6 +80,19 @@ test("period summaries list goals cumulatively like the flyer", () => {
   assert.match(p3, /\*Ende 3\. Drittel – 2:1\*/);
 });
 
+
+test("summary resend prefers the current score text over a stale cached flyer caption", async () => {
+  const source = await readFile(resolve(root, "js/liveticker-graphics-inline.js"), "utf8");
+  assert.match(
+    source,
+    /const text = summaryTextFromOutput\(kind\) \|\| loadSummaryCaption\(job\.jobId\);/
+  );
+  assert.doesNotMatch(
+    source,
+    /const text = loadSummaryCaption\(job\.jobId\) \|\| summaryTextFromOutput\(kind\);/
+  );
+});
+
 test("canonical score placeholder is valid while legacy team score placeholders remain compatible", () => {
   const own = "Spielminute {{minute}}\nNeuer Spielstand: {{score}}";
   const opponent = "Spielminute {{minute}}\nTor {{opponent_name}}\nNeuer Spielstand: {{score}}";
