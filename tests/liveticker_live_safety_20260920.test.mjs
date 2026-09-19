@@ -91,6 +91,8 @@ test("summary resend prefers the current score text over a stale cached flyer ca
     source,
     /const text = loadSummaryCaption\(job\.jobId\) \|\| summaryTextFromOutput\(kind\);/
   );
+  const authSource = await readFile(resolve(root, "js/liveticker-auth-bootstrap.js"), "utf8");
+  assert.match(authSource, /liveticker-graphics-inline\.js\?v=20260919-summary-caption-r2/);
 });
 
 test("canonical score placeholder is valid while legacy team score placeholders remain compatible", () => {
