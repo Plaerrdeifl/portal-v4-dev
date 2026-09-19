@@ -3,7 +3,7 @@ import fs from "node:fs";
 import test from "node:test";
 
 const migration = fs.readFileSync(
-  new URL("../supabase/migrations/20260919232400_fix_fanbus_booking_merge_sequence_collision.sql", import.meta.url),
+  new URL("../supabase/migrations/20260919232755_fix_fanbus_booking_merge_sequence_collision.sql", import.meta.url),
   "utf8"
 );
 
