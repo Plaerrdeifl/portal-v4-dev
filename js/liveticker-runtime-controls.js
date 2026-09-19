@@ -92,14 +92,14 @@ function render() {
   setDot(wpp.dot, wppState, ["CONNECTED"]);
   if (wpp.toggle) {
     wpp.toggle.disabled = true;
-    wpp.toggle.textContent = WPP_CONTROL_OWNER ? "…" : "Nur PROD";
-    wpp.toggle.title = WPP_CONTROL_OWNER ? "" : "Die gemeinsame WPP-Session wird ausschließlich von PROD gesteuert.";
+    wpp.toggle.textContent = WPP_CONTROL_OWNER ? "…" : "Steuerung nur in PROD";
+    wpp.toggle.title = WPP_CONTROL_OWNER ? "" : "WPP GLOBAL gilt für DEV und PROD. Start/Stop ist nur in PROD möglich.";
   }
   if (wpp.hint) {
     if (wppRuntime?.ready || wppState === "CONNECTED") {
       wpp.hint.textContent = WPP_CONTROL_OWNER
         ? "WPP-Session verbunden."
-        : "WPP-Session verbunden · Steuerung erfolgt zentral über PROD.";
+        : "WPP GLOBAL verbunden · gemeinsame Verbindung für DEV + PROD · Steuerung nur in PROD.";
     } else if (wppState === "CONNECTING") {
       wpp.hint.textContent = "WPP-Session wird verbunden.";
     } else if (wppState === "DISCONNECTING") {
