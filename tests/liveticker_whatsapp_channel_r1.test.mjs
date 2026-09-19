@@ -105,7 +105,7 @@ test("WhatsApp worker uses public realtime plus token-authenticated gateway, nev
   assert.doesNotMatch(gateway, /WAHA_API_KEY|WAHA_CHANNEL_ID/);
 });
 
-test("WhatsApp worker keeps legacy assets during migration but sends only explicitly selected stickers before text", async () => {
+test("WhatsApp worker keeps sticker delivery explicit and isolates summary image delivery", async () => {
   const [worker, delivery] = await Promise.all([
     read("workers/liveticker-whatsapp/worker.mjs"),
     read("workers/liveticker-whatsapp/delivery.mjs")
@@ -120,7 +120,10 @@ test("WhatsApp worker keeps legacy assets during migration but sends only explic
   assert.equal(penaltyPng.subarray(0, 8).equals(pngSignature), true);
   assert.match(worker, /await deliverWhatsappJob/);
   assert.match(worker, /sendSticker: asset => sendWithRecovery\(timeoutMs => sendStickerToWaha\(asset, timeoutMs\)\)/);
-  assert.doesNotMatch(worker, /sendImage|mediaAssetForJob|GOAL_MEDIA_FILE|PENALTY_MEDIA_FILE/);
+  assert.doesNotMatch(worker, /mediaAssetForJob|GOAL_MEDIA_FILE|PENALTY_MEDIA_FILE/);
+  assert.match(worker, /async function sendImageToWaha/);
+  assert.match(worker, /\/api\/sendImage/);
+  assert.match(worker, /caption: String\(job\?\.message \|\| ""\)/);
   assert.match(worker, /MEDIA_TEXT_DELAY_MS = 2000/);
   assert.match(worker, /setTimeout\(resolve, MEDIA_TEXT_DELAY_MS\)/);
   assert.match(worker, /log\("job_media_sent"/);
