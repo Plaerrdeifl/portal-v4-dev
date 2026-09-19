@@ -13,10 +13,8 @@ import {
   fanbusBookingKey,
   fanbusPersonName,
   isCurrentFanbusRegistration,
-  operationalBookingCountLabel,
   operationalBookingRoleLabel,
-  operationalGroupLabel,
-  replaceOperationalRolePrefix
+  operationalGroupLabel
 } from "./modules/fanbus-operational-integrity.js";
 
 let syncKey = "";
@@ -112,34 +110,10 @@ function applyParticipantGroups(registrations) {
   });
 }
 
-function applyBookingGroups(registrations) {
-  const contexts = buildOperationalBookingContexts(registrations);
-  const grouped = new Map();
-  registrations.forEach(registration => {
-    const key = fanbusBookingKey(registration);
-    const list = grouped.get(key) || [];
-    list.push(registration);
-    grouped.set(key, list);
-  });
-
-  for (const [bookingId, all] of grouped) {
-    const card = document.querySelector(`.m328-booking-card[data-booking-card="${CSS.escape(bookingId)}"]`);
-    if (!card) continue;
-    const context = contexts.get(bookingId);
-    const count = operationalBookingCountLabel(context);
-    const countTarget = card.querySelector(".m328-booking-meta span:first-child");
-    if (countTarget && countTarget.textContent !== count) countTarget.textContent = count;
-
-    const sorted = [...all].sort((a, b) => Number(a?.participantSequence || 0) - Number(b?.participantSequence || 0));
-    [...card.querySelectorAll(".m328-booking-person")].forEach((row, index) => {
-      const registration = sorted[index];
-      if (!registration || !isCurrentFanbusRegistration(registration)) return;
-      const target = row.querySelector("small");
-      if (!target) return;
-      const next = replaceOperationalRolePrefix(target.textContent, operationalBookingRoleLabel(registration, context));
-      if (target.textContent !== next) target.textContent = next;
-    });
-  }
+function applyBookingGroups() {
+  // Die native Buchungsansicht ist für Teilnehmerzahl und Rollenbeschriftung
+  // alleinige Quelle. Dieser Legacy-Integrity-Patch darf diese Werte nicht
+  // nachträglich mit gecachten Registrierungsdaten überschreiben.
 }
 
 function revealFocusedBooking(route) {
