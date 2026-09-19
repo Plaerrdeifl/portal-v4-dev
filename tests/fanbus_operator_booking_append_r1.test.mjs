@@ -82,7 +82,7 @@ test("operator append cache versions force the current booking module into the P
 });
 
 
-const authoritativeMigration = read("../supabase/migrations/20260919115000_fanbus_operator_append_authoritative_response_r2.sql");
+const authoritativeMigration = read("../supabase/migrations/20260919183100_fanbus_operator_append_authoritative_response_r2.sql");
 
 test("authoritative append migration returns the refreshed registrations list", () => {
   assert.match(authoritativeMigration, /api_fanbus_registrations_list/);
