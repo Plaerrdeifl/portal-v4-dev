@@ -62,7 +62,7 @@ test("booking overview defaults to non-cancelled bookings", () => {
 
 test("PWA cache chain rotates for booking UX R2", () => {
   assert.match(worker, /FANBUS_BOOKING_UX_R2_CACHE_VERSION/);
-  assert.match(worker, /APP_CACHE = `\$\{FANBUS_BOOKING_UX_R2_CACHE_VERSION\}-shell`/);
+  assert.match(worker, /APP_CACHE = `\$\{FANBUS_TRAVEL_GROUPS_CACHE_VERSION\}-shell`/);
   assert.match(pages, /bookingux=20260920-r2a/);
   assert.match(app, /bookingux=20260920-r2a/);
   assert.match(index, /bookingux=20260920-r2a/);
