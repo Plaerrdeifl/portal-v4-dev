@@ -43,7 +43,7 @@ test("group preference and bus mutations are atomic and overrides explicit", () 
   assert.match(migration, /bus_assignment_override boolean not null default false/);
   assert.match(migration, /FANBUS_BOOKING_PARTICIPANT_OVERRIDE_SET/);
   assert.match(migration, /FANBUS_BOOKING_PARTICIPANT_OVERRIDE_CLEARED/);
-  assert.match(bookings, /Nur diese Person abweichend/);
+  assert.match(bookings, /Persönliche Abweichung/);
   assert.match(bookings, /An Gruppenregel angleichen/);
   assert.doesNotMatch(dialogs, /name="busPreference"[\s\S]{0,500}fanbus_registration_update_m325/);
 });
