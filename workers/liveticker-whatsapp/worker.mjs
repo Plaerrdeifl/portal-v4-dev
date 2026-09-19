@@ -350,7 +350,8 @@ async function sendImageToWaha(job, timeoutMs = WAHA_TIMEOUT_MS) {
         mimetype: "image/png",
         filename: imageFilename,
         url: imageUrl
-      }
+      },
+      caption: String(job?.message || "")
     }),
     signal: AbortSignal.timeout(Math.max(1, Math.min(WAHA_TIMEOUT_MS, Math.floor(timeoutMs))))
   });
