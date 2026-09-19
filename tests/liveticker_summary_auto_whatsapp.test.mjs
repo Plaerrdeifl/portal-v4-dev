@@ -69,7 +69,7 @@ test("IMAGE_WITH_CAPTION is one WPP image component and never a second text send
 });
 
 test("DEV image delivery migration requires caption text and keeps Story outside the outbox contract", async () => {
-  const sql = await read("supabase/migrations/20260919131925_liveticker_whatsapp_image_delivery_dev_r1.sql");
+  const sql = await read("supabase/migrations/20260919133949_liveticker_whatsapp_image_delivery_dev_r1.sql");
   assert.match(sql, /IMAGE_WITH_CAPTION/);
   assert.match(sql, /message is not null/);
   assert.match(sql, /char_length\(btrim\(message\)\) between 1 and 4000/i);
