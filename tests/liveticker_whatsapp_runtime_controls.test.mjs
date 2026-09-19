@@ -24,7 +24,10 @@ test("WhatsApp runtime controls fail closed without exposing local WPP", async (
   assert.doesNotMatch(migration, /grant execute[\s\S]*pd_liveticker_wpp_runtime_control[\s\S]*to authenticated/i);
 
   assert.match(runtime, /api\.call\("liveticker_wpp_runtime_status", \{\}\)/);
-  assert.match(runtime, /api\.call\("liveticker_wpp_runtime_set"/);
+  assert.doesNotMatch(runtime, /api\.call\("liveticker_wpp_runtime_set"/);
+  assert.match(runtime, /const WPP_CONTROL_OWNER = false/);
+  assert.match(runtime, /wpp\.toggle\.disabled = true/);
+  assert.match(runtime, /wpp\.toggle\.textContent = WPP_CONTROL_OWNER \? "…" : "Nur PROD"/);
   assert.doesNotMatch(runtime, /127\.0\.0\.1:3001|WAHA_API_KEY|\/api\/sessions/);
   assert.doesNotMatch(html, /127\.0\.0\.1:3001|WAHA_API_KEY/);
 
@@ -35,8 +38,8 @@ test("WhatsApp runtime controls fail closed without exposing local WPP", async (
   assert.match(runtime, /Promise\.allSettled/);
   assert.match(runtime, /STATUS_FAILURE_THRESHOLD = 3/);
   assert.match(runtime, /TRANSITION_REFRESH_MS = 1000/);
-  assert.match(runtime, /state: targetConnected \? "CONNECTING" : "DISCONNECTING"/);
-  assert.match(runtime, /scheduleRefresh\(250\)/);
+  assert.match(runtime, /closeStatusControl\(wa\.control\)/);
+  assert.match(runtime, /Steuerung erfolgt zentral über PROD/);
   assert.match(worker, /lastWppActionTarget === desiredConnected/);
   assert.match(worker, /lastWppActionTarget = desiredConnected/);
   assert.match(worker, /WPP_CONTROL_OWNER/);
