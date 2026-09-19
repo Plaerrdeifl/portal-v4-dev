@@ -330,6 +330,44 @@ async function sendStickerToWaha(asset, timeoutMs = WAHA_TIMEOUT_MS) {
   };
 }
 
+async function sendImageToWaha(job, timeoutMs = WAHA_TIMEOUT_MS) {
+  const imageUrl = String(job?.imageUrl || "").trim();
+  const imageFilename = String(job?.imageFilename || "").trim();
+  if (!/^https:\/\/cloud[.]plaerrdeifl[.]de\/s\/[A-Za-z0-9]{8,128}\/download$/.test(imageUrl)
+      || !/^[A-Za-z0-9._-]{1,96}[.]png$/.test(imageFilename)) {
+    throw new Error("Invalid Liveticker image delivery");
+  }
+  const response = await fetch(`${WAHA_BASE_URL}/api/sendImage`, {
+    method: "POST",
+    headers: {
+      "X-Api-Key": WAHA_API_KEY,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      session: WAHA_SESSION,
+      chatId: WAHA_CHANNEL_ID,
+      file: {
+        mimetype: "image/png",
+        filename: imageFilename,
+        url: imageUrl
+      }
+    }),
+    signal: AbortSignal.timeout(Math.max(1, Math.min(WAHA_TIMEOUT_MS, Math.floor(timeoutMs))))
+  });
+  const data = await parseResponse(response);
+  if (!response.ok) {
+    throw new Error(
+      `WAHA sendImage failed (${response.status}): ${
+        data?.message || data?.error || "request failed"
+      }`
+    );
+  }
+  return {
+    messageId: extractWahaMessageId(data),
+    sentAt: new Date().toISOString()
+  };
+}
+
 async function resolveNewsletterChannel(timeoutMs) {
   const response = await fetch(
     `${WAHA_BASE_URL}/api/${encodeURIComponent(WAHA_SESSION)}/channels/${encodeURIComponent(WAHA_CHANNEL_ID)}`,
@@ -370,6 +408,10 @@ function sentComponents(record) {
     text: normalized.text ? {
       messageId: normalized.text.messageId || "",
       sentAt: normalized.text.sentAt
+    } : null,
+    image: normalized.image ? {
+      messageId: normalized.image.messageId || "",
+      sentAt: normalized.image.sentAt
     } : null
   };
 }
@@ -454,6 +496,7 @@ async function processJob(job) {
       resolveSticker: stickerId => resolveStickerAsset(stickerId, Math.max(1, sendDeadlineAt - Date.now())),
       sendSticker: asset => sendWithRecovery(timeoutMs => sendStickerToWaha(asset, timeoutMs)),
       sendText: currentJob => sendWithRecovery(timeoutMs => sendTextToWaha(currentJob, timeoutMs)),
+      sendImage: currentJob => sendWithRecovery(timeoutMs => sendImageToWaha(currentJob, timeoutMs)),
       remember: record => {
         sentRecord = normalizeSentRecord(record);
         rememberSent(job.id, sentRecord);
@@ -463,6 +506,9 @@ async function processJob(job) {
     sentRecord = delivery.sentRecord;
     if (delivery.stickerSentThisRun) {
       log("job_media_sent", { jobId: job.id, stickerId: job.stickerId });
+    }
+    if (delivery.imageSentThisRun) {
+      log("job_image_sent", { jobId: job.id, imageFilename: job.imageFilename });
     }
   } catch (error) {
     await markFailed(job, error, sentRecord, deadlineAt);
