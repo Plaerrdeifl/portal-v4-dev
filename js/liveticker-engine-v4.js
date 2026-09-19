@@ -72,6 +72,23 @@ function uid() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function canonicalizeServerAction(value) {
+  if (Array.isArray(value)) return value.map(canonicalizeServerAction);
+  if (!value || typeof value !== "object") return value;
+  return Object.keys(value)
+    .filter(key => key !== "_whatsapp")
+    .sort()
+    .reduce((result, key) => {
+      result[key] = canonicalizeServerAction(value[key]);
+      return result;
+    }, {});
+}
+
+export function canonicalServerActionFingerprint(action) {
+  if (!action || typeof action !== "object") return "";
+  return JSON.stringify(canonicalizeServerAction(action));
+}
+
 export function playerText(player) {
   if (!player) return "";
   return player.number ? `#${player.number} ${player.name}` : player.name;
@@ -890,21 +907,8 @@ function initialize() {
     if (hiddenLabel) hiddenLabel.textContent = label;
   }
 
-  function canonicalizeServerAction(value) {
-    if (Array.isArray(value)) return value.map(canonicalizeServerAction);
-    if (!value || typeof value !== "object") return value;
-    return Object.keys(value)
-      .filter(key => key !== "_whatsapp")
-      .sort()
-      .reduce((result, key) => {
-        result[key] = canonicalizeServerAction(value[key]);
-        return result;
-      }, {});
-  }
-
   function serverActionFingerprint(action) {
-    if (!action || typeof action !== "object") return "";
-    return JSON.stringify(canonicalizeServerAction(action));
+    return canonicalServerActionFingerprint(action);
   }
 
   function setPendingServerSave(action) {
