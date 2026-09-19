@@ -82,6 +82,17 @@ test("operator group cache versions force the current booking module into the PW
 });
 
 
+const restoreContractMigration = read("../supabase/migrations/20260919212559_restore_fanbus_operator_append_contract.sql");
+
+test("post-reconcile repair restores the authoritative operator append contract", () => {
+  assert.match(restoreContractMigration, /create or replace function app_private\.api_fanbus_booking_operator_append\(p_payload jsonb\)/);
+  assert.match(restoreContractMigration, /api_fanbus_booking_operator_append_before_authoritative_response_r2\(p_payload\)/);
+  assert.match(restoreContractMigration, /api_fanbus_registrations_list/);
+  assert.match(restoreContractMigration, /addedParticipantId/);
+  assert.match(restoreContractMigration, /addedStatus/);
+  assert.doesNotMatch(restoreContractMigration, /jsonb_object_keys\(p_payload\)/);
+});
+
 const authoritativeMigration = read("../supabase/migrations/20260919183100_fanbus_operator_append_authoritative_response_r2.sql");
 
 test("authoritative append migration returns the refreshed registrations list", () => {
