@@ -133,6 +133,14 @@ function groupBookings(registrations) {
   }).sort((a, b) => String(b.number).localeCompare(String(a.number), "de"));
 }
 
+function bookingCurrentCount(booking) {
+  const reported = booking.participants
+    .map(person => Number(person?.bookingParticipantCount))
+    .filter(Number.isFinite);
+  if (reported.length) return Math.max(...reported);
+  return booking.participants.filter(cancellable).length;
+}
+
 function bookingStatus(booking) {
   const statuses = new Set(booking.participants.map(person => person.status));
   if (statuses.has("ACTIVE")) return "ACTIVE";
@@ -160,13 +168,14 @@ function bookingMatches(booking, query, statusFilter) {
 }
 
 function bookingPersonRole(person, booking) {
-  if (booking.participants.length <= 1) {
+  const currentCount = bookingCurrentCount(booking);
+  if (currentCount <= 1) {
     return person.bookingRole === "COMPANION" ? "Mitfahrer" : "Einzelbuchung";
   }
   if (person.bookingRole === "COMPANION") {
     return `Mitfahrer · Gruppe ${booking.primary ? personName(booking.primary) : "Hauptperson"}`;
   }
-  return `Gruppenbuchung · ${booking.participants.length} Personen`;
+  return `Gruppenbuchung · ${currentCount} Personen`;
 }
 
 function personRow(person, booking) {
@@ -263,7 +272,7 @@ async function openAppendParticipant(state, booking) {
 
     const dialog = openDialog({
       title: "Person hinzufügen",
-      kicker: `${booking.number} · ${booking.participants.length} ${booking.participants.length === 1 ? "Person" : "Personen"}`,
+      kicker: `${booking.number} · ${bookingCurrentCount(booking)} ${bookingCurrentCount(booking) === 1 ? "Person" : "Personen"}`,
       body: `<form class="m328-append-fields" data-m328-append-form>
         <label class="m328-append-full">Art
           <select name="mode" required>
@@ -316,60 +325,9 @@ async function openAppendParticipant(state, booking) {
           "Person wurde zur Buchung hinzugefügt."
         );
 
-        const selectedChoice = mode === "GUEST"
-          ? null
-          : choiceMap.get(String(values.personKey || ""));
-        const selectedStop = activeStops(state).find(
-          stop => stopId(stop) === String(values.boardingStopId || "")
-        );
-        const optimistic = {
-          id: result?.participantId,
-          bookingId: booking.id,
-          bookingNumber: booking.number,
-          bookingRole: "COMPANION",
-          participantSequence: Number(result?.participantSequence || booking.participants.length + 1),
-          status: result?.status || "ACTIVE",
-          revision: Number(result?.revision || 1),
-          source: "MANUAL",
-          portalUserId: participant.portalUserId || null,
-          memberId: participant.memberId || null,
-          regularRiderId: participant.regularRiderId || null,
-          firstName: mode === "GUEST"
-            ? participant.firstName
-            : selectedChoice?.firstName || selectedChoice?.effectiveFirstName || "",
-          lastName: mode === "GUEST"
-            ? participant.lastName
-            : selectedChoice?.lastName || selectedChoice?.effectiveLastName || "",
-          email: mode === "GUEST"
-            ? participant.email
-            : selectedChoice?.email || null,
-          busPreference: participant.busPreference,
-          tripBoardingStopId: participant.boardingStopId,
-          boardingStopLabel: selectedStop?.label || null,
-          operationalNote: participant.operationalNote
-        };
-        if (optimistic.id && !booking.participants.some(person => person.id === optimistic.id)) {
-          booking.participants.push(optimistic);
-          booking.participants.sort(
-            (a, b) => Number(a.participantSequence || 0) - Number(b.participantSequence || 0)
-          );
-          renderList(state);
-        }
+        applyRegistrationResult(state, result);
 
-        window.setTimeout(async () => {
-          try {
-            const next = await call("fanbus_registrations_list", { tripId: state.trip.id });
-            const registrations = Array.isArray(next?.registrations) ? next.registrations : [];
-            if (!result?.participantId
-                || registrations.some(person => person.id === result.participantId)) {
-              applyRegistrationResult(state, next);
-            }
-          } catch {
-            // Der erfolgreiche lokale Stand bleibt sichtbar; der nächste Seitenabruf synchronisiert erneut.
-          }
-        }, 350);
-
-        if (result?.status === "WAITLISTED") {
+        if (result?.addedStatus === "WAITLISTED") {
           showToast("Die neue Person wurde auf die Warteliste gesetzt.", "warning", 5200);
         }
       }
@@ -397,7 +355,7 @@ async function openAppendParticipant(state, booking) {
 
 function bookingCard(state, booking) {
   const status = bookingStatus(booking);
-  const count = booking.participants.length;
+  const count = bookingCurrentCount(booking);
   const primary = booking.primary ? personName(booking.primary) : "–";
   const editing = state.editingBookingId === booking.id;
   const active = booking.participants.filter(cancellable);
