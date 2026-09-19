@@ -325,9 +325,10 @@ async function openAppendParticipant(state, booking) {
           "Person wurde zur Buchung hinzugefügt."
         );
 
-        applyRegistrationResult(state, result);
+        const addedStatus = result?.addedStatus || "";
+        await hydrateBusOrgaBookings();
 
-        if (result?.addedStatus === "WAITLISTED") {
+        if (addedStatus === "WAITLISTED") {
           showToast("Die neue Person wurde auf die Warteliste gesetzt.", "warning", 5200);
         }
       }
