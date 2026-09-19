@@ -44,7 +44,7 @@ test("DEV runtime no longer exposes a WPP connect/disconnect action", async () =
   const source = await readFile(resolve(root, "js/liveticker-runtime-controls.js"), "utf8");
   assert.match(source, /const WPP_CONTROL_OWNER = false/);
   assert.match(source, /wpp\.toggle\.disabled = true/);
-  assert.match(source, /"Nur PROD"/);
+  assert.match(source, /"Steuerung nur in PROD"/);
   assert.doesNotMatch(source, /liveticker_wpp_runtime_set/);
   assert.doesNotMatch(source, /const targetConnected = wppRuntime\?\.desiredConnected === false/);
 });

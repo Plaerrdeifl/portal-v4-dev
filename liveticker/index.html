@@ -41,12 +41,12 @@
             <p id="graphicWorkerHint" class="hint" hidden></p>
           </details>
           <details id="whatsappWorkerControl" class="worker-control" aria-live="polite">
-            <summary><span class="worker-indicator"><span id="whatsappWorkerDot" class="worker-dot">●</span><span>WA</span><strong id="whatsappWorkerStatus">…</strong></span></summary>
+            <summary title="Nur der DEV-WhatsApp-Worker"><span class="worker-indicator"><span id="whatsappWorkerDot" class="worker-dot">●</span><span>WA DEV</span><strong id="whatsappWorkerStatus">…</strong></span></summary>
             <div class="worker-control-body"><button id="whatsappWorkerToggle" class="secondary" type="button" disabled>…</button></div>
             <p id="whatsappWorkerHint" class="hint" hidden></p>
           </details>
           <details id="wppControl" class="worker-control" aria-live="polite">
-            <summary><span class="worker-indicator"><span id="wppDot" class="worker-dot">●</span><span>WPP</span><strong id="wppStatus">…</strong></span></summary>
+            <summary title="Globale WhatsApp-Verbindung für DEV und PROD"><span class="worker-indicator"><span id="wppDot" class="worker-dot">●</span><span>WPP GLOBAL</span><strong id="wppStatus">…</strong></span></summary>
             <div class="worker-control-body"><button id="wppToggle" class="secondary" type="button" disabled>…</button></div>
             <p id="wppHint" class="hint" hidden></p>
           </details>
@@ -230,6 +230,6 @@
   </main>
   <script src="../js/runtime-config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7"></script>
-  <script type="module" src="../js/liveticker-auth-bootstrap.js?v=20260919-dev-popovers-r1"></script>
+  <script type="module" src="../js/liveticker-auth-bootstrap.js?v=20260919-runtime-labels-r1"></script>
 </body>
 </html>
