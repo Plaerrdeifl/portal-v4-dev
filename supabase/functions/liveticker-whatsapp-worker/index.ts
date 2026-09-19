@@ -9,7 +9,7 @@ const STICKER_VIEW = "pd_liveticker_whatsapp_stickers_worker";
 const STICKER_BUCKET = "liveticker-whatsapp-stickers";
 const MAX_STICKER_BYTES = 100 * 1024;
 const encoder = new TextEncoder();
-const DELIVERY_MODES = new Set(["TEXT_ONLY", "STICKER_THEN_TEXT", "STICKER_ONLY", "IMAGE_ONLY"]);
+const DELIVERY_MODES = new Set(["TEXT_ONLY", "STICKER_THEN_TEXT", "STICKER_ONLY", "IMAGE_WITH_CAPTION"]);
 const WPP_STATES = new Set(["CONNECTING", "CONNECTED", "DISCONNECTING", "DISCONNECTED", "ERROR"]);
 
 type JsonObject = Record<string, unknown>;
@@ -367,8 +367,8 @@ async function rowById(jobId: string) {
 }
 
 function componentRequested(deliveryMode: string, component: "STICKER" | "TEXT" | "IMAGE") {
-  if (component === "IMAGE") return deliveryMode === "IMAGE_ONLY";
-  if (deliveryMode === "IMAGE_ONLY") return false;
+  if (component === "IMAGE") return deliveryMode === "IMAGE_WITH_CAPTION";
+  if (deliveryMode === "IMAGE_WITH_CAPTION") return false;
   if (component === "STICKER") return deliveryMode !== "TEXT_ONLY";
   return deliveryMode !== "STICKER_ONLY";
 }
