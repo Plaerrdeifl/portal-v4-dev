@@ -996,6 +996,7 @@ function initialize() {
   function cancelEdit() {
     editingId = null;
     preservedPenaltyDraftId = null;
+    previewDraftId = uid();
     outputManuallyEdited = false;
     editingBanner.hidden = true;
     editingBanner.querySelector("span").textContent = "Aktion wird bearbeitet";
