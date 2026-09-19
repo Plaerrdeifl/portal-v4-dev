@@ -14,6 +14,7 @@ const index = read("../index.html");
 const originalBookingMigration = read("../supabase/migrations/20260829090000_m328_r1_booking_management.sql");
 const completionMigration = read("../supabase/migrations/20260829213946_m328_completion_public_trips_dev_booking_numbers.sql");
 const cancelledProjectionMigration = read("../supabase/migrations/20260919183300_fanbus_public_cancelled_projection_r1.sql");
+const remoteCompatMigration = read("../supabase/migrations/20260919183400_fanbus_public_projection_remote_compat_r1.sql");
 
 test("normal Fanbus view is fail-closed to public, published and available trips", () => {
   const filter = fanbuses.match(/function publicFanbusTrips\(items\) \{[\s\S]*?\n\}/)?.[0] || "";
@@ -36,6 +37,10 @@ test("public database cancellation visibility is restored forward while normal U
   assert.match(cancelledProjectionMigration, /item\.value ->> 'tripStatus' in \('PUBLISHED', 'CANCELLED'\)/);
   assert.match(cancelledProjectionMigration, /coalesce\(v_base ->> 'tripStatus', ''\) not in \('PUBLISHED', 'CANCELLED'\)/);
   assert.match(cancelledProjectionMigration, /to anon, authenticated/);
+  assert.match(remoteCompatMigration, /pd_public_fanbus_trip_before_joint_f1/);
+  assert.match(remoteCompatMigration, /pd_public_fanbus_trips_before_joint_f1/);
+  assert.match(remoteCompatMigration, /allowedBusPreferences/);
+  assert.match(remoteCompatMigration, /defaultTripBoardingStopId/);
 });
 
 test("central boarding-stop help text remains visible and exact", () => {
