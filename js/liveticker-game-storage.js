@@ -1,6 +1,6 @@
 import { auth } from "./auth.js";
 import { getSupabaseClient } from "./supabase-client.js";
-import { normalizeLivetickerTemplateSnapshot } from "./liveticker-output-templates.js?v=20260906-prod-titlefix1";
+import { normalizeLivetickerTemplateSnapshot } from "./liveticker-output-templates.js?v=20260919-live-safety-r1";
 
 const STATE_KEY = "plaerrdeifl.livetickerPrototype.v3";
 const SELECTED_EVENT_KEY = "plaerrdeifl.livetickerPrototype.eventId";
@@ -9,6 +9,8 @@ const CLIENT_KEY = "plaerrdeifl.livetickerPrototype.clientId";
 const WHATSAPP_WAKE_TOPIC = "liveticker-whatsapp-jobs";
 const SUPPORTED_ENVIRONMENTS = new Set(["DEV", "PROD"]);
 const LIVETICKER_REVISION_CONFLICT_CODE = "PT409";
+const SYNC_CIRCUIT_WINDOW_MS = 5000;
+const SYNC_CIRCUIT_MAX_SAVES = 20;
 
 let config = null;
 let selectedGame = null;
@@ -21,6 +23,30 @@ let pollTimer = null;
 let templatePollTimer = null;
 let completing = false;
 let templateSignature = "";
+
+function createSyncCircuitBreaker({ windowMs = SYNC_CIRCUIT_WINDOW_MS, maxSaves = SYNC_CIRCUIT_MAX_SAVES } = {}) {
+  let timestamps = [];
+  let open = false;
+  return {
+    register(now = Date.now()) {
+      if (open) return true;
+      const cutoff = Number(now) - windowMs;
+      timestamps = timestamps.filter(timestamp => timestamp >= cutoff);
+      timestamps.push(Number(now));
+      if (timestamps.length > maxSaves) open = true;
+      return open;
+    },
+    isOpen() {
+      return open;
+    },
+    reset() {
+      timestamps = [];
+      open = false;
+    }
+  };
+}
+
+const syncCircuitBreaker = createSyncCircuitBreaker();
 
 function runtimeConfig() {
   const value = window.PD_RUNTIME_CONFIG || {};
@@ -248,6 +274,15 @@ async function syncLocalState(localState) {
   const changes = diffChanges(localState);
   if (!hasChanges(changes)) return;
 
+  if (syncCircuitBreaker.register()) {
+    pendingLocalState = null;
+    renderSyncStatus("SYNC gestoppt · Seite neu laden", "error");
+    window.dispatchEvent(new CustomEvent("pd-liveticker-sync-circuit-open", {
+      detail: { eventId: selectedGame.eventId }
+    }));
+    return;
+  }
+
   syncing = true;
   renderSyncStatus("Speichert …", "pending");
   try {
@@ -287,6 +322,9 @@ async function syncLocalState(localState) {
   } catch (error) {
     console.error(error);
     renderSyncStatus("Speicherfehler", "error");
+    window.dispatchEvent(new CustomEvent("pd-liveticker-server-sync-error", {
+      detail: { eventId: selectedGame.eventId, message: error?.message || "Speicherfehler" }
+    }));
   } finally {
     syncing = false;
     const pending = pendingLocalState;
@@ -363,13 +401,14 @@ function installGameSelector(games) {
 
 function installStyles() {
   const style = document.createElement("style");
-  style.textContent = `.liveticker-game-field{margin-bottom:2px}.liveticker-sync-status{display:none;margin-top:5px;font-size:.72rem;font-weight:850}.liveticker-sync-status[data-state="error"]{display:block;color:var(--red)}`;
+  style.textContent = `.liveticker-game-field{margin-bottom:2px}.liveticker-sync-status{display:block;margin-top:5px;font-size:.72rem;font-weight:850}.liveticker-sync-status[data-state="pending"]{color:#526d86}.liveticker-sync-status[data-state="success"]{color:#087747}.liveticker-sync-status[data-state="error"]{color:var(--red)}`;
   document.head.append(style);
 }
 
 async function loadSelectedGame(game) {
   selectedGame = game;
   pendingLocalState = null;
+  syncCircuitBreaker.reset();
   clientState = null;
   exposeGameContext(game);
   localStorage.setItem(SELECTED_EVENT_KEY, game.eventId);
