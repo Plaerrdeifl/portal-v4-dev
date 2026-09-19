@@ -18,39 +18,84 @@ test("summary output emits a dedicated publish request instead of submitting ano
   assert.match(engine, /requestSummaryOutput\("FINAL"/);
 });
 
-test("automatic summary delivery selects POST only and never STORY", async () => {
+test("summary WhatsApp send selects POST only and never STORY", async () => {
   const graphics = await read("js/liveticker-graphics-inline.js");
   assert.match(graphics, /function postArtifactForJob\(job\)/);
   assert.match(graphics, /find\(item => item\?\.kind === "POST"\)/);
   assert.doesNotMatch(graphics, /find\(item => item\?\.kind === "STORY"\)/);
   assert.match(graphics, /deliveryMode: "IMAGE_WITH_CAPTION"/);
-  assert.match(graphics, /idempotencyKey: request\.jobId/);
-  assert.match(graphics, /message: request\.text/);
-  assert.match(graphics, /Text \+ POST senden/);
+  assert.match(graphics, /idempotencyKey: newRequestId\(\)/);
+  assert.match(graphics, /imageUrl: post\.downloadUrl/);
+  assert.match(graphics, /message: text/);
 });
 
-test("finished summary status cannot stay visually stuck on an old PROCESSING snapshot", async () => {
-  const graphics = await read("js/liveticker-graphics-inline.js");
-  assert.match(graphics, /const summaryDone = summaryStatus\?\.kind === kind && summaryStatus\?\.state === "success"/);
-  assert.match(graphics, /const active = !summaryDone && \(isActive\(job\) \|\| enqueueInFlight === kind\)/);
-  assert.match(graphics, /summaryStatus = null;[\s\S]*void enqueue\(kind\)/);
+test("flyer generation and WhatsApp sending are strictly separate actions", async () => {
+  const [graphics, html] = await Promise.all([
+    read("js/liveticker-graphics-inline.js"),
+    read("liveticker/index.html")
+  ]);
+  const generate = graphics.match(/resultGenerateButton\?\.addEventListener\("click",[\s\S]*?\n\}\);/)?.[0] || "";
+  const send = graphics.match(/resultWhatsappButton\?\.addEventListener\("click",[\s\S]*?\n\}\);/)?.[0] || "";
+  assert.match(generate, /void enqueue\(kind, text\)/);
+  assert.doesNotMatch(generate, /sendSummaryToWhatsapp/);
+  assert.match(send, /sendSummaryToWhatsapp\(kind\)/);
+  assert.doesNotMatch(send, /enqueue\(/);
+  assert.match(html, /id="resultWhatsappButton"[^>]*>📲 An WhatsApp senden<\/button>/);
+  assert.match(html, /id="resultGenerateButton"[^>]*>Neu erstellen<\/button>/);
 });
 
-test("minute and iOS page resume refresh the graphic status instead of reusing stale UI state", async () => {
+test("old single pending-summary race is removed", async () => {
   const graphics = await read("js/liveticker-graphics-inline.js");
-  assert.match(graphics, /function handleMinuteDisplayChange\(\)[\s\S]*render\(\);[\s\S]*if \(resultsOpen\) void refreshStatusOnly\(\)/);
+  assert.doesNotMatch(graphics, /\bpendingSummary\b/);
+  assert.doesNotMatch(graphics, /\bqueuedSummary\b/);
+  assert.doesNotMatch(graphics, /maybePublishPendingSummary/);
+  assert.match(graphics, /summaryStatusByKind = new Map\(\)/);
+  assert.match(graphics, /summarySendInFlight = new Set\(\)/);
+});
+
+test("20 40 and 60 are one-time prompts per event and only exact minute hits count", async () => {
+  const graphics = await read("js/liveticker-graphics-inline.js");
+  assert.match(graphics, /const OUTPUT_MOMENTS = Object\.freeze\(\{[\s\S]*20: "PERIOD_1",[\s\S]*40: "PERIOD_2",[\s\S]*60: "FINAL"/);
+  assert.match(graphics, /seenOutputMoments\.has\(kind\)/);
+  assert.match(graphics, /seenOutputMoments\.add\(kind\)/);
+  assert.match(graphics, /localStorage\.setItem\(outputMomentStorageKey/);
+  assert.match(graphics, /return OUTPUT_MOMENTS\[minute\] \|\| ""/);
+  assert.doesNotMatch(graphics, /minute\s*>=\s*60/);
+});
+
+test("manual period status buttons stay available even without an existing flyer", async () => {
+  const graphics = await read("js/liveticker-graphics-inline.js");
+  const renderStatus = graphics.match(/function renderOutputStatus\(\)[\s\S]*?\n\}/)?.[0] || "";
+  const clickBlock = graphics.match(/outputStatusButtons\.forEach\([\s\S]*?\n\}\)\);/)?.[0] || "";
+  assert.match(renderStatus, /button\.disabled = !hasEvent/);
+  assert.match(clickBlock, /summaryTextFromOutput\(kind\)/);
+  assert.match(clickBlock, /openResults\(kind\)/);
+  assert.doesNotMatch(clickBlock, /status !== "SUCCEEDED"/);
+});
+
+test("resend reuses the finished POST and creates a fresh delivery id without rendering", async () => {
+  const graphics = await read("js/liveticker-graphics-inline.js");
+  const sendStart = graphics.indexOf("async function sendSummaryToWhatsapp");
+  const sendEnd = graphics.indexOf("function currentOutputKind", sendStart);
+  const block = graphics.slice(sendStart, sendEnd);
+  assert.match(block, /const job = latestJob\(kind\)/);
+  assert.match(block, /job\?\.status !== "SUCCEEDED"/);
+  assert.match(block, /const post = postArtifactForJob\(job\)/);
+  assert.match(block, /idempotencyKey: newRequestId\(\)/);
+  assert.doesNotMatch(block, /liveticker_graphics_enqueue/);
+  assert.match(graphics, /"📲 Erneut an WhatsApp senden"/);
+});
+
+test("minute and iOS page resume refresh status without generating a flyer", async () => {
+  const graphics = await read("js/liveticker-graphics-inline.js");
+  const minute = graphics.match(/function handleMinuteDisplayChange\(\)[\s\S]*?\n\}/)?.[0] || "";
+  assert.match(minute, /syncOutputMomentPrompt\(\)/);
+  assert.match(minute, /render\(\)/);
+  assert.doesNotMatch(minute, /enqueue\(/);
   assert.match(graphics, /minuteInput\?\.addEventListener\("input", handleMinuteDisplayChange\)/);
   assert.match(graphics, /minuteInput\?\.addEventListener\("change", handleMinuteDisplayChange\)/);
   assert.match(graphics, /visibilitychange[\s\S]*refreshAll\(\)/);
   assert.match(graphics, /pageshow[\s\S]*refreshAll\(\)/);
-});
-
-test("manual flyer regeneration does not auto-send another WhatsApp summary", async () => {
-  const graphics = await read("js/liveticker-graphics-inline.js");
-  const block = graphics.match(/resultGenerateButton\?\.addEventListener\("click",[\s\S]*?\n\}\);/)?.[0] || "";
-  assert.match(block, /queuedSummary = null/);
-  assert.match(block, /void enqueue\(kind\)/);
-  assert.doesNotMatch(block, /BUTTONS\[kind\]\?\.click/);
 });
 
 test("IMAGE_WITH_CAPTION is one WPP image component and never a second text send", async () => {

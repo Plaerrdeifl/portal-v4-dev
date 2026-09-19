@@ -13,6 +13,7 @@ const closeResults = document.getElementById("closeGraphicsResults");
 const primaryOutputWrap = document.getElementById("primaryOutputWrap");
 const primaryOutputButton = document.getElementById("primaryOutputButton");
 const resultGenerateButton = document.getElementById("resultGenerateButton");
+const resultWhatsappButton = document.getElementById("resultWhatsappButton");
 const outputStatusButtons = [...document.querySelectorAll("[data-output-status]")];
 const minuteInput = document.getElementById("gameMinute");
 const workerControl = document.getElementById("graphicWorkerControl");
@@ -40,12 +41,22 @@ let workerRequestInFlight = false;
 let workerRefreshTimer = 0;
 let selectedArtifactKind = "";
 let resultsOpen = false;
-let queuedSummary = null;
-let pendingSummary = null;
-let summaryPublishInFlight = false;
-let summaryStatus = null;
+let summarySendInFlight = new Set();
+let summaryTextByKind = new Map();
+let summaryStatusByKind = new Map();
+let momentPromptKind = "";
+let seenMomentEventId = "";
+let seenOutputMoments = new Set();
 
-const SUMMARY_PENDING_KEY = "plaerrdeifl.liveticker.summary-whatsapp.v1";
+const SUMMARY_CAPTION_KEY = "plaerrdeifl.liveticker.summary-caption.v1";
+const SUMMARY_SENT_KEY = "plaerrdeifl.liveticker.summary-sent.v1";
+const OUTPUT_MOMENT_KEY = "plaerrdeifl.liveticker.output-moment.v1";
+const LEGACY_SUMMARY_PENDING_KEY = "plaerrdeifl.liveticker.summary-whatsapp.v1";
+const OUTPUT_MOMENTS = Object.freeze({
+  20: "PERIOD_1",
+  40: "PERIOD_2",
+  60: "FINAL"
+});
 
 function currentEventId() {
   return String(globalThis.PD_LIVETICKER_GAME_CONTEXT?.eventId || "").trim();
@@ -55,41 +66,91 @@ function validUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
 }
 
-function summaryStorageKey(eventId = currentEventId()) {
-  return `${SUMMARY_PENDING_KEY}:${eventId}`;
+function newRequestId() {
+  if (typeof globalThis.crypto?.randomUUID === "function") return globalThis.crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  globalThis.crypto?.getRandomValues?.(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map(value => value.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
 }
 
-function validPendingSummary(value) {
-  return value
-    && typeof value === "object"
-    && value.eventId === currentEventId()
-    && KINDS.includes(value.kind)
-    && validUuid(value.jobId)
-    && typeof value.text === "string"
-    && value.text.trim().length > 0
-    && value.text.length <= 4000;
+function localSummaryKey(prefix, jobId, eventId = currentEventId()) {
+  return `${prefix}:${eventId}:${jobId}`;
 }
 
-function loadPendingSummary() {
+function saveSummaryCaption(jobId, text) {
+  if (!validUuid(jobId) || !text) return;
+  try { localStorage.setItem(localSummaryKey(SUMMARY_CAPTION_KEY, jobId), text); } catch {}
+}
+
+function loadSummaryCaption(jobId) {
+  if (!validUuid(jobId)) return "";
+  try { return String(localStorage.getItem(localSummaryKey(SUMMARY_CAPTION_KEY, jobId)) || "").trim(); } catch { return ""; }
+}
+
+function markSummarySent(jobId) {
+  if (!validUuid(jobId)) return;
+  try { localStorage.setItem(localSummaryKey(SUMMARY_SENT_KEY, jobId), "1"); } catch {}
+}
+
+function wasSummarySent(jobId) {
+  if (!validUuid(jobId)) return false;
+  try { return localStorage.getItem(localSummaryKey(SUMMARY_SENT_KEY, jobId)) === "1"; } catch { return false; }
+}
+
+function clearLegacyPendingSummary() {
+  const eventId = currentEventId();
+  if (!eventId) return;
+  try { localStorage.removeItem(`${LEGACY_SUMMARY_PENDING_KEY}:${eventId}`); } catch {}
+}
+
+function outputMomentStorageKey(eventId = currentEventId()) {
+  return `${OUTPUT_MOMENT_KEY}:${eventId}`;
+}
+
+function ensureOutputMomentState() {
+  const eventId = currentEventId();
+  if (eventId === seenMomentEventId) return;
+  seenMomentEventId = eventId;
+  momentPromptKind = "";
+  seenOutputMoments = new Set();
+  if (!eventId) return;
   try {
-    const parsed = JSON.parse(localStorage.getItem(summaryStorageKey()) || "null");
-    return validPendingSummary(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-function savePendingSummary(value) {
-  pendingSummary = value;
-  try {
-    localStorage.setItem(summaryStorageKey(value.eventId), JSON.stringify(value));
+    const parsed = JSON.parse(localStorage.getItem(outputMomentStorageKey(eventId)) || "[]");
+    if (Array.isArray(parsed)) {
+      for (const kind of parsed) if (KINDS.includes(kind)) seenOutputMoments.add(kind);
+    }
   } catch {}
 }
 
-function clearPendingSummary() {
-  const eventId = pendingSummary?.eventId || currentEventId();
-  pendingSummary = null;
-  try { localStorage.removeItem(summaryStorageKey(eventId)); } catch {}
+function persistOutputMoments() {
+  if (!seenMomentEventId) return;
+  try { localStorage.setItem(outputMomentStorageKey(seenMomentEventId), JSON.stringify([...seenOutputMoments])); } catch {}
+}
+
+function exactOutputMomentKind() {
+  const minute = Math.max(1, Number.parseInt(minuteInput?.value || "1", 10) || 1);
+  return OUTPUT_MOMENTS[minute] || "";
+}
+
+function syncOutputMomentPrompt() {
+  ensureOutputMomentState();
+  const kind = exactOutputMomentKind();
+  if (!kind) {
+    momentPromptKind = "";
+    return "";
+  }
+  if (momentPromptKind === kind) return kind;
+  if (seenOutputMoments.has(kind)) {
+    momentPromptKind = "";
+    return "";
+  }
+  seenOutputMoments.add(kind);
+  persistOutputMoments();
+  momentPromptKind = kind;
+  return kind;
 }
 
 function postArtifactForJob(job) {
@@ -103,66 +164,64 @@ function whatsappImageFilename(artifact, kind, jobId) {
   return `liveticker_${String(kind || "summary").toLowerCase()}_${String(jobId || "").slice(0, 8)}.png`;
 }
 
-async function maybePublishPendingSummary() {
-  if (summaryPublishInFlight) return;
-  const request = pendingSummary || loadPendingSummary();
-  if (!validPendingSummary(request)) return;
-  pendingSummary = request;
+function summaryTextFromOutput(kind) {
+  if (!KINDS.includes(kind)) return "";
+  BUTTONS[kind]?.click();
+  const text = String(document.getElementById("tickerOutput")?.value || "").trim();
+  if (text) summaryTextByKind.set(kind, text);
+  return text || summaryTextByKind.get(kind) || "";
+}
 
-  const job = jobs.find(item => item?.jobId === request.jobId) || null;
-  if (!job || job.status === "QUEUED" || job.status === "PROCESSING") return;
-  if (job.status !== "SUCCEEDED") {
-    summaryStatus = {
-      kind: request.kind,
-      state: "error",
-      text: `${kindLabel(request.kind)} · Flyer fehlgeschlagen – WhatsApp nicht gesendet.`
-    };
-    render();
-    return;
-  }
+function summaryStatus(kind) {
+  return summaryStatusByKind.get(kind) || null;
+}
 
+async function sendSummaryToWhatsapp(kind) {
+  if (!KINDS.includes(kind) || summarySendInFlight.has(kind)) return;
+  const job = latestJob(kind);
+  if (job?.status !== "SUCCEEDED") return;
   const post = postArtifactForJob(job);
-  if (!post || !validArtifactUrl(post.downloadUrl, true)) {
-    summaryStatus = {
-      kind: request.kind,
+  if (!post || !validArtifactUrl(post.downloadUrl, true)) return;
+
+  const text = loadSummaryCaption(job.jobId) || summaryTextFromOutput(kind);
+  if (!text || text.length > 4000) {
+    summaryStatusByKind.set(kind, {
       state: "error",
-      text: `${kindLabel(request.kind)} · POST-Flyer fehlt – WhatsApp nicht gesendet.`
-    };
+      text: `${kindLabel(kind)} · Text fehlt – WhatsApp nicht gesendet.`
+    });
     render();
     return;
   }
 
-  summaryPublishInFlight = true;
-  summaryStatus = {
-    kind: request.kind,
+  summarySendInFlight.add(kind);
+  summaryStatusByKind.set(kind, {
     state: "active",
-    text: `${kindLabel(request.kind)} · Text + POST werden an WhatsApp gesendet …`
-  };
+    text: `${kindLabel(kind)} · POST + Text werden an WhatsApp übergeben …`
+  });
   render();
   try {
     await api.call("liveticker_whatsapp_delivery_enqueue", {
-      eventId: request.eventId,
+      eventId: currentEventId(),
       deliveryMode: "IMAGE_WITH_CAPTION",
-      idempotencyKey: request.jobId,
+      idempotencyKey: newRequestId(),
       imageUrl: post.downloadUrl,
-      imageFilename: whatsappImageFilename(post, request.kind, request.jobId),
-      message: request.text
+      imageFilename: whatsappImageFilename(post, kind, job.jobId),
+      message: text
     });
-    clearPendingSummary();
-    summaryStatus = {
-      kind: request.kind,
+    saveSummaryCaption(job.jobId, text);
+    markSummarySent(job.jobId);
+    summaryStatusByKind.set(kind, {
       state: "success",
-      text: `${kindLabel(request.kind)} · Text + POST an WhatsApp übergeben.`
-    };
+      text: `${kindLabel(kind)} · POST + Text an WhatsApp übergeben.`
+    });
   } catch (error) {
     console.error("Liveticker summary WhatsApp enqueue failed", error);
-    summaryStatus = {
-      kind: request.kind,
+    summaryStatusByKind.set(kind, {
       state: "error",
-      text: `${kindLabel(request.kind)} · WhatsApp-Versand fehlgeschlagen: ${error?.message || "Unbekannter Fehler"}`
-    };
+      text: `${kindLabel(kind)} · WhatsApp-Versand fehlgeschlagen: ${error?.message || "Unbekannter Fehler"}`
+    });
   } finally {
-    summaryPublishInFlight = false;
+    summarySendInFlight.delete(kind);
     render();
   }
 }
@@ -199,29 +258,8 @@ function isActive(job) {
 function setButtonState(kind) {
   const button = BUTTONS[kind];
   if (!button) return;
-  const job = latestJob(kind);
-  const active = isActive(job);
-  const ready = Boolean(currentEventId()) && Boolean(workerRuntime?.ready);
-  const enqueueing = enqueueInFlight === kind;
-
-  button.disabled = !ready || active || enqueueing;
-  button.classList.toggle("graphic-ready", ready && !active && !enqueueing);
+  button.disabled = !Boolean(currentEventId());
   button.dataset.graphicKind = kind;
-
-  const base = buttonLabel(kind);
-  if (!ready) {
-    button.textContent = base;
-  } else if (enqueueing || job?.status === "QUEUED") {
-    button.textContent = `${base} · wartet`;
-  } else if (job?.status === "PROCESSING") {
-    button.textContent = `${base} · läuft …`;
-  } else if (job?.status === "SUCCEEDED") {
-    button.textContent = `${base} · neu`;
-  } else if (job?.status === "FAILED") {
-    button.textContent = `${base} · erneut`;
-  } else {
-    button.textContent = base;
-  }
 }
 
 function validArtifactUrl(value, download = false) {
@@ -413,6 +451,7 @@ function renderArtifacts() {
 }
 
 function renderOutputStatus() {
+  const hasEvent = Boolean(currentEventId());
   for (const button of outputStatusButtons) {
     const kind = button.dataset.outputStatus || "";
     const job = latestJob(kind);
@@ -421,7 +460,7 @@ function renderOutputStatus() {
     const failed = job?.status === "FAILED";
     const short = kind === "FINAL" ? "Ende" : kindLabel(kind);
     button.textContent = `${short} ${done ? "✓" : active ? "…" : failed ? "!" : "—"}`;
-    button.disabled = !(done || failed);
+    button.disabled = !hasEvent;
     button.classList.toggle("ready", done);
     button.classList.toggle("active", active);
   }
@@ -429,27 +468,48 @@ function renderOutputStatus() {
 
 function renderPrimaryOutput() {
   if (!primaryOutputButton) return;
-  const minute = Math.max(1, Number.parseInt(minuteInput?.value || "1", 10) || 1);
-  const kind = currentOutputKind();
-  const job = latestJob(kind);
-  const active = isActive(job) || enqueueInFlight === kind;
-  const ready = Boolean(currentEventId()) && Boolean(workerRuntime?.ready);
-  const atOutputMoment = minute === 20 || minute === 40 || minute >= 60;
-  if (primaryOutputWrap) primaryOutputWrap.hidden = !atOutputMoment || resultsOpen;
-  primaryOutputButton.disabled = !ready || active;
-  if (active) primaryOutputButton.textContent = `🏁 ${kindLabel(kind)} · Text + POST werden erstellt …`;
-  else primaryOutputButton.textContent = `🏁 ${kindLabel(kind)} · Text + POST senden`;
+  const kind = syncOutputMomentPrompt();
+  const visible = Boolean(kind) && !resultsOpen;
+  if (primaryOutputWrap) primaryOutputWrap.hidden = !visible;
+  primaryOutputButton.disabled = !visible;
+  primaryOutputButton.dataset.graphicKind = kind;
+  primaryOutputButton.textContent = visible
+    ? `🏁 ${kindLabel(kind)} öffnen`
+    : "🏁 Ausgabe öffnen";
 }
 
 function renderResultGenerate() {
   if (!resultGenerateButton) return;
   const kind = selectedArtifactKind || currentOutputKind();
   const job = latestJob(kind);
-  const summaryDone = summaryStatus?.kind === kind && summaryStatus?.state === "success";
-  const active = !summaryDone && (isActive(job) || enqueueInFlight === kind);
+  const active = isActive(job) || enqueueInFlight === kind;
   resultGenerateButton.disabled = !Boolean(workerRuntime?.ready) || active;
-  resultGenerateButton.textContent = active ? "Wird erstellt …" : job?.status === "FAILED" ? "Erneut erstellen" : "Neu erstellen";
+  resultGenerateButton.textContent = active
+    ? "Wird erstellt …"
+    : job?.status === "FAILED"
+      ? "Erneut erstellen"
+      : "Neu erstellen";
   resultGenerateButton.dataset.graphicKind = kind;
+}
+
+function renderResultWhatsapp() {
+  if (!resultWhatsappButton) return;
+  const kind = selectedArtifactKind || currentOutputKind();
+  const job = latestJob(kind);
+  const post = job?.status === "SUCCEEDED" ? postArtifactForJob(job) : null;
+  const sending = summarySendInFlight.has(kind);
+  const sendable = Boolean(post) && validArtifactUrl(post?.downloadUrl, true);
+  resultWhatsappButton.disabled = !sendable || sending;
+  resultWhatsappButton.dataset.graphicKind = kind;
+  if (sending) {
+    resultWhatsappButton.textContent = "📲 Wird an WhatsApp übergeben …";
+  } else if (!sendable) {
+    resultWhatsappButton.textContent = "📲 Zuerst Flyer erstellen";
+  } else {
+    resultWhatsappButton.textContent = wasSummarySent(job.jobId)
+      ? "📲 Erneut an WhatsApp senden"
+      : "📲 An WhatsApp senden";
+  }
 }
 
 function workerStateLabel(state) {
@@ -533,12 +593,14 @@ function render() {
   renderOutputStatus();
   renderPrimaryOutput();
   renderResultGenerate();
+  renderResultWhatsapp();
   if (statusLine) {
     const kind = selectedArtifactKind || currentOutputKind();
     const job = latestJob(kind);
-    if (summaryStatus?.kind === kind) {
-      statusLine.textContent = summaryStatus.text;
-      statusLine.dataset.state = summaryStatus.state === "error" ? "error" : summaryStatus.state === "active" ? "active" : "idle";
+    const notice = summaryStatus(kind);
+    if (notice) {
+      statusLine.textContent = notice.text;
+      statusLine.dataset.state = notice.state === "error" ? "error" : notice.state === "active" ? "active" : "idle";
       statusLine.hidden = false;
     } else {
       statusLine.textContent = `${kindLabel(kind)} · ${jobStatus(job)}`;
@@ -568,7 +630,6 @@ async function refreshStatusOnly() {
     const snapshot = await api.call("liveticker_graphics_status", { eventId });
     jobs = Array.isArray(snapshot?.jobs) ? snapshot.jobs : [];
     render();
-    await maybePublishPendingSummary();
     scheduleActiveRefresh();
   } catch (error) {
     console.error("Liveticker graphics status refresh failed", error);
@@ -594,38 +655,40 @@ function scheduleFullRefresh(delay = 700) {
   }, delay);
 }
 
-async function enqueue(kind) {
+async function enqueue(kind, captionText = "") {
   const eventId = currentEventId();
   if (!eventId || !KINDS.includes(kind) || enqueueInFlight) return;
 
   enqueueInFlight = kind;
   selectedArtifactKind = kind;
   resultsOpen = true;
+  summaryStatusByKind.set(kind, {
+    state: "active",
+    text: `${kindLabel(kind)} · Flyer wird neu erstellt …`
+  });
   render();
   try {
     const queued = await api.call("liveticker_graphics_enqueue", { eventId, kind });
     const jobId = String(queued?.jobId || "");
-    if (queuedSummary?.kind === kind && validUuid(jobId)) {
-      savePendingSummary({
-        eventId,
-        kind,
-        text: queuedSummary.text,
-        jobId
-      });
-      queuedSummary = null;
-      summaryStatus = {
-        kind,
-        state: "active",
-        text: `${kindLabel(kind)} · POST-Flyer wird erstellt; Versand folgt automatisch.`
-      };
-    }
+    if (validUuid(jobId) && captionText) saveSummaryCaption(jobId, captionText);
+    summaryStatusByKind.set(kind, {
+      state: "active",
+      text: `${kindLabel(kind)} · Flyer wird erstellt; WhatsApp-Versand erfolgt erst nach Klick.`
+    });
     await refreshAll();
+    const job = latestJob(kind);
+    if (job?.status === "SUCCEEDED") {
+      summaryStatusByKind.set(kind, {
+        state: "success",
+        text: `${kindLabel(kind)} · Flyer fertig. Jetzt an WhatsApp senden oder manuell teilen.`
+      });
+    }
   } catch (error) {
     console.error("Liveticker graphic enqueue failed", error);
-    if (statusLine) {
-      statusLine.textContent = `${kindLabel(kind)} · Grafik konnte nicht erzeugt werden: ${error?.message || "Unbekannter Fehler"}`;
-      statusLine.dataset.state = "error";
-    }
+    summaryStatusByKind.set(kind, {
+      state: "error",
+      text: `${kindLabel(kind)} · Grafik konnte nicht erzeugt werden: ${error?.message || "Unbekannter Fehler"}`
+    });
   } finally {
     enqueueInFlight = "";
     render();
@@ -640,50 +703,55 @@ function openResults(kind) {
 }
 
 
-for (const kind of KINDS) {
-  BUTTONS[kind]?.addEventListener("click", () => enqueue(kind));
-}
-
 primaryOutputButton?.addEventListener("click", () => {
-  const kind = currentOutputKind();
-  BUTTONS[kind]?.click();
+  const kind = momentPromptKind;
+  if (!KINDS.includes(kind)) return;
+  momentPromptKind = "";
+  summaryTextFromOutput(kind);
+  openResults(kind);
 });
 
 outputStatusButtons.forEach(button => button.addEventListener("click", () => {
   const kind = button.dataset.outputStatus || "";
-  if (latestJob(kind)?.status !== "SUCCEEDED") return;
+  if (!KINDS.includes(kind)) return;
+  summaryTextFromOutput(kind);
   openResults(kind);
 }));
 
 window.addEventListener("pd-liveticker-graphics-open", event => {
-  openResults(event.detail?.kind || "");
+  const kind = String(event.detail?.kind || "");
+  if (!KINDS.includes(kind)) return;
+  summaryTextFromOutput(kind);
+  openResults(kind);
 });
 
 window.addEventListener("pd-liveticker-summary-requested", event => {
   const kind = String(event.detail?.kind || "");
   const text = String(event.detail?.text || "").trim();
   if (!KINDS.includes(kind) || !text || text.length > 4000) return;
-  queuedSummary = { kind, text };
-  summaryStatus = {
-    kind,
-    state: "active",
-    text: `${kindLabel(kind)} · Text + POST werden vorbereitet …`
-  };
+  summaryTextByKind.set(kind, text);
 });
 
 closeResults?.addEventListener("click", () => {
   resultsOpen = false;
-  renderArtifacts();
+  render();
 });
 
 resultGenerateButton?.addEventListener("click", () => {
   const kind = resultGenerateButton.dataset.graphicKind || selectedArtifactKind || currentOutputKind();
-  queuedSummary = null;
-  summaryStatus = null;
-  void enqueue(kind);
+  if (!KINDS.includes(kind)) return;
+  const text = summaryTextFromOutput(kind);
+  summaryStatusByKind.delete(kind);
+  void enqueue(kind, text);
+});
+
+resultWhatsappButton?.addEventListener("click", () => {
+  const kind = resultWhatsappButton.dataset.graphicKind || selectedArtifactKind || currentOutputKind();
+  void sendSummaryToWhatsapp(kind);
 });
 
 function handleMinuteDisplayChange() {
+  syncOutputMomentPrompt();
   render();
   if (resultsOpen) void refreshStatusOnly();
 }
@@ -704,7 +772,7 @@ window.addEventListener("pagehide", () => {
   clearWorkerRefreshTimer();
 });
 
-pendingSummary = loadPendingSummary();
+clearLegacyPendingSummary();
+syncOutputMomentPrompt();
 render();
 await Promise.all([refreshWorkerStatus(), refreshAll()]);
-await maybePublishPendingSummary();
