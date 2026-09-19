@@ -11,7 +11,7 @@ try {
     await import("./liveticker-status-popovers.js?v=20260919-dev-popovers-r1");
     await import("./liveticker-runtime-controls.js?v=20260919-runtime-labels-r1");
     await import("./liveticker-bootstrap.js?v=20260919-live-safety-r1");
-    await import("./liveticker-graphics-inline.js?v=20260919-summary-auto-r1");
+    await import("./liveticker-graphics-inline.js?v=20260919-summary-auto-r2");
   }
 } catch (error) {
   console.error(error);

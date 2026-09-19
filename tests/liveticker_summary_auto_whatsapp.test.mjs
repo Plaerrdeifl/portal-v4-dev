@@ -29,6 +29,22 @@ test("automatic summary delivery selects POST only and never STORY", async () =>
   assert.match(graphics, /Text \+ POST senden/);
 });
 
+test("finished summary status cannot stay visually stuck on an old PROCESSING snapshot", async () => {
+  const graphics = await read("js/liveticker-graphics-inline.js");
+  assert.match(graphics, /const summaryDone = summaryStatus\?\.kind === kind && summaryStatus\?\.state === "success"/);
+  assert.match(graphics, /const active = !summaryDone && \(isActive\(job\) \|\| enqueueInFlight === kind\)/);
+  assert.match(graphics, /summaryStatus = null;[\s\S]*void enqueue\(kind\)/);
+});
+
+test("minute and iOS page resume refresh the graphic status instead of reusing stale UI state", async () => {
+  const graphics = await read("js/liveticker-graphics-inline.js");
+  assert.match(graphics, /function handleMinuteDisplayChange\(\)[\s\S]*render\(\);[\s\S]*if \(resultsOpen\) void refreshStatusOnly\(\)/);
+  assert.match(graphics, /minuteInput\?\.addEventListener\("input", handleMinuteDisplayChange\)/);
+  assert.match(graphics, /minuteInput\?\.addEventListener\("change", handleMinuteDisplayChange\)/);
+  assert.match(graphics, /visibilitychange[\s\S]*refreshAll\(\)/);
+  assert.match(graphics, /pageshow[\s\S]*refreshAll\(\)/);
+});
+
 test("manual flyer regeneration does not auto-send another WhatsApp summary", async () => {
   const graphics = await read("js/liveticker-graphics-inline.js");
   const block = graphics.match(/resultGenerateButton\?\.addEventListener\("click",[\s\S]*?\n\}\);/)?.[0] || "";

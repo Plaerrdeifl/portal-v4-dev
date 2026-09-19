@@ -445,7 +445,8 @@ function renderResultGenerate() {
   if (!resultGenerateButton) return;
   const kind = selectedArtifactKind || currentOutputKind();
   const job = latestJob(kind);
-  const active = isActive(job) || enqueueInFlight === kind;
+  const summaryDone = summaryStatus?.kind === kind && summaryStatus?.state === "success";
+  const active = !summaryDone && (isActive(job) || enqueueInFlight === kind);
   resultGenerateButton.disabled = !Boolean(workerRuntime?.ready) || active;
   resultGenerateButton.textContent = active ? "Wird erstellt …" : job?.status === "FAILED" ? "Erneut erstellen" : "Neu erstellen";
   resultGenerateButton.dataset.graphicKind = kind;
@@ -678,11 +679,22 @@ closeResults?.addEventListener("click", () => {
 resultGenerateButton?.addEventListener("click", () => {
   const kind = resultGenerateButton.dataset.graphicKind || selectedArtifactKind || currentOutputKind();
   queuedSummary = null;
+  summaryStatus = null;
   void enqueue(kind);
 });
 
-minuteInput?.addEventListener("input", renderPrimaryOutput);
-minuteInput?.addEventListener("change", renderPrimaryOutput);
+function handleMinuteDisplayChange() {
+  render();
+  if (resultsOpen) void refreshStatusOnly();
+}
+
+minuteInput?.addEventListener("input", handleMinuteDisplayChange);
+minuteInput?.addEventListener("change", handleMinuteDisplayChange);
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) void refreshAll();
+});
+window.addEventListener("pageshow", () => void refreshAll());
 workerToggle?.addEventListener("click", toggleWorker);
 
 window.addEventListener("pd-liveticker-state-saved", () => scheduleFullRefresh(900));

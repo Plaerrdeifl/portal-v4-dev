@@ -31,7 +31,7 @@ test("compact text mode switch controls WhatsApp auto-send and copy fallback", a
   assert.match(engine, /pd-liveticker-text-mode/);
 
   assert.match(bootstrap, /liveticker-whatsapp-publish\.js\?v=20260919-live-safety-r1/);
-  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260919-summary-auto-r1/);
+  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260919-summary-auto-r2/);
 });
 
 test("compact switch sits in submit row and delivery status moves below it", async () => {
