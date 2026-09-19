@@ -392,8 +392,13 @@ export function historyByMinute(history) {
 }
 
 function goalSummaryLines(history, team, segmentKey = null) {
+  const targetSegment = segmentKey ? SEGMENTS[segmentKey] : null;
   return historyByMinute(history)
-    .filter(event => eventScoresGoal(event) && event.team === team && (!segmentKey || eventSegment(event).key === segmentKey))
+    .filter(event =>
+      eventScoresGoal(event)
+      && event.team === team
+      && (!targetSegment || eventSegment(event).order <= targetSegment.order)
+    )
     .map(event => {
       if (isPenaltyShotEvent(event)) {
         const shooter = event.player ? playerText(event.player) : "Schütze offen";
