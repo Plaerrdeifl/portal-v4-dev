@@ -74,11 +74,11 @@ test("booking view reloads from the server immediately after append", () => {
 
 
 test("operator append cache versions force the current booking module into the PWA", () => {
-  assert.match(app, /pages\.js[^"]*fanbusappend=20260919-r5/);
-  assert.match(pages, /bus-orga-bookings\.js\?v=20260919-fanbus-operator-append-r4/);
-  assert.match(v3, /bus-orga-bookings\.js\?v=20260919-fanbus-operator-append-r4/);
-  assert.match(index, /fanbusappend=20260919-r5/);
-  assert.match(serviceWorker, /pd-portal-v4-fanbus-operator-append-r5-20260919/);
+  assert.match(app, /pages\.js[^"]*fanbusappend=20260919-r6/);
+  assert.match(pages, /bus-orga-bookings\.js\?v=20260919-fanbus-operator-append-r5/);
+  assert.match(v3, /bus-orga-bookings\.js\?v=20260919-fanbus-operator-append-r5/);
+  assert.match(index, /fanbusappend=20260919-r6/);
+  assert.match(serviceWorker, /pd-portal-v4-fanbus-operator-append-r6-20260919/);
 });
 
 
@@ -88,4 +88,10 @@ test("authoritative append migration returns the refreshed registrations list", 
   assert.match(authoritativeMigration, /api_fanbus_registrations_list/);
   assert.match(authoritativeMigration, /addedParticipantId/);
   assert.match(authoritativeMigration, /addedStatus/);
+});
+
+
+test("booking header counts loaded current rows instead of stale bookingParticipantCount", () => {
+  assert.match(ui, /function bookingCurrentCount\(booking\) \{\s*return booking\.participants\.filter\(cancellable\)\.length;\s*\}/);
+  assert.doesNotMatch(ui, /Number\(person\?\.bookingParticipantCount\)/);
 });
