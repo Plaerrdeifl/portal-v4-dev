@@ -57,6 +57,37 @@ export function classicActionWhatsappStickers(stickers, {
       : [];
 }
 
+export function whatsappStickerActionContext({ action, penaltyTeams = [] } = {}) {
+  const selectedAction = upper(action);
+  if (selectedAction === "GOAL_MIGHTY") return Object.freeze({ kind: "GOAL", team: "mighty" });
+  if (selectedAction === "GOAL_OPPONENT") return Object.freeze({ kind: "GOAL", team: "opponent" });
+  if (selectedAction !== "PENALTY") return null;
+  const teams = [...new Set((Array.isArray(penaltyTeams) ? penaltyTeams : []).map(upper).filter(Boolean))];
+  if (teams.length !== 1 || !["MIGHTY", "OPPONENT"].includes(teams[0])) return null;
+  return Object.freeze({ kind: "PENALTY", team: teams[0].toLowerCase() });
+}
+
+export function whatsappStickerActionMatches(context, action) {
+  if (!context || !action || typeof action !== "object") return false;
+  const kind = upper(context.kind);
+  const expectedTeam = String(context.team || "").trim().toLowerCase();
+  if (!["mighty", "opponent"].includes(expectedTeam)) return false;
+
+  if (kind === "GOAL") {
+    return action.type === "goal" && String(action.team || "").toLowerCase() === expectedTeam;
+  }
+
+  if (kind === "PENALTY") {
+    if (action.type !== "penalty" || action.subtype === "penalty_shot") return false;
+    const teams = [...new Set((Array.isArray(action.penalties) ? action.penalties : [])
+      .map(item => String(item?.team || "").trim().toLowerCase())
+      .filter(Boolean))];
+    return teams.length === 1 && teams[0] === expectedTeam;
+  }
+
+  return false;
+}
+
 export function situationWhatsappStickers(stickers, { opponentTeamId = "" } = {}) {
   const expectedOpponent = String(opponentTeamId || "").trim();
   return activeWhatsappStickers(stickers).filter(sticker => {
