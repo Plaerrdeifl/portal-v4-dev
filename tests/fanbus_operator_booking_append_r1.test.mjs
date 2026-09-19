@@ -4,6 +4,10 @@ import test from "node:test";
 
 const read = path => fs.readFileSync(new URL(path, import.meta.url), "utf8");
 const ui = read("../js/modules/bus-orga-bookings.js");
+const pages = read("../js/pages.js");
+const v3 = read("../js/modules/bus-orga-v3.js");
+const index = read("../index.html");
+const serviceWorker = read("../service-worker.js");
 const migration = read("../supabase/migrations/20260919183000_fanbus_operator_booking_append_r1.sql");
 
 test("operator append is exposed as guarded user mutation", () => {
@@ -64,4 +68,12 @@ test("booking count updates immediately after successful append and ignores stal
   assert.match(ui, /renderList\(state\)/);
   assert.match(ui, /registrations\.some\(person => person\.id === result\.participantId\)/);
   assert.match(ui, /window\.setTimeout\(async \(\) =>/);
+});
+
+
+test("operator append cache versions force the current booking module into the PWA", () => {
+  assert.match(pages, /bus-orga-bookings\.js\?v=20260919-fanbus-operator-append-r2/);
+  assert.match(v3, /bus-orga-bookings\.js\?v=20260919-fanbus-operator-append-r2/);
+  assert.match(index, /fanbusappend=20260919-r2/);
+  assert.match(serviceWorker, /pd-portal-v4-fanbus-operator-append-r2-20260919/);
 });
