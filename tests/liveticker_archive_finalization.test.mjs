@@ -39,8 +39,8 @@ test("archive finalization runtime chain is cache-busted end-to-end", async () =
     read("js/pages.js")
   ]);
 
-  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260920-archive-finalization-r1/);
-  assert.match(auth, /liveticker-bootstrap\.js\?v=20260920-archive-finalization-r1/);
+  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260920-missing-fragments-r1/);
+  assert.match(auth, /liveticker-bootstrap\.js\?v=20260920-missing-fragments-r1/);
   assert.match(auth, /liveticker-graphics-inline\.js\?v=20260920-archive-finalization-r1/);
   assert.match(bootstrap, /liveticker-game-storage\.js\?v=20260920-archive-finalization-r1/);
   assert.match(pages, /liveticker-admin\.js\?v=20260920-archive-finalization-r1/);
