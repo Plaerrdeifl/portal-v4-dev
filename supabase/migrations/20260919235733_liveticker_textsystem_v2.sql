@@ -326,10 +326,19 @@ begin
   return app_private.liveticker_textsystem_json(true);
 end $$;
 
+alter function app_private.pd_api_current_actions()
+  rename to pd_api_current_actions_before_liveticker_textsystem_v2;
+create function app_private.pd_api_current_actions()
+returns text[] language sql stable set search_path=''
+as $$
+  select app_private.pd_api_current_actions_before_liveticker_textsystem_v2()
+    || array['liveticker_output_variant_save','liveticker_output_variant_delete']::text[]
+$$;
+
 alter function app_private.pd_api_dispatch_current(text,jsonb)
   rename to pd_api_dispatch_current_before_liveticker_textsystem_v2;
 create function app_private.pd_api_dispatch_current(p_action text,p_payload jsonb)
-returns jsonb language plpgsql security definer set search_path=''
+returns jsonb language plpgsql security invoker set search_path=''
 as $$
 declare v_action text:=lower(btrim(coalesce(p_action,'')));
 begin
@@ -350,15 +359,37 @@ as $$ select case lower(btrim(coalesce(p_action,'')))
   else app_private.platform_action_classification_before_liveticker_textsystem_v2(p_action)
 end $$;
 
-revoke all on function app_private.liveticker_validate_output_variant(text,text[],text[]) from public,anon,authenticated;
-revoke all on function app_private.liveticker_output_variant_validate_row() from public,anon,authenticated;
-revoke all on function app_private.liveticker_textsystem_json(boolean) from public,anon,authenticated;
-revoke all on function app_private.api_liveticker_output_templates_list() from public,anon,authenticated;
-revoke all on function app_private.api_liveticker_output_variant_save(jsonb) from public,anon,authenticated;
-revoke all on function app_private.api_liveticker_output_variant_delete(jsonb) from public,anon,authenticated;
-revoke all on function app_private.pd_api_dispatch_current(text,jsonb) from public,anon,authenticated;
-revoke all on function app_private.pd_api_dispatch_current_before_liveticker_textsystem_v2(text,jsonb) from public,anon,authenticated;
-revoke all on function public.pd_public_liveticker_templates() from public,anon,authenticated;
+revoke all on function
+  app_private.liveticker_validate_output_variant(text,text[],text[]),
+  app_private.liveticker_output_variant_validate_row(),
+  app_private.liveticker_textsystem_json(boolean),
+  app_private.api_liveticker_output_templates_list(),
+  app_private.api_liveticker_output_variant_save(jsonb),
+  app_private.api_liveticker_output_variant_delete(jsonb),
+  app_private.pd_api_current_actions_before_liveticker_textsystem_v2(),
+  app_private.pd_api_current_actions(),
+  app_private.platform_action_classification_before_liveticker_textsystem_v2(text),
+  app_private.platform_action_classification(text),
+  app_private.pd_api_dispatch_current_before_liveticker_textsystem_v2(text,jsonb),
+  app_private.pd_api_dispatch_current(text,jsonb)
+from public,anon,authenticated,service_role;
+
+grant execute on function
+  app_private.liveticker_validate_output_variant(text,text[],text[]),
+  app_private.liveticker_output_variant_validate_row(),
+  app_private.liveticker_textsystem_json(boolean),
+  app_private.api_liveticker_output_templates_list(),
+  app_private.api_liveticker_output_variant_save(jsonb),
+  app_private.api_liveticker_output_variant_delete(jsonb),
+  app_private.pd_api_current_actions_before_liveticker_textsystem_v2(),
+  app_private.pd_api_current_actions(),
+  app_private.platform_action_classification_before_liveticker_textsystem_v2(text),
+  app_private.platform_action_classification(text),
+  app_private.pd_api_dispatch_current_before_liveticker_textsystem_v2(text,jsonb),
+  app_private.pd_api_dispatch_current(text,jsonb)
+to postgres;
+
+revoke all on function public.pd_public_liveticker_templates() from public,anon,authenticated,service_role;
 grant execute on function public.pd_public_liveticker_templates() to authenticated;
 
 commit;

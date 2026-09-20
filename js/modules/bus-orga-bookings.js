@@ -110,7 +110,7 @@ function ensureStyle() {
     .m328-bookings-filter{grid-column:1/-1;margin:0}.m328-bookings-filter>summary{width:max-content;min-height:34px;padding:6px 10px;font-size:.72rem;list-style:none}.m328-bookings-filter>summary::-webkit-details-marker{display:none}.m328-bookings-filter-body{display:grid;grid-template-columns:minmax(0,220px);gap:7px;margin-top:7px;padding:9px;border:1px solid var(--line);border-radius:11px;background:var(--surface-2)}.m328-bookings-filter-body label{display:grid;gap:3px;font-size:.68rem;font-weight:750}.m328-bookings-filter-body select{width:100%;min-height:38px}
     .m328-booking-list{display:grid;gap:7px}.m328-booking-card{border:1px solid var(--line);border-radius:13px;background:var(--surface);overflow:hidden}
     .m328-booking-card summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:10px 11px;cursor:pointer;list-style:none}.m328-booking-card summary::-webkit-details-marker{display:none}
-    .m328-booking-main{display:grid;gap:3px}.m328-booking-number{font-size:.9rem;font-weight:900;letter-spacing:.02em}.m328-booking-meta{display:flex;flex-wrap:wrap;gap:3px 8px;color:var(--muted);font-size:.68rem}.m328-booking-primary{font-size:.79rem;font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .m328-booking-main{display:grid;gap:3px}.m328-booking-number{font-size:.9rem;font-weight:900;letter-spacing:.02em}.m328-booking-meta{display:flex;flex-wrap:nowrap;align-items:center;gap:3px 7px;min-width:0;overflow:hidden;color:var(--muted);font-size:.68rem;white-space:nowrap}.m328-booking-meta>span:not(.m328-travel-group-chip){flex:0 0 auto}.m328-travel-group-chip{display:inline-flex;align-items:center;flex:1 1 auto;min-width:0;max-width:48%;height:18px;padding:1px 7px;border:1px solid color-mix(in srgb,var(--brand,#1976d2) 28%,var(--line));border-radius:999px;background:color-mix(in srgb,var(--brand,#1976d2) 9%,var(--surface));color:var(--brand,#1976d2);font-size:.61rem;font-weight:850;line-height:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.m328-booking-primary{font-size:.79rem;font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .m328-booking-select{display:flex;align-items:center;gap:7px}.m328-booking-select input{width:18px;height:18px}.m328-booking-group-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:9px 10px;border-top:1px solid var(--line);background:var(--surface-2)}.m328-booking-group-facts span{display:grid;gap:2px;color:var(--muted);font-size:.65rem}.m328-booking-group-facts strong{color:var(--ink-900);font-size:.76rem}.m328-booking-override{color:#9a5b00;font-weight:850}.m328-booking-tools-actions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:7px}.m328-booking-tools-actions[hidden]{display:none!important}
     .m328-booking-side{display:flex;align-items:center;gap:6px}.m328-booking-chevron{color:var(--muted);font-size:1.2rem;transition:transform .16s ease}.m328-booking-card[open] .m328-booking-chevron{transform:rotate(90deg)}
     .m328-booking-body{display:grid;gap:0;border-top:1px solid var(--line)}.m328-booking-person{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:9px 10px;border-bottom:1px solid var(--line)}.m328-booking-person strong{display:block;font-size:.8rem}.m328-booking-person small{display:block;color:var(--muted);font-size:.67rem;margin-top:2px}.m328-booking-person-status{font-size:.68rem;font-weight:800;white-space:nowrap}
@@ -119,6 +119,14 @@ function ensureStyle() {
     .m328-append-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.m328-append-fields label{display:grid;gap:4px;font-size:.72rem;font-weight:750}.m328-append-fields input,.m328-append-fields select{width:100%;min-height:42px}.m328-append-full{grid-column:1/-1}.m328-append-consent{grid-column:1/-1;display:flex!important;grid-template-columns:auto 1fr!important;align-items:flex-start;gap:8px!important}.m328-append-consent input{width:auto!important;min-height:auto!important;margin-top:3px}
     .m328-booking-edit{display:grid;gap:8px;padding:9px 10px;border-top:1px solid var(--line)}.m328-booking-edit-person{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:9px;border:1px solid var(--line);border-radius:11px;background:var(--surface-2)}.m328-booking-edit-person h4{grid-column:1/-1;margin:0;font-size:.82rem}.m328-booking-edit-person label{display:grid;gap:3px;font-size:.68rem;font-weight:750}.m328-booking-edit-person input,.m328-booking-edit-person select{width:100%;min-height:39px}.m328-booking-edit-note{grid-column:1/-1}.m328-booking-edit-status{grid-column:1/-1;color:var(--muted);font-size:.68rem}.m328-booking-edit-footer{display:grid;grid-template-columns:1fr 1fr;gap:6px}.m328-booking-edit-footer .button{width:100%;min-height:40px}
     @media(max-width:520px){.m328-bookings-tools{grid-template-columns:1fr}.m328-bookings-count{justify-self:start}.m328-booking-card summary{padding:9px 10px}.m328-booking-side .badge{font-size:.63rem;padding-inline:7px}.m328-booking-person{grid-template-columns:1fr}.m328-booking-person-actions{justify-content:space-between}.m328-booking-actions{grid-template-columns:1fr}.m328-booking-edit-person,.m328-append-fields{grid-template-columns:1fr}.m328-booking-edit-person h4,.m328-booking-edit-note,.m328-booking-edit-status,.m328-append-full,.m328-append-consent{grid-column:auto}.m328-booking-group-facts{grid-template-columns:1fr}}
+    .m328-booking-card[data-booking-status="CANCELLED"]{opacity:.68}.m328-booking-card[data-booking-status="CANCELLED"][open]{opacity:1}
+    .m328-booking-group-facts{display:flex;flex-wrap:wrap;gap:6px;padding:7px 10px;background:var(--surface-2)}.m328-booking-group-fact{display:inline-flex;align-items:center;gap:5px;padding:4px 7px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-size:.65rem}.m328-booking-group-fact em{font-style:normal;color:var(--muted)}.m328-booking-group-fact strong{font-size:.68rem}.m328-booking-group-fact.warning strong{color:#8a5200}.m328-booking-group-fact.wide{max-width:100%}
+    .m328-booking-person{align-items:start;padding:8px 10px}.m328-booking-person-copy{min-width:0}.m328-booking-person-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.m328-primary-choice{display:inline-flex;align-items:center;gap:4px;color:var(--muted);font-size:.62rem;font-weight:850;cursor:pointer}.m328-primary-choice input{width:15px!important;min-width:15px!important;height:15px!important;min-height:15px!important;padding:0!important;margin:0;flex:0 0 15px;accent-color:var(--brand,#1976d2)}.m328-primary-badge{display:inline-flex;padding:2px 6px;border-radius:999px;background:var(--surface-2);color:var(--muted);font-size:.61rem;font-weight:850}
+    .m328-person-actions-menu>summary{list-style:none;width:auto!important;min-height:28px!important;padding:3px 7px!important;font-size:.62rem!important;line-height:1.1}.m328-person-actions-menu>summary::-webkit-details-marker{display:none}.m328-person-actions-menu-pop{display:grid;gap:5px;margin-top:5px;min-width:150px}.m328-person-actions-menu-pop .button{width:100%}
+    .m328-more-persons{border-top:1px solid var(--line)}.m328-more-persons>summary{display:block!important;padding:7px 10px!important;color:var(--muted);font-size:.66rem;font-weight:850;list-style:none}.m328-more-persons>summary::-webkit-details-marker{display:none}.m328-more-persons>div{border-top:1px dashed var(--line)}
+    .m328-booking-actions{grid-template-columns:1fr 1fr;padding:8px 10px}.m328-booking-actions>.button{min-height:36px}.m328-booking-more-actions{grid-column:1/-1}.m328-booking-more-actions>summary{width:max-content;list-style:none}.m328-booking-more-actions>summary::-webkit-details-marker{display:none}.m328-booking-more-actions>div{margin-top:6px}.m328-booking-more-actions .button.danger{width:100%}
+    .m328-merge-form,.m328-override-form,.m328-travel-group-form{grid-template-columns:1fr!important}.m328-merge-form>*,.m328-override-form>*,.m328-travel-group-form>*{grid-column:1!important;width:100%!important}.m328-travel-group-actions{display:grid;gap:6px}.m328-travel-group-actions .button{width:100%}
+    @media(max-width:520px){.m328-booking-person{grid-template-columns:minmax(0,1fr) auto}.m328-booking-person-actions{justify-content:flex-end;align-items:flex-start}.m328-booking-actions{grid-template-columns:1fr 1fr}.m328-booking-actions .button{font-size:.68rem;padding-inline:6px}.m328-booking-group-facts{display:flex}.m328-person-actions-menu-pop{min-width:138px}.m328-booking-primary{font-size:.76rem}}
   `;
   document.head.appendChild(style);
 }
@@ -136,6 +144,12 @@ function groupBookings(registrations) {
         source: registration.source,
         personGroupId: registration.personGroupId || null,
         personGroupName: registration.personGroupName || "",
+        travelGroupId: registration.travelGroupId || null,
+        travelGroupName: registration.travelGroupName || "",
+        travelGroupBusPreference: registration.travelGroupBusPreference || null,
+        travelGroupBusId: registration.travelGroupBusId || null,
+        travelGroupRevision: Number(registration.travelGroupRevision || 0),
+        travelGroupBookingCount: Number(registration.travelGroupBookingCount || 0),
         groupBusPreference: registration.groupBusPreference || registration.busPreference || "EGAL",
         groupBusId: registration.groupBusId || null,
         revision: Number(registration.bookingRevision || 1),
@@ -146,7 +160,10 @@ function groupBookings(registrations) {
     booking.participants.push(registration);
   }
   return Array.from(map.values()).map(booking => {
-    booking.participants.sort((a, b) => Number(a.participantSequence || 0) - Number(b.participantSequence || 0));
+    booking.participants.sort((a, b) => {
+      const role = (a.bookingRole === "PRIMARY" ? 0 : 1) - (b.bookingRole === "PRIMARY" ? 0 : 1);
+      return role || Number(a.participantSequence || 0) - Number(b.participantSequence || 0);
+    });
     booking.primary = booking.participants.find(person => person.bookingRole === "PRIMARY") || booking.participants[0] || null;
     booking.current = currentParticipants(booking);
     booking.overrideCount = booking.current.filter(person => person.hasIndividualOverride).length;
@@ -179,6 +196,7 @@ function bookingMatches(booking, query, statusFilter) {
   const haystack = [
     booking.number,
     booking.source,
+    booking.travelGroupName,
     ...booking.participants.flatMap(person => [person.firstName, person.lastName, person.email])
   ].filter(Boolean).join(" ").toLocaleLowerCase("de-DE");
   return haystack.includes(query.toLocaleLowerCase("de-DE"));
@@ -186,27 +204,48 @@ function bookingMatches(booking, query, statusFilter) {
 
 function bookingPersonRole(person, booking) {
   const currentCount = bookingCurrentCount(booking);
-  if (currentCount <= 1) {
-    return person.bookingRole === "COMPANION" ? "Mitfahrer" : "Einzelbuchung";
-  }
-  if (person.bookingRole === "COMPANION") {
-    return `Mitfahrer · Gruppe ${booking.primary ? personName(booking.primary) : "Hauptperson"}`;
-  }
-  return `Gruppenbuchung · ${currentCount} Personen`;
+  if (currentCount <= 1) return person.bookingRole === "PRIMARY" ? "Einzelbuchung" : "Mitfahrer";
+  return person.bookingRole === "PRIMARY" ? "" : "Mitfahrer";
 }
 
 function personRow(person, booking) {
   const bus = person.busLabel ? ` · ${person.busLabel}` : "";
   const waitlist = person.waitlistPosition ? ` · WL ${person.waitlistPosition}` : "";
   const stop = person.boardingStopLabel ? ` · ${person.boardingStopLabel}` : "";
-  const canCancel = cancellable(person);
+  const canManage = cancellable(person);
+  const isPrimary = person.bookingRole === "PRIMARY";
   const override = person.hasIndividualOverride
     ? `<span class="m328-booking-person-override">Individuelle Abweichung</span>`
     : "";
-  const actions = canCancel && booking.current.length > 1
-    ? `<button class="button small secondary" type="button" data-m328-person-override="${escapeAttr(person.id)}" data-booking-id="${escapeAttr(booking.id)}">${person.hasIndividualOverride ? "Abweichung ändern" : "Nur diese Person abweichend"}</button><button class="button small secondary" type="button" data-m328-split-person="${escapeAttr(person.id)}" data-booking-id="${escapeAttr(booking.id)}">Aus Gruppe lösen</button><button class="button small danger" type="button" data-m328-cancel-person="${escapeAttr(person.id)}" data-booking-id="${escapeAttr(booking.id)}">Stornieren</button>`
+  const status = person.status === "ACTIVE"
+    ? ""
+    : `<span class="m328-booking-person-status">${escapeHtml(statusLabel(person.status))}</span>`;
+  const primaryControl = canManage && booking.current.length > 1
+    ? `<label class="m328-primary-choice"><input type="radio" name="m328-primary-${escapeAttr(booking.id)}" data-m328-primary-person="${escapeAttr(person.id)}" data-booking-id="${escapeAttr(booking.id)}"${isPrimary ? " checked" : ""}><span>Hauptperson</span></label>`
+    : isPrimary ? '<span class="m328-primary-badge">Hauptperson</span>' : "";
+  const meta = [
+    bookingPersonRole(person, booking),
+    person.email || "",
+    person.boardingStopLabel || "",
+    person.busLabel || "",
+    person.waitlistPosition ? `WL ${person.waitlistPosition}` : ""
+  ].filter(Boolean).join(" · ");
+  const actions = canManage && booking.current.length > 1
+    ? `<details class="m328-person-actions-menu"><summary class="button small secondary">Aktionen</summary><div class="m328-person-actions-menu-pop"><button class="button small secondary" type="button" data-m328-person-override="${escapeAttr(person.id)}" data-booking-id="${escapeAttr(booking.id)}">${person.hasIndividualOverride ? "Abweichung bearbeiten" : "Persönliche Abweichung"}</button><button class="button small secondary" type="button" data-m328-split-person="${escapeAttr(person.id)}" data-booking-id="${escapeAttr(booking.id)}">Aus Buchung lösen</button><button class="button small danger" type="button" data-m328-cancel-person="${escapeAttr(person.id)}" data-booking-id="${escapeAttr(booking.id)}">Person stornieren</button></div></details>`
     : "";
-  return `<div class="m328-booking-person"><div><strong>${escapeHtml(personName(person))}</strong><small>${escapeHtml(`${bookingPersonRole(person, booking)}${person.email ? ` · ${person.email}` : ""}${stop}${bus}${waitlist}`)}</small>${override}</div><div class="m328-booking-person-actions"><span class="m328-booking-person-status">${escapeHtml(statusLabel(person.status))}</span>${actions}</div></div>`;
+  return `<div class="m328-booking-person"><div class="m328-booking-person-copy"><div class="m328-booking-person-head"><strong>${escapeHtml(personName(person))}</strong>${primaryControl}${override}</div>${meta ? `<small>${escapeHtml(meta)}</small>` : ""}</div><div class="m328-booking-person-actions">${status}${actions}</div></div>`;
+}
+
+function bookingPersonRows(booking) {
+  const current = booking.current;
+  const historic = booking.participants.filter(person => !cancellable(person));
+  const rows = [...current, ...historic];
+  const visible = rows.slice(0, 2);
+  const remaining = rows.slice(2);
+  const first = visible.map(person => personRow(person, booking)).join("");
+  if (!remaining.length) return first;
+  const label = remaining.length === 1 ? "1 weitere Person" : `${remaining.length} weitere Personen`;
+  return `${first}<details class="m328-more-persons"><summary>${escapeHtml(label)} anzeigen</summary><div>${remaining.map(person => personRow(person, booking)).join("")}</div></details>`;
 }
 
 function editPerson(state, person) {
@@ -381,17 +420,20 @@ function bookingCard(state, booking) {
   const editing = state.editingBookingId === booking.id;
   const active = booking.current;
   const groupBus = state.buses.find(bus => bus.id === booking.groupBusId)?.label || "Nicht zugeordnet";
-  const groupName = booking.personGroupName || "Keine gespeicherte Personengruppe";
-  const overrideText = booking.overrideCount
-    ? `<span class="m328-booking-override">${booking.overrideCount} individuelle ${booking.overrideCount === 1 ? "Abweichung" : "Abweichungen"}</span>`
-    : "";
+  const facts = [
+    booking.travelGroupName ? `<span class="m328-booking-group-fact wide"><em>Reisegruppe</em><strong>${escapeHtml(booking.travelGroupName)}</strong></span>` : "",
+    booking.personGroupName ? `<span class="m328-booking-group-fact wide"><em>Personengruppe</em><strong>${escapeHtml(booking.personGroupName)}</strong></span>` : "",
+    `<span class="m328-booking-group-fact"><em>Buswunsch</em><strong>${escapeHtml(preferenceLabel(booking.groupBusPreference))}</strong></span>`,
+    `<span class="m328-booking-group-fact"><em>Bus</em><strong>${escapeHtml(groupBus)}</strong></span>`,
+    booking.overrideCount ? `<span class="m328-booking-group-fact warning"><em>Abweichungen</em><strong>${booking.overrideCount}</strong></span>` : ""
+  ].filter(Boolean).join("");
   const actions = active.length
-    ? `<div class="m328-booking-actions"><button class="button primary" type="button" data-m328-add-person="${escapeAttr(booking.id)}">＋ Person hinzufügen</button><button class="button secondary" type="button" data-m328-edit-booking="${escapeAttr(booking.id)}">Gruppenwerte bearbeiten</button><button class="button danger" type="button" data-m328-cancel-booking="${escapeAttr(booking.id)}">${active.length === 1 ? "Buchung stornieren" : "Gesamte Buchung stornieren"}</button></div>`
+    ? `<div class="m328-booking-actions"><button class="button primary" type="button" data-m328-add-person="${escapeAttr(booking.id)}">＋ Person hinzufügen</button><button class="button secondary" type="button" data-m328-edit-booking="${escapeAttr(booking.id)}">Gruppenwerte</button><details class="m328-booking-more-actions"><summary class="button small ghost">Weitere Aktionen</summary><div class="m328-travel-group-actions">${booking.travelGroupId ? `<button class="button small secondary" type="button" data-m328-edit-travel-group="${escapeAttr(booking.id)}">Reisegruppe bearbeiten</button><button class="button small secondary" type="button" data-m328-unlink-travel-group="${escapeAttr(booking.id)}">Aus Reisegruppe lösen</button>` : ""}<button class="button danger" type="button" data-m328-cancel-booking="${escapeAttr(booking.id)}">${active.length === 1 ? "Buchung stornieren" : "Gesamte Buchung stornieren"}</button></div></details></div>`
     : "";
   const edit = editing
-    ? `<form class="m328-booking-edit" data-m328-edit-form="${escapeAttr(booking.id)}"><section class="m328-booking-edit-person"><h4>Gruppenregel</h4>${state.trip.busPreferenceSelectionEnabled === true ? `<label>Buswunsch für gesamte Buchung<select data-group-field="busPreference">${preferenceOptions(booking.groupBusPreference)}</select></label>` : `<input data-group-field="busPreference" type="hidden" value="EGAL">`}<label>Bus für gesamte Buchung<select data-group-field="busId"><option value="">Nicht zugeordnet</option>${state.buses.filter(bus => bus.isActive !== false).map(bus => `<option value="${escapeAttr(bus.id)}"${bus.id === booking.groupBusId ? " selected" : ""}>${escapeHtml(`${bus.label} · ${Number(bus.remainingCapacity ?? 0)} frei`)}</option>`).join("")}</select></label>${booking.overrideCount ? '<label class="m328-booking-edit-note"><span><input data-group-field="alignOverrides" type="checkbox"> Individuelle Abweichungen an die Gruppenregel angleichen</span></label>' : ""}</section>${booking.participants.map(person => editPerson(state, person)).join("")}<div class="m328-booking-edit-footer"><button class="button ghost" type="button" data-m328-edit-cancel="${escapeAttr(booking.id)}">Abbrechen</button><button class="button primary" type="submit">Änderungen speichern</button></div></form>`
+    ? `<form class="m328-booking-edit" data-m328-edit-form="${escapeAttr(booking.id)}"><section class="m328-booking-edit-person"><h4>Gruppenregel</h4>${state.trip.busPreferenceSelectionEnabled === true ? `<label>Buswunsch für gesamte Buchung<select data-group-field="busPreference">${preferenceOptions(booking.groupBusPreference)}</select></label>` : `<input data-group-field="busPreference" type="hidden" value="EGAL">`}<label>Bus für gesamte Buchung<select data-group-field="busId"><option value="">Nicht zugeordnet</option>${state.buses.filter(bus => bus.isActive !== false).map(bus => `<option value="${escapeAttr(bus.id)}"${bus.id === booking.groupBusId ? " selected" : ""}>${escapeHtml(`${bus.label} · ${Number(bus.remainingCapacity ?? 0)} frei`)}</option>`).join("")}</select></label>${booking.overrideCount ? '<label class="m328-booking-edit-note"><span><input data-group-field="alignOverrides" type="checkbox"> Individuelle Abweichungen an die Gruppenregel angleichen</span></label>' : ""}</section>${booking.current.map(person => editPerson(state, person)).join("")}<div class="m328-booking-edit-footer"><button class="button ghost" type="button" data-m328-edit-cancel="${escapeAttr(booking.id)}">Abbrechen</button><button class="button primary" type="submit">Änderungen speichern</button></div></form>`
     : "";
-  return `<details class="m328-booking-card" data-booking-card="${escapeAttr(booking.id)}"${editing ? " open" : ""}><summary><span class="m328-booking-select"><input type="checkbox" data-m328-select-booking="${escapeAttr(booking.id)}" aria-label="${escapeAttr(`Buchung ${booking.number} auswählen`)}"${state.selectedBookingIds.has(booking.id) ? " checked" : ""}><span class="m328-booking-main"><span class="m328-booking-number">${escapeHtml(booking.number)}</span><span class="m328-booking-primary">${escapeHtml(primary)}</span><span class="m328-booking-meta"><span>${count} ${count === 1 ? "Person" : "Personen"}</span><span>${escapeHtml(sourceLabel(booking.source))}</span></span></span></span><span class="m328-booking-side">${statusBadge(status)}<span class="m328-booking-chevron" aria-hidden="true">›</span></span></summary><div class="m328-booking-group-facts"><span>Gespeicherte Gruppe<strong>${escapeHtml(groupName)}</strong></span><span>Gruppen-Buswunsch<strong>${escapeHtml(preferenceLabel(booking.groupBusPreference))}</strong></span><span>Gruppen-Bus<strong>${escapeHtml(groupBus)}</strong></span><span>Abweichungen<strong>${overrideText || "Keine"}</strong></span></div><div class="m328-booking-body">${booking.participants.map(person => personRow(person, booking)).join("")}</div>${editing ? edit : actions}</details>`;
+  return `<details class="m328-booking-card" data-booking-card="${escapeAttr(booking.id)}" data-booking-status="${escapeAttr(status)}"${editing ? " open" : ""}><summary><span class="m328-booking-select"><input type="checkbox" data-m328-select-booking="${escapeAttr(booking.id)}" aria-label="${escapeAttr(`Buchung ${booking.number} auswählen`)}"${state.selectedBookingIds.has(booking.id) ? " checked" : ""}><span class="m328-booking-main"><span class="m328-booking-number">${escapeHtml(booking.number)}</span><span class="m328-booking-primary">${escapeHtml(primary)}</span><span class="m328-booking-meta"><span>${count} ${count === 1 ? "Person" : "Personen"}</span><span>${escapeHtml(sourceLabel(booking.source))}</span>${booking.travelGroupName ? `<span class="m328-travel-group-chip" title="${escapeAttr(`Reisegruppe: ${booking.travelGroupName}`)}">${escapeHtml(booking.travelGroupName)}</span>` : ""}</span></span></span><span class="m328-booking-side">${statusBadge(status)}<span class="m328-booking-chevron" aria-hidden="true">›</span></span></summary>${facts ? `<div class="m328-booking-group-facts">${facts}</div>` : ""}<div class="m328-booking-body">${bookingPersonRows(booking)}</div>${editing ? edit : actions}</details>`;
 }
 
 function applyRegistrationResult(state, result) {
@@ -407,13 +449,6 @@ function applyRegistrationResult(state, result) {
 
 async function cancelParticipants(state, booking, participants, label) {
   if (!participants.length) return;
-  const groupField = name => form.querySelector(`[data-group-field="${name}"]`);
-  const groupRules = {
-    bookingId: booking.id,
-    busPreference: groupField("busPreference")?.value || booking.groupBusPreference || "EGAL",
-    busId: groupField("busId")?.value || null,
-    alignOverrides: groupField("alignOverrides")?.checked === true
-  };
   const names = participants.length === 1 ? personName(participants[0]) : `${participants.length} Personen`;
   const confirmed = await confirmAction(
     participants.length === booking.participants.filter(cancellable).length && participants.length > 1
@@ -519,11 +554,25 @@ async function openAddPerson(state, booking) {
   }
 }
 
+async function setPrimaryPerson(state, booking, person) {
+  if (!booking || !person || person.bookingRole === "PRIMARY" || !cancellable(person)) return;
+  try {
+    const result = await runWrite(() => call("fanbus_booking_primary_set", {
+      bookingId: booking.id,
+      participantId: person.id
+    }), `${personName(person)} ist jetzt Hauptperson.`);
+    applyRegistrationResult(state, result);
+  } catch (error) {
+    showToast(error?.message || "Hauptperson konnte nicht geändert werden.", "error", 5200);
+    renderList(state);
+  }
+}
+
 function openParticipantOverride(state, booking, person) {
   const dialog = openDialog({
-    title: "Nur diese Person abweichend behandeln",
+    title: "Persönliche Abweichung",
     kicker: `${personName(person)} · ${booking.number}`,
-    body: `<form class="form-grid v4-smart-form" data-m328-override-form>
+    body: `<form class="form-grid v4-smart-form m328-override-form" data-m328-override-form>
       <label>Individueller Buswunsch<select name="busPreference">${preferenceOptions(person.busPreference || booking.groupBusPreference)}</select></label>
       <label>Individueller Bus<select name="busId"><option value="">Bewusst nicht zugeordnet</option>${state.buses.filter(bus => bus.isActive !== false).map(bus => `<option value="${escapeAttr(bus.id)}"${bus.id === person.busId ? " selected" : ""}>${escapeHtml(bus.label)}</option>`).join("")}</select></label>
       <p class="subtle v4-field-full">Diese Aktion setzt eine sichtbare, auditierte Ausnahme von der Buchungsregel.</p>
@@ -576,13 +625,98 @@ async function splitPerson(state, booking, person) {
   }
 }
 
-function updateMergeAction(state) {
-  const button = document.getElementById("m328MergeBookings");
-  if (!button) return;
-  button.hidden = state.selectedBookingIds.size < 2;
-  button.textContent = state.selectedBookingIds.size < 2
-    ? "Buchungen zusammenführen"
-    : `${state.selectedBookingIds.size} Buchungen zusammenführen`;
+function updateSelectionActions(state) {
+  const mergeButton = document.getElementById("m328MergeBookings");
+  const travelButton = document.getElementById("m328ConnectTravelGroup");
+  const active = state.selectedBookingIds.size >= 2;
+  if (mergeButton) {
+    mergeButton.hidden = !active;
+    mergeButton.textContent = active
+      ? `${state.selectedBookingIds.size} wirklich zusammenführen`
+      : "Buchungen zusammenführen";
+  }
+  if (travelButton) {
+    travelButton.hidden = !active;
+    travelButton.textContent = active
+      ? `${state.selectedBookingIds.size} als Reisegruppe verbinden`
+      : "Als Reisegruppe verbinden";
+  }
+}
+
+
+function travelGroupBookings(state, travelGroupId) {
+  return state.bookings.filter(booking =>
+    booking.travelGroupId === travelGroupId && bookingStatus(booking) !== "CANCELLED"
+  );
+}
+
+function travelGroupDefaultName(bookings) {
+  return bookings.map(booking => personName(booking.primary)).filter(Boolean).join(" + ").slice(0, 120)
+    || "Reisegruppe";
+}
+
+function openTravelGroupDialog(state, bookings) {
+  const selected = bookings.filter(Boolean);
+  if (selected.length < 2) return;
+  const groupIds = [...new Set(selected.map(booking => booking.travelGroupId).filter(Boolean))];
+  if (groupIds.length > 1) {
+    showToast("Die Auswahl enthält mehrere bestehende Reisegruppen. Bitte zuerst eine Gruppe auflösen oder getrennt erweitern.", "warning", 6200);
+    return;
+  }
+  const existing = groupIds.length === 1
+    ? selected.find(booking => booking.travelGroupId === groupIds[0])
+    : null;
+  const preferences = new Set(selected.map(booking =>
+    booking.travelGroupBusPreference || booking.groupBusPreference || "EGAL"
+  ));
+  const buses = new Set(selected.map(booking =>
+    booking.travelGroupBusId || booking.groupBusId || ""
+  ));
+  const initialPreference = existing?.travelGroupBusPreference
+    || (preferences.size === 1 ? [...preferences][0] : "EGAL");
+  const initialBus = existing?.travelGroupBusId
+    || (buses.size === 1 ? [...buses][0] : "");
+  const initialName = existing?.travelGroupName || travelGroupDefaultName(selected);
+
+  openDialog({
+    title: existing ? "Reisegruppe bearbeiten" : "Als Reisegruppe verbinden",
+    kicker: `${selected.length} Buchungen · Buchungsnummern bleiben erhalten`,
+    body: `<form class="form-grid v4-smart-form m328-travel-group-form" data-m328-travel-group-form>
+      <div class="notice info v4-field-full">Diese Buchungen bleiben eigenständig. Die automatische Buszuordnung behandelt sie für diese Fahrt gemeinsam und versucht, alle nicht abweichenden Personen im selben Bus zu halten.</div>
+      <label class="v4-field-full">Name der Reisegruppe<input name="name" maxlength="120" required value="${escapeAttr(initialName)}" placeholder="z. B. Bräutigams + BlueLineDogs + Sascha"></label>
+      <label>Gemeinsamer Buswunsch<select name="busPreference">${preferenceOptions(initialPreference)}</select></label>
+      <label>Gemeinsamer Bus<select name="busId"><option value="">Automatisch zuordnen</option>${state.buses.filter(bus => bus.isActive !== false).map(bus => `<option value="${escapeAttr(bus.id)}"${bus.id === initialBus ? " selected" : ""}>${escapeHtml(`${bus.label} · ${Number(bus.remainingCapacity ?? 0)} frei`)}</option>`).join("")}</select></label>
+      <p class="subtle v4-field-full">Individuelle Abweichungen einzelner Personen bleiben bestehen. Ein fest gewählter Bus wird sofort auf alle nicht abweichenden Personen der Reisegruppe angewendet.</p>
+    </form>`,
+    submitLabel: existing ? "Reisegruppe speichern" : "Als Reisegruppe verbinden",
+    onSubmit: async values => {
+      const result = await runWrite(() => call("fanbus_travel_group_connect", {
+        bookingIds: selected.map(booking => booking.id),
+        name: values.name,
+        busPreference: values.busPreference,
+        busId: values.busId || null
+      }), existing ? "Reisegruppe wurde aktualisiert." : "Buchungen wurden als Reisegruppe verbunden.");
+      state.selectedBookingIds.clear();
+      applyRegistrationResult(state, result);
+    }
+  });
+}
+
+async function unlinkTravelGroup(state, booking) {
+  if (!booking?.travelGroupId) return;
+  const confirmed = await confirmAction(
+    `${booking.number} aus der Reisegruppe „${booking.travelGroupName || "Reisegruppe"}“ lösen? Die Buchungsnummer und aktuellen Buchungswerte bleiben erhalten.`,
+    { title: "Aus Reisegruppe lösen", submitLabel: "Buchung lösen" }
+  );
+  if (!confirmed) return;
+  try {
+    const result = await runWrite(() => call("fanbus_travel_group_unlink", {
+      bookingId: booking.id
+    }), "Buchung wurde aus der Reisegruppe gelöst.");
+    applyRegistrationResult(state, result);
+  } catch (error) {
+    showToast(error?.message || "Buchung konnte nicht aus der Reisegruppe gelöst werden.", "error", 5200);
+  }
 }
 
 function openMergeDialog(state) {
@@ -594,7 +728,7 @@ function openMergeDialog(state) {
   openDialog({
     title: "Buchungen zusammenführen",
     kicker: `${selected.length} Buchungen · Ziel ${target.number}`,
-    body: `<form class="form-grid v4-smart-form" data-m328-merge-form>
+    body: `<form class="form-grid v4-smart-form m328-merge-form" data-m328-merge-form>
       <div class="notice ${preferences.size > 1 || buses.size > 1 ? "warning" : "info"} v4-field-full">${preferences.size > 1 || buses.size > 1 ? "Die Buchungen besitzen unterschiedliche Gruppenwerte. Bitte entscheide bewusst." : "Die Buchungen besitzen übereinstimmende Gruppenwerte."}</div>
       <label>Buswunsch der neuen Gruppe<select name="busPreference">${preferenceOptions(target.groupBusPreference)}</select></label>
       <label>Bus der neuen Gruppe<select name="busId"><option value="">Zunächst nicht zugeordnet</option>${state.buses.filter(bus => bus.isActive !== false).map(bus => `<option value="${escapeAttr(bus.id)}"${bus.id === target.groupBusId ? " selected" : ""}>${escapeHtml(bus.label)}</option>`).join("")}</select></label>
@@ -620,6 +754,13 @@ async function saveBookingEdit(state, form) {
   if (!form.reportValidity()) return;
   const booking = bookingById(state, form.dataset.m328EditForm);
   if (!booking) return;
+  const groupField = name => form.querySelector(`[data-group-field="${name}"]`);
+  const groupRules = {
+    bookingId: booking.id,
+    busPreference: groupField("busPreference")?.value || booking.groupBusPreference || "EGAL",
+    busId: groupField("busId")?.value || null,
+    alignOverrides: groupField("alignOverrides")?.checked === true
+  };
   const participants = [];
   form.querySelectorAll("[data-edit-participant]").forEach(row => {
     const id = row.dataset.editParticipant;
@@ -667,7 +808,7 @@ function bindList(state) {
     input.addEventListener("change", () => {
       if (input.checked) state.selectedBookingIds.add(input.dataset.m328SelectBooking);
       else state.selectedBookingIds.delete(input.dataset.m328SelectBooking);
-      updateMergeAction(state);
+      updateSelectionActions(state);
     });
   });
   target.querySelectorAll("[data-m328-add-person]").forEach(button => button.addEventListener("click", () => {
@@ -687,6 +828,14 @@ function bindList(state) {
     const person = booking?.participants.find(item => item.id === button.dataset.m328CancelPerson);
     if (booking && person) void cancelParticipants(state, booking, [person], "Person stornieren");
   }));
+  target.querySelectorAll("[data-m328-primary-person]").forEach(input => {
+    input.addEventListener("change", () => {
+      if (!input.checked) return;
+      const booking = bookingById(state, input.dataset.bookingId);
+      const person = booking?.participants.find(item => item.id === input.dataset.m328PrimaryPerson);
+      if (booking && person) void setPrimaryPerson(state, booking, person);
+    });
+  });
   target.querySelectorAll("[data-m328-person-override]").forEach(button => button.addEventListener("click", () => {
     const booking = bookingById(state, button.dataset.bookingId);
     const person = booking?.participants.find(item => item.id === button.dataset.m328PersonOverride);
@@ -696,6 +845,15 @@ function bindList(state) {
     const booking = bookingById(state, button.dataset.bookingId);
     const person = booking?.participants.find(item => item.id === button.dataset.m328SplitPerson);
     if (booking && person) void splitPerson(state, booking, person);
+  }));
+  target.querySelectorAll("[data-m328-edit-travel-group]").forEach(button => button.addEventListener("click", () => {
+    const booking = bookingById(state, button.dataset.m328EditTravelGroup);
+    if (!booking?.travelGroupId) return;
+    openTravelGroupDialog(state, travelGroupBookings(state, booking.travelGroupId));
+  }));
+  target.querySelectorAll("[data-m328-unlink-travel-group]").forEach(button => button.addEventListener("click", () => {
+    const booking = bookingById(state, button.dataset.m328UnlinkTravelGroup);
+    if (booking) void unlinkTravelGroup(state, booking);
   }));
   target.querySelectorAll("[data-m328-edit-form]").forEach(form => form.addEventListener("submit", event => {
     event.preventDefault();
@@ -711,13 +869,13 @@ function renderList(state) {
   if (count) count.textContent = `${visible.length} von ${state.bookings.length} Buchungen`;
   target.innerHTML = visible.length ? visible.map(booking => bookingCard(state, booking)).join("") : empty("Keine passende Buchung gefunden.");
   bindList(state);
-  updateMergeAction(state);
+  updateSelectionActions(state);
 }
 
 function renderPage(root, state) {
   ensureStyle();
   const venue = String(state.trip.venue || "").trim() || "Fahrt";
-  root.innerHTML = `<div class="m328-bookings"><header class="m328-bookings-head"><button id="m328BookingsBack" class="button small ghost" type="button">← Fahrt</button><div class="m328-bookings-title"><h2>Buchungen • ${escapeHtml(venue)}</h2><span>${escapeHtml(shortDate(state.trip.eventDate))} · ${escapeHtml(eventTime(state.trip.eventTime))}</span></div></header><section class="m328-bookings-tools"><input id="m328BookingSearch" type="search" autocomplete="off" placeholder="Buchungsnummer oder Name suchen …" aria-label="Buchungen durchsuchen"><span id="m328BookingCount" class="m328-bookings-count"></span><div class="m328-booking-tools-actions"><button id="m328MergeBookings" class="button primary" type="button" hidden>Buchungen zusammenführen</button></div><details class="m328-bookings-filter"><summary class="button small secondary">Filter</summary><div class="m328-bookings-filter-body"><label>Status<select id="m328BookingStatusFilter"><option value="ALL">Alle</option><option value="CURRENT">Nicht storniert</option><option value="ACTIVE">Aktiv</option><option value="WAITLISTED">Warteliste</option><option value="CANCELLED">Storniert</option></select></label></div></details></section><section id="m328BookingList" class="m328-booking-list" aria-live="polite"></section></div>`;
+  root.innerHTML = `<div class="m328-bookings"><header class="m328-bookings-head"><button id="m328BookingsBack" class="button small ghost" type="button">← Fahrt</button><div class="m328-bookings-title"><h2>Buchungen • ${escapeHtml(venue)}</h2><span>${escapeHtml(shortDate(state.trip.eventDate))} · ${escapeHtml(eventTime(state.trip.eventTime))}</span></div></header><section class="m328-bookings-tools"><input id="m328BookingSearch" type="search" autocomplete="off" placeholder="Buchungsnummer oder Name suchen …" aria-label="Buchungen durchsuchen"><span id="m328BookingCount" class="m328-bookings-count"></span><div class="m328-booking-tools-actions"><button id="m328ConnectTravelGroup" class="button primary" type="button" hidden>Als Reisegruppe verbinden</button><button id="m328MergeBookings" class="button secondary" type="button" hidden>Buchungen zusammenführen</button></div><details class="m328-bookings-filter"><summary class="button small secondary">Filter</summary><div class="m328-bookings-filter-body"><label>Status<select id="m328BookingStatusFilter"><option value="ALL">Alle</option><option value="CURRENT" selected>Nicht storniert</option><option value="ACTIVE">Aktiv</option><option value="WAITLISTED">Warteliste</option><option value="CANCELLED">Storniert</option></select></label></div></details></section><section id="m328BookingList" class="m328-booking-list" aria-live="polite"></section></div>`;
   document.getElementById("m328BookingsBack")?.addEventListener("click", () => { location.hash = tripDetailHash(state.trip.id); });
   document.getElementById("m328BookingSearch")?.addEventListener("input", event => {
     state.query = event.currentTarget.value || "";
@@ -728,6 +886,9 @@ function renderPage(root, state) {
     state.statusFilter = event.currentTarget.value || "ALL";
     state.editingBookingId = null;
     renderList(state);
+  });
+  document.getElementById("m328ConnectTravelGroup")?.addEventListener("click", () => {
+    openTravelGroupDialog(state, state.bookings.filter(booking => state.selectedBookingIds.has(booking.id)));
   });
   document.getElementById("m328MergeBookings")?.addEventListener("click", () => openMergeDialog(state));
   renderList(state);
@@ -762,7 +923,7 @@ export async function hydrateBusOrgaBookings(context = {}) {
       buses: Array.isArray(registrationData?.buses) ? registrationData.buses : [],
       bookings: groupBookings(registrations),
       query: "",
-      statusFilter: "ALL",
+      statusFilter: "CURRENT",
       editingBookingId: null,
       selectedBookingIds: new Set()
     });

@@ -87,8 +87,14 @@ async function openAssignmentPreview(state) {
     const proposals = Array.isArray(preview?.participantProposals) ? preview.participantProposals : [];
     const editable = proposals.filter(item => item.assignmentState === "PROPOSED_AUTO");
     const editableGroups = Array.from(editable.reduce((groups, proposal) => {
-      const key = proposal.bookingId || proposal.participantId;
-      const group = groups.get(key) || { bookingId: key, proposals: [] };
+      const key = proposal.travelGroupId || proposal.bookingId || proposal.participantId;
+      const group = groups.get(key) || {
+        unitKey: key,
+        bookingId: proposal.bookingId || key,
+        travelGroupId: proposal.travelGroupId || null,
+        travelGroupName: proposal.travelGroupName || "",
+        proposals: []
+      };
       group.proposals.push(proposal);
       groups.set(key, group);
       return groups;
@@ -103,7 +109,12 @@ async function openAssignmentPreview(state) {
       const proposedBusIds = new Set(group.proposals.map(item => item.proposedBusId || ""));
       const selectedBusId = proposedBusIds.size === 1 ? proposal.proposedBusId : null;
       const warnings = [...new Set(group.proposals.flatMap(item => item.warnings || []))];
-      return `<article class="m328-assignment-proposal"><div class="m328-card-head"><strong>${escapeHtml(group.proposals.length > 1 ? `Buchung · ${group.proposals.length} Personen` : names)}</strong><span class="badge neutral">Vorschlag</span></div><small>${escapeHtml(names)}</small><label>Gemeinsamer Bus<select name="assignment_${escapeAttr(group.bookingId)}"><option value="">Gruppe nicht zuordnen</option>${buses.map(bus => `<option value="${escapeAttr(bus.busId)}"${bus.busId === selectedBusId ? " selected" : ""}>${escapeHtml(`${bus.label} · ${Number(bus.freeAfter || 0)} frei`)}</option>`).join("")}</select></label>${warnings.map(code => `<p class="notice warning m328-assignment-warning">${escapeHtml(ASSIGNMENT_WARNING_LABELS[code] || code)}</p>`).join("")}</article>`;
+      const unitLabel = group.travelGroupId
+        ? `Reisegruppe ${group.travelGroupName || ""} · ${group.proposals.length} Personen`
+        : group.proposals.length > 1
+          ? `Buchung · ${group.proposals.length} Personen`
+          : names;
+      return `<article class="m328-assignment-proposal"><div class="m328-card-head"><strong>${escapeHtml(unitLabel.trim())}</strong><span class="badge neutral">${group.travelGroupId ? "Zusammenbleiben" : "Vorschlag"}</span></div><small>${escapeHtml(names)}</small><label>Gemeinsamer Bus<select name="assignment_${escapeAttr(group.unitKey)}"><option value="">Gruppe nicht zuordnen</option>${buses.map(bus => `<option value="${escapeAttr(bus.busId)}"${bus.busId === selectedBusId ? " selected" : ""}>${escapeHtml(`${bus.label} · ${Number(bus.freeAfter || 0)} frei`)}</option>`).join("")}</select></label>${warnings.map(code => `<p class="notice warning m328-assignment-warning">${escapeHtml(ASSIGNMENT_WARNING_LABELS[code] || code)}</p>`).join("")}</article>`;
     }).join("");
     const existingMarkup = existing.map(proposal => `<div class="m328-assignment-row"><div><strong>${escapeHtml(participantName(registrations, proposal.participantId))}</strong><small>Bestehend · ${escapeHtml(proposal.assignmentState === "FIXED_MANUAL" ? "MANUAL" : "AUTO")}</small></div><strong>${escapeHtml(previewBusName(buses, proposal.currentBusId))}</strong></div>`).join("");
     const conflictMarkup = conflicts.map(conflict => `<div class="notice ${conflict.severity === "BLOCKING" ? "error" : "warning"}"><strong>${conflict.severity === "BLOCKING" ? "Blockierender Konflikt" : "Hinweis"}</strong><p>${escapeHtml(ASSIGNMENT_WARNING_LABELS[conflict.code] || conflict.code)}</p></div>`).join("");
@@ -116,7 +127,7 @@ async function openAssignmentPreview(state) {
         try {
           const finalAssignments = editableGroups.flatMap(group => group.proposals.map(proposal => ({
             participantId: proposal.participantId,
-            busId: values[`assignment_${group.bookingId}`] || null
+            busId: values[`assignment_${group.unitKey}`] || null
           })));
           const result = await call("fanbus_assignment_apply", {
             tripId: state.trip.id,

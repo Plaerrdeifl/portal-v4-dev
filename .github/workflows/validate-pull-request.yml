@@ -19,6 +19,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  database:
+    name: Rebuild Supabase database
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.116.0
+
+      - name: Start local Postgres
+        run: supabase db start
+
+      - name: Rebuild database from zero
+        run: supabase db reset --local
+
+      - name: Lint database errors
+        run: supabase db lint --local --level error --fail-on error
+
   validate:
     name: Test and build DEV
     runs-on: ubuntu-latest

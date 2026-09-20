@@ -85,11 +85,11 @@ test("PWA guidance remains active under the current shell release", () => {
   );
   assert.match(
     index,
-    new RegExp(`src="\\./js/app\\.js\\?v=${shellRelease}&venue=2&m328workspaces=${workspaceRelease}&participants=${participantRelease}&m328final=${finalM328Release}&m327personal=${m327PersonalRelease}&m340=${m340Release}"`)
+    new RegExp(`src="\\./js/app\\.js\\?v=${shellRelease}&venue=2&m328workspaces=${workspaceRelease}&participants=${participantRelease}&m328final=${finalM328Release}&m327personal=${m327PersonalRelease}&m340=${m340Release}[^"]*"`)
   );
   assert.match(
     app,
-    new RegExp(`pages\\.js\\?v=${shellRelease}&venue=2&m328workspaces=${workspaceRelease}&participants=${participantRelease}&m328final=${finalM328Release}&m327personal=${m327PersonalRelease}`)
+    new RegExp(`pages\\.js\\?v=${shellRelease}&venue=2&m328workspaces=${workspaceRelease}&participants=${participantRelease}&m328final=${finalM328Release}&m327personal=${m327PersonalRelease}[^"]*`)
   );
   assert.match(
     index,

@@ -152,7 +152,7 @@ test("V2 goal variants follow the new type contract without the legacy score req
 
 test("migration and portal expose full variant CRUD without changing the legacy table", async () => {
   const [migration, admin, engine, storage, html, implementation] = await Promise.all([
-    read("supabase/migrations/20260919190000_liveticker_textsystem_v2.sql"),
+    read("supabase/migrations/20260919235733_liveticker_textsystem_v2.sql"),
     read("js/modules/liveticker-admin.js"),
     read("js/liveticker-engine-v4.js"),
     read("js/liveticker-game-storage.js"),
@@ -164,6 +164,9 @@ test("migration and portal expose full variant CRUD without changing the legacy 
   assert.doesNotMatch(migration, /drop table\s+app_modules\.liveticker_output_templates/i);
   assert.match(migration, /liveticker_output_variant_save/);
   assert.match(migration, /liveticker_output_variant_delete/);
+  assert.match(migration, /pd_api_current_actions_before_liveticker_textsystem_v2/);
+  assert.match(migration, /liveticker_output_variant_save[\s\S]*liveticker_output_variant_delete/);
+  assert.match(migration, /returns jsonb language plpgsql security invoker set search_path=''/);
   assert.match(migration, /v_expected<>v_existing\.revision/);
   assert.match(migration, /payload->>'outputVariantId'=v_id::text/);
   assert.match(migration, /LIVETICKER_OUTPUT_VARIANT_CREATED/);

@@ -39,6 +39,6 @@ test("M328 iOS stop editor keeps bounded columns and narrow fallback", () => {
 test("M328 iOS field fix is loaded with the current dedicated cache key", () => {
   assert.match(
     indexHtml,
-    /m328-trip-edit-ios-fields\.js\?v=20260908-m328-trip-edit-ios-fields4/,
+    /m328-trip-edit-ios-fields\.js\?v=20260919-m328-trip-edit-ios-fields5&integrity=booking-count-authority-r1/,
   );
 });

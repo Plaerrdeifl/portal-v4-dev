@@ -39,6 +39,7 @@ async function harness(artifacts = [artifact("POST"), artifact("STORY")], status
   let clicking = false;
   let canShareFile;
   const snapshot = { jobs: [{ kind: "PERIOD_1", status, result: { artifacts } }] };
+  const windowListeners = new Map();
   const navigator = {
     canShare(data) {
       assert.deepEqual(Object.keys(data), ["files"]);
@@ -63,9 +64,14 @@ async function harness(artifacts = [artifact("POST"), artifact("STORY")], status
     document: {
       getElementById: id => id === "inlineGraphicArtifacts" ? box : null,
       querySelectorAll: () => [],
-      createElement: () => new Element()
+      createElement: () => new Element(),
+      addEventListener() {}
     },
-    window: { addEventListener() {}, setTimeout() { return 1; }, clearTimeout() {} },
+    window: {
+      addEventListener(type, listener) { windowListeners.set(type, listener); },
+      setTimeout() { return 1; },
+      clearTimeout() {}
+    },
     location: { assign: url => downloads.push(url) },
     fetch(url, options) {
       assert.equal(clicking, false, "click must never fetch an artifact");
@@ -74,6 +80,7 @@ async function harness(artifacts = [artifact("POST"), artifact("STORY")], status
   };
   // Execute the real module with mocked DOM/network APIs, including its actual click listeners.
   await runInNewContext(`(async () => { ${source}\nglobalThis.refreshGraphics = refreshStatusOnly; })()`, sandbox);
+  windowListeners.get("pd-liveticker-graphics-open")?.({ detail: { kind: "PERIOD_1" } });
   return {
     box, requests, downloads, shares, errors, navigator, sandbox, snapshot,
     async prepare(index = 0, options = {}) {

@@ -54,7 +54,7 @@ test("M328 additive correction is followed by the confirmed WhatsApp restore", (
   assert.match(contactRestore, /where key = 'fanbus\.organization_contact'/);
 });
 
-test("fanbus booking emails render the reference and help block only from payload contacts", () => {
+test("fanbus booking emails render only validated payload contacts as compact actions", () => {
   assert.doesNotMatch(worker, /const FANBUS_(?:CONTACT|WHATSAPP|LUCA|PASCAL)/);
   assert.doesNotMatch(worker, /fanbus@plaerrdeifl\.de/);
   assert.doesNotMatch(worker, /0174 6681046/);
@@ -63,14 +63,20 @@ test("fanbus booking emails render the reference and help block only from payloa
 
   assert.match(worker, /function fanbusBookingContext\(/);
   assert.match(worker, /data\.organizationContact/);
-  assert.match(worker, /contactItems\("emails"\)/);
-  assert.match(worker, /contactItems\("phones"\)/);
-  assert.match(worker, /organizationContact\.whatsapp/);
+  assert.match(worker, /function\s+fanbusBookingContext[\s\S]*safeMailHref/);
+  assert.match(worker, /safeTelHref/);
+  assert.match(worker, /safeWhatsAppHref/);
+  assert.match(worker, /\^https:\\\/\\\/wa\\\.me\\\/\[1-9\]\[0-9\]\{6,14\}\$/);
+  assert.match(worker, /\^tel:\\\+\[1-9\]\[0-9\]\{6,14\}\$/);
+  assert.match(worker, /organizationContact\.contacts/);
+  assert.match(worker, /legacyEmails/);
+  assert.match(worker, /legacyPhones/);
+  assert.match(worker, /Kontakt zur Bus-Orga/);
+  assert.match(worker, /buttonHtml\(primaryWhatsappHref, "WhatsApp"/);
+  assert.match(worker, /buttonHtml\(primaryEmailHref, "E-Mail"/);
+  assert.match(worker, /buttonHtml\(person\.phoneHref, "Anrufen"/);
+  assert.match(worker, /Bitte gib bei Rückfragen deine Buchungsnummer an\./);
   assert.match(worker, /Buchungsnummer: \$\{bookingNumber\}/);
-  assert.match(worker, /Bitte gib diese Buchungsnummer bei Rückfragen mit an\./);
-  assert.match(worker, /Fragen zu deiner Buchung\?/);
-  assert.match(worker, /mailto:\$\{escapeHtml\(item\.value\)\}/);
-  assert.match(worker, /\^https:\\\/\\\/wa\\\.me/);
   assert.match(worker, /\^\(\?:FB\|DEV\)-\[0-9\]\{2\}-\[0-9\]\{6,\}\$/);
 });
 

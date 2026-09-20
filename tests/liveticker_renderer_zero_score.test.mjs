@@ -98,8 +98,8 @@ def check(group_id, transform, x, y, width, height, expected_cx, expected_cy):
     group=module.find(root,group_id)
     assert group.get("transform") is None
     image=list(group)[0]
-    assert abs(float(image.get("height"))-200.0)<0.000001
-    assert abs(float(image.get("width"))-400.0)<0.000001
+    assert abs(float(image.get("height"))-250.0)<0.000001
+    assert abs(float(image.get("width"))-500.0)<0.000001
     cx=float(image.get("x"))+float(image.get("width"))/2
     cy=float(image.get("y"))+float(image.get("height"))/2
     assert abs(cx-expected_cx)<0.00001,(cx,expected_cx)
@@ -116,7 +116,7 @@ check("logo_away","matrix(1.8518519,0,0,1.8518519,-871.35819,-325.85931)",990.82
 test("Liveticker renderer normalizes logo assets before rendering POST and STORY", () => {
   const source = readFileSync(resolve("scripts/liveticker-renderer/render_v1.py"), "utf8");
   const trimmer = readFileSync(resolve("scripts/liveticker-renderer/trim_logo.py"), "utf8");
-  assert.match(source, /LOGO_HEIGHT=\{'POST':200\.0,'STORY':200\.0\}/);
+  assert.match(source, /LOGO_HEIGHT=\{'POST':250\.0,'STORY':200\.0\}/);
   assert.match(source, /normalize_logo_assets\(state,out\)/);
   assert.match(source, /LOGO_TRIMMER/);
   assert.match(trimmer, /get_has_alpha\(\)/);

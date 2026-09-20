@@ -139,6 +139,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260830223000_m328_booking_contact_receipt_correction.sql",
     "20260830223500_m328_restore_verified_whatsapp_contact.sql",
     "20260830230000_m020_fanbus_d073_acknowledge_r6.sql",
+    "20260831234000_m329_fanbus_contact_management.sql",
+    "20260901133530_hotfix_public_fanbus_homepage_alignment.sql",
     "20260901220000_m020_push_navigation_badge_acknowledgement.sql",
     "20260905123213_fanbus_group_duplicate_review_r1.sql",
     "20260905123644_fanbus_duplicate_review_indexes_r1.sql",
@@ -205,7 +207,12 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260919183200_fanbus_booking_operational_groups.sql",
     "20260919183300_fanbus_public_cancelled_projection_r1.sql",
     "20260919183400_fanbus_public_projection_remote_compat_r1.sql",
-    "20260919190000_liveticker_textsystem_v2.sql"
+    "20260919183401_reconcile_dev_canonical_schema_r1.sql",
+    "20260919212559_restore_fanbus_operator_append_contract.sql",
+    "20260919220959_fanbus_booking_primary_and_compact_ui.sql",
+    "20260919231602_fanbus_travel_groups_r1.sql",
+    "20260919232755_fix_fanbus_booking_merge_sequence_collision.sql",
+    '20260919235733_liveticker_textsystem_v2.sql'
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
