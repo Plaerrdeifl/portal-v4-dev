@@ -235,3 +235,38 @@ test("missing player fallbacks are additive editable text fragments", async () =
   assert.match(engine, /fragmentText\(LIVETICKER_OUTPUT_TYPE_KEYS\.MISSING_SHOOTER\)/);
   assert.match(engine, /fragmentText\(LIVETICKER_OUTPUT_TYPE_KEYS\.MISSING_GOALIE\)/);
 });
+
+
+test("FRAGMENT templates may be intentionally empty while ACTION and SUMMARY templates may not", async () => {
+  const admin = await read("js/modules/liveticker-admin.js");
+  const migration = await read("supabase/migrations/20260920063934_liveticker_allow_empty_fragments.sql");
+
+  for (const key of [
+    "goal_summary_line",
+    "penalty_summary_line",
+    "penalty_shot_summary_line",
+    "shootout_summary_line",
+    "shootout_summary",
+    "no_goals",
+    "no_penalties",
+    "missing_goal_scorer",
+    "missing_shooter",
+    "missing_goalie"
+  ]) {
+    assert.equal(validateLivetickerTemplate("", key).valid, true, key);
+  }
+
+  assert.equal(validateLivetickerTemplate("", "goal_mighty").valid, false);
+  assert.equal(validateLivetickerTemplate("", "penalty").valid, false);
+  assert.equal(validateLivetickerTemplate("", "period_summary").valid, false);
+  assert.equal(validateLivetickerTemplate("", "final_summary").valid, false);
+
+  assert.match(admin, /type\.category==="FRAGMENT"\?"":"required"/);
+  assert.match(admin, /Leer ist erlaubt – es wird nichts ausgegeben\./);
+  assert.match(admin, /Keine Ausgabe \(leer\)\./);
+
+  assert.match(migration, /char_length\(template_text\) between 0 and 4000/);
+  assert.match(migration, /v_type\.category='FRAGMENT'/);
+  assert.match(migration, /char_length\(btrim\(new\.template_text\)\)=0/);
+  assert.match(migration, /char_length\(btrim\(v_template\)\)=0/);
+});
