@@ -98,6 +98,12 @@ export const LIVETICKER_TEMPLATE_CONTEXTS = Object.freeze({
   missing_goalie: Object.freeze({ label: "Goalie fehlt", required: Object.freeze([]) })
 });
 
+const FRAGMENT_CONTEXT_KEYS = new Set([
+  "goal_summary_line", "penalty_summary_line", "penalty_shot_summary_line",
+  "shootout_summary_line", "shootout_summary", "no_goals", "no_penalties",
+  "missing_goal_scorer", "missing_shooter", "missing_goalie"
+]);
+
 const VARIABLE_KEYS = Object.freeze(LIVETICKER_TEMPLATE_VARIABLES.map(variable => variable.key));
 const OPTIONAL_KEYS = Object.freeze(LIVETICKER_TEMPLATE_VARIABLES.filter(variable => variable.optional).map(variable => variable.key));
 const TOKEN_PATTERN = /\{\{([^{}]+)\}\}/g;
@@ -178,8 +184,9 @@ export function validateLivetickerTemplate(template, contextKey) {
     .map(variable => variable.key);
   const variables = [...body.matchAll(TOKEN_PATTERN)].map(match => match[1].trim());
   const unknownVariables = [...new Set(variables.filter(variable => !allowedVariables.includes(variable)))];
-  const missingVariables = context.required.filter(variable => !variables.includes(variable));
-  const hasScoreVariables = !context.scoreRequired
+  const emptyFragment = FRAGMENT_CONTEXT_KEYS.has(contextKey) && !body.trim();
+  const missingVariables = emptyFragment ? [] : context.required.filter(variable => !variables.includes(variable));
+  const hasScoreVariables = emptyFragment || !context.scoreRequired
     || variables.includes("score")
     || (variables.includes("home_score") && variables.includes("away_score"))
     || (variables.includes("mighty_score") && variables.includes("opponent_score"));
@@ -187,7 +194,7 @@ export function validateLivetickerTemplate(template, contextKey) {
   const malformed = /\{\{|\}\}/.test(withoutValidTokens);
   const errors = [];
 
-  if (!body.trim()) errors.push("Der Ausgabetext darf nicht leer sein.");
+  if (!body.trim() && !FRAGMENT_CONTEXT_KEYS.has(contextKey)) errors.push("Der Ausgabetext darf nicht leer sein.");
   if (body.length > 4000) errors.push("Der Ausgabetext darf maximal 4.000 Zeichen haben.");
   if (malformed) errors.push("Mindestens ein Platzhalter ist technisch ungültig.");
   if (unknownVariables.length) errors.push(`Unbekannte Platzhalter: ${unknownVariables.map(templateToken).join(", ")}.`);
