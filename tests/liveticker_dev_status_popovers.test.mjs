@@ -53,6 +53,6 @@ test("DEV cache chain loads the popover controller first", async () => {
   const html = await readFile(resolve(root, "liveticker/index.html"), "utf8");
   assert.match(auth, /liveticker-status-popovers\.js\?v=20260919-dev-popovers-r1/);
   assert.match(auth, /liveticker-runtime-controls\.js\?v=20260919-runtime-labels-r1/);
-  assert.match(auth, /liveticker-graphics-inline\.js\?v=20260920-archive-finalization-r1/);
-  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260920-missing-fragments-r1/);
+  assert.match(auth, /liveticker-graphics-inline\.js\?v=20260920-summary-delivery-status-r1/);
+  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260920-summary-delivery-status-r1/);
 });

@@ -44,6 +44,9 @@ let resultsOpen = false;
 let summarySendInFlight = new Set();
 let summaryTextByKind = new Map();
 let summaryStatusByKind = new Map();
+let summaryDeliveryTracking = new Map();
+let summaryDeliveryPollTimers = new Map();
+let summaryDeliveryCheckInFlight = new Set();
 let pendingFinalizationJobId = "";
 let momentPromptKind = "";
 let seenMomentEventId = "";
@@ -51,6 +54,7 @@ let seenOutputMoments = new Set();
 
 const SUMMARY_CAPTION_KEY = "plaerrdeifl.liveticker.summary-caption.v1";
 const SUMMARY_SENT_KEY = "plaerrdeifl.liveticker.summary-sent.v1";
+const SUMMARY_DELIVERY_KEY = "plaerrdeifl.liveticker.summary-delivery.v1";
 const OUTPUT_MOMENT_KEY = "plaerrdeifl.liveticker.output-moment.v1";
 const LEGACY_SUMMARY_PENDING_KEY = "plaerrdeifl.liveticker.summary-whatsapp.v1";
 const OUTPUT_MOMENTS = Object.freeze({
@@ -99,6 +103,113 @@ function markSummarySent(jobId) {
 function wasSummarySent(jobId) {
   if (!validUuid(jobId)) return false;
   try { return localStorage.getItem(localSummaryKey(SUMMARY_SENT_KEY, jobId)) === "1"; } catch { return false; }
+}
+
+function saveSummaryDelivery(jobId, deliveryId) {
+  if (!validUuid(jobId) || !validUuid(deliveryId)) return;
+  try { localStorage.setItem(localSummaryKey(SUMMARY_DELIVERY_KEY, jobId), deliveryId); } catch {}
+}
+
+function loadSummaryDelivery(jobId) {
+  if (!validUuid(jobId)) return "";
+  try {
+    const deliveryId = String(localStorage.getItem(localSummaryKey(SUMMARY_DELIVERY_KEY, jobId)) || "").trim();
+    return validUuid(deliveryId) ? deliveryId : "";
+  } catch {
+    return "";
+  }
+}
+
+function clearSummaryDeliveryPoll(kind) {
+  const timer = summaryDeliveryPollTimers.get(kind);
+  if (timer) window.clearTimeout(timer);
+  summaryDeliveryPollTimers.delete(kind);
+}
+
+function scheduleSummaryDeliveryPoll(kind, delay = 1000) {
+  clearSummaryDeliveryPoll(kind);
+  summaryDeliveryPollTimers.set(kind, window.setTimeout(() => {
+    summaryDeliveryPollTimers.delete(kind);
+    void refreshSummaryDeliveryStatus(kind);
+  }, delay));
+}
+
+async function refreshSummaryDeliveryStatus(kind) {
+  if (!KINDS.includes(kind) || summaryDeliveryCheckInFlight.has(kind)) return;
+  const tracking = summaryDeliveryTracking.get(kind);
+  if (!tracking?.graphicJobId || !tracking?.deliveryId) return;
+  const eventId = currentEventId();
+  if (!eventId) return;
+
+  summaryDeliveryCheckInFlight.add(kind);
+  try {
+    const snapshot = await api.call("liveticker_whatsapp_deliveries_list", { eventId });
+    const deliveries = Array.isArray(snapshot?.deliveries) ? snapshot.deliveries : [];
+    const delivery = deliveries.find(item => String(item?.id || "") === tracking.deliveryId) || null;
+    const status = String(delivery?.status || "").toUpperCase();
+
+    if (status === "SUCCEEDED") {
+      markSummarySent(tracking.graphicJobId);
+      summarySendInFlight.delete(kind);
+      clearSummaryDeliveryPoll(kind);
+      summaryStatusByKind.set(kind, {
+        state: "success",
+        text: `✅ ${kindLabel(kind)} · POST + Text erfolgreich an WhatsApp gesendet.`
+      });
+      render();
+      return;
+    }
+
+    if (status === "FAILED") {
+      summarySendInFlight.delete(kind);
+      clearSummaryDeliveryPoll(kind);
+      summaryStatusByKind.set(kind, {
+        state: "error",
+        text: `${kindLabel(kind)} · WhatsApp-Versand fehlgeschlagen.`
+      });
+      render();
+      return;
+    }
+
+    summarySendInFlight.add(kind);
+    summaryStatusByKind.set(kind, {
+      state: "active",
+      text: `${kindLabel(kind)} · POST + Text werden an WhatsApp gesendet …`
+    });
+    render();
+    scheduleSummaryDeliveryPoll(kind, 1000);
+  } catch (error) {
+    console.error("Liveticker summary WhatsApp status refresh failed", error);
+    summaryStatusByKind.set(kind, {
+      state: "active",
+      text: `${kindLabel(kind)} · WhatsApp-Status wird geprüft …`
+    });
+    render();
+    scheduleSummaryDeliveryPoll(kind, 2000);
+  } finally {
+    summaryDeliveryCheckInFlight.delete(kind);
+  }
+}
+
+function trackSummaryDelivery(kind, graphicJobId, deliveryId) {
+  if (!KINDS.includes(kind) || !validUuid(graphicJobId) || !validUuid(deliveryId)) return;
+  summaryDeliveryTracking.set(kind, { graphicJobId, deliveryId });
+  saveSummaryDelivery(graphicJobId, deliveryId);
+  summarySendInFlight.add(kind);
+  void refreshSummaryDeliveryStatus(kind);
+}
+
+function resumeSummaryDeliveryTracking() {
+  for (const kind of KINDS) {
+    const job = latestJob(kind);
+    const graphicJobId = String(job?.jobId || "");
+    if (!validUuid(graphicJobId)) continue;
+    const deliveryId = loadSummaryDelivery(graphicJobId);
+    if (!deliveryId) continue;
+    const current = summaryDeliveryTracking.get(kind);
+    if (current?.graphicJobId === graphicJobId && current?.deliveryId === deliveryId) continue;
+    trackSummaryDelivery(kind, graphicJobId, deliveryId);
+  }
 }
 
 function clearLegacyPendingSummary() {
@@ -201,7 +312,7 @@ async function sendSummaryToWhatsapp(kind) {
   });
   render();
   try {
-    await api.call("liveticker_whatsapp_delivery_enqueue", {
+    const queued = await api.call("liveticker_whatsapp_delivery_enqueue", {
       eventId: currentEventId(),
       deliveryMode: "IMAGE_WITH_CAPTION",
       idempotencyKey: newRequestId(),
@@ -209,12 +320,10 @@ async function sendSummaryToWhatsapp(kind) {
       imageFilename: whatsappImageFilename(post, kind, job.jobId),
       message: text
     });
+    const deliveryId = String(queued?.delivery?.id || "");
+    if (!validUuid(deliveryId)) throw new Error("WhatsApp-Delivery-ID fehlt.");
     saveSummaryCaption(job.jobId, text);
-    markSummarySent(job.jobId);
-    summaryStatusByKind.set(kind, {
-      state: "success",
-      text: `${kindLabel(kind)} · POST + Text an WhatsApp übergeben.`
-    });
+    trackSummaryDelivery(kind, job.jobId, deliveryId);
   } catch (error) {
     console.error("Liveticker summary WhatsApp enqueue failed", error);
     summaryStatusByKind.set(kind, {
@@ -222,7 +331,7 @@ async function sendSummaryToWhatsapp(kind) {
       text: `${kindLabel(kind)} · WhatsApp-Versand fehlgeschlagen: ${error?.message || "Unbekannter Fehler"}`
     });
   } finally {
-    summarySendInFlight.delete(kind);
+    if (!summaryDeliveryTracking.has(kind)) summarySendInFlight.delete(kind);
     render();
   }
 }
@@ -618,7 +727,7 @@ function render() {
     const notice = summaryStatus(kind);
     if (notice) {
       statusLine.textContent = notice.text;
-      statusLine.dataset.state = notice.state === "error" ? "error" : notice.state === "active" ? "active" : "idle";
+      statusLine.dataset.state = notice.state === "error" ? "error" : notice.state === "active" ? "active" : notice.state === "success" ? "success" : "idle";
       statusLine.hidden = false;
     } else {
       statusLine.textContent = `${kindLabel(kind)} · ${jobStatus(job)}`;
@@ -648,6 +757,7 @@ async function refreshStatusOnly() {
     const snapshot = await api.call("liveticker_graphics_status", { eventId });
     jobs = Array.isArray(snapshot?.jobs) ? snapshot.jobs : [];
     syncPendingFinalization();
+    resumeSummaryDeliveryTracking();
     render();
     scheduleActiveRefresh();
   } catch (error) {
@@ -791,6 +901,7 @@ window.addEventListener("pagehide", () => {
   clearRefreshTimer();
   if (delayedRefreshTimer) window.clearTimeout(delayedRefreshTimer);
   clearWorkerRefreshTimer();
+  for (const kind of KINDS) clearSummaryDeliveryPoll(kind);
 });
 
 clearLegacyPendingSummary();
