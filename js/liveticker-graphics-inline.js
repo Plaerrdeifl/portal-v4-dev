@@ -727,7 +727,7 @@ function render() {
     const notice = summaryStatus(kind);
     if (notice) {
       statusLine.textContent = notice.text;
-      statusLine.dataset.state = notice.state === "error" ? "error" : notice.state === "active" ? "active" : "idle";
+      statusLine.dataset.state = notice.state === "error" ? "error" : notice.state === "active" ? "active" : notice.state === "success" ? "success" : "idle";
       statusLine.hidden = false;
     } else {
       statusLine.textContent = `${kindLabel(kind)} · ${jobStatus(job)}`;
