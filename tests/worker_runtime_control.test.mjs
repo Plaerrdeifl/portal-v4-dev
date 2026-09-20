@@ -119,7 +119,7 @@ test("Liveticker result panel shares cached Post/Story files synchronously with 
   assert.match(graphics, /statusLine\.hidden = job\?\.status === "SUCCEEDED"/);
   assert.match(graphics, /const visible = Boolean\(kind\) && !resultsOpen/);
   assert.match(graphics, /primaryOutputWrap\.hidden = !visible/);
-  assert.match(auth, /liveticker-graphics-inline\.js\?v=20260919-summary-caption-r2/);
+  assert.match(auth, /liveticker-graphics-inline\.js\?v=20260920-archive-finalization-r1/);
 });
 
 test("Fanbus Social Media exposes manual worker control and blocks flyer generation until ready", async () => {
