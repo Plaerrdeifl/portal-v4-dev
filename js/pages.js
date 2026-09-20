@@ -133,7 +133,7 @@ export function preloadAuthenticatedModules(keys = ["dashboard", "dates", "fancl
     fanclub: "./modules/fanclub.js",
     tasks: "./modules/tasks.js",
     teams: "./modules/teams.js",
-    liveticker: "./modules/liveticker-admin.js?v=20260920-textsystem-ui-r2",
+    liveticker: "./modules/liveticker-admin.js?v=20260920-archive-finalization-r1",
     admin: "./modules/admin.js"
   };
   return Promise.allSettled(
