@@ -218,7 +218,7 @@ test("migration and portal expose full variant CRUD without changing the legacy 
 
 
 test("missing player fallbacks are additive editable text fragments", async () => {
-  const migration = await read("supabase/migrations/20260920010617_liveticker_missing_player_fragments.sql");
+  const migration = await read("supabase/migrations/20260920011524_liveticker_missing_player_fragments.sql");
   const templates = await read("js/liveticker-output-templates.js");
   const engine = await read("js/liveticker-engine-v4.js");
 
