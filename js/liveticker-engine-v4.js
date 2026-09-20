@@ -758,7 +758,8 @@ function initialize() {
     container.dataset.outputType = outputType;
     if (!container.dataset.variantBound) {
       container.dataset.variantBound = "true";
-      container.addEventListener("change", () => {
+      container.addEventListener("input", event => {
+        if (!(event.target instanceof HTMLInputElement) || event.target.type != "radio") return;
         manuallySelectedVariantTypes.add(container.dataset.outputType || outputType);
       });
     }

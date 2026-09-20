@@ -183,6 +183,12 @@ test("migration and portal expose full variant CRUD without changing the legacy 
   assert.doesNotMatch(html, /name="goalStyle"|name="penaltyStyle"/);
   assert.match(engine, /outputVariantId:/);
   assert.match(engine, /pd-liveticker-output-templates-updated/);
+  assert.match(engine, /container\.addEventListener\("input", event =>/);
+  assert.doesNotMatch(engine, /container\.addEventListener\("change", \(\) => \{\s*manuallySelectedVariantTypes\.add/);
+  assert.match(admin, /<details class="liveticker-template-section"/);
+  assert.match(admin, /liveticker-output-variant-actions/);
+  assert.match(admin, /liveticker-variant-action/);
+  assert.match(admin, /openOutputTypeKeys/);
   assert.match(storage, /setInterval\(pollOutputTemplates, 30000\)/);
   assert.match(implementation, /`goal_mighty`/);
   assert.match(implementation, /`goal_opponent`/);
