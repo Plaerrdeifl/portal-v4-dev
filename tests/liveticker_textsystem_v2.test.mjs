@@ -239,7 +239,7 @@ test("missing player fallbacks are additive editable text fragments", async () =
 
 test("FRAGMENT templates may be intentionally empty while ACTION and SUMMARY templates may not", async () => {
   const admin = await read("js/modules/liveticker-admin.js");
-  const migration = await read("supabase/migrations/20260920063934_liveticker_allow_empty_fragments.sql");
+  const migration = await read("supabase/migrations/20260920064542_liveticker_allow_empty_fragments.sql");
 
   for (const key of [
     "goal_summary_line",
