@@ -406,7 +406,7 @@ export function formatPenaltyText(event, opponent) {
 
 export function formatShootoutText(event, opponent) {
   const result = event.result === "scored" ? "✅ verwandelt" : "❌ vergeben";
-  const shooter = event.player ? playerText(event.player) : "Schütze noch offen";
+  const shooter = event.player ? playerText(event.player) : fragmentText(LIVETICKER_OUTPUT_TYPE_KEYS.MISSING_SHOOTER);
   return renderOutputVariant(LIVETICKER_OUTPUT_TYPE_KEYS.SHOOTOUT_ATTEMPT, {
     team_name: teamName(event.team, opponent),
     opponent_name: opponent.shortName,
@@ -417,9 +417,9 @@ export function formatShootoutText(event, opponent) {
 
 export function formatPenaltyShotText(event, opponent) {
   const result = event.result === "scored" ? "✅ verwandelt" : "❌ vergeben";
-  const shooter = event.player ? playerText(event.player) : "Schütze noch offen";
+  const shooter = event.player ? playerText(event.player) : fragmentText(LIVETICKER_OUTPUT_TYPE_KEYS.MISSING_SHOOTER);
   const defendingTeam = event.team === "mighty" ? "opponent" : "mighty";
-  const goalie = event.goalie ? playerText(event.goalie) : "Goalie noch offen";
+  const goalie = event.goalie ? playerText(event.goalie) : fragmentText(LIVETICKER_OUTPUT_TYPE_KEYS.MISSING_GOALIE);
   return renderOutputVariant(LIVETICKER_OUTPUT_TYPE_KEYS.PENALTY_SHOT, {
     minute: event.minute,
     team_name: teamName(event.team, opponent),
@@ -458,8 +458,8 @@ function goalSummaryLines(history, team, segmentKey = null) {
     )
     .map(event => {
       const scorer = isPenaltyShotEvent(event)
-        ? `🏒 Straf-Penalty · ${event.player ? playerText(event.player) : "Schütze offen"}`
-        : (goalPlayerLine(event) || "Torschütze offen");
+        ? `🏒 Straf-Penalty · ${event.player ? playerText(event.player) : fragmentText(LIVETICKER_OUTPUT_TYPE_KEYS.MISSING_SHOOTER)}`
+        : (goalPlayerLine(event) || fragmentText(LIVETICKER_OUTPUT_TYPE_KEYS.MISSING_GOAL_SCORER));
       return renderOutputVariant(LIVETICKER_OUTPUT_TYPE_KEYS.GOAL_SUMMARY_LINE, {
         minute: event.minute,
         scorer
@@ -467,8 +467,12 @@ function goalSummaryLines(history, team, segmentKey = null) {
     });
 }
 
-function emptySummaryText(outputType) {
+function fragmentText(outputType) {
   return renderOutputVariant(outputType, {});
+}
+
+function emptySummaryText(outputType) {
+  return fragmentText(outputType);
 }
 
 export function formatSegmentSummary(history, segmentKey, opponent) {
@@ -503,8 +507,8 @@ function penaltySummaryLines(history, team) {
     if (isPenaltyShotEvent(event)) {
       const defendingTeam = event.team === "mighty" ? "opponent" : "mighty";
       if (defendingTeam === team) {
-        const shooter = event.player ? playerText(event.player) : "Schütze offen";
-        const goalie = event.goalie ? playerText(event.goalie) : "Goalie offen";
+        const shooter = event.player ? playerText(event.player) : fragmentText(LIVETICKER_OUTPUT_TYPE_KEYS.MISSING_SHOOTER);
+        const goalie = event.goalie ? playerText(event.goalie) : fragmentText(LIVETICKER_OUTPUT_TYPE_KEYS.MISSING_GOALIE);
         lines.push(renderOutputVariant(LIVETICKER_OUTPUT_TYPE_KEYS.PENALTY_SHOT_SUMMARY_LINE, {
           minute: event.minute,
           shooter,
@@ -533,7 +537,7 @@ function shootoutSummaryLines(history, opponent) {
   const score = calculateShootout(history);
   const attemptLines = attempts.map(event => renderOutputVariant(LIVETICKER_OUTPUT_TYPE_KEYS.SHOOTOUT_SUMMARY_LINE, {
     team_name: teamName(event.team, opponent),
-    shooter: event.player ? playerText(event.player) : "Schütze offen",
+    shooter: event.player ? playerText(event.player) : fragmentText(LIVETICKER_OUTPUT_TYPE_KEYS.MISSING_SHOOTER),
     result: event.result === "scored" ? "verwandelt" : "vergeben"
   }));
   return renderOutputVariant(LIVETICKER_OUTPUT_TYPE_KEYS.SHOOTOUT_SUMMARY, {

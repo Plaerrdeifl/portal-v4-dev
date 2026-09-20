@@ -15,7 +15,10 @@ export const LIVETICKER_OUTPUT_TYPE_KEYS = Object.freeze({
   SHOOTOUT_SUMMARY_LINE: "shootout_summary_line",
   SHOOTOUT_SUMMARY: "shootout_summary",
   NO_GOALS: "no_goals",
-  NO_PENALTIES: "no_penalties"
+  NO_PENALTIES: "no_penalties",
+  MISSING_GOAL_SCORER: "missing_goal_scorer",
+  MISSING_SHOOTER: "missing_shooter",
+  MISSING_GOALIE: "missing_goalie"
 });
 
 export const LIVETICKER_TEMPLATE_VARIABLES = Object.freeze([
@@ -89,7 +92,10 @@ export const LIVETICKER_TEMPLATE_CONTEXTS = Object.freeze({
   shootout_summary_line: Object.freeze({ label: "Penaltyversuch-Zeile", required: Object.freeze(["team_name", "shooter", "result"]) }),
   shootout_summary: Object.freeze({ label: "Penaltyschießen-Zusammenfassung", required: Object.freeze(["mighty_score", "opponent_score", "opponent_name", "shootout_attempts"]) }),
   no_goals: Object.freeze({ label: "Keine Tore", required: Object.freeze([]) }),
-  no_penalties: Object.freeze({ label: "Keine Strafen", required: Object.freeze([]) })
+  no_penalties: Object.freeze({ label: "Keine Strafen", required: Object.freeze([]) }),
+  missing_goal_scorer: Object.freeze({ label: "Torschütze fehlt", required: Object.freeze([]) }),
+  missing_shooter: Object.freeze({ label: "Schütze fehlt", required: Object.freeze([]) }),
+  missing_goalie: Object.freeze({ label: "Goalie fehlt", required: Object.freeze([]) })
 });
 
 const VARIABLE_KEYS = Object.freeze(LIVETICKER_TEMPLATE_VARIABLES.map(variable => variable.key));
@@ -265,7 +271,10 @@ const DEFAULT_OUTPUT_TYPES = Object.freeze([
   ["shootout_summary_line", "Textbaustein · Penaltyversuch", "FRAGMENT", 110],
   ["shootout_summary", "Textbaustein · Penaltyschießen", "FRAGMENT", 120],
   ["no_goals", "Textbaustein · Keine Tore", "FRAGMENT", 130],
-  ["no_penalties", "Textbaustein · Keine Strafen", "FRAGMENT", 140]
+  ["no_penalties", "Textbaustein · Keine Strafen", "FRAGMENT", 140],
+  ["missing_goal_scorer", "Textbaustein · Torschütze fehlt", "FRAGMENT", 150],
+  ["missing_shooter", "Textbaustein · Schütze fehlt", "FRAGMENT", 160],
+  ["missing_goalie", "Textbaustein · Goalie fehlt", "FRAGMENT", 170]
 ].map(([key, label, category, sortOrder]) => Object.freeze({
   key,
   label,
@@ -287,7 +296,10 @@ const DEFAULT_NON_LEGACY_VARIANTS = Object.freeze([
   ["83000000-0000-4000-8000-000000000001", "shootout_summary_line", "normal", "Normal", "{{team_name}} · {{shooter}} · {{result}}"],
   ["84000000-0000-4000-8000-000000000001", "shootout_summary", "normal", "Normal", "\n🏒 *Penaltyschießen*\nTreffer: Mighty Dogs {{mighty_score}}:{{opponent_score}} {{opponent_name}}\n{{shootout_attempts}}"],
   ["85000000-0000-4000-8000-000000000001", "no_goals", "normal", "Normal", "Keine Tore"],
-  ["86000000-0000-4000-8000-000000000001", "no_penalties", "normal", "Normal", "Keine Strafen"]
+  ["86000000-0000-4000-8000-000000000001", "no_penalties", "normal", "Normal", "Keine Strafen"],
+  ["87000000-0000-4000-8000-000000000001", "missing_goal_scorer", "normal", "Normal", "Torschütze offen"],
+  ["88000000-0000-4000-8000-000000000001", "missing_shooter", "normal", "Normal", "Schütze offen"],
+  ["89000000-0000-4000-8000-000000000001", "missing_goalie", "normal", "Normal", "Goalie offen"]
 ].map(([id, outputType, semanticKey, name, template]) => Object.freeze({
   id, outputType, semanticKey, name, template, sortOrder: 10, active: true, default: true, revision: 1
 })));

@@ -99,6 +99,27 @@ test("Straf-Penalty, shootout attempt, period and final wording come from varian
   assert.match(formatFinalSummary(history, opponent), /^ENDE Mighty Dogs 1:0 Erfurt/);
 });
 
+test("missing scorer shooter and goalie wording comes from editable fragments", () => {
+  const variants = LIVETICKER_DEFAULT_TEXTSYSTEM.variants.map(variant => {
+    if (variant.outputType === LIVETICKER_OUTPUT_TYPE_KEYS.MISSING_GOAL_SCORER) return { ...variant, template: "Torschütze unbekannt" };
+    if (variant.outputType === LIVETICKER_OUTPUT_TYPE_KEYS.MISSING_SHOOTER) return { ...variant, template: "Schütze unbekannt" };
+    if (variant.outputType === LIVETICKER_OUTPUT_TYPE_KEYS.MISSING_GOALIE) return { ...variant, template: "Goalie unbekannt" };
+    return variant;
+  });
+  installVariants(variants);
+
+  const goal = { id: "missing-goal", type: "goal", team: "mighty", minute: 6, player: null, assists: [], style: "classic" };
+  const penaltyShot = { id: "missing-ps", type: "penalty", subtype: "penalty_shot", minute: 11, team: "mighty", player: null, goalie: null, result: "missed", penalties: [{ team: "opponent" }] };
+  const shootout = { id: "missing-so", type: "shootout", team: "mighty", player: null, result: "missed" };
+
+  assert.match(formatSegmentSummary([goal], "P1", opponent), /Torschütze unbekannt/);
+  assert.match(formatEventText(penaltyShot, [penaltyShot], opponent), /Schütze unbekannt/);
+  assert.match(formatEventText(penaltyShot, [penaltyShot], opponent), /Goalie unbekannt/);
+  assert.match(formatEventText(shootout, [shootout], opponent), /Schütze unbekannt/);
+  assert.match(formatFinalSummary([penaltyShot], opponent), /Schütze unbekannt/);
+  assert.match(formatFinalSummary([penaltyShot], opponent), /Goalie unbekannt/);
+});
+
 test("period templates keep cumulative goal lists", () => {
   const history = [
     { id: "g1", type: "goal", team: "mighty", minute: 3, player, assists: [], style: "classic" },
@@ -193,4 +214,24 @@ test("migration and portal expose full variant CRUD without changing the legacy 
   assert.match(implementation, /`goal_mighty`/);
   assert.match(implementation, /`goal_opponent`/);
   assert.match(implementation, /`penalty`/);
+});
+
+
+test("missing player fallbacks are additive editable text fragments", async () => {
+  const migration = await read("supabase/migrations/20260920010617_liveticker_missing_player_fragments.sql");
+  const templates = await read("js/liveticker-output-templates.js");
+  const engine = await read("js/liveticker-engine-v4.js");
+
+  assert.match(migration, /missing_goal_scorer/);
+  assert.match(migration, /missing_shooter/);
+  assert.match(migration, /missing_goalie/);
+  assert.match(migration, /Torschütze offen/);
+  assert.match(migration, /Schütze offen/);
+  assert.match(migration, /Goalie offen/);
+  assert.match(templates, /MISSING_GOAL_SCORER: "missing_goal_scorer"/);
+  assert.match(templates, /MISSING_SHOOTER: "missing_shooter"/);
+  assert.match(templates, /MISSING_GOALIE: "missing_goalie"/);
+  assert.match(engine, /fragmentText\(LIVETICKER_OUTPUT_TYPE_KEYS\.MISSING_GOAL_SCORER\)/);
+  assert.match(engine, /fragmentText\(LIVETICKER_OUTPUT_TYPE_KEYS\.MISSING_SHOOTER\)/);
+  assert.match(engine, /fragmentText\(LIVETICKER_OUTPUT_TYPE_KEYS\.MISSING_GOALIE\)/);
 });
