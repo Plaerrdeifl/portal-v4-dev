@@ -44,6 +44,7 @@ let resultsOpen = false;
 let summarySendInFlight = new Set();
 let summaryTextByKind = new Map();
 let summaryStatusByKind = new Map();
+let pendingFinalizationJobId = "";
 let momentPromptKind = "";
 let seenMomentEventId = "";
 let seenOutputMoments = new Set();
@@ -235,6 +236,23 @@ function currentOutputKind() {
 
 function latestJob(kind) {
   return jobs.find(job => job?.kind === kind) || null;
+}
+
+function syncPendingFinalization() {
+  if (!pendingFinalizationJobId) return;
+  const job = latestJob("FINAL");
+  if (!job || String(job.jobId || "") !== pendingFinalizationJobId) return;
+  if (job.status === "FAILED") {
+    pendingFinalizationJobId = "";
+    return;
+  }
+  if (job.status !== "SUCCEEDED") return;
+  const eventId = currentEventId();
+  const jobId = pendingFinalizationJobId;
+  pendingFinalizationJobId = "";
+  window.dispatchEvent(new CustomEvent("pd-liveticker-final-output-ready", {
+    detail: { eventId, jobId, kind: "FINAL" }
+  }));
 }
 
 function kindLabel(kind) {
@@ -629,6 +647,7 @@ async function refreshStatusOnly() {
   try {
     const snapshot = await api.call("liveticker_graphics_status", { eventId });
     jobs = Array.isArray(snapshot?.jobs) ? snapshot.jobs : [];
+    syncPendingFinalization();
     render();
     scheduleActiveRefresh();
   } catch (error) {
@@ -670,12 +689,14 @@ async function enqueue(kind, captionText = "") {
   try {
     const queued = await api.call("liveticker_graphics_enqueue", { eventId, kind });
     const jobId = String(queued?.jobId || "");
+    if (kind === "FINAL" && validUuid(jobId)) pendingFinalizationJobId = jobId;
     if (validUuid(jobId) && captionText) saveSummaryCaption(jobId, captionText);
     summaryStatusByKind.set(kind, {
       state: "active",
       text: `${kindLabel(kind)} · Flyer wird erstellt; WhatsApp-Versand erfolgt erst nach Klick.`
     });
     await refreshAll();
+    syncPendingFinalization();
     const job = latestJob(kind);
     if (job?.status === "SUCCEEDED") {
       summaryStatusByKind.set(kind, {

@@ -495,8 +495,9 @@ export async function prepareLivetickerGameStorage() {
     }
   });
 
-  document.addEventListener("click", event => {
-    if (!event.target?.closest?.("#finalSummaryButton")) return;
+  window.addEventListener("pd-liveticker-final-output-ready", event => {
+    const eventId = String(event.detail?.eventId || "");
+    if (!selectedGame || eventId !== selectedGame.eventId) return;
     queueMicrotask(() => completeSelectedGame());
   });
 
