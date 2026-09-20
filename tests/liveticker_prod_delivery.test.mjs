@@ -46,7 +46,7 @@ test("calendar adapter accepts the current compact engine and injects calendar r
 
 test("PROD output templates stay authenticated and capability-gated", async () => {
   const migration = await read("supabase/migrations/20260906115000_liveticker_output_templates_prod_r1.sql");
-  const v2Migration = await read("supabase/migrations/20260919235733_liveticker_textsystem_v2.sql");
+  const v2Migration = await read("supabase/migrations/20260920001157_liveticker_textsystem_v2.sql");
   const storage = await read("js/liveticker-game-storage.js");
   const admin = await read("js/modules/liveticker-admin.js");
 

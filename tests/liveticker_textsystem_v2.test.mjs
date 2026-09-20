@@ -152,7 +152,7 @@ test("V2 goal variants follow the new type contract without the legacy score req
 
 test("migration and portal expose full variant CRUD without changing the legacy table", async () => {
   const [migration, admin, engine, storage, html, implementation] = await Promise.all([
-    read("supabase/migrations/20260919235733_liveticker_textsystem_v2.sql"),
+    read("supabase/migrations/20260920001157_liveticker_textsystem_v2.sql"),
     read("js/modules/liveticker-admin.js"),
     read("js/liveticker-engine-v4.js"),
     read("js/liveticker-game-storage.js"),
