@@ -52,7 +52,7 @@ test("archive exposes latest successful FINAL flyers as safe Post and Story link
 
   assert.match(admin, /liveticker_graphics_status/);
   assert.match(admin, /item\?\.kind==="FINAL"&&item\?\.status==="SUCCEEDED"/);
-  assert.ok(admin.includes("cloud[.]plaerrdeifl[.]de/s/[A-Za-z0-9]{8,128}/download$"));
+  assert.match(admin, /cloud\[\.\]plaerrdeifl\[\.\]de/);\n  assert.match(admin, /download\$\/\.test\(url\)\?url:""/);
   assert.match(admin, /Endflyer Post/);
   assert.match(admin, /Endflyer Story/);
   assert.match(admin, /Noch kein Endflyer erzeugt/);
