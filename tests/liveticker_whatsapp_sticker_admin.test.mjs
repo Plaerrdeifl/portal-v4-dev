@@ -42,5 +42,5 @@ test("managed WhatsApp sticker delete archives rows and retains assets/history",
   const removeStart = edge.indexOf("async function removeSticker");
   const serveStart = edge.indexOf("Deno.serve", removeStart);
   assert.doesNotMatch(edge.slice(removeStart, serveStart), /storage\/v1\/object/);
-  assert.match(pages, /liveticker-admin\.js\?v=20260920-empty-fragments-r1/);
+  assert.match(pages, /liveticker-admin\.js\?v=20260920-archive-endflyers-r1/);
 });

@@ -43,5 +43,20 @@ test("archive finalization runtime chain is cache-busted end-to-end", async () =
   assert.match(auth, /liveticker-bootstrap\.js\?v=20260920-missing-fragments-r1/);
   assert.match(auth, /liveticker-graphics-inline\.js\?v=20260920-summary-delivery-status-r1/);
   assert.match(bootstrap, /liveticker-game-storage\.js\?v=20260920-archive-finalization-r1/);
-  assert.match(pages, /liveticker-admin\.js\?v=20260920-empty-fragments-r1/);
+  assert.match(pages, /liveticker-admin\.js\?v=20260920-archive-endflyers-r1/);
+});
+
+
+test("archive exposes latest successful FINAL flyers as safe Post and Story links", async () => {
+  const admin = await read("js/modules/liveticker-admin.js");
+
+  assert.match(admin, /liveticker_graphics_status/);
+  assert.match(admin, /item\?\.kind==="FINAL"&&item\?\.status==="SUCCEEDED"/);
+  assert.match(admin, /cloud\[\.\]plaerrdeifl\[\.\]de/);
+  assert.match(admin, /download\$\/\.test\(url\)\?url:""/);
+  assert.match(admin, /Endflyer Post/);
+  assert.match(admin, /Endflyer Story/);
+  assert.match(admin, /Noch kein Endflyer erzeugt/);
+  assert.match(admin, /target="_blank" rel="noopener noreferrer"/);
+  assert.match(admin, /void loadArchiveFlyers\(currentGame,panel\)/);
 });
