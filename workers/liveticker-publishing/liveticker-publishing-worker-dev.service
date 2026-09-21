@@ -1,0 +1,33 @@
+[Unit]
+Description=Plaerrdeifl Liveticker Publishing Worker (DEV graphics)
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=benny
+Group=benny
+SupplementaryGroups=docker
+WorkingDirectory=/srv/docker/liveticker/dev/worker
+ExecStart=/usr/bin/python3 /srv/docker/liveticker/dev/worker/publishing_worker_dev.py
+Restart=always
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+ReadOnlyPaths=/srv/docker/liveticker/worker /srv/docker/liveticker/templates /srv/docker/liveticker/assets /srv/docker/liveticker/secrets /srv/docker/liveticker/dev/worker /srv/docker/liveticker/dev/secrets /srv/docker/m340/fonts
+ReadWritePaths=/srv/docker/liveticker/dev/work
+
+[Install]
+WantedBy=multi-user.target

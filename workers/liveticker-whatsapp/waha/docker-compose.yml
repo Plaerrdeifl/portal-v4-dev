@@ -1,0 +1,15 @@
+services:
+  waha:
+    image: liveticker-waha-wpp-sticker:2026.8.2-p1
+    container_name: liveticker-waha
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"
+    env_file:
+      - .env
+    environment:
+      WHATSAPP_DEFAULT_ENGINE: WPP
+      WAHA_LOG_LEVEL: info
+    volumes:
+      - ./sessions:/app/.sessions
+      - ./patches/session.wpp.core.js:/app/dist/core/engines/wpp/session.wpp.core.js:ro
