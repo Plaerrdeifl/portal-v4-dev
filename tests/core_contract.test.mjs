@@ -214,7 +214,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260919232755_fix_fanbus_booking_merge_sequence_collision.sql",
     '20260920001157_liveticker_textsystem_v2.sql',
     '20260920011524_liveticker_missing_player_fragments.sql',
-    '20260920064542_liveticker_allow_empty_fragments.sql'
+    '20260920064542_liveticker_allow_empty_fragments.sql',
+    '20260921145933_harden_liveticker_sync_authorize_first.sql'
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
@@ -820,4 +821,22 @@ test("mobile navigation keeps the bottom bar and More opens the full sidebar", a
     /event\.target\.closest\("#mobileMoreToggle"\)[\s\S]*?openMobileMenu\(\)/
   );
   assert.doesNotMatch(ui, /openMobileMore|closeMobileMore|mobileMoreRoutes/);
+});
+
+
+test("liveticker sync security migration authorizes before privileged reads", async () => {
+  const migration = await read(
+    "supabase/migrations/20260921145933_harden_liveticker_sync_authorize_first.sql"
+  );
+  const authorization = migration.indexOf(
+    "perform app_private.liveticker_require_operator();"
+  );
+  const privilegedRead = migration.indexOf(
+    "from app_modules.liveticker_actions as action"
+  );
+
+  assert.ok(authorization >= 0);
+  assert.ok(privilegedRead > authorization);
+  assert.match(migration, /security definer/i);
+  assert.match(migration, /set search_path to ''/i);
 });
