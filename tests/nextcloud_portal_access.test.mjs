@@ -71,6 +71,18 @@ test("DEV build publishes the OAuth consent route without a navigation redirect"
   );
   assert.match(
     redirects,
-    /^\/oauth\/consent\s+\/oauth\/consent\/index\.html\s+200$/m,
+    /^\/oauth\/consent\s+\/oauth-consent\s+200$/m,
+  );
+  assert.match(
+    source,
+    /resolve\(dist, "oauth-consent\.html"\)/,
+  );
+  const consentHtml = await readFile(
+    new URL("../oauth/consent/index.html", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    consentHtml,
+    /src="\/oauth\/consent\/consent\.js"/,
   );
 });
