@@ -2035,6 +2035,8 @@ button.v4-member-compact-row:hover{border-color:var(--blue-400);background:var(-
 .v4-inline-state.is-inactive{color:var(--ink-500)}
 .v4-contribution-season-control{margin:0 0 12px}
 .v4-contribution-season-control select{width:100%;min-height:42px}
+.v4-contribution-member-search{display:block;max-width:440px;margin:0 0 12px}
+.v4-contribution-member-search input{width:100%}
 .v4-subheading-row{margin-bottom:9px}
 .v4-contribution-row-end{display:inline-flex;align-items:center;gap:9px;flex:none}
 .v4-contribution-status.is-unassigned{color:var(--ink-500)}

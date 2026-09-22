@@ -23,6 +23,7 @@ import {
 let snapshot = null;
 let activeTab = "members";
 let activeContributionSeasonId = "";
+let contributionMemberSearchQuery = "";
 let activeFinanceAccountId = "ALL";
 let memberSearchQuery = "";
 let showInactiveMembers = false;
@@ -890,6 +891,91 @@ function openPaymentReport(contribution, parentDialog = null, member = null) {
   });
 }
 
+function paymentReportEditForm(report) {
+  const accounts = (snapshot?.financeAccounts || []).filter(
+    account => account.active || account.id === report.accountId
+  );
+  const contribution = (snapshot?.memberContributions || []).find(
+    item => item.id === report.memberContributionId
+  );
+  const maximumAmount = Number(report.amount || 0)
+    + Number(contribution?.reportableAmount || 0);
+
+  if (!accounts.some(account => account.id === report.accountId)) {
+    accounts.push({
+      id: report.accountId,
+      name: report.accountName,
+      active: false
+    });
+  }
+
+  return `<form class="form-grid v4-fanclub-form">
+    <input type="hidden" name="id" value="${escapeAttr(report.id)}">
+    <input type="hidden" name="revision" value="${escapeAttr(report.revision)}">
+    <label class="full">Mitglied
+      <input value="${escapeAttr(report.memberName)}" disabled>
+    </label>
+    <label>Betrag
+      <input
+        name="amount"
+        required
+        type="number"
+        min="0.01"
+        max="${escapeAttr(maximumAmount.toFixed(2))}"
+        step="0.01"
+        value="${escapeAttr(report.amount)}"
+      >
+    </label>
+    <label>Zahlungsdatum
+      <input name="paidOn" required type="date" value="${escapeAttr(report.paidOn)}">
+    </label>
+    <label>Konto
+      <select name="accountId" required>
+        ${optionList(
+          accounts.map(account => ({
+            value: account.id,
+            label: `${account.name}${account.active ? "" : " · inaktiv"}`
+          })),
+          report.accountId,
+          "Konto auswählen"
+        )}
+      </select>
+    </label>
+    <label>Zahlungsart
+      <select name="paymentMethod" required>
+        ${optionList(PAYMENT_METHODS, report.paymentMethod)}
+      </select>
+    </label>
+    <p class="v4-field-full subtle">Die Meldung wird erst durch die anschließende Bestätigung gebucht.</p>
+  </form>`;
+}
+
+function openEditPaymentReport(report, parentDialog = null) {
+  const parentContextId = parentDialog?.dataset.v4DialogContext || "";
+  openDialog({
+    title: "Zahlungsmeldung bearbeiten",
+    kicker: `${report.memberName} · ${selectedSeason()?.name || "Beiträge"}`,
+    body: paymentReportEditForm(report),
+    submitLabel: "Änderungen speichern",
+    preserveParentOnSubmit: Boolean(parentDialog),
+    onSubmit: async values => {
+      snapshot = await runWrite(
+        () => call("update_contribution_payment_report", values),
+        "Zahlungsmeldung wurde aktualisiert und bleibt zur Prüfung offen."
+      );
+      renderAll();
+      if (parentDialog) {
+        const updated = (snapshot?.contributionPaymentReports || [])
+          .find(item => item.id === report.id);
+        restoreFanclubDialog(parentDialog, parentContextId, () => {
+          if (updated) renderPaymentReportDetailDialog(parentDialog, updated);
+          else parentDialog.close();
+        });
+      }
+    }
+  });
+}
+
 async function confirmPayment(report) {
   const confirmed = await confirmAction(
     `${money(report.amount)} für ${report.memberName} als bezahlt bestätigen?`
@@ -1059,6 +1145,7 @@ function paymentReportDetailMarkup(report) {
     ${report.reversalReason ? `<div class="full"><span>Stornogrund</span><strong>${escapeHtml(report.reversalReason)}</strong></div>` : ""}
   </div>
   ${report.status === "PENDING" && snapshot.canManageFinance ? `<div class="dialog-actions v4-detail-actions">
+    <button class="button secondary" type="button" data-dialog-edit-payment="${escapeAttr(report.id)}">Bearbeiten</button>
     <button class="button primary" type="button" data-dialog-confirm-payment="${escapeAttr(report.id)}">Bestätigen</button>
     <button class="button danger" type="button" data-dialog-reject-payment="${escapeAttr(report.id)}">Ablehnen</button>
   </div>` : ""}`;
@@ -1070,6 +1157,9 @@ function renderPaymentReportDetailDialog(dialog, report) {
   const body = dialog.querySelector("#v4DialogBody");
   if (!body) return;
   body.innerHTML = paymentReportDetailMarkup(report);
+
+  body.querySelector("[data-dialog-edit-payment]")
+    ?.addEventListener("click", () => openEditPaymentReport(report, dialog));
 
   body.querySelector("[data-dialog-confirm-payment]")
     ?.addEventListener("click", async () => {
@@ -1211,6 +1301,10 @@ function renderContributions(panel) {
         <div class="v4-heading-row v4-subheading-row">
           <div><h3>Beiträge je Mitglied</h3><p>${escapeHtml(season.name)}</p></div>
         </div>
+        <label class="v4-compact-search v4-contribution-member-search">
+          <span class="sr-only">Mitglied suchen</span>
+          <input id="contributionMemberSearchInput" type="search" placeholder="Mitglied suchen …" autocomplete="off" value="${escapeAttr(contributionMemberSearchQuery)}">
+        </label>
         ${members.length ? `
           <div class="v4-table-wrap v4-desktop-table"><table class="v4-table">
             <thead><tr>
@@ -1218,7 +1312,8 @@ function renderContributions(panel) {
             </tr></thead>
             <tbody>${members.map(member => {
               const contribution = contributionFor(member.id);
-              return `<tr>
+              const searchText = memberName(member).toLocaleLowerCase("de-DE");
+              return `<tr data-contribution-member-search="${escapeAttr(searchText)}">
                 <td><strong>${escapeHtml(memberName(member))}</strong></td>
                 <td>${escapeHtml(contribution?.contributionClassName || "Nicht zugeordnet")}</td>
                 <td class="v4-money">${escapeHtml(money(contribution?.amountDue))}</td>
@@ -1231,11 +1326,13 @@ function renderContributions(panel) {
           </table></div>
           <div class="v4-contribution-mobile-list">${members.map(member => {
             const contribution = contributionFor(member.id);
-            return `<button class="v4-contribution-mobile-card" type="button" data-open-contribution-member="${escapeAttr(member.id)}">
+            const searchText = memberName(member).toLocaleLowerCase("de-DE");
+            return `<button class="v4-contribution-mobile-card" type="button" data-open-contribution-member="${escapeAttr(member.id)}" data-contribution-member-search="${escapeAttr(searchText)}">
               <strong>${escapeHtml(memberName(member))}</strong>
               <span class="v4-contribution-row-end">${contributionStatusIndicator(contribution)}<span class="v4-row-chevron" aria-hidden="true">›</span></span>
             </button>`;
           }).join("")}</div>
+          <div id="contributionMemberSearchEmpty" class="v4-inline-empty" hidden>Keine passenden Mitglieder gefunden.</div>
         ` : empty("Noch keine Mitglieder angelegt.")}
       </section>
 
@@ -1256,6 +1353,26 @@ function renderContributions(panel) {
 
   document.getElementById("contributionManagementButton")
     ?.addEventListener("click", () => openContributionManagement(season));
+
+  const applyContributionMemberSearch = () => {
+    const query = contributionMemberSearchQuery.trim().toLocaleLowerCase("de-DE");
+    let matches = 0;
+    panel.querySelectorAll("[data-contribution-member-search]").forEach(row => {
+      const visible = !query || row.dataset.contributionMemberSearch.includes(query);
+      row.hidden = !visible;
+      if (visible && row.classList.contains("v4-contribution-mobile-card")) matches += 1;
+    });
+    const emptyNode = document.getElementById("contributionMemberSearchEmpty");
+    if (emptyNode) emptyNode.hidden = matches > 0;
+  };
+
+  document.getElementById("contributionMemberSearchInput")
+    ?.addEventListener("input", event => {
+      contributionMemberSearchQuery = event.currentTarget.value;
+      applyContributionMemberSearch();
+    });
+
+  applyContributionMemberSearch();
 
   document.getElementById("addContributionClassButton")
     ?.addEventListener("click", () => openContributionClass());
