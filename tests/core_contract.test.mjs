@@ -215,7 +215,9 @@ test("database migrations are ordered and contain the core contract", async () =
     '20260920001157_liveticker_textsystem_v2.sql',
     '20260920011524_liveticker_missing_player_fragments.sql',
     '20260920064542_liveticker_allow_empty_fragments.sql',
-    '20260921145933_harden_liveticker_sync_authorize_first.sql'
+    '20260921145933_harden_liveticker_sync_authorize_first.sql',
+    "20260922121500_nextcloud_portal_group_sync.sql",
+    "20260922171811_nextcloud_portal_access_board.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);

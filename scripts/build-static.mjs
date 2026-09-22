@@ -28,6 +28,7 @@ const directories = [
 ];
 
 const optionalDirectories = [
+  "oauth",
   "liveticker"
 ];
 
