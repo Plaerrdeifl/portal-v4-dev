@@ -27,6 +27,10 @@ const directories = [
   "pages"
 ];
 
+const optionalFiles = [
+  "_redirects"
+];
+
 const optionalDirectories = [
   "oauth",
   "liveticker"
@@ -56,6 +60,16 @@ for (const directory of directories) {
     resolve(dist, directory),
     { recursive: true }
   );
+}
+
+for (const file of optionalFiles) {
+  try {
+    await access(resolve(root, file), constants.R_OK);
+  } catch {
+    continue;
+  }
+
+  await cp(resolve(root, file), resolve(dist, file));
 }
 
 for (const directory of optionalDirectories) {
