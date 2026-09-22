@@ -4,7 +4,7 @@
   "publicBaseUrl": "https://staging.plaerrdeifl.de",
   "workerTokenFile": "/srv/docker/m340/secrets/worker_token",
   "nextcloudWebdavBase": "https://cloud.plaerrdeifl.de/remote.php/dav/files/m340-dev",
-  "nextcloudRoot": "/Fanbus/Fanbus - DEV",
+  "nextcloudRoot": "/Publishing",
   "nextcloudUsername": "m340-dev",
   "nextcloudPasswordFile": "/srv/docker/m340/secrets/nextcloud_app_password",
   "templatesDir": "/srv/docker/m340/templates",

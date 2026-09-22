@@ -6,37 +6,32 @@ import test from "node:test";
 const root = resolve(import.meta.dirname, "..");
 const read = path => readFile(resolve(root, path), "utf8");
 
-test("DEV flyer workers expose their Nextcloud roots to the socialmedia group", async () => {
+test("DEV publishing workers use isolated technical mounts instead of team group shares", async () => {
   const fanbus = await read("workers/m340-publishing/worker.py");
   const liveticker = await read("workers/liveticker-publishing/publishing_worker_dev.py");
 
-  assert.match(fanbus, /NEXTCLOUD_SOCIAL_MEDIA_GROUP = "socialmedia"/);
-  assert.match(fanbus, /"shareType": "1"/);
-  assert.match(fanbus, /"shareWith": NEXTCLOUD_SOCIAL_MEDIA_GROUP/);
-  assert.match(fanbus, /"permissions": "1"/);
-  assert.match(fanbus, /ensure_social_media_access\(config\)/);
-  assert.match(fanbus, /config\.nextcloud_root/);
-  assert.match(fanbus, /NEXTCLOUD_LEGACY_DEV_ROOT = "\/Fanbus\/_DEV"/);
-  assert.match(fanbus, /"MOVE"/);
-  assert.match(fanbus, /method="DELETE"/);
+  assert.match(fanbus, /"DEV": \{[\s\S]*?"nextcloud_root": "\/Publishing"[\s\S]*?"nextcloud_username": "m340-dev"/);
+  assert.match(fanbus, /"PROD": \{[\s\S]*?"nextcloud_root": "\/Publishing"[\s\S]*?"nextcloud_username": "m340-prod"/);
+  assert.doesNotMatch(fanbus, /NEXTCLOUD_SOCIAL_MEDIA_GROUP/);
+  assert.doesNotMatch(fanbus, /"shareType": "1"/);
+  assert.match(fanbus, /"shareType": "3"/);
+  assert.match(fanbus, /ensure_publishing_root\(config\)/);
 
-  assert.match(liveticker, /DEV_NEXTCLOUD_ROOT = '\/Liveticker\/Liveticker - DEV'/);
-  assert.match(liveticker, /DEV_NEXTCLOUD_SOCIAL_MEDIA_GROUP = 'socialmedia'/);
-  assert.match(liveticker, /'shareType': '1'/);
-  assert.match(liveticker, /'shareWith': DEV_NEXTCLOUD_SOCIAL_MEDIA_GROUP/);
-  assert.match(liveticker, /'permissions': '1'/);
-  assert.match(liveticker, /ensure_social_media_access_dev\(\)/);
-  assert.match(liveticker, /DEV_LEGACY_NEXTCLOUD_ROOT = '\/Liveticker\/_DEV'/);
-  assert.match(liveticker, /'MOVE'/);
-  assert.match(liveticker, /method='DELETE'/);
+  assert.match(liveticker, /DEV_NEXTCLOUD_ROOT = '\/Publishing'/);
+  assert.match(liveticker, /DEV_NEXTCLOUD_USER = 'liveticker-dev'/);
+  assert.match(liveticker, /remote\.php\/dav\/files\/liveticker-dev/);
+  assert.match(liveticker, /nextcloud_app_password/);
+  assert.doesNotMatch(liveticker, /DEV_NEXTCLOUD_SOCIAL_MEDIA_GROUP/);
+  assert.doesNotMatch(liveticker, /shareType.*1/);
+  assert.match(liveticker, /ensure_collection_dev\(DEV_NEXTCLOUD_ROOT\)/);
 });
 
-test("social-media folder sharing is idempotent and preserves public artifact links", async () => {
+test("DEV workers keep public artifact links while storage visibility comes from central mounts", async () => {
   const fanbus = await read("workers/m340-publishing/worker.py");
-  const liveticker = await read("workers/liveticker-publishing/publishing_worker_dev.py");
+  const baseLiveticker = await read("scripts/liveticker-renderer/publishing_worker.py");
 
-  assert.match(fanbus, /share_type == 1[\s\S]*permissions & 1 == 1[\s\S]*return/);
-  assert.match(liveticker, /share_type == 1[\s\S]*permissions & 1 == 1[\s\S]*return/);
   assert.match(fanbus, /"shareType": "3"/);
-  assert.match(liveticker, /base\.NEXTCLOUD_SHARE_API/);
+  assert.match(fanbus, /"permissions": "1"/);
+  assert.match(baseLiveticker, /'shareType': '3'/);
+  assert.match(baseLiveticker, /'permissions': '1'/);
 });

@@ -8,7 +8,6 @@ import binascii
 import json
 import os
 import urllib.error
-import urllib.parse
 import urllib.request
 import sys
 import time
@@ -20,9 +19,10 @@ DEV_WORK = DEV_ROOT / 'work'
 DEV_JOBS = DEV_WORK / 'jobs'
 DEV_TOKEN = DEV_ROOT / 'secrets' / 'worker_token'
 DEV_EDGE_URL = 'https://tpieykhhawszlzsoflnl.supabase.co/functions/v1/liveticker-publishing-worker'
-DEV_NEXTCLOUD_ROOT = '/Liveticker/Liveticker - DEV'
-DEV_LEGACY_NEXTCLOUD_ROOT = '/Liveticker/_DEV'
-DEV_NEXTCLOUD_SOCIAL_MEDIA_GROUP = 'socialmedia'
+DEV_NEXTCLOUD_ROOT = '/Publishing'
+DEV_NEXTCLOUD_USER = 'liveticker-dev'
+DEV_NEXTCLOUD_BASE = 'https://cloud.plaerrdeifl.de/remote.php/dav/files/liveticker-dev'
+DEV_NEXTCLOUD_SECRET = DEV_ROOT / 'secrets' / 'nextcloud_app_password'
 DEV_RENDERER = DEV_ROOT / 'worker' / 'render_v1.py'
 DEV_EDGE_MAX_BYTES = 4 * 1024 * 1024
 
@@ -38,6 +38,9 @@ base.JOBS = DEV_JOBS
 base.WORKER_TOKEN_FILE = DEV_TOKEN
 base.EDGE_URL = DEV_EDGE_URL
 base.NEXTCLOUD_ROOT = DEV_NEXTCLOUD_ROOT
+base.NEXTCLOUD_USER = DEV_NEXTCLOUD_USER
+base.NEXTCLOUD_BASE = DEV_NEXTCLOUD_BASE
+base.NEXTCLOUD_SECRET = DEV_NEXTCLOUD_SECRET
 base.RENDERER = DEV_RENDERER
 
 
@@ -128,9 +131,8 @@ base.normalize_snapshot = normalize_snapshot_dev
 
 
 def dev_remote_path(path: str) -> str:
-    allowed_roots = (DEV_NEXTCLOUD_ROOT, DEV_LEGACY_NEXTCLOUD_ROOT)
     if (
-        not any(path == root or path.startswith(root + '/') for root in allowed_roots)
+        (path != DEV_NEXTCLOUD_ROOT and not path.startswith(DEV_NEXTCLOUD_ROOT + '/'))
         or '..' in path
         or '\\' in path
         or '?' in path
@@ -143,238 +145,19 @@ def dev_remote_path(path: str) -> str:
 base.remote_path = dev_remote_path
 
 
-def _webdav_request_dev(
-    method: str,
-    remote_path: str,
-    expected_statuses: set[int],
-    extra_headers: dict[str, str] | None = None,
-) -> int:
-    password = base.read_secret(base.NEXTCLOUD_SECRET)
-    auth = base64.b64encode(
-        f'{base.NEXTCLOUD_USER}:{password}'.encode('utf-8')
-    ).decode('ascii')
-    headers = {
-        'Authorization': f'Basic {auth}',
-        'User-Agent': 'Plaerrdeifl-Liveticker-DEV-Worker/1',
-    }
-    if extra_headers:
-        headers.update(extra_headers)
-    request = urllib.request.Request(
-        base.webdav_url(remote_path),
-        headers=headers,
-        method=method,
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=60) as response:
-            status = response.status
-            response.read(1_048_577)
-    except urllib.error.HTTPError as exc:
-        if exc.code in expected_statuses:
-            return exc.code
-        if exc.code in {401, 403}:
-            raise base.WorkerError('NEXTCLOUD_AUTH_FAILED') from exc
-        raise base.WorkerError('NEXTCLOUD_UPLOAD_FAILED') from exc
-    except urllib.error.URLError as exc:
-        raise base.WorkerError('NEXTCLOUD_UPLOAD_FAILED') from exc
-    if status not in expected_statuses:
-        raise base.WorkerError('NEXTCLOUD_UPLOAD_FAILED')
-    return status
-
-
-def _webdav_exists_dev(remote_path: str) -> bool:
-    return _webdav_request_dev(
-        'PROPFIND',
-        remote_path,
-        {207, 404},
-        {'Depth': '0'},
-    ) == 207
-
-
-def _delete_social_media_group_shares_dev(remote_path: str) -> None:
-    password = base.read_secret(base.NEXTCLOUD_SECRET)
-    auth = base64.b64encode(
-        f'{base.NEXTCLOUD_USER}:{password}'.encode('utf-8')
-    ).decode('ascii')
-    headers = {
-        'Authorization': f'Basic {auth}',
-        'OCS-APIRequest': 'true',
-        'Accept': 'application/json',
-        'User-Agent': 'Plaerrdeifl-Liveticker-DEV-Worker/1',
-    }
-    query = urllib.parse.urlencode({
-        'format': 'json',
-        'path': remote_path,
-        'reshares': 'true',
-    })
-    request = urllib.request.Request(
-        base.NEXTCLOUD_SHARE_API + '?' + query,
-        headers=headers,
-        method='GET',
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=60) as response:
-            raw = response.read(1_048_577)
-    except urllib.error.HTTPError as exc:
-        if exc.code in {401, 403}:
-            raise base.WorkerError('NEXTCLOUD_AUTH_FAILED') from exc
-        raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
-    except urllib.error.URLError as exc:
-        raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
-    try:
-        body = json.loads(raw.decode('utf-8'))
-        meta = body['ocs']['meta']
-        if int(meta.get('statuscode', 0)) not in {100, 200}:
-            raise ValueError('OCS share lookup failed')
-        shares = body['ocs']['data']
-        if not isinstance(shares, list):
-            raise TypeError('OCS share lookup returned invalid data')
-    except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
-        raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
-
-    for share in shares:
-        if not isinstance(share, dict):
-            continue
-        try:
-            share_type = int(share.get('share_type', -1))
-            share_id = int(share.get('id'))
-        except (TypeError, ValueError):
-            continue
-        if (
-            share_type != 1
-            or str(share.get('share_with') or '') != DEV_NEXTCLOUD_SOCIAL_MEDIA_GROUP
-        ):
-            continue
-        request = urllib.request.Request(
-            base.NEXTCLOUD_SHARE_API + f'/{share_id}?format=json',
-            headers=headers,
-            method='DELETE',
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=60) as response:
-                raw = response.read(1_048_577)
-        except urllib.error.HTTPError as exc:
-            if exc.code in {401, 403}:
-                raise base.WorkerError('NEXTCLOUD_AUTH_FAILED') from exc
-            raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
-        except urllib.error.URLError as exc:
-            raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
-        try:
-            body = json.loads(raw.decode('utf-8'))
-            meta = body['ocs']['meta']
-            if int(meta.get('statuscode', 0)) not in {100, 200}:
-                raise ValueError('OCS share deletion failed')
-        except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
-            raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
-
-
-def _migrate_legacy_dev_root() -> None:
-    legacy_exists = _webdav_exists_dev(DEV_LEGACY_NEXTCLOUD_ROOT)
-    target_exists = _webdav_exists_dev(DEV_NEXTCLOUD_ROOT)
-    if legacy_exists and target_exists:
-        raise base.WorkerError('NEXTCLOUD_DEV_ROOT_CONFLICT')
-    if not legacy_exists:
+def ensure_collection_dev(path: str) -> None:
+    remote = dev_remote_path(path)
+    base.webdav('MKCOL', DEV_NEXTCLOUD_ROOT, {201, 405})
+    if remote == DEV_NEXTCLOUD_ROOT:
         return
-    _webdav_request_dev(
-        'MOVE',
-        DEV_LEGACY_NEXTCLOUD_ROOT,
-        {201, 204},
-        {
-            'Destination': base.webdav_url(DEV_NEXTCLOUD_ROOT),
-            'Overwrite': 'F',
-        },
-    )
-    _delete_social_media_group_shares_dev(DEV_NEXTCLOUD_ROOT)
+    suffix = remote[len(DEV_NEXTCLOUD_ROOT):].strip('/')
+    current = DEV_NEXTCLOUD_ROOT
+    for part in suffix.split('/'):
+        current += '/' + part
+        base.webdav('MKCOL', current, {201, 405})
 
 
-def ensure_social_media_access_dev() -> None:
-    _migrate_legacy_dev_root()
-    base.ensure_collection(DEV_NEXTCLOUD_ROOT)
-    password = base.read_secret(base.NEXTCLOUD_SECRET)
-    auth = base64.b64encode(
-        f'{base.NEXTCLOUD_USER}:{password}'.encode('utf-8')
-    ).decode('ascii')
-    headers = {
-        'Authorization': f'Basic {auth}',
-        'OCS-APIRequest': 'true',
-        'Accept': 'application/json',
-        'User-Agent': 'Plaerrdeifl-Liveticker-DEV-Worker/1',
-    }
-    query = urllib.parse.urlencode({
-        'format': 'json',
-        'path': DEV_NEXTCLOUD_ROOT,
-        'reshares': 'true',
-    })
-    request = urllib.request.Request(
-        base.NEXTCLOUD_SHARE_API + '?' + query,
-        headers=headers,
-        method='GET',
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=60) as response:
-            raw = response.read(1_048_577)
-    except urllib.error.HTTPError as exc:
-        if exc.code in {401, 403}:
-            raise base.WorkerError('NEXTCLOUD_AUTH_FAILED') from exc
-        raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
-    except urllib.error.URLError as exc:
-        raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
-    try:
-        body = json.loads(raw.decode('utf-8'))
-        meta = body['ocs']['meta']
-        if int(meta.get('statuscode', 0)) not in {100, 200}:
-            raise ValueError('OCS share lookup failed')
-        shares = body['ocs']['data']
-        if not isinstance(shares, list):
-            raise TypeError('OCS share lookup returned invalid data')
-    except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
-        raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
-
-    for share in shares:
-        if not isinstance(share, dict):
-            continue
-        try:
-            share_type = int(share.get('share_type', -1))
-            permissions = int(share.get('permissions', 0))
-        except (TypeError, ValueError):
-            continue
-        if (
-            share_type == 1
-            and str(share.get('share_with') or '') == DEV_NEXTCLOUD_SOCIAL_MEDIA_GROUP
-            and permissions & 1 == 1
-        ):
-            return
-
-    payload = urllib.parse.urlencode({
-        'path': DEV_NEXTCLOUD_ROOT,
-        'shareType': '1',
-        'shareWith': DEV_NEXTCLOUD_SOCIAL_MEDIA_GROUP,
-        'permissions': '1',
-    }).encode('utf-8')
-    request = urllib.request.Request(
-        base.NEXTCLOUD_SHARE_API + '?format=json',
-        data=payload,
-        headers={
-            **headers,
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        method='POST',
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=60) as response:
-            raw = response.read(1_048_577)
-    except urllib.error.HTTPError as exc:
-        if exc.code in {401, 403}:
-            raise base.WorkerError('NEXTCLOUD_AUTH_FAILED') from exc
-        raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
-    except urllib.error.URLError as exc:
-        raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
-    try:
-        body = json.loads(raw.decode('utf-8'))
-        meta = body['ocs']['meta']
-        if int(meta.get('statuscode', 0)) not in {100, 200}:
-            raise ValueError('OCS group share creation failed')
-    except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
-        raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
+base.ensure_collection = ensure_collection_dev
 
 
 def claim_dev():
@@ -430,20 +213,21 @@ def control_dev() -> dict:
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
     DEV_JOBS.mkdir(parents=True, exist_ok=True)
-    social_media_access_ready = False
+    publishing_root_ready = False
     while True:
         sleep_seconds = 60
-        if not social_media_access_ready:
+        if not publishing_root_ready:
             try:
-                ensure_social_media_access_dev()
-                social_media_access_ready = True
+                ensure_collection_dev(DEV_NEXTCLOUD_ROOT)
+                publishing_root_ready = True
                 logging.info(
-                    'DEV Nextcloud social-media share ready for %s',
+                    'DEV Nextcloud publishing root ready for %s as %s',
                     DEV_NEXTCLOUD_ROOT,
+                    DEV_NEXTCLOUD_USER,
                 )
             except Exception as exc:
                 code = exc.code if isinstance(exc, base.WorkerError) else 'WORKER_INTERNAL'
-                logging.error('DEV Nextcloud social-media share setup failed with %s', code)
+                logging.error('DEV Nextcloud publishing root setup failed with %s', code)
         try:
             control = control_dev()
             if control['enabled']:
