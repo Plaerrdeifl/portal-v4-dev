@@ -24,11 +24,11 @@ const directories = [
   "components",
   "css",
   "js",
-  "oauth",
   "pages"
 ];
 
 const optionalDirectories = [
+  "oauth",
   "liveticker"
 ];
 

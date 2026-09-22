@@ -60,6 +60,6 @@ test("DEV build publishes the OAuth consent route", async () => {
 
   assert.match(
     source,
-    /const directories = \[[\s\S]*"oauth"[\s\S]*\];/,
+    /const optionalDirectories = \[[\s\S]*"oauth"[\s\S]*\];/,
   );
 });
