@@ -42,6 +42,7 @@ ENVIRONMENT_CONTRACTS = {
 EXPECTED_EDGE_PATH = "/functions/v1/m340-publishing-worker"
 EXPECTED_NEXTCLOUD_HOST = "cloud.plaerrdeifl.de"
 NEXTCLOUD_SHARE_API = "https://cloud.plaerrdeifl.de/ocs/v2.php/apps/files_sharing/api/v1/shares"
+NEXTCLOUD_SOCIAL_MEDIA_GROUP = "socialmedia"
 EXPECTED_RENDERER = (
     "lscr.io/linuxserver/inkscape:1.4.2-r8-ls94@"
     "sha256:4d651665d4e3471a8d59d970e9841d50369baf1c4daa6df206f31caf163c4b22"
@@ -1164,6 +1165,96 @@ def _public_share(config: Config, remote_path: str) -> tuple[str, str]:
     return share_url, share_url + "/download"
 
 
+def _ensure_group_share(config: Config, remote_path: str) -> None:
+    remote = _remote_path(remote_path)
+    password = read_secret(config.nextcloud_password_file, 1)
+    credentials = base64.b64encode(
+        f"{config.nextcloud_username}:{password}".encode("utf-8")
+    ).decode("ascii")
+    headers = {
+        "Authorization": f"Basic {credentials}",
+        "OCS-APIRequest": "true",
+        "Accept": "application/json",
+        "User-Agent": "Plaerrdeifl-M340-Worker/1",
+    }
+    query = urllib.parse.urlencode({
+        "format": "json",
+        "path": remote,
+        "reshares": "true",
+    })
+    request = urllib.request.Request(
+        NEXTCLOUD_SHARE_API + "?" + query,
+        headers=headers,
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            raw = response.read(1_048_577)
+    except urllib.error.HTTPError as exc:
+        if exc.code in {401, 403}:
+            raise WorkerError("NEXTCLOUD_AUTH_FAILED") from exc
+        raise WorkerError("NEXTCLOUD_SHARE_FAILED") from exc
+    except urllib.error.URLError as exc:
+        raise WorkerError("NEXTCLOUD_SHARE_FAILED") from exc
+    try:
+        body = json.loads(raw.decode("utf-8"))
+        meta = body["ocs"]["meta"]
+        if int(meta.get("statuscode", 0)) not in {100, 200}:
+            raise ValueError("OCS share lookup failed")
+        shares = body["ocs"]["data"]
+        if not isinstance(shares, list):
+            raise TypeError("OCS share lookup returned invalid data")
+    except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        raise WorkerError("NEXTCLOUD_SHARE_FAILED") from exc
+
+    for share in shares:
+        if not isinstance(share, dict):
+            continue
+        try:
+            share_type = int(share.get("share_type", -1))
+            permissions = int(share.get("permissions", 0))
+        except (TypeError, ValueError):
+            continue
+        if (
+            share_type == 1
+            and str(share.get("share_with") or "") == NEXTCLOUD_SOCIAL_MEDIA_GROUP
+            and permissions & 1 == 1
+        ):
+            return
+
+    payload = urllib.parse.urlencode({
+        "path": remote,
+        "shareType": "1",
+        "shareWith": NEXTCLOUD_SOCIAL_MEDIA_GROUP,
+        "permissions": "1",
+    }).encode("utf-8")
+    request = urllib.request.Request(
+        NEXTCLOUD_SHARE_API + "?format=json",
+        data=payload,
+        headers={
+            **headers,
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            raw = response.read(1_048_577)
+    except urllib.error.HTTPError as exc:
+        if exc.code in {401, 403}:
+            raise WorkerError("NEXTCLOUD_AUTH_FAILED") from exc
+        raise WorkerError("NEXTCLOUD_SHARE_FAILED") from exc
+    except urllib.error.URLError as exc:
+        raise WorkerError("NEXTCLOUD_SHARE_FAILED") from exc
+    try:
+        body = json.loads(raw.decode("utf-8"))
+        meta = body["ocs"]["meta"]
+        if int(meta.get("statuscode", 0)) not in {100, 200}:
+            raise ValueError("OCS group share creation failed")
+    except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        raise WorkerError("NEXTCLOUD_SHARE_FAILED") from exc
+
+
 def _mkcol(config: Config, remote_path: str) -> None:
     _webdav_request(config, "MKCOL", remote_path, {201, 405})
 
@@ -1179,6 +1270,27 @@ def _ensure_collection_chain(config: Config, remote_path: str) -> None:
     for part in parts[1:]:
         current += "/" + part
         _mkcol(config, current)
+
+
+def ensure_social_media_access(config: Config) -> None:
+    _ensure_collection_chain(config, config.nextcloud_root)
+    _ensure_group_share(config, config.nextcloud_root)
+
+
+def _try_social_media_access(config: Config) -> bool:
+    try:
+        ensure_social_media_access(config)
+    except Exception as exc:
+        logging.error(
+            "M340 Nextcloud social-media share setup failed with %s",
+            _failure_code(exc),
+        )
+        return False
+    logging.info(
+        "M340 Nextcloud social-media share ready for %s",
+        config.nextcloud_root,
+    )
+    return True
 
 
 def _load_job_state(path: Path) -> dict[str, Any] | None:
@@ -1340,7 +1452,10 @@ def run_once(config: Config) -> bool:
 
 def run_forever(config: Config) -> None:
     global LAST_POLL_SECONDS
+    social_media_access_ready = False
     while True:
+        if not social_media_access_ready:
+            social_media_access_ready = _try_social_media_access(config)
         try:
             run_once(config)
         except Exception as exc:
@@ -1376,6 +1491,7 @@ def main() -> int:
             return 0
         verify_runtime(config)
         if args.once:
+            _try_social_media_access(config)
             run_once(config)
         else:
             run_forever(config)

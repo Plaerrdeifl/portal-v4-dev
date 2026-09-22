@@ -8,6 +8,7 @@ import binascii
 import json
 import os
 import urllib.error
+import urllib.parse
 import urllib.request
 import sys
 import time
@@ -20,6 +21,7 @@ DEV_JOBS = DEV_WORK / 'jobs'
 DEV_TOKEN = DEV_ROOT / 'secrets' / 'worker_token'
 DEV_EDGE_URL = 'https://tpieykhhawszlzsoflnl.supabase.co/functions/v1/liveticker-publishing-worker'
 DEV_NEXTCLOUD_ROOT = '/Liveticker/_DEV'
+DEV_NEXTCLOUD_SOCIAL_MEDIA_GROUP = 'socialmedia'
 DEV_RENDERER = DEV_ROOT / 'worker' / 'render_v1.py'
 DEV_EDGE_MAX_BYTES = 4 * 1024 * 1024
 
@@ -136,6 +138,96 @@ def dev_remote_path(path: str) -> str:
 base.remote_path = dev_remote_path
 
 
+def ensure_social_media_access_dev() -> None:
+    base.ensure_collection(DEV_NEXTCLOUD_ROOT)
+    password = base.read_secret(base.NEXTCLOUD_SECRET)
+    auth = base64.b64encode(
+        f'{base.NEXTCLOUD_USER}:{password}'.encode('utf-8')
+    ).decode('ascii')
+    headers = {
+        'Authorization': f'Basic {auth}',
+        'OCS-APIRequest': 'true',
+        'Accept': 'application/json',
+        'User-Agent': 'Plaerrdeifl-Liveticker-DEV-Worker/1',
+    }
+    query = urllib.parse.urlencode({
+        'format': 'json',
+        'path': DEV_NEXTCLOUD_ROOT,
+        'reshares': 'true',
+    })
+    request = urllib.request.Request(
+        base.NEXTCLOUD_SHARE_API + '?' + query,
+        headers=headers,
+        method='GET',
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            raw = response.read(1_048_577)
+    except urllib.error.HTTPError as exc:
+        if exc.code in {401, 403}:
+            raise base.WorkerError('NEXTCLOUD_AUTH_FAILED') from exc
+        raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
+    except urllib.error.URLError as exc:
+        raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
+    try:
+        body = json.loads(raw.decode('utf-8'))
+        meta = body['ocs']['meta']
+        if int(meta.get('statuscode', 0)) not in {100, 200}:
+            raise ValueError('OCS share lookup failed')
+        shares = body['ocs']['data']
+        if not isinstance(shares, list):
+            raise TypeError('OCS share lookup returned invalid data')
+    except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
+
+    for share in shares:
+        if not isinstance(share, dict):
+            continue
+        try:
+            share_type = int(share.get('share_type', -1))
+            permissions = int(share.get('permissions', 0))
+        except (TypeError, ValueError):
+            continue
+        if (
+            share_type == 1
+            and str(share.get('share_with') or '') == DEV_NEXTCLOUD_SOCIAL_MEDIA_GROUP
+            and permissions & 1 == 1
+        ):
+            return
+
+    payload = urllib.parse.urlencode({
+        'path': DEV_NEXTCLOUD_ROOT,
+        'shareType': '1',
+        'shareWith': DEV_NEXTCLOUD_SOCIAL_MEDIA_GROUP,
+        'permissions': '1',
+    }).encode('utf-8')
+    request = urllib.request.Request(
+        base.NEXTCLOUD_SHARE_API + '?format=json',
+        data=payload,
+        headers={
+            **headers,
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            raw = response.read(1_048_577)
+    except urllib.error.HTTPError as exc:
+        if exc.code in {401, 403}:
+            raise base.WorkerError('NEXTCLOUD_AUTH_FAILED') from exc
+        raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
+    except urllib.error.URLError as exc:
+        raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
+    try:
+        body = json.loads(raw.decode('utf-8'))
+        meta = body['ocs']['meta']
+        if int(meta.get('statuscode', 0)) not in {100, 200}:
+            raise ValueError('OCS group share creation failed')
+    except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
+
+
 def claim_dev():
     result = base.edge({'action': 'claim'})
     if result.get('claimed') is False:
@@ -189,8 +281,20 @@ def control_dev() -> dict:
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
     DEV_JOBS.mkdir(parents=True, exist_ok=True)
+    social_media_access_ready = False
     while True:
         sleep_seconds = 60
+        if not social_media_access_ready:
+            try:
+                ensure_social_media_access_dev()
+                social_media_access_ready = True
+                logging.info(
+                    'DEV Nextcloud social-media share ready for %s',
+                    DEV_NEXTCLOUD_ROOT,
+                )
+            except Exception as exc:
+                code = exc.code if isinstance(exc, base.WorkerError) else 'WORKER_INTERNAL'
+                logging.error('DEV Nextcloud social-media share setup failed with %s', code)
         try:
             control = control_dev()
             if control['enabled']:
