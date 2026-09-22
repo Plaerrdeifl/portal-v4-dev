@@ -20,7 +20,8 @@ DEV_WORK = DEV_ROOT / 'work'
 DEV_JOBS = DEV_WORK / 'jobs'
 DEV_TOKEN = DEV_ROOT / 'secrets' / 'worker_token'
 DEV_EDGE_URL = 'https://tpieykhhawszlzsoflnl.supabase.co/functions/v1/liveticker-publishing-worker'
-DEV_NEXTCLOUD_ROOT = '/Liveticker/_DEV'
+DEV_NEXTCLOUD_ROOT = '/Liveticker/Liveticker - DEV'
+DEV_LEGACY_NEXTCLOUD_ROOT = '/Liveticker/_DEV'
 DEV_NEXTCLOUD_SOCIAL_MEDIA_GROUP = 'socialmedia'
 DEV_RENDERER = DEV_ROOT / 'worker' / 'render_v1.py'
 DEV_EDGE_MAX_BYTES = 4 * 1024 * 1024
@@ -127,10 +128,14 @@ base.normalize_snapshot = normalize_snapshot_dev
 
 
 def dev_remote_path(path: str) -> str:
+    allowed_roots = (DEV_NEXTCLOUD_ROOT, DEV_LEGACY_NEXTCLOUD_ROOT)
     if (
-        path != DEV_NEXTCLOUD_ROOT
-        and not path.startswith(DEV_NEXTCLOUD_ROOT + '/')
-    ) or '..' in path or '\\' in path or '?' in path or '#' in path:
+        not any(path == root or path.startswith(root + '/') for root in allowed_roots)
+        or '..' in path
+        or '\\' in path
+        or '?' in path
+        or '#' in path
+    ):
         raise base.WorkerError('NEXTCLOUD_PATH_INVALID')
     return path
 
@@ -138,7 +143,151 @@ def dev_remote_path(path: str) -> str:
 base.remote_path = dev_remote_path
 
 
+def _webdav_request_dev(
+    method: str,
+    remote_path: str,
+    expected_statuses: set[int],
+    extra_headers: dict[str, str] | None = None,
+) -> int:
+    password = base.read_secret(base.NEXTCLOUD_SECRET)
+    auth = base64.b64encode(
+        f'{base.NEXTCLOUD_USER}:{password}'.encode('utf-8')
+    ).decode('ascii')
+    headers = {
+        'Authorization': f'Basic {auth}',
+        'User-Agent': 'Plaerrdeifl-Liveticker-DEV-Worker/1',
+    }
+    if extra_headers:
+        headers.update(extra_headers)
+    request = urllib.request.Request(
+        base.webdav_url(remote_path),
+        headers=headers,
+        method=method,
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            status = response.status
+            response.read(1_048_577)
+    except urllib.error.HTTPError as exc:
+        if exc.code in expected_statuses:
+            return exc.code
+        if exc.code in {401, 403}:
+            raise base.WorkerError('NEXTCLOUD_AUTH_FAILED') from exc
+        raise base.WorkerError('NEXTCLOUD_UPLOAD_FAILED') from exc
+    except urllib.error.URLError as exc:
+        raise base.WorkerError('NEXTCLOUD_UPLOAD_FAILED') from exc
+    if status not in expected_statuses:
+        raise base.WorkerError('NEXTCLOUD_UPLOAD_FAILED')
+    return status
+
+
+def _webdav_exists_dev(remote_path: str) -> bool:
+    return _webdav_request_dev(
+        'PROPFIND',
+        remote_path,
+        {207, 404},
+        {'Depth': '0'},
+    ) == 207
+
+
+def _delete_social_media_group_shares_dev(remote_path: str) -> None:
+    password = base.read_secret(base.NEXTCLOUD_SECRET)
+    auth = base64.b64encode(
+        f'{base.NEXTCLOUD_USER}:{password}'.encode('utf-8')
+    ).decode('ascii')
+    headers = {
+        'Authorization': f'Basic {auth}',
+        'OCS-APIRequest': 'true',
+        'Accept': 'application/json',
+        'User-Agent': 'Plaerrdeifl-Liveticker-DEV-Worker/1',
+    }
+    query = urllib.parse.urlencode({
+        'format': 'json',
+        'path': remote_path,
+        'reshares': 'true',
+    })
+    request = urllib.request.Request(
+        base.NEXTCLOUD_SHARE_API + '?' + query,
+        headers=headers,
+        method='GET',
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            raw = response.read(1_048_577)
+    except urllib.error.HTTPError as exc:
+        if exc.code in {401, 403}:
+            raise base.WorkerError('NEXTCLOUD_AUTH_FAILED') from exc
+        raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
+    except urllib.error.URLError as exc:
+        raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
+    try:
+        body = json.loads(raw.decode('utf-8'))
+        meta = body['ocs']['meta']
+        if int(meta.get('statuscode', 0)) not in {100, 200}:
+            raise ValueError('OCS share lookup failed')
+        shares = body['ocs']['data']
+        if not isinstance(shares, list):
+            raise TypeError('OCS share lookup returned invalid data')
+    except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
+
+    for share in shares:
+        if not isinstance(share, dict):
+            continue
+        try:
+            share_type = int(share.get('share_type', -1))
+            share_id = int(share.get('id'))
+        except (TypeError, ValueError):
+            continue
+        if (
+            share_type != 1
+            or str(share.get('share_with') or '') != DEV_NEXTCLOUD_SOCIAL_MEDIA_GROUP
+        ):
+            continue
+        request = urllib.request.Request(
+            base.NEXTCLOUD_SHARE_API + f'/{share_id}?format=json',
+            headers=headers,
+            method='DELETE',
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                raw = response.read(1_048_577)
+        except urllib.error.HTTPError as exc:
+            if exc.code in {401, 403}:
+                raise base.WorkerError('NEXTCLOUD_AUTH_FAILED') from exc
+            raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
+        except urllib.error.URLError as exc:
+            raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
+        try:
+            body = json.loads(raw.decode('utf-8'))
+            meta = body['ocs']['meta']
+            if int(meta.get('statuscode', 0)) not in {100, 200}:
+                raise ValueError('OCS share deletion failed')
+        except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+            raise base.WorkerError('NEXTCLOUD_SHARE_FAILED') from exc
+
+
+def _migrate_legacy_dev_root() -> None:
+    legacy_exists = _webdav_exists_dev(DEV_LEGACY_NEXTCLOUD_ROOT)
+    target_exists = _webdav_exists_dev(DEV_NEXTCLOUD_ROOT)
+    if legacy_exists and target_exists:
+        raise base.WorkerError('NEXTCLOUD_DEV_ROOT_CONFLICT')
+    if not legacy_exists:
+        return
+    _webdav_request_dev(
+        'MOVE',
+        DEV_LEGACY_NEXTCLOUD_ROOT,
+        {201, 204},
+        {
+            'Destination': base.webdav_url(DEV_NEXTCLOUD_ROOT),
+            'Overwrite': 'F',
+        },
+    )
+    _delete_social_media_group_shares_dev(DEV_NEXTCLOUD_ROOT)
+
+
 def ensure_social_media_access_dev() -> None:
+    _migrate_legacy_dev_root()
     base.ensure_collection(DEV_NEXTCLOUD_ROOT)
     password = base.read_secret(base.NEXTCLOUD_SECRET)
     auth = base64.b64encode(

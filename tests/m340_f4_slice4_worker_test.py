@@ -127,7 +127,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.environment, "DEV")
         self.assertEqual(config.edge_url, "https://tpieykhhawszlzsoflnl.supabase.co/functions/v1/m340-publishing-worker")
         self.assertEqual(config.public_base_url, "https://staging.plaerrdeifl.de")
-        self.assertEqual(config.nextcloud_root, "/Fanbus/_DEV")
+        self.assertEqual(config.nextcloud_root, "/Fanbus/Fanbus - DEV")
         self.assertEqual(config.poll_seconds, 30)
         self.assertEqual(config.renderer_image, worker.EXPECTED_RENDERER)
         self.assertEqual(config.font_sha256, worker.EXPECTED_FONT_SHA256)
@@ -314,6 +314,10 @@ class PngTests(unittest.TestCase):
 
 
 class ManifestTests(unittest.TestCase):
+    def test_dev_contract_keeps_legacy_root_only_for_one_time_nextcloud_migration(self):
+        self.assertEqual(worker.NEXTCLOUD_LEGACY_DEV_ROOT, "/Fanbus/_DEV")
+        self.assertEqual(worker.ENVIRONMENT_CONTRACTS["DEV"]["nextcloud_root"], "/Fanbus/Fanbus - DEV")
+
     def test_manifest_is_exactly_four_png_artifacts(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
@@ -328,7 +332,7 @@ class ManifestTests(unittest.TestCase):
             }
             manifest = worker.build_manifest(
                 pngs,
-                "/Fanbus/_DEV/2026-10-03_landsberg/generation-001",
+                "/Fanbus/Fanbus - DEV/2026-10-03_landsberg/generation-001",
                 shares,
             )
             self.assertEqual(manifest["schemaVersion"], 1)
@@ -336,17 +340,17 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(len(manifest["artifacts"]), 4)
             for item in manifest["artifacts"]:
                 self.assertRegex(item["sha256"], r"^[0-9a-f]{64}$")
-                self.assertTrue(item["nextcloudPath"].startswith("/Fanbus/_DEV/"))
+                self.assertTrue(item["nextcloudPath"].startswith("/Fanbus/Fanbus - DEV/"))
                 self.assertTrue(item["filename"].endswith(".png"))
                 self.assertRegex(item["shareUrl"], r"^https://cloud\.plaerrdeifl\.de/s/[A-Za-z0-9]{8,128}$")
                 self.assertEqual(item["downloadUrl"], item["shareUrl"] + "/download")
 
     def test_remote_path_rejects_traversal_and_urls(self):
         invalid = [
-            "/Fanbus/_DEV/../x.png",
+            "/Fanbus/Fanbus - DEV/../x.png",
             "https://cloud.plaerrdeifl.de/Fanbus/x.png",
-            "/Fanbus/_DEV/x.png?download=1",
-            "/Fanbus/_DEV/x\\y.png",
+            "/Fanbus/Fanbus - DEV/x.png?download=1",
+            "/Fanbus/Fanbus - DEV/x\\y.png",
         ]
         for value in invalid:
             with self.subTest(value=value), self.assertRaises(worker.WorkerError):
@@ -363,14 +367,14 @@ class ManifestTests(unittest.TestCase):
         try:
             worker._ensure_collection_chain(
                 config,
-                "/Fanbus/_DEV/2026-10-03_landsberg/generation-001",
+                "/Fanbus/Fanbus - DEV/2026-10-03_landsberg/generation-001",
             )
         finally:
             worker._mkcol = original
 
-        self.assertEqual(created[0], "/Fanbus/_DEV")
+        self.assertEqual(created[0], "/Fanbus/Fanbus - DEV")
         self.assertNotIn("/Fanbus", created)
-        self.assertEqual(created[-1], "/Fanbus/_DEV/2026-10-03_landsberg/generation-001")
+        self.assertEqual(created[-1], "/Fanbus/Fanbus - DEV/2026-10-03_landsberg/generation-001")
 
     def test_collection_chain_creates_prod_fanbus_root(self):
         config = worker.load_config(PROD_CONFIG_PATH)

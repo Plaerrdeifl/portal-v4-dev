@@ -29,7 +29,7 @@ ENVIRONMENT_CONTRACTS = {
     "DEV": {
         "edge_host": "tpieykhhawszlzsoflnl.supabase.co",
         "public_host": "staging.plaerrdeifl.de",
-        "nextcloud_root": "/Fanbus/_DEV",
+        "nextcloud_root": "/Fanbus/Fanbus - DEV",
         "nextcloud_username": "m340-dev",
     },
     "PROD": {
@@ -43,6 +43,7 @@ EXPECTED_EDGE_PATH = "/functions/v1/m340-publishing-worker"
 EXPECTED_NEXTCLOUD_HOST = "cloud.plaerrdeifl.de"
 NEXTCLOUD_SHARE_API = "https://cloud.plaerrdeifl.de/ocs/v2.php/apps/files_sharing/api/v1/shares"
 NEXTCLOUD_SOCIAL_MEDIA_GROUP = "socialmedia"
+NEXTCLOUD_LEGACY_DEV_ROOT = "/Fanbus/_DEV"
 EXPECTED_RENDERER = (
     "lscr.io/linuxserver/inkscape:1.4.2-r8-ls94@"
     "sha256:4d651665d4e3471a8d59d970e9841d50369baf1c4daa6df206f31caf163c4b22"
@@ -1255,6 +1256,117 @@ def _ensure_group_share(config: Config, remote_path: str) -> None:
         raise WorkerError("NEXTCLOUD_SHARE_FAILED") from exc
 
 
+def _webdav_exists(config: Config, remote_path: str) -> bool:
+    status, _ = _webdav_request(
+        config,
+        "PROPFIND",
+        remote_path,
+        {207, 404},
+        extra_headers={"Depth": "0"},
+    )
+    return status == 207
+
+
+def _delete_social_media_group_shares(config: Config, remote_path: str) -> None:
+    remote = _remote_path(remote_path)
+    password = read_secret(config.nextcloud_password_file, 1)
+    credentials = base64.b64encode(
+        f"{config.nextcloud_username}:{password}".encode("utf-8")
+    ).decode("ascii")
+    headers = {
+        "Authorization": f"Basic {credentials}",
+        "OCS-APIRequest": "true",
+        "Accept": "application/json",
+        "User-Agent": "Plaerrdeifl-M340-Worker/1",
+    }
+    query = urllib.parse.urlencode({
+        "format": "json",
+        "path": remote,
+        "reshares": "true",
+    })
+    request = urllib.request.Request(
+        NEXTCLOUD_SHARE_API + "?" + query,
+        headers=headers,
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            raw = response.read(1_048_577)
+    except urllib.error.HTTPError as exc:
+        if exc.code in {401, 403}:
+            raise WorkerError("NEXTCLOUD_AUTH_FAILED") from exc
+        raise WorkerError("NEXTCLOUD_SHARE_FAILED") from exc
+    except urllib.error.URLError as exc:
+        raise WorkerError("NEXTCLOUD_SHARE_FAILED") from exc
+    try:
+        body = json.loads(raw.decode("utf-8"))
+        meta = body["ocs"]["meta"]
+        if int(meta.get("statuscode", 0)) not in {100, 200}:
+            raise ValueError("OCS share lookup failed")
+        shares = body["ocs"]["data"]
+        if not isinstance(shares, list):
+            raise TypeError("OCS share lookup returned invalid data")
+    except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        raise WorkerError("NEXTCLOUD_SHARE_FAILED") from exc
+
+    for share in shares:
+        if not isinstance(share, dict):
+            continue
+        try:
+            share_type = int(share.get("share_type", -1))
+            share_id = int(share.get("id"))
+        except (TypeError, ValueError):
+            continue
+        if (
+            share_type != 1
+            or str(share.get("share_with") or "") != NEXTCLOUD_SOCIAL_MEDIA_GROUP
+        ):
+            continue
+        request = urllib.request.Request(
+            NEXTCLOUD_SHARE_API + f"/{share_id}?format=json",
+            headers=headers,
+            method="DELETE",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                raw = response.read(1_048_577)
+        except urllib.error.HTTPError as exc:
+            if exc.code in {401, 403}:
+                raise WorkerError("NEXTCLOUD_AUTH_FAILED") from exc
+            raise WorkerError("NEXTCLOUD_SHARE_FAILED") from exc
+        except urllib.error.URLError as exc:
+            raise WorkerError("NEXTCLOUD_SHARE_FAILED") from exc
+        try:
+            body = json.loads(raw.decode("utf-8"))
+            meta = body["ocs"]["meta"]
+            if int(meta.get("statuscode", 0)) not in {100, 200}:
+                raise ValueError("OCS share deletion failed")
+        except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+            raise WorkerError("NEXTCLOUD_SHARE_FAILED") from exc
+
+
+def _migrate_legacy_dev_root(config: Config) -> None:
+    if config.environment != "DEV":
+        return
+    legacy_exists = _webdav_exists(config, NEXTCLOUD_LEGACY_DEV_ROOT)
+    target_exists = _webdav_exists(config, config.nextcloud_root)
+    if legacy_exists and target_exists:
+        raise WorkerError("NEXTCLOUD_DEV_ROOT_CONFLICT")
+    if not legacy_exists:
+        return
+    _webdav_request(
+        config,
+        "MOVE",
+        NEXTCLOUD_LEGACY_DEV_ROOT,
+        {201, 204},
+        extra_headers={
+            "Destination": _webdav_url(config, config.nextcloud_root),
+            "Overwrite": "F",
+        },
+    )
+    _delete_social_media_group_shares(config, config.nextcloud_root)
+
+
 def _mkcol(config: Config, remote_path: str) -> None:
     _webdav_request(config, "MKCOL", remote_path, {201, 405})
 
@@ -1273,6 +1385,7 @@ def _ensure_collection_chain(config: Config, remote_path: str) -> None:
 
 
 def ensure_social_media_access(config: Config) -> None:
+    _migrate_legacy_dev_root(config)
     _ensure_collection_chain(config, config.nextcloud_root)
     _ensure_group_share(config, config.nextcloud_root)
 
