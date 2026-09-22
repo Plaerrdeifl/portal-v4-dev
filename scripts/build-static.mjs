@@ -86,6 +86,19 @@ for (const directory of optionalDirectories) {
   );
 }
 
+try {
+  await access(
+    resolve(root, "oauth", "consent", "index.html"),
+    constants.R_OK
+  );
+  await cp(
+    resolve(root, "oauth", "consent", "index.html"),
+    resolve(dist, "oauth-consent.html")
+  );
+} catch {
+  // OAuth is optional for isolated/static fixtures.
+}
+
 /*
  * Eine möglicherweise vorhandene lokale Runtime-Konfiguration wird nach dem
  * Kopieren immer entfernt. DEV und PROD dürfen sie niemals übernehmen.
