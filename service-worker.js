@@ -94,6 +94,16 @@ async function offlineDocument() {
 self.addEventListener("fetch", event => {
   const request = event.request;
   const url = new URL(request.url);
+
+  // OAuth/OIDC must never be routed through PWA caching or offline fallbacks.
+  // Let the browser perform these same-origin requests directly on the network.
+  if (
+    url.origin === self.location.origin
+    && url.pathname.startsWith("/oauth/")
+  ) {
+    return;
+  }
+
   if (url.pathname.endsWith("/rest/v1/rpc/pd_public_platform_status")) {
     event.respondWith(fetch(request, { cache: "no-store" }));
     return;
