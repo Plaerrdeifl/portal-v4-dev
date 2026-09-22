@@ -55,11 +55,22 @@ test("OAuth consent allows every Portal account granted by bootstrap", async () 
   );
 });
 
-test("DEV build publishes the OAuth consent route", async () => {
-  const source = await readFile(buildUrl, "utf8");
+test("DEV build publishes the OAuth consent route without a navigation redirect", async () => {
+  const [source, redirects] = await Promise.all([
+    readFile(buildUrl, "utf8"),
+    readFile(new URL("../_redirects", import.meta.url), "utf8"),
+  ]);
 
   assert.match(
     source,
     /const optionalDirectories = \[[\s\S]*"oauth"[\s\S]*\];/,
+  );
+  assert.match(
+    source,
+    /const optionalFiles = \[[\s\S]*"_redirects"[\s\S]*\];/,
+  );
+  assert.match(
+    redirects,
+    /^\/oauth\/consent\s+\/oauth\/consent\/index\.html\s+200$/m,
   );
 });
