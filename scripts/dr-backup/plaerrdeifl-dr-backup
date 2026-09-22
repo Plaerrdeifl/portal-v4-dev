@@ -1,0 +1,215 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+umask 077
+
+readonly DEFAULT_ENV_FILE="/etc/plaerrdeifl-dr-backup/env"
+readonly LOCK_FILE="/run/lock/plaerrdeifl-dr-backup.lock"
+readonly DEFAULT_STAGING_ROOT="/var/lib/plaerrdeifl-dr-backup/staging"
+readonly DEFAULT_LOCAL_SNAPSHOT_ROOT="/mnt/backup/ServerBackup/snapshots"
+readonly DEFAULT_PROJECT_REF="wplescvhlgctynkfwvrj"
+readonly DEFAULT_CLI_USER="benny"
+readonly DEFAULT_CLI_HOME="/home/benny"
+readonly DEFAULT_MAX_AGE_HOURS="30"
+readonly DEFAULT_KEEP_DAILY="7"
+readonly DEFAULT_KEEP_WEEKLY="4"
+readonly DEFAULT_KEEP_MONTHLY="6"
+readonly DEFAULT_RESTIC_HOST="acer01"
+readonly DEFAULT_RESTIC_TAG="plaerrdeifl-prod-dr"
+
+ENV_FILE="${PLAERRDEIFL_DR_ENV_FILE:-$DEFAULT_ENV_FILE}"
+if [[ -r "$ENV_FILE" ]]; then
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+fi
+
+: "${RESTIC_REPOSITORY:?RESTIC_REPOSITORY must be set in $ENV_FILE}"
+: "${RESTIC_PASSWORD_FILE:?RESTIC_PASSWORD_FILE must be set in $ENV_FILE}"
+
+SUPABASE_PROJECT_REF="${SUPABASE_PROJECT_REF:-$DEFAULT_PROJECT_REF}"
+SUPABASE_CLI_USER="${SUPABASE_CLI_USER:-$DEFAULT_CLI_USER}"
+SUPABASE_CLI_HOME="${SUPABASE_CLI_HOME:-$DEFAULT_CLI_HOME}"
+LOCAL_SNAPSHOT_ROOT="${LOCAL_SNAPSHOT_ROOT:-$DEFAULT_LOCAL_SNAPSHOT_ROOT}"
+LOCAL_SNAPSHOT_MAX_AGE_HOURS="${LOCAL_SNAPSHOT_MAX_AGE_HOURS:-$DEFAULT_MAX_AGE_HOURS}"
+STAGING_ROOT="${STAGING_ROOT:-$DEFAULT_STAGING_ROOT}"
+RESTIC_HOST="${RESTIC_HOST:-$DEFAULT_RESTIC_HOST}"
+RESTIC_TAG="${RESTIC_TAG:-$DEFAULT_RESTIC_TAG}"
+KEEP_DAILY="${KEEP_DAILY:-$DEFAULT_KEEP_DAILY}"
+KEEP_WEEKLY="${KEEP_WEEKLY:-$DEFAULT_KEEP_WEEKLY}"
+KEEP_MONTHLY="${KEEP_MONTHLY:-$DEFAULT_KEEP_MONTHLY}"
+INCLUDE_WPP_SESSION="${INCLUDE_WPP_SESSION:-0}"
+
+notify() {
+  local body="$1"
+  local title="$2"
+  local severity="${3:-default}"
+  if [[ -x /usr/local/sbin/acer-notify ]]; then
+    /usr/local/sbin/acer-notify "$body" "$title" "$severity" >/dev/null 2>&1 || true
+  fi
+}
+
+fail() {
+  local rc=$?
+  notify "❌ Off-Host-Backup fehlgeschlagen auf acer01 (Exit $rc)." \
+    "acer01 · DR-Backupfehler" high
+  exit "$rc"
+}
+trap fail ERR
+
+for command in flock restic runuser sha256sum stat date find awk; do
+  command -v "$command" >/dev/null 2>&1 || {
+    echo "Required command is missing: $command" >&2
+    exit 2
+  }
+done
+[[ -x /usr/bin/supabase ]] || {
+  echo "Supabase CLI missing at /usr/bin/supabase" >&2
+  exit 2
+}
+[[ -r "$RESTIC_PASSWORD_FILE" ]] || {
+  echo "RESTIC_PASSWORD_FILE is not readable" >&2
+  exit 2
+}
+
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+  echo "Another DR backup run is already active." >&2
+  exit 3
+fi
+
+export RESTIC_REPOSITORY RESTIC_PASSWORD_FILE
+
+# Never auto-initialize an unknown target. A missing repository is a hard error.
+restic snapshots --json >/dev/null
+
+latest_file="$LOCAL_SNAPSHOT_ROOT/latest.txt"
+[[ -r "$latest_file" ]] || {
+  echo "Local backup pointer missing: $latest_file" >&2
+  exit 4
+}
+local_snapshot="$(<"$latest_file")"
+[[ -d "$local_snapshot" && -e "$local_snapshot/.complete" ]] || {
+  echo "Local backup snapshot is missing or incomplete: $local_snapshot" >&2
+  exit 4
+}
+
+now_epoch="$(date +%s)"
+snapshot_epoch="$(stat -c %Y "$local_snapshot/.complete")"
+age_seconds=$((now_epoch - snapshot_epoch))
+max_age_seconds=$((LOCAL_SNAPSHOT_MAX_AGE_HOURS * 3600))
+if (( age_seconds < 0 || age_seconds > max_age_seconds )); then
+  echo "Local snapshot is too old: ${age_seconds}s (limit ${max_age_seconds}s)" >&2
+  exit 4
+fi
+
+run_id="$(date -u +%Y%m%dT%H%M%SZ)"
+stage="$STAGING_ROOT/$run_id"
+install -d -m 0700 "$stage" "$stage/db" "$stage/storage" "$stage/meta"
+cleanup() {
+  rm -rf -- "$stage"
+}
+trap cleanup EXIT
+trap 'rc=$?; cleanup; exit "$rc"' INT TERM
+trap 'rc=$?; cleanup; notify "❌ Off-Host-Backup fehlgeschlagen auf acer01 (Exit $rc)." "acer01 · DR-Backupfehler" high; exit "$rc"' ERR
+
+as_supabase_cli() {
+  runuser -u "$SUPABASE_CLI_USER" -- env HOME="$SUPABASE_CLI_HOME" "$@"
+}
+
+# Supabase logical backup: roles, customer schema and all data including auth/storage metadata.
+as_supabase_cli /usr/bin/supabase db dump \
+  --project-ref "$SUPABASE_PROJECT_REF" \
+  --file "$stage/db/roles.sql" \
+  --role-only
+as_supabase_cli /usr/bin/supabase db dump \
+  --project-ref "$SUPABASE_PROJECT_REF" \
+  --file "$stage/db/schema.sql"
+as_supabase_cli /usr/bin/supabase db dump \
+  --project-ref "$SUPABASE_PROJECT_REF" \
+  --file "$stage/db/data.sql" \
+  --use-copy \
+  --data-only
+
+# Supabase Storage is separate from a PostgreSQL dump.
+as_supabase_cli /usr/bin/supabase --experimental storage cp \
+  --recursive \
+  --jobs 4 \
+  --project-ref "$SUPABASE_PROJECT_REF" \
+  ss:/// \
+  "$stage/storage"
+
+cat >"$stage/meta/backup.env" <<META
+run_id=$run_id
+supabase_project_ref=$SUPABASE_PROJECT_REF
+local_snapshot=$local_snapshot
+local_snapshot_complete_epoch=$snapshot_epoch
+restic_host=$RESTIC_HOST
+restic_tag=$RESTIC_TAG
+include_wpp_session=$INCLUDE_WPP_SESSION
+META
+
+(
+  cd "$stage"
+  find db storage meta -type f ! -name SHA256SUMS -print0 \
+    | sort -z \
+    | xargs -0 sha256sum > SHA256SUMS
+  sha256sum -c SHA256SUMS >/dev/null
+)
+
+backup_paths=(
+  "$stage"
+  "$local_snapshot"
+)
+
+runtime_paths=(
+  /srv/docker/liveticker/prod/secrets
+  /srv/docker/liveticker/secrets
+  /srv/docker/liveticker/whatsapp-worker-prod/.env
+  /srv/docker/liveticker/waha/.env
+  /srv/docker/liveticker/waha/docker-compose.yml
+  /srv/docker/m340-prod/secrets
+  /srv/docker/m340-prod/worker/config.json
+  /srv/docker/nextcloud/.env
+  /srv/docker/nextcloud/docker-compose.yml
+)
+for path in "${runtime_paths[@]}"; do
+  if [[ -e "$path" ]]; then
+    backup_paths+=("$path")
+  else
+    echo "Required runtime backup source missing: $path" >&2
+    exit 5
+  fi
+done
+
+if [[ "$INCLUDE_WPP_SESSION" == "1" ]]; then
+  wpp_path=/srv/docker/liveticker/waha/sessions/wpp
+  [[ -d "$wpp_path" ]] || {
+    echo "WPP session path requested but missing: $wpp_path" >&2
+    exit 5
+  }
+  backup_paths+=("$wpp_path")
+fi
+
+restic backup \
+  --host "$RESTIC_HOST" \
+  --tag "$RESTIC_TAG" \
+  --tag "supabase-$SUPABASE_PROJECT_REF" \
+  "${backup_paths[@]}"
+
+# Repository structure check after every completed snapshot.
+restic check
+
+restic forget \
+  --host "$RESTIC_HOST" \
+  --tag "$RESTIC_TAG" \
+  --keep-daily "$KEEP_DAILY" \
+  --keep-weekly "$KEEP_WEEKLY" \
+  --keep-monthly "$KEEP_MONTHLY" \
+  --prune
+
+latest_snapshot="$(restic snapshots --host "$RESTIC_HOST" --tag "$RESTIC_TAG" --latest 1 --json \
+  | python3 -c 'import json,sys; rows=json.load(sys.stdin); print(rows[0]["short_id"] if rows else "unknown")')"
+notify "✅ Off-Host-Backup erfolgreich · Restic $latest_snapshot" \
+  "acer01 · DR-Backup" default
+
+echo "Off-host backup completed successfully: $latest_snapshot"

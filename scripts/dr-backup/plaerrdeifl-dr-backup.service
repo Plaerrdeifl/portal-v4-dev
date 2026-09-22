@@ -1,0 +1,25 @@
+[Unit]
+Description=Plaerrdeifl PROD encrypted off-host disaster-recovery backup
+Wants=network-online.target
+After=network-online.target acer-backup.service
+RequiresMountsFor=/mnt/backup
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/plaerrdeifl-dr-backup/env
+ExecStart=/usr/local/sbin/plaerrdeifl-dr-backup
+TimeoutStartSec=6h
+UMask=0077
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target
