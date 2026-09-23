@@ -1,6 +1,6 @@
 # Plärrdeifl Portal V4 – aktuelle Datenbankstruktur
 
-**Stand:** 10. August 2026
+**Stand:** 23. September 2026
 **P800-Reparaturbaseline:** `03fd7286aac4fd53243a2b00e05cf0d9cb31e61f`
 **Supabase DEV:** `tpieykhhawszlzsoflnl`
 
@@ -150,7 +150,22 @@ Die bestehende Finanzfunktion ist produktiv und wird nicht als zukünftiges Grun
 
 Das spätere Fanbus-Modul darf auf dieser Struktur nur gezielt für fanbusbezogene Zahlungen, Abrechnung und Auswertung aufbauen.
 
-## 9. Änderungsregel
+## 9. Fanbus-Tippspiel
+
+Das Bus-Orga-Tippspiel verwendet drei granulare Tabellen in `app_modules`:
+
+- `fanbus_prediction_games` für Spielreferenz, optionalen Fahrtbezug, Status, Endergebnis und Revision
+- `fanbus_prediction_participants` für Fahrtteilnehmer- beziehungsweise manuelle Einträge mit unveränderlichem Namens- und Bus-Snapshot
+- `fanbus_prediction_tips` für höchstens drei einzelne Dogs-zuerst-Tipps je Teilnehmer
+
+Die Browseroberfläche greift ausschließlich über die Aktionen
+`fanbus_prediction_*` hinter `public.pd_api(text, jsonb)` zu. Direkte
+Tabellenrechte bestehen nicht. Teilnehmeränderungen und Statuswechsel verwenden
+explizite Revisionen, damit parallele Geräte veraltete Stände nicht unbemerkt
+überschreiben. Ein abgeschlossenes Liveticker-Spiel kann ein Ergebnis
+vorschlagen; die Auswertung speichert das bestätigte Ergebnis am Tippspiel.
+
+## 10. Änderungsregel
 
 Neue Datenbankobjekte oder strukturelle Änderungen werden ausschließlich über versionierte Migrationen eingeführt.
 

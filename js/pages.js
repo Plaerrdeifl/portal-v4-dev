@@ -159,6 +159,13 @@ export async function hydratePage(key, context = {}) {
   }
   if (key === "bus-orga") {
     const view = currentBusOrgaView();
+    if (view === "prediction") {
+      return feature(
+        "./modules/bus-orga-prediction.js?v=20260923-fanbus-prediction-r1",
+        "hydrateBusOrgaPrediction",
+        context
+      );
+    }
     if (view === "trip-create") {
       return feature(
         "./modules/bus-orga-trip-create.js?v=20260830-m328-trip-create-native2",

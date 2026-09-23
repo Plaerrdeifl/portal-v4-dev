@@ -142,6 +142,7 @@ function renderWorkspaces() {
   const canRegistrations = hasCapability("fanbus.registrations.manage");
   const canPublishing = hasCapability("fanbus.publishing.manage");
 
+  if (hasBusOrgaAccess()) cards.push(workspaceCard({ id: "prediction", title: "Tippspiel", description: "Tipps erfassen und Gewinner auswerten" }));
   if (canPublishing) cards.push(workspaceCard({ id: "publishing", title: "Social Media", description: "Kurzlinks, QR-Codes und Fanbus-Flyer" }));
   if (canManage) cards.push(workspaceCard({ id: "settings", title: "Zustiege", description: "Zustiegsorte und Fanbus-Grundeinstellungen" }));
   if (canRegistrations) {
@@ -153,6 +154,10 @@ function renderWorkspaces() {
   target.querySelectorAll("[data-m328-workspace]").forEach(button => {
     button.addEventListener("click", () => {
       const action = button.dataset.m328Workspace;
+      if (action === "prediction") {
+        location.hash = "#/bus-orga?view=prediction";
+        return;
+      }
       if (action === "publishing") return openWorkspace("publishing");
       if (action === "settings") return openWorkspace("settings");
       if (action === "regular-riders") return openWorkspace("regular-riders");
