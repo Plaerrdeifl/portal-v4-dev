@@ -18,7 +18,7 @@ const ADMIN_TASK_ACCESS_CACHE_VERSION = "pd-portal-v4-admin-task-access-r1-20260
 const OFFICES_CACHE_VERSION = "pd-portal-v4-offices-save-corr1-20260724";
 const TASK_ACCESS_CACHE_VERSION = "pd-portal-v4-task-access-push-r3-20260724";
 const LEGACY_CACHE_VERSION = "pd-portal-v4-push-newtasks-quiettime-r1-20260723";
-const STARTUP_PERFORMANCE_CACHE_VERSION = "pd-portal-v4-fanbus-known-people-search-r1-20260924";
+const STARTUP_PERFORMANCE_CACHE_VERSION = "pd-portal-v4-fanbus-append-filter-fix-r1-20260924";
 const APP_CACHE = `${STARTUP_PERFORMANCE_CACHE_VERSION}-shell`;
 const SHELL = [
   "./",

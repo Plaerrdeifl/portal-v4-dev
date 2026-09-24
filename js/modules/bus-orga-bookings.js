@@ -322,13 +322,17 @@ function appendPersonLabel(person) {
 
 function appendParticipantFromChoice(choice) {
   if (!choice) return null;
-  if (choice.personType === "MEMBER") {
+  if (choice.memberId) {
     return { source: "MEMBER", memberId: choice.memberId };
   }
-  if (choice.personType === "PORTAL_USER") {
+  if (choice.portalUserId) {
     return { source: "PORTAL_USER", portalUserId: choice.portalUserId };
   }
-  return { source: "REGULAR_RIDER", regularRiderId: choice.id };
+  const regularRiderId = choice.regularRiderId || choice.id;
+  if (regularRiderId) {
+    return { source: "REGULAR_RIDER", regularRiderId };
+  }
+  return null;
 }
 
 function appendStopByDefault(state, choice) {
@@ -520,25 +524,54 @@ function bookingById(state, id) {
   return state.bookings.find(booking => booking.id === id) || null;
 }
 
-function appendParticipantPayload(person = {}) {
+function appendParticipantPayload(state, person = {}) {
+  const linked = appendParticipantFromChoice(person);
+  const boardingStopId = String(
+    person.boardingStopId
+      || person.tripBoardingStopId
+      || appendStopByDefault(state, person)
+      || ""
+  ) || null;
+  const busPreference = String(
+    person.busPreference
+      || person.defaultBusPreference
+      || "EGAL"
+  );
+  const operationalNote = String(person.operationalNote || "").trim() || null;
+
+  if (linked) {
+    return {
+      ...linked,
+      boardingStopId,
+      busPreference,
+      operationalNote
+    };
+  }
+
   return {
-    ...(person.portalUserId ? { portalUserId: person.portalUserId } : {}),
-    ...(person.memberId ? { memberId: person.memberId } : {}),
-    ...(person.regularRiderId ? { regularRiderId: person.regularRiderId } : {}),
-    firstName: person.firstName || "",
-    lastName: person.lastName || "",
-    email: person.email || null,
-    tripBoardingStopId: person.tripBoardingStopId || null,
-    operationalNote: person.operationalNote || null
+    source: "GUEST",
+    firstName: String(person.firstName || "").trim(),
+    lastName: String(person.lastName || "").trim(),
+    email: String(person.email || "").trim() || null,
+    boardingStopId,
+    busPreference,
+    operationalNote
   };
 }
 
 async function appendPerson(state, booking, participant) {
   try {
+    const payload = appendParticipantPayload(state, participant);
+    if (activeStops(state).length && !payload.boardingStopId) {
+      showToast("Bitte wähle einen Zustieg aus.", "warning", 3200);
+      return;
+    }
     const result = await runWrite(
       () => call("fanbus_booking_operator_append", {
         bookingId: booking.id,
-        participant: appendParticipantPayload(participant)
+        idempotencyKey: crypto.randomUUID(),
+        participant: payload,
+        consentConfirmed: true
       }),
       `Person zu ${booking.number} hinzugefügt.`
     );
@@ -605,6 +638,9 @@ async function openAddPerson(state, booking) {
             <label>Person
               <select data-m328-known-person></select>
             </label>
+            ${activeStops(state).length ? `<label>Zustieg
+              <select data-m328-known-stop>${stopOptions(state)}</select>
+            </label>` : ""}
             <p class="subtle m328-known-empty" data-m328-known-empty hidden>Keine noch buchbare Person gefunden.</p>
             <button class="button primary m328-add-person-action" type="button" data-m328-append-known>Person hinzufügen</button>
           </div>
@@ -619,6 +655,7 @@ async function openAddPerson(state, booking) {
             <button class="button primary m328-add-person-action m328-add-person-wide" type="submit">Gast hinzufügen</button>
           </form>
         </details>
+        <p class="subtle">Mit dem Hinzufügen bestätigst du, dass die Person über Teilnahmebedingungen und Datenschutzhinweise informiert wurde.</p>
       </div>`
     });
 
@@ -638,6 +675,7 @@ async function openAddPerson(state, booking) {
     const knownSelect = dialog.querySelector("[data-m328-known-person]");
     const knownQuery = dialog.querySelector("[data-m328-known-query]");
     const knownEmpty = dialog.querySelector("[data-m328-known-empty]");
+    const knownStop = dialog.querySelector("[data-m328-known-stop]");
     const knownAppend = dialog.querySelector("[data-m328-append-known]");
     let knownFilter = "ALL";
 
@@ -655,6 +693,7 @@ async function openAddPerson(state, booking) {
         knownSelect.disabled = filtered.length === 0;
       }
       if (knownEmpty) knownEmpty.hidden = filtered.length !== 0;
+      if (knownStop) knownStop.value = "";
       if (knownAppend) knownAppend.disabled = filtered.length === 0;
       dialog.querySelectorAll("[data-m328-known-filter]").forEach(button => {
         button.setAttribute("aria-pressed", String(button.dataset.m328KnownFilter === knownFilter));
@@ -665,7 +704,14 @@ async function openAddPerson(state, booking) {
       knownFilter = button.dataset.m328KnownFilter || "ALL";
       renderKnownPeople();
     }));
+    const syncKnownDefaults = () => {
+      const index = Number(knownSelect?.value);
+      const person = Number.isInteger(index) ? known[index] : null;
+      if (knownStop) knownStop.value = person ? appendStopByDefault(state, person) : "";
+    };
+
     knownQuery?.addEventListener("input", renderKnownPeople);
+    knownSelect?.addEventListener("change", syncKnownDefaults);
     renderKnownPeople();
 
     knownAppend?.addEventListener("click", () => {
@@ -674,7 +720,14 @@ async function openAddPerson(state, booking) {
         showToast("Bitte wähle eine Person aus.", "warning", 2600);
         return;
       }
-      void appendPerson(state, booking, known[index]);
+      if (knownStop && !knownStop.value) {
+        showToast("Bitte wähle einen Zustieg aus.", "warning", 3200);
+        return;
+      }
+      void appendPerson(state, booking, {
+        ...known[index],
+        tripBoardingStopId: knownStop?.value || null
+      });
     });
     dialog.querySelector("[data-m328-append-guest]")?.addEventListener("submit", event => {
       event.preventDefault();

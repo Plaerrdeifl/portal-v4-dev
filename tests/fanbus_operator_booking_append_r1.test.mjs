@@ -58,6 +58,9 @@ test("bus orga booking UI adds people in group context with fallbacks", () => {
   assert.match(ui, /Neuen Gast eintragen/);
   assert.match(ui, /m328-add-person-action/);
   assert.match(ui, /fanbus_booking_operator_append/);
+  assert.match(ui, /idempotencyKey: crypto\.randomUUID\(\)/);
+  assert.match(ui, /consentConfirmed: true/);
+  assert.match(ui, /boardingStopId/);
 });
 
 test("append controls remain usable on mobile", () => {

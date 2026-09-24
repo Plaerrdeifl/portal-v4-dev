@@ -9,6 +9,7 @@ const participants = read("../js/modules/bus-orga-participants.js");
 const workspaces = read("../js/modules/bus-orga-trip-workspaces.js");
 const pages = read("../js/pages.js");
 const migration = read("../supabase/migrations/20260924153153_fanbus_identity_search_short_names.sql");
+const filterFixMigration = read("../supabase/migrations/20260924161551_fanbus_booking_append_and_identity_filter_fix.sql");
 
 test("known-person picker filters categories, searches names and removes duplicates", () => {
   const start = bookings.indexOf("async function openAddPerson");
@@ -26,6 +27,21 @@ test("known-person picker filters categories, searches names and removes duplica
   assert.match(block, /!personAlreadyBooked\(person, currentIdentityKeys\)/);
   assert.match(bookings, /effectiveIdentityKey/);
   assert.match(bookings, /linkedPortalUserId/);
+  assert.match(filterFixMigration, /'regularRiderId',\s*registration\.regular_rider_id/);
+});
+
+test("operator append sends the exact backend contract", () => {
+  const start = bookings.indexOf("function appendParticipantPayload");
+  const end = bookings.indexOf("async function openAddPerson", start);
+  const block = bookings.slice(start, end);
+
+  assert.match(block, /idempotencyKey: crypto\.randomUUID\(\)/);
+  assert.match(block, /consentConfirmed: true/);
+  assert.match(block, /source: "GUEST"/);
+  assert.match(block, /boardingStopId/);
+  assert.match(block, /busPreference/);
+  assert.match(block, /participant: payload/);
+  assert.doesNotMatch(block, /tripBoardingStopId:/);
 });
 
 test("booking portal-user assignment accepts two-character prefixes", () => {
@@ -44,7 +60,7 @@ test("booking portal-user assignment accepts two-character prefixes", () => {
 });
 
 test("cache-bust chain reaches both changed fanbus dialogs", () => {
-  assert.match(pages, /bus-orga-bookings\.js[^"]*knownpeople=20260924-r1/);
+  assert.match(pages, /bus-orga-bookings\.js[^"]*knownpeople=20260924-r2&appendfix=20260924-r1/);
   assert.match(pages, /bus-orga-trip-workspaces\.js[^"]*identitysearch=20260924-r1/);
   assert.match(workspaces, /bus-orga-participants\.js[^"]*identitysearch=20260924-r1/);
   assert.match(participants, /bus-orga-participant-dialogs\.js[^"]*identitysearch=20260924-r1/);
