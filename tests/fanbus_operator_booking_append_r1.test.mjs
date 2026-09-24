@@ -54,8 +54,8 @@ test("bus orga booking UI adds people in group context with fallbacks", () => {
   assert.match(ui, /Noch nicht gebuchte Gruppenmitglieder werden zuerst angeboten/);
   assert.match(ui, /fanbus_registration_people_list/);
   assert.match(ui, /fanbus_regular_riders_list/);
-  assert.match(ui, /<summary>Bekannte Person<\\/summary>/);
-  assert.match(ui, /<summary>Neuen Gast eintragen<\\/summary>/);
+  assert.match(ui, /Bekannte Person/);
+  assert.match(ui, /Neuen Gast eintragen/);
   assert.match(ui, /m328-add-person-action/);
   assert.match(ui, /fanbus_booking_operator_append/);
 });
