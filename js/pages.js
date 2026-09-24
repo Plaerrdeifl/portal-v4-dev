@@ -214,7 +214,7 @@ export async function hydratePage(key, context = {}) {
       return result;
     }
     if (view === "bookings") {
-      return feature("./modules/bus-orga-bookings.js?v=20260919-fanbus-operator-append-r5&groups=20260919-operational-groups1&bookingux=20260920-r2a&travelgroups=20260920-r1a&addperson=20260924-mobile-r1", "hydrateBusOrgaBookings", context);
+      return feature("./modules/bus-orga-bookings.js?v=20260919-fanbus-operator-append-r5&groups=20260919-operational-groups1&bookingux=20260920-r2a&travelgroups=20260920-r1a&addperson=20260924-mobile-r1&knownpeople=20260924-r1", "hydrateBusOrgaBookings", context);
     }
     if (view === "trip-edit") {
       return feature("./modules/bus-orga-trip-edit.js?v=20260830-m328-final-bus-management1", "hydrateBusOrgaTripEdit", context);
@@ -229,7 +229,7 @@ export async function hydratePage(key, context = {}) {
       return result;
     }
     if (["participants", "occupancy", "assignment", "operations"].includes(view)) {
-      return feature("./modules/bus-orga-trip-workspaces.js?v=20260830-m328-final-bus-management1", "hydrateBusOrgaTripWorkspace", context);
+      return feature("./modules/bus-orga-trip-workspaces.js?v=20260830-m328-final-bus-management1&identitysearch=20260924-r1", "hydrateBusOrgaTripWorkspace", context);
     }
     const result = await feature(
       "./modules/bus-orga-v3.js?v=20260829-m328-r1-next-trip-venue1&fix=20260829-m328-r1-next-trip-cancelled1&ux=20260829-m328-r1-registration-ux-correction1&modal=20260829-m328-r1-decision-click1&state=20260829-m328-r1-booking-state2&cards=20260829-m328-r1-active-person-cards2&rows=20260829-m328-r1-participant-row-edit1&prepared=20260829-m328-r1-prepared-density1&participant-click=20260829-m328-r1-active-person-click1&completion=20260829-m328-final1&correction=20260830-m328-c2&defaults=20260830-m328-draft-defaults1&tripedit=20260830-m328-trip-edit-compact1&workspaces=20260830-m328-native-workspaces1&final=20260830-m328-final-bus-management1&m340=20260907-m340-publishing-bus-orga1",

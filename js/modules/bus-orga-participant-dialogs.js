@@ -230,8 +230,8 @@ function openIdentitySearch(state, registration, mode) {
     title: mode === "RELINK" ? "Portaluser-Zuordnung ändern" : "Mit Portaluser verknüpfen",
     kicker: `${registration.firstName} ${registration.lastName}`,
     body: `<form class="form-grid v4-smart-form" data-m328-identity-search-form>
-      <label class="v4-field-full">Portaluser suchen<input name="query" type="search" minlength="5" maxlength="120" autocomplete="off" placeholder="Name oder Namensanfang, mindestens 5 Zeichen"></label>
-      <p class="subtle v4-field-full" data-m328-identity-search-status>Mindestens 5 Zeichen eingeben.</p>
+      <label class="v4-field-full">Portaluser suchen<input name="query" type="search" minlength="2" maxlength="120" autocomplete="off" placeholder="Name oder Namensanfang, mindestens 2 Zeichen"></label>
+      <p class="subtle v4-field-full" data-m328-identity-search-status>Mindestens 2 Zeichen eingeben.</p>
       <div class="v4-field-full m328-identity-search-results" data-m328-identity-search-results></div>
     </form>`,
   });
@@ -247,8 +247,8 @@ function openIdentitySearch(state, registration, mode) {
     requestId += 1;
     const current = requestId;
     results.replaceChildren();
-    if (query.length < 5) {
-      status.textContent = "Mindestens 5 Zeichen eingeben.";
+    if (query.length < 2) {
+      status.textContent = "Mindestens 2 Zeichen eingeben.";
       return;
     }
     status.textContent = "Suche läuft …";

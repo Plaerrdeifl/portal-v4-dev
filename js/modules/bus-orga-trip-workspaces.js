@@ -8,7 +8,7 @@ import "./bus-orga-occupancy.js?v=20260830-m328-final-bus-management1";
 import { hydrateAssignment } from "./bus-orga-assignment.js?v=20260830-m328-final-bus-management1&groups=20260919-operational-groups1";
 import { hydrateBuses } from "./bus-orga-buses.js?v=20260830-m328-final-bus-management1";
 import { hydrateOperations } from "./bus-orga-operations.js?v=20260830-m328-final-bus-management1";
-import { hydrateParticipants } from "./bus-orga-participants.js?v=20260830-m328-final-bus-management1&groups=20260919-operational-groups1";
+import { hydrateParticipants } from "./bus-orga-participants.js?v=20260830-m328-final-bus-management1&groups=20260919-operational-groups1&identitysearch=20260924-r1";
 
 export async function hydrateBusOrgaTripWorkspace(context = {}) {
   ensureWorkspaceStyle();

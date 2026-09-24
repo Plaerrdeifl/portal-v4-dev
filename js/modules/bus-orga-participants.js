@@ -7,7 +7,7 @@ import {
   showToast
 } from "./common.js";
 import { downloadFanbusRegistrationsXlsx } from "./fanbus-xlsx.js";
-import { openParticipantDetail } from "./bus-orga-participant-dialogs.js?v=20260919-operational-groups1";
+import { openParticipantDetail } from "./bus-orga-participant-dialogs.js?v=20260919-operational-groups1&identitysearch=20260924-r1";
 import {
   bindWorkspaceBack,
   busPreferenceLabel,

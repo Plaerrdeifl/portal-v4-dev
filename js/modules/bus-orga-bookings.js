@@ -66,6 +66,47 @@ function linkedIdentity(person) {
   return Boolean(person?.portalUserId || person?.memberId || person?.regularRiderId);
 }
 
+function personIdentityKeys(person) {
+  const keys = [];
+  if (person?.memberId) keys.push(`MEMBER:${person.memberId}`);
+  if (person?.portalUserId) keys.push(`PORTAL:${person.portalUserId}`);
+  if (person?.regularRiderId) keys.push(`REGULAR_RIDER:${person.regularRiderId}`);
+  if (person?.linkedPortalUserId) keys.push(`PORTAL:${person.linkedPortalUserId}`);
+  if (person?.effectiveIdentityKey) keys.push(String(person.effectiveIdentityKey).trim());
+  return [...new Set(keys.filter(Boolean))];
+}
+
+function bookedIdentityKeys(state, riders = []) {
+  const identities = new Set(
+    state.bookings.flatMap(item =>
+      item.participants
+        .filter(cancellable)
+        .flatMap(personIdentityKeys)
+    )
+  );
+
+  for (const rider of riders) {
+    const riderId = rider?.regularRiderId || rider?.id;
+    const riderKeys = personIdentityKeys({ ...rider, regularRiderId: riderId });
+    if (!riderKeys.some(key => identities.has(key))) continue;
+    riderKeys.forEach(key => identities.add(key));
+  }
+
+  return identities;
+}
+
+function personAlreadyBooked(person, identities) {
+  return personIdentityKeys(person).some(key => identities.has(key));
+}
+
+function knownPersonTypeLabel(person) {
+  return {
+    MEMBER: "Mitglied",
+    REGULAR_RIDER: "Stammfahrer",
+    PORTAL_USER: "Portaluser"
+  }[person?.personType] || "Bekannte Person";
+}
+
 function activeStops(state) {
   return state.stops.filter(stop => stop?.isActive !== false);
 }
@@ -120,6 +161,7 @@ function ensureStyle() {
     .m328-add-person-dialog{display:grid;gap:10px}.m328-add-person-dialog>.subtle{margin:0}.m328-add-person-group{display:grid;gap:8px}.m328-add-person-group h3{margin:0;font-size:.9rem}.m328-add-person-group .m328-dialog-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px}.m328-add-person-group .button{width:100%}
     .m328-add-person-choice{overflow:hidden;border:1px solid var(--line);border-radius:13px;background:var(--surface)}.m328-add-person-choice>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-width:0;min-height:48px;padding:10px 12px;list-style:none;cursor:pointer;color:var(--ink-900);font-size:.78rem;font-weight:850;line-height:1.25;text-align:left;white-space:normal;overflow-wrap:normal;word-break:normal}.m328-add-person-choice>summary::-webkit-details-marker{display:none}.m328-add-person-choice>summary::after{content:"⌄";flex:0 0 auto;color:var(--muted);font-size:.9rem;transition:transform .15s ease}.m328-add-person-choice[open]>summary::after{transform:rotate(180deg)}
     .m328-add-person-panel{display:grid;grid-template-columns:1fr;gap:9px;padding:10px 12px 12px;border-top:1px solid var(--line)}.m328-add-person-panel label{display:grid;gap:4px;min-width:0;font-size:.72rem;font-weight:750}.m328-add-person-panel input,.m328-add-person-panel select{width:100%;min-width:0;min-height:42px}.m328-add-person-action{width:100%;min-width:0;white-space:normal}.m328-add-person-guest{grid-template-columns:repeat(2,minmax(0,1fr))}.m328-add-person-wide{grid-column:1/-1}
+    .m328-known-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.m328-known-filters .button{width:100%;min-width:0;min-height:36px;padding:6px 7px;font-size:.66rem;line-height:1.15;white-space:normal}.m328-known-filters .button[aria-pressed="true"]{border-color:var(--brand,#1976d2);background:var(--brand,#1976d2);color:#fff}.m328-known-search{display:grid;gap:4px}.m328-known-empty{margin:0}
     .m328-booking-edit{display:grid;gap:8px;padding:9px 10px;border-top:1px solid var(--line)}.m328-booking-edit-person{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:9px;border:1px solid var(--line);border-radius:11px;background:var(--surface-2)}.m328-booking-edit-person h4{grid-column:1/-1;margin:0;font-size:.82rem}.m328-booking-edit-person label{display:grid;gap:3px;font-size:.68rem;font-weight:750}.m328-booking-edit-person input,.m328-booking-edit-person select{width:100%;min-height:39px}.m328-booking-edit-note{grid-column:1/-1}.m328-booking-edit-status{grid-column:1/-1;color:var(--muted);font-size:.68rem}.m328-booking-edit-footer{display:grid;grid-template-columns:1fr 1fr;gap:6px}.m328-booking-edit-footer .button{width:100%;min-height:40px}
     @media(max-width:520px){.m328-bookings-tools{grid-template-columns:1fr}.m328-bookings-count{justify-self:start}.m328-booking-card summary{padding:9px 10px}.m328-booking-side .badge{font-size:.63rem;padding-inline:7px}.m328-booking-person{grid-template-columns:1fr}.m328-booking-person-actions{justify-content:space-between}.m328-booking-actions{grid-template-columns:1fr}.m328-booking-edit-person,.m328-append-fields{grid-template-columns:1fr}.m328-booking-edit-person h4,.m328-booking-edit-note,.m328-booking-edit-status,.m328-append-full,.m328-append-consent{grid-column:auto}.m328-booking-group-facts{grid-template-columns:1fr}}
     .m328-booking-card[data-booking-status="CANCELLED"]{opacity:.68}.m328-booking-card[data-booking-status="CANCELLED"][open]{opacity:1}
@@ -129,7 +171,7 @@ function ensureStyle() {
     .m328-more-persons{border-top:1px solid var(--line)}.m328-more-persons>summary{display:block!important;padding:7px 10px!important;color:var(--muted);font-size:.66rem;font-weight:850;list-style:none}.m328-more-persons>summary::-webkit-details-marker{display:none}.m328-more-persons>div{border-top:1px dashed var(--line)}
     .m328-booking-actions{grid-template-columns:1fr 1fr;padding:8px 10px}.m328-booking-actions>.button{min-height:36px}.m328-booking-more-actions{grid-column:1/-1}.m328-booking-more-actions>summary{width:max-content;list-style:none}.m328-booking-more-actions>summary::-webkit-details-marker{display:none}.m328-booking-more-actions>div{margin-top:6px}.m328-booking-more-actions .button.danger{width:100%}
     .m328-merge-form,.m328-override-form,.m328-travel-group-form{grid-template-columns:1fr!important}.m328-merge-form>*,.m328-override-form>*,.m328-travel-group-form>*{grid-column:1!important;width:100%!important}.m328-travel-group-actions{display:grid;gap:6px}.m328-travel-group-actions .button{width:100%}
-    @media(max-width:520px){.m328-booking-person{grid-template-columns:minmax(0,1fr) auto}.m328-booking-person-actions{justify-content:flex-end;align-items:flex-start}.m328-booking-actions{grid-template-columns:1fr 1fr}.m328-booking-actions .button{font-size:.68rem;padding-inline:6px}.m328-booking-group-facts{display:flex}.m328-person-actions-menu-pop{min-width:138px}.m328-booking-primary{font-size:.76rem}.m328-add-person-group .m328-dialog-actions,.m328-add-person-guest{grid-template-columns:1fr}.m328-add-person-wide{grid-column:auto}.m328-add-person-choice>summary{font-size:.76rem;padding:10px}.m328-add-person-panel{padding:9px 10px 10px}}
+    @media(max-width:520px){.m328-booking-person{grid-template-columns:minmax(0,1fr) auto}.m328-booking-person-actions{justify-content:flex-end;align-items:flex-start}.m328-booking-actions{grid-template-columns:1fr 1fr}.m328-booking-actions .button{font-size:.68rem;padding-inline:6px}.m328-booking-group-facts{display:flex}.m328-person-actions-menu-pop{min-width:138px}.m328-booking-primary{font-size:.76rem}.m328-add-person-group .m328-dialog-actions,.m328-add-person-guest{grid-template-columns:1fr}.m328-add-person-wide{grid-column:auto}.m328-add-person-choice>summary{font-size:.76rem;padding:10px}.m328-add-person-panel{padding:9px 10px 10px}.m328-known-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
   `;
   document.head.appendChild(style);
 }
@@ -516,14 +558,33 @@ async function openAddPerson(state, booking) {
     ]);
     const groupMembers = (Array.isArray(groupData?.members) ? groupData.members : [])
       .filter(member => member.available && !member.conflict && !member.booked);
-    const known = [
-      ...(Array.isArray(peopleData?.people) ? peopleData.people : []),
-      ...(Array.isArray(riderData?.regularRiders) ? riderData.regularRiders.map(rider => ({
+    const people = Array.isArray(peopleData?.people) ? peopleData.people : [];
+    const members = people.filter(person => person?.personType === "MEMBER");
+    const portalUsers = people.filter(person => person?.personType === "PORTAL_USER");
+    const riders = (Array.isArray(riderData?.regularRiders) ? riderData.regularRiders : [])
+      .filter(rider => rider?.isActive !== false)
+      .map(rider => ({
         ...rider,
         personType: "REGULAR_RIDER",
         regularRiderId: rider.regularRiderId || rider.id
-      })) : [])
-    ];
+      }));
+
+    const representedPortalIds = new Set([
+      ...members.map(person => person.portalUserId).filter(Boolean),
+      ...riders.map(rider => rider.linkedPortalUserId).filter(Boolean),
+      ...riders.map(rider => {
+        const key = String(rider.effectiveIdentityKey || "");
+        return key.startsWith("PORTAL:") ? key.slice("PORTAL:".length) : "";
+      }).filter(Boolean)
+    ]);
+
+    const availablePortalUsers = portalUsers.filter(person =>
+      person.portalUserId && !representedPortalIds.has(person.portalUserId)
+    );
+    const currentIdentityKeys = bookedIdentityKeys(state, riders);
+    const known = [...members, ...riders, ...availablePortalUsers]
+      .filter(person => !personAlreadyBooked(person, currentIdentityKeys))
+      .sort((left, right) => personName(left).localeCompare(personName(right), "de"));
     const dialog = openDialog({
       title: "Person hinzufügen",
       kicker: `${booking.number} · ${booking.current.length} aktuelle Personen`,
@@ -532,12 +593,19 @@ async function openAddPerson(state, booking) {
         <details class="m328-add-person-choice" data-m328-add-person-choice>
           <summary>Bekannte Person</summary>
           <div class="m328-add-person-panel">
-            <label>Person
-              <select data-m328-known-person>
-                <option value="">Bitte wählen</option>
-                ${known.map((person, index) => `<option value="${index}">${escapeHtml(`${personName(person)} · ${person.personType || "Bekannte Person"}`)}</option>`).join("")}
-              </select>
+            <div class="m328-known-filters" role="group" aria-label="Bekannte Personen filtern">
+              <button class="button secondary" type="button" data-m328-known-filter="ALL" aria-pressed="true">Alle</button>
+              <button class="button secondary" type="button" data-m328-known-filter="MEMBER" aria-pressed="false">Mitglieder</button>
+              <button class="button secondary" type="button" data-m328-known-filter="REGULAR_RIDER" aria-pressed="false">Stammfahrer</button>
+              <button class="button secondary" type="button" data-m328-known-filter="PORTAL_USER" aria-pressed="false">Portaluser</button>
+            </div>
+            <label class="m328-known-search">Name suchen
+              <input type="search" autocomplete="off" placeholder="Vor- oder Nachname" data-m328-known-query>
             </label>
+            <label>Person
+              <select data-m328-known-person></select>
+            </label>
+            <p class="subtle m328-known-empty" data-m328-known-empty hidden>Keine noch buchbare Person gefunden.</p>
             <button class="button primary m328-add-person-action" type="button" data-m328-append-known>Person hinzufügen</button>
           </div>
         </details>
@@ -566,8 +634,42 @@ async function openAddPerson(state, booking) {
       const member = groupMembers[Number(button.dataset.m328GroupCandidate)];
       if (member) void appendPerson(state, booking, member);
     }));
-    dialog.querySelector("[data-m328-append-known]")?.addEventListener("click", () => {
-      const index = Number(dialog.querySelector("[data-m328-known-person]")?.value);
+
+    const knownSelect = dialog.querySelector("[data-m328-known-person]");
+    const knownQuery = dialog.querySelector("[data-m328-known-query]");
+    const knownEmpty = dialog.querySelector("[data-m328-known-empty]");
+    const knownAppend = dialog.querySelector("[data-m328-append-known]");
+    let knownFilter = "ALL";
+
+    const renderKnownPeople = () => {
+      const query = String(knownQuery?.value || "").trim().toLocaleLowerCase("de-DE");
+      const filtered = known
+        .map((person, index) => ({ person, index }))
+        .filter(item => knownFilter === "ALL" || item.person.personType === knownFilter)
+        .filter(item => !query || personName(item.person).toLocaleLowerCase("de-DE").includes(query));
+
+      if (knownSelect) {
+        knownSelect.innerHTML = filtered.length
+          ? `<option value="">Bitte wählen</option>${filtered.map(item => `<option value="${item.index}">${escapeHtml(`${personName(item.person)} · ${knownPersonTypeLabel(item.person)}`)}</option>`).join("")}`
+          : '<option value="">Keine Person verfügbar</option>';
+        knownSelect.disabled = filtered.length === 0;
+      }
+      if (knownEmpty) knownEmpty.hidden = filtered.length !== 0;
+      if (knownAppend) knownAppend.disabled = filtered.length === 0;
+      dialog.querySelectorAll("[data-m328-known-filter]").forEach(button => {
+        button.setAttribute("aria-pressed", String(button.dataset.m328KnownFilter === knownFilter));
+      });
+    };
+
+    dialog.querySelectorAll("[data-m328-known-filter]").forEach(button => button.addEventListener("click", () => {
+      knownFilter = button.dataset.m328KnownFilter || "ALL";
+      renderKnownPeople();
+    }));
+    knownQuery?.addEventListener("input", renderKnownPeople);
+    renderKnownPeople();
+
+    knownAppend?.addEventListener("click", () => {
+      const index = Number(knownSelect?.value);
       if (!Number.isInteger(index) || !known[index]) {
         showToast("Bitte wähle eine Person aus.", "warning", 2600);
         return;

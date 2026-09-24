@@ -39,7 +39,7 @@ test("M020 R6 rotates the service-worker shell cache while retaining R6 compatib
   assert.match(worker, /const R6_CACHE_VERSION = "pd-portal-v4-prod-r6-final-20260830"/);
   assert.match(worker, /const M020_PUSH_NAVIGATION_CACHE_VERSION = "pd-portal-v4-fanbus-booking-count-authority-r1-20260919"/);
   assert.match(worker, /const M020_PUSH_NAVIGATION_COMPAT_CACHE_VERSION = "pd-portal-v4-m020-push-navigation-badge-r1-20260901"/);
-  assert.match(worker, /const STARTUP_PERFORMANCE_CACHE_VERSION = "pd-portal-v4-startup-performance-r1-fanbus-add-person-mobile1-20260924"/);
+  assert.match(worker, /const STARTUP_PERFORMANCE_CACHE_VERSION = "pd-portal-v4-fanbus-known-people-search-r1-20260924"/);
   assert.match(worker, /const APP_CACHE = `\$\{STARTUP_PERFORMANCE_CACHE_VERSION\}-shell`/);
   assert.match(
     worker,
