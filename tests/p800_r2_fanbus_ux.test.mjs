@@ -7,12 +7,15 @@ const root = path.resolve(import.meta.dirname, "..");
 const read = relativePath => fs.readFile(path.join(root, relativePath), "utf8");
 
 test("P800-R2 loads scoped Fanbus UX modules", async () => {
-  const [index, registration] = await Promise.all([
+  const [index, pages, registration] = await Promise.all([
     read("index.html"),
+    read("js/pages.js"),
     read("fanbus-anmeldung.html")
   ]);
 
-  assert.match(index, /p800-r2-fanbus-ux\.js/);
+  assert.doesNotMatch(index, /p800-r2-fanbus-ux\.js/);
+  assert.match(pages, /p800-r2-fanbus-ux\.js/);
+  assert.match(pages, /await ensureFanbusEnhancements\(\);/);
   assert.match(registration, /p800-r2-fanbus-registration-ux\.js/);
 });
 
