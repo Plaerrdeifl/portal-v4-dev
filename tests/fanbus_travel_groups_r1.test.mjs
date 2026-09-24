@@ -79,7 +79,8 @@ test("collapsed booking cards show travel-group name without growing vertically"
 
 test("PWA cache chain rotates for travel groups", () => {
   assert.match(worker, /FANBUS_TRAVEL_GROUPS_CACHE_VERSION/);
-  assert.match(worker, /APP_CACHE = `\$\{FANBUS_TRAVEL_GROUPS_CACHE_VERSION\}-shell`/);
+  assert.match(worker, /STARTUP_PERFORMANCE_CACHE_VERSION/);
+  assert.match(worker, /APP_CACHE = `\$\{STARTUP_PERFORMANCE_CACHE_VERSION\}-shell`/);
   assert.match(pages, /travelgroups=20260920-r1a/);
   assert.match(app, /travelgroups=20260920-r1a/);
   assert.match(index, /travelgroups=20260920-r1a/);

@@ -16,7 +16,7 @@ test("M020 R6 consumes server badgeEnabled and unread count as one authoritative
 
 test("M020 R6 clears badge on account identity change before syncing the new user", () => {
   assert.match(pushConsumer, /if \(userId !== badgeAuthUserId\)/);
-  assert.match(pushConsumer, /badgeAuthUserId = userId;\s*await setLocalBadge\(0\);/m);
+  assert.match(pushConsumer, /badgeAuthUserId = userId;[\s\S]{0,240}await setLocalBadge\(0\);/m);
   assert.match(
     pushConsumer,
     /revision !== badgeSyncRevision\s*\|\|\s*currentAuthUserId\(\) !== userId/m
@@ -26,7 +26,7 @@ test("M020 R6 clears badge on account identity change before syncing the new use
 test("M020 R6 stale push payloads are followed by server-authoritative sync", () => {
   assert.match(
     pushConsumer,
-    /event\.data\?\.type === "PUSH_STATE_CHANGED"\)[\s\S]*void synchronizeAuthoritativeBadge\(\)/m
+    /event\.data\?\.type === "PUSH_STATE_CHANGED"\)[\s\S]*void synchronizeAuthoritativeBadge\(auth\.current\(\), \{ force: true \}\)/m
   );
   assert.doesNotMatch(
     pushConsumer,
@@ -39,7 +39,8 @@ test("M020 R6 rotates the service-worker shell cache while retaining R6 compatib
   assert.match(worker, /const R6_CACHE_VERSION = "pd-portal-v4-prod-r6-final-20260830"/);
   assert.match(worker, /const M020_PUSH_NAVIGATION_CACHE_VERSION = "pd-portal-v4-fanbus-booking-count-authority-r1-20260919"/);
   assert.match(worker, /const M020_PUSH_NAVIGATION_COMPAT_CACHE_VERSION = "pd-portal-v4-m020-push-navigation-badge-r1-20260901"/);
-  assert.match(worker, /const APP_CACHE = `\$\{FANBUS_TRAVEL_GROUPS_CACHE_VERSION\}-shell`/);
+  assert.match(worker, /const STARTUP_PERFORMANCE_CACHE_VERSION = "pd-portal-v4-startup-performance-r1-20260924"/);
+  assert.match(worker, /const APP_CACHE = `\$\{STARTUP_PERFORMANCE_CACHE_VERSION\}-shell`/);
   assert.match(
     worker,
     /keys\.filter\(key => key\.startsWith\("pd-portal-"\) && key !== APP_CACHE\)/
