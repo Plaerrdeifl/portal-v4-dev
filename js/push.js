@@ -99,13 +99,17 @@ async function currentSubscription() {
 }
 
 async function updateBadge(count = null) {
-  if (!("setAppBadge" in navigator) || !auth.current().authenticated) return;
+  if (!auth.current().authenticated) return;
+
+  if (count === null) {
+    window.dispatchEvent(new CustomEvent("pd-badge-sync-request"));
+    return;
+  }
+
+  if (!("setAppBadge" in navigator)) return;
+
   try {
-    let next = count;
-    if (next === null) {
-      const current = await api.call("push_snapshot");
-      next = Number(current?.unreadNotificationCount || 0);
-    }
+    const next = Math.max(0, Number(count || 0));
     if (next > 0) await navigator.setAppBadge(next);
     else if ("clearAppBadge" in navigator) await navigator.clearAppBadge();
   } catch {
@@ -798,34 +802,14 @@ const __V4_PUSH_BADGE_QUIETTIME_FIX3_APPLIED__ = true;
 const __M020_R1_NOTIFICATION_PREFERENCES__ = true;
 const __M020_R2_GRANULAR_NOTIFICATION_PREFERENCES__ = true;
 
-window.setTimeout(() => {
-  if (auth.current().authenticated) updateBadge();
-}, 1500);
-
-window.addEventListener("online", () => {
-  if (auth.current().authenticated) updateBadge();
-});
-
 window.addEventListener("pd-auth-change", event => {
   void reconcileLogoutPush(event.detail);
 });
 
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && auth.current().authenticated) {
-    updateBadge();
-  }
-});
-
 navigator.serviceWorker?.addEventListener("message", event => {
   if (event.data?.type === "PUSH_BADGE") {
-    updateBadge(Number(event.data.count || 0));
+    void updateBadge(Number(event.data.count || 0));
   }
 });
 
 const __V4_TASK_PUSH_DEEPLINK_WINDOWCLIENT_R1__ = true;
-
-window.setInterval(() => {
-  if (document.visibilityState === "visible" && auth.current().authenticated) {
-    updateBadge();
-  }
-}, 60000);

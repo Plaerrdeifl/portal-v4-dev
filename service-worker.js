@@ -18,7 +18,8 @@ const ADMIN_TASK_ACCESS_CACHE_VERSION = "pd-portal-v4-admin-task-access-r1-20260
 const OFFICES_CACHE_VERSION = "pd-portal-v4-offices-save-corr1-20260724";
 const TASK_ACCESS_CACHE_VERSION = "pd-portal-v4-task-access-push-r3-20260724";
 const LEGACY_CACHE_VERSION = "pd-portal-v4-push-newtasks-quiettime-r1-20260723";
-const APP_CACHE = `${FANBUS_TRAVEL_GROUPS_CACHE_VERSION}-shell`;
+const STARTUP_PERFORMANCE_CACHE_VERSION = "pd-portal-v4-startup-performance-r1-20260924";
+const APP_CACHE = `${STARTUP_PERFORMANCE_CACHE_VERSION}-shell`;
 const SHELL = [
   "./",
   "./index.html",
@@ -91,6 +92,27 @@ async function offlineDocument() {
     });
 }
 
+const SHELL_PATHS = new Set(
+  SHELL.map(entry => new URL(entry, self.location.origin).pathname)
+);
+
+async function cacheFirstStatic(request, url) {
+  const cache = await caches.open(APP_CACHE);
+  let cached = await cache.match(request);
+
+  if (!cached && SHELL_PATHS.has(url.pathname)) {
+    cached = await cache.match(request, { ignoreSearch: true });
+  }
+
+  if (cached) return cached;
+
+  const response = await fetch(request);
+  if (response.ok) {
+    await cache.put(request, response.clone());
+  }
+  return response;
+}
+
 self.addEventListener("fetch", event => {
   const request = event.request;
   const url = new URL(request.url);
@@ -118,8 +140,18 @@ self.addEventListener("fetch", event => {
     event.respondWith(fetch(request, { cache: "no-store" }).then(response => response.ok ? response : offlineDocument()).catch(offlineDocument));
     return;
   }
-  if (["script", "style", "document"].includes(request.destination) || /\.(?:js|css|html|webmanifest)$/i.test(url.pathname)) {
-    event.respondWith(fetch(request, { cache: "no-store" }).catch(() => caches.match(request, { ignoreSearch: true })));
+  if (request.destination === "document" || /\.html$/i.test(url.pathname)) {
+    event.respondWith(
+      fetch(request, { cache: "no-store" })
+        .catch(() => caches.match(request, { ignoreSearch: true }))
+    );
+    return;
+  }
+  if (
+    ["script", "style"].includes(request.destination)
+    || /\.(?:js|css|webmanifest)$/i.test(url.pathname)
+  ) {
+    event.respondWith(cacheFirstStatic(request, url));
     return;
   }
   event.respondWith(caches.match(request, { ignoreSearch: true }).then(cached => cached || fetch(request)));

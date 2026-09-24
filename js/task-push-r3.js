@@ -2,12 +2,16 @@ import { api } from "./api.js";
 import { auth } from "./auth.js";
 
 const NOTIFICATION_PARAM = "notificationId";
+const BADGE_SYNC_MIN_INTERVAL_MS = 30000;
 const FANBUS_D073_VIEW_ACTIONS = new Set([
   "fanbus_registrations_list",
   "fanbus_buses_list"
 ]);
 let badgeAuthUserId = "";
 let badgeSyncRevision = 0;
+let badgeSyncPromise = null;
+let badgeSyncQueued = false;
+let badgeLastSyncedAt = 0;
 let pendingPushDestination = null;
 const fanbusAckInFlight = new Set();
 const scopeAckInFlight = new Set();
@@ -86,12 +90,18 @@ async function applyAuthoritativeBadgeSnapshot(snapshot, userId) {
   );
 }
 
-async function synchronizeAuthoritativeBadge(authState = auth.current()) {
-  const revision = ++badgeSyncRevision;
+async function synchronizeAuthoritativeBadge(
+  authState = auth.current(),
+  { force = false } = {}
+) {
   const userId = currentAuthUserId(authState);
+  let forceSync = force;
 
   if (userId !== badgeAuthUserId) {
     badgeAuthUserId = userId;
+    badgeLastSyncedAt = 0;
+    badgeSyncRevision += 1;
+    forceSync = true;
     await setLocalBadge(0);
   }
 
@@ -103,19 +113,46 @@ async function synchronizeAuthoritativeBadge(authState = auth.current()) {
     return;
   }
 
-  try {
-    const snapshot = await api.call("push_snapshot");
-    if (
-      revision !== badgeSyncRevision
-      || currentAuthUserId() !== userId
-    ) {
-      return;
-    }
-
-    await applyAuthoritativeBadgeSnapshot(snapshot, userId);
-  } catch (error) {
-    console.debug("App-Badge konnte nicht autoritativ synchronisiert werden", error);
+  if (badgeSyncPromise) {
+    if (forceSync) badgeSyncQueued = true;
+    return badgeSyncPromise;
   }
+
+  if (
+    !forceSync
+    && badgeLastSyncedAt > 0
+    && Date.now() - badgeLastSyncedAt < BADGE_SYNC_MIN_INTERVAL_MS
+  ) {
+    return;
+  }
+
+  const revision = ++badgeSyncRevision;
+
+  badgeSyncPromise = (async () => {
+    try {
+      const snapshot = await api.call("push_snapshot");
+      if (
+        revision !== badgeSyncRevision
+        || currentAuthUserId() !== userId
+      ) {
+        return;
+      }
+
+      badgeLastSyncedAt = Date.now();
+      await applyAuthoritativeBadgeSnapshot(snapshot, userId);
+    } catch (error) {
+      console.debug("App-Badge konnte nicht autoritativ synchronisiert werden", error);
+    }
+  })().finally(() => {
+    badgeSyncPromise = null;
+
+    if (badgeSyncQueued) {
+      badgeSyncQueued = false;
+      void synchronizeAuthoritativeBadge(auth.current(), { force: true });
+    }
+  });
+
+  return badgeSyncPromise;
 }
 
 async function acknowledgeFanbusD073(action, payload = {}) {
@@ -318,7 +355,7 @@ navigator.serviceWorker?.addEventListener(
   "message",
   event => {
     if (event.data?.type === "PUSH_STATE_CHANGED") {
-      void synchronizeAuthoritativeBadge();
+      void synchronizeAuthoritativeBadge(auth.current(), { force: true });
 
       if (String(event.data.eventType || "").startsWith("TASK_")) {
         void auth.refresh().catch(error => {
@@ -369,6 +406,10 @@ window.addEventListener("hashchange", () => {
 
 window.addEventListener("pd-auth-change", event => {
   void synchronizeAuthoritativeBadge(event.detail);
+});
+
+window.addEventListener("pd-badge-sync-request", () => {
+  void synchronizeAuthoritativeBadge(auth.current(), { force: true });
 });
 
 window.addEventListener("pageshow", () => {

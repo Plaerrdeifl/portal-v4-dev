@@ -15,6 +15,31 @@ async function feature(path, exportName, context) {
   return module[exportName]?.(context);
 }
 
+const FANBUS_ENHANCEMENT_MODULES = Object.freeze([
+  "./m328-trip-edit-ios-fields.js?v=20260919-m328-trip-edit-ios-fields5&integrity=booking-count-authority-r1",
+  "./m328-trip-subpage-back.js?v=20260830-m328-final-bus-management1",
+  "./p800-r2-fanbus-ux.js?v=20260826-p800-r2-mobile-two-column-final",
+  "./fanbus-user-standards.js?v=20260830-m327-native-standards1",
+  "./modules/m320-r3-auto-assignment.js?v=20260828-m320-r3-preview-close-r2",
+  "./m326-person-picker-ux.js?v=20260828-m326-mobile-picker-r6",
+  "./m326-manual-composer-ux.js?v=20260828-m326-composer-r2",
+  "./m326-registration-status-ux.js?v=20260828-m326-status-tints-r2"
+]);
+
+let fanbusEnhancementsPromise = null;
+
+function ensureFanbusEnhancements() {
+  if (!fanbusEnhancementsPromise) {
+    fanbusEnhancementsPromise = Promise.all(
+      FANBUS_ENHANCEMENT_MODULES.map(path => import(path))
+    ).catch(error => {
+      fanbusEnhancementsPromise = null;
+      throw error;
+    });
+  }
+  return fanbusEnhancementsPromise;
+}
+
 function setText(id, value) {
   const element = document.getElementById(id);
   if (element) element.textContent = value;
@@ -149,6 +174,7 @@ export async function hydratePage(key, context = {}) {
   if (key === "dashboard") return feature("./modules/dashboard.js?v=20260724-dashboard-delivery-corr2&feature=20260724-personal-dashboard-widgets-r1-fix4&small=20260725-dashboard-small-widgets-r1", "hydrateDashboard", context);
   if (key === "dates") return feature("./modules/dates.js", "hydrateDates", context);
   if (key === "fanbuses") {
+    await ensureFanbusEnhancements();
     const result = await feature("./modules/fanbuses.js?v=20260826-p800-r2-final-direct-fix&groups=20260828-m310-r1&m327=20260828-m327-r1&completion=20260829-m328-final1&correction=20260830-m328-c1&m340=20260908-social-media-generator-r1", "hydrateFanbuses", context);
     await feature("./m327-r1-acceptance-polish.js?v=20260829-m327-r1-acceptance1", "setupM327AcceptancePolish", context);
     await feature("./m327-companion-lists-polish.js?v=20260830-m327-companion-tap2", "setupM327CompanionListsPolish", context);
@@ -158,6 +184,7 @@ export async function hydratePage(key, context = {}) {
     return result;
   }
   if (key === "bus-orga") {
+    await ensureFanbusEnhancements();
     const view = currentBusOrgaView();
     if (view === "prediction") {
       return feature(
