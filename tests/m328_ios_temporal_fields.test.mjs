@@ -7,6 +7,7 @@ const iosFieldFix = fs.readFileSync(
   "utf8",
 );
 const indexHtml = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+const pages = fs.readFileSync(new URL("../js/pages.js", import.meta.url), "utf8");
 
 test("M328 iOS temporal controls avoid the WebKit padded-width overflow", () => {
   assert.match(
@@ -36,9 +37,10 @@ test("M328 iOS stop editor keeps bounded columns and narrow fallback", () => {
   );
 });
 
-test("M328 iOS field fix is loaded with the current dedicated cache key", () => {
+test("M328 iOS field fix is lazy-loaded with the current dedicated cache key", () => {
+  assert.doesNotMatch(indexHtml, /m328-trip-edit-ios-fields\.js/);
   assert.match(
-    indexHtml,
+    pages,
     /m328-trip-edit-ios-fields\.js\?v=20260919-m328-trip-edit-ios-fields5&integrity=booking-count-authority-r1/,
   );
 });

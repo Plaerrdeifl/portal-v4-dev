@@ -13,6 +13,7 @@ const jointContract = readFileSync(
 const ux = readFileSync(new URL("../js/fanbus-user-standards.js", import.meta.url), "utf8");
 const fanbusPage = readFileSync(new URL("../pages/fanbuses.html", import.meta.url), "utf8");
 const index = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+const pages = readFileSync(new URL("../js/pages.js", import.meta.url), "utf8");
 const registrationPage = readFileSync(new URL("../fanbus-anmeldung.html", import.meta.url), "utf8");
 
 test("Portaluser bus preference defaults fail closed to EGAL", () => {
@@ -69,9 +70,10 @@ test("Personal bus defaults are applied only after loading and only to selectabl
 });
 
 test("Personal standards portal workspace and public registration loader remain cache-versioned", () => {
+  assert.doesNotMatch(index, /fanbus-user-standards\.js/);
   assert.match(
-    index,
-    /\.\/js\/fanbus-user-standards\.js\?v=20260830-m327-native-standards1/
+    pages,
+    /\.\/fanbus-user-standards\.js\?v=20260830-m327-native-standards1/
   );
   assert.match(
     registrationPage,

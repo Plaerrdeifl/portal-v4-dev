@@ -121,10 +121,15 @@ test("M320-R3 keeps the registered DEV greatest fix as an additive migration", a
 
 test("M320-R3 UI is mobile-first, compact and keeps existing MANUAL/AUTO assignments non-editable", async () => {
   const index = await read("index.html");
+  const pages = await read("js/pages.js");
   const ui = await read(uiPath);
 
   assert.equal(
-    index.match(/js\/modules\/m320-r3-auto-assignment\.js/g)?.length,
+    index.match(/js\/modules\/m320-r3-auto-assignment\.js/g)?.length || 0,
+    0
+  );
+  assert.equal(
+    pages.match(/\.\/modules\/m320-r3-auto-assignment\.js/g)?.length,
     1
   );
   assert.match(ui, /assignmentState === "PROPOSED_AUTO"/);
