@@ -49,6 +49,7 @@ test("public boarding-stop options render HH:MM before place", () => {
 test("DOM rewrite hacks are removed and final Fanbus assets are cache-busted", () => {
   assert.doesNotMatch(fanbusUx, /function timeFirstBoardingStopText|normalizeBoardingStopLabels|new MutationObserver/);
   assert.match(pages, /fanbuses\.js\?v=20260826-p800-r2-final-direct-fix/);
-  assert.match(index, /p800-r2-fanbus-ux\.js\?v=20260826-p800-r2-mobile-two-column-final/);
+  assert.doesNotMatch(index, /p800-r2-fanbus-ux\.js/);
+  assert.match(pages, /p800-r2-fanbus-ux\.js\?v=20260826-p800-r2-mobile-two-column-final/);
   assert.match(publicHtml, /<script type="module" src="\.\/js\/fanbus-registration\.js"><\/script>/);
 });

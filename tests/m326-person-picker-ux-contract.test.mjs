@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const index = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+const pages = readFileSync(new URL("../js/pages.js", import.meta.url), "utf8");
 const apiSource = readFileSync(new URL("../js/api.js", import.meta.url), "utf8");
 const ux = readFileSync(new URL("../js/m326-person-picker-ux.js", import.meta.url), "utf8");
 const composerUx = readFileSync(new URL("../js/m326-manual-composer-ux.js", import.meta.url), "utf8");
@@ -16,12 +17,14 @@ const bookingModesOverlay = readFileSync(
   "utf8"
 );
 
-test("M326 compact person picker is loaded in the portal", () => {
-  assert.match(index, /js\/m326-person-picker-ux\.js\?v=20260828-m326-mobile-picker-r6/);
+test("M326 compact person picker is loaded only for Fanbus routes", () => {
+  assert.doesNotMatch(index, /js\/m326-person-picker-ux\.js/);
+  assert.match(pages, /\.\/m326-person-picker-ux\.js\?v=20260828-m326-mobile-picker-r6/);
 });
 
-test("M326 manual composer detail UX is loaded in the portal", () => {
-  assert.match(index, /js\/m326-manual-composer-ux\.js\?v=20260828-m326-composer-r2/);
+test("M326 manual composer detail UX is loaded only for Fanbus routes", () => {
+  assert.doesNotMatch(index, /js\/m326-manual-composer-ux\.js/);
+  assert.match(pages, /\.\/m326-manual-composer-ux\.js\?v=20260828-m326-composer-r2/);
 });
 
 test("M326 person picker uses the portal form grid instead of custom layout CSS", () => {

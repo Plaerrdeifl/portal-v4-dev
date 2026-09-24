@@ -110,7 +110,8 @@ test("M328 native workspaces retain participant, assignment and operations contr
 
 test("M328 final bus management cache chain remains explicit", () => {
   const key = "20260830-m328-final-bus-management1";
-  assert.match(index, new RegExp(`m328-trip-subpage-back\\.js\\?v=${key}`));
+  assert.doesNotMatch(index, /m328-trip-subpage-back\.js/);
+  assert.match(pages, new RegExp(`m328-trip-subpage-back\\.js\\?v=${key}`));
   assert.match(index, new RegExp(`app\\.js[^\"]*m328final=${key}`));
   assert.match(app, new RegExp(`pages\\.js[^\"]*m328final=${key}`));
   assert.match(pages, /bus-orga-bookings\.js\?v=20260919-fanbus-operator-append-r5&groups=20260919-operational-groups1/);
