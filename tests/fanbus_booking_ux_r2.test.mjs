@@ -44,6 +44,23 @@ test("merge dialog is forced into a single mobile-safe column", () => {
   assert.match(ui, /\.m328-merge-form>\*,\.m328-override-form>\*,\.m328-travel-group-form>\*\{grid-column:1!important;width:100%!important\}/);
 });
 
+test("add-person dialog stays compact and mobile-safe", () => {
+  const start = ui.indexOf("async function openAddPerson");
+  const end = ui.indexOf("async function setPrimaryPerson", start);
+  const block = ui.slice(start, end);
+
+  assert.match(ui, /\.m328-add-person-choice>summary\{[^}]*width:100%[^}]*white-space:normal/);
+  assert.match(ui, /\.m328-add-person-action\{width:100%/);
+  assert.match(ui, /\.m328-add-person-guest\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(ui, /@media\(max-width:520px\)\{[^}]*[\s\S]*?\.m328-add-person-group \.m328-dialog-actions,\.m328-add-person-guest\{grid-template-columns:1fr\}/);
+  assert.match(block, /Für diese Buchung ist keine gespeicherte Personengruppe hinterlegt\./);
+  assert.match(block, /<summary>Bekannte Person<\/summary>/);
+  assert.match(block, /<summary>Neuen Gast eintragen<\/summary>/);
+  assert.doesNotMatch(block, /v4-smart-form/);
+  assert.match(block, /data-m328-add-person-choice/);
+  assert.match(block, /if \(other !== choice\) other\.open = false/);
+});
+
 test("group editing keeps its groupRules in the form save scope", () => {
   const saveStart = ui.indexOf("async function saveBookingEdit");
   const bindStart = ui.indexOf("function bindList", saveStart);

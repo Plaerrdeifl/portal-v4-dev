@@ -45,7 +45,7 @@ test("startup performance R1 avoids eager fanbus and duplicate badge work", asyn
 
   assert.match(
     worker,
-    /const STARTUP_PERFORMANCE_CACHE_VERSION = "pd-portal-v4-startup-performance-r1-20260924";/
+    /const STARTUP_PERFORMANCE_CACHE_VERSION = "pd-portal-v4-startup-performance-r1-fanbus-add-person-mobile1-20260924";/
   );
   assert.match(worker, /async function cacheFirstStatic\(request, url\)/);
   assert.match(worker, /event\.respondWith\(cacheFirstStatic\(request, url\)\)/);

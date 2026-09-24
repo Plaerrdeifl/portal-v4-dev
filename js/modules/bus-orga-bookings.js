@@ -117,6 +117,9 @@ function ensureStyle() {
     .m328-booking-person-actions{display:flex;align-items:center;gap:6px;justify-content:flex-end}.m328-booking-person-actions .button{min-height:30px;padding:4px 7px;font-size:.66rem}
     .m328-booking-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:9px 10px;border-top:1px solid var(--line);background:var(--surface-2)}.m328-booking-actions .button{width:100%;min-height:38px;font-size:.72rem}.m328-booking-person-override{display:inline-flex;margin-top:4px;padding:2px 6px;border-radius:999px;background:color-mix(in srgb,#f7b955 24%,var(--surface));color:#7a4700;font-size:.62rem;font-weight:850}
     .m328-append-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.m328-append-fields label{display:grid;gap:4px;font-size:.72rem;font-weight:750}.m328-append-fields input,.m328-append-fields select{width:100%;min-height:42px}.m328-append-full{grid-column:1/-1}.m328-append-consent{grid-column:1/-1;display:flex!important;grid-template-columns:auto 1fr!important;align-items:flex-start;gap:8px!important}.m328-append-consent input{width:auto!important;min-height:auto!important;margin-top:3px}
+    .m328-add-person-dialog{display:grid;gap:10px}.m328-add-person-dialog>.subtle{margin:0}.m328-add-person-group{display:grid;gap:8px}.m328-add-person-group h3{margin:0;font-size:.9rem}.m328-add-person-group .m328-dialog-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px}.m328-add-person-group .button{width:100%}
+    .m328-add-person-choice{overflow:hidden;border:1px solid var(--line);border-radius:13px;background:var(--surface)}.m328-add-person-choice>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-width:0;min-height:48px;padding:10px 12px;list-style:none;cursor:pointer;color:var(--ink-900);font-size:.78rem;font-weight:850;line-height:1.25;text-align:left;white-space:normal;overflow-wrap:normal;word-break:normal}.m328-add-person-choice>summary::-webkit-details-marker{display:none}.m328-add-person-choice>summary::after{content:"⌄";flex:0 0 auto;color:var(--muted);font-size:.9rem;transition:transform .15s ease}.m328-add-person-choice[open]>summary::after{transform:rotate(180deg)}
+    .m328-add-person-panel{display:grid;grid-template-columns:1fr;gap:9px;padding:10px 12px 12px;border-top:1px solid var(--line)}.m328-add-person-panel label{display:grid;gap:4px;min-width:0;font-size:.72rem;font-weight:750}.m328-add-person-panel input,.m328-add-person-panel select{width:100%;min-width:0;min-height:42px}.m328-add-person-action{width:100%;min-width:0;white-space:normal}.m328-add-person-guest{grid-template-columns:repeat(2,minmax(0,1fr))}.m328-add-person-wide{grid-column:1/-1}
     .m328-booking-edit{display:grid;gap:8px;padding:9px 10px;border-top:1px solid var(--line)}.m328-booking-edit-person{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:9px;border:1px solid var(--line);border-radius:11px;background:var(--surface-2)}.m328-booking-edit-person h4{grid-column:1/-1;margin:0;font-size:.82rem}.m328-booking-edit-person label{display:grid;gap:3px;font-size:.68rem;font-weight:750}.m328-booking-edit-person input,.m328-booking-edit-person select{width:100%;min-height:39px}.m328-booking-edit-note{grid-column:1/-1}.m328-booking-edit-status{grid-column:1/-1;color:var(--muted);font-size:.68rem}.m328-booking-edit-footer{display:grid;grid-template-columns:1fr 1fr;gap:6px}.m328-booking-edit-footer .button{width:100%;min-height:40px}
     @media(max-width:520px){.m328-bookings-tools{grid-template-columns:1fr}.m328-bookings-count{justify-self:start}.m328-booking-card summary{padding:9px 10px}.m328-booking-side .badge{font-size:.63rem;padding-inline:7px}.m328-booking-person{grid-template-columns:1fr}.m328-booking-person-actions{justify-content:space-between}.m328-booking-actions{grid-template-columns:1fr}.m328-booking-edit-person,.m328-append-fields{grid-template-columns:1fr}.m328-booking-edit-person h4,.m328-booking-edit-note,.m328-booking-edit-status,.m328-append-full,.m328-append-consent{grid-column:auto}.m328-booking-group-facts{grid-template-columns:1fr}}
     .m328-booking-card[data-booking-status="CANCELLED"]{opacity:.68}.m328-booking-card[data-booking-status="CANCELLED"][open]{opacity:1}
@@ -126,7 +129,7 @@ function ensureStyle() {
     .m328-more-persons{border-top:1px solid var(--line)}.m328-more-persons>summary{display:block!important;padding:7px 10px!important;color:var(--muted);font-size:.66rem;font-weight:850;list-style:none}.m328-more-persons>summary::-webkit-details-marker{display:none}.m328-more-persons>div{border-top:1px dashed var(--line)}
     .m328-booking-actions{grid-template-columns:1fr 1fr;padding:8px 10px}.m328-booking-actions>.button{min-height:36px}.m328-booking-more-actions{grid-column:1/-1}.m328-booking-more-actions>summary{width:max-content;list-style:none}.m328-booking-more-actions>summary::-webkit-details-marker{display:none}.m328-booking-more-actions>div{margin-top:6px}.m328-booking-more-actions .button.danger{width:100%}
     .m328-merge-form,.m328-override-form,.m328-travel-group-form{grid-template-columns:1fr!important}.m328-merge-form>*,.m328-override-form>*,.m328-travel-group-form>*{grid-column:1!important;width:100%!important}.m328-travel-group-actions{display:grid;gap:6px}.m328-travel-group-actions .button{width:100%}
-    @media(max-width:520px){.m328-booking-person{grid-template-columns:minmax(0,1fr) auto}.m328-booking-person-actions{justify-content:flex-end;align-items:flex-start}.m328-booking-actions{grid-template-columns:1fr 1fr}.m328-booking-actions .button{font-size:.68rem;padding-inline:6px}.m328-booking-group-facts{display:flex}.m328-person-actions-menu-pop{min-width:138px}.m328-booking-primary{font-size:.76rem}}
+    @media(max-width:520px){.m328-booking-person{grid-template-columns:minmax(0,1fr) auto}.m328-booking-person-actions{justify-content:flex-end;align-items:flex-start}.m328-booking-actions{grid-template-columns:1fr 1fr}.m328-booking-actions .button{font-size:.68rem;padding-inline:6px}.m328-booking-group-facts{display:flex}.m328-person-actions-menu-pop{min-width:138px}.m328-booking-primary{font-size:.76rem}.m328-add-person-group .m328-dialog-actions,.m328-add-person-guest{grid-template-columns:1fr}.m328-add-person-wide{grid-column:auto}.m328-add-person-choice>summary{font-size:.76rem;padding:10px}.m328-add-person-panel{padding:9px 10px 10px}}
   `;
   document.head.appendChild(style);
 }
@@ -524,12 +527,41 @@ async function openAddPerson(state, booking) {
     const dialog = openDialog({
       title: "Person hinzufügen",
       kicker: `${booking.number} · ${booking.current.length} aktuelle Personen`,
-      body: `<div class="form-grid v4-smart-form">
-        ${booking.personGroupId ? `<section class="v4-field-full"><h3>${escapeHtml(groupData.personGroupName || booking.personGroupName)}</h3><p class="subtle">Noch nicht gebuchte Gruppenmitglieder werden zuerst angeboten.</p><div class="m328-dialog-actions" data-m328-group-candidates>${groupMembers.map((member, index) => `<button class="button primary" type="button" data-m328-group-candidate="${index}">${escapeHtml(personName(member))}</button>`).join("") || '<p class="subtle">Alle verfügbaren Gruppenmitglieder sind bereits gebucht.</p>'}</div></section>` : `<p class="subtle v4-field-full">Diese operative Gruppe ist nicht mit einer gespeicherten Personengruppe verknüpft.</p>`}
-        <details class="v4-field-full"><summary class="button secondary">Andere bekannte Person hinzufügen</summary><div class="form-grid v4-smart-form"><label class="v4-field-full">Person<select data-m328-known-person><option value="">Bitte wählen</option>${known.map((person, index) => `<option value="${index}">${escapeHtml(`${personName(person)} · ${person.personType || "Bekannte Person"}`)}</option>`).join("")}</select></label><button class="button secondary" type="button" data-m328-append-known>Ausgewählte Person hinzufügen</button></div></details>
-        <details class="v4-field-full"><summary class="button secondary">Manuellen Gast hinzufügen</summary><form class="form-grid v4-smart-form" data-m328-append-guest><label>Vorname<input name="firstName" maxlength="160" required></label><label>Nachname<input name="lastName" maxlength="160" required></label><label class="v4-field-full">E-Mail (optional)<input name="email" type="email" maxlength="320"></label><label class="v4-field-full">Zustieg<select name="tripBoardingStopId"><option value="">Kein strukturierter Zustieg</option>${stopOptions(state)}</select></label><button class="button primary" type="submit">Gast hinzufügen</button></form></details>
+      body: `<div class="m328-add-person-dialog">
+        ${booking.personGroupId ? `<section class="m328-add-person-group"><h3>${escapeHtml(groupData.personGroupName || booking.personGroupName)}</h3><p class="subtle">Noch nicht gebuchte Gruppenmitglieder werden zuerst angeboten.</p><div class="m328-dialog-actions" data-m328-group-candidates>${groupMembers.map((member, index) => `<button class="button primary" type="button" data-m328-group-candidate="${index}">${escapeHtml(personName(member))}</button>`).join("") || '<p class="subtle">Alle verfügbaren Gruppenmitglieder sind bereits gebucht.</p>'}</div></section>` : `<p class="subtle">Für diese Buchung ist keine gespeicherte Personengruppe hinterlegt.</p>`}
+        <details class="m328-add-person-choice" data-m328-add-person-choice>
+          <summary>Bekannte Person</summary>
+          <div class="m328-add-person-panel">
+            <label>Person
+              <select data-m328-known-person>
+                <option value="">Bitte wählen</option>
+                ${known.map((person, index) => `<option value="${index}">${escapeHtml(`${personName(person)} · ${person.personType || "Bekannte Person"}`)}</option>`).join("")}
+              </select>
+            </label>
+            <button class="button primary m328-add-person-action" type="button" data-m328-append-known>Person hinzufügen</button>
+          </div>
+        </details>
+        <details class="m328-add-person-choice" data-m328-add-person-choice>
+          <summary>Neuen Gast eintragen</summary>
+          <form class="m328-add-person-panel m328-add-person-guest" data-m328-append-guest>
+            <label>Vorname<input name="firstName" maxlength="160" autocomplete="given-name" required></label>
+            <label>Nachname<input name="lastName" maxlength="160" autocomplete="family-name" required></label>
+            <label class="m328-add-person-wide">E-Mail (optional)<input name="email" type="email" maxlength="320" autocomplete="email"></label>
+            <label class="m328-add-person-wide">Zustieg<select name="tripBoardingStopId"><option value="">Kein strukturierter Zustieg</option>${stopOptions(state)}</select></label>
+            <button class="button primary m328-add-person-action m328-add-person-wide" type="submit">Gast hinzufügen</button>
+          </form>
+        </details>
       </div>`
     });
+
+    const choices = Array.from(dialog.querySelectorAll("[data-m328-add-person-choice]"));
+    choices.forEach(choice => choice.addEventListener("toggle", () => {
+      if (!choice.open) return;
+      choices.forEach(other => {
+        if (other !== choice) other.open = false;
+      });
+    }));
+
     dialog.querySelectorAll("[data-m328-group-candidate]").forEach(button => button.addEventListener("click", () => {
       const member = groupMembers[Number(button.dataset.m328GroupCandidate)];
       if (member) void appendPerson(state, booking, member);
