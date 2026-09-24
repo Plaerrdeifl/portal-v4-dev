@@ -220,7 +220,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260922171811_nextcloud_portal_access_board.sql",
     "20260922172732_edit_pending_contribution_payment_reports.sql",
     "20260923042930_add_fanbus_prediction_game.sql",
-    "20260923051216_index_fanbus_prediction_foreign_keys.sql"
+    "20260923051216_index_fanbus_prediction_foreign_keys.sql",
+    "20260924153153_fanbus_identity_search_short_names.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);
