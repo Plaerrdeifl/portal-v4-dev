@@ -15,11 +15,15 @@ const read = relative => fs.readFile(path.join(root, relative), "utf8");
 const chatStoreError = new Error("Chat not found in ChatStore for 120363407159499081@newsletter");
 
 test("delivery timing leaves a four-second gateway completion margin", async () => {
-  const worker = await read("workers/liveticker-whatsapp/worker.mjs");
+  const [worker, environmentExample] = await Promise.all([
+    read("workers/liveticker-whatsapp/worker.mjs"),
+    read("workers/liveticker-whatsapp/liveticker-whatsapp-worker.env.example")
+  ]);
   assert.equal(WHATSAPP_DELIVERY_WINDOW_MS, 14000);
   assert.equal(WHATSAPP_SEND_BUDGET_MS, 10000);
   assert.equal(WHATSAPP_DELIVERY_WINDOW_MS - WHATSAPP_SEND_BUDGET_MS, 4000);
   assert.match(worker, /WAHA_TIMEOUT_MS = Number\.parseInt\(process\.env\.WAHA_TIMEOUT_MS \|\| "10000", 10\)/);
+  assert.match(environmentExample, /^WAHA_TIMEOUT_MS=10000$/m);
   assert.match(worker, /Math\.min\(WAHA_TIMEOUT_MS, Math\.floor\(timeoutMs\)\)/);
 });
 
