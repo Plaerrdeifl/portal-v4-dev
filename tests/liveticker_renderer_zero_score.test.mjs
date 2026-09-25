@@ -112,6 +112,40 @@ check("logo_away","matrix(1.8518519,0,0,1.8518519,-871.35819,-325.85931)",990.82
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });
 
+test("wide 892x500 logos are proportionally capped only for STORY", () => {
+  const renderer = resolve("scripts/liveticker-renderer/render_v1.py");
+  const source = String.raw`
+import importlib.util, sys, tempfile
+from pathlib import Path
+import xml.etree.ElementTree as ET
+spec=importlib.util.spec_from_file_location("liveticker_render_v1", sys.argv[1])
+module=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+module.png_dims=lambda path:(892,500)
+module.data_uri=lambda path:"data:image/png;base64,AA=="
+
+def render_logo(fmt):
+    module.CURRENT_FORMAT=fmt
+    root=ET.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><g id="logo_home"><image x="350" y="300" width="100" height="100" /></g></svg>')
+    with tempfile.NamedTemporaryFile(suffix=".png") as handle:
+        module.inject_logo(root,"logo_home",Path(handle.name))
+    image=module.find(root,"logo_home_image")
+    return tuple(float(image.get(name)) for name in ("x","y","width","height"))
+
+story=render_logo("STORY")
+post=render_logo("POST")
+expected_story_height=250.0*500.0/892.0
+assert abs(story[2]-250.0)<0.000001,story
+assert abs(story[3]-expected_story_height)<0.000001,story
+assert abs((story[0]+story[2]/2)-400.0)<0.000001,story
+assert abs((story[1]+story[3]/2)-350.0)<0.000001,story
+assert abs(post[2]-(250.0*892.0/500.0))<0.000001,post
+assert abs(post[3]-250.0)<0.000001,post
+`;
+  const result = spawnSync("python3", ["-c", source, renderer], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+});
+
 
 test("Liveticker renderer normalizes logo assets before rendering POST and STORY", () => {
   const source = readFileSync(resolve("scripts/liveticker-renderer/render_v1.py"), "utf8");

@@ -14,6 +14,15 @@ const root = path.resolve(import.meta.dirname, "..");
 const read = relative => fs.readFile(path.join(root, relative), "utf8");
 const chatStoreError = new Error("Chat not found in ChatStore for 120363407159499081@newsletter");
 
+test("delivery timing leaves a four-second gateway completion margin", async () => {
+  const worker = await read("workers/liveticker-whatsapp/worker.mjs");
+  assert.equal(WHATSAPP_DELIVERY_WINDOW_MS, 14000);
+  assert.equal(WHATSAPP_SEND_BUDGET_MS, 10000);
+  assert.equal(WHATSAPP_DELIVERY_WINDOW_MS - WHATSAPP_SEND_BUDGET_MS, 4000);
+  assert.match(worker, /WAHA_TIMEOUT_MS = Number\.parseInt\(process\.env\.WAHA_TIMEOUT_MS \|\| "10000", 10\)/);
+  assert.match(worker, /Math\.min\(WAHA_TIMEOUT_MS, Math\.floor\(timeoutMs\)\)/);
+});
+
 test("successful WPP response completes on the first attempt", async () => {
   let calls = 0;
   const result = await sendWithNewsletterRecovery({
@@ -71,6 +80,16 @@ test("ambiguous network errors are not blindly retried", async () => {
   assert.equal(calls, 1);
   assert.equal(isNewsletterChatStoreError(chatStoreError), true);
   assert.equal(isNewsletterChatStoreError(new Error("other failure")), false);
+});
+
+test("an ambiguous sticker timeout is attempted exactly once", async () => {
+  let calls = 0;
+  const timeout = new DOMException("The operation was aborted due to timeout", "TimeoutError");
+  await assert.rejects(sendWithNewsletterRecovery({
+    send: async () => { calls += 1; throw timeout; },
+    remainingMs: () => WHATSAPP_SEND_BUDGET_MS
+  }), error => error === timeout);
+  assert.equal(calls, 1);
 });
 
 test("gateway makes failures terminal until the explicit same-job retry RPC", async () => {

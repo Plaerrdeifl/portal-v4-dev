@@ -160,6 +160,20 @@ function normalizeState(raw) {
   };
 }
 
+function withStateSavedSuppressed(callback) {
+  const previous = globalThis.PD_LIVETICKER_SUPPRESS_STATE_SAVED;
+  globalThis.PD_LIVETICKER_SUPPRESS_STATE_SAVED = true;
+  try {
+    return callback();
+  } finally {
+    if (previous === undefined) {
+      delete globalThis.PD_LIVETICKER_SUPPRESS_STATE_SAVED;
+    } else {
+      globalThis.PD_LIVETICKER_SUPPRESS_STATE_SAVED = previous;
+    }
+  }
+}
+
 function writeEngineState(state) {
   exposeGameContext(selectedGame);
   const engineState = {
@@ -167,12 +181,7 @@ function writeEngineState(state) {
     minute: state.minute,
     history: state.history
   };
-  globalThis.PD_LIVETICKER_SUPPRESS_STATE_SAVED = true;
-  try {
-    localStorage.setItem(STATE_KEY, JSON.stringify(engineState));
-  } finally {
-    globalThis.PD_LIVETICKER_SUPPRESS_STATE_SAVED = false;
-  }
+  localStorage.setItem(STATE_KEY, JSON.stringify(engineState));
 }
 
 function applyRemoteState(raw) {
@@ -181,10 +190,12 @@ function applyRemoteState(raw) {
   window.PD_LIVETICKER_SERVER_STATE = next;
   applyingRemote = true;
   try {
-    writeEngineState(next);
-    window.dispatchEvent(new CustomEvent("pd-liveticker-remote-state", {
-      detail: { minute: next.minute, history: next.history }
-    }));
+    withStateSavedSuppressed(() => {
+      writeEngineState(next);
+      window.dispatchEvent(new CustomEvent("pd-liveticker-remote-state", {
+        detail: { minute: next.minute, history: next.history }
+      }));
+    });
   } finally {
     applyingRemote = false;
   }

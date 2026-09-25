@@ -6,6 +6,7 @@ import vm from "node:vm";
 
 const root = resolve(import.meta.dirname, "..");
 const storagePath = resolve(root, "js/liveticker-game-storage.js");
+const bootstrapPath = resolve(root, "js/liveticker-bootstrap.js");
 const migrationPath = resolve(
   root,
   "supabase/migrations/20260917203046_liveticker_stale_revision_conflict_hotfix_dev_r1.sql"
@@ -18,6 +19,8 @@ async function storageHarness(responses) {
   const calls = [];
   const queued = [];
   const errors = [];
+  const storageWrites = [];
+  let emittedStateSaved = 0;
   const context = {
     auth: {
       current: () => ({ authenticated: true, status: "ACTIVE" }),
@@ -51,10 +54,7 @@ async function storageHarness(responses) {
       addEventListener() {},
       head: { append() {} }
     },
-    localStorage: {
-      getItem: () => null,
-      setItem() {}
-    },
+    localStorage: { getItem: () => null },
     crypto: { randomUUID: () => "00000000-0000-4000-8000-000000000001" },
     CustomEvent: class CustomEvent {
       constructor(type, init) { this.type = type; this.detail = init?.detail; }
@@ -76,19 +76,67 @@ async function storageHarness(responses) {
     Promise
   };
   context.globalThis = context;
+  context.localStorage.setItem = (key, value) => {
+    const suppressed = context.PD_LIVETICKER_SUPPRESS_STATE_SAVED === true;
+    storageWrites.push({ key, value, suppressed });
+    if (key === "plaerrdeifl.livetickerPrototype.v3" && !suppressed) emittedStateSaved += 1;
+  };
   vm.createContext(context);
   vm.runInContext(`${source}\n;globalThis.__syncTest = {\n` +
     `  syncLocalState,\n` +
+    `  applyRemoteState,\n` +
+    `  createSyncCircuitBreaker,\n` +
     `  setState(game, state) { config = window.PD_RUNTIME_CONFIG; selectedGame = game; serverState = normalizeState(state); clientState = snapshotClientState(state); },\n` +
     `  pending() { return pendingLocalState; },\n` +
-    `  syncing() { return syncing; }\n` +
+    `  syncing() { return syncing; },\n` +
+    `  suppression() { return globalThis.PD_LIVETICKER_SUPPRESS_STATE_SAVED; }\n` +
     `};`, context, { filename: storagePath });
-  return { hooks: context.__syncTest, calls, queued, errors };
+  return {
+    hooks: context.__syncTest,
+    calls,
+    queued,
+    errors,
+    storageWrites,
+    emittedStateSaved: () => emittedStateSaved
+  };
 }
 
 const game = { eventId: "10000000-0000-4000-8000-000000000001" };
 const initial = { eventId: game.eventId, revision: 15, minute: 1, history: [] };
 const changed = { minute: 2, history: [] };
+
+test("remote state stays suppressed while a later user change still syncs", async () => {
+  const bootstrap = await readFile(bootstrapPath, "utf8");
+  const remote = { eventId: game.eventId, revision: 16, minute: 5, history: [] };
+  const harness = await storageHarness([
+    { eventId: game.eventId, revision: 17, minute: 6, history: [] }
+  ]);
+  harness.hooks.setState(game, initial);
+
+  harness.hooks.applyRemoteState(remote);
+
+  assert.match(bootstrap, /key !== STORAGE_KEY \|\| globalThis\.PD_LIVETICKER_SUPPRESS_STATE_SAVED === true/);
+  assert.equal(harness.storageWrites.length, 1);
+  assert.equal(harness.storageWrites[0].suppressed, true);
+  assert.equal(harness.emittedStateSaved(), 0);
+  assert.equal(harness.hooks.suppression(), undefined);
+
+  await harness.hooks.syncLocalState({ minute: 6, history: [] });
+
+  assert.equal(harness.calls.length, 1);
+  assert.match(harness.calls[0].url, /pd_public_liveticker_sync$/);
+  assert.equal(harness.calls[0].body.p_changes.minute, 6);
+});
+
+test("sync circuit breaker still opens after the bounded save burst", async () => {
+  const harness = await storageHarness([]);
+  const breaker = harness.hooks.createSyncCircuitBreaker({ windowMs: 5000, maxSaves: 2 });
+
+  assert.equal(breaker.register(1000), false);
+  assert.equal(breaker.register(1001), false);
+  assert.equal(breaker.register(1002), true);
+  assert.equal(breaker.isOpen(), true);
+});
 
 test("a failed sync never queues the same local state again", async () => {
   const harness = await storageHarness([{ ok: false, status: 500, body: { code: "XX000", message: "failure" } }]);

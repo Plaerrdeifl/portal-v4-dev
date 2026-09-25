@@ -2,7 +2,7 @@ await import("./runtime-config.js");
 await import("./liveticker-output-templates.js?v=20260920-missing-fragments-r1");
 
 const STORAGE_KEY = "plaerrdeifl.livetickerPrototype.v3";
-const { prepareLivetickerGameStorage } = await import("./liveticker-game-storage.js?v=20260925-live-stability-r1");
+const { prepareLivetickerGameStorage } = await import("./liveticker-game-storage.js?v=20260926-live-stability-r2");
 
 function runtimeOpponentSource() {
   return `const runtimeGame = globalThis.PD_LIVETICKER_GAME_CONTEXT || {};
