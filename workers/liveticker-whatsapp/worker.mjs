@@ -29,7 +29,7 @@ const REQUIRED_ENV = [
 
 const RECOVERY_INTERVAL_MS = Number.parseInt(process.env.RECOVERY_INTERVAL_MS || "120000", 10);
 const EDGE_TIMEOUT_MS = Number.parseInt(process.env.EDGE_TIMEOUT_MS || "10000", 10);
-const WAHA_TIMEOUT_MS = Number.parseInt(process.env.WAHA_TIMEOUT_MS || "8000", 10);
+const WAHA_TIMEOUT_MS = Number.parseInt(process.env.WAHA_TIMEOUT_MS || "10000", 10);
 const MEDIA_TEXT_DELAY_MS = 2000;
 const REALTIME_HEARTBEAT_MS = 20000;
 const WPP_ACTION_RETRY_MS = 15000;

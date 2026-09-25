@@ -167,7 +167,12 @@ function writeEngineState(state) {
     minute: state.minute,
     history: state.history
   };
-  localStorage.setItem(STATE_KEY, JSON.stringify(engineState));
+  globalThis.PD_LIVETICKER_SUPPRESS_STATE_SAVED = true;
+  try {
+    localStorage.setItem(STATE_KEY, JSON.stringify(engineState));
+  } finally {
+    globalThis.PD_LIVETICKER_SUPPRESS_STATE_SAVED = false;
+  }
 }
 
 function applyRemoteState(raw) {

@@ -70,7 +70,7 @@ try {
   const originalSetItem = Storage.prototype.setItem;
   Storage.prototype.setItem = function patchedSetItem(key, value) {
     originalSetItem.call(this, key, value);
-    if (this !== localStorage || key !== STORAGE_KEY) return;
+    if (this !== localStorage || key !== STORAGE_KEY || globalThis.PD_LIVETICKER_SUPPRESS_STATE_SAVED === true) return;
     try {
       const state = JSON.parse(value);
       if (state && Array.isArray(state.history)) {

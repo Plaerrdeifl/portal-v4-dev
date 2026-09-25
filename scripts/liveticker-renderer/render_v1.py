@@ -23,6 +23,7 @@ BACKGROUND={'POST':ROOT/'assets/backgrounds/post-background.jpg','STORY':ROOT/'a
 LOGO_HEIGHT={'POST':250.0,'STORY':200.0}
 STORY_LOGO_EDGE_MIN=20.0
 STORY_SCORE_LOGO_GAP=20.0
+STORY_LOGO_MAX_WIDTH=250.0
 LOGO_TRIMMER=Path(__file__).with_name('trim_logo.py')
 OUR={'mighty','our','mighty_dogs','home_club'}
 OPP={'opponent','away','guest','other'}
@@ -107,6 +108,10 @@ def inject_logo(root,id_,path:Path):
     g,cx,cy=logo_anchor(root,id_)
     h=LOGO_HEIGHT[CURRENT_FORMAT]
     w=h*src_w/src_h
+    if CURRENT_FORMAT=='STORY' and w>STORY_LOGO_MAX_WIDTH:
+        scale=STORY_LOGO_MAX_WIDTH/w
+        w=STORY_LOGO_MAX_WIDTH
+        h*=scale
     x=cx-w/2; y=cy-h/2
     img=ET.Element(q('image'),{
         'id':f'{id_}_image',

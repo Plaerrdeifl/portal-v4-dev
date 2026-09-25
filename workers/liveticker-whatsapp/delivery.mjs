@@ -21,8 +21,8 @@ export const WHATSAPP_DELIVERY_MODES = Object.freeze({
   IMAGE_WITH_CAPTION: "IMAGE_WITH_CAPTION"
 });
 
-export const WHATSAPP_DELIVERY_WINDOW_MS = 5000;
-export const WHATSAPP_SEND_BUDGET_MS = 4000;
+export const WHATSAPP_DELIVERY_WINDOW_MS = 14000;
+export const WHATSAPP_SEND_BUDGET_MS = 10000;
 export const NEWSLETTER_RECOVERY_DELAYS_MS = Object.freeze([600, 900]);
 
 export function isNewsletterChatStoreError(error) {
