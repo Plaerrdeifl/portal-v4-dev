@@ -10,7 +10,7 @@ try {
     if (app) app.hidden = false;
     await import("./liveticker-status-popovers.js?v=20260919-dev-popovers-r1");
     await import("./liveticker-runtime-controls.js?v=20260919-runtime-labels-r1");
-    await import("./liveticker-bootstrap.js?v=20260920-missing-fragments-r1");
+    await import("./liveticker-bootstrap.js?v=20260925-live-stability-r1");
     await import("./liveticker-graphics-inline.js?v=20260920-summary-delivery-status-r1");
   }
 } catch (error) {
