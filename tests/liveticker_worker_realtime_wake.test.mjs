@@ -49,6 +49,17 @@ test("WPP readiness covers the two-minute recovery cadence and still fails close
   assert.doesNotMatch(migration, /interval '20 seconds'/);
 });
 
+test("WhatsApp transport assertion uses the same bounded WPP readiness window", async () => {
+  const migration = await read(
+    "supabase/migrations/20260925124500_liveticker_transport_readiness_window_r1.sql"
+  );
+
+  assert.match(migration, /create or replace function app_private\.liveticker_whatsapp_transport_assert_ready/);
+  assert.match(migration, /last_seen_at < v_wpp\.updated_at/);
+  assert.match(migration, /interval '5 minutes'/);
+  assert.doesNotMatch(migration, /interval '20 seconds'/);
+});
+
 test("DEV graphic manifests accept the current Publishing root and legacy Liveticker paths", async () => {
   const migration = await read(
     "supabase/migrations/20260925063500_liveticker_graphic_manifest_publishing_root_r1.sql"
