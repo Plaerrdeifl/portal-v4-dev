@@ -35,6 +35,20 @@ test("Liveticker readiness covers the bounded recovery interval without changing
   assert.match(migration, /'disabledPollSeconds', 60/);
 });
 
+test("WPP readiness covers the two-minute recovery cadence and still fails closed", async () => {
+  const migration = await read(
+    "supabase/migrations/20260925110000_liveticker_wpp_readiness_window_r1.sql"
+  );
+
+  assert.match(migration, /create or replace function app_private\.liveticker_wpp_runtime_status_internal/);
+  assert.match(migration, /create or replace function public\.pd_liveticker_whatsapp_worker_can_claim/);
+  assert.match(migration, /v_worker_ready boolean := app_private\.worker_runtime_is_ready\('LIVETICKER_WHATSAPP'\)/);
+  assert.match(migration, /last_seen_at >= v_wpp\.updated_at/);
+  assert.match(migration, /interval '5 minutes'/);
+  assert.match(migration, /'ready', v_worker_ready and v_wpp_ready/);
+  assert.doesNotMatch(migration, /interval '20 seconds'/);
+});
+
 test("DEV graphic manifests accept the current Publishing root and legacy Liveticker paths", async () => {
   const migration = await read(
     "supabase/migrations/20260925063500_liveticker_graphic_manifest_publishing_root_r1.sql"
