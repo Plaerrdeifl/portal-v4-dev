@@ -132,17 +132,17 @@ test("Fanbus Social Media exposes manual worker control and blocks flyer generat
   assert.match(js, /Worker deaktiviert – Flyer-Erstellung derzeit nicht möglich\./);
 });
 
-test("worker runtimes use 60 second disabled and 5 second active polling", async () => {
+test("worker runtimes keep legacy gateway hints but Liveticker DEV uses event-driven recovery", async () => {
   const migration = await read("supabase/migrations/20260909115912_worker_runtime_controls_r1.sql");
   const fanbusWorker = await read("workers/m340-publishing/worker.py");
   const livetickerWorker = await read("workers/liveticker-publishing/publishing_worker_dev.py");
   assert.match(migration, /'activePollSeconds',5,'disabledPollSeconds',60/);
   assert.match(fanbusWorker, /poll_seconds not in \(5, 60\)/);
   assert.match(fanbusWorker, /LAST_POLL_SECONDS = 60/);
-  assert.match(livetickerWorker, /activePollSeconds.*5/);
-  assert.match(livetickerWorker, /disabledPollSeconds.*60/);
-  assert.match(livetickerWorker, /sleep_seconds = 60/);
-  assert.match(livetickerWorker, /sleep_seconds = 5/);
+  assert.match(livetickerWorker, /RECOVERY_SECONDS = 120/);
+  assert.match(livetickerWorker, /RealtimeBroadcastClient/);
+  assert.match(livetickerWorker, /scheduler\.wait\(RECOVERY_SECONDS\)/);
+  assert.doesNotMatch(livetickerWorker, /sleep_seconds = 5|time\.sleep\(5\)/);
 });
 
 
@@ -189,5 +189,7 @@ test("Liveticker exposes WA and WPP runtime controls beside the graphics control
   assert.match(worker, /\/stop/);
   assert.match(worker, /\/restart/);
   assert.match(worker, /action: "control"/);
-  assert.match(worker, /RUNTIME_CONTROL_INTERVAL_MS = 5000/);
+  assert.match(worker, /RECOVERY_INTERVAL_MS[^\n]*"120000"/);
+  assert.match(worker, /await refreshRuntimeControl\(reason\)/);
+  assert.doesNotMatch(worker, /RUNTIME_CONTROL_INTERVAL_MS|setInterval\([^\n]*refreshRuntimeControl/);
 });

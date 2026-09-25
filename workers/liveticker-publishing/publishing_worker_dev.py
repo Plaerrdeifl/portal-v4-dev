@@ -13,12 +13,22 @@ import sys
 import time
 from pathlib import Path
 
+from realtime_wake import (
+    RealtimeBroadcastClient,
+    WakeScheduler,
+    available_delay_seconds,
+)
+
 BASE_WORKER = Path('/srv/docker/liveticker/worker/publishing_worker.py')
 DEV_ROOT = Path('/srv/docker/liveticker/dev')
 DEV_WORK = DEV_ROOT / 'work'
 DEV_JOBS = DEV_WORK / 'jobs'
 DEV_TOKEN = DEV_ROOT / 'secrets' / 'worker_token'
+DEV_REALTIME_KEY = DEV_ROOT / 'secrets' / 'realtime_publishable_key'
 DEV_EDGE_URL = 'https://tpieykhhawszlzsoflnl.supabase.co/functions/v1/liveticker-publishing-worker'
+DEV_SUPABASE_URL = 'https://tpieykhhawszlzsoflnl.supabase.co'
+DEV_REALTIME_TOPIC = 'liveticker-graphic-jobs'
+RECOVERY_SECONDS = 120
 DEV_NEXTCLOUD_ROOT = '/Publishing'
 DEV_NEXTCLOUD_USER = 'liveticker-dev'
 DEV_NEXTCLOUD_BASE = 'https://cloud.plaerrdeifl.de/remote.php/dav/files/liveticker-dev'
@@ -213,32 +223,58 @@ def control_dev() -> dict:
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
     DEV_JOBS.mkdir(parents=True, exist_ok=True)
+    publishable_key = base.read_secret(DEV_REALTIME_KEY, 32)
+    scheduler = WakeScheduler()
+    realtime = RealtimeBroadcastClient(
+        DEV_SUPABASE_URL,
+        publishable_key,
+        DEV_REALTIME_TOPIC,
+        on_wake=lambda payload: scheduler.wake(
+            'realtime_wake',
+            available_delay_seconds(payload),
+        ),
+        on_subscribed=lambda: scheduler.wake('realtime_join'),
+    )
     publishing_root_ready = False
-    while True:
-        sleep_seconds = 60
-        if not publishing_root_ready:
+    realtime.start()
+    scheduler.wake('startup')
+    logging.info(
+        'DEV publishing worker started with Realtime wake and %ss recovery',
+        RECOVERY_SECONDS,
+    )
+    try:
+        while True:
+            reason = scheduler.wait(RECOVERY_SECONDS)
+            if reason == 'shutdown':
+                break
+            if not publishing_root_ready:
+                try:
+                    ensure_collection_dev(DEV_NEXTCLOUD_ROOT)
+                    publishing_root_ready = True
+                    logging.info(
+                        'DEV Nextcloud publishing root ready for %s as %s',
+                        DEV_NEXTCLOUD_ROOT,
+                        DEV_NEXTCLOUD_USER,
+                    )
+                except Exception as exc:
+                    code = exc.code if isinstance(exc, base.WorkerError) else 'WORKER_INTERNAL'
+                    logging.error('DEV Nextcloud publishing root setup failed with %s', code)
             try:
-                ensure_collection_dev(DEV_NEXTCLOUD_ROOT)
-                publishing_root_ready = True
-                logging.info(
-                    'DEV Nextcloud publishing root ready for %s as %s',
-                    DEV_NEXTCLOUD_ROOT,
-                    DEV_NEXTCLOUD_USER,
-                )
+                control = control_dev()
+                if not control['enabled']:
+                    logging.info('DEV publishing worker disabled (%s)', reason)
+                    continue
+                while run_once_dev():
+                    pass
             except Exception as exc:
                 code = exc.code if isinstance(exc, base.WorkerError) else 'WORKER_INTERNAL'
-                logging.error('DEV Nextcloud publishing root setup failed with %s', code)
-        try:
-            control = control_dev()
-            if control['enabled']:
-                run_once_dev()
-                sleep_seconds = 5
-            else:
-                sleep_seconds = 60
-        except Exception as exc:
-            code = exc.code if isinstance(exc, base.WorkerError) else 'WORKER_INTERNAL'
-            logging.error('DEV poll failed with %s', code)
-        time.sleep(sleep_seconds)
+                logging.error('DEV wake failed with %s (%s)', code, reason)
+    except KeyboardInterrupt:
+        logging.info('DEV publishing worker interrupted')
+    finally:
+        scheduler.close()
+        realtime.close()
+    return 0
 
 
 if __name__ == '__main__':

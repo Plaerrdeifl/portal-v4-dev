@@ -222,7 +222,8 @@ test("database migrations are ordered and contain the core contract", async () =
     "20260923042930_add_fanbus_prediction_game.sql",
     "20260923051216_index_fanbus_prediction_foreign_keys.sql",
     "20260924153153_fanbus_identity_search_short_names.sql",
-    "20260924161551_fanbus_booking_append_and_identity_filter_fix.sql"
+    "20260924161551_fanbus_booking_append_and_identity_filter_fix.sql",
+    "20260925055302_liveticker_workers_realtime_wake_r1.sql"
   ]);
 
   const tables = await read(`supabase/migrations/${names[2]}`);

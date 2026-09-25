@@ -27,13 +27,13 @@ const REQUIRED_ENV = [
   "WAHA_CHANNEL_ID"
 ];
 
-const POLL_INTERVAL_MS = Number.parseInt(process.env.POLL_INTERVAL_MS || "30000", 10);
+const RECOVERY_INTERVAL_MS = Number.parseInt(process.env.RECOVERY_INTERVAL_MS || "120000", 10);
 const EDGE_TIMEOUT_MS = Number.parseInt(process.env.EDGE_TIMEOUT_MS || "10000", 10);
 const WAHA_TIMEOUT_MS = Number.parseInt(process.env.WAHA_TIMEOUT_MS || "8000", 10);
 const MEDIA_TEXT_DELAY_MS = 2000;
 const REALTIME_HEARTBEAT_MS = 20000;
-const RUNTIME_CONTROL_INTERVAL_MS = 5000;
 const WPP_ACTION_RETRY_MS = 15000;
+const WPP_TRANSITION_CHECK_MS = 15000;
 const REALTIME_TOPIC = "realtime:liveticker-whatsapp-jobs";
 const WAHA_BASE_URL = String(process.env.WAHA_BASE_URL || "http://127.0.0.1:3001").replace(/\/$/, "");
 const WAHA_SESSION = String(process.env.WAHA_SESSION || "Liveticker_Test");
@@ -68,7 +68,9 @@ if (!PUBLISHABLE_KEY.startsWith("sb_publishable_") && PUBLISHABLE_KEY.split(".")
   throw new Error("SUPABASE_PUBLISHABLE_KEY is not a supported publishable/anon key");
 }
 if (!WAHA_CHANNEL_ID.endsWith("@newsletter")) throw new Error("WAHA_CHANNEL_ID must be a WhatsApp Channel id ending in @newsletter");
-if (!Number.isInteger(POLL_INTERVAL_MS) || POLL_INTERVAL_MS < 5000) throw new Error("POLL_INTERVAL_MS must be at least 5000");
+if (!Number.isInteger(RECOVERY_INTERVAL_MS) || RECOVERY_INTERVAL_MS < 60000 || RECOVERY_INTERVAL_MS > 300000) {
+  throw new Error("RECOVERY_INTERVAL_MS must be between 60000 and 300000");
+}
 if (!Number.isInteger(EDGE_TIMEOUT_MS) || EDGE_TIMEOUT_MS < 1000) throw new Error("EDGE_TIMEOUT_MS must be at least 1000");
 if (!Number.isInteger(WAHA_TIMEOUT_MS) || WAHA_TIMEOUT_MS < 1000) throw new Error("WAHA_TIMEOUT_MS must be at least 1000");
 
@@ -83,7 +85,10 @@ let reconnectTimer = null;
 let reconnectAttempt = 0;
 let messageRef = 0;
 let shuttingDown = false;
-let runtimeControlTimer = null;
+let recoveryTimer = null;
+const scheduledWakeTimers = new Map();
+let waking = false;
+let wakeAgain = false;
 let workerEnabled = true;
 let wppDesiredConnected = true;
 let wppState = "UNKNOWN";
@@ -226,7 +231,6 @@ async function applyWppDesiredState(desiredConnected, observedState) {
 }
 
 async function refreshRuntimeControl(reason = "timer") {
-  const wasReady = workerEnabled && wppDesiredConnected && wppState === "CONNECTED";
   const snapshot = await readWppSnapshot();
   wppState = snapshot.state;
   try {
@@ -239,14 +243,14 @@ async function refreshRuntimeControl(reason = "timer") {
       : false;
     if (changed) {
       await edge({ action: "control", wppState, wppError: null });
+      scheduleQueueWake("wpp_transition", WPP_TRANSITION_CHECK_MS);
     }
-    const ready = workerEnabled && wppDesiredConnected && wppState === "CONNECTED";
-    if (!wasReady && ready) void drainQueue("runtime_ready");
   } catch (error) {
     // Backward-compatible during rollout: the process stays up, but the claim
     // gateway will remain the final authority once runtime-control RPCs exist.
     log("runtime_control_error", { reason, error: safeError(error) });
   }
+  return workerEnabled && wppDesiredConnected && wppState === "CONNECTED";
 }
 
 async function claimJob() {
@@ -558,6 +562,50 @@ async function drainQueue(reason = "wake") {
   }
 }
 
+function realtimeAvailableDelay(payload) {
+  const value = String(payload?.availableAt || "").trim();
+  if (!value) return 0;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp)
+    ? Math.min(RECOVERY_INTERVAL_MS * 2, Math.max(0, timestamp - Date.now()))
+    : 0;
+}
+
+function scheduleQueueWake(reason, delayMs = 0) {
+  if (shuttingDown) return;
+  const dueAt = Date.now() + Math.max(0, delayMs);
+  if (delayMs <= 0) {
+    void wakeQueue(reason);
+    return;
+  }
+  const bucket = Math.ceil(dueAt / 1000) * 1000;
+  if (scheduledWakeTimers.has(bucket)) return;
+  if (scheduledWakeTimers.size >= 512) return;
+  const timer = setTimeout(() => {
+    scheduledWakeTimers.delete(bucket);
+    void wakeQueue(reason);
+  }, Math.max(0, bucket - Date.now()));
+  timer.unref();
+  scheduledWakeTimers.set(bucket, timer);
+}
+
+async function wakeQueue(reason = "wake") {
+  if (waking) {
+    wakeAgain = true;
+    return;
+  }
+  waking = true;
+  try {
+    do {
+      wakeAgain = false;
+      const ready = await refreshRuntimeControl(reason);
+      if (ready) await drainQueue(reason);
+    } while (wakeAgain && !shuttingDown);
+  } finally {
+    waking = false;
+  }
+}
+
 function nextRef() {
   messageRef += 1;
   return String(messageRef);
@@ -635,7 +683,7 @@ function connectRealtime() {
     if (message.event === "phx_reply" && message.ref === joinRef) {
       if (message.payload?.status === "ok") {
         log("realtime_subscribed");
-        void drainQueue("realtime_join");
+        scheduleQueueWake("realtime_join");
       } else {
         log("realtime_join_error", { error: safeError(message.payload?.response?.reason || "join rejected") });
       }
@@ -643,7 +691,10 @@ function connectRealtime() {
     }
 
     if (message.event === "broadcast" && message.payload?.event === "wake") {
-      void drainQueue("realtime_wake");
+      scheduleQueueWake(
+        "realtime_wake",
+        realtimeAvailableDelay(message.payload?.payload)
+      );
       return;
     }
 
@@ -670,8 +721,10 @@ function shutdown(signal) {
   shuttingDown = true;
   log("shutdown", { signal });
   clearRealtimeTimers();
-  if (runtimeControlTimer) clearInterval(runtimeControlTimer);
-  runtimeControlTimer = null;
+  if (recoveryTimer) clearInterval(recoveryTimer);
+  for (const timer of scheduledWakeTimers.values()) clearTimeout(timer);
+  scheduledWakeTimers.clear();
+  recoveryTimer = null;
   try { websocket?.close(1000, "shutdown"); } catch {}
   setTimeout(() => process.exit(0), draining ? 1500 : 50).unref();
 }
@@ -687,14 +740,11 @@ process.on("uncaughtException", error => {
 log("worker_started", {
   environment: process.env.WORKER_ENVIRONMENT || "UNKNOWN",
   projectRef: EXPECTED_PROJECT_REF,
-  pollIntervalMs: POLL_INTERVAL_MS,
+  recoveryIntervalMs: RECOVERY_INTERVAL_MS,
   wppControlOwner: WPP_CONTROL_OWNER
 });
 
-await refreshRuntimeControl("startup");
 connectRealtime();
-void drainQueue("startup");
-runtimeControlTimer = setInterval(() => void refreshRuntimeControl("timer"), RUNTIME_CONTROL_INTERVAL_MS);
-runtimeControlTimer.unref();
-const pollTimer = setInterval(() => void drainQueue("recovery_poll"), POLL_INTERVAL_MS);
-pollTimer.unref();
+await wakeQueue("startup");
+recoveryTimer = setInterval(() => scheduleQueueWake("recovery_poll"), RECOVERY_INTERVAL_MS);
+recoveryTimer.unref();
