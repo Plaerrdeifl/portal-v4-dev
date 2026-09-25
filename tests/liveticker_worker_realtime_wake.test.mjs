@@ -22,6 +22,33 @@ test("database broadcasts content-free Liveticker worker wake signals", async ()
   assert.doesNotMatch(migration, /request_snapshot|message|sticker_id|claim_token/);
 });
 
+test("Liveticker readiness covers the bounded recovery interval without changing other workers", async () => {
+  const migration = await read(
+    "supabase/migrations/20260925062810_liveticker_worker_readiness_window_r1.sql"
+  );
+
+  assert.match(migration, /'LIVETICKER_GRAPHICS', 'LIVETICKER_WHATSAPP'/);
+  assert.match(migration, /then interval '5 minutes'/);
+  assert.match(migration, /else interval '90 seconds'/);
+  assert.match(migration, /create or replace function app_private\.worker_runtime_status_internal/);
+  assert.match(migration, /'activePollSeconds', 5/);
+  assert.match(migration, /'disabledPollSeconds', 60/);
+});
+
+test("DEV graphic manifests accept the current Publishing root and legacy Liveticker paths", async () => {
+  const migration = await read(
+    "supabase/migrations/20260925063500_liveticker_graphic_manifest_publishing_root_r1.sql"
+  );
+
+  assert.match(migration, /v_path like '\/Publishing\/%'/);
+  assert.match(migration, /v_path like '\/Liveticker\/%'/);
+  assert.match(migration, /v_path like '%\.\.%'/);
+  assert.ok(
+    migration.includes("if v_share !~ '^https://cloud[.]plaerrdeifl[.]de/s/[A-Za-z0-9]{8,128}$'")
+  );
+  assert.match(migration, /v_download <> \(v_share \|\| '\/download'\)/);
+});
+
 test("publishing worker is Realtime-first with bounded recovery and atomic gateway claims", async () => {
   const [worker, realtime, gateway, deploy] = await Promise.all([
     read("workers/liveticker-publishing/publishing_worker_dev.py"),
