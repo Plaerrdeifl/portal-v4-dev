@@ -34,7 +34,7 @@ test("delete guard rollout marker reaches the current liveticker storage chain",
     read("js/liveticker-auth-bootstrap.js"),
     read("js/liveticker-bootstrap.js")
   ]);
-  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260926-live-stability-r2/);
+  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260926-output-primary-action-r1/);
   assert.match(auth, /liveticker-bootstrap\.js\?v=20260926-live-stability-r2/);
   assert.match(bootstrap, /liveticker-game-storage\.js\?v=20260926-live-stability-r2/);
 });

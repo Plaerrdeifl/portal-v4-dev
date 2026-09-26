@@ -153,8 +153,9 @@ test("PROD Liveticker exposes exactly three repeatable manual output buttons", a
   assert.doesNotMatch(graphics, /latestPeriodKind|currentGame\?\.completedAt|minute >= 20|minute >= 40/);
   assert.match(graphics, /const done = job\?\.status === "SUCCEEDED"/);
   assert.match(graphics, /button\.textContent = `\$\{short\} \$\{done \? "✓"/);
-  assert.match(graphics, /resultGenerateButton\.disabled = !Boolean\(workerRuntime\?\.ready\) \|\| active/);
-  assert.match(graphics, /job\?\.status === "FAILED"[\s\S]*"Erneut erstellen"[\s\S]*"Neu erstellen"/);
+  assert.match(graphics, /function outputPanelState\(job/);
+  assert.match(graphics, /primaryLabel: status === "FAILED" \? "Erneut erstellen" : "🖼️ Flyer erstellen"/);
+  assert.match(graphics, /resultGenerateButton\.hidden = !state\.regenerateVisible/);
 
   assert.match(migration, /v_kind not in \('PERIOD_1','PERIOD_2','FINAL'\)/);
   assert.doesNotMatch(migration, /v_state\.minute < 20|v_state\.minute < 40|v_state\.completed_at is null/);

@@ -23,8 +23,8 @@ test("summary WhatsApp UI waits for real delivery success", async () => {
   assert.doesNotMatch(graphics, /POST \+ Text an WhatsApp übergeben\./);
 
   assert.match(html, /graphic-status\[data-state="success"\]/);
-  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260926-live-stability-r2/);
-  assert.match(auth, /liveticker-graphics-inline\.js\?v=20260920-summary-delivery-status-r1/);
+  assert.match(html, /liveticker-auth-bootstrap\.js\?v=20260926-output-primary-action-r1/);
+  assert.match(auth, /liveticker-graphics-inline\.js\?v=20260926-output-primary-action-r1/);
 });
 
 test("WhatsApp worker supports image delivery completion components", async () => {

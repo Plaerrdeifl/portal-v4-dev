@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import vm from "node:vm";
 import {
   deliverWhatsappJob,
   WHATSAPP_DELIVERY_MODES
@@ -29,19 +30,75 @@ test("summary WhatsApp send selects POST only and never STORY", async () => {
   assert.match(graphics, /message: text/);
 });
 
-test("flyer generation and WhatsApp sending are strictly separate actions", async () => {
+test("output panel routes its primary action without duplicate jobs or sends", async () => {
   const [graphics, html] = await Promise.all([
     read("js/liveticker-graphics-inline.js"),
     read("liveticker/index.html")
   ]);
   const generate = graphics.match(/resultGenerateButton\?\.addEventListener\("click",[\s\S]*?\n\}\);/)?.[0] || "";
-  const send = graphics.match(/resultWhatsappButton\?\.addEventListener\("click",[\s\S]*?\n\}\);/)?.[0] || "";
+  const primary = graphics.match(/resultWhatsappButton\?\.addEventListener\("click",[\s\S]*?\n\}\);/)?.[0] || "";
   assert.match(generate, /void enqueue\(kind, text\)/);
   assert.doesNotMatch(generate, /sendSummaryToWhatsapp/);
-  assert.match(send, /sendSummaryToWhatsapp\(kind\)/);
-  assert.doesNotMatch(send, /enqueue\(/);
-  assert.match(html, /id="resultWhatsappButton"[^>]*>📲 An WhatsApp senden<\/button>/);
-  assert.match(html, /id="resultGenerateButton"[^>]*>Neu erstellen<\/button>/);
+  assert.match(generate, /latestJob\(kind\)\?\.status !== "SUCCEEDED" \|\| enqueueInFlight/);
+  assert.match(primary, /if \(isActive\(job\) \|\| enqueueInFlight\) return/);
+  assert.match(primary, /job\?\.status === "SUCCEEDED"[\s\S]*sendSummaryToWhatsapp\(kind\)[\s\S]*return/);
+  assert.equal((primary.match(/void enqueue\(kind, text\)/g) || []).length, 1);
+  assert.equal((primary.match(/sendSummaryToWhatsapp\(kind\)/g) || []).length, 1);
+  assert.match(html, /id="resultWhatsappButton"[^>]*>🖼️ Flyer erstellen<\/button>/);
+  assert.match(html, /id="resultGenerateButton"[^>]*hidden[^>]*>Neu erstellen<\/button>/);
+});
+
+test("output panel models no-job, active, succeeded and failed states", async () => {
+  const graphics = await read("js/liveticker-graphics-inline.js");
+  const start = graphics.indexOf("function outputPanelState");
+  const end = graphics.indexOf("\nfunction renderResultActions", start);
+  assert.ok(start >= 0 && end > start, "outputPanelState must stay directly testable");
+  const context = {};
+  vm.createContext(context);
+  vm.runInContext(`${graphics.slice(start, end)}\n;globalThis.outputPanelState = outputPanelState;`, context);
+  const state = context.outputPanelState;
+
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(state(null, { workerReady: true }))),
+    {
+      primaryDisabled: false,
+      primaryLabel: "🖼️ Flyer erstellen",
+      regenerateVisible: false,
+      regenerateDisabled: true
+    }
+  );
+
+  for (const status of ["QUEUED", "PROCESSING"]) {
+    assert.deepEqual(
+      JSON.parse(JSON.stringify(state({ status }, { workerReady: true }))),
+      {
+        primaryDisabled: true,
+        primaryLabel: "Flyer wird erstellt …",
+        regenerateVisible: false,
+        regenerateDisabled: true
+      }
+    );
+  }
+
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(state({ status: "SUCCEEDED" }, { workerReady: true, sendable: true }))),
+    {
+      primaryDisabled: false,
+      primaryLabel: "📲 An WhatsApp senden",
+      regenerateVisible: true,
+      regenerateDisabled: false
+    }
+  );
+
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(state({ status: "FAILED" }, { workerReady: true }))),
+    {
+      primaryDisabled: false,
+      primaryLabel: "Erneut erstellen",
+      regenerateVisible: false,
+      regenerateDisabled: true
+    }
+  );
 });
 
 test("old single pending-summary race is removed", async () => {

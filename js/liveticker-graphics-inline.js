@@ -605,37 +605,67 @@ function renderPrimaryOutput() {
     : "🏁 Ausgabe öffnen";
 }
 
-function renderResultGenerate() {
-  if (!resultGenerateButton) return;
-  const kind = selectedArtifactKind || currentOutputKind();
-  const job = latestJob(kind);
-  const active = isActive(job) || enqueueInFlight === kind;
-  resultGenerateButton.disabled = !Boolean(workerRuntime?.ready) || active;
-  resultGenerateButton.textContent = active
-    ? "Wird erstellt …"
-    : job?.status === "FAILED"
-      ? "Erneut erstellen"
-      : "Neu erstellen";
-  resultGenerateButton.dataset.graphicKind = kind;
+function outputPanelState(job, {
+  enqueueing = false,
+  sending = false,
+  sendable = false,
+  sent = false,
+  workerReady = false
+} = {}) {
+  const status = String(job?.status || "").toUpperCase();
+  const generating = enqueueing || status === "QUEUED" || status === "PROCESSING";
+  if (generating) {
+    return {
+      primaryDisabled: true,
+      primaryLabel: "Flyer wird erstellt …",
+      regenerateVisible: false,
+      regenerateDisabled: true
+    };
+  }
+  if (status === "SUCCEEDED") {
+    return {
+      primaryDisabled: !sendable || sending,
+      primaryLabel: sending
+        ? "📲 Wird an WhatsApp übergeben …"
+        : sent
+          ? "📲 Erneut an WhatsApp senden"
+          : "📲 An WhatsApp senden",
+      regenerateVisible: true,
+      regenerateDisabled: !workerReady
+    };
+  }
+  return {
+    primaryDisabled: !workerReady,
+    primaryLabel: status === "FAILED" ? "Erneut erstellen" : "🖼️ Flyer erstellen",
+    regenerateVisible: false,
+    regenerateDisabled: true
+  };
 }
 
-function renderResultWhatsapp() {
-  if (!resultWhatsappButton) return;
+function renderResultActions() {
   const kind = selectedArtifactKind || currentOutputKind();
   const job = latestJob(kind);
   const post = job?.status === "SUCCEEDED" ? postArtifactForJob(job) : null;
   const sending = summarySendInFlight.has(kind);
   const sendable = Boolean(post) && validArtifactUrl(post?.downloadUrl, true);
-  resultWhatsappButton.disabled = !sendable || sending;
-  resultWhatsappButton.dataset.graphicKind = kind;
-  if (sending) {
-    resultWhatsappButton.textContent = "📲 Wird an WhatsApp übergeben …";
-  } else if (!sendable) {
-    resultWhatsappButton.textContent = "📲 Zuerst Flyer erstellen";
-  } else {
-    resultWhatsappButton.textContent = wasSummarySent(job.jobId)
-      ? "📲 Erneut an WhatsApp senden"
-      : "📲 An WhatsApp senden";
+  const state = outputPanelState(job, {
+    enqueueing: enqueueInFlight === kind,
+    sending,
+    sendable,
+    sent: job?.status === "SUCCEEDED" && wasSummarySent(job.jobId),
+    workerReady: Boolean(workerRuntime?.ready)
+  });
+
+  if (resultWhatsappButton) {
+    resultWhatsappButton.disabled = state.primaryDisabled;
+    resultWhatsappButton.dataset.graphicKind = kind;
+    resultWhatsappButton.textContent = state.primaryLabel;
+  }
+  if (resultGenerateButton) {
+    resultGenerateButton.hidden = !state.regenerateVisible;
+    resultGenerateButton.disabled = state.regenerateDisabled;
+    resultGenerateButton.textContent = "Neu erstellen";
+    resultGenerateButton.dataset.graphicKind = kind;
   }
 }
 
@@ -719,8 +749,7 @@ function render() {
   for (const kind of KINDS) setButtonState(kind);
   renderOutputStatus();
   renderPrimaryOutput();
-  renderResultGenerate();
-  renderResultWhatsapp();
+  renderResultActions();
   if (statusLine) {
     const kind = selectedArtifactKind || currentOutputKind();
     const job = latestJob(kind);
@@ -871,6 +900,7 @@ closeResults?.addEventListener("click", () => {
 resultGenerateButton?.addEventListener("click", () => {
   const kind = resultGenerateButton.dataset.graphicKind || selectedArtifactKind || currentOutputKind();
   if (!KINDS.includes(kind)) return;
+  if (latestJob(kind)?.status !== "SUCCEEDED" || enqueueInFlight) return;
   const text = summaryTextFromOutput(kind);
   summaryStatusByKind.delete(kind);
   void enqueue(kind, text);
@@ -878,7 +908,16 @@ resultGenerateButton?.addEventListener("click", () => {
 
 resultWhatsappButton?.addEventListener("click", () => {
   const kind = resultWhatsappButton.dataset.graphicKind || selectedArtifactKind || currentOutputKind();
-  void sendSummaryToWhatsapp(kind);
+  if (!KINDS.includes(kind)) return;
+  const job = latestJob(kind);
+  if (isActive(job) || enqueueInFlight) return;
+  if (job?.status === "SUCCEEDED") {
+    void sendSummaryToWhatsapp(kind);
+    return;
+  }
+  const text = summaryTextFromOutput(kind);
+  summaryStatusByKind.delete(kind);
+  void enqueue(kind, text);
 });
 
 function handleMinuteDisplayChange() {

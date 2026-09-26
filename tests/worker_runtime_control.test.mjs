@@ -86,7 +86,8 @@ test("Liveticker game mode keeps the live workflow compact and one-tap", async (
     graphics,
     /outputStatusButtons\.forEach\(button => button\.addEventListener\("click", \(\) => \{[\s\S]*summaryTextFromOutput\(kind\);[\s\S]*openResults\(kind\);/
   );
-  assert.doesNotMatch(graphics, /latestJob\(kind\)\?\.status !== "SUCCEEDED"/);
+  const outputStatusClick = graphics.match(/outputStatusButtons\.forEach\([\s\S]*?\n\}\)\);/)?.[0] || "";
+  assert.doesNotMatch(outputStatusClick, /latestJob\(kind\)\?\.status !== "SUCCEEDED"/);
   assert.doesNotMatch(html, /Spiel schnell mittickern/);
 });
 
@@ -119,7 +120,7 @@ test("Liveticker result panel shares cached Post/Story files synchronously with 
   assert.match(graphics, /statusLine\.hidden = job\?\.status === "SUCCEEDED"/);
   assert.match(graphics, /const visible = Boolean\(kind\) && !resultsOpen/);
   assert.match(graphics, /primaryOutputWrap\.hidden = !visible/);
-  assert.match(auth, /liveticker-graphics-inline\.js\?v=20260920-summary-delivery-status-r1/);
+  assert.match(auth, /liveticker-graphics-inline\.js\?v=20260926-output-primary-action-r1/);
 });
 
 test("Fanbus Social Media exposes manual worker control and blocks flyer generation until ready", async () => {
