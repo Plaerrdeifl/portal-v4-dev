@@ -25,6 +25,23 @@ export const WHATSAPP_DELIVERY_WINDOW_MS = 14000;
 export const WHATSAPP_SEND_BUDGET_MS = 10000;
 export const NEWSLETTER_RECOVERY_DELAYS_MS = Object.freeze([600, 900]);
 
+export function linkedTextRemainingDelayMs(job, nowMs, minimumDelayMs) {
+  if (String(job?.deliveryMode || "").trim().toUpperCase() !== WHATSAPP_DELIVERY_MODES.TEXT_ONLY) return 0;
+  const linkedActionId = String(job?.linkedActionId || "").trim();
+  const linkedSticker = job?.linkedSticker;
+  if (!linkedActionId || !linkedSticker || typeof linkedSticker !== "object") return 0;
+  if (String(linkedSticker.linkedActionId || "").trim() !== linkedActionId) return 0;
+  if (String(linkedSticker.deliveryMode || "").trim().toUpperCase() !== WHATSAPP_DELIVERY_MODES.STICKER_ONLY) return 0;
+  if (String(linkedSticker.status || "").trim().toUpperCase() !== "SUCCEEDED") return 0;
+  if (String(linkedSticker.stickerStatus || "").trim().toUpperCase() !== "SENT") return 0;
+
+  const sentAtMs = Date.parse(String(linkedSticker.stickerSentAt || ""));
+  const currentMs = Number(nowMs);
+  const delayMs = Number(minimumDelayMs);
+  if (!Number.isFinite(sentAtMs) || !Number.isFinite(currentMs) || !Number.isFinite(delayMs) || delayMs <= 0) return 0;
+  return Math.min(delayMs, Math.max(0, Math.ceil(sentAtMs + delayMs - currentMs)));
+}
+
 export function isNewsletterChatStoreError(error) {
   return /chat not found in chatstore for\s+[^\s]+@newsletter/i.test(
     String(error?.message || error || "")

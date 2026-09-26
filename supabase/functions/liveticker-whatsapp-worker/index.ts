@@ -36,6 +36,10 @@ function isUuid(value: unknown): value is string {
   return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
+function isLinkedActionId(value: unknown): value is string {
+  return typeof value === "string" && /^[A-Za-z0-9._:-]{1,100}$/.test(value);
+}
+
 function isAttemptCount(value: unknown): value is number {
   return Number.isSafeInteger(value) && Number(value) >= 1 && Number(value) <= 5;
 }
@@ -185,7 +189,37 @@ function viewUrl(params: Record<string, string>) {
   return `${WORKER_VIEW}?${query.toString()}`;
 }
 
-function jobPayload(row: JsonObject) {
+const CLAIM_SELECT = "id,event_id,client_action_id,publication_version,message,sticker_id,delivery_mode,sticker_status,text_status,sticker_waha_message_id,sticker_sent_at,text_waha_message_id,text_sent_at,image_url,image_filename,image_status,image_waha_message_id,image_sent_at,linked_action_id,status,attempt_count,next_attempt_at,claimed_at,created_at,worker_received_at";
+
+function claimCandidate(row: JsonObject) {
+  const id = String(row.id || "");
+  const status = String(row.status || "");
+  const deliveryMode = String(row.delivery_mode || "");
+  const attemptCount = Number(row.attempt_count || 0);
+  const eventId = String(row.event_id || "");
+  const linkedActionId = row.linked_action_id == null ? "" : String(row.linked_action_id);
+  const createdAt = String(row.created_at || "");
+  if (!isUuid(id)
+      || !isUuid(eventId)
+      || status !== "PENDING"
+      || !DELIVERY_MODES.has(deliveryMode)
+      || !Number.isSafeInteger(attemptCount)
+      || Number.isNaN(Date.parse(createdAt))) throw new GatewayError();
+  return { id, status, deliveryMode, attemptCount, eventId, linkedActionId, createdAt };
+}
+
+function linkedStickerPayload(row: JsonObject | null) {
+  if (!row) return null;
+  return {
+    linkedActionId: row.linked_action_id == null ? null : String(row.linked_action_id),
+    deliveryMode: String(row.delivery_mode || ""),
+    status: String(row.status || ""),
+    stickerStatus: String(row.sticker_status || ""),
+    stickerSentAt: row.sticker_sent_at == null ? null : String(row.sticker_sent_at),
+  };
+}
+
+function jobPayload(row: JsonObject, linkedSticker: JsonObject | null = null) {
   return {
     id: String(row.id || ""),
     eventId: String(row.event_id || ""),
@@ -206,6 +240,7 @@ function jobPayload(row: JsonObject) {
     imageMessageId: row.image_waha_message_id == null ? null : String(row.image_waha_message_id),
     imageSentAt: row.image_sent_at == null ? null : String(row.image_sent_at),
     linkedActionId: row.linked_action_id == null ? null : String(row.linked_action_id),
+    linkedSticker: linkedStickerPayload(linkedSticker),
     attemptCount: Number(row.attempt_count || 0),
     createdAt: String(row.created_at || ""),
     workerReceivedAt: String(row.worker_received_at || ""),
@@ -230,7 +265,7 @@ async function claim() {
     const now = new Date();
     const nowIso = now.toISOString();
     const rows = await rest(viewUrl({
-      select: "id,event_id,client_action_id,publication_version,message,sticker_id,delivery_mode,sticker_status,text_status,sticker_waha_message_id,sticker_sent_at,text_waha_message_id,text_sent_at,image_url,image_filename,image_status,image_waha_message_id,image_sent_at,linked_action_id,status,attempt_count,next_attempt_at,claimed_at,created_at,worker_received_at",
+      select: CLAIM_SELECT,
       attempt_count: "lt.5",
       status: "eq.PENDING",
       next_attempt_at: `lte.${nowIso}`,
@@ -239,20 +274,48 @@ async function claim() {
     }));
     if (!Array.isArray(rows) || !rows.length || !isObject(rows[0])) return { claimed: false };
 
-    const candidate = rows[0];
-    const id = String(candidate.id || "");
-    const status = String(candidate.status || "");
-    const deliveryMode = String(candidate.delivery_mode || "");
-    const attemptCount = Number(candidate.attempt_count || 0);
-    if (!isUuid(id)
-        || status !== "PENDING"
-        || !DELIVERY_MODES.has(deliveryMode)
-        || !Number.isSafeInteger(attemptCount)) throw new GatewayError();
+    let candidate = claimCandidate(rows[0]);
+    if (candidate.deliveryMode === "TEXT_ONLY" && isLinkedActionId(candidate.linkedActionId)) {
+      const pendingRows = await rest(viewUrl({
+        select: CLAIM_SELECT,
+        event_id: `eq.${candidate.eventId}`,
+        linked_action_id: `eq.${candidate.linkedActionId}`,
+        delivery_mode: "eq.STICKER_ONLY",
+        status: "eq.PENDING",
+        attempt_count: "lt.5",
+        next_attempt_at: `lte.${nowIso}`,
+        created_at: `lte.${candidate.createdAt}`,
+        order: "created_at.desc,id.desc",
+        limit: "1",
+      }));
+      if (!Array.isArray(pendingRows)) throw new GatewayError();
+      if (pendingRows.length && !isObject(pendingRows[0])) throw new GatewayError();
+      if (pendingRows.length) candidate = claimCandidate(pendingRows[0]);
+    }
+
+    let linkedSticker: JsonObject | null = null;
+    if (candidate.deliveryMode === "TEXT_ONLY" && isLinkedActionId(candidate.linkedActionId)) {
+      const linkedRows = await rest(viewUrl({
+        select: "linked_action_id,delivery_mode,status,sticker_status,sticker_sent_at",
+        event_id: `eq.${candidate.eventId}`,
+        linked_action_id: `eq.${candidate.linkedActionId}`,
+        delivery_mode: "eq.STICKER_ONLY",
+        status: "eq.SUCCEEDED",
+        sticker_status: "eq.SENT",
+        sticker_sent_at: "not.is.null",
+        created_at: `lte.${candidate.createdAt}`,
+        order: "sticker_sent_at.desc",
+        limit: "1",
+      }));
+      if (!Array.isArray(linkedRows)) throw new GatewayError();
+      if (linkedRows.length && !isObject(linkedRows[0])) throw new GatewayError();
+      linkedSticker = linkedRows.length ? linkedRows[0] : null;
+    }
 
     const params: Record<string, string> = {
-      id: `eq.${id}`,
-      status: `eq.${status}`,
-      attempt_count: `eq.${attemptCount}`,
+      id: `eq.${candidate.id}`,
+      status: `eq.${candidate.status}`,
+      attempt_count: `eq.${candidate.attemptCount}`,
     };
     params.next_attempt_at = `lte.${nowIso}`;
 
@@ -261,7 +324,7 @@ async function claim() {
       headers: { Prefer: "return=representation" },
       body: JSON.stringify({
         status: "PROCESSING",
-        attempt_count: attemptCount + 1,
+        attempt_count: candidate.attemptCount + 1,
         claimed_at: nowIso,
         worker_received_at: nowIso,
         last_error: null,
@@ -269,7 +332,7 @@ async function claim() {
       }),
     });
     if (Array.isArray(claimed) && claimed.length === 1 && isObject(claimed[0])) {
-      return { claimed: true, job: jobPayload(claimed[0]) };
+      return { claimed: true, job: jobPayload(claimed[0], linkedSticker) };
     }
   }
   return { claimed: false };

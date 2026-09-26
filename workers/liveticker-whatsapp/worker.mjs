@@ -10,6 +10,7 @@ import {
   deliverWhatsappJob,
   failedComponentForJob,
   isNewsletterChatStoreError,
+  linkedTextRemainingDelayMs,
   mergeSentRecords,
   normalizeSentRecord,
   sendWithNewsletterRecovery,
@@ -515,6 +516,13 @@ async function processJob(job) {
   });
 
   try {
+    if (!sentRecord.text) {
+      const linkedTextDelayMs = linkedTextRemainingDelayMs(job, Date.now(), MEDIA_TEXT_DELAY_MS);
+      if (linkedTextDelayMs > 0) {
+        log("job_linked_text_delayed", { jobId: job.id, delayMs: linkedTextDelayMs });
+        await new Promise(resolve => setTimeout(resolve, linkedTextDelayMs));
+      }
+    }
     const delivery = await deliverWhatsappJob({
       job,
       sentRecord,
