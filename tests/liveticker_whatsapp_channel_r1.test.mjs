@@ -153,7 +153,9 @@ test("DEV WhatsApp deploy script ships worker and authoritative media assets wit
   assert.match(deploy, /node.*--check|NODE_BIN.*--check/s);
   assert.match(deploy, /SOURCE_DELIVERY=.*delivery\.mjs/);
   assert.match(deploy, /verify_same "\$\{SOURCE_DELIVERY\}" "\$\{TARGET_DELIVERY\}" "delivery\.mjs"/);
-  assert.match(deploy, /rsync -a --delete[\s\S]*SOURCE_ASSETS[\s\S]*TARGET_ASSETS/);
+  assert.match(deploy, /\[\[ ! -w "\$\{TARGET_ASSETS\}" \|\| ! -x "\$\{TARGET_ASSETS\}" \]\]/);
+  assert.match(deploy, /Asset target is not writable by/);
+  assert.match(deploy, /rsync -a --no-owner --no-group --chmod=D0755,F0644[\s\S]*--delete[\s\S]*SOURCE_ASSETS[\s\S]*TARGET_ASSETS/);
   assert.match(deploy, /sha256sum/);
   assert.match(deploy, /Service was NOT restarted/);
   assert.doesNotMatch(deploy, /systemctl\s+(restart|stop|start)/);

@@ -59,6 +59,9 @@ check_png "${SOURCE_ASSETS}/toooor.png" "assets/toooor.png"
 check_png "${SOURCE_ASSETS}/strafe.png" "assets/strafe.png"
 
 mkdir -p "${TARGET_ASSETS}"
+if [[ ! -w "${TARGET_ASSETS}" || ! -x "${TARGET_ASSETS}" ]]; then
+  fail "Asset target is not writable by $(id -un): ${TARGET_ASSETS} (expected DEV runtime ownership benny:benny)"
+fi
 
 # Replace only the worker runtime modules. Runtime secrets and sent-journal stay untouched.
 tmp_worker="${RUNTIME_DIR}/.worker.mjs.deploy.$$"
@@ -72,7 +75,8 @@ chmod 0644 "${tmp_delivery}"
 mv -f -- "${tmp_delivery}" "${TARGET_DELIVERY}"
 
 # The repository is authoritative only for TARGET_ASSETS. Nothing outside it is deleted.
-rsync -a --delete --exclude='.DS_Store' -- "${SOURCE_ASSETS}/" "${TARGET_ASSETS}/"
+rsync -a --no-owner --no-group --chmod=D0755,F0644 \
+  --delete --exclude='.DS_Store' -- "${SOURCE_ASSETS}/" "${TARGET_ASSETS}/"
 
 verify_same() {
   local source="$1"
