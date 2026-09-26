@@ -17,6 +17,10 @@ import {
   WHATSAPP_DELIVERY_WINDOW_MS,
   WHATSAPP_SEND_BUDGET_MS
 } from "./delivery.mjs";
+import {
+  createWppStateReconciler,
+  normalizeWppSnapshot
+} from "./wpp-runtime.mjs";
 
 const REQUIRED_ENV = [
   "SUPABASE_URL",
@@ -32,7 +36,6 @@ const EDGE_TIMEOUT_MS = Number.parseInt(process.env.EDGE_TIMEOUT_MS || "10000", 
 const WAHA_TIMEOUT_MS = Number.parseInt(process.env.WAHA_TIMEOUT_MS || "10000", 10);
 const MEDIA_TEXT_DELAY_MS = 2000;
 const REALTIME_HEARTBEAT_MS = 20000;
-const WPP_ACTION_RETRY_MS = 15000;
 const WPP_TRANSITION_CHECK_MS = 15000;
 const REALTIME_TOPIC = "realtime:liveticker-whatsapp-jobs";
 const WAHA_BASE_URL = String(process.env.WAHA_BASE_URL || "http://127.0.0.1:3001").replace(/\/$/, "");
@@ -92,8 +95,6 @@ let wakeAgain = false;
 let workerEnabled = true;
 let wppDesiredConnected = true;
 let wppState = "UNKNOWN";
-let lastWppActionAt = 0;
-let lastWppActionTarget = null;
 
 function log(event, details = {}) {
   const safe = { ts: new Date().toISOString(), event, ...details };
@@ -186,63 +187,82 @@ async function wahaRequest(path, { method = "GET" } = {}) {
     signal: AbortSignal.timeout(Math.max(1000, Math.min(WAHA_TIMEOUT_MS, 5000)))
   });
   const data = await parseResponse(response);
-  if (!response.ok) throw new Error(`WAHA ${method} ${path} failed (${response.status})`);
+  if (!response.ok) {
+    const detail = String(
+      typeof data === "string" ? data : data?.message || data?.error || ""
+    ).replace(/[\r\n\t]+/g, " ").slice(0, 300);
+    const error = new Error(`WAHA ${method} ${path} failed (${response.status})${detail ? `: ${detail}` : ""}`);
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
   return data;
-}
-
-function normalizeWppState(session) {
-  const status = String(session?.status || "").toUpperCase();
-  const engineState = String(session?.engine?.state || "").toUpperCase();
-  if (status === "WORKING" && engineState === "CONNECTED") return "CONNECTED";
-  if (status === "STOPPED") return "DISCONNECTED";
-  if (status === "STARTING" || status === "SCAN_QR_CODE") return "CONNECTING";
-  if (status === "FAILED") return "ERROR";
-  if (engineState === "CONNECTED") return "CONNECTED";
-  return "ERROR";
 }
 
 async function readWppSnapshot() {
   try {
     const session = await wahaRequest(`/api/sessions/${encodeURIComponent(WAHA_SESSION)}`);
-    return { state: normalizeWppState(session), error: null };
+    return normalizeWppSnapshot(session);
   } catch (error) {
-    return { state: "ERROR", error: safeError(error) };
+    return {
+      state: "ERROR",
+      status: "UNKNOWN",
+      engineState: "UNKNOWN",
+      inconsistent: false,
+      error: safeError(error)
+    };
   }
 }
 
-async function applyWppDesiredState(desiredConnected, observedState) {
-  const sameDirectionRetry = lastWppActionTarget === desiredConnected;
-  if (sameDirectionRetry && Date.now() - lastWppActionAt < WPP_ACTION_RETRY_MS) return false;
-  let path = "";
-  if (desiredConnected && observedState === "DISCONNECTED") {
-    path = `/api/sessions/${encodeURIComponent(WAHA_SESSION)}/start`;
-  } else if (desiredConnected && observedState === "ERROR") {
-    path = `/api/sessions/${encodeURIComponent(WAHA_SESSION)}/restart`;
-  } else if (!desiredConnected && (observedState === "CONNECTED" || observedState === "CONNECTING")) {
-    path = `/api/sessions/${encodeURIComponent(WAHA_SESSION)}/stop`;
-  }
-  if (!path) return false;
-  lastWppActionAt = Date.now();
-  lastWppActionTarget = desiredConnected;
+async function performWppAction(action) {
+  const endpoint = {
+    start: "start",
+    restart: "restart",
+    stop: "stop"
+  }[action];
+  if (!endpoint) throw new Error(`Unsupported WPP control action: ${action}`);
+  const path = `/api/sessions/${encodeURIComponent(WAHA_SESSION)}/${endpoint}`;
   await wahaRequest(path, { method: "POST" });
-  wppState = desiredConnected ? "CONNECTING" : "DISCONNECTING";
-  log("wpp_control_action", { action: desiredConnected ? "connect" : "disconnect" });
-  return true;
+  log("wpp_control_action", {
+    action: action === "start" ? "connect" : action === "stop" ? "disconnect" : "restart"
+  });
 }
+
+const wppReconciler = createWppStateReconciler({
+  readSnapshot: readWppSnapshot,
+  performAction: performWppAction,
+  onEvent: log
+});
 
 async function refreshRuntimeControl(reason = "timer") {
-  const snapshot = await readWppSnapshot();
-  wppState = snapshot.state;
+  const observed = await readWppSnapshot();
+  wppState = observed.state;
   try {
-    const control = await edge({ action: "control", wppState, wppError: snapshot.error });
+    const control = await edge({ action: "control", wppState, wppError: observed.error });
     workerEnabled = control?.worker?.enabled !== false;
     const requestedConnected = control?.wpp?.desiredConnected !== false;
     wppDesiredConnected = WPP_CONTROL_OWNER ? requestedConnected : true;
-    const changed = WPP_CONTROL_OWNER
-      ? await applyWppDesiredState(wppDesiredConnected, wppState)
-      : false;
-    if (changed) {
-      await edge({ action: "control", wppState, wppError: null });
+    const reconciliation = WPP_CONTROL_OWNER
+      ? await wppReconciler.reconcile(wppDesiredConnected, observed)
+      : {
+          snapshot: observed,
+          changed: false,
+          transitionPending: observed.state === "CONNECTING",
+          error: observed.error
+        };
+    wppState = reconciliation.snapshot.state;
+    if (WPP_CONTROL_OWNER && (
+      reconciliation.changed
+      || reconciliation.error
+      || wppState !== observed.state
+    )) {
+      await edge({
+        action: "control",
+        wppState,
+        wppError: reconciliation.error || reconciliation.snapshot.error || null
+      });
+    }
+    if (reconciliation.transitionPending) {
       scheduleQueueWake("wpp_transition", WPP_TRANSITION_CHECK_MS);
     }
   } catch (error) {

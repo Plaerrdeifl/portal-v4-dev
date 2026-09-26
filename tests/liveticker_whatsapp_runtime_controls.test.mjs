@@ -11,6 +11,7 @@ test("WhatsApp runtime controls fail closed without exposing local WPP", async (
   const runtime = await read("js/liveticker-runtime-controls.js");
   const html = await read("liveticker/index.html");
   const worker = await read("workers/liveticker-whatsapp/worker.mjs");
+  const wppRuntime = await read("workers/liveticker-whatsapp/wpp-runtime.mjs");
   const gateway = await read("supabase/functions/liveticker-whatsapp-worker/index.ts");
 
   assert.match(migration, /perform app_private\.worker_runtime_assert_ready\('LIVETICKER_WHATSAPP'\)/);
@@ -40,10 +41,12 @@ test("WhatsApp runtime controls fail closed without exposing local WPP", async (
   assert.match(runtime, /TRANSITION_REFRESH_MS = 1000/);
   assert.match(runtime, /closeStatusControl\(wa\.control\)/);
   assert.match(runtime, /Steuerung nur in PROD/);
-  assert.match(worker, /lastWppActionTarget === desiredConnected/);
-  assert.match(worker, /lastWppActionTarget = desiredConnected/);
+  assert.match(wppRuntime, /engineState === "CONNECTED"/);
+  assert.match(wppRuntime, /WPP_RECOVERY_COOLDOWN_MS = 120000/);
+  assert.match(wppRuntime, /performAction\("restart"\)/);
+  assert.match(wppRuntime, /wpp_recovery_failed/);
   assert.match(worker, /WPP_CONTROL_OWNER/);
   assert.match(worker, /wppDesiredConnected = WPP_CONTROL_OWNER \? requestedConnected : true/);
-  assert.match(worker, /WPP_CONTROL_OWNER[\s\S]*\? await applyWppDesiredState/);
+  assert.match(worker, /WPP_CONTROL_OWNER[\s\S]*\? await wppReconciler\.reconcile/);
   assert.match(worker, /wppControlOwner: WPP_CONTROL_OWNER/);
 });

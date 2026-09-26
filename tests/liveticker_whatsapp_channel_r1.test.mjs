@@ -153,6 +153,8 @@ test("DEV WhatsApp deploy script ships worker and authoritative media assets wit
   assert.match(deploy, /node.*--check|NODE_BIN.*--check/s);
   assert.match(deploy, /SOURCE_DELIVERY=.*delivery\.mjs/);
   assert.match(deploy, /verify_same "\$\{SOURCE_DELIVERY\}" "\$\{TARGET_DELIVERY\}" "delivery\.mjs"/);
+  assert.match(deploy, /SOURCE_WPP_RUNTIME=.*wpp-runtime\.mjs/);
+  assert.match(deploy, /verify_same "\$\{SOURCE_WPP_RUNTIME\}" "\$\{TARGET_WPP_RUNTIME\}" "wpp-runtime\.mjs"/);
   assert.match(deploy, /\[\[ ! -w "\$\{TARGET_ASSETS\}" \|\| ! -x "\$\{TARGET_ASSETS\}" \]\]/);
   assert.match(deploy, /Asset target is not writable by/);
   assert.match(deploy, /rsync -a --no-owner --no-group --chmod=D0755,F0644[\s\S]*--delete[\s\S]*SOURCE_ASSETS[\s\S]*TARGET_ASSETS/);

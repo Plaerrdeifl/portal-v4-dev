@@ -154,6 +154,7 @@ test("Liveticker exposes WA and WPP runtime controls beside the graphics control
   const migration = await read("supabase/migrations/20260917192915_liveticker_whatsapp_runtime_controls_dev_r1.sql");
   const gateway = await read("supabase/functions/liveticker-whatsapp-worker/index.ts");
   const worker = await read("workers/liveticker-whatsapp/worker.mjs");
+  const wppRuntime = await read("workers/liveticker-whatsapp/wpp-runtime.mjs");
 
   assert.match(html, /id="graphicWorkerControl"[\s\S]*id="whatsappWorkerControl"[\s\S]*id="wppControl"/);
   assert.match(html, /id="whatsappWorkerStatus"/);
@@ -186,9 +187,11 @@ test("Liveticker exposes WA and WPP runtime controls beside the graphics control
   assert.match(gateway, /pd_liveticker_wpp_runtime_control/);
   assert.match(gateway, /pd_liveticker_whatsapp_worker_can_claim/);
   assert.match(worker, /api\/sessions\/\$\{encodeURIComponent\(WAHA_SESSION\)\}/);
-  assert.match(worker, /\/start/);
-  assert.match(worker, /\/stop/);
-  assert.match(worker, /\/restart/);
+  assert.match(worker, /start: "start"/);
+  assert.match(worker, /stop: "stop"/);
+  assert.match(worker, /restart: "restart"/);
+  assert.match(wppRuntime, /performAction\("start"\)/);
+  assert.match(wppRuntime, /performAction\("restart"\)/);
   assert.match(worker, /action: "control"/);
   assert.match(worker, /RECOVERY_INTERVAL_MS[^\n]*"120000"/);
   assert.match(worker, /await refreshRuntimeControl\(reason\)/);
