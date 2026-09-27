@@ -19,8 +19,13 @@ const RPC = {
   complete: "pd_social_media_render_worker_complete",
   cloudClaim: "pd_social_media_render_worker_cloud_claim",
   cloudHeartbeat: "pd_social_media_render_worker_cloud_heartbeat",
-  cloudComplete: "pd_social_media_render_worker_cloud_complete"
+  cloudComplete: "pd_social_media_render_worker_cloud_complete",
+  mediaClaim: "pd_social_media_library_worker_claim",
+  mediaHeartbeat: "pd_social_media_library_worker_heartbeat",
+  mediaComplete: "pd_social_media_library_worker_complete"
 } as const;
+
+const MEDIA_BUCKET = "social-media-generator-library";
 
 const encoder = new TextEncoder();
 
@@ -129,10 +134,28 @@ function isCloudResult(value: unknown) {
     && value.sizeBytes <= 50 * 1024 * 1024;
 }
 
+function isMediaResult(value: unknown) {
+  if (!isObject(value) || !exactKeys(value, [
+    "nextcloudPath", "mimeType", "sha256", "sizeBytes", "width", "height"
+  ])) return false;
+  return typeof value.nextcloudPath === "string"
+    && /^\/Library\/(Uploads|General|Backgrounds)\/[0-9a-f-]{36}\/original[.](png|jpg|webp)$/i.test(value.nextcloudPath)
+    && !value.nextcloudPath.includes("..")
+    && ["image/png", "image/jpeg", "image/webp"].includes(String(value.mimeType))
+    && typeof value.sha256 === "string" && /^[a-f0-9]{64}$/.test(value.sha256)
+    && typeof value.sizeBytes === "number" && Number.isSafeInteger(value.sizeBytes)
+    && value.sizeBytes >= 1 && value.sizeBytes <= 10 * 1024 * 1024
+    && typeof value.width === "number" && Number.isSafeInteger(value.width)
+    && typeof value.height === "number" && Number.isSafeInteger(value.height)
+    && value.width >= 1 && value.width <= 12000
+    && value.height >= 1 && value.height <= 12000;
+}
+
 function validBody(value: unknown): value is JsonObject {
   if (!isObject(value) || typeof value.action !== "string") return false;
 
-  if (value.action === "claim" || value.action === "cloudClaim") {
+  if (value.action === "claim" || value.action === "cloudClaim"
+      || value.action === "mediaClaim") {
     return exactKeys(value, ["action"]);
   }
 
@@ -140,6 +163,11 @@ function validBody(value: unknown): value is JsonObject {
     return exactKeys(value, ["action", "jobId", "claimToken"])
       && isUuid(value.jobId)
       && isUuid(value.claimToken);
+  }
+
+  if (value.action === "mediaHeartbeat") {
+    return exactKeys(value, ["action", "uploadId", "claimToken"])
+      && isUuid(value.uploadId) && isUuid(value.claimToken);
   }
 
   if (value.action === "complete") {
@@ -176,6 +204,19 @@ function validBody(value: unknown): value is JsonObject {
     if (value.success) {
       return (value.errorCode === null || value.errorCode === "")
         && isCloudResult(value.result);
+    }
+    return isErrorCode(value.errorCode) && value.result === null;
+  }
+
+  if (value.action === "mediaComplete") {
+    if (!exactKeys(value, [
+      "action", "uploadId", "claimToken", "success", "errorCode", "result"
+    ])) return false;
+    if (!isUuid(value.uploadId) || !isUuid(value.claimToken)
+        || typeof value.success !== "boolean") return false;
+    if (value.success) {
+      return (value.errorCode === null || value.errorCode === "")
+        && isMediaResult(value.result);
     }
     return isErrorCode(value.errorCode) && value.result === null;
   }
@@ -346,6 +387,51 @@ async function rpc(name: string, payload: JsonObject) {
   return data;
 }
 
+function encodedObjectName(value: string) {
+  return value.split("/").map(segment => encodeURIComponent(segment)).join("/");
+}
+
+async function addMediaDownloadUrl(data: JsonObject) {
+  if (data.claimed === false) return data;
+  if (data.claimed !== true || !isObject(data.job)) {
+    throw new GatewayError("MEDIA_CLAIM_INVALID");
+  }
+  const objectPath = data.job.storageObjectPath;
+  if (data.job.storageBucket !== MEDIA_BUCKET || typeof objectPath !== "string"
+      || !/^library\/[0-9a-f-]{36}\/original[.](png|jpg|webp)$/i.test(objectPath)) {
+    throw new GatewayError("MEDIA_CLAIM_INVALID");
+  }
+  const config = runtime();
+  let result: Response;
+  try {
+    result = await fetch(
+      `${config.url}/storage/v1/object/sign/${MEDIA_BUCKET}/${encodedObjectName(objectPath)}`,
+      {
+        method: "POST",
+        headers: { apikey: config.key, "Content-Type": "application/json" },
+        body: JSON.stringify({ expiresIn: 600 })
+      }
+    );
+  } catch {
+    throw new GatewayError("MEDIA_SIGN_FAILED");
+  }
+  if (!result.ok) {
+    await result.body?.cancel();
+    throw new GatewayError("MEDIA_SIGN_FAILED");
+  }
+  const signed: unknown = await result.json().catch(() => null);
+  if (!isObject(signed) || typeof signed.signedURL !== "string") {
+    throw new GatewayError("MEDIA_SIGN_FAILED");
+  }
+  const url = new URL(signed.signedURL, config.url);
+  if (url.origin !== config.url
+      || !url.pathname.startsWith(`/storage/v1/object/sign/${MEDIA_BUCKET}/`)
+      || !url.searchParams.get("token")) {
+    throw new GatewayError("MEDIA_SIGN_FAILED");
+  }
+  return { ...data, job: { ...data.job, sourceUrl: url.href } };
+}
+
 Deno.serve(async request => {
   if (request.method !== "POST") return errorResponse(405);
 
@@ -403,6 +489,24 @@ Deno.serve(async request => {
           p_success: body.success,
           p_error_code: body.errorCode,
           p_cloud_result: body.result
+        });
+        break;
+      case "mediaClaim":
+        data = await addMediaDownloadUrl(await rpc(RPC.mediaClaim, {}));
+        break;
+      case "mediaHeartbeat":
+        data = await rpc(RPC.mediaHeartbeat, {
+          p_upload_id: body.uploadId,
+          p_claim_token: body.claimToken
+        });
+        break;
+      case "mediaComplete":
+        data = await rpc(RPC.mediaComplete, {
+          p_upload_id: body.uploadId,
+          p_claim_token: body.claimToken,
+          p_success: body.success,
+          p_error_code: body.errorCode,
+          p_result: body.result
         });
         break;
       default:
