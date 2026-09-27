@@ -408,7 +408,11 @@ async function addMediaDownloadUrl(data: JsonObject) {
       `${config.url}/storage/v1/object/sign/${MEDIA_BUCKET}/${encodedObjectName(objectPath)}`,
       {
         method: "POST",
-        headers: { apikey: config.key, "Content-Type": "application/json" },
+        headers: {
+          apikey: config.key,
+          Authorization: `Bearer ${config.key}`,
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({ expiresIn: 600 })
       }
     );
@@ -417,17 +421,20 @@ async function addMediaDownloadUrl(data: JsonObject) {
   }
   if (!result.ok) {
     await result.body?.cancel();
-    throw new GatewayError("MEDIA_SIGN_FAILED");
+    throw new GatewayError(`MEDIA_SIGN_FAILED_${result.status}`);
   }
   const signed: unknown = await result.json().catch(() => null);
   if (!isObject(signed) || typeof signed.signedURL !== "string") {
-    throw new GatewayError("MEDIA_SIGN_FAILED");
+    throw new GatewayError("MEDIA_SIGN_RESPONSE_INVALID");
   }
-  const url = new URL(signed.signedURL, config.url);
+  const signedUrl = signed.signedURL.startsWith("/object/sign/")
+    ? `/storage/v1${signed.signedURL}`
+    : signed.signedURL;
+  const url = new URL(signedUrl, config.url);
   if (url.origin !== config.url
       || !url.pathname.startsWith(`/storage/v1/object/sign/${MEDIA_BUCKET}/`)
       || !url.searchParams.get("token")) {
-    throw new GatewayError("MEDIA_SIGN_FAILED");
+    throw new GatewayError("MEDIA_SIGN_URL_INVALID");
   }
   return { ...data, job: { ...data.job, sourceUrl: url.href } };
 }
@@ -514,7 +521,11 @@ Deno.serve(async request => {
     }
 
     return response(200, { ok: true, data });
-  } catch {
+  } catch (error) {
+    console.error(
+      "social-media-render-worker request failed",
+      error instanceof GatewayError ? error.code : "UNEXPECTED"
+    );
     return errorResponse(500);
   }
 });
