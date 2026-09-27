@@ -306,7 +306,7 @@ begin
     if v_nextcloud_path not like '/Publishing/%'
        or pg_catalog.char_length(v_nextcloud_path) > 500
        or pg_catalog.strpos(v_nextcloud_path, '..') > 0
-       or pg_catalog.strpos(v_nextcloud_path, E'\') > 0
+       or pg_catalog.strpos(v_nextcloud_path, pg_catalog.chr(92)) > 0
        or pg_catalog.strpos(v_nextcloud_path, '?') > 0
        or pg_catalog.strpos(v_nextcloud_path, '#') > 0
        or v_filename !~ '^[A-Za-z0-9._-]{1,160}[.]png$'
