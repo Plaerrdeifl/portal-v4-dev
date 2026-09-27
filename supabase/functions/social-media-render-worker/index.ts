@@ -8,6 +8,11 @@ const RUNTIME_CONTRACTS = {
   "wplescvhlgctynkfwvrj.supabase.co": { environment: "PROD" }
 } as const;
 
+const EXPECTED_TOKEN_SHA256_BY_HOST = {
+  "tpieykhhawszlzsoflnl.supabase.co":
+    "fac0f4a76b1448bcb1e7c1e97b1b7cb2398400133fe44a0d2c81ecde454ef49d"
+} as const;
+
 const RPC = {
   claim: "pd_social_media_render_worker_claim",
   heartbeat: "pd_social_media_render_worker_heartbeat",
@@ -218,16 +223,39 @@ async function readBoundedJson(request: Request): Promise<unknown> {
   }
 }
 
-async function constantTimeTokenMatch(expected: string, supplied: string) {
-  const [a, b] = await Promise.all([
-    crypto.subtle.digest("SHA-256", encoder.encode(expected)),
-    crypto.subtle.digest("SHA-256", encoder.encode(supplied))
-  ]);
-  const aa = new Uint8Array(a);
-  const bb = new Uint8Array(b);
-  let diff = aa.byteLength ^ bb.byteLength;
-  const length = Math.min(aa.byteLength, bb.byteLength);
-  for (let i = 0; i < length; i += 1) diff |= aa[i] ^ bb[i];
+async function sha256Hex(value: string) {
+  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(value));
+  return Array.from(new Uint8Array(digest))
+    .map(byte => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function expectedTokenSha256() {
+  const rawUrl = Deno.env.get("SUPABASE_URL")?.trim();
+  if (!rawUrl) return "";
+  try {
+    const hostname = new URL(rawUrl).hostname;
+    return EXPECTED_TOKEN_SHA256_BY_HOST[
+      hostname as keyof typeof EXPECTED_TOKEN_SHA256_BY_HOST
+    ] || "";
+  } catch {
+    return "";
+  }
+}
+
+async function authorizedWorkerToken(supplied: string) {
+  const expected = expectedTokenSha256();
+  if (!expected
+      || supplied.length > MAX_SECRET_LENGTH
+      || encoder.encode(supplied).byteLength < MIN_WORKER_TOKEN_BYTES) {
+    return false;
+  }
+  const actual = await sha256Hex(supplied);
+  if (actual.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i += 1) {
+    diff |= actual.charCodeAt(i) ^ expected.charCodeAt(i);
+  }
   return diff === 0;
 }
 
@@ -321,18 +349,10 @@ async function rpc(name: string, payload: JsonObject) {
 Deno.serve(async request => {
   if (request.method !== "POST") return errorResponse(405);
 
-  const expected = Deno.env.get("SOCIAL_MEDIA_RENDER_WORKER_TOKEN") || "";
-  if (expected.length > MAX_SECRET_LENGTH
-      || encoder.encode(expected).byteLength < MIN_WORKER_TOKEN_BYTES) {
-    return errorResponse(500);
-  }
-
   const supplied = request.headers.get(WORKER_TOKEN_HEADER) || "";
-  if (supplied.length > MAX_SECRET_LENGTH) return errorResponse(401);
-
   let authorized = false;
   try {
-    authorized = await constantTimeTokenMatch(expected, supplied);
+    authorized = await authorizedWorkerToken(supplied);
   } catch {
     return errorResponse(500);
   }
