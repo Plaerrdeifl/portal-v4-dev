@@ -79,6 +79,11 @@ create index social_media_assets_library_idx
   on app_social_media.media_assets(media_type, status, created_at desc, id);
 create index social_media_assets_owner_idx
   on app_social_media.media_assets(owner_user_id, status, created_at desc, id);
+create index social_media_assets_created_by_idx
+  on app_social_media.media_assets(created_by);
+create index social_media_assets_archived_by_idx
+  on app_social_media.media_assets(archived_by)
+  where archived_by is not null;
 
 create table app_social_media.media_uploads (
   id uuid primary key default extensions.gen_random_uuid(),
