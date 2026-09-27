@@ -92,7 +92,7 @@ function isRenderManifest(value: unknown) {
     && value.sizeBytes >= 1
     && value.sizeBytes <= 50 * 1024 * 1024
     && typeof value.rendererVersion === "string"
-    && /^[A-Za-z0-9._:-]{1,80}$/.test(value.rendererVersion)
+    && /^social-media-render-worker\/[0-9]+[.][0-9]+[.][0-9]+$/.test(value.rendererVersion)
     && typeof value.compatibilityVersion === "number"
     && Number.isSafeInteger(value.compatibilityVersion)
     && value.compatibilityVersion >= 1
