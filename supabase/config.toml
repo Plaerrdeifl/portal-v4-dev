@@ -440,6 +440,8 @@ verify_jwt = false
 verify_jwt = false
 [functions.social-media-render-worker]
 verify_jwt = false
+[functions.social-media-library]
+verify_jwt = true
 [functions.m340-publishing-templates]
 verify_jwt = true
 
