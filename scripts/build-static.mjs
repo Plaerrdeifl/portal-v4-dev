@@ -28,7 +28,8 @@ const directories = [
 ];
 
 const optionalFiles = [
-  "_redirects"
+  "_redirects",
+  "liveticker-local-handoff.html"
 ];
 
 const optionalDirectories = [
