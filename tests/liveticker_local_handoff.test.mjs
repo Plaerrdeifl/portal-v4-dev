@@ -29,6 +29,7 @@ test("local Liveticker handoff transfers the session only in the URL fragment", 
 
 test("handoff page reuses existing portal auth and official Google helper", () => {
   assert.equal(html.includes("./js/runtime-config.js"), true);
+  assert.equal(html.includes("liveticker-local-handoff.js?v=20260927-sametab1"), true);
   assert.equal(script.includes('from "./auth.js"'), true);
   assert.equal(script.includes('from "./google-signin.js"'), true);
   assert.equal(script.includes("auth.signInWithGoogleIdToken"), true);
