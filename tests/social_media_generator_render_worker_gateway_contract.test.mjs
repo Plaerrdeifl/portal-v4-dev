@@ -19,7 +19,10 @@ test("social-media render gateway uses a dedicated token and exact RPC allowlist
     "pd_social_media_render_worker_complete",
     "pd_social_media_render_worker_cloud_claim",
     "pd_social_media_render_worker_cloud_heartbeat",
-    "pd_social_media_render_worker_cloud_complete"
+    "pd_social_media_render_worker_cloud_complete",
+    "pd_social_media_library_worker_claim",
+    "pd_social_media_library_worker_heartbeat",
+    "pd_social_media_library_worker_complete"
   ]) {
     assert.match(source, new RegExp(rpc));
   }
@@ -44,5 +47,8 @@ test("gateway derives service role only from edge runtime secrets", async () => 
 
   assert.match(source, /Deno\.env\.get\("SUPABASE_SECRET_KEYS"\)/);
   assert.match(source, /Deno\.env\.get\("SUPABASE_SERVICE_ROLE_KEY"\)/);
+  assert.match(source, /Authorization: `Bearer \$\{config\.key\}`/);
+  assert.match(source, /signed\.signedURL\.startsWith\("\/object\/sign\/"\)/);
+  assert.match(source, /`\/storage\/v1\$\{signed\.signedURL\}`/);
   assert.doesNotMatch(source, /service[_-]?role[^\n]{0,80}VITE_/i);
 });
