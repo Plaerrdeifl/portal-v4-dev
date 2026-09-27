@@ -11,18 +11,18 @@ const script = fs.readFileSync(
   "utf8"
 );
 
-test("local Liveticker handoff uses exact DEV and LAN origins", () => {
+test("local Liveticker handoff targets only the private LAN app", () => {
   assert.equal(script.includes('const TARGET_ORIGIN = "http://192.168.178.117";'), true);
   assert.equal(script.includes('auth.hasCapability("liveticker.manage")'), true);
-  assert.equal(script.includes('event.origin !== TARGET_ORIGIN'), true);
-  assert.equal(script.includes('event.source !== targetWindow'), true);
 });
 
-test("local Liveticker handoff transfers session only via postMessage", () => {
-  assert.equal(script.includes('"PD_LIVETICKER_SESSION"'), true);
-  assert.equal(script.includes("accessToken: session.access_token"), true);
-  assert.equal(script.includes("refreshToken: session.refresh_token"), true);
-  assert.equal(script.includes("TARGET_URL +="), false);
+test("local Liveticker handoff transfers the session only in the URL fragment", () => {
+  assert.equal(script.includes('const SESSION_FRAGMENT_KEY = "pd_session";'), true);
+  assert.equal(script.includes("encodeURIComponent(JSON.stringify"), true);
+  assert.equal(script.includes("window.location.assign(target)"), true);
+  assert.equal(script.includes("postMessage"), false);
+  assert.equal(script.includes("?access_token="), false);
+  assert.equal(script.includes("?refresh_token="), false);
   assert.equal(script.includes("access_token="), false);
   assert.equal(script.includes("refresh_token="), false);
 });

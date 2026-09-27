@@ -4,13 +4,13 @@ import { renderGoogleSignInButton } from "./google-signin.js";
 import { getSupabaseClient } from "./supabase-client.js";
 
 const TARGET_ORIGIN = "http://192.168.178.117";
-const TARGET_URL = TARGET_ORIGIN + "/?pd_handoff=1";
+const TARGET_URL = TARGET_ORIGIN + "/";
+const SESSION_FRAGMENT_KEY = "pd_session";
 
 const googleSlot = document.getElementById("googleSlot");
 const openButton = document.getElementById("openButton");
 const status = document.getElementById("status");
 
-let targetWindow = null;
 let googleRendered = false;
 let handoffBusy = false;
 
@@ -65,14 +65,25 @@ async function renderState() {
   }
 }
 
-async function sendSessionToTarget() {
-  if (!targetWindow || handoffBusy) return;
+function sessionFragment(accessToken, refreshToken) {
+  const payload = encodeURIComponent(JSON.stringify({
+    accessToken,
+    refreshToken
+  }));
+  return "#" + SESSION_FRAGMENT_KEY + "=" + payload;
+}
+
+async function openLocalLiveticker() {
+  if (handoffBusy) return;
   if (!canHandoff()) {
-    setStatus("Liveticker-Berechtigung ist nicht mehr aktiv.");
+    setStatus("Liveticker-Berechtigung ist nicht aktiv.");
     return;
   }
 
   handoffBusy = true;
+  openButton.disabled = true;
+  setStatus("Lokaler Liveticker wird vorbereitet …");
+
   try {
     const client = getSupabaseClient();
     const { data, error } = await client.auth.getSession();
@@ -83,49 +94,21 @@ async function sendSessionToTarget() {
       throw new Error("Aktive DEV-Portalsitzung fehlt.");
     }
 
-    targetWindow.postMessage(
-      {
-        type: "PD_LIVETICKER_SESSION",
-        accessToken: session.access_token,
-        refreshToken: session.refresh_token
-      },
-      TARGET_ORIGIN
-    );
-    setStatus("Portalsitzung wird an den lokalen Liveticker übergeben …");
+    const target =
+      TARGET_URL + sessionFragment(session.access_token, session.refresh_token);
+
+    // Same-tab navigation is intentional for iOS: it avoids popup/opener
+    // behavior. The fragment is never sent to either web server.
+    window.location.assign(target);
   } catch (error) {
-    setStatus(error?.message || "Portalsitzung konnte nicht übergeben werden.");
-  } finally {
     handoffBusy = false;
+    openButton.disabled = false;
+    setStatus(error?.message || "Portalsitzung konnte nicht übergeben werden.");
   }
 }
 
-window.addEventListener("message", event => {
-  if (event.origin !== TARGET_ORIGIN) return;
-  if (!targetWindow || event.source !== targetWindow) return;
-
-  if (event.data?.type === "PD_LIVETICKER_HANDOFF_READY") {
-    void sendSessionToTarget();
-    return;
-  }
-
-  if (event.data?.type === "PD_LIVETICKER_HANDOFF_ACK") {
-    setStatus("Übergabe erfolgreich. Der lokale Liveticker ist angemeldet.");
-  }
-});
-
 openButton?.addEventListener("click", () => {
-  if (!canHandoff()) {
-    setStatus("Liveticker-Berechtigung ist nicht aktiv.");
-    return;
-  }
-
-  targetWindow = window.open(TARGET_URL, "pd-liveticker-local");
-  if (!targetWindow) {
-    setStatus("Safari hat das neue Fenster blockiert. Bitte Pop-ups für diese Seite erlauben.");
-    return;
-  }
-
-  setStatus("Lokaler Liveticker wird geöffnet …");
+  void openLocalLiveticker();
 });
 
 void auth.initialize()
