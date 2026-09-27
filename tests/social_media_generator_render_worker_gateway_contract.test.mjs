@@ -31,6 +31,7 @@ test("gateway validates render and cloud success payloads before service-role RP
 
   assert.match(source, /function isRenderManifest/);
   assert.match(source, /mimeType === "image\/png"/);
+  assert.ok(source.includes("social-media-render-worker\\/[0-9]+[.][0-9]+[.][0-9]+"));
   assert.match(source, /function isCloudResult/);
   assert.ok(source.includes("cloud\\.plaerrdeifl\\.de"));
   assert.match(source, /startsWith\("\/Publishing\/"\)/);
