@@ -27,7 +27,10 @@ STORY_LOGO_MAX_WIDTH=250.0
 LOGO_TRIMMER=Path(__file__).with_name('trim_logo.py')
 OUR={'mighty','our','mighty_dogs','home_club'}
 OPP={'opponent','away','guest','other'}
-MAX_GOAL_LINES=7
+STANDARD_GOAL_LINES=7
+MAX_GOAL_LINES=10
+GOAL_OVERFLOW_MIN_SCALE=0.76
+GOAL_OVERFLOW_STEP=0.08
 
 def q(tag): return f'{{{SVG_NS}}}{tag}'
 def find(root,id_):
@@ -204,9 +207,27 @@ def goal_lines(history,kind):
 def apply_lines(root,lines):
     for i in range(1,11): set_text(root,f'our_goals_line_{i}',lines[i-1] if i<=len(lines) else '')
 
+def goal_overflow_scale(line_count):
+    if line_count<=STANDARD_GOAL_LINES: return 1.0
+    return max(
+        GOAL_OVERFLOW_MIN_SCALE,
+        1.0-GOAL_OVERFLOW_STEP*(line_count-STANDARD_GOAL_LINES),
+    )
+
+def apply_goal_overflow_font(root,lines):
+    factor=goal_overflow_scale(len(lines))
+    if factor>=1.0: return factor
+    for i in range(1,min(len(lines),MAX_GOAL_LINES)+1):
+        element=find(root,f'our_goals_line_{i}')
+        if element is None: continue
+        default=53.7 if CURRENT_FORMAT=='POST' else 36.0
+        set_font_size_px(element,font_size_px(element,default)*factor)
+    return factor
+
 def apply_goal_block(root,lines,fmt):
     set_text(root,'our_goals_heading','UNSERE TORE' if lines else '')
     apply_lines(root,lines)
+    apply_goal_overflow_font(root,lines)
 
 def numeric_y(element):
     if element is None: return None
