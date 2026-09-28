@@ -73,3 +73,25 @@ test('render gateway validates and dispatches Liveticker worker messages', () =>
   assert.match(edge, /value\.artifacts\.length !== 2/);
   assert.match(edge, /kinds\[0\] === "POST" && kinds\[1\] === "STORY"/);
 });
+
+test('headless status restores recent per-event jobs for ticker reloads', async () => {
+  const statusMigration = await fs.readFile(
+    'supabase/migrations/20260928172224_social_media_liveticker_headless_status_v1.sql',
+    'utf8'
+  );
+  assert.match(
+    statusMigration,
+    /api_social_media_generator_liveticker_render_status/
+  );
+  assert.match(statusMigration, /where request\.event_id = v_event_id/);
+  assert.match(statusMigration, /'jobId', request\.id/);
+  assert.match(statusMigration, /'result', request\.result_manifest/);
+  assert.match(
+    statusMigration,
+    /when 'social_media_generator_liveticker_render_status' then 'READ'/
+  );
+  assert.doesNotMatch(
+    statusMigration,
+    /grant execute on function[\s\S]*api_social_media_generator_liveticker_render_status\(jsonb\)[\s\S]*to authenticated/
+  );
+});
