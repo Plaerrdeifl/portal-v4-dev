@@ -59,7 +59,7 @@ begin
             and trip_stop.is_active
         ) as stops on true
         where trip.status <> 'CANCELLED'
-          and event.event_date >= pg_catalog.current_date
+          and event.event_date >= current_date
       ),
       '[]'::jsonb
     )
