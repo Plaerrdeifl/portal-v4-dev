@@ -22,7 +22,10 @@ const RPC = {
   cloudComplete: "pd_social_media_render_worker_cloud_complete",
   mediaClaim: "pd_social_media_library_worker_claim",
   mediaHeartbeat: "pd_social_media_library_worker_heartbeat",
-  mediaComplete: "pd_social_media_library_worker_complete"
+  mediaComplete: "pd_social_media_library_worker_complete",
+  livetickerClaim: "pd_social_media_liveticker_render_worker_claim",
+  livetickerHeartbeat: "pd_social_media_liveticker_render_worker_heartbeat",
+  livetickerComplete: "pd_social_media_liveticker_render_worker_complete"
 } as const;
 
 const MEDIA_BUCKET = "social-media-generator-library";
@@ -134,6 +137,47 @@ function isCloudResult(value: unknown) {
     && value.sizeBytes <= 50 * 1024 * 1024;
 }
 
+function isLivetickerArtifact(value: unknown) {
+  if (!isObject(value) || !exactKeys(value, [
+    "kind", "shareUrl", "downloadUrl", "filename",
+    "nextcloudPath", "sha256", "bytes"
+  ])) return false;
+
+  return (value.kind === "POST" || value.kind === "STORY")
+    && typeof value.shareUrl === "string"
+    && /^https:\/\/cloud\.plaerrdeifl\.de\/s\/[A-Za-z0-9]{8,128}$/.test(value.shareUrl)
+    && value.downloadUrl === value.shareUrl + "/download"
+    && typeof value.filename === "string"
+    && /^[A-Za-z0-9._-]{1,160}[.]png$/.test(value.filename)
+    && typeof value.nextcloudPath === "string"
+    && value.nextcloudPath.startsWith("/Publishing/")
+    && value.nextcloudPath.length <= 500
+    && !value.nextcloudPath.includes("..")
+    && !value.nextcloudPath.includes("\\")
+    && typeof value.sha256 === "string"
+    && /^[a-f0-9]{64}$/.test(value.sha256)
+    && typeof value.bytes === "number"
+    && Number.isSafeInteger(value.bytes)
+    && value.bytes >= 1
+    && value.bytes <= 50 * 1024 * 1024;
+}
+
+function isLivetickerResult(value: unknown) {
+  if (!isObject(value) || !exactKeys(value, ["sourceRevision", "artifacts"])) {
+    return false;
+  }
+  if (typeof value.sourceRevision !== "number"
+      || !Number.isSafeInteger(value.sourceRevision)
+      || value.sourceRevision < 0
+      || !Array.isArray(value.artifacts)
+      || value.artifacts.length !== 2
+      || !value.artifacts.every(isLivetickerArtifact)) {
+    return false;
+  }
+  const kinds = value.artifacts.map(item => (item as JsonObject).kind).sort();
+  return kinds[0] === "POST" && kinds[1] === "STORY";
+}
+
 function isMediaResult(value: unknown) {
   if (!isObject(value) || !exactKeys(value, [
     "nextcloudPath", "mimeType", "sha256", "sizeBytes", "width", "height"
@@ -155,7 +199,7 @@ function validBody(value: unknown): value is JsonObject {
   if (!isObject(value) || typeof value.action !== "string") return false;
 
   if (value.action === "claim" || value.action === "cloudClaim"
-      || value.action === "mediaClaim") {
+      || value.action === "mediaClaim" || value.action === "livetickerClaim") {
     return exactKeys(value, ["action"]);
   }
 
@@ -163,6 +207,11 @@ function validBody(value: unknown): value is JsonObject {
     return exactKeys(value, ["action", "jobId", "claimToken"])
       && isUuid(value.jobId)
       && isUuid(value.claimToken);
+  }
+
+  if (value.action === "livetickerHeartbeat") {
+    return exactKeys(value, ["action", "requestId", "claimToken"])
+      && isUuid(value.requestId) && isUuid(value.claimToken);
   }
 
   if (value.action === "mediaHeartbeat") {
@@ -204,6 +253,19 @@ function validBody(value: unknown): value is JsonObject {
     if (value.success) {
       return (value.errorCode === null || value.errorCode === "")
         && isCloudResult(value.result);
+    }
+    return isErrorCode(value.errorCode) && value.result === null;
+  }
+
+  if (value.action === "livetickerComplete") {
+    if (!exactKeys(value, [
+      "action", "requestId", "claimToken", "success", "errorCode", "result"
+    ])) return false;
+    if (!isUuid(value.requestId) || !isUuid(value.claimToken)
+        || typeof value.success !== "boolean") return false;
+    if (value.success) {
+      return (value.errorCode === null || value.errorCode === "")
+        && isLivetickerResult(value.result);
     }
     return isErrorCode(value.errorCode) && value.result === null;
   }
@@ -496,6 +558,24 @@ Deno.serve(async request => {
           p_success: body.success,
           p_error_code: body.errorCode,
           p_cloud_result: body.result
+        });
+        break;
+      case "livetickerClaim":
+        data = await rpc(RPC.livetickerClaim, {});
+        break;
+      case "livetickerHeartbeat":
+        data = await rpc(RPC.livetickerHeartbeat, {
+          p_request_id: body.requestId,
+          p_claim_token: body.claimToken
+        });
+        break;
+      case "livetickerComplete":
+        data = await rpc(RPC.livetickerComplete, {
+          p_request_id: body.requestId,
+          p_claim_token: body.claimToken,
+          p_success: body.success,
+          p_error_code: body.errorCode,
+          p_result_manifest: body.result
         });
         break;
       case "mediaClaim":
