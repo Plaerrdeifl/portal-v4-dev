@@ -16,3 +16,11 @@ test('generator DEV asset bundle is rooted below /assets/generator-dev/', async 
   assert.equal(manifest.scope, '/assets/generator-dev/');
   assert.equal(manifest.start_url, '/assets/generator-dev/');
 });
+
+test('generator DEV asset bundle contains both Liveticker visual bases', async () => {
+  for (const name of ['post-background.jpg', 'story-background.jpg']) {
+    const bytes = await fs.readFile(`assets/generator-dev/liveticker/${name}`);
+    assert.ok(bytes.byteLength > 100_000);
+    assert.deepEqual([...bytes.subarray(0, 3)], [0xff, 0xd8, 0xff]);
+  }
+});
