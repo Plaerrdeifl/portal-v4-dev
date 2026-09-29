@@ -36,6 +36,7 @@ test("system template bindings remain protected while layout stays in documents"
     "liveticker.score",
     "liveticker.resultSuffix",
     "liveticker.goalScorers",
+    "fanbus.opponentName",
     "fanbus.destination",
     "fanbus.tripLabel",
     "fanbus.weekday",
