@@ -36,14 +36,21 @@ test("system template bindings remain protected while layout stays in documents"
     "liveticker.score",
     "liveticker.resultSuffix",
     "liveticker.goalScorers",
-    "fanbus.opponentName",
     "fanbus.destination",
+    "fanbus.tripLabel",
+    "fanbus.weekday",
     "fanbus.eventDate",
     "fanbus.eventTime",
     "fanbus.price",
-    "fanbus.departureAt",
+    "fanbus.registrationDeadlineDate",
+    "fanbus.registrationDeadlineTime",
     "fanbus.departureInfo",
-    "fanbus.boardingStops"
+    "fanbus.boardingStops",
+    "fanbus.remainingCapacity",
+    "fanbus.contact1Name",
+    "fanbus.contact1Phone",
+    "fanbus.contact2Name",
+    "fanbus.contact2Phone"
   ]) {
     assert.ok(sql.includes(binding), "binding missing: " + binding);
   }
