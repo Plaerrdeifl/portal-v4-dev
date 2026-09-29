@@ -477,7 +477,48 @@ Das Mail-Modul ist Portal-Fachoberfläche für bestehende Mailkonten/Funktionspo
 - der Browser kommuniziert nur mit dem PD-Mail-Gateway.
 - mehrere berechtigte Portalnutzer können dasselbe Funktionspostfach nutzen, ohne das Providerpasswort zu kennen.
 
-## 7. Schutzregeln während der Migration
+## 7. Kanonische Domains und Pfade
+
+Das langfristige Zielbild verwendet eine gemeinsame Vereinsdomain und klare Modulpfade.
+
+### PROD
+
+```text
+https://plaerrdeifl.de/            -> öffentliche WordPress-Website
+https://plaerrdeifl.de/portal      -> Portal-Core / Dashboard
+https://plaerrdeifl.de/events      -> Events
+https://plaerrdeifl.de/fanbus      -> Fanbus
+https://plaerrdeifl.de/liveticker  -> Liveticker
+https://plaerrdeifl.de/generator   -> Social-Media-Generator
+https://plaerrdeifl.de/members     -> Members
+https://plaerrdeifl.de/finance     -> Finance
+https://plaerrdeifl.de/tasks       -> Tasks
+https://plaerrdeifl.de/mail        -> Mail
+```
+
+### DEV
+
+DEV spiegelt dieselbe Struktur unter `https://dev.plaerrdeifl.de`:
+
+- `/portal`
+- `/events`
+- `/fanbus`
+- `/liveticker`
+- `/generator`
+- `/members`
+- `/finance`
+- `/tasks`
+- `/mail`
+
+Die öffentliche WordPress-Website bleibt auf PROD unter `/` bei Lima-City. Für die Modulpfade wird eine vorgelagerte Cloudflare-Routing-Schicht vorgesehen. DNS allein kann nicht nach URL-Pfaden verteilen.
+
+`portal.plaerrdeifl.de` bleibt während der Migration höchstens Übergangsadresse und soll nach dem kontrollierten PROD-Cutover auf `https://plaerrdeifl.de/portal` weiterleiten. Eigenständige Modul-Subdomains sind kein langfristiges kanonisches Ziel.
+
+Jede PWA begrenzt Router-, Asset- und Service-Worker-Scope auf ihren eigenen Pfad.
+
+Der PROD-DNS-/Nameserver-Cutover ist eine eigene Infrastrukturänderung. Vor Umsetzung müssen alle DNS-, Mail- und Website-Records vollständig inventarisiert und übernommen, das Routing getestet und die konkrete PROD-Aktion ausdrücklich freigegeben werden.
+
+## 8. Schutzregeln während der Migration
 
 - PROD ohne konkrete Freigabe unverändert
 - keine Force-Pushes oder History-Rewrites
@@ -489,7 +530,7 @@ Das Mail-Modul ist Portal-Fachoberfläche für bestehende Mailkonten/Funktionspo
 - alten Code erst nach verifizierter Ablösung entfernen
 - bestehende Liveticker-/Generator-Migrationen nicht zurückbauen
 
-## 8. Aktuelle Modulzuordnung als Migrationsinventar
+## 9. Aktuelle Modulzuordnung als Migrationsinventar
 
 | Aktueller Bereich | Ziel |
 | --- | --- |
@@ -508,7 +549,7 @@ Das Mail-Modul ist Portal-Fachoberfläche für bestehende Mailkonten/Funktionspo
 | Supabase-Migrationen | Übergangsweise portal-v4-dev, später Platform Backend |
 | gemeinsame Frontend-Basis | Platform UI |
 
-## 9. Definition of Done für Phase 0
+## 10. Definition of Done für Phase 0
 
 Phase 0 ist abgeschlossen, wenn:
 
@@ -521,7 +562,7 @@ Phase 0 ist abgeschlossen, wenn:
 Danach beginnt Phase 1 mit der gemeinsamen Frontend-Grundlage und dem Events-Inventar.
 
 
-## 10. Prioritäten nach Phase 0
+## 11. Prioritäten nach Phase 0
 
 Die Umsetzung erfolgt bewusst nacheinander. Aktuelle Reihenfolge:
 
