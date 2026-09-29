@@ -39,6 +39,9 @@ jobs:
       - name: Rebuild database from zero
         run: supabase db reset --local
 
+      - name: Run pgTAP database tests
+        run: supabase test db --local
+
       - name: Lint database errors
         run: supabase db lint --local --level error --fail-on error
 
