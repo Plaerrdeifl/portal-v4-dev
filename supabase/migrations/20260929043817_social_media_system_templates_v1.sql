@@ -592,8 +592,9 @@ begin
   v_contact := public.pd_public_fanbus_contact();
   v_contacts := coalesce(v_contact -> 'contacts', '[]'::jsonb);
 
-  v_weekday := case pg_catalog.extract(
-    isodow from (v_trip ->> 'eventDate')::date
+  v_weekday := case pg_catalog.date_part(
+    'isodow',
+    (v_trip ->> 'eventDate')::date
   )::integer
     when 1 then 'MONTAG'
     when 2 then 'DIENSTAG'
