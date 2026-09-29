@@ -39,6 +39,12 @@ jobs:
       - name: Rebuild database from zero
         run: supabase db reset --local
 
+      - name: Run relevant pgTAP database tests
+        run: |
+          supabase test db --local \
+            supabase/tests/social_media_system_templates_v1.sql \
+            supabase/tests/social_media_liveticker_goal_scorers.sql
+
       - name: Lint database errors
         run: supabase db lint --local --level error --fail-on error
 
