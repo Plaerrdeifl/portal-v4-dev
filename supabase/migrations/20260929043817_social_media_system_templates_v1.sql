@@ -641,7 +641,7 @@ begin
         case
           when nullif(v_trip ->> 'eventTime', '') is null
             then 'SPIELZEIT OFFEN'
-          else pg_catalog.substring(v_trip ->> 'eventTime' from 1 for 5)
+          else pg_catalog.substr(v_trip ->> 'eventTime', 1, 5)
             || ' UHR'
         end,
       'fanbus.price',
