@@ -353,3 +353,33 @@ Die bestehende Portal-1.0-PWA unter `portal.plaerrdeifl.de` kann aufgrund des Or
 **Entscheidung:** Die für die aktuelle Portal-2.0-Planung relevanten projektweiten Architekturdateien werden als synchronisierte Kopien unter `docs/pd-portal/` in allen bestehenden PD-Portal-Repositories abgelegt.
 
 Die Spiegelung erzeugt keine neue fachliche Source of Truth. Für die Projektarbeit bleiben `ARCHITECTURE.md` und `DECISIONS.md` im ChatGPT-Projekt die verbindlichen Hauptquellen; die Repo-Kopien dienen Entwicklern und Coding-Agenten als lokaler Kontext. Projektweite Änderungen an diesen Dokumenten müssen kontrolliert auf die vorhandenen Repo-Spiegel übertragen werden, damit keine abweichenden lokalen Varianten entstehen.
+
+## D-048 – Technische Chats haben einen festen Lifecycle mit Pflicht-Handoff
+
+**Entscheidung:** Ein technischer Projektchat bearbeitet genau ein klar abgegrenztes Arbeitspaket. Chatwechsel werden nicht von einer geschätzten Rest-Kontextlänge abhängig gemacht, sondern an objektive Arbeitsgrenzen gekoppelt.
+
+Ein neuer Chat ist spätestens verpflichtend, wenn mindestens einer dieser Punkte eintritt:
+
+- eine neue Hauptphase beginnt,
+- ein anderes Fachmodul oder Repository zum neuen Hauptgegenstand wird,
+- das aktuelle Arbeitspaket nach Implementierung, PR/Merge, Migration oder DEV-Abnahme abgeschlossen ist und das nächste eigenständige Paket beginnt,
+- der ursprüngliche Scope wesentlich erweitert werden müsste,
+- innerhalb desselben Chats bereits ein vollständiger größerer Zyklus aus Analyse → Änderung → Test/Abnahme abgeschlossen wurde und nun ein weiterer eigenständiger Zyklus folgen würde.
+
+Vor dem Wechsel erstellt der laufende Chat zwingend einen **Handoff** mit mindestens:
+
+1. Ziel und Scope des abgeschlossenen Chats,
+2. zuletzt live verifiziertem Ist-Zustand,
+3. betroffenen Repositories, Branches, PRs und relevanten Commit-SHAs,
+4. vorgenommenen Änderungen,
+5. durchgeführten Tests und deren Ergebnis,
+6. offenen, unbekannten oder noch zu verifizierenden Punkten,
+7. ausdrücklichem PROD-Status – insbesondere ob PROD unverändert blieb,
+8. exakt einem benannten nächsten Arbeitspaket,
+9. den Zuständen, die der neue Chat vor Änderungen erneut live prüfen muss.
+
+Nach Ausgabe des Handoffs beginnt im alten Chat keine neue substanzielle Implementierung mehr. Zulässig sind nur noch Korrekturen oder Ergänzungen am Handoff selbst.
+
+Der neue Chat liest zuerst `ARCHITECTURE.md` und `DECISIONS.md`, übernimmt den Handoff nur als Verlauf und verifiziert veränderliche technische Zustände erneut live. Ein Handoff ist kein Ersatz für aktuelle GitHub-, Supabase-, CI-, Deployment- oder Runtime-Prüfungen.
+
+Wenn unklar ist, ob ein neuer Arbeitsschritt noch zum bestehenden Paket gehört, wird zugunsten eines **neuen Chats** entschieden. Der Benutzer muss den Chatwechsel nicht selbst anmahnen.
