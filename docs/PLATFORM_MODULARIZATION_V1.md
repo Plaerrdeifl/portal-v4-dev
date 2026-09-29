@@ -1,4 +1,4 @@
-# Plärrdeifl Plattform – Modularisierung V1
+# PD-Portal – Modularisierung V1
 
 **Stand:** 29.09.2026  
 **Status:** Phase 0 – Zielbild und Migrationsregeln  
@@ -6,7 +6,7 @@
 
 ## 1. Ziel
 
-Die Digitalplattform wird schrittweise von einem großen Portal-Repository zu klar getrennten Fachanwendungen und gemeinsamen Plattformbausteinen weiterentwickelt.
+Das PD-Portal wird schrittweise von einem großen Portal-Repository zu klar getrennten Fachanwendungen und gemeinsamen Plattformbausteinen weiterentwickelt.
 
 Dabei gilt:
 
@@ -36,7 +36,7 @@ Verantwortet langfristig nur noch die zentrale Plattformoberfläche:
 - zentrale Benachrichtigungsoberfläche
 - Audit-/Betriebsoberflächen
 - Modulnavigation und Integration der Fachanwendungen
-- Nextcloud-/OIDC-Einstieg
+- zentrale Identity-/OAuth-/OIDC-Integration für Nextcloud, WordPress und weitere freigegebene Dienste
 
 Fachlogik von Events, Fanbus, Liveticker, Social Media, Mitgliedern, Finanzen, Aufgaben und Shop soll nicht dauerhaft im Portal-Frontend verbleiben.
 
@@ -178,8 +178,24 @@ Verantwortet langfristig:
 - Shop-/WooCommerce-Integration
 - Bestellansichten
 - Portal-Identity-Bridge
-- WordPress-Plugin-Code
+- shopbezogenen WordPress-Plugin-Code
 - Mitglieder-/Benutzerbezug des Shops
+
+WordPress selbst bleibt öffentliche Website-/Content-/WooCommerce-Schicht und ist nicht die führende Quelle für Portal-Fachdaten.
+
+### `Plaerrdeifl/mail`
+
+Verantwortet langfristig:
+
+- Portal-Mailoberfläche für berechtigte Benutzer
+- gemeinsame Funktionspostfächer
+- Posteingang, Ordner, Lesen, Antworten, Weiterleiten und neue Nachrichten
+- Entwürfe, Gesendet, Papierkorb und Anhänge
+- serverseitige IMAP-/SMTP-Anbindung an den Mailprovider
+- Berechtigungszuordnung von Portalteams/-capabilities zu Postfächern
+- Mail-bezogene Integrationen in Aufgaben und andere Fachmodule
+
+Mailpasswörter und andere Provider-Secrets liegen niemals im Browser. Das Frontend arbeitet ausschließlich über einen serverseitigen Mail-Gateway-Vertrag.
 
 ## 3. Abhängigkeitsrichtung
 
@@ -199,6 +215,7 @@ Platform Core
   │   └─ Finance
   │
   ├─ Tasks
+  ├─ Mail
   └─ Shop
 ```
 
@@ -208,6 +225,8 @@ Grundregeln:
 - Events kennt keine Fanbus-, Liveticker- oder Generator-Fachlogik.
 - Finance darf Members referenzieren; Members kennt keine Finanzbuchungslogik.
 - alle Fachmodule dürfen zentrale Portalidentitäten und Capabilities verwenden.
+- WordPress, Nextcloud und weitere integrierte Dienste verwenden die zentrale Portalidentität als Vertrauensquelle.
+- Mailzugriff wird aus zentralen Portalrechten auf Funktionspostfächer abgeleitet.
 - keine Fachanwendung legt eine zweite Benutzer-, Rollen-, Team- oder Auth-Welt an.
 
 ## 4. Migrationsverfahren pro Modul
@@ -308,7 +327,23 @@ Events ist der erste vollständige Migrationstest:
 
 Der Events-Pilot definiert die Blaupause für weitere Module.
 
-### Phase 3 – Fanbus
+### Phase 3 – Identity/OAuth verallgemeinern und WordPress-SSO
+
+Der bestehende Portal-OAuth-/OIDC-Flow wird von einer Nextcloud-spezifischen Oberfläche zu einer allgemeinen PD-Portal-Identity-Integration weiterentwickelt.
+
+Ziel:
+
+1. OAuth-Clients erhalten eigene Namen und Zugangsregeln
+2. Nextcloud bleibt bestehender Client
+3. WordPress wird als weiterer Client angebunden
+4. WordPress-Zugang für berechtigte Social-Media-Nutzer wird aus Portalteam/-capability abgeleitet
+5. WordPress erhält nur die für seine lokale Autoren-/Redaktionsfunktion nötige Identität
+6. WordPress-Rollen werden minimal und portalgeführt zugeordnet
+7. Entzug der Portalberechtigung entzieht bei der nächsten Autorisierungsprüfung auch den WordPress-Zugang
+
+Kein separates WordPress-Passwortsystem für diese Portalnutzer als führende Identität.
+
+### Phase 4 – Fanbus
 
 In dieser Reihenfolge:
 
@@ -323,15 +358,30 @@ In dieser Reihenfolge:
 
 Keine bestehende Fanbus-Fachidentität wird dabei unnötig ersetzt.
 
-### Phase 4 – Members und Finance
+### Phase 5 – Members und Finance
 
 Zuerst Mitglieder-/Antragsdomäne stabilisieren, anschließend Finanzmodul davon trennen.
 
-### Phase 5 – Tasks
+### Phase 6 – Tasks
 
 Aufgabenmodul auslagern; Dashboard konsumiert danach nur noch dessen öffentliche Plattformverträge.
 
-### Phase 6 – Portal-Core auf React/TypeScript/Vite
+### Phase 7 – Mail
+
+Nach stabilen gemeinsamen Auth-/API-Verträgen wird das Mail-Modul aufgebaut:
+
+1. Postfach-/Berechtigungsmodell festlegen
+2. serverseitigen Mail-Gateway für IMAP/SMTP schaffen
+3. read-only Posteingang als ersten Slice
+4. Lesen / Ordner / Suche
+5. Senden / Antworten / Weiterleiten
+6. Anhänge / Entwürfe / Gesendet
+7. Team-/Capability-gesteuerte gemeinsame Funktionspostfächer
+8. optionale Integrationen zu Tasks/Members/Fanbus erst nach stabilem Grundbetrieb
+
+Das Browserfrontend erhält niemals Mailbox-Passwörter oder SMTP-/IMAP-Secrets.
+
+### Phase 8 – Portal-Core auf React/TypeScript/Vite
 
 Erst wenn die großen Fachbereiche ausgelagert sind:
 
@@ -339,11 +389,11 @@ Erst wenn die großen Fachbereiche ausgelagert sind:
 - Core-Oberflächen übernehmen
 - alte statische Portalstruktur kontrolliert abbauen
 
-### Phase 7 – Shop
+### Phase 9 – Shop
 
 Shop-/WordPress-Integration als letztes Fachmodul bereinigen.
 
-### Phase 8 – Backend-Cutover
+### Phase 10 – Backend-Cutover
 
 Wenn Frontendgrenzen und Verantwortungen stabil sind:
 
@@ -382,12 +432,50 @@ Beispiele:
 - Buchung / Beitrag → Finance
 - Aufgabe → Tasks
 - Grafikdokument / Generatorvorlage → Social-Media-Generator
+- Mailnachricht / Mailordner → externer Mailprovider; PD-Portal hält nur nötigen Integrations-/Berechtigungszustand
+- WordPress-Inhalt / WooCommerce → WordPress/WooCommerce; Portal-Fachdaten bleiben in ihren jeweiligen PD-Portal-Modulen
 
 ### Portalintegration
 
 Standalone-Fachanwendungen müssen im Portal vollständig erreichbar und fachlich integrierbar bleiben.
 
 Keine zweite Portal-Implementierung derselben Fachfunktion.
+
+### Externe Identity-Integrationen
+
+Das PD-Portal ist die zentrale Identitäts- und Berechtigungsquelle für angebundene Dienste.
+
+- Nextcloud bleibt an Portal-OAuth/OIDC gekoppelt.
+- WordPress erhält einen eigenen Portal-SSO-Client für berechtigte Nutzer, insbesondere das Social-Media-Team.
+- WordPress darf lokale technische Benutzer für Autoren-/Revisionszwecke führen, aber keine unabhängig gepflegte führende Zugangsentscheidung.
+- Entfernte Portalrechte müssen spätestens bei der nächsten Autorisierung/Session-Prüfung wirksam werden.
+- Externe Dienste erhalten nur die jeweils notwendigen Claims/Scopes.
+
+### WordPress-Rolle
+
+WordPress bleibt:
+
+- öffentliche Vereinswebsite
+- Content-/News-System
+- WooCommerce-/Shop-Laufzeit
+- öffentlicher Einstiegspunkt in ausgewählte Portalprozesse
+
+WordPress wird nicht:
+
+- zweite Mitgliederverwaltung
+- zweite Event-/Spielplandatenbank
+- zweite Fanbus-Datenbank
+- zweite Benutzer-/Rollen-Source-of-Truth
+- Heimat von Ticker, Tasks, Finance oder Generator
+
+### Mail-Rolle
+
+Das Mail-Modul ist Portal-Fachoberfläche für bestehende Mailkonten/Funktionspostfächer.
+
+- Zugriff wird über Portalteams/-capabilities gesteuert.
+- IMAP/SMTP-Zugangsdaten verbleiben ausschließlich serverseitig.
+- der Browser kommuniziert nur mit dem PD-Mail-Gateway.
+- mehrere berechtigte Portalnutzer können dasselbe Funktionspostfach nutzen, ohne das Providerpasswort zu kennen.
 
 ## 7. Schutzregeln während der Migration
 
@@ -414,7 +502,9 @@ Keine zweite Portal-Implementierung derselben Fachfunktion.
 | Mitglieder / Anträge / Vorstand | Members |
 | Finanzen / Beiträge | Finance |
 | Aufgaben | Tasks |
-| Shop / WordPress | Shop |
+| WordPress öffentliche Website / Content | externe Website-Schicht + Portal-SSO |
+| WooCommerce / Shop-Integration | Shop |
+| Lima-City-/Funktionspostfächer | Mail |
 | Supabase-Migrationen | Übergangsweise portal-v4-dev, später Platform Backend |
 | gemeinsame Frontend-Basis | Platform UI |
 
@@ -429,3 +519,26 @@ Phase 0 ist abgeschlossen, wenn:
 - die Backend-Migrationshistorie bis zum späteren atomaren Cutover weiterhin eindeutig genau eine Source of Truth besitzt
 
 Danach beginnt Phase 1 mit der gemeinsamen Frontend-Grundlage und dem Events-Inventar.
+
+
+## 10. Prioritäten nach Phase 0
+
+Die Umsetzung erfolgt bewusst nacheinander. Aktuelle Reihenfolge:
+
+| Priorität | Baustein | Grund |
+| --- | --- | --- |
+| P0 | Platform UI / gemeinsame React-Vite-Basis | Voraussetzung für alle neuen Module |
+| P1 | Events / Spielplan | erster überschaubarer Pilot und zentrale Fachdatenquelle |
+| P2 | allgemeine Portal-Identity + WordPress-SSO | kleiner, strategischer Core-Baustein; nutzt bestehende OAuth-Grundlage |
+| P3 | Fanbus | größter verbliebener Fachblock im alten Portal |
+| P4 | Members | klare Fachdomäne und Grundlage für weitere Mitgliedsprozesse |
+| P5 | Finance | sauber auf Members aufbauend |
+| P6 | Tasks | querschnittlich, aber fachlich gut abgrenzbar |
+| P7 | Mail | wertvoll, aber zusätzlicher sicherer Server-Gateway nötig |
+| P8 | Portal-Core React/Vite | erst wenn große Fachblöcke ausgelagert sind |
+| P9 | Shop-/WordPress-Codebereinigung | bestehende externe Website-/WooCommerce-Schicht sauber integrieren |
+| P10 | Platform-Backend-Cutover | erst wenn Fachgrenzen stabil und Migration-Ownership eindeutig ist |
+
+Ticker 2.0 und Social-Media-Generator laufen parallel als bereits eigenständige Modernisierungsstränge. Ihre funktionierenden Bereiche werden während dieser Modularisierung nicht unnötig zurückgebaut.
+
+Die Priorität steuert die Arbeitsreihenfolge, nicht die fachliche Wichtigkeit. Ein später priorisiertes Modul darf geplant und dokumentiert werden, wird aber nicht parallel implementiert, solange ein höher priorisierter Umbau noch aktiv ist.
