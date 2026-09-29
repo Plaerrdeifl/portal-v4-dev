@@ -133,7 +133,7 @@ insert into app_social_media.template_versions (
   published_by, published_at
 ) values (
   '20000000-0000-4000-8000-000000000003'::uuid, '10000000-0000-4000-8000-000000000003'::uuid, 1, 1, 'PUBLISHED',
-  $json${"schemaVersion":1,"id":"system-template-fanbus-post-v1","title":"Fanbus POST","format":{"width":1080,"height":1350},"elements":[{"id":"fb-post-bg","name":"Hintergrund","type":"shape","shape":"rect","x":0,"y":0,"width":1080,"height":1350,"rotation":0,"radius":0,"style":{"fill":"#111111","opacity":1}},{"id":"fb-post-accent","name":"Akzent oben","type":"shape","shape":"rect","x":0,"y":0,"width":1080,"height":24,"rotation":0,"radius":0,"style":{"fill":"#d71920","opacity":1}},{"id":"fb-post-card","name":"Zielkarte","type":"shape","shape":"rect","x":76,"y":405,"width":928,"height":324,"rotation":0,"radius":0,"style":{"fill":"#1b1b1b","opacity":1}},{"id":"fb-post-head","name":"Fanbus-Kopf","type":"text","text":"FANBUS","x":76,"y":101,"width":928,"height":130,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":89,"fontWeight":900,"textAlign":"center","opacity":1}},{"id":"fb-post-opponent","name":"Gegner","type":"text","text":"AUSWÄRTSFAHRT","x":76,"y":230,"width":928,"height":85,"rotation":0,"style":{"fill":"#d71920","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":38,"fontWeight":750,"textAlign":"center","opacity":1},"binding":{"key":"fanbus.opponentName","source":"central","protected":true}},{"id":"fb-post-destination","name":"Ziel","type":"text","text":"ZIEL OFFEN","x":76,"y":479,"width":928,"height":110,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":68,"fontWeight":900,"textAlign":"center","opacity":1},"binding":{"key":"fanbus.destination","source":"central","protected":true}},{"id":"fb-post-date","name":"Spieldatum","type":"text","text":"DATUM OFFEN","x":76,"y":783,"width":928,"height":80,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":41,"fontWeight":850,"textAlign":"center","opacity":1},"binding":{"key":"fanbus.eventDate","source":"central","protected":true}},{"id":"fb-post-time","name":"Spielzeit","type":"text","text":"SPIELZEIT OFFEN","x":76,"y":864,"width":928,"height":70,"rotation":0,"style":{"fill":"rgba(255,255,255,0.74)","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":32,"fontWeight":700,"textAlign":"center","opacity":1},"binding":{"key":"fanbus.eventTime","source":"central","protected":true}},{"id":"fb-post-departure","name":"Abfahrt","type":"text","text":"ABFAHRT OFFEN","x":76,"y":959,"width":928,"height":75,"rotation":0,"style":{"fill":"#d71920","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":37,"fontWeight":850,"textAlign":"center","opacity":1},"binding":{"key":"fanbus.departureAt","source":"central","protected":true}},{"id":"fb-post-departure-info","name":"Abfahrtsinformation","type":"text","text":"","x":76,"y":1019,"width":928,"height":65,"rotation":0,"style":{"fill":"rgba(255,255,255,0.75)","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":26,"fontWeight":650,"textAlign":"center","opacity":1},"binding":{"key":"fanbus.departureInfo","source":"central","protected":true}},{"id":"fb-post-stops","name":"Boarding-/Abfahrtsorte","type":"text","text":"","x":76,"y":1067,"width":928,"height":135,"rotation":0,"style":{"fill":"rgba(255,255,255,0.82)","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":28,"fontWeight":700,"textAlign":"center","opacity":1,"lineHeight":36},"binding":{"key":"fanbus.boardingStops","source":"central","protected":true,"minFontSize":20,"minLineHeight":27,"standardMaxLines":4,"renderer":"fanbus-boarding-stops"}},{"id":"fb-post-price","name":"Preis","type":"text","text":"PREIS OFFEN","x":76,"y":1188,"width":928,"height":90,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":52,"fontWeight":900,"textAlign":"center","opacity":1},"binding":{"key":"fanbus.price","source":"central","protected":true}},{"id":"fb-post-sender","name":"Absender","type":"text","text":"PLÄRRDEIFL","x":76,"y":1289,"width":928,"height":50,"rotation":0,"style":{"fill":"rgba(255,255,255,0.5)","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":24,"fontWeight":850,"textAlign":"center","opacity":1}}],"metadata":{"createdAt":"2026-09-29T04:38:17Z","updatedAt":"2026-09-29T04:38:17Z"}}$json$::jsonb,
+  $json${"schemaVersion":1,"id":"system-template-fanbus-post-v1","title":"Fanbus POST","format":{"width":1080,"height":1350},"elements":[{"id":"fb-post-bg","name":"Hintergrund","type":"shape","shape":"rect","x":0,"y":0,"width":1080,"height":1350,"rotation":0,"radius":0,"style":{"fill":"#071420","opacity":1}},{"id":"fb-post-ice-top","name":"Eisfläche oben","type":"shape","shape":"rect","x":0,"y":0,"width":1080,"height":520,"rotation":0,"radius":0,"style":{"fill":"#0c2d45","opacity":1}},{"id":"fb-post-ice-glow","name":"Eis-Akzent","type":"shape","shape":"rect","x":0,"y":330,"width":1080,"height":190,"rotation":0,"radius":0,"style":{"fill":"#153f5c","opacity":0.72}},{"id":"fb-post-data-left","name":"Datenfläche links","type":"shape","shape":"rect","x":44,"y":540,"width":485,"height":390,"rotation":0,"radius":22,"style":{"fill":"#071019","opacity":0.86,"stroke":"#2caaf7","strokeWidth":2}},{"id":"fb-post-data-right","name":"Datenfläche rechts","type":"shape","shape":"rect","x":548,"y":540,"width":488,"height":390,"rotation":0,"radius":22,"style":{"fill":"#071019","opacity":0.86,"stroke":"#2caaf7","strokeWidth":2}},{"id":"fb-post-contacts","name":"Kontaktleiste","type":"shape","shape":"rect","x":54,"y":1078,"width":972,"height":128,"rotation":0,"radius":20,"style":{"fill":"#05101b","opacity":0.9}},{"id":"fb-post-footer","name":"Footerfläche","type":"shape","shape":"rect","x":0,"y":1205,"width":1080,"height":145,"rotation":0,"radius":0,"style":{"fill":"#030b12","opacity":0.95}},{"id":"fb-post-away","name":"Auswärtsfahrt","type":"text","text":"AUSWÄRTSFAHRT","x":54,"y":185,"width":972,"height":72,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":54,"fontWeight":900,"textAlign":"center","opacity":1,"stroke":"#071420","strokeWidth":3}},{"id":"fb-post-destination","name":"Ziel","type":"text","text":"LANDSBERG","x":40,"y":255,"width":1000,"height":165,"rotation":0,"style":{"fill":"#49a8e8","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":142,"fontWeight":900,"textAlign":"center","opacity":1,"stroke":"#dff4ff","strokeWidth":3.2},"binding":{"key":"fanbus.destination","source":"central","protected":true}},{"id":"fb-post-trip-label","name":"Fahrtbezeichnung","type":"text","text":"FANBUSFAHRT","x":130,"y":450,"width":820,"height":62,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":38,"fontWeight":900,"textAlign":"center","opacity":1},"binding":{"key":"fanbus.tripLabel","source":"central","protected":true}},{"id":"fb-post-weekday","name":"Wochentag","type":"text","text":"SAMSTAG","x":62,"y":545,"width":235,"height":35,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":800,"textAlign":"left","opacity":1},"binding":{"key":"fanbus.weekday","source":"central","protected":true}},{"id":"fb-post-date","name":"Spieldatum","type":"text","text":"03.10.2026","x":62,"y":582,"width":250,"height":50,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":34,"fontWeight":900,"textAlign":"left","opacity":1},"binding":{"key":"fanbus.eventDate","source":"central","protected":true}},{"id":"fb-post-start-label","name":"Spielbeginn Label","type":"text","text":"SPIELBEGINN","x":338,"y":545,"width":190,"height":35,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":800,"textAlign":"left","opacity":1}},{"id":"fb-post-game-start","name":"Spielzeit","type":"text","text":"18:00 UHR","x":338,"y":582,"width":190,"height":50,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":34,"fontWeight":900,"textAlign":"left","opacity":1},"binding":{"key":"fanbus.eventTime","source":"central","protected":true}},{"id":"fb-post-depart-label","name":"Abfahrten Label","type":"text","text":"ABFAHRTEN","x":96,"y":660,"width":300,"height":32,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":800,"textAlign":"left","opacity":1}},{"id":"fb-post-stops","name":"Boarding-/Abfahrtsorte","type":"text","text":"","x":96,"y":700,"width":405,"height":188,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":800,"textAlign":"left","opacity":1,"lineHeight":36},"binding":{"key":"fanbus.boardingStops","source":"central","protected":true,"minFontSize":17,"minLineHeight":24,"standardMaxLines":4,"renderer":"fanbus-boarding-stops"}},{"id":"fb-post-price-label","name":"Fahrtpreis Label","type":"text","text":"FAHRTPREIS","x":574,"y":660,"width":390,"height":34,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":800,"textAlign":"left","opacity":1}},{"id":"fb-post-price","name":"Preis","type":"text","text":"25,00 €","x":574,"y":700,"width":390,"height":70,"rotation":0,"style":{"fill":"#1ca9ff","fontFamily":"Arial, sans-serif","fontSize":53,"fontWeight":900,"textAlign":"left","opacity":1,"stroke":"#ffffff","strokeWidth":4},"binding":{"key":"fanbus.price","source":"central","protected":true}},{"id":"fb-post-deadline-label","name":"Anmeldeschluss Label","type":"text","text":"ANMELDESCHLUSS","x":574,"y":792,"width":390,"height":32,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":800,"textAlign":"left","opacity":1}},{"id":"fb-post-deadline-date","name":"Anmeldeschluss Datum","type":"text","text":"30.09.2026,","x":574,"y":828,"width":390,"height":34,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":900,"textAlign":"left","opacity":1},"binding":{"key":"fanbus.registrationDeadlineDate","source":"central","protected":true}},{"id":"fb-post-deadline-time","name":"Anmeldeschluss Uhrzeit","type":"text","text":"20:00 UHR","x":574,"y":858,"width":390,"height":34,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":900,"textAlign":"left","opacity":1},"binding":{"key":"fanbus.registrationDeadlineTime","source":"central","protected":true}},{"id":"fb-post-departure-info","name":"Abfahrtsinformation","type":"text","text":"","x":96,"y":902,"width":868,"height":45,"rotation":0,"style":{"fill":"#cfeeff","fontFamily":"Arial, sans-serif","fontSize":20,"fontWeight":700,"textAlign":"center","opacity":1},"binding":{"key":"fanbus.departureInfo","source":"central","protected":true}},{"id":"fb-post-remaining-small","name":"Restplätze Label","type":"text","text":"NUR NOCH","x":100,"y":975,"width":240,"height":32,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":900,"textAlign":"center","opacity":1}},{"id":"fb-post-remaining","name":"Restplätze","type":"text","text":"XX PLÄTZE FREI!","x":62,"y":1006,"width":320,"height":50,"rotation":0,"style":{"fill":"#1ca9ff","fontFamily":"Arial, sans-serif","fontSize":34,"fontWeight":900,"textAlign":"center","opacity":1,"stroke":"#ffffff","strokeWidth":2},"binding":{"key":"fanbus.remainingCapacity","source":"central","protected":true}},{"id":"fb-post-contact-1-name","name":"Kontakt 1 Name","type":"text","text":"Pascal","x":104,"y":1090,"width":170,"height":42,"rotation":0,"style":{"fill":"#3ea6ff","fontFamily":"Arial, sans-serif","fontSize":31,"fontWeight":900,"textAlign":"left","opacity":1},"binding":{"key":"fanbus.contact1Name","source":"central","protected":true}},{"id":"fb-post-contact-1-phone","name":"Kontakt 1 Telefon","type":"text","text":"0172 9744908","x":272,"y":1093,"width":260,"height":42,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":27,"fontWeight":800,"textAlign":"left","opacity":1},"binding":{"key":"fanbus.contact1Phone","source":"central","protected":true}},{"id":"fb-post-contact-2-name","name":"Kontakt 2 Name","type":"text","text":"Luca","x":620,"y":1090,"width":160,"height":42,"rotation":0,"style":{"fill":"#3ea6ff","fontFamily":"Arial, sans-serif","fontSize":31,"fontWeight":900,"textAlign":"left","opacity":1},"binding":{"key":"fanbus.contact2Name","source":"central","protected":true}},{"id":"fb-post-contact-2-phone","name":"Kontakt 2 Telefon","type":"text","text":"0174 6681046","x":780,"y":1093,"width":250,"height":42,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":27,"fontWeight":800,"textAlign":"left","opacity":1},"binding":{"key":"fanbus.contact2Phone","source":"central","protected":true}},{"id":"fb-post-cta","name":"CTA","type":"text","text":"JETZT ANMELDEN!","x":388,"y":1220,"width":304,"height":50,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":30,"fontWeight":900,"textAlign":"center","opacity":1,"stroke":"#1ca9ff","strokeWidth":2}},{"id":"fb-post-website","name":"Website","type":"text","text":"WWW.PLAERRDEIFL.DE","x":290,"y":1280,"width":500,"height":40,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":800,"textAlign":"center","opacity":1}}],"metadata":{"createdAt":"2026-09-29T04:38:17Z","updatedAt":"2026-09-29T04:38:17Z"}}$json$::jsonb,
   1, 'Initiale Systemvorlage', null, pg_catalog.now(), pg_catalog.now(),
   null, pg_catalog.now()
 )
@@ -162,7 +162,7 @@ insert into app_social_media.template_versions (
   published_by, published_at
 ) values (
   '20000000-0000-4000-8000-000000000004'::uuid, '10000000-0000-4000-8000-000000000004'::uuid, 1, 1, 'PUBLISHED',
-  $json${"schemaVersion":1,"id":"system-template-fanbus-story-v1","title":"Fanbus STORY","format":{"width":1080,"height":1920},"elements":[{"id":"fb-story-bg","name":"Hintergrund","type":"shape","shape":"rect","x":0,"y":0,"width":1080,"height":1920,"rotation":0,"radius":0,"style":{"fill":"#111111","opacity":1}},{"id":"fb-story-accent","name":"Akzent oben","type":"shape","shape":"rect","x":0,"y":0,"width":1080,"height":35,"rotation":0,"radius":0,"style":{"fill":"#d71920","opacity":1}},{"id":"fb-story-card","name":"Zielkarte","type":"shape","shape":"rect","x":76,"y":576,"width":928,"height":461,"rotation":0,"radius":0,"style":{"fill":"#1b1b1b","opacity":1}},{"id":"fb-story-head","name":"Fanbus-Kopf","type":"text","text":"FANBUS","x":76,"y":144,"width":928,"height":130,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":89,"fontWeight":900,"textAlign":"center","opacity":1}},{"id":"fb-story-opponent","name":"Gegner","type":"text","text":"AUSWÄRTSFAHRT","x":76,"y":326,"width":928,"height":85,"rotation":0,"style":{"fill":"#d71920","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":38,"fontWeight":750,"textAlign":"center","opacity":1},"binding":{"key":"fanbus.opponentName","source":"central","protected":true}},{"id":"fb-story-destination","name":"Ziel","type":"text","text":"ZIEL OFFEN","x":76,"y":682,"width":928,"height":110,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":68,"fontWeight":900,"textAlign":"center","opacity":1},"binding":{"key":"fanbus.destination","source":"central","protected":true}},{"id":"fb-story-date","name":"Spieldatum","type":"text","text":"DATUM OFFEN","x":76,"y":1114,"width":928,"height":80,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":41,"fontWeight":850,"textAlign":"center","opacity":1},"binding":{"key":"fanbus.eventDate","source":"central","protected":true}},{"id":"fb-story-time","name":"Spielzeit","type":"text","text":"SPIELZEIT OFFEN","x":76,"y":1229,"width":928,"height":70,"rotation":0,"style":{"fill":"rgba(255,255,255,0.74)","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":32,"fontWeight":700,"textAlign":"center","opacity":1},"binding":{"key":"fanbus.eventTime","source":"central","protected":true}},{"id":"fb-story-departure","name":"Abfahrt","type":"text","text":"ABFAHRT OFFEN","x":76,"y":1363,"width":928,"height":75,"rotation":0,"style":{"fill":"#d71920","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":37,"fontWeight":850,"textAlign":"center","opacity":1},"binding":{"key":"fanbus.departureAt","source":"central","protected":true}},{"id":"fb-story-departure-info","name":"Abfahrtsinformation","type":"text","text":"","x":76,"y":1450,"width":928,"height":65,"rotation":0,"style":{"fill":"rgba(255,255,255,0.75)","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":26,"fontWeight":650,"textAlign":"center","opacity":1},"binding":{"key":"fanbus.departureInfo","source":"central","protected":true}},{"id":"fb-story-stops","name":"Boarding-/Abfahrtsorte","type":"text","text":"","x":76,"y":1517,"width":928,"height":192,"rotation":0,"style":{"fill":"rgba(255,255,255,0.82)","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":28,"fontWeight":700,"textAlign":"center","opacity":1,"lineHeight":36},"binding":{"key":"fanbus.boardingStops","source":"central","protected":true,"minFontSize":20,"minLineHeight":27,"standardMaxLines":4,"renderer":"fanbus-boarding-stops"}},{"id":"fb-story-price","name":"Preis","type":"text","text":"PREIS OFFEN","x":76,"y":1690,"width":928,"height":90,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":52,"fontWeight":900,"textAlign":"center","opacity":1},"binding":{"key":"fanbus.price","source":"central","protected":true}},{"id":"fb-story-sender","name":"Absender","type":"text","text":"PLÄRRDEIFL","x":76,"y":1834,"width":928,"height":50,"rotation":0,"style":{"fill":"rgba(255,255,255,0.5)","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":24,"fontWeight":850,"textAlign":"center","opacity":1}}],"metadata":{"createdAt":"2026-09-29T04:38:17Z","updatedAt":"2026-09-29T04:38:17Z"}}$json$::jsonb,
+  $json${"schemaVersion":1,"id":"system-template-fanbus-story-v1","title":"Fanbus STORY","format":{"width":1080,"height":1920},"elements":[{"id":"fb-story-bg","name":"Hintergrund","type":"shape","shape":"rect","x":0,"y":0,"width":1080,"height":1920,"rotation":0,"radius":0,"style":{"fill":"#071420","opacity":1}},{"id":"fb-story-ice-top","name":"Eisfläche oben","type":"shape","shape":"rect","x":0,"y":0,"width":1080,"height":520,"rotation":0,"radius":0,"style":{"fill":"#0c2d45","opacity":1}},{"id":"fb-story-ice-glow","name":"Eis-Akzent","type":"shape","shape":"rect","x":0,"y":330,"width":1080,"height":190,"rotation":0,"radius":0,"style":{"fill":"#153f5c","opacity":0.72}},{"id":"fb-story-data-left","name":"Datenfläche links","type":"shape","shape":"rect","x":44,"y":540,"width":485,"height":390,"rotation":0,"radius":22,"style":{"fill":"#071019","opacity":0.86,"stroke":"#2caaf7","strokeWidth":2}},{"id":"fb-story-data-right","name":"Datenfläche rechts","type":"shape","shape":"rect","x":548,"y":540,"width":488,"height":390,"rotation":0,"radius":22,"style":{"fill":"#071019","opacity":0.86,"stroke":"#2caaf7","strokeWidth":2}},{"id":"fb-story-contacts","name":"Kontaktleiste","type":"shape","shape":"rect","x":54,"y":1078,"width":972,"height":128,"rotation":0,"radius":20,"style":{"fill":"#05101b","opacity":0.9}},{"id":"fb-story-footer","name":"Footerfläche","type":"shape","shape":"rect","x":0,"y":1775,"width":1080,"height":145,"rotation":0,"radius":0,"style":{"fill":"#030b12","opacity":0.95}},{"id":"fb-story-away","name":"Auswärtsfahrt","type":"text","text":"AUSWÄRTSFAHRT","x":54,"y":185,"width":972,"height":72,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":54,"fontWeight":900,"textAlign":"center","opacity":1,"stroke":"#071420","strokeWidth":3}},{"id":"fb-story-destination","name":"Ziel","type":"text","text":"LANDSBERG","x":40,"y":255,"width":1000,"height":165,"rotation":0,"style":{"fill":"#49a8e8","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":142,"fontWeight":900,"textAlign":"center","opacity":1,"stroke":"#dff4ff","strokeWidth":3.2},"binding":{"key":"fanbus.destination","source":"central","protected":true}},{"id":"fb-story-trip-label","name":"Fahrtbezeichnung","type":"text","text":"FANBUSFAHRT","x":130,"y":450,"width":820,"height":62,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":38,"fontWeight":900,"textAlign":"center","opacity":1},"binding":{"key":"fanbus.tripLabel","source":"central","protected":true}},{"id":"fb-story-weekday","name":"Wochentag","type":"text","text":"SAMSTAG","x":62,"y":545,"width":235,"height":35,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":800,"textAlign":"left","opacity":1},"binding":{"key":"fanbus.weekday","source":"central","protected":true}},{"id":"fb-story-date","name":"Spieldatum","type":"text","text":"03.10.2026","x":62,"y":582,"width":250,"height":50,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":34,"fontWeight":900,"textAlign":"left","opacity":1},"binding":{"key":"fanbus.eventDate","source":"central","protected":true}},{"id":"fb-story-start-label","name":"Spielbeginn Label","type":"text","text":"SPIELBEGINN","x":338,"y":545,"width":190,"height":35,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":800,"textAlign":"left","opacity":1}},{"id":"fb-story-game-start","name":"Spielzeit","type":"text","text":"18:00 UHR","x":338,"y":582,"width":190,"height":50,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":34,"fontWeight":900,"textAlign":"left","opacity":1},"binding":{"key":"fanbus.eventTime","source":"central","protected":true}},{"id":"fb-story-depart-label","name":"Abfahrten Label","type":"text","text":"ABFAHRTEN","x":96,"y":660,"width":300,"height":32,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":800,"textAlign":"left","opacity":1}},{"id":"fb-story-stops","name":"Boarding-/Abfahrtsorte","type":"text","text":"","x":96,"y":700,"width":405,"height":188,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":800,"textAlign":"left","opacity":1,"lineHeight":36},"binding":{"key":"fanbus.boardingStops","source":"central","protected":true,"minFontSize":17,"minLineHeight":24,"standardMaxLines":4,"renderer":"fanbus-boarding-stops"}},{"id":"fb-story-price-label","name":"Fahrtpreis Label","type":"text","text":"FAHRTPREIS","x":574,"y":660,"width":390,"height":34,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":800,"textAlign":"left","opacity":1}},{"id":"fb-story-price","name":"Preis","type":"text","text":"25,00 €","x":574,"y":700,"width":390,"height":70,"rotation":0,"style":{"fill":"#1ca9ff","fontFamily":"Arial, sans-serif","fontSize":53,"fontWeight":900,"textAlign":"left","opacity":1,"stroke":"#ffffff","strokeWidth":4},"binding":{"key":"fanbus.price","source":"central","protected":true}},{"id":"fb-story-deadline-label","name":"Anmeldeschluss Label","type":"text","text":"ANMELDESCHLUSS","x":574,"y":792,"width":390,"height":32,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":800,"textAlign":"left","opacity":1}},{"id":"fb-story-deadline-date","name":"Anmeldeschluss Datum","type":"text","text":"30.09.2026,","x":574,"y":828,"width":390,"height":34,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":900,"textAlign":"left","opacity":1},"binding":{"key":"fanbus.registrationDeadlineDate","source":"central","protected":true}},{"id":"fb-story-deadline-time","name":"Anmeldeschluss Uhrzeit","type":"text","text":"20:00 UHR","x":574,"y":858,"width":390,"height":34,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":900,"textAlign":"left","opacity":1},"binding":{"key":"fanbus.registrationDeadlineTime","source":"central","protected":true}},{"id":"fb-story-departure-info","name":"Abfahrtsinformation","type":"text","text":"","x":96,"y":902,"width":868,"height":45,"rotation":0,"style":{"fill":"#cfeeff","fontFamily":"Arial, sans-serif","fontSize":20,"fontWeight":700,"textAlign":"center","opacity":1},"binding":{"key":"fanbus.departureInfo","source":"central","protected":true}},{"id":"fb-story-remaining-small","name":"Restplätze Label","type":"text","text":"NUR NOCH","x":100,"y":975,"width":240,"height":32,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":900,"textAlign":"center","opacity":1}},{"id":"fb-story-remaining","name":"Restplätze","type":"text","text":"XX PLÄTZE FREI!","x":62,"y":1006,"width":320,"height":50,"rotation":0,"style":{"fill":"#1ca9ff","fontFamily":"Arial, sans-serif","fontSize":34,"fontWeight":900,"textAlign":"center","opacity":1,"stroke":"#ffffff","strokeWidth":2},"binding":{"key":"fanbus.remainingCapacity","source":"central","protected":true}},{"id":"fb-story-contact-1-name","name":"Kontakt 1 Name","type":"text","text":"Pascal","x":104,"y":1090,"width":170,"height":42,"rotation":0,"style":{"fill":"#3ea6ff","fontFamily":"Arial, sans-serif","fontSize":31,"fontWeight":900,"textAlign":"left","opacity":1},"binding":{"key":"fanbus.contact1Name","source":"central","protected":true}},{"id":"fb-story-contact-1-phone","name":"Kontakt 1 Telefon","type":"text","text":"0172 9744908","x":272,"y":1093,"width":260,"height":42,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":27,"fontWeight":800,"textAlign":"left","opacity":1},"binding":{"key":"fanbus.contact1Phone","source":"central","protected":true}},{"id":"fb-story-contact-2-name","name":"Kontakt 2 Name","type":"text","text":"Luca","x":620,"y":1090,"width":160,"height":42,"rotation":0,"style":{"fill":"#3ea6ff","fontFamily":"Arial, sans-serif","fontSize":31,"fontWeight":900,"textAlign":"left","opacity":1},"binding":{"key":"fanbus.contact2Name","source":"central","protected":true}},{"id":"fb-story-contact-2-phone","name":"Kontakt 2 Telefon","type":"text","text":"0174 6681046","x":780,"y":1093,"width":250,"height":42,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":27,"fontWeight":800,"textAlign":"left","opacity":1},"binding":{"key":"fanbus.contact2Phone","source":"central","protected":true}},{"id":"fb-story-cta","name":"CTA","type":"text","text":"JETZT ANMELDEN!","x":388,"y":1790,"width":304,"height":50,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"'Komika Axis','Arial Black',Impact,sans-serif","fontSize":30,"fontWeight":900,"textAlign":"center","opacity":1,"stroke":"#1ca9ff","strokeWidth":2}},{"id":"fb-story-website","name":"Website","type":"text","text":"WWW.PLAERRDEIFL.DE","x":290,"y":1850,"width":500,"height":40,"rotation":0,"style":{"fill":"#ffffff","fontFamily":"Arial, sans-serif","fontSize":22,"fontWeight":800,"textAlign":"center","opacity":1}}],"metadata":{"createdAt":"2026-09-29T04:38:17Z","updatedAt":"2026-09-29T04:38:17Z"}}$json$::jsonb,
   1, 'Initiale Systemvorlage', null, pg_catalog.now(), pg_catalog.now(),
   null, pg_catalog.now()
 )
@@ -326,14 +326,21 @@ begin
       ];
     when 'FANBUS_POST', 'FANBUS_STORY' then
       v_required := array[
-        'fanbus.opponentName',
         'fanbus.destination',
+        'fanbus.tripLabel',
+        'fanbus.weekday',
         'fanbus.eventDate',
         'fanbus.eventTime',
-        'fanbus.departureAt',
         'fanbus.departureInfo',
         'fanbus.boardingStops',
-        'fanbus.price'
+        'fanbus.price',
+        'fanbus.registrationDeadlineDate',
+        'fanbus.registrationDeadlineTime',
+        'fanbus.remainingCapacity',
+        'fanbus.contact1Name',
+        'fanbus.contact1Phone',
+        'fanbus.contact2Name',
+        'fanbus.contact2Phone'
       ];
     else
       return;
@@ -518,32 +525,42 @@ security definer
 set search_path = ''
 as $function$
 declare
-  v_trip record;
+  v_trip jsonb;
+  v_trip_row app_modules.fanbus_trips%rowtype;
+  v_place_name text;
+  v_settings jsonb;
+  v_contact jsonb;
+  v_contacts jsonb;
   v_stops jsonb;
+  v_weekday text;
 begin
-  select
-    trip.id,
-    trip.event_id,
-    trip.status,
-    trip.price_cents,
-    trip.departure_at,
-    trip.departure_info,
-    event.event_date,
-    event.event_time,
-    event.venue,
-    event.title,
-    game.opponent_name
+  select item.value
   into v_trip
+  from pg_catalog.jsonb_array_elements(
+    coalesce(public.pd_public_fanbus_trips() -> 'trips', '[]'::jsonb)
+  ) as item(value)
+  where item.value ->> 'tripId' = p_trip_id::text
+  limit 1;
+
+  select trip.*
+  into v_trip_row
   from app_modules.fanbus_trips as trip
-  join app_modules.events as event on event.id = trip.event_id
-  left join app_modules.event_games as game on game.event_id = trip.event_id
   where trip.id = p_trip_id
     and trip.status <> 'CANCELLED';
 
-  if not found then
+  if not found or v_trip is null then
     raise exception 'SOCIAL_MEDIA_FANBUS_TRIP_NOT_FOUND'
       using errcode = 'P0002';
   end if;
+
+  select place.display_name
+  into v_place_name
+  from app_modules.fanbus_publishing_event_places as binding
+  join app_modules.fanbus_publishing_places as place
+    on place.id = binding.place_id
+   and place.is_active
+  where binding.event_id = v_trip_row.event_id
+  limit 1;
 
   select coalesce(
     pg_catalog.jsonb_agg(
@@ -556,7 +573,7 @@ begin
             else pg_catalog.to_char(
               trip_stop.departure_at at time zone 'Europe/Berlin',
               'HH24:MI'
-            ) || ' · ' || stop.label
+            ) || ' UHR · ' || stop.label
           end
       )
       order by trip_stop.position, trip_stop.departure_at, stop.label
@@ -571,49 +588,101 @@ begin
     and trip_stop.is_active
     and stop.is_active;
 
+  v_settings := app_private.m340_fanbus_publishing_output_settings_current();
+  v_contact := public.pd_public_fanbus_contact();
+  v_contacts := coalesce(v_contact -> 'contacts', '[]'::jsonb);
+
+  v_weekday := case pg_catalog.extract(
+    isodow from (v_trip ->> 'eventDate')::date
+  )::integer
+    when 1 then 'MONTAG'
+    when 2 then 'DIENSTAG'
+    when 3 then 'MITTWOCH'
+    when 4 then 'DONNERSTAG'
+    when 5 then 'FREITAG'
+    when 6 then 'SAMSTAG'
+    when 7 then 'SONNTAG'
+  end;
+
   return pg_catalog.jsonb_build_object(
     'central',
     pg_catalog.jsonb_build_object(
-      'fanbus.tripId', v_trip.id,
-      'fanbus.eventId', v_trip.event_id,
-      'fanbus.opponentName',
-        pg_catalog.upper(coalesce(
-          nullif(pg_catalog.btrim(v_trip.opponent_name), ''),
-          'AUSWÄRTSFAHRT'
-        )),
+      'fanbus.tripId', p_trip_id,
+      'fanbus.eventId', v_trip_row.event_id,
       'fanbus.destination',
         pg_catalog.upper(coalesce(
-          nullif(pg_catalog.btrim(v_trip.venue), ''),
-          nullif(pg_catalog.btrim(v_trip.opponent_name), ''),
-          nullif(pg_catalog.btrim(v_trip.title), ''),
+          nullif(pg_catalog.btrim(v_place_name), ''),
+          nullif(pg_catalog.btrim(v_trip ->> 'venue'), ''),
           'ZIEL OFFEN'
         )),
+      'fanbus.tripLabel',
+        pg_catalog.upper(coalesce(
+          nullif(v_settings #>> '{tripLabel,text}', ''),
+          'FANBUSFAHRT'
+        )),
+      'fanbus.weekday', v_weekday,
       'fanbus.eventDate',
-        pg_catalog.to_char(v_trip.event_date, 'DD.MM.YYYY'),
+        pg_catalog.to_char((v_trip ->> 'eventDate')::date, 'DD.MM.YYYY'),
       'fanbus.eventTime',
         case
-          when v_trip.event_time is null then 'SPIELZEIT OFFEN'
-          else pg_catalog.to_char(v_trip.event_time, 'HH24:MI') || ' UHR'
+          when nullif(v_trip ->> 'eventTime', '') is null
+            then 'SPIELZEIT OFFEN'
+          else pg_catalog.substring(v_trip ->> 'eventTime' from 1 for 5)
+            || ' UHR'
         end,
       'fanbus.price',
         case
-          when v_trip.price_cents is null then 'PREIS OFFEN'
+          when nullif(v_trip ->> 'priceCents', '') is null then 'PREIS OFFEN'
           else pg_catalog.replace(
-            pg_catalog.to_char(v_trip.price_cents::numeric / 100, 'FM999990.00'),
+            pg_catalog.to_char(
+              (v_trip ->> 'priceCents')::numeric / 100,
+              'FM999990.00'
+            ),
             '.',
             ','
           ) || ' €'
         end,
+      'fanbus.registrationDeadlineDate',
+        case
+          when nullif(v_trip ->> 'registrationClosesAt', '') is null then ''
+          else pg_catalog.to_char(
+            (v_trip ->> 'registrationClosesAt')::timestamptz
+              at time zone 'Europe/Berlin',
+            'DD.MM.YYYY,'
+          )
+        end,
+      'fanbus.registrationDeadlineTime',
+        case
+          when nullif(v_trip ->> 'registrationClosesAt', '') is null then ''
+          else pg_catalog.to_char(
+            (v_trip ->> 'registrationClosesAt')::timestamptz
+              at time zone 'Europe/Berlin',
+            'HH24:MI "UHR"'
+          )
+        end,
       'fanbus.departureAt',
         case
-          when v_trip.departure_at is null then 'ABFAHRT OFFEN'
+          when v_trip_row.departure_at is null then 'ABFAHRT OFFEN'
           else pg_catalog.to_char(
-            v_trip.departure_at at time zone 'Europe/Berlin',
+            v_trip_row.departure_at at time zone 'Europe/Berlin',
             'DD.MM.YYYY · HH24:MI'
           )
         end,
-      'fanbus.departureInfo', coalesce(v_trip.departure_info, ''),
-      'fanbus.boardingStops', v_stops
+      'fanbus.departureInfo', coalesce(v_trip_row.departure_info, ''),
+      'fanbus.boardingStops', v_stops,
+      'fanbus.remainingCapacity',
+        case
+          when nullif(v_trip ->> 'remainingCapacity', '') is null then ''
+          else (v_trip ->> 'remainingCapacity') || ' PLÄTZE FREI!'
+        end,
+      'fanbus.contact1Name',
+        coalesce(v_contacts #>> '{0,name}', ''),
+      'fanbus.contact1Phone',
+        coalesce(v_contacts #>> '{0,phone}', ''),
+      'fanbus.contact2Name',
+        coalesce(v_contacts #>> '{1,name}', ''),
+      'fanbus.contact2Phone',
+        coalesce(v_contacts #>> '{1,phone}', '')
     )
   );
 end;
