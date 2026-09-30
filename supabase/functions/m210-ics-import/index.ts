@@ -6,6 +6,7 @@ import {
   plausibleIcsMimeType,
   previewFingerprint
 } from "./ics-parser.js";
+import { resolveAllowedOrigins } from "./origin-policy.js";
 
 const MAX_REQUEST_BYTES = MAX_ICS_BYTES + 64 * 1024;
 const FINGERPRINT_PATTERN = /^[0-9a-f]{64}$/;
@@ -29,7 +30,7 @@ function loadConfig(): RuntimeConfig | null {
   const anonKey = String(Deno.env.get("SUPABASE_ANON_KEY") || "").trim();
   const serviceRoleKey = String(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
   const rawOrigins = String(Deno.env.get("M210_ALLOWED_ORIGINS") || "").trim();
-  if (!supabaseUrl || !anonKey || !serviceRoleKey || !rawOrigins) return null;
+  if (!supabaseUrl || !anonKey || !serviceRoleKey) return null;
 
   try {
     const parsed = new URL(supabaseUrl);
@@ -39,17 +40,9 @@ function loadConfig(): RuntimeConfig | null {
     return null;
   }
 
-  const origins = rawOrigins.split(",").map(value => value.trim());
-  for (const origin of origins) {
-    try {
-      const parsed = new URL(origin);
-      const local = parsed.protocol === "http:" && ["127.0.0.1", "localhost"].includes(parsed.hostname);
-      if ((parsed.protocol !== "https:" && !local) || parsed.origin !== origin || parsed.pathname !== "/") return null;
-    } catch {
-      return null;
-    }
-  }
-  return { supabaseUrl, anonKey, serviceRoleKey, allowedOrigins: new Set(origins) };
+  const allowedOrigins = resolveAllowedOrigins(supabaseUrl, rawOrigins);
+  if (!allowedOrigins) return null;
+  return { supabaseUrl, anonKey, serviceRoleKey, allowedOrigins };
 }
 
 function corsHeaders(origin: string) {
