@@ -13,9 +13,8 @@ const section = (source, start, end) => {
   return source.slice(from, to);
 };
 
-const [common, dates, fanbuses, fanclub, applications, tasks] = await Promise.all([
+const [common, fanbuses, fanclub, applications, tasks] = await Promise.all([
   read("js/modules/common.js"),
-  read("js/modules/dates.js"),
   read("js/modules/fanbuses.js"),
   read("js/modules/fanclub.js"),
   read("js/modules/membership-applications.js"),
@@ -35,19 +34,6 @@ test("dialog confirmation cancel restores one existing parent context", () => {
   assert.match(cancellation, /if \(!confirmed\) return;/);
   assert.doesNotMatch(cancellation, /showRegistrationsDialog\(/);
   assert.match(cancellation, /renderRegistrationsDialog\(registrationsDialog, trip, nextData\)/);
-});
-
-test("event edit restores authoritative updated detail and delete discards invalid detail", () => {
-  const editor = section(dates, "function openEventEditor", "function importValue");
-  assert.match(editor, /snapshot = await runWrite\([\s\S]*call\("event_update"/);
-  assert.match(editor, /preserveParentOnSubmit: editing && Boolean\(parentDialog\)/);
-  assert.match(editor, /const updated = events\(\)\.find\(item => item\.id === event\.id\)/);
-  assert.match(editor, /renderEventDetailDialog\(parentDialog, updated\)/);
-
-  const deletion = section(dates, "async function deleteEvent", "export async function hydrateDates");
-  assert.match(deletion, /snapshot = await runWrite\([\s\S]*call\("event_delete"/);
-  assert.match(deletion, /if \(detailDialog\?\.open\) detailDialog\.close\(\)/);
-  assert.match(deletion, /if \(!confirmed\) return/);
 });
 
 test("participant edit and add preserve Fahrt to Belegung to Teilnehmer with fresh data", () => {
@@ -90,20 +76,6 @@ test("bus writes refresh occupancy and the stored trip parent from server snapsh
   assert.match(fanbuses, /function reloadOccupancyAfterChild\([\s\S]*loadOccupancyInto\(parentDialog, trip\)/);
   assert.match(fanbuses, /afterDialogContextClose\(dialog, \(\) => refreshTripParent\(dialog, trip\.id\)\)/);
   assert.match(fanbuses, /async function refreshTripParent[\s\S]*call\("fanbus_trips_list"\)[\s\S]*restoreTripOverview\(dialog, updated\)/);
-});
-
-test("calendar fanbus link keyboard is isolated from row activation", () => {
-  const bindings = section(dates, "function render()", "function eventForm");
-  assert.match(bindings, /if \(keyEvent\.target !== record\) return/);
-  assert.match(bindings, /querySelectorAll\("\.v4-m210-fanbus-link"\)/);
-  assert.match(bindings, /keyEvent\.key !== " "[\s\S]*link\.click\(\)/);
-});
-
-test("optional fanbus calendar enrichment cannot fail successful event loading", () => {
-  const hydrate = section(dates, "export async function hydrateDates", "export function noop");
-  assert.match(hydrate, /call\("events_list"\)/);
-  assert.match(hydrate, /call\("fanbus_trips_list"\)\.catch\(\(\) => \(\{ trips: \[\] \}\)\)/);
-  assert.match(hydrate, /fanbusTrips = Array\.isArray\(fanbusSnapshot\?\.trips\) \? fanbusSnapshot\.trips : \[\]/);
 });
 
 test("audited fanclub, membership application and task writes refresh or discard their parents explicitly", () => {

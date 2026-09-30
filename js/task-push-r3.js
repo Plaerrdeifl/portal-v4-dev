@@ -255,8 +255,6 @@ function acknowledgeActivatedArea(action, data = null) {
 
   if (action === "dashboard" && areaIsActive("dashboard", "#dashboardWidgets")) {
     void acknowledgeScope("dashboard", "dashboard");
-  } else if (action === "events_list" && areaIsActive("dates", "#m210DatesList")) {
-    void acknowledgeScope("dates", "dates");
   } else if (
     action === "tasks_snapshot"
     && areaIsActive("tasks", "#tasksPanel")

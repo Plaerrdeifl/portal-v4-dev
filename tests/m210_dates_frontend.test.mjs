@@ -1,97 +1,44 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import test from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
 const read = path => readFile(join(root, path), "utf8");
 
-test("dates is an authenticated route directly after dashboard", async () => {
+test("dates navigation hands off to the canonical standalone Events app", async () => {
   const router = await read("js/router.js");
+  const app = await read("js/app.js");
   const auth = await read("js/auth.js");
 
   assert.match(
     router,
-    /dates:\s*\{[\s\S]*?title:\s*"Termine"[\s\S]*?page:\s*"dates\.html"[\s\S]*?icon:\s*"📅"/
+    /dates:\s*\{[\s\S]*?title:\s*"Termine"[\s\S]*?externalPath:\s*"\/events\/"[\s\S]*?icon:\s*"📅"/
   );
-  assert.doesNotMatch(
-    router,
-    /const LEGACY[\s\S]*?dates:\s*\{\s*target:/
-  );
-  assert.match(
-    router,
-    /fixedAuthenticatedOrder\(\)[\s\S]*?"dashboard",\s*"dates",/
-  );
-  assert.match(
-    auth,
-    /\["dashboard",\s*"dates"\]\.includes\(key\)/
-  );
-  assert.doesNotMatch(auth, /dates[^\n]+(?:\.read|\.manage)/);
+  assert.doesNotMatch(router, /dates:\s*\{[\s\S]*?page:\s*"dates\.html"/);
+  assert.match(router, /fixedAuthenticatedOrder\(\)[\s\S]*?"dashboard",\s*"dates",/);
+  assert.match(auth, /\["dashboard",\s*"dates"\]\.includes\(key\)/);
+  assert.match(app, /new URL\(route\.externalPath, window\.location\.origin\)/);
+  assert.match(app, /for \(const \[name, value\] of routeParams\(\)\)/);
+  assert.match(app, /target\.searchParams\.append\(name, value\)/);
+  assert.match(app, /window\.location\.assign\(target\.pathname \+ target\.search \+ target\.hash\)/);
 });
 
-test("dates page is hydrated by the dedicated authenticated module", async () => {
+test("legacy portal Events frontend is removed after the verified DEV cutover", async () => {
+  await assert.rejects(access(join(root, "js/modules/dates.js")));
+  await assert.rejects(access(join(root, "pages/dates.html")));
+
   const pages = await read("js/pages.js");
-  const html = await read("pages/dates.html");
+  const push = await read("js/task-push-r3.js");
 
-  assert.match(pages, /dates:\s*"\.\/modules\/dates\.js"/);
-  assert.match(
-    pages,
-    /key === "dates"[\s\S]{0,120}"\.\/modules\/dates\.js",\s*"hydrateDates"/
-  );
-  assert.doesNotMatch(
-    pages,
-    /\[[^\]]*"dates"[^\]]*\]\.includes\(key\)\) return/
-  );
-
-  assert.match(html, /id="m210DatesPage"/);
-  assert.match(html, /id="m210AddEventButton"/);
-  assert.match(html, /id="m210DatesList"/);
-  assert.doesNotMatch(html, /public-page|publicDatesText/);
-  assert.doesNotMatch(html, /Kommende Termine werden hier angekündigt/);
+  assert.doesNotMatch(pages, /modules\/dates\.js|hydrateDates/);
+  assert.doesNotMatch(push, /m210DatesList/);
 });
 
-test("dates module uses the existing API and management helpers", async () => {
-  const source = await read("js/modules/dates.js");
-
-  for (const action of [
-    "events_list",
-    "event_create",
-    "event_update",
-    "event_delete"
-  ]) {
-    assert.match(source, new RegExp(`call\\(["']${action}["']`));
-  }
-
-  assert.match(source, /hasCapability\("events\.manage"\)/);
-  assert.match(source, /payload\.expectedRevision\s*=\s*Number\(event\.revision\)/);
-  assert.match(source, /expectedRevision:\s*Number\(event\.revision\)/);
-  assert.match(source, /openDialog\(/);
-  assert.match(source, /confirmAction\(/);
-  assert.match(source, /runWrite\(/);
-  assert.doesNotMatch(
-    source,
-    /getSupabaseClient|supabase\.rpc|\.rpc\(\s*["']pd_api/
-  );
-});
-
-test("dates form and rendering preserve the M210 frontend contract", async () => {
-  const source = await read("js/modules/dates.js");
-
-  for (const value of [
-    "GAME",
-    "FANCLUB",
-    "OTHER",
-    "HOME",
-    "AWAY",
-    "PUBLIC",
-    "INTERNAL"
-  ]) {
-    assert.match(source, new RegExp(`value:\\s*["']${value}["']`));
-  }
-
-  assert.match(source, /event\.displayTitle/);
-  assert.doesNotMatch(source, /Mighty Dogs Schweinfurt/);
-  assert.doesNotMatch(source, /\.sort\(/);
-  assert.doesNotMatch(source, /toISOString\(\)/);
-  assert.match(source, /context\.isCurrent/);
+test("the deployed Events artifact remains traceable to the Events repository", async () => {
+  const metadata = JSON.parse(await read("events/.pd-deployment.json"));
+  assert.equal(metadata.sourceRepository, "Plaerrdeifl/events");
+  assert.match(metadata.sourceCommit, /^[0-9a-f]{40}$/);
+  assert.equal(metadata.sourceBuildArtifact, "events-dist");
+  assert.match(metadata.sourceBuildSha256, /^[0-9a-f]{64}$/);
 });

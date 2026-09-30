@@ -5,10 +5,9 @@ import test from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
 const read = file => readFile(join(root, file), "utf8");
-const [fanbuses, common, dates, css, fanbusUx] = await Promise.all([
+const [fanbuses, common, css, fanbusUx] = await Promise.all([
   read("js/modules/fanbuses.js"),
   read("js/modules/common.js"),
-  read("js/modules/dates.js"),
   read("css/app.css"),
   read("js/p800-r2-fanbus-ux.js")
 ]);
@@ -98,20 +97,6 @@ test("final Fanbus live polish uses direct person and boarding-stop rendering", 
   assert.ok(row.indexOf("<label>Uhrzeit") < row.indexOf("<label>Zustiegsort"));
   assert.doesNotMatch(fanbusUx, /function timeFirstBoardingStopText|new MutationObserver|#m310ManualRegistrationForm:has/);
 });
-test("dates hide only the successful normal status and collapse mobile filters", () => {
-  const render = section(dates, "function render()", "function eventForm");
-  assert.doesNotMatch(render, /setStatus\("Aktuell",\s*"success"\)/);
-  assert.match(render, /setStatus\(""\)/);
-  assert.match(render, /data-m210-filter-details/);
-  assert.match(render, /Filter\$\{activeFilterCount\(\)/);
-  assert.match(render, /mobile \? mobileFiltersOpen : true/);
-  assert.ok(render.indexOf("m210EventSearch") < render.indexOf("data-m210-filter-details"));
-  assert.match(dates, /setStatus\("Lädt"\)/);
-  assert.match(dates, /setStatus\("Fehler", "error"\)/);
-  assert.match(css, /@media\(max-width:700px\)\{[\s\S]*\.v4-m210-filter-summary\{[\s\S]*display:flex!important/);
-  assert.match(css, /v4-m210-filter-disclosure:not\(\[open\]\)>\.v4-m210-filter-fields\{[\s\S]*display:none/);
-});
-
 test("existing Fanbus accordion contract remains intact", () => {
   assert.match(fanbuses, /record\.setAttribute\("aria-expanded", "true"\)/);
   assert.match(fanbuses, /closeInlineTripDetail\(\)/);
