@@ -35,7 +35,8 @@ const optionalFiles = [
 const optionalDirectories = [
   "oauth",
   "liveticker",
-  "events"
+  "events",
+  "fanbus"
 ];
 
 const allowedEnvironments = new Set(["LOCAL", "DEV", "PROD"]);
@@ -171,6 +172,8 @@ async function generateRuntimeConfig() {
 
 const eventsRuntimeOutput = resolve(dist, "events", "runtime-config.js");
 const eventsIndex = resolve(dist, "events", "index.html");
+const fanbusRuntimeOutput = resolve(dist, "fanbus", "runtime-config.js");
+const fanbusIndex = resolve(dist, "fanbus", "index.html");
 
 if (environment === "LOCAL") {
   if (Boolean(supabaseUrl) !== Boolean(publishableKey)) {
@@ -229,6 +232,13 @@ try {
   await cp(runtimeOutput, eventsRuntimeOutput);
 } catch {
   // Events is optional until its DEV integration is enabled.
+}
+
+try {
+  await access(fanbusIndex, constants.R_OK);
+  await cp(runtimeOutput, fanbusRuntimeOutput);
+} catch {
+  // Fanbus is optional until its DEV integration is enabled.
 }
 
 console.log(
