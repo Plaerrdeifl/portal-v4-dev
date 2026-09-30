@@ -34,7 +34,8 @@ const optionalFiles = [
 
 const optionalDirectories = [
   "oauth",
-  "liveticker"
+  "liveticker",
+  "events"
 ];
 
 const allowedEnvironments = new Set(["LOCAL", "DEV", "PROD"]);
