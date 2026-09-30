@@ -169,6 +169,9 @@ async function generateRuntimeConfig() {
   );
 }
 
+const eventsRuntimeOutput = resolve(dist, "events", "runtime-config.js");
+const eventsIndex = resolve(dist, "events", "index.html");
+
 if (environment === "LOCAL") {
   if (Boolean(supabaseUrl) !== Boolean(publishableKey)) {
     throw new Error(
@@ -219,6 +222,13 @@ if (environment === "LOCAL") {
   }
 
   await generateRuntimeConfig();
+}
+
+try {
+  await access(eventsIndex, constants.R_OK);
+  await cp(runtimeOutput, eventsRuntimeOutput);
+} catch {
+  // Events is optional until its DEV integration is enabled.
 }
 
 console.log(
