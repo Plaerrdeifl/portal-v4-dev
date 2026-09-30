@@ -132,7 +132,7 @@ self.addEventListener("fetch", event => {
   }
   if (request.method !== "GET") return;
   if (url.origin !== self.location.origin) return;
-  if (url.pathname.endsWith("/js/runtime-config.js")) {
+  if (url.pathname.endsWith("/runtime-config.js")) {
     event.respondWith(fetch(request, { cache: "no-store" }));
     return;
   }
