@@ -6,11 +6,10 @@ import test from "node:test";
 const root = resolve(import.meta.dirname, "..");
 const read = path => readFile(join(root, path), "utf8");
 
-const [common, ui, fanbuses, dates, page, css] = await Promise.all([
+const [common, ui, fanbuses, page, css] = await Promise.all([
   read("js/modules/common.js"),
   read("js/ui.js"),
   read("js/modules/fanbuses.js"),
-  read("js/modules/dates.js"),
   read("pages/fanbuses.html"),
   read("css/app.css")
 ]);
@@ -97,14 +96,6 @@ test("occupancy remains bus-centered and preserves per-bus stop mapping", () => 
   assert.match(fanbuses, /data-m310-create-bus/);
   assert.match(fanbuses, /data-m310-bus-action-edit/);
   assert.match(fanbuses, /data-m310-bus-action-delete/);
-});
-
-test("calendar links only published existing fanbus snapshots by eventId", () => {
-  assert.match(dates, /call\("fanbus_trips_list"\)/);
-  assert.match(dates, /trip\.eventId === eventId && trip\.status === "PUBLISHED"/);
-  assert.match(dates, />🚌 Fanbus<\/a>/);
-  assert.match(dates, /#\/fanbuses\?detail=/);
-  assert.doesNotMatch(dates, /trip\.status === "DRAFT"/);
 });
 
 test("M325 workspace retains trip return context and uses the real view scroller", () => {

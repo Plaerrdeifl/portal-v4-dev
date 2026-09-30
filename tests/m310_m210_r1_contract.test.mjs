@@ -6,9 +6,8 @@ import test from "node:test";
 const root = resolve(import.meta.dirname, "..");
 const read = path => readFile(join(root, path), "utf8");
 
-const [fanbuses, dates, finance, css, migration] = await Promise.all([
+const [fanbuses, finance, css, migration] = await Promise.all([
   read("js/modules/fanbuses.js"),
-  read("js/modules/dates.js"),
   read("js/modules/fanclub.js"),
   read("css/app.css"),
   read("supabase/migrations/20260812223000_open_fanbus_registration_on_publish_m310_r1.sql")
@@ -128,7 +127,7 @@ test("M310 central editor keeps the registration window without the legacy meeti
   assert.match(fanbuses, /registrationOpensAt: values\.registrationOpensAt[\s\S]+berlinLocalToIso/);
 });
 
-test("M210 and M310 editors use the shared member and finance dialog contract", () => {
+test("shared member and finance dialogs keep the compact responsive contract", () => {
   const standardMarker = "/* Gemeinsamer kompakter Dialog */";
   const dialog = cssRuleAfter(".v4-dialog", standardMarker);
   const shell = cssRuleAfter(".v4-dialog-shell", standardMarker);
@@ -157,18 +156,9 @@ test("M210 and M310 editors use the shared member and finance dialog contract", 
   assert.match(css, /@media\(max-width:350px\)\{\.v4-smart-form>\*\{grid-column:1\/-1!important\}/);
 });
 
-test("cash, M210 and M310 retain their intended responsive smart-form tracks on iPhone", () => {
+test("cash and M310 retain their intended responsive smart-form tracks on iPhone", () => {
   assert.match(finance, /v4-field-seven">Konto<select[\s\S]+v4-field-five">Betrag/);
   assert.match(finance, /v4-field-five">Buchungsdatum[\s\S]+v4-field-seven">Zahlungsart/);
-
-  assert.match(dates, /v4-field-five">Typ[\s\S]+v4-field-seven">Sichtbarkeit/);
-  assert.match(dates, /v4-field-seven">Datum[\s\S]+v4-field-five">Uhrzeit/);
-  assert.match(dates, /v4-field-seven">Enddatum[\s\S]+v4-field-five">Endzeit/);
-  assert.match(
-    dates,
-    /v4-field-five" data-m210-game-field[\s\S]+Heim\/Auswärts[\s\S]+v4-field-seven" data-m210-game-field[\s\S]+Gegner/
-  );
-  assert.doesNotMatch(dates, /id="m210DateGameFields"|class="v4-field-full v4-form-pair"/);
 
   const tripFormStart = fanbuses.indexOf("function tripForm");
   const tripFormEnd = fanbuses.indexOf("function openTripEditor", tripFormStart);
@@ -235,16 +225,4 @@ test("M310 publish sets the registration opening time on the server and publishe
   assert.match(migration, /v_existing\.status <> 'DRAFT'/);
   assert.match(migration, /v_expected_revision <> v_existing\.revision/);
   assert.match(migration, /'FANBUS_TRIP_PUBLISHED'/);
-});
-
-test("M210 mobile metadata is compact and home-away filtering composes with existing filters", () => {
-  assert.match(dates, /let homeAwayFilter = "ALL"/);
-  assert.match(dates, /event\.eventType === "GAME" \? homeAwayLabel\(event\.homeAway\) : typeLabel/);
-  assert.doesNotMatch(dates, /event\.eventType === "GAME" && event\.homeAway \? ` ·/);
-  assert.match(dates, /id="m210EventHomeAwayFilter"/);
-  assert.match(dates, /matchesHomeAway = homeAwayFilter === "ALL"/);
-  assert.match(dates, /matchesType && matchesVisibility && matchesHomeAway/);
-  assertTwoLineMobileTitle(
-    "#m210DatesList .v4-compact-record.v4-m210-mobile-event .v4-m210-mobile-event-title"
-  );
 });

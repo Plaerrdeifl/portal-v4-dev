@@ -92,31 +92,6 @@ test("Edge Function reparses the same file, fingerprints preview state and expos
   assert.doesNotMatch(edge, /form\.get\(["']url|new URL\([^)]*(?:ics|file)/i);
 });
 
-test("dates UI uses the existing boundary, fixed profile, escaped preview and explicit confirmation", async () => {
-  const html = await read("pages/dates.html");
-  const dates = await read("js/modules/dates.js");
-  const api = await read("js/api.js");
-  assert.match(html, /id="m210ImportScheduleButton"[\s\S]*?>Spielplan importieren</);
-  assert.match(dates, /hasCapability\("events\.manage"\)/);
-  assert.match(dates, /sourceKey: "ERV_BAYERNLIGA_2026_27"/);
-  assert.match(dates, /label: "ERV Bayernliga 2026\/27"/);
-  assert.match(dates, /Import bestätigen/);
-  assert.match(dates, /importIcs\("preview", selectedFile/);
-  assert.match(dates, /importIcs\([\s\S]*?"confirm",[\s\S]*?selectedFile/);
-  assert.match(dates, /runWrite\(/);
-  const successfulPreview = dates.slice(
-    dates.indexOf('preview = await importIcs("preview"'),
-    dates.indexOf("} catch (error)", dates.indexOf('preview = await importIcs("preview"'))
-  );
-  assert.match(successfulPreview, /confirmButton\.disabled = false;[\s\S]*?confirmButton\.hidden = false;/);
-  assert.match(dates, /escapeHtml\(item\.displayTitle/);
-  assert.match(dates, /escapeHtml\(item\.uid\)/);
-  assert.doesNotMatch(dates, /Mighty Dogs Schweinfurt/);
-  assert.doesNotMatch(dates, /getSupabaseClient|supabase\.rpc|\.from\(/);
-  assert.match(api, /\/functions\/v1\/m210-ics-import/);
-  assert.doesNotMatch(api, /SUPABASE_SERVICE_ROLE|serviceRole/);
-});
-
 test("SQL verification covers idempotency, no fuzzy match, no deletion, stale preview, fanbus stability and rollback", async () => {
   const verification = await read("supabase/tests/m210_ics_import.sql");
   for (const phrase of [

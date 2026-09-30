@@ -240,6 +240,12 @@ async function renderRoute() {
   }
 
   const route = routes()[allowed];
+
+  if (route.externalPath) {
+    window.location.assign(route.externalPath);
+    return;
+  }
+
   setRouteHeader(route);
   const view = document.getElementById("view");
   if (!view) throw new Error("Der Portal-Inhaltsbereich fehlt.");

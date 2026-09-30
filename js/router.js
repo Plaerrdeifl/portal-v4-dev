@@ -24,7 +24,7 @@ const ROUTES = Object.freeze({
   dates: {
     title: "Termine",
     subtitle: "Kommende Termine und Spieltage",
-    page: "dates.html",
+    externalPath: "/events/",
     icon: "📅",
     order: 15
   },
