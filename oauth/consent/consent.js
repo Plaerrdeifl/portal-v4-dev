@@ -1,3 +1,4 @@
+import { api } from "/js/api.js";
 import { auth } from "/js/auth.js";
 import { CONFIG } from "/js/config.js";
 import { renderGoogleSignInButton } from "/js/google-signin.js";
@@ -15,8 +16,11 @@ const approveButton = document.getElementById("approveButton");
 const denyButton = document.getElementById("denyButton");
 const statusElement = document.getElementById("oauthStatus");
 const leadElement = document.getElementById("oauthLead");
+const titleElement = document.getElementById("oauthTitle");
+const targetElement = document.getElementById("oauthTarget");
 
 let currentAuthorization = null;
+let currentAccess = null;
 let loginRendered = false;
 let actionPending = false;
 
@@ -53,9 +57,32 @@ function describeScopes(rawScope) {
     return "Es werden nur die für die Anmeldung erforderlichen Kontodaten übertragen.";
   }
 
-  const descriptions = scopes.map(scopeLabel);
+  return `Freigegeben werden: ${scopes.map(scopeLabel).join(", ")}.`;
+}
 
-  return `Freigegeben werden: ${descriptions.join(", ")}.`;
+function setClientPresentation(name) {
+  const displayName = String(name || "").trim() || "Externer Dienst";
+  clientName.textContent = displayName;
+  titleElement.textContent = `${displayName} verbinden`;
+  targetElement.textContent = `Portal → ${displayName}`;
+  document.title = `${displayName} verbinden – Plärrdeifl Portal`;
+  return displayName;
+}
+
+function accessDeniedMessage(access, displayName) {
+  if (access?.reason === "PORTAL_USER_INACTIVE") {
+    return "Dein Portal-Konto ist nicht für die Nutzung freigeschaltet.";
+  }
+  if (access?.reason === "CLIENT_NOT_SUPPORTED") {
+    return "Dieser Dienst ist nicht als freigegebene Portal-Integration eingerichtet.";
+  }
+  if (access?.clientCode === "WORDPRESS") {
+    return "WordPress ist für aktive Mitglieder des Social-Media-Teams freigegeben.";
+  }
+  if (access?.clientCode === "NEXTCLOUD") {
+    return "Nextcloud ist für aktive Mitglieder des Social-Media-Teams und den aktuellen Vorstand freigegeben.";
+  }
+  return `Dein Portal-Konto hat keinen Zugriff auf ${displayName}.`;
 }
 
 async function showLogin() {
@@ -111,22 +138,7 @@ async function ensureActivePortalUser() {
     consentPanel.hidden = true;
     leadElement.textContent =
       "Dein Portal-Konto ist nicht für die Nutzung freigeschaltet.";
-    setStatus(
-      "Für Nextcloud ist ein aktiver Plärrdeifl-Portalzugang erforderlich.",
-      "error"
-    );
-    return false;
-  }
-
-  if (state.bootstrap?.nextcloudAccess !== true) {
-    loginPanel.hidden = true;
-    consentPanel.hidden = true;
-    leadElement.textContent =
-      "Dein Portal-Konto hat keinen Zugriff auf den gemeinsamen Nextcloud-Bereich.";
-    setStatus(
-      "Nextcloud ist für aktive Mitglieder des Social-Media-Teams und den aktuellen Vorstand freigegeben.",
-      "error"
-    );
+    setStatus("Ein aktiver Plärrdeifl-Portalzugang ist erforderlich.", "error");
     return false;
   }
 
@@ -139,7 +151,7 @@ async function loadAuthorization() {
     consentPanel.hidden = true;
     leadElement.textContent = "Die Anmeldeanfrage ist unvollständig.";
     setStatus(
-      "Es fehlt die authorization_id. Starte die Anmeldung bitte erneut aus Nextcloud.",
+      "Es fehlt die authorization_id. Starte die Anmeldung bitte erneut aus dem gewünschten Dienst.",
       "error"
     );
     return;
@@ -149,42 +161,52 @@ async function loadAuthorization() {
   if (!active) return;
 
   loginPanel.hidden = true;
-  setStatus("Nextcloud-Anfrage wird geprüft …");
+  setStatus("Anmeldeanfrage wird geprüft …");
 
   const client = getSupabaseClient();
   const { data, error } =
     await client.auth.oauth.getAuthorizationDetails(authorizationId);
 
-  if (error) {
-    throw error;
-  }
+  if (error) throw error;
 
   if (data?.redirect_url && !data?.authorization_id) {
     window.location.replace(data.redirect_url);
     return;
   }
 
+  const requestedClientId = String(data?.client?.id || "").trim();
+  if (!requestedClientId) {
+    throw new Error("Die OAuth-Anfrage enthält keinen gültigen Client.");
+  }
+
+  const displayName = setClientPresentation(data?.client?.name);
   currentAuthorization = data;
+  currentAccess = await api.call("identity_oauth_client_access", {
+    clientId: requestedClientId
+  });
 
-  const requestedClientName =
-    String(data?.client?.name || "").trim() || "Nextcloud";
+  if (currentAccess?.allowed !== true) {
+    consentPanel.hidden = true;
+    leadElement.textContent = `Dein Portal-Konto darf ${displayName} nicht verwenden.`;
+    setStatus(accessDeniedMessage(currentAccess, displayName), "error");
+    return;
+  }
 
-  clientName.textContent = requestedClientName;
   scopeText.textContent = describeScopes(data?.scope);
-
   consentPanel.hidden = false;
   leadElement.textContent =
-    "Du bist im Plärrdeifl Portal angemeldet. Bestätige jetzt die Verbindung zu Nextcloud.";
+    `Du bist im Plärrdeifl Portal angemeldet. Bestätige jetzt die Verbindung zu ${displayName}.`;
   setStatus("Bereit zum Verbinden.", "success");
 }
 
 async function finishAuthorization(decision) {
-  if (actionPending || !currentAuthorization) return;
+  if (actionPending || !currentAuthorization || currentAccess?.allowed !== true) return;
 
+  const displayName = String(currentAuthorization?.client?.name || "").trim() || "Dienst";
   setActionPending(true);
   setStatus(
     decision === "approve"
-      ? "Nextcloud wird verbunden …"
+      ? `${displayName} wird verbunden …`
       : "Anmeldung wird abgebrochen …"
   );
 
@@ -205,7 +227,7 @@ async function finishAuthorization(decision) {
   } catch (error) {
     console.error("OAuth decision failed", error);
     setStatus(
-      error?.message || "Die Nextcloud-Verbindung konnte nicht abgeschlossen werden.",
+      error?.message || "Die Verbindung konnte nicht abgeschlossen werden.",
       "error"
     );
     setActionPending(false);
@@ -225,7 +247,7 @@ loadAuthorization().catch(error => {
   loginPanel.hidden = true;
   consentPanel.hidden = true;
   setStatus(
-    error?.message || "Die Nextcloud-Anmeldung konnte nicht vorbereitet werden.",
+    error?.message || "Die Anmeldung konnte nicht vorbereitet werden.",
     "error"
   );
 });
