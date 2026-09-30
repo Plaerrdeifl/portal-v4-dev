@@ -36,7 +36,7 @@ test("read acknowledgement starts only after a successful target data call", () 
   assert.match(bridge, /window\.addEventListener\("pd-api-after-call"/);
   assert.match(bridge, /acknowledgeActivatedArea/);
   assert.match(bridge, /action === "tasks_snapshot"/);
-  assert.match(bridge, /action === "events_list"/);
+  assert.doesNotMatch(bridge, /action === "events_list"/);
   assert.match(bridge, /action === "membership_applications_list"/);
   assert.match(bridge, /action === "admin_snapshot"/);
   assert.doesNotMatch(bridge, /prepareHashDestination/);

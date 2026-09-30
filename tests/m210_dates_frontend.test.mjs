@@ -18,10 +18,10 @@ test("dates navigation hands off to the canonical standalone Events app", async 
   assert.doesNotMatch(router, /dates:\s*\{[\s\S]*?page:\s*"dates\.html"/);
   assert.match(router, /fixedAuthenticatedOrder\(\)[\s\S]*?"dashboard",\s*"dates",/);
   assert.match(auth, /\["dashboard",\s*"dates"\]\.includes\(key\)/);
-  assert.match(
-    app,
-    /if \(route\.externalPath\) \{\s*window\.location\.assign\(route\.externalPath\);\s*return;\s*\}/
-  );
+  assert.match(app, /new URL\(route\.externalPath, window\.location\.origin\)/);
+  assert.match(app, /for \(const \[name, value\] of routeParams\(\)\)/);
+  assert.match(app, /target\.searchParams\.append\(name, value\)/);
+  assert.match(app, /window\.location\.assign\(target\.pathname \+ target\.search \+ target\.hash\)/);
 });
 
 test("legacy portal Events frontend is removed after the verified DEV cutover", async () => {

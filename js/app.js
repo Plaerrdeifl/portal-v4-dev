@@ -242,7 +242,11 @@ async function renderRoute() {
   const route = routes()[allowed];
 
   if (route.externalPath) {
-    window.location.assign(route.externalPath);
+    const target = new URL(route.externalPath, window.location.origin);
+    for (const [name, value] of routeParams()) {
+      target.searchParams.append(name, value);
+    }
+    window.location.assign(target.pathname + target.search + target.hash);
     return;
   }
 
