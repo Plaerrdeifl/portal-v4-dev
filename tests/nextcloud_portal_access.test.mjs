@@ -34,25 +34,20 @@ test("Nextcloud OAuth access uses the shared Portal group source", async () => {
   assert.doesNotMatch(sql, /team\.code\s*=\s*'SOCIAL_MEDIA'/);
 });
 
-test("OAuth consent allows every Portal account granted by bootstrap", async () => {
+test("OAuth consent derives access from the registered client on the server", async () => {
   const source = await readFile(consentUrl, "utf8");
 
+  assert.match(source, /getAuthorizationDetails\(authorizationId\)/);
+  assert.match(source, /data\?\.client\?\.id/);
   assert.match(
     source,
-    /state\.bootstrap\?\.nextcloudAccess !== true/,
+    /api\.call\("identity_oauth_client_access",\s*\{\s*clientId: requestedClientId\s*\}\)/,
   );
-  assert.match(
-    source,
-    /Social-Media-Teams und den aktuellen Vorstand/,
-  );
-  assert.match(
-    source,
-    /getAuthorizationDetails\(authorizationId\)/,
-  );
-  assert.match(
-    source,
-    /approveAuthorization\(authorizationId\)/,
-  );
+  assert.match(source, /currentAccess\?\.allowed !== true/);
+  assert.match(source, /clientCode === "NEXTCLOUD"/);
+  assert.match(source, /clientCode === "WORDPRESS"/);
+  assert.doesNotMatch(source, /state\.bootstrap\?\.nextcloudAccess !== true/);
+  assert.match(source, /approveAuthorization\(authorizationId\)/);
 });
 
 test("DEV build publishes the OAuth consent route without a navigation redirect", async () => {

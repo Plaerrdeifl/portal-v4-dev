@@ -13,7 +13,7 @@
     http-equiv="Content-Security-Policy"
     content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-src https://accounts.google.com https://*.supabase.co; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://accounts.google.com; script-src 'self' https://cdn.jsdelivr.net https://accounts.google.com; connect-src 'self' https://*.supabase.co https://accounts.google.com wss://*.supabase.co; worker-src 'self'; form-action 'self' https://accounts.google.com https://*.supabase.co"
   >
-  <title>Nextcloud verbinden – Plärrdeifl Portal</title>
+  <title>Dienst verbinden – Plärrdeifl Portal</title>
   <link
     rel="icon"
     type="image/png"
@@ -168,13 +168,13 @@
         <img src="/assets/icons/icon-180.png" alt="">
         <div>
           <strong>Schweinfurter Plärrdeifl</strong>
-          <span>Portal → Nextcloud</span>
+          <span id="oauthTarget">Portal → externer Dienst</span>
         </div>
       </div>
 
-      <h1 id="oauthTitle">Nextcloud verbinden</h1>
+      <h1 id="oauthTitle">Dienst verbinden</h1>
       <p id="oauthLead" class="oauth-lead">
-        Prüfe deinen Portalzugang, um Nextcloud mit deinem Plärrdeifl-Konto zu verbinden.
+        Prüfe deinen Portalzugang, um den angefragten Dienst mit deinem Plärrdeifl-Konto zu verbinden.
       </p>
 
       <div id="loginPanel" class="oauth-login" hidden>
@@ -189,7 +189,7 @@
       <div id="consentPanel" hidden>
         <div class="oauth-details">
           <p>
-            <strong id="clientName">Nextcloud</strong> möchte deinen
+            <strong id="clientName">Externer Dienst</strong> möchte deinen
             Plärrdeifl-Account zur Anmeldung verwenden.
           </p>
           <p id="scopeText"></p>
