@@ -97,12 +97,18 @@ insert into app_modules.fanbus_bus_assignments(participant_id,trip_id,bus_id) va
 select set_config('request.jwt.claim.sub','00000000-0000-4327-8000-000000000001',true);
 select is(jsonb_array_length(app_private.api_fanbus_my_bookings_list('{}')->'bookings'),4,'A/B/C/H creator sees all creator bookings');
 select ok((app_private.api_fanbus_my_bookings_list('{}')->'bookings'->0) ? 'participants','creator sees participant collection');
+select is(jsonb_array_length(jsonb_path_query_first(
+  app_private.api_fanbus_my_bookings_list('{}'),
+  '$.bookings[*] ? (@.bookingId == "00000000-0000-4327-8500-000000000001")'
+)->'participants'),3,'creator receives the complete booking with every participant');
 
 select set_config('request.jwt.claim.sub','00000000-0000-4327-8000-000000000002',true);
 select is(jsonb_array_length(app_private.api_fanbus_my_bookings_list('{}')->'bookings'),1,'D co-booked portal user sees booking');
 select is((app_private.api_fanbus_my_bookings_list('{}')->'bookings'->0->>'isCreator')::boolean,false,'D co-booked portal user is not creator');
-select ok((app_private.api_fanbus_my_bookings_list('{}')->'bookings'->0->'participants'->2->>'redacted')::boolean,'D foreign guest is redacted');
-select ok(not (app_private.api_fanbus_my_bookings_list('{}')->'bookings'->0->'participants'->2) ? 'email','D redaction excludes email');
+select is(jsonb_array_length(app_private.api_fanbus_my_bookings_list('{}')->'bookings'->0->'participants'),1,'D co-booked portal user receives only own participant row');
+select is(app_private.api_fanbus_my_bookings_list('{}')->'bookings'->0->'participants'->0->>'id','00000000-0000-4327-8600-000000000002','D returned participant is the actor');
+select ok(position('Gina' in app_private.api_fanbus_my_bookings_list('{}')::text)=0,'D foreign participant name is absent from response');
+select ok(position('00000000-0000-4327-8600-000000000003' in app_private.api_fanbus_my_bookings_list('{}')::text)=0,'D foreign participant row and status are absent from response');
 select throws_ok($$select app_private.api_fanbus_selfservice_booking_append('{"bookingId":"00000000-0000-4327-8500-000000000001","idempotencyKey":"00000000-0000-4327-8700-000000000001","participants":[{"firstName":"No","lastName":"Rights","tripBoardingStopId":"00000000-0000-4327-8350-000000000001"}]}'::jsonb)$$,'P0002','NOT_FOUND','F non-creator append is safe NOT_FOUND');
 select throws_ok($$select app_private.api_fanbus_selfservice_participant_cancel('{"participantId":"00000000-0000-4327-8600-000000000003","expectedRevision":1}'::jsonb)$$,'P0002','NOT_FOUND','G non-creator foreign cancel is safe NOT_FOUND');
 
@@ -146,6 +152,14 @@ select throws_ok($$select app_private.api_fanbus_selfservice_participant_update(
 select lives_ok($$select app_private.api_fanbus_selfservice_participant_update('{"participantId":"00000000-0000-4327-8600-000000000002","expectedRevision":1,"busPreference":"PARTY"}'::jsonb)$$,'N preference can change after assignment');
 select is((select bus_id::text from app_modules.fanbus_bus_assignments where participant_id='00000000-0000-4327-8600-000000000002'),'00000000-0000-4327-8400-000000000001','N assignment remains unchanged');
 
+update app_modules.fanbus_registrations
+set status='CANCELLED', cancelled_at=clock_timestamp()
+where id='00000000-0000-4327-8600-000000000002';
+select set_config('request.jwt.claim.sub','00000000-0000-4327-8000-000000000002',true);
+select is(jsonb_array_length(app_private.api_fanbus_my_bookings_list('{}')->'bookings'),1,'cancelled companion participation remains available for cancelled section');
+select is(jsonb_array_length(app_private.api_fanbus_my_bookings_list('{}')->'bookings'->0->'participants'),1,'cancelled companion still receives only own row');
+select is(app_private.api_fanbus_my_bookings_list('{}')->'bookings'->0->'participants'->0->>'status','CANCELLED','cancelled companion response identifies own cancelled participation');
+select set_config('request.jwt.claim.sub','00000000-0000-4327-8000-000000000001',true);
 select lives_ok($$select app_private.api_fanbus_selfservice_participant_cancel('{"participantId":"00000000-0000-4327-8600-000000000001","expectedRevision":1}'::jsonb)$$,'O creator can cancel own participation');
 select is((select created_by::text from app_modules.fanbus_bookings where id='00000000-0000-4327-8500-000000000001'),'00000000-0000-4327-8000-000000000001','O creator identity remains on booking');
 select lives_ok($$select app_private.api_fanbus_selfservice_booking_append('{"bookingId":"00000000-0000-4327-8500-000000000001","idempotencyKey":"00000000-0000-4327-8700-000000000006","participants":[{"firstName":"After","lastName":"SelfCancel","tripBoardingStopId":"00000000-0000-4327-8350-000000000001"}]}'::jsonb)$$,'H creator can manage remaining booking after self-cancel');
@@ -153,7 +167,7 @@ select lives_ok($$select app_private.api_fanbus_selfservice_booking_append('{"bo
 select lives_ok(format('select app_private.api_fanbus_selfservice_participant_cancel(%L::jsonb)',jsonb_build_object('participantId',(select id from app_modules.fanbus_registrations where first_name='Whole'),'expectedRevision',1)::text),'Q waitlisted participant can selfservice cancel');
 select is((select status from app_modules.fanbus_registrations where id='00000000-0000-4327-8600-000000000005'),'ACTIVE','Q cancellation does not auto-promote or alter existing active row');
 
-update app_portal.settings set value='{"emails":[{"label":"Büro","value":"bus@example.invalid"},{"label":"Invalid","value":"bad\nmail"}],"phones":[{"label":"Hotline","value":"+49 123 456"}],"secret":"hidden"}'::jsonb where key='fanbus.organization_contact';
+update app_portal.settings set value='{"version":2,"primary":{"name":"Büro","phone":"","whatsapp":false,"email":"bus@example.invalid"},"contacts":[{"name":"Hotline","phone":"+49 123 456","whatsapp":false,"email":""}],"secret":"hidden"}'::jsonb where key='fanbus.organization_contact';
 select is(jsonb_array_length(public.pd_public_fanbus_contact()->'emails'),1,'public contact sanitizes emails');
 select is(jsonb_array_length(public.pd_public_fanbus_contact()->'phones'),1,'public contact exposes public phones');
 select ok(not public.pd_public_fanbus_contact() ? 'secret','public projection excludes arbitrary setting keys');
