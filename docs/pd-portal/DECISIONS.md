@@ -383,3 +383,28 @@ Nach Ausgabe des Handoffs beginnt im alten Chat keine neue substanzielle Impleme
 Der neue Chat liest zuerst `ARCHITECTURE.md` und `DECISIONS.md`, übernimmt den Handoff nur als Verlauf und verifiziert veränderliche technische Zustände erneut live. Ein Handoff ist kein Ersatz für aktuelle GitHub-, Supabase-, CI-, Deployment- oder Runtime-Prüfungen.
 
 Wenn unklar ist, ob ein neuer Arbeitsschritt noch zum bestehenden Paket gehört, wird zugunsten eines **neuen Chats** entschieden. Der Benutzer muss den Chatwechsel nicht selbst anmahnen.
+
+## D-049 – ChatGPT, Codex Cloud und Codex Remote haben feste Rollen im Entwicklungsablauf
+
+**Entscheidung:** Für technische Arbeiten am PD-Portal werden ChatGPT-Projektchat, Codex Cloud und Codex Remote auf dem Acer bewusst mit unterschiedlichen Rollen eingesetzt. Pro klar abgegrenztem Arbeitspaket gibt es nur einen aktiven Implementierer; mehrere Agenten ändern nicht parallel unabhängig denselben Code.
+
+Der Standardablauf lautet:
+
+1. **ChatGPT-Projektchat** steuert Scope, Architektur, Arbeitsreihenfolge und Handoffs, liest die verbindlichen Projektquellen und prüft veränderliche Zustände wie GitHub, CI, Supabase, Deployments und Runtime vor konkreten Entscheidungen live.
+2. **Codex Cloud** ist der bevorzugte Implementierer für isolierte Repository-Arbeit wie Branches, Codeänderungen, Tests, Builds, Commits und Pull Requests.
+3. **Codex Remote auf dem Acer** ist der bevorzugte Ausführungsort für Aufgaben, die die reale Acer-Umgebung benötigen, insbesondere Browser-E2E, lokale Runtime, Worker, systemd/Docker, lokale Dateien und echte DEV-Abnahmen.
+4. Nach einer Implementierung werden CI, Backend und Deployment erneut geprüft; reale Browser-/Runtime-Abnahmen erfolgen bei Bedarf über Codex Remote. Erst danach gilt ein Arbeitspaket als vollständig abgenommen.
+
+Für normale Codex-Entwicklungs- und Abnahmeaufträge ist der Projektstandard **GPT-5.6 Sol mit Denkstufe Mittel**. Eine höhere Denkstufe wird nur verwendet, wenn die konkrete Aufgabe eine nachweislich komplexe Ursachenanalyse oder besonders schwierige technische Problemstellung erfordert. Ein anderes oder stärkeres Modell wird nicht ohne konkreten Grund während eines laufenden Arbeitspakets empfohlen.
+
+Jeder neu formulierte Codex-Auftrag nennt künftig ausdrücklich:
+
+- den Ausführungsort bzw. Modus (`Codex Cloud` oder `Codex Remote`),
+- das Modell,
+- die Denkstufe,
+- den erlaubten Änderungsbereich,
+- den DEV-/PROD-Schutz.
+
+Falls das festgelegte Modell oder eine benötigte Codex-Funktion im verwendeten Client vorübergehend nicht verfügbar ist, wird vor dem Start eine konkrete Ersatzwahl benannt; daraus entsteht keine dauerhafte Änderung dieser Entscheidung.
+
+Die bestehenden DEV-/PROD-Regeln bleiben unverändert. Insbesondere ist ein erfolgreicher DEV-Commit, Cloud-Lauf oder Remote-Test keine automatische PROD-Freigabe.
