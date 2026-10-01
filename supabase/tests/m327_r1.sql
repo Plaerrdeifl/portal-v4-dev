@@ -167,7 +167,7 @@ select lives_ok($$select app_private.api_fanbus_selfservice_booking_append('{"bo
 select lives_ok(format('select app_private.api_fanbus_selfservice_participant_cancel(%L::jsonb)',jsonb_build_object('participantId',(select id from app_modules.fanbus_registrations where first_name='Whole'),'expectedRevision',1)::text),'Q waitlisted participant can selfservice cancel');
 select is((select status from app_modules.fanbus_registrations where id='00000000-0000-4327-8600-000000000005'),'ACTIVE','Q cancellation does not auto-promote or alter existing active row');
 
-update app_portal.settings set value='{"emails":[{"label":"Büro","value":"bus@example.invalid"},{"label":"Invalid","value":"bad\nmail"}],"phones":[{"label":"Hotline","value":"+49 123 456"}],"secret":"hidden"}'::jsonb where key='fanbus.organization_contact';
+update app_portal.settings set value='{"version":2,"primary":{"name":"Büro","phone":"","whatsapp":false,"email":"bus@example.invalid"},"contacts":[{"name":"Hotline","phone":"+49 123 456","whatsapp":false,"email":""}],"secret":"hidden"}'::jsonb where key='fanbus.organization_contact';
 select is(jsonb_array_length(public.pd_public_fanbus_contact()->'emails'),1,'public contact sanitizes emails');
 select is(jsonb_array_length(public.pd_public_fanbus_contact()->'phones'),1,'public contact exposes public phones');
 select ok(not public.pd_public_fanbus_contact() ? 'secret','public projection excludes arbitrary setting keys');
