@@ -107,8 +107,8 @@ select is(jsonb_array_length(app_private.api_fanbus_my_bookings_list('{}')->'boo
 select is((app_private.api_fanbus_my_bookings_list('{}')->'bookings'->0->>'isCreator')::boolean,false,'D co-booked portal user is not creator');
 select is(jsonb_array_length(app_private.api_fanbus_my_bookings_list('{}')->'bookings'->0->'participants'),1,'D co-booked portal user receives only own participant row');
 select is(app_private.api_fanbus_my_bookings_list('{}')->'bookings'->0->'participants'->0->>'id','00000000-0000-4327-8600-000000000002','D returned participant is the actor');
-select unlike(app_private.api_fanbus_my_bookings_list('{}')::text,'%Gina%','D foreign participant name is absent from response');
-select unlike(app_private.api_fanbus_my_bookings_list('{}')::text,'%00000000-0000-4327-8600-000000000003%','D foreign participant row and status are absent from response');
+select ok(position('Gina' in app_private.api_fanbus_my_bookings_list('{}')::text)=0,'D foreign participant name is absent from response');
+select ok(position('00000000-0000-4327-8600-000000000003' in app_private.api_fanbus_my_bookings_list('{}')::text)=0,'D foreign participant row and status are absent from response');
 select throws_ok($$select app_private.api_fanbus_selfservice_booking_append('{"bookingId":"00000000-0000-4327-8500-000000000001","idempotencyKey":"00000000-0000-4327-8700-000000000001","participants":[{"firstName":"No","lastName":"Rights","tripBoardingStopId":"00000000-0000-4327-8350-000000000001"}]}'::jsonb)$$,'P0002','NOT_FOUND','F non-creator append is safe NOT_FOUND');
 select throws_ok($$select app_private.api_fanbus_selfservice_participant_cancel('{"participantId":"00000000-0000-4327-8600-000000000003","expectedRevision":1}'::jsonb)$$,'P0002','NOT_FOUND','G non-creator foreign cancel is safe NOT_FOUND');
 
