@@ -31,7 +31,7 @@ export async function readCredentialFile(path) {
   if (
     !metadata.isFile() ||
     metadata.isSymbolicLink() ||
-    (metadata.mode & 0o077) !== 0 ||
+    (metadata.mode & 0o037) !== 0 ||
     metadata.size < 20 ||
     metadata.size > 8192
   ) {

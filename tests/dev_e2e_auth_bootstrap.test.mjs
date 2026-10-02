@@ -96,7 +96,7 @@ test("only a server-side privileged credential is accepted", () => {
   });
 });
 
-test("credential loading fails closed for missing or weakly protected files", async (t) => {
+test("credential loading accepts secure fixture and systemd modes and rejects unsafe bits", async (t) => {
   const previousDirectory = process.env.CREDENTIALS_DIRECTORY;
   delete process.env.CREDENTIALS_DIRECTORY;
   t.after(() => {
@@ -109,12 +109,19 @@ test("credential loading fails closed for missing or weakly protected files", as
   t.after(() => rm(directory, { recursive: true, force: true }));
   const credentialPath = path.join(directory, "credential");
   const secretFixture = ["sb", "secret", "credential", "fixture", "long-enough"].join("_");
-  await writeFile(credentialPath, secretFixture, { mode: 0o644 });
-  await assert.rejects(readCredentialFile(credentialPath), {
-    code: "CREDENTIAL_FILE_INVALID",
-  });
-  await chmod(credentialPath, 0o600);
-  assert.equal(await readCredentialFile(credentialPath), secretFixture);
+  await writeFile(credentialPath, secretFixture, { mode: 0o600 });
+
+  for (const mode of [0o600, 0o440]) {
+    await chmod(credentialPath, mode);
+    assert.equal(await readCredentialFile(credentialPath), secretFixture);
+  }
+
+  for (const mode of [0o644, 0o460, 0o450, 0o404, 0o402, 0o401]) {
+    await chmod(credentialPath, mode);
+    await assert.rejects(readCredentialFile(credentialPath), {
+      code: "CREDENTIAL_FILE_INVALID",
+    });
+  }
 });
 
 test("broker looks up only the allowlisted user and generates one DEV link", async () => {
