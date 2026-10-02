@@ -24,6 +24,8 @@ import {
 } from "../e2e/dev-auth/guards.mjs";
 import { publicBrokerError, redactSensitiveText } from "../e2e/dev-auth/redaction.mjs";
 import {
+  bootstrapBrowserSession,
+  extractTokenHash,
   isReadOnlyRpc,
   runSmoke,
 } from "../e2e/dev-auth/playwright-smoke.mjs";
@@ -168,6 +170,72 @@ test("broker errors and redaction never expose credentials or magic-link tokens"
   });
 });
 
+test("token hash extraction accepts validated token_hash and token links", () => {
+  assert.equal(extractTokenHash(sensitiveLink), "fixture-sensitive-token");
+  const tokenLink = `${DEV_SUPABASE_ORIGIN}/auth/v1/verify?token=alternate-sensitive-value&redirect_to=${encodeURIComponent(DEV_FANBUS_URL)}`;
+  assert.equal(extractTokenHash(tokenLink), "alternate-sensitive-value");
+  assert.throws(
+    () =>
+      extractTokenHash(
+        `${DEV_SUPABASE_ORIGIN}/auth/v1/verify?redirect_to=${encodeURIComponent(DEV_FANBUS_URL)}`,
+      ),
+    { code: "INVALID_MAGIC_LINK" },
+  );
+});
+
+test("browser bootstrap verifies the token hash with validated DEV public config", async (t) => {
+  const previousWindow = globalThis.window;
+  t.after(() => {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  });
+
+  const calls = [];
+  globalThis.window = {
+    PD_RUNTIME_CONFIG: {
+      environment: "DEV",
+      supabaseUrl: DEV_SUPABASE_ORIGIN,
+      supabasePublishableKey: "fixture-public-value",
+    },
+    supabase: {
+      createClient: (url, key, options) => {
+        calls.push({ url, key, options });
+        return {
+          auth: {
+            verifyOtp: async (input) => {
+              calls.push({ input });
+              return { data: { session: { user: { id: E2E_USER_ID } } }, error: null };
+            },
+          },
+        };
+      },
+    },
+  };
+  const navigations = [];
+  const page = {
+    goto: async (url, options) => navigations.push({ url, options }),
+    evaluate: async (callback, input) => callback(input),
+  };
+
+  assert.equal(await bootstrapBrowserSession(page, "fixture-one-time-value"), E2E_USER_ID);
+  assert.equal(navigations[0].url, `${DEV_ORIGIN}/`);
+  assert.deepEqual(calls[0], {
+    url: DEV_SUPABASE_ORIGIN,
+    key: "fixture-public-value",
+    options: {
+      auth: {
+        flowType: "pkce",
+        detectSessionInUrl: false,
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+    },
+  });
+  assert.deepEqual(calls[1], {
+    input: { token_hash: "fixture-one-time-value", type: "email" },
+  });
+});
+
 test("smoke runner asks for exactly one link and reopens the same profile", async () => {
   let linkRequests = 0;
   let launches = 0;
@@ -177,7 +245,10 @@ test("smoke runner asks for exactly one link and reopens the same profile", asyn
     getByRole: () => ({ waitFor: async () => {} }),
     locator: () => ({ waitFor: async () => {} }),
     getByText: () => ({ isVisible: async () => false }),
-    evaluate: async () => E2E_USER_ID,
+    evaluate: async (_callback, input) => {
+      if (input?.tokenHash) return E2E_USER_ID;
+      return E2E_USER_ID;
+    },
     goto: async (url) => navigations.push(url),
   };
   const playwright = {
@@ -203,7 +274,7 @@ test("smoke runner asks for exactly one link and reopens the same profile", asyn
   assert.deepEqual(result, { ok: true, sessionPersisted: true, userId: E2E_USER_ID });
   assert.equal(linkRequests, 1);
   assert.equal(launches, 2);
-  assert.deepEqual(navigations, [sensitiveLink, DEV_FANBUS_URL]);
+  assert.deepEqual(navigations, [`${DEV_ORIGIN}/`, DEV_FANBUS_URL, DEV_FANBUS_URL]);
 });
 
 test("browser network guard permits only the Fanbus read RPCs", () => {
@@ -219,6 +290,14 @@ test("browser network guard permits only the Fanbus read RPCs", () => {
   });
 
   assert.equal(isReadOnlyRpc(request()), true);
+  assert.equal(
+    isReadOnlyRpc(request({ body: { p_action: "bootstrap", p_payload: {} } })),
+    true,
+  );
+  assert.equal(
+    isReadOnlyRpc(request({ body: { p_action: "bootstrap", p_payload: { unexpected: true } } })),
+    false,
+  );
   assert.equal(
     isReadOnlyRpc(
       request({
