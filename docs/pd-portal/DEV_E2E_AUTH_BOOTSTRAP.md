@@ -11,7 +11,7 @@ The PROD project ref `wplescvhlgctynkfwvrj` is an explicit hard rejection. The b
 
 ## Security boundary
 
-The system service alone reads one encrypted systemd credential. It resolves the fixed user's email server-side, asks the fixed DEV Auth endpoint for one magic link, and returns that link over a mode `0600` Unix socket owned by `benny`. It never writes the credential, email, response body, link, or token to stdout/stderr. Errors crossing IPC contain only a bounded error code.
+The system service alone reads one encrypted systemd credential. It resolves the fixed user's email server-side, asks the fixed DEV Auth endpoint for one magic link, and returns that link over a mode `0600` Unix socket owned by `benny`. The root-owned socket directory is mode `0711`, allowing traversal to that explicitly named socket without directory listing or write access. It never writes the credential, email, response body, link, or token to stdout/stderr. Errors crossing IPC contain only a bounded error code.
 
 The Playwright runner receives only the one-time link over the local socket. It does not receive the privileged credential, does not emit URLs, and does not enable screenshots, traces, or video. It verifies the allowlisted user id in-browser while returning only that id to Node.
 
@@ -34,6 +34,7 @@ systemctl show pd-portal-e2e-auth.socket \
   -p ActiveState -p SubState -p FragmentPath -p UnitFileState
 stat -c '%n %a %U:%G' \
   /etc/credstore.encrypted/pd-portal-e2e-auth.service/supabase-service-role-key.cred \
+  /run/pd-portal-e2e-auth \
   /run/pd-portal-e2e-auth/auth.sock
 ```
 

@@ -243,6 +243,7 @@ test("systemd templates expose only a local Unix socket and encrypted credential
   assert.doesNotMatch(service, /EnvironmentFile|service[_-]?role[_-]?key=/i);
   assert.match(socket, /ListenStream=\/run\/pd-portal-e2e-auth\/auth\.sock/);
   assert.match(socket, /SocketMode=0600/);
+  assert.match(socket, /DirectoryMode=0711/);
   assert.doesNotMatch(socket, /ListenStream=\d|ListenDatagram/);
   assert.doesNotMatch(runner, /screenshot|trace:\s*|video:\s*/i);
   assert.doesNotMatch(runner, /service[_-]?role|CREDENTIALS_DIRECTORY|apikey/i);

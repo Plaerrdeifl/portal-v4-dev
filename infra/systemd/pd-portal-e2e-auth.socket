@@ -6,7 +6,7 @@ ListenStream=/run/pd-portal-e2e-auth/auth.sock
 SocketUser=benny
 SocketGroup=benny
 SocketMode=0600
-DirectoryMode=0700
+DirectoryMode=0711
 FlushPending=yes
 RemoveOnStop=yes
 
