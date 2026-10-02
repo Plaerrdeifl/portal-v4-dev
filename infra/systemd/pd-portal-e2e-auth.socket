@@ -1,0 +1,14 @@
+[Unit]
+Description=PD-Portal DEV E2E auth broker socket
+
+[Socket]
+ListenStream=/run/pd-portal-e2e-auth/auth.sock
+SocketUser=benny
+SocketGroup=benny
+SocketMode=0600
+DirectoryMode=0700
+FlushPending=yes
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target
