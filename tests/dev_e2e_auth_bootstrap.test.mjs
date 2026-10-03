@@ -236,7 +236,9 @@ test("browser bootstrap verifies the token hash with validated DEV public config
   });
 });
 
-test("smoke runner asks for exactly one link and reopens the same profile", async () => {
+test("smoke runner asks for exactly one link and reopens the same profile", async (t) => {
+  const profilePath = await mkdtemp(path.join(os.tmpdir(), "pd-e2e-profile-"));
+  t.after(() => rm(profilePath, { recursive: true, force: true }));
   let linkRequests = 0;
   let launches = 0;
   const navigations = [];
@@ -253,7 +255,8 @@ test("smoke runner asks for exactly one link and reopens the same profile", asyn
   };
   const playwright = {
     chromium: {
-      launchPersistentContext: async () => {
+      launchPersistentContext: async (actualProfilePath) => {
+        assert.equal(actualProfilePath, profilePath);
         launches += 1;
         return {
           pages: () => [page],
@@ -266,6 +269,7 @@ test("smoke runner asks for exactly one link and reopens the same profile", asyn
 
   const result = await runSmoke({
     playwright,
+    profilePath,
     requestLink: async () => {
       linkRequests += 1;
       return sensitiveLink;

@@ -161,8 +161,8 @@ async function enforceReadOnlyFanbus(context) {
   };
 }
 
-async function launch(chromium) {
-  const context = await chromium.launchPersistentContext(CHROMIUM_PROFILE_PATH, {
+async function launch(chromium, profilePath) {
+  const context = await chromium.launchPersistentContext(profilePath, {
     headless: true,
     acceptDownloads: false,
     serviceWorkers: "allow",
@@ -171,12 +171,16 @@ async function launch(chromium) {
   return { context, assertReadOnly };
 }
 
-export async function runSmoke({ playwright = loadPlaywright(), requestLink = requestMagicLink } = {}) {
-  const profile = await stat(CHROMIUM_PROFILE_PATH);
+export async function runSmoke({
+  playwright = loadPlaywright(),
+  requestLink = requestMagicLink,
+  profilePath = CHROMIUM_PROFILE_PATH,
+} = {}) {
+  const profile = await stat(profilePath);
   if (!profile.isDirectory()) throw new Error("CHROMIUM_PROFILE_MISSING");
 
   const tokenHash = extractTokenHash(await requestLink());
-  let launched = await launch(playwright.chromium);
+  let launched = await launch(playwright.chromium, profilePath);
   try {
     const { context } = launched;
     const page = context.pages()[0] ?? (await context.newPage());
@@ -188,7 +192,7 @@ export async function runSmoke({ playwright = loadPlaywright(), requestLink = re
     await launched.context.close();
   }
 
-  launched = await launch(playwright.chromium);
+  launched = await launch(playwright.chromium, profilePath);
   try {
     const { context } = launched;
     const page = context.pages()[0] ?? (await context.newPage());
