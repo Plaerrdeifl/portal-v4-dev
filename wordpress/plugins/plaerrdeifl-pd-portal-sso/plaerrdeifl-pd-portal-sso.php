@@ -22,14 +22,10 @@ function pd_portal_sso_config() {
 	$client_id = defined( 'PD_PORTAL_OAUTH_CLIENT_ID' )
 		? trim( (string) PD_PORTAL_OAUTH_CLIENT_ID )
 		: '';
-	$client_secret = defined( 'PD_PORTAL_OAUTH_CLIENT_SECRET' )
-		? (string) PD_PORTAL_OAUTH_CLIENT_SECRET
-		: '';
 
 	if (
 		'' === $issuer
 		|| '' === $client_id
-		|| '' === $client_secret
 		|| 0 !== strpos( $issuer, 'https://' )
 	) {
 		return new WP_Error(
@@ -41,7 +37,6 @@ function pd_portal_sso_config() {
 	return array(
 		'issuer'        => $issuer,
 		'client_id'     => $client_id,
-		'client_secret' => $client_secret,
 	);
 }
 
@@ -160,11 +155,11 @@ function pd_portal_sso_exchange_code( $config, $code, $verifier ) {
 		array(
 			'timeout' => 15,
 			'headers' => array(
-				'Authorization' => 'Basic ' . base64_encode( $config['client_id'] . ':' . $config['client_secret'] ),
-				'Content-Type'  => 'application/x-www-form-urlencoded',
+				'Content-Type' => 'application/x-www-form-urlencoded',
 			),
 			'body'    => array(
 				'grant_type'    => 'authorization_code',
+				'client_id'     => $config['client_id'],
 				'code'          => $code,
 				'redirect_uri'  => pd_portal_sso_callback_url(),
 				'code_verifier' => $verifier,
