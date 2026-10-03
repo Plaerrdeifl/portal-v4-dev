@@ -1,0 +1,27 @@
+[Unit]
+Description=PD-Portal DEV E2E auth broker
+Requires=pd-portal-e2e-auth.socket
+After=network-online.target pd-portal-e2e-auth.socket
+
+[Service]
+Type=simple
+DynamicUser=yes
+ExecStart=/usr/bin/node /usr/local/lib/pd-portal-e2e-auth/broker.mjs
+LoadCredentialEncrypted=supabase-service-role-key:/etc/credstore.encrypted/pd-portal-e2e-auth.service/supabase-service-role-key.cred
+UMask=0077
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectControlGroups=yes
+ProtectHome=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectSystem=strict
+ProtectHostname=yes
+ProtectClock=yes
+ProtectKernelLogs=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+LockPersonality=yes
