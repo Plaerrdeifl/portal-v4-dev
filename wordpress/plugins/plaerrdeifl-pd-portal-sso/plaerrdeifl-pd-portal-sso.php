@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plärrdeifl PD-Portal SSO
  * Description: Meldet berechtigte WordPress-Nutzer über die zentrale PD-Portal-Identität an.
- * Version: 0.1.0
+ * Version: 0.2.0
  * Author: Schweinfurter Plärrdeifl
  */
 
@@ -15,6 +15,25 @@ const PD_PORTAL_SSO_STATE_COOKIE = 'pd_portal_oauth_state';
 const PD_PORTAL_SSO_TRANSIENT_PREFIX = 'pd_portal_oauth_';
 const PD_PORTAL_SSO_SCOPE = 'email profile';
 
+function pd_portal_sso_api_origin( $issuer ) {
+	$parts = wp_parse_url( $issuer );
+	if (
+		! is_array( $parts )
+		|| 'https' !== ( $parts['scheme'] ?? '' )
+		|| empty( $parts['host'] )
+		|| '/auth/v1' !== rtrim( (string) ( $parts['path'] ?? '' ), '/' )
+	) {
+		return '';
+	}
+
+	$origin = 'https://' . $parts['host'];
+	if ( isset( $parts['port'] ) ) {
+		$origin .= ':' . (int) $parts['port'];
+	}
+
+	return $origin;
+}
+
 function pd_portal_sso_config() {
 	$issuer = defined( 'PD_PORTAL_OAUTH_ISSUER' )
 		? rtrim( (string) PD_PORTAL_OAUTH_ISSUER, '/' )
@@ -22,11 +41,16 @@ function pd_portal_sso_config() {
 	$client_id = defined( 'PD_PORTAL_OAUTH_CLIENT_ID' )
 		? trim( (string) PD_PORTAL_OAUTH_CLIENT_ID )
 		: '';
+	$publishable_key = defined( 'PD_PORTAL_SUPABASE_PUBLISHABLE_KEY' )
+		? trim( (string) PD_PORTAL_SUPABASE_PUBLISHABLE_KEY )
+		: '';
+	$api_origin = pd_portal_sso_api_origin( $issuer );
 
 	if (
 		'' === $issuer
 		|| '' === $client_id
-		|| 0 !== strpos( $issuer, 'https://' )
+		|| '' === $publishable_key
+		|| '' === $api_origin
 	) {
 		return new WP_Error(
 			'pd_portal_sso_not_configured',
@@ -35,8 +59,10 @@ function pd_portal_sso_config() {
 	}
 
 	return array(
-		'issuer'        => $issuer,
-		'client_id'     => $client_id,
+		'issuer'          => $issuer,
+		'client_id'       => $client_id,
+		'publishable_key' => $publishable_key,
+		'api_origin'      => $api_origin,
 	);
 }
 
@@ -187,6 +213,94 @@ function pd_portal_sso_exchange_code( $config, $code, $verifier ) {
 	return $access_token;
 }
 
+function pd_portal_sso_revoke_grant( $config, $access_token ) {
+	$response = wp_remote_request(
+		add_query_arg(
+			array( 'client_id' => $config['client_id'] ),
+			$config['issuer'] . '/user/oauth/grants'
+		),
+		array(
+			'method'  => 'DELETE',
+			'timeout' => 15,
+			'headers' => array(
+				'Authorization' => 'Bearer ' . $access_token,
+				'apikey'        => $config['publishable_key'],
+				'Accept'        => 'application/json',
+			),
+		)
+	);
+
+	if ( is_wp_error( $response ) ) {
+		return false;
+	}
+
+	return in_array(
+		wp_remote_retrieve_response_code( $response ),
+		array( 204, 404 ),
+		true
+	);
+}
+
+function pd_portal_sso_check_client_access( $config, $access_token ) {
+	$response = wp_remote_post(
+		$config['api_origin'] . '/rest/v1/rpc/pd_api',
+		array(
+			'timeout'     => 15,
+			'headers'     => array(
+				'Authorization' => 'Bearer ' . $access_token,
+				'apikey'        => $config['publishable_key'],
+				'Content-Type'  => 'application/json',
+				'Accept'        => 'application/json',
+			),
+			'body'        => wp_json_encode(
+				array(
+					'p_action'  => 'identity_oauth_client_access',
+					'p_payload' => array(
+						'clientId' => $config['client_id'],
+					),
+				)
+			),
+			'data_format' => 'body',
+		)
+	);
+
+	if ( is_wp_error( $response ) ) {
+		return new WP_Error(
+			'pd_portal_sso_access_unavailable',
+			'PD-Portal Berechtigung konnte nicht geprüft werden.'
+		);
+	}
+
+	if ( 200 !== wp_remote_retrieve_response_code( $response ) ) {
+		return new WP_Error(
+			'pd_portal_sso_access_unavailable',
+			'PD-Portal Berechtigung konnte nicht geprüft werden.'
+		);
+	}
+
+	$data = json_decode( wp_remote_retrieve_body( $response ), true );
+	if (
+		! is_array( $data )
+		|| ! isset( $data['clientId'], $data['clientCode'], $data['allowed'] )
+		|| ! hash_equals( $config['client_id'], (string) $data['clientId'] )
+		|| 'WORDPRESS' !== (string) $data['clientCode']
+	) {
+		return new WP_Error(
+			'pd_portal_sso_access_invalid',
+			'PD-Portal hat eine ungültige Berechtigungsantwort geliefert.'
+		);
+	}
+
+	if ( true !== $data['allowed'] ) {
+		return new WP_Error(
+			'pd_portal_sso_access_denied',
+			'Dein PD-Portal-Konto ist für WordPress nicht freigegeben.'
+		);
+	}
+
+	return true;
+}
+
 function pd_portal_sso_fetch_userinfo( $config, $access_token ) {
 	$response = wp_remote_get(
 		$config['issuer'] . '/oauth/userinfo',
@@ -332,6 +446,16 @@ function pd_portal_sso_callback() {
 	$access_token = pd_portal_sso_exchange_code( $config, $code, (string) $pending['verifier'] );
 	if ( is_wp_error( $access_token ) ) {
 		wp_die( esc_html( $access_token->get_error_message() ), '', array( 'response' => 502 ) );
+	}
+
+	$access = pd_portal_sso_check_client_access( $config, $access_token );
+	if ( is_wp_error( $access ) ) {
+		if ( 'pd_portal_sso_access_denied' === $access->get_error_code() ) {
+			pd_portal_sso_revoke_grant( $config, $access_token );
+			wp_die( esc_html( $access->get_error_message() ), '', array( 'response' => 403 ) );
+		}
+
+		wp_die( esc_html( $access->get_error_message() ), '', array( 'response' => 502 ) );
 	}
 
 	$identity = pd_portal_sso_fetch_userinfo( $config, $access_token );
