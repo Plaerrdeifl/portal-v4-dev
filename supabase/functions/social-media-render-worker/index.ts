@@ -14,6 +14,7 @@ const EXPECTED_TOKEN_SHA256_BY_HOST = {
 } as const;
 
 const RPC = {
+  workStatus: "pd_social_media_render_worker_work_status",
   claim: "pd_social_media_render_worker_claim",
   heartbeat: "pd_social_media_render_worker_heartbeat",
   complete: "pd_social_media_render_worker_complete",
@@ -198,8 +199,9 @@ function isMediaResult(value: unknown) {
 function validBody(value: unknown): value is JsonObject {
   if (!isObject(value) || typeof value.action !== "string") return false;
 
-  if (value.action === "claim" || value.action === "cloudClaim"
-      || value.action === "mediaClaim" || value.action === "livetickerClaim") {
+  if (value.action === "work" || value.action === "claim"
+      || value.action === "cloudClaim" || value.action === "mediaClaim"
+      || value.action === "livetickerClaim") {
     return exactKeys(value, ["action"]);
   }
 
@@ -524,6 +526,9 @@ Deno.serve(async request => {
   try {
     let data: JsonObject;
     switch (body.action) {
+      case "work":
+        data = await rpc(RPC.workStatus, {});
+        break;
       case "claim":
         data = await rpc(RPC.claim, {});
         break;
