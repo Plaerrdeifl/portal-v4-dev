@@ -14,6 +14,7 @@ test("social-media render gateway uses a dedicated token and exact RPC allowlist
   assert.match(source, /EXPECTED_TOKEN_SHA256_BY_HOST/);
   assert.match(source, /fac0f4a76b1448bcb1e7c1e97b1b7cb2398400133fe44a0d2c81ecde454ef49d/);
   for (const rpc of [
+    "pd_social_media_render_worker_work_status",
     "pd_social_media_render_worker_claim",
     "pd_social_media_render_worker_heartbeat",
     "pd_social_media_render_worker_complete",
@@ -26,6 +27,8 @@ test("social-media render gateway uses a dedicated token and exact RPC allowlist
   ]) {
     assert.match(source, new RegExp(rpc));
   }
+  assert.match(source, /value\.action === "work"/);
+  assert.match(source, /case "work":/);
   assert.doesNotMatch(source, /body\.rpc|body\.rpcName|body\.function/i);
 });
 
