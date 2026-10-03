@@ -12,6 +12,7 @@ const php = await readFile(
 test("WordPress SSO is fail-closed and uses only public OAuth client configuration", () => {
   assert.match(php, /PD_PORTAL_OAUTH_ISSUER/);
   assert.match(php, /PD_PORTAL_OAUTH_CLIENT_ID/);
+  assert.match(php, /PD_PORTAL_SUPABASE_PUBLISHABLE_KEY/);
   assert.doesNotMatch(php, /PD_PORTAL_OAUTH_CLIENT_SECRET/);
   assert.match(php, /pd_portal_sso_config/);
   assert.doesNotMatch(php, /client_secret/i);
@@ -33,6 +34,26 @@ test("WordPress requests only identity scopes and resolves identity through User
   assert.match(php, /\/oauth\/userinfo/);
   assert.match(php, /email_verified/);
   assert.match(php, /PD_PORTAL_SSO_META_SUBJECT/);
+});
+
+
+test("WordPress rechecks portal access server-side after every OAuth token exchange", () => {
+  assert.match(php, /\/rest\/v1\/rpc\/pd_api/);
+  assert.match(php, /identity_oauth_client_access/);
+  assert.match(php, /'apikey'\s*=>\s*\$config\['publishable_key'\]/);
+  assert.match(php, /'Authorization'\s*=>\s*'Bearer '\s*\.\s*\$access_token/);
+
+  const exchange = php.indexOf("pd_portal_sso_exchange_code( $config, $code");
+  const access = php.indexOf("pd_portal_sso_check_client_access( $config, $access_token )", exchange);
+  const userinfo = php.indexOf("pd_portal_sso_fetch_userinfo( $config, $access_token )", exchange);
+  assert.ok(exchange >= 0 && access > exchange && userinfo > access);
+});
+
+test("WordPress revokes a cached Supabase OAuth grant when portal access is denied", () => {
+  assert.match(php, /\/user\/oauth\/grants/);
+  assert.match(php, /'method'\s*=>\s*'DELETE'/);
+  assert.match(php, /pd_portal_sso_access_denied/);
+  assert.match(php, /pd_portal_sso_revoke_grant\( \$config, \$access_token \)/);
 });
 
 test("new local WordPress users receive only the built-in author role", () => {
