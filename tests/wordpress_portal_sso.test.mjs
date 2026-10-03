@@ -9,11 +9,12 @@ const php = await readFile(
   "utf8"
 );
 
-test("WordPress SSO is fail-closed and keeps all client secrets server-side", () => {
+test("WordPress SSO is fail-closed and uses only public OAuth client configuration", () => {
   assert.match(php, /PD_PORTAL_OAUTH_ISSUER/);
   assert.match(php, /PD_PORTAL_OAUTH_CLIENT_ID/);
-  assert.match(php, /PD_PORTAL_OAUTH_CLIENT_SECRET/);
+  assert.doesNotMatch(php, /PD_PORTAL_OAUTH_CLIENT_SECRET/);
   assert.match(php, /pd_portal_sso_config/);
+  assert.doesNotMatch(php, /client_secret/i);
   assert.doesNotMatch(php, /service_role/i);
   assert.doesNotMatch(php, /tpieykhhawszlzsoflnl/);
 });
@@ -22,6 +23,7 @@ test("WordPress SSO uses authorization code with PKCE and exact callback constru
   assert.match(php, /response_type'\s*=>\s*'code'/);
   assert.match(php, /code_challenge_method'\s*=>\s*'S256'/);
   assert.match(php, /code_verifier'\s*=>\s*\$verifier/);
+  assert.match(php, /client_id'\s*=>\s*\$config\['client_id'\]/);
   assert.match(php, /admin-post\.php/);
   assert.match(php, /pd_portal_oauth_callback/);
 });
