@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Plärrdeifl PD-Portal SSO
  * Description: Meldet berechtigte WordPress-Nutzer über die zentrale PD-Portal-Identität an.
- * Version: 0.2.0
+ * Version: 0.2.1
  * Author: Schweinfurter Plärrdeifl
  */
 
@@ -278,10 +278,17 @@ function pd_portal_sso_check_client_access( $config, $access_token ) {
 		);
 	}
 
-	$data = json_decode( wp_remote_retrieve_body( $response ), true );
+	$payload = json_decode( wp_remote_retrieve_body( $response ), true );
+	$data = is_array( $payload )
+		&& true === ( $payload['ok'] ?? false )
+		&& is_array( $payload['data'] ?? null )
+			? $payload['data']
+			: null;
+
 	if (
 		! is_array( $data )
-		|| ! isset( $data['clientId'], $data['clientCode'], $data['allowed'] )
+		|| ! array_key_exists( 'allowed', $data )
+		|| ! isset( $data['clientId'], $data['clientCode'] )
 		|| ! hash_equals( $config['client_id'], (string) $data['clientId'] )
 		|| 'WORDPRESS' !== (string) $data['clientCode']
 	) {

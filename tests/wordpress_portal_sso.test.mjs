@@ -40,6 +40,8 @@ test("WordPress requests only identity scopes and resolves identity through User
 test("WordPress rechecks portal access server-side after every OAuth token exchange", () => {
   assert.match(php, /\/rest\/v1\/rpc\/pd_api/);
   assert.match(php, /identity_oauth_client_access/);
+  assert.match(php, /true === \( \$payload\['ok'\] \?\? false \)/);
+  assert.match(php, /\$payload\['data'\]/);
   assert.match(php, /'apikey'\s*=>\s*\$config\['publishable_key'\]/);
   assert.match(php, /'Authorization'\s*=>\s*'Bearer '\s*\.\s*\$access_token/);
 
