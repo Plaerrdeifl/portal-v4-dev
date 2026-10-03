@@ -43,9 +43,9 @@ test("WordPress rechecks portal access server-side after every OAuth token excha
   assert.match(php, /'apikey'\s*=>\s*\$config\['publishable_key'\]/);
   assert.match(php, /'Authorization'\s*=>\s*'Bearer '\s*\.\s*\$access_token/);
 
-  const exchange = php.indexOf("pd_portal_sso_exchange_code( $config, $code");
-  const access = php.indexOf("pd_portal_sso_check_client_access( $config, $access_token )", exchange);
-  const userinfo = php.indexOf("pd_portal_sso_fetch_userinfo( $config, $access_token )", exchange);
+  const exchange = php.indexOf("$access_token = pd_portal_sso_exchange_code( $config, $code");
+  const access = php.indexOf("$access = pd_portal_sso_check_client_access( $config, $access_token );", exchange);
+  const userinfo = php.indexOf("$identity = pd_portal_sso_fetch_userinfo( $config, $access_token );", exchange);
   assert.ok(exchange >= 0 && access > exchange && userinfo > access);
 });
 
