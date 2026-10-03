@@ -27,7 +27,7 @@ test("WordPress SSO uses authorization code with PKCE and exact callback constru
 });
 
 test("WordPress requests only identity scopes and resolves identity through UserInfo", () => {
-  assert.match(php, /PD_PORTAL_SSO_SCOPE = 'openid email profile'/);
+  assert.match(php, /PD_PORTAL_SSO_SCOPE = 'email profile'/);
   assert.match(php, /\/oauth\/userinfo/);
   assert.match(php, /email_verified/);
   assert.match(php, /PD_PORTAL_SSO_META_SUBJECT/);
