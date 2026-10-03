@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 const PD_PORTAL_SSO_META_SUBJECT = 'pd_portal_subject';
 const PD_PORTAL_SSO_STATE_COOKIE = 'pd_portal_oauth_state';
 const PD_PORTAL_SSO_TRANSIENT_PREFIX = 'pd_portal_oauth_';
-const PD_PORTAL_SSO_SCOPE = 'openid email profile';
+const PD_PORTAL_SSO_SCOPE = 'email profile';
 
 function pd_portal_sso_config() {
 	$issuer = defined( 'PD_PORTAL_OAUTH_ISSUER' )
@@ -119,7 +119,6 @@ function pd_portal_sso_start() {
 	}
 
 	$state = pd_portal_sso_random_token( 32 );
-	$nonce = pd_portal_sso_random_token( 32 );
 	$verifier = pd_portal_sso_random_token( 48 );
 	$challenge = pd_portal_sso_base64url( hash( 'sha256', $verifier, true ) );
 	$expires = time() + 10 * MINUTE_IN_SECONDS;
@@ -131,7 +130,6 @@ function pd_portal_sso_start() {
 		pd_portal_sso_state_transient_key( $state ),
 		array(
 			'verifier'    => $verifier,
-			'nonce'       => $nonce,
 			'redirect_to' => $redirect_to,
 		),
 		10 * MINUTE_IN_SECONDS
@@ -145,7 +143,6 @@ function pd_portal_sso_start() {
 			'redirect_uri'          => pd_portal_sso_callback_url(),
 			'scope'                 => PD_PORTAL_SSO_SCOPE,
 			'state'                 => $state,
-			'nonce'                 => $nonce,
 			'code_challenge'        => $challenge,
 			'code_challenge_method' => 'S256',
 		),
