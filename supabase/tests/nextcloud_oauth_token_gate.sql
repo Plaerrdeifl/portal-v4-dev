@@ -6,27 +6,27 @@ select plan(21);
 
 insert into auth.oauth_clients (
   id,
-  client_id,
   registration_type,
   redirect_uris,
   grant_types,
+  token_endpoint_auth_method,
   client_name
 )
 values
   (
     '00000000-0000-4c10-8000-000000000001',
-    '00000000-0000-4c10-8000-000000000001',
     'manual',
     '["https://nextcloud.test.invalid/callback"]',
     '["authorization_code","refresh_token"]',
+    'none',
     'Nextcloud'
   ),
   (
     '00000000-0000-4c10-8000-000000000002',
-    '00000000-0000-4c10-8000-000000000002',
     'manual',
     '["https://wordpress.test.invalid/callback"]',
     '["authorization_code","refresh_token"]',
+    'none',
     'WordPress'
   );
 
@@ -137,6 +137,11 @@ select ok(
     'supabase_auth_admin',
     'app_portal.team_memberships',
     'SELECT'
+  )
+  and not has_table_privilege(
+    'supabase_auth_admin',
+    'app_portal.teams',
+    'SELECT'
   ),
   'supabase_auth_admin receives no direct Portal authorization-table reads'
 );
@@ -151,8 +156,13 @@ select ok(
     'authenticated',
     'app_private.custom_access_token_hook(jsonb)',
     'EXECUTE'
+  )
+  and not has_function_privilege(
+    'service_role',
+    'app_private.custom_access_token_hook(jsonb)',
+    'EXECUTE'
   ),
-  'browser roles cannot inherit PUBLIC execution of the hook'
+  'application roles cannot inherit PUBLIC execution of the hook'
 );
 
 select ok(
@@ -165,8 +175,13 @@ select ok(
     'authenticated',
     'app_private.identity_oauth_client_access_for_user(uuid,uuid)',
     'EXECUTE'
+  )
+  and not has_function_privilege(
+    'service_role',
+    'app_private.identity_oauth_client_access_for_user(uuid,uuid)',
+    'EXECUTE'
   ),
-  'browser roles cannot inherit PUBLIC execution of the private helper'
+  'application roles cannot inherit PUBLIC execution of the private helper'
 );
 
 select ok(
@@ -175,8 +190,6 @@ select ok(
   ) not like '%oauth_authorizations%',
   'stored OAuth consent is not part of the token decision'
 );
-
-set local role supabase_auth_admin;
 
 select is(
   app_private.custom_access_token_hook(
@@ -233,8 +246,6 @@ select is(
   '403',
   'inactive Portal user cannot receive a Nextcloud token'
 );
-
-reset role;
 
 select set_config(
   'request.jwt.claim.sub',
@@ -293,8 +304,6 @@ update app_portal.team_memberships
 set is_active = false
 where user_id = '00000000-0000-4c10-9000-000000000001';
 
-set local role supabase_auth_admin;
-
 select is(
   app_private.custom_access_token_hook(
     '{"user_id":"00000000-0000-4c10-9000-000000000001","claims":{"client_id":"00000000-0000-4c10-8000-000000000001"},"authentication_method":"token_refresh"}'::jsonb
@@ -311,8 +320,6 @@ select is(
   'stored consent cannot bypass the refreshed central permission decision'
 );
 
-reset role;
-
 create or replace function nextcloud_sync.user_has_access(p_user_id uuid)
 returns boolean
 language plpgsql
@@ -325,8 +332,6 @@ begin
 end;
 $function$;
 
-set local role supabase_auth_admin;
-
 select is(
   app_private.custom_access_token_hook(
     '{"user_id":"00000000-0000-4c10-9000-000000000002","claims":{"client_id":"00000000-0000-4c10-8000-000000000001"},"authentication_method":"token_refresh"}'::jsonb
@@ -335,6 +340,5 @@ select is(
   'a failing central Nextcloud permission check fails closed'
 );
 
-reset role;
 select * from finish();
 rollback;
