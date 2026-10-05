@@ -88,6 +88,21 @@ cross join lateral (
   limit 1
 ) as portal_role;
 
+insert into app_portal.teams (
+  id,
+  code,
+  name,
+  is_active
+)
+values (
+  '00000000-0000-4c10-8000-000000000010',
+  'SOCIAL_MEDIA',
+  'Social Media',
+  true
+)
+on conflict (code) do update
+set is_active = true;
+
 insert into app_portal.team_memberships (
   team_id,
   user_id,
