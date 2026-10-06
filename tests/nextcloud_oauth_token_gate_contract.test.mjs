@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const migrationUrl = new URL(
-  "../supabase/migrations/20261005083832_nextcloud_oauth_token_gate.sql",
+  "../supabase/migrations/20261006062230_nextcloud_oauth_token_gate.sql",
   import.meta.url,
 );
 const configUrl = new URL("../supabase/config.toml", import.meta.url);
