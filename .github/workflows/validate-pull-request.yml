@@ -42,6 +42,7 @@ jobs:
       - name: Run relevant pgTAP database tests
         run: |
           supabase test db --local \
+            supabase/tests/fanbus_draft_delete.sql \
             supabase/tests/m327_r1.sql \
             supabase/tests/social_media_system_templates_v1.sql \
             supabase/tests/social_media_liveticker_goal_scorers.sql
