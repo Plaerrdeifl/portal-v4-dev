@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import test from 'node:test';
 
 const migrationPath =
-  'supabase/migrations/20260928100500_social_media_generator_matchday_score_read.sql';
+  'supabase/migrations/20260928094609_social_media_generator_matchday_score_read.sql';
 
 const migration = await fs.readFile(migrationPath, 'utf8');
 

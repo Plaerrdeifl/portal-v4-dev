@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import test from 'node:test';
 
 const migration = await fs.readFile(
-  'supabase/migrations/20260928183500_social_media_liveticker_goal_scorers_snapshot.sql',
+  'supabase/migrations/20260928191905_social_media_liveticker_goal_scorers_snapshot.sql',
   'utf8'
 );
 

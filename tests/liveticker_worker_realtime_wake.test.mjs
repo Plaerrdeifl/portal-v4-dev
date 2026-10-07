@@ -8,7 +8,7 @@ const read = relative => fs.readFile(path.join(root, relative), "utf8");
 
 test("database broadcasts content-free Liveticker worker wake signals", async () => {
   const migration = await read(
-    "supabase/migrations/20260925055302_liveticker_workers_realtime_wake_r1.sql"
+    "supabase/migrations/20260925061132_liveticker_workers_realtime_wake_r1.sql"
   );
 
   assert.match(migration, /realtime\.send\([\s\S]*'liveticker-graphic-jobs'[\s\S]*false/);
@@ -24,7 +24,7 @@ test("database broadcasts content-free Liveticker worker wake signals", async ()
 
 test("Liveticker readiness covers the bounded recovery interval without changing other workers", async () => {
   const migration = await read(
-    "supabase/migrations/20260925062810_liveticker_worker_readiness_window_r1.sql"
+    "supabase/migrations/20260925062912_liveticker_worker_readiness_window_r1.sql"
   );
 
   assert.match(migration, /'LIVETICKER_GRAPHICS', 'LIVETICKER_WHATSAPP'/);
@@ -37,7 +37,7 @@ test("Liveticker readiness covers the bounded recovery interval without changing
 
 test("WPP readiness covers the two-minute recovery cadence and still fails closed", async () => {
   const migration = await read(
-    "supabase/migrations/20260925110000_liveticker_wpp_readiness_window_r1.sql"
+    "supabase/migrations/20260925091318_liveticker_wpp_readiness_window_r1.sql"
   );
 
   assert.match(migration, /create or replace function app_private\.liveticker_wpp_runtime_status_internal/);
@@ -51,7 +51,7 @@ test("WPP readiness covers the two-minute recovery cadence and still fails close
 
 test("WhatsApp transport assertion uses the same bounded WPP readiness window", async () => {
   const migration = await read(
-    "supabase/migrations/20260925124500_liveticker_transport_readiness_window_r1.sql"
+    "supabase/migrations/20260925104143_liveticker_transport_readiness_window_r1.sql"
   );
 
   assert.match(migration, /create or replace function app_private\.liveticker_whatsapp_transport_assert_ready/);
@@ -62,7 +62,7 @@ test("WhatsApp transport assertion uses the same bounded WPP readiness window", 
 
 test("DEV graphic manifests accept the current Publishing root and legacy Liveticker paths", async () => {
   const migration = await read(
-    "supabase/migrations/20260925063500_liveticker_graphic_manifest_publishing_root_r1.sql"
+    "supabase/migrations/20260925063725_liveticker_graphic_manifest_publishing_root_r1.sql"
   );
 
   assert.match(migration, /v_path like '\/Publishing\/%'/);

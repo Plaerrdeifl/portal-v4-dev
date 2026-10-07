@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = path.resolve(import.meta.dirname, "..");
 const migrationPath =
-  "supabase/migrations/20260927102000_social_media_generator_render_jobs_lint_fix.sql";
+  "supabase/migrations/20260927081451_social_media_generator_render_jobs_lint_fix.sql";
 
 test("render-job lint fix keeps retry and completion semantics while using valid LEAST/GREATEST syntax", async () => {
   const sql = await fs.readFile(path.join(root, migrationPath), "utf8");

@@ -8,8 +8,8 @@ const participantDialogs = read("../js/modules/bus-orga-participant-dialogs.js")
 const participants = read("../js/modules/bus-orga-participants.js");
 const workspaces = read("../js/modules/bus-orga-trip-workspaces.js");
 const pages = read("../js/pages.js");
-const migration = read("../supabase/migrations/20260924153153_fanbus_identity_search_short_names.sql");
-const filterFixMigration = read("../supabase/migrations/20260924161551_fanbus_booking_append_and_identity_filter_fix.sql");
+const migration = read("../supabase/migrations/20260924154021_fanbus_identity_search_short_names.sql");
+const filterFixMigration = read("../supabase/migrations/20260924162029_fanbus_booking_append_and_identity_filter_fix.sql");
 
 test("known-person picker filters categories, searches names and removes duplicates", () => {
   const start = bookings.indexOf("async function openAddPerson");
