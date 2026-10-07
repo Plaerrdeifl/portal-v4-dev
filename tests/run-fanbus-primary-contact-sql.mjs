@@ -93,7 +93,7 @@ insert into app_portal.audit_events(id,action,entity_type,entity_id,before_data,
 `;
 
 function sql(command) {
-  const result = spawnSync('docker', ['exec','-i','fanbus-primary-contact-tests','psql','-U','postgres','-d','postgres','-qAt','-v','ON_ERROR_STOP=1'], {
+  const result = spawnSync('docker', ['exec','-i','fanbus-primary-contact-tests','psql','-h','127.0.0.1','-U','postgres','-d','postgres','-qAt','-v','ON_ERROR_STOP=1'], {
     input: `begin; ${schema} ${command} rollback;`, encoding:'utf8'
   });
   assert.equal(result.status,0,result.stderr);
