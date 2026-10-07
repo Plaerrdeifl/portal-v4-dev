@@ -19,6 +19,17 @@ jobs:
       - run: npm ci
       - name: Core-Vertragstests
         run: npm test
+      - name: Atomic PRIMARY and DEV repair SQL regressions
+        run: |
+          docker run -d --name fanbus-primary-contact-tests -e POSTGRES_HOST_AUTH_METHOD=trust postgres:17-alpine
+          for attempt in $(seq 1 30); do
+            if docker exec fanbus-primary-contact-tests pg_isready -U postgres; then break; fi
+            sleep 1
+          done
+          node --test tests/run-fanbus-primary-contact-sql.mjs
+      - name: Clean up isolated SQL regression container
+        if: always()
+        run: docker rm -f fanbus-primary-contact-tests || true
       - name: Statische Prüfung
         run: npm run check:static
       - name: JavaScript-Syntax
