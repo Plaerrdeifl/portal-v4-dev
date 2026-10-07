@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
 const sql = await readFile(
-  resolve(root, "supabase/migrations/20260930131000_identity_oauth_client_access_v1.sql"),
+  resolve(root, "supabase/migrations/20260930135928_identity_oauth_client_access_v1.sql"),
   "utf8"
 );
 

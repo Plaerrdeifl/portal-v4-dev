@@ -4,7 +4,7 @@ import path from "node:path";
 import test from "node:test";
 
 const root = path.resolve(import.meta.dirname, "..");
-const migrationPath = "supabase/migrations/20260927134559_social_media_generator_media_library_v1.sql";
+const migrationPath = "supabase/migrations/20260927142436_social_media_generator_media_library_v1.sql";
 const edgePath = "supabase/functions/social-media-library/index.ts";
 const gatewayPath = "supabase/functions/social-media-render-worker/index.ts";
 

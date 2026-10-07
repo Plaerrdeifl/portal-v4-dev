@@ -3,7 +3,7 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 
 const migrationUrl = new URL(
-  "../supabase/migrations/20260922171811_nextcloud_portal_access_board.sql",
+  "../supabase/migrations/20260922172526_nextcloud_portal_access_board.sql",
   import.meta.url,
 );
 const consentUrl = new URL(

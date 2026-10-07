@@ -4,10 +4,10 @@ import path from "node:path";
 import test from "node:test";
 
 const root = path.resolve(import.meta.dirname, "..");
-const migrationPath = "supabase/migrations/20260923042930_add_fanbus_prediction_game.sql";
+const migrationPath = "supabase/migrations/20260923051113_add_fanbus_prediction_game.sql";
 const [migration, indexMigration, moduleSource, pageRouter, busOrga, css, sqlTest, concurrency] = await Promise.all([
   fs.readFile(path.join(root, migrationPath), "utf8"),
-  fs.readFile(path.join(root, "supabase/migrations/20260923051216_index_fanbus_prediction_foreign_keys.sql"), "utf8"),
+  fs.readFile(path.join(root, "supabase/migrations/20260923051352_index_fanbus_prediction_foreign_keys.sql"), "utf8"),
   fs.readFile(path.join(root, "js/modules/bus-orga-prediction.js"), "utf8"),
   fs.readFile(path.join(root, "js/pages.js"), "utf8"),
   fs.readFile(path.join(root, "js/modules/bus-orga-v2.js"), "utf8"),

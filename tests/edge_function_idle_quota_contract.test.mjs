@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = path.resolve(import.meta.dirname, "..");
 const migrationPath =
-  "supabase/migrations/20261003212719_reduce_edge_function_idle_quota.sql";
+  "supabase/migrations/20261003214134_reduce_edge_function_idle_quota.sql";
 const migration = await fs.readFile(path.join(root, migrationPath), "utf8");
 
 test("notification dispatch skips Edge invocation without delivery or recovery work", () => {
