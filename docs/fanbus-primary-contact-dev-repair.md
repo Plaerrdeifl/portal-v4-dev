@@ -9,7 +9,14 @@ Verified on 2026-10-07, read-only against DEV project `tpieykhhawszlzsoflnl`:
 - Fanbus PR #10: open, head `05b5f91f9c80dde9218ea44bd17f961295966f2f`.
 - Latest DEV migration: `20261007051224_fanbus_draft_delete_default_stops`.
   Leading repository has the same migration name at version `20261006124809`.
-  This existing version discrepancy is recorded, not reconciled by this package.
+  Full history comparison found 222 deployed migration names, all present in the
+  leading repository. **35 existing names have different DEV/source version
+  timestamps**, from `nextcloud_portal_group_sync` onward; no DEV-only names.
+  Source has 224 names including these two unapplied new migrations. This compares
+  history metadata, not the complete contents of all historical SQL statements.
+  Existing discrepancies are recorded, not reconciled by this package. Before
+  applying new migrations with the CLI, resolve the established history workflow;
+  do not blindly db-push or alter historical source files/version records.
 - Live PRIMARY function matches the existing two-field implementation: it demotes
   the old PRIMARY, then promotes the target without checking the required email.
   PostgreSQL's transaction prevents a lasting partial change, but the email check
