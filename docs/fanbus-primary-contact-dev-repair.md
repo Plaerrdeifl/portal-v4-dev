@@ -81,6 +81,9 @@ repaired until the migration is applied and the authoritative state is checked.
   not run locally. The existing PR rebuild workflow remains enabled and includes
   `supabase/tests/fanbus_primary_contact_email.sql` for real public API, capability,
   platform-mode and authoritative-response tests without doubles.
+  GitHub run `37670954619` subsequently **passed** the complete schema rebuild,
+  all five selected pgTAP files (**160 assertions**), including the new suite,
+  and DB lint. The local resource limitation is therefore covered by CI.
 - Isolated SQL regressions are also wired into the existing quality CI workflow.
 - Fanbus: test/typecheck/build/check passed, 129 tests; email-less PORTAL/GUEST
   promotion waits for confirmation, sends one primary write, maps domain errors,
