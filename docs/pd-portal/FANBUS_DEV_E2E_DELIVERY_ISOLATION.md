@@ -29,7 +29,7 @@ the database transaction that created it:
 1. its category is `FANBUS`;
 2. its server-recorded actor is the fixed E2E user
    `00000000-0000-4555-8555-000000000042`;
-3. `auth.uid()` is that same user and the signed JWT role is `authenticated`;
+3. the signed JWT subject is that same user and its role is `authenticated`;
 4. the signed JWT issuer is exactly the DEV Auth issuer for
    `tpieykhhawszlzsoflnl`;
 5. a time-bounded, postgres-only audited run is open.

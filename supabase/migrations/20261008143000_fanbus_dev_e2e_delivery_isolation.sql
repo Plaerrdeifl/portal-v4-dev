@@ -159,7 +159,7 @@ declare
 begin
   if p_category is distinct from 'FANBUS'
      or p_actor_user_id is distinct from '00000000-0000-4555-8555-000000000042'::uuid
-     or auth.uid() is distinct from p_actor_user_id
+     or coalesce(v_claims ->> 'sub', '') <> p_actor_user_id::text
      or coalesce(v_claims ->> 'role', '') <> 'authenticated'
      or coalesce(v_claims ->> 'iss', '') <>
         'https://tpieykhhawszlzsoflnl.supabase.co/auth/v1' then

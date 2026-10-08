@@ -15,7 +15,7 @@ const [migration, dispatcher, sqlTest, documentation] = await Promise.all([
 
 test("DEV E2E classification is server-only, actor-bound and DEV-bound", () => {
   assert.match(migration, /actor_user_id\s*=\s*'00000000-0000-4555-8555-000000000042'/);
-  assert.match(migration, /auth\.uid\(\) is distinct from p_actor_user_id/);
+  assert.match(migration, /coalesce\(v_claims ->> 'sub', ''\) <> p_actor_user_id::text/);
   assert.match(migration, /v_claims ->> 'role'[\s\S]*<> 'authenticated'/);
   assert.match(migration, /v_claims ->> 'iss'[\s\S]*tpieykhhawszlzsoflnl/);
   assert.match(migration, /pd_notification_dispatch_url[\s\S]*tpieykhhawszlzsoflnl/);
