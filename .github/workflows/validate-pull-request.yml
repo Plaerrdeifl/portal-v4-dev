@@ -42,6 +42,7 @@ jobs:
       - name: Run relevant pgTAP database tests
         run: |
           supabase test db --local \
+            supabase/tests/fanbus_dev_e2e_delivery_isolation.sql \
             supabase/tests/fanbus_draft_delete.sql \
             supabase/tests/fanbus_primary_contact_email.sql \
             supabase/tests/m327_r1.sql \
