@@ -84,4 +84,3 @@ test("retry, idempotency, platform mode and normal delivery contracts stay intac
   assert.match(sqlTest, /Repeated\/parallel-style claim duplicated work/);
   assert.match(documentation, /Platform mode/i);
 });
-
