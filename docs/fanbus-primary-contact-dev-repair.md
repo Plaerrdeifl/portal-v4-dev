@@ -2,21 +2,21 @@
 
 ## Source and live preflight
 
-Verified on 2026-10-07, read-only against DEV project `tpieykhhawszlzsoflnl`:
+Source state reverified on 2026-10-08 after PR #192; the DEV facts below are
+the unchanged read-only preflight from 2026-10-07 against project
+`tpieykhhawszlzsoflnl`:
 
-- `portal-v4-dev/main`: `71b413c13f9dc45772ec3f87e17f68e99f6f47a2`.
-- No open portal PR at preflight; no parallel implementer visible through PRs.
+- `portal-v4-dev/main`: `5fa4b3509e76d5b05f7e72e8c6d59b43d56f3a14`.
+- PR #192 reconciled the 35 source migration timestamps with the already
+  deployed DEV history. This branch preserves those filenames and adds only the
+  two existing Slice 6 migrations; it does not rename historical migrations or
+  introduce a third migration.
 - Fanbus PR #10: open, head `05b5f91f9c80dde9218ea44bd17f961295966f2f`.
 - Latest DEV migration: `20261007051224_fanbus_draft_delete_default_stops`.
-  Leading repository has the same migration name at version `20261006124809`.
-  Full history comparison found 222 deployed migration names, all present in the
-  leading repository. **35 existing names have different DEV/source version
-  timestamps**, from `nextcloud_portal_group_sync` onward; no DEV-only names.
-  Source has 224 names including these two unapplied new migrations. This compares
-  history metadata, not the complete contents of all historical SQL statements.
-  Existing discrepancies are recorded, not reconciled by this package. Before
-  applying new migrations with the CLI, resolve the established history workflow;
-  do not blindly db-push or alter historical source files/version records.
+  After #192 the leading repository uses this same reconciled version. The
+  earlier comparison found 222 deployed names and no DEV-only names; source has
+  224 names including the two unapplied Slice 6 migrations. This compares
+  history metadata, not every historical SQL body.
 - Live PRIMARY function matches the existing two-field implementation: it demotes
   the old PRIMARY, then promotes the target without checking the required email.
   PostgreSQL's transaction prevents a lasting partial change, but the email check
@@ -52,12 +52,20 @@ mapped to domain errors and roll back all changes. Audit only adds the boolean
 - bus `f2c9b33f-9d78-479b-9c66-30e702b04ffd`;
 - stop `000c602d-3e32-4622-ab87-e6b539ca55f2`.
 
-Live preflight confirmed CANCELLED revision 2, cancelled_at set, no merge, no
-assignment, active bus capacity 54/occupancy 0 and matching boarding stop, no
-live identity/email collision. Cancellation audit IDs are 1320 (unassignment),
-1321 (participant ACTIVE/1 -> CANCELLED/2), 1322 (booking cancellation).
+The read-only live preflight confirmed CANCELLED revision 2, cancelled_at set,
+no merge, no assignment, active historical bus capacity 54/occupancy 0 and a
+matching boarding stop, no live identity/email collision. Cancellation audit
+IDs are 1320 (unassignment), 1321 (participant ACTIVE/1 -> CANCELLED/2), 1322
+(booking cancellation).
 
 All state/audit/identity/capacity assertions precede the mutations under locks.
+Immediately before the two mutations, the migration additionally requires the
+trip-wide ACTIVE count to be below
+`app_private.fanbus_effective_capacity(tripId)` and the WAITLISTED count to be
+zero. This prevents restoring into a full trip merely because the historical
+bus still has a seat, and prevents bypassing an existing waitlist. Violations
+raise `FANBUS_DEV_REPAIR_EFFECTIVE_CAPACITY_EXHAUSTED` or
+`FANBUS_DEV_REPAIR_WAITLIST_PRESENT` without changing data or audit rows.
 Expected effect: ACTIVE revision 3, cancelled_at NULL, original IDs and number,
 MANUAL assignment with NULL actor fields. Existing waitlist/promotion history
 remains. A dedicated audit event includes the cancellation references and reason.
@@ -69,21 +77,23 @@ repaired until the migration is applied and the authoritative state is checked.
 
 ## Verification and limits
 
-- `node --test tests/run-fanbus-primary-contact-sql.mjs`: 36/36 passed on an
+- `node --test tests/run-fanbus-primary-contact-sql.mjs`: 38/38 passed on an
   isolated PostgreSQL 17 container. Executes actual migration SQL and existing
   email validator with real relevant constraints. Dependency doubles isolate
-  capability, trip and list functions; this is not a full platform integration.
+  capability, trip and list functions; the effective-capacity double reproduces
+  the production function's sum of active bus capacities. Every repair abort
+  compares all involved Fanbus rows and audit rows before/after. This remains an
+  isolated regression suite, not a full platform integration.
 - `npm test`: 240/240 portal test files passed.
 - `npm run check`: static and frontend checks passed.
 - `npm run build`: DEV static build passed, not deployed.
-- Full local Supabase rebuild could not start: the Supabase Postgres image
-  exhausted available Docker layer storage. Existing pgTAP suites were therefore
-  not run locally. The existing PR rebuild workflow remains enabled and includes
-  `supabase/tests/fanbus_primary_contact_email.sql` for real public API, capability,
-  platform-mode and authoritative-response tests without doubles.
-  GitHub run `37670954619` subsequently **passed** the complete schema rebuild,
-  all five selected pgTAP files (**160 assertions**), including the new suite,
-  and DB lint. The local resource limitation is therefore covered by CI.
+- Full local Supabase rebuild could not start: while registering the pinned
+  Postgres 17.6 image, the managed Docker `vfs` store exhausted its layer space
+  even after removal of all unused test images/volumes. No schema was started or
+  changed. The PR rebuild workflow remains enabled and includes
+  `supabase/tests/fanbus_primary_contact_email.sql` for the real public API,
+  capability, platform-mode and authoritative-response coverage without doubles;
+  its current-head result is recorded in the PR rather than hard-coded here.
 - Isolated SQL regressions are also wired into the existing quality CI workflow.
 - Fanbus: test/typecheck/build/check passed, 129 tests; email-less PORTAL/GUEST
   promotion waits for confirmation, sends one primary write, maps domain errors,

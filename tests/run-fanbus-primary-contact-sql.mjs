@@ -46,6 +46,9 @@ create unique index fanbus_registrations_live_portal_user_uidx on app_modules.fa
 create unique index fanbus_registrations_live_member_uidx on app_modules.fanbus_registrations(trip_id,member_id) where status in ('ACTIVE','WAITLISTED') and member_id is not null;
 create unique index fanbus_registrations_live_regular_rider_uidx on app_modules.fanbus_registrations(trip_id,regular_rider_id) where status in ('ACTIVE','WAITLISTED') and regular_rider_id is not null;
 create table app_modules.fanbus_buses(id uuid primary key,trip_id uuid,capacity int check(capacity>0),is_active boolean);
+create function app_private.fanbus_effective_capacity(p_trip_id uuid) returns integer language sql stable security definer set search_path='' as $$
+  select coalesce(sum(bus.capacity),0)::integer from app_modules.fanbus_buses bus
+  where bus.trip_id=p_trip_id and bus.is_active $$;
 create table app_modules.fanbus_trip_boarding_stops(id uuid primary key,trip_id uuid,is_active boolean);
 create table app_modules.fanbus_bus_boarding_stops(bus_id uuid,trip_id uuid,trip_boarding_stop_id uuid);
 create table app_modules.fanbus_bus_assignments(participant_id uuid primary key references app_modules.fanbus_registrations,
@@ -105,6 +108,15 @@ const snapshot = `select jsonb_build_object('person',(select to_jsonb(r) from ap
  'booking',(select to_jsonb(b) from app_modules.fanbus_bookings b where id='${B}'),
  'assignment',(select to_jsonb(a) from app_modules.fanbus_bus_assignments a where participant_id='${P}'),
  'audit',(select metadata from app_portal.audit_events where action='FANBUS_DEV_ACCEPTANCE_BOOKING_RESTORED'));`;
+const repairState = `select jsonb_build_object(
+  'trips',(select coalesce(jsonb_agg(to_jsonb(x) order by x.id),'[]') from app_modules.fanbus_trips x),
+  'bookings',(select coalesce(jsonb_agg(to_jsonb(x) order by x.id),'[]') from app_modules.fanbus_bookings x),
+  'registrations',(select coalesce(jsonb_agg(to_jsonb(x) order by x.id),'[]') from app_modules.fanbus_registrations x),
+  'buses',(select coalesce(jsonb_agg(to_jsonb(x) order by x.id),'[]') from app_modules.fanbus_buses x),
+  'tripStops',(select coalesce(jsonb_agg(to_jsonb(x) order by x.id),'[]') from app_modules.fanbus_trip_boarding_stops x),
+  'busStops',(select coalesce(jsonb_agg(to_jsonb(x) order by x.bus_id,x.trip_id,x.trip_boarding_stop_id),'[]') from app_modules.fanbus_bus_boarding_stops x),
+  'assignments',(select coalesce(jsonb_agg(to_jsonb(x) order by x.participant_id),'[]') from app_modules.fanbus_bus_assignments x),
+  'audits',(select coalesce(jsonb_agg(to_jsonb(x) order by x.id),'[]') from app_portal.audit_events x)) as data`;
 
 test('repair restores original identity, revision and MANUAL bus without erasing history',()=>{
   const r=sql(`${fixtures} update app_modules.fanbus_registrations set waitlisted_at='2026-08-01',promoted_at='2026-08-02'; ${body(repair)} ${snapshot}`);
@@ -135,13 +147,16 @@ const repairCases = [
   ['already assigned',`insert into app_modules.fanbus_bus_assignments values('${P}','${T}','${BUS}','MANUAL',null,null)`,'ALREADY_ASSIGNED'],
   ['duplicate live email',`insert into app_modules.fanbus_registrations(id,trip_id,booking_id,booking_role,status,source,email) values('${OTHER}','${T}','${B}','COMPANION','WAITLISTED','GUEST','RESTORE@example.invalid')`,'LIVE_IDENTITY_CONFLICT'],
   ['duplicate live identity',`insert into app_modules.fanbus_registrations(id,trip_id,booking_id,booking_role,status,source,portal_user_id) values('${OTHER}','${T}','${B}','COMPANION','ACTIVE','PORTAL','${P}')`,'LIVE_IDENTITY_CONFLICT'],
+  ['full trip despite free historical bus',`update app_modules.fanbus_buses set capacity=1;
+    insert into app_modules.fanbus_registrations(id,trip_id,booking_id,booking_role,status,source,first_name,last_name) values('${OTHER}','${T}','${B}','COMPANION','ACTIVE','MANUAL','Capacity','Occupant')`,'EFFECTIVE_CAPACITY_EXHAUSTED'],
+  ['waitlist despite free capacity',`insert into app_modules.fanbus_registrations(id,trip_id,booking_id,booking_role,status,source,first_name,last_name,waitlisted_at) values('${OTHER}','${T}','${B}','COMPANION','WAITLISTED','MANUAL','Waiting','Fixture',now())`,'WAITLIST_PRESENT'],
   ['wrong environment',`select set_config('test.environment','UNTRUSTED',true)`,'ENVIRONMENT_MISMATCH']
 ];
 for(const [name,change,error] of repairCases) test(`repair fails closed: ${name}`,()=>{
   const r=sql(`${fixtures} ${change}; ${repairFunction}
-    create temp table before_state as select to_jsonb(r) data from app_modules.fanbus_registrations r;
+    create temp table before_state as ${repairState};
     select pg_temp.expect_error('select pg_temp.apply_repair()','FANBUS_DEV_REPAIR_${error}');
-    select jsonb_build_object('unchanged',not exists((select to_jsonb(r) from app_modules.fanbus_registrations r) except (select data from before_state)),
+    select jsonb_build_object('unchanged',(select data from before_state)=(${repairState}),
       'repairs',(select count(*) from app_portal.audit_events where action='FANBUS_DEV_ACCEPTANCE_BOOKING_RESTORED'));`);
   assert.equal(r.unchanged,true); assert.equal(r.repairs,0);
 });

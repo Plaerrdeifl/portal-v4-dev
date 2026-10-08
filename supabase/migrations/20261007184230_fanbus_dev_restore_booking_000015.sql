@@ -110,7 +110,21 @@ begin
     raise exception 'FANBUS_DEV_REPAIR_LIVE_IDENTITY_CONFLICT';
   end if;
 
-  -- All assertions precede both mutations. Existing history stays intact.
+  -- Re-check trip-level admission immediately before both mutations. The
+  -- historical bus can still have a free seat while the effective trip
+  -- capacity (the sum of all active buses) is already exhausted.
+  if (select count(*) from app_modules.fanbus_registrations r
+      where r.trip_id=v_trip_id and r.status='ACTIVE')
+      >= app_private.fanbus_effective_capacity(v_trip_id) then
+    raise exception 'FANBUS_DEV_REPAIR_EFFECTIVE_CAPACITY_EXHAUSTED';
+  end if;
+  if exists(select 1 from app_modules.fanbus_registrations r
+      where r.trip_id=v_trip_id and r.status='WAITLISTED') then
+    raise exception 'FANBUS_DEV_REPAIR_WAITLIST_PRESENT';
+  end if;
+
+  -- All assertions precede both mutations under the existing locks. Existing
+  -- history stays intact.
   update app_modules.fanbus_registrations
   set status='ACTIVE',cancelled_at=null,revision=revision+1,updated_by=null
   where id=v_participant_id;
