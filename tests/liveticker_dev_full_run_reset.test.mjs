@@ -10,7 +10,7 @@ const migrationPath = path.join(
   root,
   'supabase',
   'migrations',
-  '20260927200811_liveticker_dev_full_run_reset.sql'
+  '20260927201228_liveticker_dev_full_run_reset.sql'
 )
 const sql = fs.readFileSync(migrationPath, 'utf8')
 

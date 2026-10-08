@@ -3,7 +3,7 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 
 const migrationUrl = new URL(
-  "../supabase/migrations/20260922121500_nextcloud_portal_group_sync.sql",
+  "../supabase/migrations/20260922100737_nextcloud_portal_group_sync.sql",
   import.meta.url,
 );
 

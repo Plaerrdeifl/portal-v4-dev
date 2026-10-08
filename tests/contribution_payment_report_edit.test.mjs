@@ -28,7 +28,7 @@ test("pending contribution reports expose an explicit edit-before-confirm flow",
 
 test("report update RPC remains pending, authorized and revision-safe", async () => {
   const migration = await read(
-    "supabase/migrations/20260922172732_edit_pending_contribution_payment_reports.sql"
+    "supabase/migrations/20260922175417_edit_pending_contribution_payment_reports.sql"
   );
 
   assert.match(migration, /require_capability\('finance\.manage'\)/);

@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import test from 'node:test';
 
 const migration = await fs.readFile(
-  'supabase/migrations/20260928165700_social_media_liveticker_headless_v1.sql',
+  'supabase/migrations/20260928171445_social_media_liveticker_headless_v1.sql',
   'utf8'
 );
 const edge = await fs.readFile(
@@ -76,7 +76,7 @@ test('render gateway validates and dispatches Liveticker worker messages', () =>
 
 test('headless status restores recent per-event jobs for ticker reloads', async () => {
   const statusMigration = await fs.readFile(
-    'supabase/migrations/20260928172224_social_media_liveticker_headless_status_v1.sql',
+    'supabase/migrations/20260928172308_social_media_liveticker_headless_status_v1.sql',
     'utf8'
   );
   assert.match(

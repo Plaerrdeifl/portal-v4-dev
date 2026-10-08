@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = path.resolve(import.meta.dirname, "..");
 const migrationPath =
-  "supabase/migrations/20260929043817_social_media_system_templates_v1.sql";
+  "supabase/migrations/20260929064320_social_media_system_templates_v1.sql";
 const readMigration = () =>
   fs.readFile(path.join(root, migrationPath), "utf8");
 
