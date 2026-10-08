@@ -87,6 +87,11 @@ begin
     )::text,
     true
   );
+  perform pg_catalog.set_config(
+    'request.jwt.claim.sub',
+    v_e2e_user::text,
+    true
+  );
 
   v_isolated_event := app_private.notification_event_enqueue(
     'FANBUS_E2E_EMAIL_PUSH', 'FANBUS', 'fanbus-e2e:isolation',
