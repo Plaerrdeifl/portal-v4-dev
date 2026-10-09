@@ -127,6 +127,12 @@ begin
   ) values (v_registration,v_trip,v_booking,'PRIMARY',1,'Fixture','Passenger',
     'passenger@example.invalid','EGAL','ACTIVE','MANUAL','privacy','terms',now(),now());
 
+  -- The historical setup insert is not the operator action under test.
+  -- Remove only its synthetic booking-created event before cron-style expansion.
+  delete from app_private.notification_events
+    where notification_type='FANBUS_BOOKING_CREATED'
+      and entity_id=v_registration::text;
+
   set local role authenticated;
   v_api_result := public.pd_api('fanbus_booking_operator_cancel',jsonb_build_object(
     'bookingId',v_booking,'participants',jsonb_build_array(
