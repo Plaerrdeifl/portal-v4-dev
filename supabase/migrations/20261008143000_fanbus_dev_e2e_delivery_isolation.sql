@@ -149,7 +149,7 @@ create function app_private.notification_dev_e2e_run_for_actor(
 )
 returns uuid
 language plpgsql
-stable
+volatile
 security definer
 set search_path = ''
 as $function$
@@ -173,8 +173,8 @@ begin
     and run.environment = 'DEV'
     and run.project_ref = 'tpieykhhawszlzsoflnl'
     and run.closed_at is null
-    and run.starts_at <= pg_catalog.statement_timestamp()
-    and run.expires_at > pg_catalog.statement_timestamp()
+    and run.starts_at <= pg_catalog.clock_timestamp()
+    and run.expires_at > pg_catalog.clock_timestamp()
   order by run.starts_at desc
   limit 1;
 

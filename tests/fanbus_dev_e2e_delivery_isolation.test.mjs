@@ -18,6 +18,9 @@ test("DEV E2E classification is server-only, actor-bound and DEV-bound", () => {
   assert.match(migration, /coalesce\(v_claims ->> 'sub', ''\) <> p_actor_user_id::text/);
   assert.match(migration, /v_claims ->> 'role'[\s\S]*<> 'authenticated'/);
   assert.match(migration, /v_claims ->> 'iss'[\s\S]*tpieykhhawszlzsoflnl/);
+  assert.match(migration, /notification_dev_e2e_run_for_actor[\s\S]*language plpgsql\s+volatile/);
+  assert.match(migration, /run\.starts_at <= pg_catalog\.clock_timestamp\(\)/);
+  assert.match(migration, /run\.expires_at > pg_catalog\.clock_timestamp\(\)/);
   assert.match(migration, /pd_notification_dispatch_url[\s\S]*tpieykhhawszlzsoflnl/);
   assert.doesNotMatch(migration, /p_payload\s*->>\s*'(?:devE2e|deliveryMode|testMode)'/i);
   assert.match(sqlTest, /browserFlag/);
