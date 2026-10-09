@@ -8,6 +8,8 @@ do $test$
 declare
   v_e2e_user constant uuid := '00000000-0000-4555-8555-000000000042';
   v_other_user constant uuid := '00000000-0000-4555-8555-000000000043';
+  v_event constant uuid := '00000000-0000-4555-8100-000000000042';
+  v_trip constant uuid := '00000000-0000-4555-8200-000000000042';
   v_run uuid;
   v_isolated_event uuid;
   v_forged_event uuid;
@@ -23,6 +25,15 @@ declare
   v_claims jsonb;
   v_second_claims jsonb;
 begin
+  insert into app_modules.events(
+    id, event_type, title, event_date, event_time, visibility
+  ) values (
+    v_event, 'OTHER', 'Fanbus Slice 6 Testfahrt', current_date + 30,
+    time '18:00', 'PUBLIC'
+  );
+  insert into app_modules.fanbus_trips(id, event_id, status)
+  values (v_trip, v_event, 'DRAFT');
+
   if has_table_privilege('anon', 'app_private.dev_e2e_delivery_runs', 'SELECT')
      or has_table_privilege('authenticated', 'app_private.dev_e2e_delivery_runs', 'SELECT')
      or has_table_privilege('service_role', 'app_private.dev_e2e_delivery_runs', 'SELECT')
@@ -120,7 +131,10 @@ begin
   ) values (
     v_isolated_email, v_isolated_event, 'FANBUS_E2E_EMAIL_PUSH', 'FANBUS',
     'fanbus-e2e:isolation', 'EXTERNAL_EMAIL', 'e2e@example.invalid', 'EMAIL',
-    'e2e:email', 'MANDATORY', '{"templateKey":"fanbus.booking.active"}'::jsonb, ''
+    'e2e:email', 'MANDATORY', jsonb_build_object(
+      'templateKey', 'fanbus.booking.active',
+      'data', jsonb_build_object('tripId', v_trip)
+    ), ''
   );
 
   insert into app_private.notification_outbox(
@@ -225,7 +239,10 @@ begin
   ) values (
     v_normal_email, v_normal_event, 'FANBUS_REAL_NORMAL', 'FANBUS',
     'fanbus-real:normal', 'EXTERNAL_EMAIL', 'real@example.invalid', 'EMAIL',
-    'real:email', 'MANDATORY', '{"templateKey":"fanbus.booking.active"}'::jsonb, ''
+    'real:email', 'MANDATORY', jsonb_build_object(
+      'templateKey', 'fanbus.booking.active',
+      'data', jsonb_build_object('tripId', v_trip)
+    ), ''
   );
 
   insert into app_private.notification_outbox(
@@ -237,7 +254,10 @@ begin
     v_existing_retry, v_normal_event, 'FANBUS_REAL_NORMAL', 'FANBUS',
     'fanbus-real:normal', 'EXTERNAL_EMAIL', 'retry@example.invalid', 'EMAIL',
     'real:future-retry', 'MANDATORY', 'RETRY', 3, now() + interval '1 day',
-    'PROVIDER_SMTP_450', '{"templateKey":"fanbus.booking.active"}'::jsonb, ''
+    'PROVIDER_SMTP_450', jsonb_build_object(
+      'templateKey', 'fanbus.booking.active',
+      'data', jsonb_build_object('tripId', v_trip)
+    ), ''
   );
 
   v_claims := public.pd_notification_claim_batch(50);
@@ -275,7 +295,10 @@ begin
     v_fallback_email, v_isolated_event, 'FANBUS_E2E_EMAIL_PUSH', 'FANBUS',
     'fanbus-e2e:isolation', 'EXTERNAL_EMAIL', 'fallback@example.invalid', 'EMAIL',
     'e2e:fallback', 'MANDATORY', 'PROCESSING', 1, v_claim_token, now(),
-    now() + interval '10 minutes', '{"templateKey":"fanbus.booking.active"}'::jsonb, ''
+    now() + interval '10 minutes', jsonb_build_object(
+      'templateKey', 'fanbus.booking.active',
+      'data', jsonb_build_object('tripId', v_trip)
+    ), ''
   );
 
   perform public.pd_notification_complete(jsonb_build_object(
