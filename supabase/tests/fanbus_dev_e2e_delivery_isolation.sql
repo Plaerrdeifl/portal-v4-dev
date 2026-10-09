@@ -24,6 +24,11 @@ declare
   v_claim_token uuid := extensions.gen_random_uuid();
   v_claims jsonb;
   v_second_claims jsonb;
+  v_bad_payload jsonb;
+  v_registration uuid := extensions.gen_random_uuid();
+  v_booking uuid := extensions.gen_random_uuid();
+  v_api_result jsonb;
+  v_operator_event uuid;
 begin
   insert into app_modules.events(
     id, event_type, title, event_date, event_time, visibility
@@ -103,6 +108,51 @@ begin
     v_e2e_user::text,
     true
   );
+
+  -- Real operator boundary: JWT subject -> capability -> updated_by -> trigger.
+  insert into auth.users(id,email) values (v_e2e_user,'operator-e2e@example.invalid');
+  insert into app_portal.users(id,user_code,email,first_name,last_name,status,role_id)
+  values (v_e2e_user,'U-ISOLATION-E2E','operator-e2e@example.invalid','E2E','Operator',
+    'ACTIVE','00000000-0000-4000-8000-000000000001');
+  update app_portal.settings set value=jsonb_set(value,'{mode}','"NORMAL"')
+    where key='platform.mode';
+  insert into app_modules.fanbus_bookings(id,trip_id,source)
+    values (v_booking,v_trip,'MANUAL');
+  perform set_config('app.m325_registration_context','[]',true);
+  -- Historical creator deliberately differs from the current operator.
+  insert into app_modules.fanbus_registrations(
+    id,trip_id,booking_id,booking_role,participant_sequence,first_name,last_name,
+    email,bus_preference,status,source,privacy_reference,terms_reference,
+    privacy_accepted_at,terms_accepted_at
+  ) values (v_registration,v_trip,v_booking,'PRIMARY',1,'Fixture','Passenger',
+    'passenger@example.invalid','EGAL','ACTIVE','MANUAL','privacy','terms',now(),now());
+
+  set local role authenticated;
+  v_api_result := public.pd_api('fanbus_booking_operator_cancel',jsonb_build_object(
+    'bookingId',v_booking,'participants',jsonb_build_array(
+      jsonb_build_object('id',v_registration,'expectedRevision',1))
+  ));
+  reset role;
+  if v_api_result->>'ok' is distinct from 'true' then
+    raise exception 'Real operator API failed: %',v_api_result;
+  end if;
+  select id into v_operator_event from app_private.notification_events
+    where notification_type='FANBUS_REGISTRATION_CANCELLED'
+      and entity_id=v_registration::text;
+  if v_operator_event is null or not exists (
+    select 1 from app_private.notification_events where id=v_operator_event
+      and actor_user_id=v_e2e_user and delivery_mode='DEV_E2E_ISOLATED'
+      and dev_e2e_run_id=v_run
+  ) then
+    raise exception 'Operator cancellation lost JWT-subject provenance.';
+  end if;
+  perform app_private.notification_expand_event(v_operator_event);
+  if not exists (select 1 from app_private.notification_outbox where event_id=v_operator_event)
+     or exists (select 1 from app_private.notification_outbox
+       where event_id=v_operator_event and
+         (delivery_mode<>'DEV_E2E_ISOLATED' or dev_e2e_run_id<>v_run)) then
+    raise exception 'Real operator event expansion lost isolation.';
+  end if;
 
   v_isolated_event := app_private.notification_event_enqueue(
     'FANBUS_E2E_EMAIL_PUSH', 'FANBUS', 'fanbus-e2e:isolation',
@@ -301,6 +351,60 @@ begin
     ), ''
   );
 
+  -- Missing/invalid terminal status must never enter normal delivery paths.
+  for v_bad_payload in select value from jsonb_array_elements('[
+    {"success":true,"providerMessageId":"forged-provider"},
+    {"retryable":true},
+    {"terminalStatus":"SENT","success":true},
+    {"terminalStatus":"RETRY","retryable":true},
+    {"terminalStatus":"FAILED"},
+    {},
+    {"terminalStatus":"SKIPPED","success":true,"errorCode":"DEV_E2E_DELIVERY_ISOLATED"}
+  ]'::jsonb) loop
+    begin
+      perform public.pd_notification_complete(jsonb_build_object(
+        'outboxId', v_fallback_email, 'claimToken', v_claim_token
+      ) || v_bad_payload);
+      raise exception 'Unsafe isolated completion accepted: %', v_bad_payload;
+    exception when sqlstate '22023' then
+      if sqlerrm <> 'M020_COMPLETE_TERMINAL_INVALID' then raise; end if;
+    end;
+    if not exists (
+      select 1 from app_private.notification_outbox
+      where id=v_fallback_email and status='PROCESSING'
+        and claim_token=v_claim_token and sent_at is null
+        and provider_message_id is null and delivery_mode='DEV_E2E_ISOLATED'
+    ) then
+      raise exception 'Rejected completion changed the isolated lease.';
+    end if;
+    -- Claim never returns a rejected isolated lease for another provider attempt.
+    if jsonb_array_length(public.pd_notification_claim_batch(50)) <> 0 then
+      raise exception 'Rejected isolation escaped to provider claims.';
+    end if;
+    if not exists (
+      select 1 from app_private.notification_outbox where id=v_fallback_email
+        and status='SKIPPED' and last_error_code='DEV_E2E_DELIVERY_ISOLATED'
+        and sent_at is null and provider_message_id is null and claim_token is null
+    ) then
+      raise exception 'Rejected lease was not terminally isolated by claim.';
+    end if;
+    -- Recreate a leased state only inside the rollback-only postgres fixture.
+    update app_private.notification_outbox
+      set status='PROCESSING',claim_token=v_claim_token,claimed_at=now(),
+          claim_expires_at=now()+interval '10 minutes'
+      where id=v_fallback_email;
+  end loop;
+
+  begin
+    perform public.pd_notification_complete(jsonb_build_object(
+      'outboxId', v_fallback_email, 'claimToken', extensions.gen_random_uuid(),
+      'terminalStatus','SKIPPED','errorCode','DEV_E2E_DELIVERY_ISOLATED'
+    ));
+    raise exception 'Wrong token accepted.';
+  exception when sqlstate 'P0002' then
+    if sqlerrm <> 'M020_COMPLETE_CLAIM_NOT_FOUND' then raise; end if;
+  end;
+
   perform public.pd_notification_complete(jsonb_build_object(
     'outboxId', v_fallback_email,
     'claimToken', v_claim_token,
@@ -315,6 +419,8 @@ begin
       and outbox.status = 'SKIPPED'
       and outbox.last_error_code = 'DEV_E2E_DELIVERY_ISOLATED'
       and outbox.sent_at is null
+      and outbox.provider_message_id is null
+      and outbox.claim_token is null
   ) then
     raise exception 'Dispatcher fallback did not terminally isolate the row.';
   end if;
@@ -331,6 +437,24 @@ begin
     raise exception 'Normal row accepted an isolated terminal completion.';
   exception when sqlstate '22023' then
     if sqlerrm <> 'M020_COMPLETE_TERMINAL_INVALID' then raise; end if;
+  end;
+  perform public.pd_notification_complete(jsonb_build_object(
+    'outboxId',v_normal_email,'claimToken',v_claims->0->>'claimToken',
+    'success',true,'providerMessageId','normal-provider'
+  ));
+  if not exists (select 1 from app_private.notification_outbox
+    where id=v_normal_email and status='SENT' and sent_at is not null
+      and provider_message_id='normal-provider' and delivery_mode='NORMAL') then
+    raise exception 'Normal success semantics changed.';
+  end if;
+  begin
+    perform public.pd_notification_complete(jsonb_build_object(
+      'outboxId',v_fallback_email,'claimToken',v_claim_token,
+      'terminalStatus','SKIPPED','errorCode','DEV_E2E_DELIVERY_ISOLATED'
+    ));
+    raise exception 'Completed token replay accepted.';
+  exception when sqlstate 'P0002' then
+    if sqlerrm <> 'M020_COMPLETE_CLAIM_NOT_FOUND' then raise; end if;
   end;
 end;
 $test$;

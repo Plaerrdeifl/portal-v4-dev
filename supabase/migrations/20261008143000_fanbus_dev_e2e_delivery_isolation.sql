@@ -525,6 +525,12 @@ begin
     raise exception 'M020_COMPLETE_CLAIM_NOT_FOUND' using errcode='P0002';
   end if;
 
+  -- Stored provenance is authoritative even when the caller omits terminalStatus.
+  -- Keep the lease lock and token check above every completion branch.
+  if o.delivery_mode = 'DEV_E2E_ISOLATED' and v_terminal_status <> 'SKIPPED' then
+    raise exception 'M020_COMPLETE_TERMINAL_INVALID' using errcode='22023';
+  end if;
+
   if v_terminal_status <> '' and (
     v_terminal_status <> 'SKIPPED'
     or o.delivery_mode <> 'DEV_E2E_ISOLATED'

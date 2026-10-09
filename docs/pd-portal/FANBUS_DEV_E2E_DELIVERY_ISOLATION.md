@@ -21,6 +21,37 @@ not reached by the Fanbus actions. No direct Fanbus SMTP, push, webhook or worke
 provider call was found. Platform mode still controls mutations at the existing
 API boundary; the isolation does not bypass or weaken platform-mode checks.
 
+## Operator provenance
+
+The browser modules `registrations.ts` and `operatorBookings.ts` call the shared
+`pdApi` client with the authenticated session. `require_capability` returns
+`require_active_user()`'s `auth.uid()`; it does not accept an actor from payload.
+The affected notification-producing paths are:
+
+- Manual booking creation: the M325 registration context carries that actor;
+  the creation kernel writes `created_by` and `updated_by`. The M020 registration
+  trigger enqueues the PRIMARY booking-created event using `new.created_by`.
+- Participant edits, boarding-stop changes and waitlist promotion write
+  `updated_by` from the capability-checked actor. M020 uses `new.updated_by`.
+- Participant and whole-booking cancellation pass the checked actor into
+  `fanbus_participant_cancel_kernel`, which writes `updated_by`; M020 uses it
+  for the cancellation event. Whole-booking cancellation is exercised through
+  `public.pd_api` as `authenticated` in the rollback-only pgTAP test, followed
+  by real event expansion and inherited outbox-marker assertions.
+- Bus assignment notifications use `log_audit(v_actor, ...)`; the audit trigger
+  passes `new.actor_user_id` into enqueue.
+- Operator append creates a COMPANION, so the PRIMARY-only booking-created
+  trigger does not enqueue a new booking notification. PRIMARY switching changes
+  only booking role/contact email and logs `FANBUS_BOOKING_PRIMARY_CHANGED`,
+  which has no M020 notification branch. These actions do not introduce an
+  external delivery path by themselves.
+
+The SQL fixture supplies JWT claims at the database boundary; it tests the
+actual RPC/capability/kernel/trigger/expansion chain, not cryptographic JWT
+verification or the browser's real session. Real signed-session Acer acceptance
+remains a separately approved step. No provenance correction is needed in the
+reviewed operator paths.
+
 ## Trusted classification
 
 An event is classified as `DEV_E2E_ISOLATED` only when all conditions hold in
@@ -58,7 +89,10 @@ provider_message_id = NULL
 This is a terminal, queryable result and is deliberately not `SENT`. The normal
 event status refresh consequently produces `SKIPPED` when all deliveries were
 isolated. The dispatcher has the same check before template construction, SMTP
-connection and web-push invocation as defense in depth. Its terminal completion
+connection and web-push invocation as defense in depth. Completion checks stored isolation after locking the claimed row, even if
+`terminalStatus` is missing. Unsafe success, retry and failure payloads are
+rejected without changing the lease; subsequent claim processing terminalizes
+the isolated row without returning it to a provider. Its terminal completion
 is accepted only for a row already marked `DEV_E2E_ISOLATED`; a normal delivery
 cannot be falsely completed through that branch.
 
