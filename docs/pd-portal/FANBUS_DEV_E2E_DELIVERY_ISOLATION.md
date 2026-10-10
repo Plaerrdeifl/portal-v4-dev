@@ -65,6 +65,13 @@ the database transaction that created it:
    `tpieykhhawszlzsoflnl`;
 5. a time-bounded, postgres-only audited run is open.
 
+For any other actor, the existing `NORMAL` delivery path is unchanged. For the
+fixed E2E actor on the Fanbus path, however, `NORMAL` is never a fallback: a
+missing or invalid JWT context raises `DEV_E2E_AUTH_CONTEXT_INVALID`, and a
+missing, closed, expired or not-yet-started run raises
+`DEV_E2E_RUN_NOT_OPEN`. Both errors occur before the notification event insert,
+so no event can later expand into provider outbox work.
+
 Run activation also checks the server-side Vault dispatch URL against the exact
 DEV Edge Function URL. Missing, malformed or PROD configuration fails closed.
 Request headers, browser globals, payload flags, claimed run IDs and foreign
@@ -119,8 +126,9 @@ select app_private.dev_e2e_delivery_run_open(
 select app_private.dev_e2e_delivery_run_close('<returned-run-id>'::uuid);
 ```
 
-The maximum run duration is two hours. Closing a run prevents classification of
-new events but never removes the isolation marker from already-created work.
+The maximum run duration is two hours. Closing a run rejects new Fanbus events
+from the fixed E2E actor but never removes the isolation marker from
+already-created work.
 Operational review can correlate `dev_e2e_delivery_runs`, `notification_events`
 and `notification_outbox` by `dev_e2e_run_id`.
 

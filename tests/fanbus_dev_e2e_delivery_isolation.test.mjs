@@ -28,12 +28,48 @@ test("DEV E2E classification is server-only, actor-bound and DEV-bound", () => {
   assert.match(sqlTest, /wplescvhlgctynkfwvrj/);
 });
 
+test("fixed E2E actor fails closed before the event insert", () => {
+  const helper = migration.slice(
+    migration.indexOf("create function app_private.notification_dev_e2e_run_for_actor"),
+    migration.indexOf("revoke all on function app_private.notification_dev_e2e_run_for_actor")
+  );
+  const enqueue = migration.slice(
+    migration.indexOf("create or replace function app_private.notification_event_enqueue"),
+    migration.indexOf("revoke all on function app_private.notification_event_enqueue")
+  );
+  const contextAt = enqueue.indexOf("notification_dev_e2e_run_for_actor");
+  const insertAt = enqueue.indexOf("insert into app_private.notification_events");
+
+  assert.match(helper, /p_category is distinct from 'FANBUS'[\s\S]*p_actor_user_id is distinct from[\s\S]*return null/);
+  assert.match(helper, /DEV_E2E_AUTH_CONTEXT_INVALID[\s\S]*errcode = '55000'/);
+  assert.match(helper, /DEV_E2E_RUN_NOT_OPEN[\s\S]*errcode = '55000'/);
+  assert.ok(contextAt >= 0 && insertAt > contextAt);
+
+  for (const marker of [
+    "fanbus-e2e:no-run",
+    "wrong-subject",
+    "wrong-role",
+    "wrong-issuer",
+    "closed",
+    "expired",
+    "not-started",
+    "Missing-run rejection created event/outbox work",
+    "Invalid auth rejection created event/outbox work",
+    "Invalid run rejection created event/outbox work"
+  ]) assert.match(sqlTest, new RegExp(marker));
+});
+
 test("configuration and audit state do not cross the browser or service-role boundary", () => {
   assert.match(migration, /alter table app_private\.dev_e2e_delivery_runs enable row level security/);
   assert.match(migration, /alter table app_private\.dev_e2e_delivery_runs force row level security/);
   assert.match(migration, /revoke all on app_private\.dev_e2e_delivery_runs[\s\S]*public, anon, authenticated, service_role/);
   assert.match(migration, /revoke all on function app_private\.dev_e2e_delivery_run_open[\s\S]*public, anon, authenticated, service_role/);
+  assert.match(migration, /revoke all on function app_private\.dev_e2e_delivery_run_close[\s\S]*public, anon, authenticated, service_role/);
+  assert.match(migration, /revoke all on function app_private\.notification_dev_e2e_run_for_actor[\s\S]*public, anon, authenticated, service_role/);
   assert.match(migration, /grant execute on function app_private\.dev_e2e_delivery_run_open[\s\S]*to postgres/);
+  assert.match(sqlTest, /'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'/);
+  assert.match(sqlTest, /dev_e2e_delivery_run_close\(uuid\)/);
+  assert.match(sqlTest, /notification_dev_e2e_run_for_actor\(text,uuid\)/);
   assert.doesNotMatch(`${dispatcher}\n${documentation}`, /SUPABASE_SERVICE_ROLE_KEY\s*[:=]\s*['"][^'"]+/);
 });
 

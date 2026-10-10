@@ -158,12 +158,15 @@ declare
   v_run_id uuid;
 begin
   if p_category is distinct from 'FANBUS'
-     or p_actor_user_id is distinct from '00000000-0000-4555-8555-000000000042'::uuid
-     or coalesce(v_claims ->> 'sub', '') <> p_actor_user_id::text
+     or p_actor_user_id is distinct from '00000000-0000-4555-8555-000000000042'::uuid then
+    return null;
+  end if;
+
+  if coalesce(v_claims ->> 'sub', '') <> p_actor_user_id::text
      or coalesce(v_claims ->> 'role', '') <> 'authenticated'
      or coalesce(v_claims ->> 'iss', '') <>
         'https://tpieykhhawszlzsoflnl.supabase.co/auth/v1' then
-    return null;
+    raise exception 'DEV_E2E_AUTH_CONTEXT_INVALID' using errcode = '55000';
   end if;
 
   select run.id
@@ -177,6 +180,10 @@ begin
     and run.expires_at > pg_catalog.clock_timestamp()
   order by run.starts_at desc
   limit 1;
+
+  if v_run_id is null then
+    raise exception 'DEV_E2E_RUN_NOT_OPEN' using errcode = '55000';
+  end if;
 
   return v_run_id;
 end;

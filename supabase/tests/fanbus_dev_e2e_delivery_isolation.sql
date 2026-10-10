@@ -13,8 +13,6 @@ declare
   v_run uuid;
   v_isolated_event uuid;
   v_forged_event uuid;
-  v_wrong_issuer_event uuid;
-  v_after_close_event uuid;
   v_normal_event uuid;
   v_isolated_email uuid := extensions.gen_random_uuid();
   v_isolated_push uuid := extensions.gen_random_uuid();
@@ -25,6 +23,10 @@ declare
   v_claims jsonb;
   v_second_claims jsonb;
   v_bad_payload jsonb;
+  v_invalid_context jsonb;
+  v_run_state record;
+  v_role text;
+  v_privilege text;
   v_registration uuid := extensions.gen_random_uuid();
   v_booking uuid := extensions.gen_random_uuid();
   v_api_result jsonb;
@@ -39,14 +41,35 @@ begin
   insert into app_modules.fanbus_trips(id, event_id, status)
   values (v_trip, v_event, 'DRAFT');
 
-  if has_table_privilege('anon', 'app_private.dev_e2e_delivery_runs', 'SELECT')
-     or has_table_privilege('authenticated', 'app_private.dev_e2e_delivery_runs', 'SELECT')
-     or has_table_privilege('service_role', 'app_private.dev_e2e_delivery_runs', 'SELECT')
-     or has_function_privilege('anon', 'app_private.dev_e2e_delivery_run_open(uuid,interval,text)', 'EXECUTE')
-     or has_function_privilege('authenticated', 'app_private.dev_e2e_delivery_run_open(uuid,interval,text)', 'EXECUTE')
-     or has_function_privilege('service_role', 'app_private.dev_e2e_delivery_run_open(uuid,interval,text)', 'EXECUTE') then
-    raise exception 'DEV E2E configuration is reachable outside postgres.';
-  end if;
+  foreach v_role in array array['anon', 'authenticated', 'service_role'] loop
+    foreach v_privilege in array array[
+      'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'
+    ] loop
+      if has_table_privilege(
+        v_role,
+        'app_private.dev_e2e_delivery_runs',
+        v_privilege
+      ) then
+        raise exception 'DEV E2E run table is reachable by % with %.', v_role, v_privilege;
+      end if;
+    end loop;
+
+    if has_function_privilege(
+         v_role,
+         'app_private.dev_e2e_delivery_run_open(uuid,interval,text)',
+         'EXECUTE'
+       ) or has_function_privilege(
+         v_role,
+         'app_private.dev_e2e_delivery_run_close(uuid)',
+         'EXECUTE'
+       ) or has_function_privilege(
+         v_role,
+         'app_private.notification_dev_e2e_run_for_actor(text,uuid)',
+         'EXECUTE'
+       ) then
+      raise exception 'DEV E2E run functions are reachable by %.', v_role;
+    end if;
+  end loop;
 
   delete from vault.secrets where name = 'pd_notification_dispatch_url';
   begin
@@ -87,6 +110,33 @@ begin
   exception when sqlstate '22023' then
     if sqlerrm <> 'DEV_E2E_ACTOR_INVALID' then raise; end if;
   end;
+
+  perform pg_catalog.set_config(
+    'request.jwt.claims',
+    jsonb_build_object(
+      'sub', v_e2e_user,
+      'role', 'authenticated',
+      'iss', 'https://tpieykhhawszlzsoflnl.supabase.co/auth/v1'
+    )::text,
+    true
+  );
+  begin
+    perform app_private.notification_event_enqueue(
+      'FANBUS_E2E_NO_RUN', 'FANBUS', 'fanbus-e2e:no-run',
+      'FANBUS_E2E', 'fanbus_booking', extensions.gen_random_uuid()::text,
+      v_e2e_user, '{}'::jsonb, now()
+    );
+    raise exception 'Fixed E2E actor without a run reached event insertion.';
+  exception when sqlstate '55000' then
+    if sqlerrm <> 'DEV_E2E_RUN_NOT_OPEN' then raise; end if;
+  end;
+  if exists (
+    select 1 from app_private.notification_events where event_key = 'fanbus-e2e:no-run'
+  ) or exists (
+    select 1 from app_private.notification_outbox where event_key = 'fanbus-e2e:no-run'
+  ) then
+    raise exception 'Missing-run rejection created event/outbox work.';
+  end if;
 
   v_run := app_private.dev_e2e_delivery_run_open(
     v_e2e_user, interval '15 minutes', 'Fanbus Slice 6 isolated acceptance'
@@ -221,23 +271,56 @@ begin
     raise exception 'Forged actor/payload activated isolation.';
   end if;
 
-  perform pg_catalog.set_config(
-    'request.jwt.claims',
-    jsonb_build_object(
-      'sub', v_e2e_user,
-      'role', 'authenticated',
-      'iss', 'https://wplescvhlgctynkfwvrj.supabase.co/auth/v1'
-    )::text,
-    true
-  );
-  v_wrong_issuer_event := app_private.notification_event_enqueue(
-    'FANBUS_E2E_WRONG_ISSUER', 'FANBUS', 'fanbus-e2e:wrong-issuer',
-    'FANBUS_E2E', 'fanbus_booking', extensions.gen_random_uuid()::text,
-    v_e2e_user, '{}'::jsonb, now()
-  );
-  if (select delivery_mode from app_private.notification_events where id = v_wrong_issuer_event) <> 'NORMAL' then
-    raise exception 'PROD issuer activated DEV isolation.';
-  end if;
+  -- The fixed E2E actor can never fall back to NORMAL because the JWT context
+  -- is missing or forged. Each rejection happens before event/outbox creation.
+  for v_invalid_context in
+    select value from jsonb_array_elements(jsonb_build_array(
+      jsonb_build_object('name', 'missing', 'claims', '{}'::jsonb),
+      jsonb_build_object('name', 'wrong-subject', 'claims', jsonb_build_object(
+        'sub', v_other_user,
+        'role', 'authenticated',
+        'iss', 'https://tpieykhhawszlzsoflnl.supabase.co/auth/v1'
+      )),
+      jsonb_build_object('name', 'wrong-role', 'claims', jsonb_build_object(
+        'sub', v_e2e_user,
+        'role', 'service_role',
+        'iss', 'https://tpieykhhawszlzsoflnl.supabase.co/auth/v1'
+      )),
+      jsonb_build_object('name', 'wrong-issuer', 'claims', jsonb_build_object(
+        'sub', v_e2e_user,
+        'role', 'authenticated',
+        'iss', 'https://wplescvhlgctynkfwvrj.supabase.co/auth/v1'
+      ))
+    ))
+  loop
+    perform pg_catalog.set_config(
+      'request.jwt.claims',
+      (v_invalid_context -> 'claims')::text,
+      true
+    );
+    begin
+      perform app_private.notification_event_enqueue(
+        'FANBUS_E2E_INVALID_AUTH', 'FANBUS',
+        'fanbus-e2e:invalid-auth:' || (v_invalid_context ->> 'name'),
+        'FANBUS_E2E', 'fanbus_booking', extensions.gen_random_uuid()::text,
+        v_e2e_user, '{}'::jsonb, now()
+      );
+      raise exception 'Invalid E2E auth context reached event insertion: %',
+        v_invalid_context ->> 'name';
+    exception when sqlstate '55000' then
+      if sqlerrm <> 'DEV_E2E_AUTH_CONTEXT_INVALID' then raise; end if;
+    end;
+    if exists (
+      select 1 from app_private.notification_events
+      where event_key = 'fanbus-e2e:invalid-auth:' || (v_invalid_context ->> 'name')
+    ) or exists (
+      select 1 from app_private.notification_outbox
+      where event_key = 'fanbus-e2e:invalid-auth:' || (v_invalid_context ->> 'name')
+    ) then
+      raise exception 'Invalid auth rejection created event/outbox work: %',
+        v_invalid_context ->> 'name';
+    end if;
+  end loop;
 
   perform app_private.dev_e2e_delivery_run_close(v_run);
 
@@ -269,14 +352,45 @@ begin
     )::text,
     true
   );
-  v_after_close_event := app_private.notification_event_enqueue(
-    'FANBUS_E2E_AFTER_CLOSE', 'FANBUS', 'fanbus-e2e:after-close',
-    'FANBUS_E2E', 'fanbus_booking', extensions.gen_random_uuid()::text,
-    v_e2e_user, '{}'::jsonb, now()
-  );
-  if (select delivery_mode from app_private.notification_events where id = v_after_close_event) <> 'NORMAL' then
-    raise exception 'Closed run still classifies new work.';
-  end if;
+  -- Closed, expired and not-yet-started runs all reject before event insertion.
+  for v_run_state in
+    select * from (values
+      ('closed', now() - interval '10 minutes', now() + interval '5 minutes', now() - interval '1 minute'),
+      ('expired', now() - interval '20 minutes', now() - interval '1 minute', null::timestamptz),
+      ('not-started', now() + interval '5 minutes', now() + interval '20 minutes', null::timestamptz)
+    ) as states(name, starts_at, expires_at, closed_at)
+  loop
+    update app_private.dev_e2e_delivery_runs
+    set starts_at = v_run_state.starts_at,
+        expires_at = v_run_state.expires_at,
+        closed_at = v_run_state.closed_at
+    where id = v_run;
+
+    begin
+      perform app_private.notification_event_enqueue(
+        'FANBUS_E2E_INVALID_RUN', 'FANBUS',
+        'fanbus-e2e:invalid-run:' || v_run_state.name,
+        'FANBUS_E2E', 'fanbus_booking', extensions.gen_random_uuid()::text,
+        v_e2e_user, '{}'::jsonb, now()
+      );
+      raise exception 'Invalid E2E run reached event insertion: %', v_run_state.name;
+    exception when sqlstate '55000' then
+      if sqlerrm <> 'DEV_E2E_RUN_NOT_OPEN' then raise; end if;
+    end;
+    if exists (
+      select 1 from app_private.notification_events
+      where event_key = 'fanbus-e2e:invalid-run:' || v_run_state.name
+    ) or exists (
+      select 1 from app_private.notification_outbox
+      where event_key = 'fanbus-e2e:invalid-run:' || v_run_state.name
+    ) then
+      raise exception 'Invalid run rejection created event/outbox work: %', v_run_state.name;
+    end if;
+  end loop;
+
+  update app_private.dev_e2e_delivery_runs
+  set closed_at = starts_at
+  where id = v_run;
 
   -- A real non-E2E item keeps normal claim semantics. A pre-existing future
   -- retry is untouched, including its historical provider error.
