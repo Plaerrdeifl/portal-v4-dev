@@ -31,9 +31,9 @@ The legacy-push safety analysis concluded decision A: no security-relevant
 legacy bypass was demonstrated for that run, and this finding introduces no
 merge blocker.
 
-No direct Fanbus SMTP, push, webhook or worker provider call was found. Platform
-mode still controls mutations at the existing API boundary; the isolation does
-not bypass or weaken platform-mode checks.
+No direct Fanbus SMTP, push, webhook or worker provider call was found.
+Platform mode still controls mutations at the existing API boundary; the
+isolation does not bypass or weaken platform-mode checks.
 
 ## Operator provenance
 
