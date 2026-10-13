@@ -8,18 +8,32 @@ it creates no active run, changes no cron job and deploys no Edge Function.
 
 The Fanbus Slice-6 operator actions use the authenticated `public.pd_api`
 boundary. Their registration and audit writes can create M020 Fanbus events.
-M020 expands those events into `app_private.notification_outbox` rows. These are
-the only external notification paths found for the affected actions:
+M020 expands those events into `app_private.notification_outbox` rows. The
+central provider-delivery paths for the affected actions are:
 
 - `EMAIL`: `public.pd_notification_claim_batch(integer)` →
   `notification-dispatch` → TLS SMTP.
 - `PUSH`: `public.pd_notification_claim_batch(integer)` →
   `notification-dispatch` → `web-push` and the subscription endpoint.
 
-The legacy `send-web-push` function is used by the older task-push outbox and is
-not reached by the Fanbus actions. No direct Fanbus SMTP, push, webhook or worker
-provider call was found. Platform mode still controls mutations at the existing
-API boundary; the isolation does not bypass or weaken platform-mode checks.
+Fanbus creates M020 notification events. Their M020 projection into
+`app_portal.notifications` can indirectly fire the existing legacy dispatch
+trigger and invoke `send-web-push`. The corresponding legacy notifications are
+created with `push_state = 'SKIPPED'`, so the legacy claim cannot select those
+rows for delivery. Dispatcher invocation therefore does not imply a provider
+send attempt for these notifications.
+
+In the examined Slice-7b DEV E2E run on 2026-10-13
+(`e55cb1ea-5879-4041-b9b8-35fbf8a2422c`), four corresponding legacy notifications
+were found, all `SKIPPED` with `delivery_attempts = 0`. Historical legacy
+dispatcher responses showed zero claimed notifications and zero send attempts.
+The legacy-push safety analysis concluded decision A: no security-relevant
+legacy bypass was demonstrated for that run, and this finding introduces no
+merge blocker.
+
+No direct Fanbus SMTP, push, webhook or worker provider call was found. Platform
+mode still controls mutations at the existing API boundary; the isolation does
+not bypass or weaken platform-mode checks.
 
 ## Operator provenance
 
