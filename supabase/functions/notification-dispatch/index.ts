@@ -8,6 +8,7 @@ const MAX_EMAIL_HEADER_LENGTH = 998;
 const MAX_SMTP_RESPONSE_BYTES = 256 * 1024;
 const PROVIDER_TIMEOUT_MS = 15_000;
 const BATCH_LIMIT = 5;
+const DEV_E2E_SUPABASE_ORIGIN = "https://tpieykhhawszlzsoflnl.supabase.co";
 
 type Channel = "EMAIL" | "PUSH";
 
@@ -30,6 +31,8 @@ type Claim = {
   attemptCount: number;
   maxAttempts: number;
   badgeCount: number;
+  deliveryMode: "NORMAL" | "DEV_E2E_ISOLATED";
+  devE2eRunId: string | null;
 };
 
 type RuntimeConfig = {
@@ -54,6 +57,7 @@ type DeliveryResult = {
   providerMessageId?: string;
   retryAfterSeconds?: number;
   disablePushSubscription?: boolean;
+  terminalStatus?: "SKIPPED";
 };
 
 type EmailContent = {
@@ -335,6 +339,15 @@ function validateClaim(value: unknown): Claim {
     || typeof claim.attemptCount !== "number"
     || typeof claim.maxAttempts !== "number"
     || typeof claim.badgeCount !== "number"
+    || (claim.deliveryMode !== "NORMAL" && claim.deliveryMode !== "DEV_E2E_ISOLATED")
+    || (claim.devE2eRunId !== null && typeof claim.devE2eRunId !== "string")
+  ) {
+    throw new DispatchError("CLAIM_RPC_FAILED");
+  }
+
+  if (
+    (claim.deliveryMode === "NORMAL" && claim.devE2eRunId !== null)
+    || (claim.deliveryMode === "DEV_E2E_ISOLATED" && typeof claim.devE2eRunId !== "string")
   ) {
     throw new DispatchError("CLAIM_RPC_FAILED");
   }
@@ -389,7 +402,8 @@ async function completeDelivery(
             errorCode: result.errorCode || "",
             providerMessageId: result.providerMessageId || "",
             retryAfterSeconds: result.retryAfterSeconds ?? null,
-            disablePushSubscription: result.disablePushSubscription === true
+            disablePushSubscription: result.disablePushSubscription === true,
+            terminalStatus: result.terminalStatus || ""
           }
         })
       }
@@ -1295,6 +1309,18 @@ async function sendWithWebPush(
 }
 
 async function deliver(config: RuntimeConfig, claim: Claim): Promise<DeliveryResult> {
+  if (claim.deliveryMode === "DEV_E2E_ISOLATED") {
+    if (config.supabaseUrl !== DEV_E2E_SUPABASE_ORIGIN || !claim.devE2eRunId) {
+      throw new DispatchError("DEV_E2E_ENVIRONMENT_INVALID");
+    }
+    return {
+      success: false,
+      retryable: false,
+      errorCode: "DEV_E2E_DELIVERY_ISOLATED",
+      terminalStatus: "SKIPPED"
+    };
+  }
+
   if (claim.channel === "EMAIL") {
     try {
       const email = withFanbusBookingContext(claim, buildEmail(config, claim));
@@ -1341,12 +1367,14 @@ Deno.serve(async request => {
     let sent = 0;
     let failed = 0;
     let retried = 0;
+    let skipped = 0;
 
     for (const claim of claims) {
       const result = await deliver(config, claim);
       await completeDelivery(config, claim, result);
 
-      if (result.success) sent += 1;
+      if (result.terminalStatus === "SKIPPED") skipped += 1;
+      else if (result.success) sent += 1;
       else if (result.retryable) retried += 1;
       else failed += 1;
     }
@@ -1356,7 +1384,8 @@ Deno.serve(async request => {
       processed: claims.length,
       sent,
       retried,
-      failed
+      failed,
+      skipped
     });
   } catch {
     return errorResponse(500);
