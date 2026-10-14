@@ -4,7 +4,7 @@ import test from "node:test";
 import { runInNewContext } from "node:vm";
 
 const worker = await readFile(new URL("../service-worker.js", import.meta.url), "utf8");
-const activeCache = "pd-portal-v4-fanbus-scope-exclusion-r1-20261014-shell";
+const activeCache = "pd-portal-v4-fanbus-navigation-r1-20261014-shell";
 
 function loadWorker() {
   const handlers = new Map();
