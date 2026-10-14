@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Plärrdeifl Fanbus</title>
+  <rect width="512" height="512" rx="112" fill="#052b4d"/>
+  <path d="M126 137c0-22 18-40 40-40h180c22 0 40 18 40 40v224c0 18-11 33-27 38v19c0 14-11 25-25 25h-17c-14 0-25-11-25-25v-15h-72v15c0 14-11 25-25 25h-17c-14 0-25-11-25-25v-19c-16-5-27-20-27-38V137Z" fill="#fff"/>
+  <rect x="155" y="139" width="202" height="104" rx="18" fill="#178cf5"/>
+  <path d="M174 267h164c14 0 25 11 25 25v40H149v-40c0-14 11-25 25-25Z" fill="#dcebff"/>
+  <circle cx="187" cy="331" r="19" fill="#052b4d"/>
+  <circle cx="325" cy="331" r="19" fill="#052b4d"/>
+  <rect x="217" y="294" width="78" height="14" rx="7" fill="#052b4d"/>
+  <path d="M101 192h25v81h-25c-9 0-16-7-16-16v-49c0-9 7-16 16-16Zm285 0h25c9 0 16 7 16 16v49c0 9-7 16-16 16h-25v-81Z" fill="#178cf5"/>
+</svg>
