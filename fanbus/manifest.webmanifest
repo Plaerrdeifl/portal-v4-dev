@@ -1,0 +1,38 @@
+{
+  "id": "/fanbus/",
+  "name": "Plärrdeifl Fanbus",
+  "short_name": "Fanbus",
+  "description": "Fanbus-Fahrten des Plärrdeifl Fanclubs verwalten und begleiten.",
+  "lang": "de",
+  "start_url": "/fanbus/",
+  "scope": "/fanbus/",
+  "display": "standalone",
+  "background_color": "#f2f5f8",
+  "theme_color": "#052b4d",
+  "icons": [
+    {
+      "src": "/fanbus/icons/fanbus-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/fanbus/icons/fanbus-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/fanbus/icons/fanbus-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/fanbus/icons/fanbus-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
