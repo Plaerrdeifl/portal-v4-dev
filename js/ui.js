@@ -23,6 +23,7 @@ const ICONS = Object.freeze({
   fanclub: '<svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
   tasks: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="m7 12 3 3 7-7"/></svg>',
   teams: '<svg viewBox="0 0 24 24"><path d="M8 11 3 6l3-3 5 5"/><path d="m16 11 5-5-3-3-5 5"/><path d="m8 13-5 5 3 3 5-5"/><path d="m16 13 5 5-3 3-5-5"/><path d="m9 9 6 6"/></svg>',
+  "fanbus-app": '<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="16" rx="3"/><path d="M7 19v2M17 19v2M4 11h16M8 7h8"/><circle cx="8" cy="15" r="1"/><circle cx="16" cy="15" r="1"/></svg>',
   fanbuses: '<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="16" rx="3"/><path d="M7 19v2M17 19v2M4 11h16M8 7h8"/><circle cx="8" cy="15" r="1"/><circle cx="16" cy="15" r="1"/></svg>',
   shop: '<svg viewBox="0 0 24 24"><path d="M4 7h16l-1 13H5L4 7Z"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/></svg>',
   "shop-orders": '<svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
