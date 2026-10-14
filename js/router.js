@@ -56,9 +56,16 @@ const ROUTES = Object.freeze({
     icon: "🏒",
     order: 45
   },
+  "fanbus-app": {
+    title: "Fanbus-App",
+    subtitle: "Zur eigenständigen Fanbus-Anwendung",
+    externalPath: "/fanbus/",
+    icon: "🚌",
+    order: 49
+  },
   fanbuses: {
-    title: "Fanbusse",
-    subtitle: "Informationsseite; Fachfunktionen folgen in v4",
+    title: "Fanbus-Verwaltung",
+    subtitle: "Bestehende Fachfunktionen im Portal",
     page: "fanbuses.html",
     icon: "🚌",
     order: 50
@@ -116,6 +123,7 @@ export function fixedAuthenticatedOrder() {
     "tasks",
     "teams",
     "liveticker",
+    "fanbus-app",
     "fanbuses",
     "shop",
     "admin"

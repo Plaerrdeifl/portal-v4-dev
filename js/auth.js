@@ -328,7 +328,7 @@ export const auth = Object.freeze({
   canAccessRoute(key) {
     if (!this.isActive()) return key === "profile" && this.isAuthenticated();
     if (key === "profile") return false;
-    if (["dashboard", "dates"].includes(key)) return true;
+    if (["dashboard", "dates", "fanbus-app"].includes(key)) return true;
     if (["shop", "shop-orders"].includes(key)) return Boolean(CONFIG.shop?.baseUrl) && (commercialCustomerClass() === "MEMBER" || this.isAdmin());
     if (key === "bus-orga") {
       return BUS_ORGA_CAPABILITIES.some(code => this.hasCapability(code));

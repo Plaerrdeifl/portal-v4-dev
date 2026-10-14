@@ -17,7 +17,7 @@ test("dates navigation hands off to the canonical standalone Events app", async 
   );
   assert.doesNotMatch(router, /dates:\s*\{[\s\S]*?page:\s*"dates\.html"/);
   assert.match(router, /fixedAuthenticatedOrder\(\)[\s\S]*?"dashboard",\s*"dates",/);
-  assert.match(auth, /\["dashboard",\s*"dates"\]\.includes\(key\)/);
+  assert.match(auth, /\["dashboard",\s*"dates",\s*"fanbus-app"\]\.includes\(key\)/);
   assert.match(app, /new URL\(route\.externalPath, window\.location\.origin\)/);
   assert.match(app, /for \(const \[name, value\] of routeParams\(\)\)/);
   assert.match(app, /target\.searchParams\.append\(name, value\)/);
