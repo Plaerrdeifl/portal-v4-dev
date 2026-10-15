@@ -1,6 +1,6 @@
 # PD-Portal – DECISIONS
 
-**Stand:** 29.09.2026  
+**Stand:** 15.10.2026  
 **Zweck:** Verbindliche fachliche und technische Entscheidungen. Diese Datei beschreibt Soll-Entscheidungen, nicht automatisch den aktuellen Implementierungs- oder Betriebsnachweis.
 
 ## D-001 – DEV und PROD bleiben strikt getrennt
@@ -342,9 +342,13 @@ Der spätere PROD-Wechsel ist ein koordinierter Cutover mit Recovery-Punkt, ggf.
 
 ## D-046 – Für Benutzer gibt es eine gemeinsame installierbare PD-Portal-PWA
 
-**Entscheidung:** Das neue PD-Portal wird für Benutzer als **eine gemeinsame installierbare PWA** angeboten. Fachmodule wie Events, Fanbus, Liveticker und Social-Media-Generator bleiben technisch getrennte Module/Builds und direkt per URL erreichbar, werden aber nicht als mehrere konkurrierende Pflicht-PWAs positioniert.
+**Entscheidung:** Für die reguläre Portalnutzung gibt es **eine gemeinsame installierbare PD-Portal-PWA** als normalen Benutzereinstieg. Benutzer müssen nicht mehrere PWAs installieren, um das Portal und seine Fachfunktionen regulär zu verwenden. Die Fachanwendungen bleiben über die zentrale Portalnavigation integriert und zugleich unter ihren eigenen URLs direkt erreichbar; pro Fachfunktion gibt es nur eine führende Implementierung.
 
-Die gemeinsame PWA darf die öffentliche WordPress-Website unter `https://plaerrdeifl.de/` nicht durch einen zu breiten Service-Worker-Scope kontrollieren. Manifest-, Routing- und Service-Worker-Scope werden deshalb in Phase 1 auf DEV verbindlich implementiert und abgenommen, bevor das Installationsmodell nach PROD geht.
+**Zusätzliche Fach-PWAs:** **Fanbus und Liveticker bleiben ausdrücklich eigenständig installierbare PWAs.** Der **Social-Media-Generator bleibt gemäß D-021 ebenfalls eine eigenständige PWA**. Weitere Fachmodule dürfen entsprechend ihren freigegebenen fachlichen Entscheidungen zusätzliche eigenständig installierbare PWAs anbieten. Diese Installationsmöglichkeiten sind optional und ersetzen die gemeinsame Portal-PWA nicht; sie sind keine konkurrierenden Pflichtinstallationen.
+
+**Gemeinsame Plattformbasis:** Portal-PWA und eigenständige Fach-PWAs verwenden dieselbe zentrale Portal-/Supabase-Identität, Session- und Berechtigungsbasis sowie dieselben führenden Plattform- und Fachdaten. Es entsteht keine zweite Benutzer-, Rollen-, Team-, Auth- oder API-Welt. Die Browser-API-Grenze bleibt `public.pd_api(text, jsonb)`.
+
+**Installations- und Routinggrenzen:** Jede installierbare PWA erhält eine eindeutige Manifest-/Installations-ID und eine passende Start-URL. Router-, Asset-, Manifest- und Service-Worker-Scope werden je Anwendung eindeutig abgegrenzt. Service Worker dürfen keine fremden Anwendungs- oder WordPress-Pfade kontrollieren; insbesondere darf die gemeinsame Portal-PWA die eigenständigen Fach-PWAs nicht übernehmen. Das kanonische PROD-Ziel verwendet `https://plaerrdeifl.de/portal/` für das Portal, eigene Pfade wie `/fanbus/`, `/liveticker/` und `/generator/` für Fachmodule sowie `https://plaerrdeifl.de/` für die öffentliche WordPress-Website. DEV bildet die Ziel-Pfadgrenzen vor dem PROD-Cutover ab und nimmt Manifest, Scope, Installation, Navigation und Session-Übergänge real ab. Die Vorgaben für den gemeinsamen Release Candidate und den koordinierten PROD-Cutover nach D-045 bleiben unverändert.
 
 Die bestehende Portal-1.0-PWA unter `portal.plaerrdeifl.de` kann aufgrund des Origin-Wechsels nicht still in die neue PWA unter `plaerrdeifl.de` migriert werden. Für den PROD-Cutover wird deshalb ein geführter Wechsel vorgesehen: letzte Alt-PWA-Version mit deutlichem Hinweis und Link, optionaler Push-Hinweis, Installationshilfe im neuen Portal und Redirect der alten Portaladresse.
 

@@ -1,6 +1,6 @@
 # PD-Portal – ARCHITECTURE
 
-**Stand:** 29.09.2026  
+**Stand:** 15.10.2026  
 **Zweck:** Stabile technische Landkarte des PD-Portals. Tagesaktuelle SHAs, Testzahlen, Deployments, Laufzeitstatus und offene Aufgaben gehören ausdrücklich nicht in diese Datei und werden bei Bedarf live geprüft.
 
 ## 1. Systembild
@@ -347,15 +347,16 @@ Bestehende ältere Portalbereiche werden schrittweise auf DEV migriert. PROD ble
 Gemeinsame Grundsätze:
 
 - responsive Bedienung für Mobile, Tablet und Desktop
-- gemeinsame Auth-/API-/Capability-Grundlagen
+- gemeinsame Auth-/API-/Capability-Grundlagen, Session und führende Plattformdaten
 - gemeinsame Design-/UI-Bausteine, soweit sinnvoll
 - Fachmodule dürfen eigenständige Arbeitsoberflächen und direkte URLs haben
 - dieselbe Fachanwendung kann direkt und über das Portal genutzt werden
 - kein iframe als Standardarchitektur für interne Fachmodule
 - keine zweite Portalimplementierung derselben Fachfunktion
-- für Benutzer wird genau **eine gemeinsame PD-Portal-PWA** als Installationsziel vorgesehen
-- Fachmodule wie Events, Fanbus, Liveticker oder Generator bleiben technisch getrennte Builds/Module, werden aber nicht als konkurrierende Pflicht-PWAs beworben
-- der endgültige Manifest-, Routing- und Service-Worker-Scope der gemeinsamen PWA wird in DEV so festgelegt und getestet, dass die öffentliche WordPress-Website auf `/` nicht von einem Portal-Service-Worker kontrolliert wird
+- eine gemeinsame installierbare PD-Portal-PWA als normaler Einstieg ohne Pflicht zur Installation weiterer PWAs
+- Fanbus und Liveticker bleiben zusätzlich eigenständig installierbare PWAs; der Generator bleibt gemäß D-021 eigenständige PWA; weitere fachlich freigegebene PWAs sind möglich
+- jede installierbare PWA besitzt eine eigene Installationsidentität und abgegrenzte Router-, Asset-, Manifest- und Service-Worker-Scopes
+- keine überlappende Service-Worker-Kontrolle fremder Fachmodule oder der öffentlichen WordPress-Website unter `/`
 
 Die bisherige Portal-1.0-PWA unter `portal.plaerrdeifl.de` kann wegen des Origin-Wechsels nicht still in die neue PWA unter `plaerrdeifl.de` umgewandelt werden. Für den PROD-Cutover ist deshalb ein geführter Nutzerwechsel vorgesehen: letzte Alt-PWA-Version mit deutlichem Wechselhinweis, Link zum neuen Portal, Installationshilfe je nach Browser/OS und Übergangsredirect der alten Portaladresse.
 
@@ -527,7 +528,6 @@ Während des Portal-2.0-Gesamtumbaus gilt:
 
 Jede konkrete PROD-Aktion braucht weiterhin eine eigene ausdrückliche Freigabe. Für Deployment-Arbeiten wird der aktuelle Hosting-, Workflow-, Datenbank- und Runtime-Status live geprüft. Diese Datei beschreibt keine tagesaktuellen Deployments.
 
-
 ## 14. Domain- und Pfadrouting
 
 Das Zielbild verwendet eine gemeinsame Vereinsdomain mit klaren Anwendungspfaden.
@@ -557,7 +557,7 @@ Die öffentliche WordPress-Website bleibt als Origin bei Lima-City. Für PROD wi
 
 DNS allein kann diese Pfadverteilung nicht abbilden. Ein Nameserver-/DNS-Cutover ist daher eine eigene PROD-Infrastrukturänderung und darf erst nach vollständigem DNS-Inventar, Übernahme aller für Website und Mail benötigten Records, DEV-/Staging-Test und ausdrücklicher PROD-Freigabe erfolgen.
 
-Die Benutzer erhalten langfristig eine gemeinsame installierbare PD-Portal-PWA. Fachmodule dürfen direkte Pfade und eigenständige Builds besitzen, registrieren in der integrierten Zielumgebung aber keine konkurrierenden oder überlappenden Service Worker. Der endgültige PWA-Scope wird auf DEV so abgenommen, dass `/` als öffentliche WordPress-Website außerhalb der Portal-Service-Worker-Kontrolle bleibt.
+Die gemeinsame Portal-PWA ist kanonisch unter `/portal/` verankert. Zusätzlich installierbare Fach-PWAs wie Fanbus, Liveticker und Generator verwenden ihre eigenen Modulpfade, eindeutige Manifest-IDs und voneinander getrennte Router-, Asset- und Service-Worker-Scopes. Insbesondere darf die Portal-PWA weder WordPress unter `/` noch eigenständige Fachmodule kontrollieren; fachliche Service Worker dürfen keine fremden Anwendungsbereiche kontrollieren. Die konkreten Ziel-Scopes und appübergreifenden Session-/Navigationswege werden auf DEV abgenommen.
 
 `portal.plaerrdeifl.de` und andere alte Moduladressen dürfen während der Migration als Übergang bestehen bleiben, sind aber nicht das langfristige kanonische Ziel.
 
