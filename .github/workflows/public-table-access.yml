@@ -1,0 +1,38 @@
+name: Public table Data API safety
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/check-public-table-access.mjs'
+      - 'tests/public-table-access.test.mjs'
+      - '.github/workflows/public-table-access.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/check-public-table-access.mjs'
+      - 'tests/public-table-access.test.mjs'
+      - '.github/workflows/public-table-access.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  public-table-access:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout with history for migration diff
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Unit tests
+        run: node --test tests/public-table-access.test.mjs
+      - name: Check changed migrations
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: node scripts/check-public-table-access.mjs --base "$BASE_SHA"
