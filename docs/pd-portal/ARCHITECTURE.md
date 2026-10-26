@@ -1,6 +1,6 @@
 # PD-Portal – ARCHITECTURE
 
-**Stand:** 15.10.2026  
+**Stand:** 26.10.2026  
 **Zweck:** Stabile technische Landkarte des PD-Portals. Tagesaktuelle SHAs, Testzahlen, Deployments, Laufzeitstatus und offene Aufgaben gehören ausdrücklich nicht in diese Datei und werden bei Bedarf live geprüft.
 
 ## 1. Systembild
@@ -16,6 +16,12 @@ Benutzer
    |      |- Dashboard / Profil / Administration
    |      |- Moduleinbindung
    |      |- zentrale Identity / Capabilities / Teams
+   |
+   +--> Fanszene Schweinfurt Cockpit (eigenständige PWA)
+   |      |- Cockpit-Shell / Navigation / Anmeldung / Profil
+   |      |- Cockpit-Benutzerverwaltung und anwendungsbezogene Rollen
+   |      |- Liveticker-Fachoberfläche (aus führendem Fachrepository)
+   |      |- Bild-Generator-Fachoberfläche (aus führendem Fachrepository)
    |
    +--> eigenständig aufrufbare Fachanwendungen
           |- Events / Spielplan
@@ -51,6 +57,8 @@ Supabase
 
 Fachmodule dürfen eigenständig aufrufbar sein, bleiben aber vollständig in das PD-Portal integrierbar. Es gibt pro Fachfunktion nur eine aktive fachliche Implementierung; das Portal baut keine zweite parallele Version desselben Moduls.
 
+Das **Fanszene Schweinfurt Cockpit** ist ein zusätzlicher, eigener Anwendungseinstieg für genau **Liveticker und Bild-Generator**. Es bildet weder eine zweite Portalidentität noch eine zweite fachliche Implementierung und ersetzt weder das Portal noch die beiden Fach-PWAs.
+
 ## 2. Umgebungen
 
 ### DEV
@@ -59,6 +67,7 @@ Fachmodule dürfen eigenständig aufrufbar sein, bleiben aber vollständig in da
 - Standardbranch: `main`
 - gemeinsame DEV-Basis: `https://dev.plaerrdeifl.de`
 - Portal-Core: `https://dev.plaerrdeifl.de/portal`
+- Fanszene Schweinfurt Cockpit: `https://dev.plaerrdeifl.de/cockpit/`
 - Fachmodule spiegelgleich unter eigenen Pfaden, z. B. `/events`, `/fanbus`, `/liveticker`, `/generator`, `/members`, `/finance`, `/tasks`, `/mail`
 - Supabase-Ref: `tpieykhhawszlzsoflnl`
 
@@ -68,6 +77,7 @@ Fachmodule dürfen eigenständig aufrufbar sein, bleiben aber vollständig in da
 - Standardbranch: `main`
 - öffentliche Vereinswebsite: `https://plaerrdeifl.de/`
 - Portal-Core: `https://plaerrdeifl.de/portal`
+- kanonisches Cockpit-Ziel: `https://plaerrdeifl.de/cockpit/` (nur nach separater PROD-Freigabe)
 - Fachmodule unter eigenen Pfaden, z. B. `/events`, `/fanbus`, `/liveticker`, `/generator`, `/members`, `/finance`, `/tasks`, `/mail`
 - Supabase-Ref: `wplescvhlgctynkfwvrj`
 
@@ -118,6 +128,30 @@ Gemeinsame Bausteine für React-/TypeScript-/Vite-Anwendungen:
 - PWA-Grundlagen
 
 Gemeinsame Plattformlogik wird geteilt; Fachlogik bleibt im jeweiligen Fachrepository.
+
+### Fanszene Schweinfurt Cockpit
+
+Zielrepository: `Plaerrdeifl/fanszene-cockpit`
+
+Eigenständige **React-/TypeScript-/Vite-PWA** mit kanonischem Pfad `/cockpit/` und gemeinsamer technischer Grundlage aus `Plaerrdeifl/platform-ui`.
+
+Das Cockpit verantwortet ausschließlich:
+
+- App-Shell, Navigation und Cockpit-spezifische Einstiege
+- zentrale Anmeldung/Session-Einbindung, eigenes Profil und Abmeldung
+- Cockpit-Zugangsfreigabe und anwendungsbezogene Rollenprüfung
+- die auf Cockpit-Benutzer begrenzte Benutzer- und Rechteverwaltung
+- Einbindung von Liveticker und Bild-Generator als den einzigen Fachbereichen
+
+`Plaerrdeifl/liveticker` und `Plaerrdeifl/social-media-generator` behalten Fachlogik, Fachzustand, APIs, Worker und eigenständig installierbare PWAs. Gemeinsam nutzbare Fachkomponenten werden aus den führenden Fachrepositories über kontrollierte, versionierte Komponenten-/Integrationsverträge eingebunden; es entstehen keine dauerhaften Kopien, parallelen Editor- oder Livetickerimplementierungen und kein iframe als Normalfall.
+
+Portal-Core und Supabase Auth bleiben für Benutzeridentität, grundlegende Session, Portalrollen, Teams und globale Administration zuständig. Das Cockpit nutzt **anwendungsbezogene** Zuordnungen für **Systemadministrator**, **Administrator** und **Benutzer**. Cockpit-Freigabe und -Sperre gelten nur für das Cockpit und dürfen keinen globalen Portalbenutzer sperren. `portal.admin` ist keine automatische Cockpit-Systemadministratorzuordnung; die Cockpit-Rollenprüfung erfolgt ausdrücklich und serverseitig, getrennt von allgemeinen Portal-Admin-Wildcards.
+
+Der Cockpit-Systemadministrator verwaltet Cockpit-Systemadministratoren und -Administratoren und besitzt vollen Cockpit-, Liveticker- und Generatorzugriff nur über explizite, serverseitig autorisierte Fachrechte oder einen eng begrenzten, überprüften Fachvertrag – **ohne automatische globale Portaladministratorrechte**. Cockpit-Administratoren verwalten ausschließlich normale Cockpit-Benutzer, deren Freigaben sowie persönliche Rechte `liveticker.manage` und `social_media_generator.use`. Sie ändern keine Portalrollen, Portalteams, fremden Fachrechte oder Systemadministratorzuordnungen.
+
+Benutzeranlage und -aktivierung verwenden kontrollierte zentrale Backend-Funktionen für Portal-/Supabase-Identitäten. Sämtliche Cockpit-Verwaltungsaktionen laufen über eng begrenzte `public.pd_api(text, jsonb)`-Actions mit serverseitiger Rollen-, Zielbenutzer- und Zustandsprüfung, Audit, Revisions-/Konfliktschutz sowie Schutz gegen den Verlust des letzten Cockpit-Systemadministrators. Es gibt keine zweite Auth-/Benutzerdatenbank und keine unbeschränkte Weitergabe allgemeiner Portal-Administrationsaktionen.
+
+Für Generatorzugriffe bleiben persönliche Berechtigung, aktive `SOCIAL_MEDIA`-Teammitgliedschaft und der bestehende zentrale `portal.admin`-Wildcard fachlich wirksam; **keine dieser Zugangsquellen allein erteilt eine Cockpit-Freigabe oder Cockpit-Systemadministratorrolle**. Die Cockpit-Verwaltung unterscheidet persönliche Rechte von anderweitig effektivem Fachzugang. Das Entziehen eines persönlichen Generatorrechts entzieht nicht automatisch einen weiterhin aus Team-/Portalberechtigung entstehenden Zugang.
 
 ### Events / Spielplan
 
@@ -320,6 +354,11 @@ Portal Core / Identity / Capabilities / Teams
    +--> Members
    |      +--> Finance
    |
+   +--> Fanszene Schweinfurt Cockpit
+   |      |- Cockpit-Shell / anwendungsbezogene Rollen
+   |      |- Liveticker-Oberfläche (geteilte Fachkomponenten)
+   |      |- Bild-Generator-Oberfläche (geteilte Fachkomponenten)
+   |
    +--> Tasks
    +--> Mail
    +--> Shop-Integration
@@ -354,7 +393,8 @@ Gemeinsame Grundsätze:
 - kein iframe als Standardarchitektur für interne Fachmodule
 - keine zweite Portalimplementierung derselben Fachfunktion
 - eine gemeinsame installierbare PD-Portal-PWA als normaler Einstieg ohne Pflicht zur Installation weiterer PWAs
-- Fanbus und Liveticker bleiben zusätzlich eigenständig installierbare PWAs; der Generator bleibt gemäß D-021 eigenständige PWA; weitere fachlich freigegebene PWAs sind möglich
+- Fanbus und Liveticker bleiben zusätzlich eigenständig installierbare PWAs; der Generator bleibt gemäß D-021 eigenständige PWA
+- das Fanszene Schweinfurt Cockpit ist eine weitere, eigenständig installierbare PWA für den gemeinsamen Zugang zu genau Liveticker und Bild-Generator; es ersetzt keine der bisherigen PWAs
 - jede installierbare PWA besitzt eine eigene Installationsidentität und abgegrenzte Router-, Asset-, Manifest- und Service-Worker-Scopes
 - keine überlappende Service-Worker-Kontrolle fremder Fachmodule oder der öffentlichen WordPress-Website unter `/`
 
@@ -367,6 +407,8 @@ Die bisherige Portal-1.0-PWA unter `portal.plaerrdeifl.de` kann wegen des Origin
 Supabase Auth und der zentrale Portal-Bootstrap bilden die gemeinsame Identitäts- und Berechtigungsbasis.
 
 Fachanwendungen verwenden dieselbe Session- und Capability-Logik.
+
+Cockpit-Rollen sind an die vorhandene Portalidentität gebundene, **anwendungsbezogene** Zuordnungen; sie erzeugen weder globale Portal-Adminrechte noch zusätzliche Auth-Identitäten. Cockpit-Zugang wird unabhängig von der allgemeinen `portal.admin`-Wildcard serverseitig geprüft. Für Cockpit-Systemadministratoren werden die notwendigen Liveticker- und Generatorrechte gezielt autorisiert, nicht als allgemeiner Plattform-Wildcard gewährt. Die Cockpit-Zugangssperre wirkt nur auf `/cockpit/` und seine autorisierten Cockpit-Aktionen, nicht als globale Kontosperre.
 
 ### OAuth/OIDC
 
@@ -403,6 +445,8 @@ Grundsätze:
 - `service_role` ausschließlich serverseitig
 - Default-Deny bei neuen Objekten und Rechten
 - öffentliche Endpunkte nur bewusst und minimal freigeben
+- Cockpit-Benutzeranlage, Rollen- und Fachrechteänderungen ausschließlich über eng begrenzte, auditierte Backend-Actions; keine generische Portal-Rechteverwaltung für Cockpit-Administratoren freigeben
+- Änderungsberechtigung zusätzlich gegen den konkreten Zielbenutzer, dessen Cockpit-Rolle und die erlaubten Rechte prüfen; persönliche und anderweitig effektive Fachrechte getrennt behandeln
 
 ## 8. Plattformmodus / Schutzmechanismen
 
@@ -517,9 +561,10 @@ DEV und PROD besitzen getrennte Deployments.
 Während des Portal-2.0-Gesamtumbaus gilt:
 
 - **DEV ist die vollständige Aufbau- und Abnahmeumgebung für das neue PD-Portal.**
-- **PROD bleibt bis zum gemeinsamen Release weiterhin Portal 1.0.**
+- **PROD bleibt für den regulären Portal-2.0-Gesamtumbau bis zum gemeinsamen Release weiterhin Portal 1.0.** Eine ausdrücklich abgegrenzte Cockpit-Ausnahme ist gesondert geregelt; daraus folgt keine Umschaltung des Portal-Cores oder anderer Fachmodule.
 - neue Module werden auf DEV nacheinander integriert und dort nach erfolgreicher Abnahme auch als neue DEV-Einstiege verwendet
-- es findet während dieses Umbaus grundsätzlich kein modulweiser Portal-2.0-Cutover nach PROD statt
+- es findet während dieses Umbaus grundsätzlich kein regulärer modulweiser Portal-2.0-Cutover nach PROD statt
+- ausschließlich für das Fanszene Schweinfurt Cockpit ist ein **eigenständig und ausdrücklich freizugebender** PROD-Release einschließlich zwingend notwendiger und kompatibler Fach-/Backend-/Workerabhängigkeiten zulässig: erst nach vollständiger Cockpit-DEV-Abnahme, Rollen-/Sicherheitstests, Portal-1.0-Kompatibilitätsprüfung, isolierter PROD-Migrationsprobe, realem Worker-/Ausgabenachweis, Routing-/PWA-Koexistenztest und gesichertem Backup/Recovery/Rollback; diese Ausnahme startet keinen allgemeinen Portal-2.0-Cutover
 - notwendige PROD-1.0-Bugfixes, Sicherheitskorrekturen oder dringende Betriebsarbeiten bleiben separat möglich
 - Ticker, Generator, Frontends, Migrationen, Worker, Routing und Integrationen werden vor dem Release als gemeinsamer Release Candidate des neuen Portals geprüft
 - vor dem echten PROD-Cutover wird die Migration gegen einen aktuellen, isolierten PROD-Datenstand geprobt; DEV-Daten werden nicht nach PROD kopiert
@@ -537,6 +582,7 @@ Das Zielbild verwendet eine gemeinsame Vereinsdomain mit klaren Anwendungspfaden
 ```text
 https://plaerrdeifl.de/            -> öffentliche WordPress-Website
 https://plaerrdeifl.de/portal      -> PD-Portal-Core / Dashboard
+https://plaerrdeifl.de/cockpit/     -> Fanszene Schweinfurt Cockpit (eigene PWA)
 https://plaerrdeifl.de/events      -> Events / Spielplan
 https://plaerrdeifl.de/fanbus      -> Fanbus
 https://plaerrdeifl.de/liveticker  -> Liveticker
@@ -549,7 +595,7 @@ https://plaerrdeifl.de/mail        -> Mail
 
 ### DEV
 
-DEV spiegelt dieselbe Pfadstruktur unter `https://dev.plaerrdeifl.de`: `/portal`, `/events`, `/fanbus`, `/liveticker`, `/generator`, `/members`, `/finance`, `/tasks`, `/mail`.
+DEV spiegelt dieselbe Pfadstruktur unter `https://dev.plaerrdeifl.de`: `/portal`, `/cockpit/`, `/events`, `/fanbus`, `/liveticker`, `/generator`, `/members`, `/finance`, `/tasks`, `/mail`.
 
 ### Technische Routing-Grenze
 
@@ -557,7 +603,7 @@ Die öffentliche WordPress-Website bleibt als Origin bei Lima-City. Für PROD wi
 
 DNS allein kann diese Pfadverteilung nicht abbilden. Ein Nameserver-/DNS-Cutover ist daher eine eigene PROD-Infrastrukturänderung und darf erst nach vollständigem DNS-Inventar, Übernahme aller für Website und Mail benötigten Records, DEV-/Staging-Test und ausdrücklicher PROD-Freigabe erfolgen.
 
-Die gemeinsame Portal-PWA ist kanonisch unter `/portal/` verankert. Zusätzlich installierbare Fach-PWAs wie Fanbus, Liveticker und Generator verwenden ihre eigenen Modulpfade, eindeutige Manifest-IDs und voneinander getrennte Router-, Asset- und Service-Worker-Scopes. Insbesondere darf die Portal-PWA weder WordPress unter `/` noch eigenständige Fachmodule kontrollieren; fachliche Service Worker dürfen keine fremden Anwendungsbereiche kontrollieren. Die konkreten Ziel-Scopes und appübergreifenden Session-/Navigationswege werden auf DEV abgenommen.
+Die gemeinsame Portal-PWA ist kanonisch unter `/portal/` verankert. Zusätzlich installierbare PWAs wie das Cockpit, Fanbus, Liveticker und Generator verwenden ihre eigenen Anwendungspfade, eindeutige Manifest-IDs und voneinander getrennte Router-, Asset- und Service-Worker-Scopes. Insbesondere darf die Portal-PWA weder WordPress unter `/` noch eigenständige Fachmodule kontrollieren; fachliche Service Worker dürfen keine fremden Anwendungsbereiche kontrollieren. Das Cockpit verwendet eine eindeutige Manifest-ID, Start-URL und ausschließlich auf `/cockpit/` begrenzte Router-, Asset-, Manifest- und Service-Worker-Scopes. Liveticker `/liveticker/` und Generator `/generator/` behalten eigene Installations-IDs und getrennte Scopes. Die konkreten Ziel-Scopes und appübergreifenden Session-/Navigationswege werden auf DEV abgenommen.
 
 `portal.plaerrdeifl.de` und andere alte Moduladressen dürfen während der Migration als Übergang bestehen bleiben, sind aber nicht das langfristige kanonische Ziel.
 
@@ -576,9 +622,9 @@ Für jedes Modul gilt grundsätzlich:
 7. DEV-Altimplementierung erst danach entfernen
 8. nächstes Modul auf DEV beginnen
 
-Es wird jeweils eine aktive Migrationsphase sauber abgeschlossen, bevor die nächste größere Phase begonnen wird. Neue Ideen dürfen geplant und dokumentiert werden, werden aber nicht ungeordnet als parallele Umbauten gestartet.
+Es wird jeweils eine aktive Migrationsphase entweder sauber abgeschlossen oder nach ausdrücklicher Koordinatorentscheidung mit dokumentierten offenen Arbeiten und Wiederaufnahmepunkt kontrolliert pausiert, bevor die nächste größere Phase begonnen wird. Neue Ideen dürfen geplant und dokumentiert werden, werden aber nicht ungeordnet als parallele Umbauten gestartet.
 
-Erst wenn das neue Portal auf DEV insgesamt vollständig, integriert und als Release Candidate abgenommen ist, wird ein gemeinsamer PROD-Cutover vorbereitet und separat freigegeben.
+Erst wenn das neue Portal auf DEV insgesamt vollständig, integriert und als Release Candidate abgenommen ist, wird ein gemeinsamer PROD-Cutover vorbereitet und separat freigegeben. Die einzige ausdrücklich freigegebene strukturelle Ausnahme ist der separat zu prüfende und freizugebende Cockpit-PROD-Release gemäß D-045/D-053; der übrige Gesamtcutover bleibt hiervon unberührt.
 
 ## 16. Projektdokumentation
 
