@@ -10,3 +10,6 @@
 *.ico binary
 *.webp binary
 *.pdf binary
+
+# Immutable generated Cockpit release output is verified byte-for-byte.
+integrations/cockpit/release/** whitespace=-trailing-space
