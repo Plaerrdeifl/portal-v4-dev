@@ -126,6 +126,15 @@ self.addEventListener("fetch", event => {
     return;
   }
 
+  // Cockpit owns /cockpit/ with a separate manifest and scoped worker.
+  // The Portal worker must never cache or route Cockpit requests.
+  if (
+    url.origin === self.location.origin
+    && (url.pathname === "/cockpit" || url.pathname.startsWith("/cockpit/"))
+  ) {
+    return;
+  }
+
   // OAuth/OIDC must never be routed through PWA caching or offline fallbacks.
   // Let the browser perform these same-origin requests directly on the network.
   if (
