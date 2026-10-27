@@ -133,7 +133,11 @@ test("versioned Cockpit release pins the private source and every generated file
   const output = await integrate("release-contract");
   assert.deepEqual(
     (await filesBelow(output)).sort(),
-    [...metadata.files.map(file => file.path), "runtime-config.js"].sort()
+    [
+      ...metadata.files.map(file => file.path),
+      "404.html",
+      "runtime-config.js"
+    ].sort()
   );
 });
 
@@ -205,10 +209,11 @@ test("missing or divergent DEV browser configuration stops the Cockpit build", a
   );
 });
 
-test("Cockpit files have explicit MIME and content, including isolated SPA fallback", async () => {
+test("Cockpit files expose a root-only route contract with an isolated 404", async () => {
   const output = await integrate("http-contract");
-  const [index, manifestSource, worker, runtimeSource, headers, redirects] = await Promise.all([
+  const [index, notFound, manifestSource, worker, runtimeSource, headers, redirects] = await Promise.all([
     readFile(join(output, "index.html"), "utf8"),
+    readFile(join(output, "404.html"), "utf8"),
     readFile(join(output, "manifest.webmanifest"), "utf8"),
     readFile(join(output, "service-worker.js"), "utf8"),
     readFile(join(output, "runtime-config.js"), "utf8"),
@@ -217,6 +222,9 @@ test("Cockpit files have explicit MIME and content, including isolated SPA fallb
   ]);
 
   assert.match(index, /Fanszene Schweinfurt Cockpit/);
+  assert.match(notFound, /data-cockpit-route-contract="root-only-v1"/);
+  assert.match(notFound, /href="\/cockpit\/"/);
+  assert.doesNotMatch(notFound, /data-route="login"|Plärrdeifl Portal/);
   assert.equal(JSON.parse(manifestSource).scope, "/cockpit/");
   assert.match(worker, /const COCKPIT_PATH = '\/cockpit\/'/);
   assert.equal(parseRuntime(runtimeSource).environment, "DEV");
@@ -233,10 +241,8 @@ test("Cockpit files have explicit MIME and content, including isolated SPA fallb
     headers,
     /\/cockpit\/runtime-config\.js[\s\S]*?Cache-Control: no-store[\s\S]*?Content-Type: application\/javascript; charset=utf-8/
   );
-  assert.match(
-    redirects,
-    /^\/cockpit\/\* \/cockpit\/index\.html 200$/m
-  );
+  assert.doesNotMatch(redirects, /^\/cockpit(?:\/|\s)/m);
+  assert.doesNotMatch(redirects, /^\/\* /m);
 });
 
 test("portal build is deterministic and leaves existing app artifacts unchanged", async () => {
@@ -315,9 +321,10 @@ test("portal build is deterministic and leaves existing app artifacts unchanged"
       );
     }
 
-    const [portalIndex, cockpitIndex, redirects, headers, portalWorker] = await Promise.all([
+    const [portalIndex, cockpitIndex, cockpitNotFound, redirects, headers, portalWorker] = await Promise.all([
       readFile(join(buildFixture, "dist", "index.html"), "utf8"),
       readFile(join(buildFixture, "dist", "cockpit", "index.html"), "utf8"),
+      readFile(join(buildFixture, "dist", "cockpit", "404.html"), "utf8"),
       readFile(join(buildFixture, "dist", "_redirects"), "utf8"),
       readFile(join(buildFixture, "dist", "_headers"), "utf8"),
       readFile(join(buildFixture, "dist", "service-worker.js"), "utf8")
@@ -326,7 +333,9 @@ test("portal build is deterministic and leaves existing app artifacts unchanged"
     assert.match(portalIndex, /<title>Plärrdeifl Portal<\/title>/);
     assert.match(cockpitIndex, /<title>Fanszene Schweinfurt Cockpit<\/title>/);
     assert.notEqual(cockpitIndex, portalIndex);
-    assert.match(redirects, /^\/cockpit\/\* \/cockpit\/index\.html 200$/m);
+    assert.match(cockpitNotFound, /data-cockpit-route-contract="root-only-v1"/);
+    assert.notEqual(cockpitNotFound, portalIndex);
+    assert.doesNotMatch(redirects, /^\/cockpit(?:\/|\s)/m);
     assert.doesNotMatch(redirects, /^\/\* /m);
     assert.match(headers, /\/cockpit\/runtime-config\.js[\s\S]*Cache-Control: no-store/);
 
