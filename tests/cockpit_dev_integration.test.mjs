@@ -260,7 +260,10 @@ test("Cockpit files expose a root-only route contract with an isolated 404", asy
     headers,
     /\/cockpit\/offline\.html\n\s+Content-Type: text\/html; charset=utf-8/
   );
-  assert.doesNotMatch(redirects, /^\/cockpit(?:\/|\s)/m);
+  assert.deepEqual(
+    redirects.split(/\r?\n/).filter(line => line.startsWith("/cockpit")),
+    ["/cockpit/offline.html /cockpit/offline 200"]
+  );
   assert.doesNotMatch(redirects, /^\/\* /m);
 });
 
@@ -357,7 +360,10 @@ test("portal build is deterministic and leaves existing app artifacts unchanged"
     assert.notEqual(cockpitNotFound, portalIndex);
     assert.match(cockpitOffline, /data-cockpit-offline-shell="standalone-v1"/);
     assert.notEqual(cockpitOffline, portalIndex);
-    assert.doesNotMatch(redirects, /^\/cockpit(?:\/|\s)/m);
+    assert.deepEqual(
+      redirects.split(/\r?\n/).filter(line => line.startsWith("/cockpit")),
+      ["/cockpit/offline.html /cockpit/offline 200"]
+    );
     assert.doesNotMatch(redirects, /^\/\* /m);
     assert.match(headers, /\/cockpit\/runtime-config\.js[\s\S]*Cache-Control: no-store/);
 
