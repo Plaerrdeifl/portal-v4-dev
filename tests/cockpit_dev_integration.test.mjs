@@ -7,7 +7,8 @@ import {
   mkdtemp,
   readFile,
   readdir,
-  rm
+  rm,
+  writeFile
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -122,13 +123,14 @@ test("versioned Cockpit release pins the private source and every generated file
   assert.equal(metadata.schemaVersion, 1);
   assert.equal(metadata.environment, "DEV");
   assert.equal(metadata.sourceRepository, "Plaerrdeifl/fanszene-cockpit");
-  assert.equal(metadata.sourceCommit, "e381f4484d01367f4a65e3bd4e143e5b1f4f4b01");
+  assert.equal(metadata.sourceCommit, "11e67fc45266564504659064d2da2848ca32a53a");
   assert.equal(
     metadata.sourcePackageLockSha256,
     "f0e8680fd6b0cc39e0267255a17d780a98f246ae1a06eb175635a45dd8598a27"
   );
   assert.equal(metadata.sourceBuildCommand, "npm ci && npm run check");
   assert.match(metadata.artifactSha256, /^[0-9a-f]{64}$/);
+  assert.ok(metadata.files.some(file => file.path === "offline.html"));
 
   const output = await integrate("release-contract");
   assert.deepEqual(
@@ -143,9 +145,10 @@ test("versioned Cockpit release pins the private source and every generated file
 
 test("Cockpit runtime is DEV-only, public, complete and fail-closed", async () => {
   const output = await integrate("runtime-contract");
-  const [index, manifestSource, worker, runtimeSource] = await Promise.all([
+  const [index, manifestSource, offline, worker, runtimeSource] = await Promise.all([
     readFile(join(output, "index.html"), "utf8"),
     readFile(join(output, "manifest.webmanifest"), "utf8"),
+    readFile(join(output, "offline.html"), "utf8"),
     readFile(join(output, "service-worker.js"), "utf8"),
     readFile(join(output, "runtime-config.js"), "utf8")
   ]);
@@ -157,7 +160,15 @@ test("Cockpit runtime is DEV-only, public, complete and fail-closed", async () =
   assert.equal(manifest.id, "/cockpit/");
   assert.equal(manifest.start_url, "/cockpit/");
   assert.equal(manifest.scope, "/cockpit/");
+  assert.match(offline, /data-cockpit-offline-shell="standalone-v1"/);
+  assert.match(offline, /Du bist offline/);
+  assert.doesNotMatch(offline, /<script\b|runtime-config\.js|localStorage|sessionStorage|Liveticker|Bild-Generator/i);
   assert.match(worker, /const COCKPIT_PATH = '\/cockpit\/'/);
+  assert.match(worker, /shell-v2/);
+  assert.match(worker, /COCKPIT_OFFLINE_DOCUMENT = `\$\{COCKPIT_PATH\}offline\.html`/);
+  assert.match(worker, /response\.redirected/);
+  assert.match(worker, /caches\.delete\(key\)/);
+  assert.doesNotMatch(worker, /COCKPIT_OFFLINE_DOCUMENT = `\$\{COCKPIT_PATH\}index\.html`/);
   assert.match(worker, /url\.pathname === COCKPIT_RUNTIME_CONFIG\) return false/);
   assert.equal(runtime.environment, "DEV");
   assert.equal(runtime.supabaseUrl, "https://tpieykhhawszlzsoflnl.supabase.co");
@@ -211,9 +222,10 @@ test("missing or divergent DEV browser configuration stops the Cockpit build", a
 
 test("Cockpit files expose a root-only route contract with an isolated 404", async () => {
   const output = await integrate("http-contract");
-  const [index, notFound, manifestSource, worker, runtimeSource, headers, redirects] = await Promise.all([
+  const [index, notFound, offline, manifestSource, worker, runtimeSource, headers, redirects] = await Promise.all([
     readFile(join(output, "index.html"), "utf8"),
     readFile(join(output, "404.html"), "utf8"),
+    readFile(join(output, "offline.html"), "utf8"),
     readFile(join(output, "manifest.webmanifest"), "utf8"),
     readFile(join(output, "service-worker.js"), "utf8"),
     readFile(join(output, "runtime-config.js"), "utf8"),
@@ -225,8 +237,11 @@ test("Cockpit files expose a root-only route contract with an isolated 404", asy
   assert.match(notFound, /data-cockpit-route-contract="root-only-v1"/);
   assert.match(notFound, /href="\/cockpit\/"/);
   assert.doesNotMatch(notFound, /data-route="login"|Plärrdeifl Portal/);
+  assert.match(offline, /data-cockpit-offline-shell="standalone-v1"/);
+  assert.doesNotMatch(offline, /data-route="login"|Plärrdeifl Portal/);
   assert.equal(JSON.parse(manifestSource).scope, "/cockpit/");
   assert.match(worker, /const COCKPIT_PATH = '\/cockpit\/'/);
+  assert.match(worker, /shell-v2/);
   assert.equal(parseRuntime(runtimeSource).environment, "DEV");
 
   assert.match(
@@ -241,7 +256,14 @@ test("Cockpit files expose a root-only route contract with an isolated 404", asy
     headers,
     /\/cockpit\/runtime-config\.js[\s\S]*?Cache-Control: no-store[\s\S]*?Content-Type: application\/javascript; charset=utf-8/
   );
-  assert.doesNotMatch(redirects, /^\/cockpit(?:\/|\s)/m);
+  assert.match(
+    headers,
+    /\/cockpit\/offline\.html\n\s+Content-Type: text\/html; charset=utf-8/
+  );
+  assert.deepEqual(
+    redirects.split(/\r?\n/).filter(line => line.startsWith("/cockpit")),
+    ["/cockpit/offline.html /cockpit/offline 200"]
+  );
   assert.doesNotMatch(redirects, /^\/\* /m);
 });
 
@@ -321,10 +343,11 @@ test("portal build is deterministic and leaves existing app artifacts unchanged"
       );
     }
 
-    const [portalIndex, cockpitIndex, cockpitNotFound, redirects, headers, portalWorker] = await Promise.all([
+    const [portalIndex, cockpitIndex, cockpitNotFound, cockpitOffline, redirects, headers, portalWorker] = await Promise.all([
       readFile(join(buildFixture, "dist", "index.html"), "utf8"),
       readFile(join(buildFixture, "dist", "cockpit", "index.html"), "utf8"),
       readFile(join(buildFixture, "dist", "cockpit", "404.html"), "utf8"),
+      readFile(join(buildFixture, "dist", "cockpit", "offline.html"), "utf8"),
       readFile(join(buildFixture, "dist", "_redirects"), "utf8"),
       readFile(join(buildFixture, "dist", "_headers"), "utf8"),
       readFile(join(buildFixture, "dist", "service-worker.js"), "utf8")
@@ -335,7 +358,12 @@ test("portal build is deterministic and leaves existing app artifacts unchanged"
     assert.notEqual(cockpitIndex, portalIndex);
     assert.match(cockpitNotFound, /data-cockpit-route-contract="root-only-v1"/);
     assert.notEqual(cockpitNotFound, portalIndex);
-    assert.doesNotMatch(redirects, /^\/cockpit(?:\/|\s)/m);
+    assert.match(cockpitOffline, /data-cockpit-offline-shell="standalone-v1"/);
+    assert.notEqual(cockpitOffline, portalIndex);
+    assert.deepEqual(
+      redirects.split(/\r?\n/).filter(line => line.startsWith("/cockpit")),
+      ["/cockpit/offline.html /cockpit/offline 200"]
+    );
     assert.doesNotMatch(redirects, /^\/\* /m);
     assert.match(headers, /\/cockpit\/runtime-config\.js[\s\S]*Cache-Control: no-store/);
 
@@ -363,6 +391,32 @@ test("portal build is deterministic and leaves existing app artifacts unchanged"
 
     await assert.rejects(
       readFile(join(buildFixture, "dist", "cockpit", "index.html")),
+      error => error?.code === "ENOENT"
+    );
+
+    await writeFile(
+      join(buildFixture, "js", "runtime-config.js"),
+      "window.PD_RUNTIME_CONFIG = Object.freeze({ environment: \"LOCAL\" });\n"
+    );
+
+    await execFileAsync(
+      process.execPath,
+      [join(buildFixture, "scripts", "build-static.mjs")],
+      {
+        cwd: buildFixture,
+        env: devEnvironment({
+          PORTAL_ENVIRONMENT: "LOCAL",
+          VITE_APP_ENV: "LOCAL",
+          SUPABASE_URL: "",
+          VITE_SUPABASE_URL: "",
+          SUPABASE_PUBLISHABLE_KEY: "",
+          VITE_SUPABASE_PUBLISHABLE_KEY: ""
+        })
+      }
+    );
+
+    await assert.rejects(
+      readFile(join(buildFixture, "dist", "cockpit", "offline.html")),
       error => error?.code === "ENOENT"
     );
   } finally {

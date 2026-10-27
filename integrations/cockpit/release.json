@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/fanszene-cockpit",
-  "sourceCommit": "e381f4484d01367f4a65e3bd4e143e5b1f4f4b01",
+  "sourceCommit": "11e67fc45266564504659064d2da2848ca32a53a",
   "sourcePackageLockSha256": "f0e8680fd6b0cc39e0267255a17d780a98f246ae1a06eb175635a45dd8598a27",
   "sourceBuildCommand": "npm ci && npm run check",
   "artifactRoot": "integrations/cockpit/release",
-  "artifactSha256": "11b9a4352f59ef35baa15ec3ad2929dd033a195a04d18e303354b1b22a57c13f",
+  "artifactSha256": "aab8ec3c1614fde93411d47488858242e41c854ac5b5fa341d00116f930abe47",
   "files": [
     {
       "path": "assets/index-DzY2ZrY0.css",
@@ -49,9 +49,14 @@
       "sha256": "e8e6318af6bbf2062112cd00656352435ea2f5b3a2bb0af6b16af0d678caa042"
     },
     {
+      "path": "offline.html",
+      "bytes": 2030,
+      "sha256": "7627aa8363ce8a3bf63a7932ba09d292622815ef179f3ae61b6b2be45fce315f"
+    },
+    {
       "path": "service-worker.js",
-      "bytes": 2689,
-      "sha256": "fb90594ba917fcfcaa5f4b803ecf6db87ac2b47cceea222b499a593546691761"
+      "bytes": 3637,
+      "sha256": "af024764c68cd84dcc0cc1371721863397a94bc68ba080dbd5a267e89ac54efa"
     }
   ]
 }

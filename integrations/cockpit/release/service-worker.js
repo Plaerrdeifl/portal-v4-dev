@@ -1,9 +1,25 @@
 const COCKPIT_CACHE_PREFIX = 'pd-cockpit-'
-const COCKPIT_CACHE = `${COCKPIT_CACHE_PREFIX}shell-v1`
+const COCKPIT_CACHE = `${COCKPIT_CACHE_PREFIX}shell-v2`
 const COCKPIT_PATH = '/cockpit/'
 const COCKPIT_ASSET_PATH = `${COCKPIT_PATH}assets/`
 const COCKPIT_RUNTIME_CONFIG = `${COCKPIT_PATH}runtime-config.js`
-const COCKPIT_OFFLINE_DOCUMENT = `${COCKPIT_PATH}index.html`
+const COCKPIT_OFFLINE_DOCUMENT = `${COCKPIT_PATH}offline.html`
+
+const COCKPIT_EMERGENCY_OFFLINE_DOCUMENT = `<!doctype html>
+<html lang="de" data-cockpit-emergency-offline="v1">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>Cockpit offline</title>
+  </head>
+  <body>
+    <main>
+      <h1>Du bist offline</h1>
+      <p>Das Cockpit bleibt gesperrt. Stelle die Verbindung wieder her und lade die Seite neu.</p>
+    </main>
+  </body>
+</html>`
 
 const COCKPIT_STATIC_FILES = [
   COCKPIT_OFFLINE_DOCUMENT,
@@ -37,6 +53,28 @@ function isCockpitNavigation(request, url) {
     && url.pathname.startsWith(COCKPIT_PATH)
 }
 
+function emergencyOfflineResponse() {
+  return new Response(COCKPIT_EMERGENCY_OFFLINE_DOCUMENT, {
+    status: 503,
+    headers: {
+      'Cache-Control': 'no-store',
+      'Content-Type': 'text/html; charset=utf-8',
+      'X-Cockpit-Offline': 'emergency'
+    }
+  })
+}
+
+async function offlineNavigationResponse() {
+  const cache = await caches.open(COCKPIT_CACHE)
+  const response = await cache.match(COCKPIT_OFFLINE_DOCUMENT)
+
+  if (!response || !response.ok || response.redirected) {
+    return emergencyOfflineResponse()
+  }
+
+  return response
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(COCKPIT_CACHE).then((cache) => cache.addAll(COCKPIT_STATIC_FILES))
@@ -61,10 +99,7 @@ self.addEventListener('fetch', (event) => {
 
   if (isCockpitNavigation(request, url)) {
     event.respondWith(
-      fetch(request).catch(async () => {
-        const cache = await caches.open(COCKPIT_CACHE)
-        return cache.match(COCKPIT_OFFLINE_DOCUMENT)
-      })
+      fetch(request).catch(() => offlineNavigationResponse())
     )
     return
   }

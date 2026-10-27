@@ -3,6 +3,10 @@
   Content-Type: application/javascript; charset=utf-8
   X-Content-Type-Options: nosniff
 
+/cockpit/offline.html
+  Content-Type: text/html; charset=utf-8
+  X-Content-Type-Options: nosniff
+
 /cockpit/service-worker.js
   Cache-Control: no-cache
   Content-Type: application/javascript; charset=utf-8
