@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="de" data-cockpit-offline-shell="standalone-v1">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#111827" />
+    <meta name="robots" content="noindex" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"
+    />
+    <title>Cockpit offline</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        color: #111827;
+        background: #f3f4f6;
+      }
+
+      body {
+        min-width: 320px;
+        min-height: 100vh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        box-sizing: border-box;
+      }
+
+      main {
+        width: min(100%, 560px);
+        padding: clamp(24px, 6vw, 44px);
+        box-sizing: border-box;
+        border: 1px solid #d1d5db;
+        border-radius: 18px;
+        background: #ffffff;
+        box-shadow: 0 14px 36px rgb(17 24 39 / 8%);
+      }
+
+      p {
+        color: #4b5563;
+        line-height: 1.55;
+      }
+
+      a {
+        display: inline-block;
+        min-height: 44px;
+        margin-top: 10px;
+        padding: 12px 16px;
+        box-sizing: border-box;
+        border-radius: 10px;
+        color: #ffffff;
+        background: #111827;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      a:focus-visible {
+        outline: 3px solid #b91c1c;
+        outline-offset: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p>Fanszene Schweinfurt Cockpit</p>
+      <h1>Du bist offline</h1>
+      <p>
+        Ohne Verbindung werden keine Anmeldung, keine gespeicherten Berechtigungen
+        und keine Fachmodule freigegeben.
+      </p>
+      <p>Stelle die Verbindung wieder her und öffne das Cockpit erneut.</p>
+      <a href="/cockpit/">Verbindung erneut prüfen</a>
+    </main>
+  </body>
+</html>

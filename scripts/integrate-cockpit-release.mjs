@@ -279,6 +279,7 @@ async function validateRelease() {
   for (const required of [
     "index.html",
     "manifest.webmanifest",
+    "offline.html",
     "service-worker.js",
     "icons/cockpit-192.png",
     "icons/cockpit-512.png",
@@ -298,9 +299,10 @@ async function validateRelease() {
     "runtime-config.js darf nicht Teil des versionierten Cockpit-Artefakts sein."
   );
 
-  const [index, manifestSource, worker] = await Promise.all([
+  const [index, manifestSource, offline, worker] = await Promise.all([
     readFile(resolve(releaseRoot, "index.html"), "utf8"),
     readFile(resolve(releaseRoot, "manifest.webmanifest"), "utf8"),
+    readFile(resolve(releaseRoot, "offline.html"), "utf8"),
     readFile(resolve(releaseRoot, "service-worker.js"), "utf8")
   ]);
   const manifest = JSON.parse(manifestSource);
@@ -328,12 +330,38 @@ async function validateRelease() {
   );
 
   assert(
+    /data-cockpit-offline-shell="standalone-v1"/.test(offline)
+      && /<title>Cockpit offline<\/title>/.test(offline)
+      && /Du bist offline/.test(offline),
+    "Die eigenständige Cockpit-Offline-Oberfläche fehlt oder ist ungültig."
+  );
+  assert(
+    !/<script\b|runtime-config\.js|localStorage|sessionStorage|Liveticker|Bild-Generator/i.test(offline),
+    "Die Cockpit-Offline-Oberfläche darf keine Runtime-, Auth- oder Fachmodulabhängigkeit enthalten."
+  );
+
+  assert(
     /const COCKPIT_PATH = '\/cockpit\/'/.test(worker),
     "Der Cockpit-Service-Worker besitzt keinen festen /cockpit/-Pfad."
   );
   assert(
+    /shell-v2/.test(worker)
+      && /COCKPIT_OFFLINE_DOCUMENT = `\$\{COCKPIT_PATH\}offline\.html`/.test(worker)
+      && /response\.redirected/.test(worker),
+    "Der Cockpit-Service-Worker besitzt nicht den redirect-sicheren Offline-Vertrag v2."
+  );
+  assert(
     /url\.pathname === COCKPIT_RUNTIME_CONFIG\) return false/.test(worker),
     "Der Cockpit-Service-Worker schließt runtime-config.js nicht aus."
+  );
+  assert(
+    /key\.startsWith\(COCKPIT_CACHE_PREFIX\) && key !== COCKPIT_CACHE/.test(worker)
+      && /caches\.delete\(key\)/.test(worker),
+    "Der Cockpit-Service-Worker migriert alte Cockpit-Caches nicht kontrolliert."
+  );
+  assert(
+    !/COCKPIT_OFFLINE_DOCUMENT = `\$\{COCKPIT_PATH\}index\.html`/.test(worker),
+    "index.html darf nicht als Cockpit-Offline-Navigationsfallback dienen."
   );
   assert(
     !/skipWaiting|location\.reload/.test(worker),

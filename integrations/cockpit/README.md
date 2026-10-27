@@ -33,7 +33,7 @@ that credential into a build argument, committed file or browser runtime.
 
 ```bash
 git clone --no-checkout https://github.com/Plaerrdeifl/fanszene-cockpit.git /tmp/fanszene-cockpit
-git -C /tmp/fanszene-cockpit checkout --detach e381f4484d01367f4a65e3bd4e143e5b1f4f4b01
+git -C /tmp/fanszene-cockpit checkout --detach 11e67fc45266564504659064d2da2848ca32a53a
 cd /tmp/fanszene-cockpit
 sha256sum package-lock.json
 npm ci
@@ -53,6 +53,11 @@ The portal test suite independently revalidates the complete contract.
 - canonical DEV path, manifest ID, start URL and worker scope: `/cockpit/`;
 - runtime config: generated public browser values, never part of the release
   artifact and never cached;
+- `offline.html`: source-generated, standalone and fail-closed without Runtime,
+  Auth, Session-/Rechtewiederherstellung oder Fachmodule;
+- Service-Worker cache `pd-cockpit-shell-v2`: pre-caches the non-redirected
+  offline document, rejects redirected/missing fallbacks and removes older
+  Cockpit cache versions on activation;
 - AP-02 has no URL subroutes. The pinned Cockpit shell keeps the selected module
   in React component state (`CockpitShell.tsx`) and switches modules with button
   click handlers; it does not expose module links or a client-side URL router;
