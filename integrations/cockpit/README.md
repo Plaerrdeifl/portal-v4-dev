@@ -53,7 +53,14 @@ The portal test suite independently revalidates the complete contract.
 - canonical DEV path, manifest ID, start URL and worker scope: `/cockpit/`;
 - runtime config: generated public browser values, never part of the release
   artifact and never cached;
-- SPA fallback: `/cockpit/*` only;
+- AP-02 has no URL subroutes. The pinned Cockpit shell keeps the selected module
+  in React component state (`CockpitShell.tsx`) and switches modules with button
+  click handlers; it does not expose module links or a client-side URL router;
+- `dist/cockpit/404.html` is integration-owned and deliberately outside the
+  pinned release artifact. Cloudflare Pages uses this closest 404 for unknown
+  `/cockpit/*` paths, so they cannot fall through to the Portal root SPA;
+- `_redirects` therefore contains no Cockpit rewrite and makes no unsupported
+  deep-link promise;
 - the root Portal worker explicitly ignores `/cockpit` and its subtree;
 - LOCAL and PROD builds do not integrate this DEV release;
 - AP-02 remains fail-closed until the separate AP-03 backend contract exists.

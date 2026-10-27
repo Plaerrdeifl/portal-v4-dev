@@ -95,6 +95,7 @@ jobs:
           test -s dist/service-worker.js
           test -s dist/manifest.webmanifest
           test -s dist/cockpit/index.html
+          test -s dist/cockpit/404.html
           test -s dist/cockpit/manifest.webmanifest
           test -s dist/cockpit/service-worker.js
           test -s dist/cockpit/runtime-config.js
@@ -102,6 +103,7 @@ jobs:
           grep -q '"m310TurnstileSiteKey":' dist/js/runtime-config.js
           grep -q 'tpieykhhawszlzsoflnl.supabase.co' dist/js/runtime-config.js
           grep -q '<title>Fanszene Schweinfurt Cockpit</title>' dist/cockpit/index.html
+          grep -q 'data-cockpit-route-contract="root-only-v1"' dist/cockpit/404.html
           grep -q '"scope": "/cockpit/"' dist/cockpit/manifest.webmanifest
           grep -q "const COCKPIT_PATH = '/cockpit/'" dist/cockpit/service-worker.js
           grep -q 'tpieykhhawszlzsoflnl.supabase.co' dist/cockpit/runtime-config.js

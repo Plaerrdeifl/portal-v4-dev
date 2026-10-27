@@ -20,6 +20,12 @@ const releaseMetadataPath = resolve(
   "cockpit",
   "release.json"
 );
+const cockpitNotFoundPath = resolve(
+  root,
+  "integrations",
+  "cockpit",
+  "404.html"
+);
 
 const { values } = parseArgs({
   options: {
@@ -350,6 +356,24 @@ async function validateRelease() {
   return { metadata, releaseRoot };
 }
 
+async function validateNotFoundPage() {
+  const source = await readFile(cockpitNotFoundPath, "utf8");
+
+  assert(
+    /<title>Cockpit-Seite nicht gefunden<\/title>/.test(source)
+      && /data-cockpit-route-contract="root-only-v1"/.test(source),
+    "Die Cockpit-404-Seite besitzt nicht den erwarteten Root-only-Vertrag."
+  );
+  assert(
+    /href="\/cockpit\/"/.test(source),
+    "Die Cockpit-404-Seite führt nicht zum unterstützten Einstieg zurück."
+  );
+  assert(
+    !/data-route="login"|<title>Plärrdeifl Portal<\/title>/.test(source),
+    "Die Cockpit-404-Seite darf kein Portal-Fallback enthalten."
+  );
+}
+
 assert(
   output === expectedOutputParent || output.startsWith(`${expectedOutputParent}${sep}`),
   "Das Cockpit darf nur in den dist-Ausgabebaum integriert werden."
@@ -357,10 +381,12 @@ assert(
 
 const runtime = validateDevRuntime();
 const { metadata, releaseRoot } = await validateRelease();
+await validateNotFoundPage();
 
 await rm(output, { recursive: true, force: true });
 await mkdir(dirname(output), { recursive: true });
 await cp(releaseRoot, output, { recursive: true });
+await cp(cockpitNotFoundPath, resolve(output, "404.html"));
 
 const runtimeSource =
   "window.PD_RUNTIME_CONFIG = Object.freeze(" +
