@@ -108,6 +108,7 @@ jobs:
           grep -q 'data-cockpit-offline-shell="standalone-v1"' dist/cockpit/offline.html
           grep -q '"scope": "/cockpit/"' dist/cockpit/manifest.webmanifest
           grep -q "const COCKPIT_PATH = '/cockpit/'" dist/cockpit/service-worker.js
-          grep -q 'pd-cockpit-shell-v2' dist/cockpit/service-worker.js
+          grep -q "const COCKPIT_CACHE_PREFIX = 'pd-cockpit-'" dist/cockpit/service-worker.js
+          grep -q 'shell-v2' dist/cockpit/service-worker.js
           grep -q 'response.redirected' dist/cockpit/service-worker.js
           grep -q 'tpieykhhawszlzsoflnl.supabase.co' dist/cockpit/runtime-config.js
