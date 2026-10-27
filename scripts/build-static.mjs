@@ -28,6 +28,7 @@ const directories = [
 ];
 
 const optionalFiles = [
+  "_headers",
   "_redirects",
   "liveticker-local-handoff.html"
 ];
@@ -174,6 +175,7 @@ const eventsRuntimeOutput = resolve(dist, "events", "runtime-config.js");
 const eventsIndex = resolve(dist, "events", "index.html");
 const fanbusRuntimeOutput = resolve(dist, "fanbus", "runtime-config.js");
 const fanbusIndex = resolve(dist, "fanbus", "index.html");
+const cockpitOutput = resolve(dist, "cockpit");
 
 if (environment === "LOCAL") {
   if (Boolean(supabaseUrl) !== Boolean(publishableKey)) {
@@ -225,6 +227,21 @@ if (environment === "LOCAL") {
   }
 
   await generateRuntimeConfig();
+}
+
+if (environment === "DEV") {
+  await execFileAsync(
+    process.execPath,
+    [
+      resolve(root, "scripts", "integrate-cockpit-release.mjs"),
+      "--output",
+      cockpitOutput
+    ],
+    {
+      cwd: root,
+      env: process.env
+    }
+  );
 }
 
 try {

@@ -82,6 +82,9 @@ jobs:
           SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_0CNMhK3t95eEa-v3XXj61Q__mWzFOJ6' }}
           SUPABASE_EXPECTED_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF || 'tpieykhhawszlzsoflnl' }}
           M310_TURNSTILE_SITE_KEY: ${{ vars.M310_TURNSTILE_SITE_KEY || '1x00000000000000000000AA' }}
+          # Non-deployed CI artifacts may use this syntactically valid fallback.
+          # Cloudflare Pages must continue to provide the real public DEV client ID.
+          GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID || '123456789012-ci-cockpit.apps.googleusercontent.com' }}
         run: npm run build
 
       - name: Verify DEV output
@@ -91,6 +94,14 @@ jobs:
           test -s dist/js/runtime-config.js
           test -s dist/service-worker.js
           test -s dist/manifest.webmanifest
+          test -s dist/cockpit/index.html
+          test -s dist/cockpit/manifest.webmanifest
+          test -s dist/cockpit/service-worker.js
+          test -s dist/cockpit/runtime-config.js
           grep -q '"environment": "DEV"' dist/js/runtime-config.js
           grep -q '"m310TurnstileSiteKey":' dist/js/runtime-config.js
           grep -q 'tpieykhhawszlzsoflnl.supabase.co' dist/js/runtime-config.js
+          grep -q '<title>Fanszene Schweinfurt Cockpit</title>' dist/cockpit/index.html
+          grep -q '"scope": "/cockpit/"' dist/cockpit/manifest.webmanifest
+          grep -q "const COCKPIT_PATH = '/cockpit/'" dist/cockpit/service-worker.js
+          grep -q 'tpieykhhawszlzsoflnl.supabase.co' dist/cockpit/runtime-config.js

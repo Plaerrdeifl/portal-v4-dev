@@ -98,6 +98,19 @@ Der frühere Repository-Workflow `.github/workflows/deploy-v4-dev-pages.yml` fü
 
 Der aktuelle P800-Reparaturstand ist als Release Candidate auf `fix/p800-dev-baseline-r1` verifiziert. Die endgültige DEV-Baseline wird erst nach Merge nach `main`, erfolgreichem Cloudflare-Deploy und Live-Abnahme von `https://dev.plaerrdeifl.de/` festgeschrieben.
 
+### Cockpit DEV-Buildintegration
+
+Der DEV-Build integriert das eigenständige Fanszene-Cockpit reproduzierbar
+unter `/cockpit/`. Der führende Quellcode bleibt ausschließlich im privaten
+Repository `Plaerrdeifl/fanszene-cockpit`; dieses Repository enthält nur ein
+fest auf eine Quell-SHA gebundenes, hashverifiziertes Release-Artefakt. Erst
+`PORTAL_ENVIRONMENT=DEV npm run build` schreibt es zusammen mit einer separat
+validierten öffentlichen Runtime-Konfiguration nach `dist/cockpit/`.
+
+Cloudflare Pages benötigt dadurch keinen privaten Repository-Schlüssel. Der
+vollständige Release-, Reproduktions-, Routing- und PWA-Scope-Vertrag steht in
+`integrations/cockpit/README.md`.
+
 PROD darf durch normale DEV-Arbeiten nicht verändert werden.
 
 ## Verbindliche Dokumentation

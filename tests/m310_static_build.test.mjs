@@ -29,6 +29,7 @@ const directories = [
   "bus-orga",
   "components",
   "css",
+  "integrations",
   "js",
   "pages"
 ];
@@ -78,6 +79,10 @@ test("M310 standalone registration is part of every static build artifact contra
       cp(
         join(root, "scripts", "write-runtime-config.mjs"),
         join(fixture, "scripts", "write-runtime-config.mjs")
+      ),
+      cp(
+        join(root, "scripts", "integrate-cockpit-release.mjs"),
+        join(fixture, "scripts", "integrate-cockpit-release.mjs")
       )
     ]);
 
@@ -90,6 +95,19 @@ test("M310 standalone registration is part of every static build artifact contra
         "sb_publishable_m310_static_build_test_key",
       SUPABASE_EXPECTED_PROJECT_REF:
         "tpieykhhawszlzsoflnl",
+      VITE_APP_ENV: "DEV",
+      VITE_SUPABASE_URL:
+        "https://tpieykhhawszlzsoflnl.supabase.co",
+      VITE_SUPABASE_PUBLISHABLE_KEY:
+        "sb_publishable_m310_static_build_test_key",
+      GOOGLE_CLIENT_ID:
+        "123456789012-m310-test.apps.googleusercontent.com",
+      VITE_GOOGLE_CLIENT_ID:
+        "123456789012-m310-test.apps.googleusercontent.com",
+      VITE_PORTAL_BASE_URL:
+        "https://dev.plaerrdeifl.de/portal",
+      VITE_PORTAL_ASSET_BASE_URL:
+        "https://dev.plaerrdeifl.de",
       M310_TURNSTILE_SITE_KEY:
         "public-m310-static-build-test-key"
     };

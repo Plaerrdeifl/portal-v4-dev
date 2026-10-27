@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "environment": "DEV",
+  "sourceRepository": "Plaerrdeifl/fanszene-cockpit",
+  "sourceCommit": "e381f4484d01367f4a65e3bd4e143e5b1f4f4b01",
+  "sourcePackageLockSha256": "f0e8680fd6b0cc39e0267255a17d780a98f246ae1a06eb175635a45dd8598a27",
+  "sourceBuildCommand": "npm ci && npm run check",
+  "artifactRoot": "integrations/cockpit/release",
+  "artifactSha256": "11b9a4352f59ef35baa15ec3ad2929dd033a195a04d18e303354b1b22a57c13f",
+  "files": [
+    {
+      "path": "assets/index-DzY2ZrY0.css",
+      "bytes": 3140,
+      "sha256": "08766f7acab611d026accc6709986a8394b9a6a98cf0fc6b1a0fe3b27c59a3cd"
+    },
+    {
+      "path": "assets/index-z5ogs4_e.js",
+      "bytes": 449413,
+      "sha256": "ad424e5f90eeebd5cf719954184d3ca59bccdac31e3609b3bbc20a9fbedf2eaf"
+    },
+    {
+      "path": "icons/cockpit-192.png",
+      "bytes": 944,
+      "sha256": "76e1e8a399d828dd2688f97886876f8fb22e39d34d7b7a5a958166dd0d51eafb"
+    },
+    {
+      "path": "icons/cockpit-512.png",
+      "bytes": 4006,
+      "sha256": "90147f4cfb9f89634b0517e94eea02ac793b338c3ff91904f20a4323edd5d7af"
+    },
+    {
+      "path": "icons/cockpit-maskable-192.png",
+      "bytes": 820,
+      "sha256": "c75cddd2307b821e635c685614c502e73c5affe0d4f830fc2cfa2b6eaebea481"
+    },
+    {
+      "path": "icons/cockpit-maskable-512.png",
+      "bytes": 3664,
+      "sha256": "f2b5a5738f61cd55c77c8810cefe68366b0f06b5d2695bafc5301c82ba339bb8"
+    },
+    {
+      "path": "index.html",
+      "bytes": 841,
+      "sha256": "5c7a6e235f34e0d0827595e9aef3d046b35bb64a909446e9f7b6ac4a38ecad34"
+    },
+    {
+      "path": "manifest.webmanifest",
+      "bytes": 920,
+      "sha256": "e8e6318af6bbf2062112cd00656352435ea2f5b3a2bb0af6b16af0d678caa042"
+    },
+    {
+      "path": "service-worker.js",
+      "bytes": 2689,
+      "sha256": "fb90594ba917fcfcaa5f4b803ecf6db87ac2b47cceea222b499a593546691761"
+    }
+  ]
+}
