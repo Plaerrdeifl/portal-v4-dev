@@ -14,6 +14,7 @@ declare
   v_inactive uuid := '00000000-0000-4320-8000-000000000008';
   v_social_media_team_id uuid;
   v_response jsonb;
+  v_role_payload jsonb;
   v_revision integer;
 begin
   if app_private.platform_action_classification(
@@ -118,6 +119,32 @@ begin
       'Cockpit', 'Inactive', 'INACTIVE',
       '00000000-0000-4000-8000-000000000003'
     );
+
+  -- Portal administration remains usable before the controlled first
+  -- Cockpit SYSTEM_ADMIN bootstrap has happened.
+  perform set_config('request.jwt.claim.sub', v_portal_admin::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    pg_catalog.jsonb_build_object(
+      'sub', v_portal_admin,
+      'role', 'authenticated'
+    )::text,
+    true
+  );
+  v_response := public.pd_api(
+    'save_user',
+    pg_catalog.jsonb_build_object(
+      'id', v_user_2,
+      'roleId', '00000000-0000-4000-8000-000000000003',
+      'status', 'ACTIVE',
+      'expectedRevision', 1
+    )
+  );
+  if not coalesce((v_response ->> 'ok')::boolean, false)
+     or (select revision from app_portal.users where id = v_user_2) <> 1 then
+    raise exception 'Portalmutation wurde vor Cockpit-Bootstrap blockiert: %',
+      v_response;
+  end if;
 
   -- Bootstrap is a separate, explicit, postgres-only, one-time operation.
   v_response := app_private.cockpit_bootstrap_first_system_admin(
@@ -442,6 +469,13 @@ begin
        )::boolean,
        false
      )
+     or not coalesce(
+       (
+         v_response #>>
+           '{data,permissions,generator,effectiveInCockpit}'
+       )::boolean,
+       false
+     )
      or not exists (
        select 1
        from app_portal.user_capabilities as personal
@@ -466,7 +500,29 @@ begin
   if not coalesce((v_response ->> 'ok')::boolean, false)
      or coalesce((v_response #>> '{data,cockpit,allowed}')::boolean, true)
      or (select status from app_portal.users where id = v_user_1) <> 'ACTIVE'
-     or not app_private.has_capability(
+     or coalesce(
+       (
+         v_response #>>
+           '{data,permissions,generator,personallyAssigned}'
+       )::boolean,
+       true
+     )
+     or not coalesce(
+       (
+         v_response #>>
+           '{data,permissions,generator,effectiveFromAllSources}'
+       )::boolean,
+       false
+     )
+     or coalesce(
+       (
+         v_response #>>
+           '{data,permissions,generator,effectiveInCockpit}'
+       )::boolean,
+       true
+     )
+     or not app_private.social_media_generator_user_has_access(v_user_1)
+     or app_private.has_capability(
        v_user_1,
        'social_media_generator.use'
      ) then
@@ -521,6 +577,60 @@ begin
        'COCKPIT_LAST_SYSTEM_ADMIN_REQUIRED'
      or app_private.cockpit_active_system_admin_count() <> 1 then
     raise exception 'Letzter SYSTEM_ADMIN wurde nicht geschuetzt: %',
+      v_response;
+  end if;
+
+  -- Existing global Portal mutations share the same lock and cannot bypass
+  -- the invariant by blocking/re-roling the user or disabling its Portal role.
+  perform set_config('request.jwt.claim.sub', v_portal_admin::text, true);
+  select portal_user.revision
+  into v_revision
+  from app_portal.users as portal_user
+  where portal_user.id = v_sys_1;
+
+  v_response := public.pd_api(
+    'save_user',
+    pg_catalog.jsonb_build_object(
+      'id', v_sys_1,
+      'roleId', '00000000-0000-4000-8000-000000000003',
+      'status', 'BLOCKED',
+      'expectedRevision', v_revision
+    )
+  );
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,code}' <> '42501'
+     or v_response #>> '{error,message}' <>
+       'COCKPIT_LAST_SYSTEM_ADMIN_REQUIRED'
+     or (select status from app_portal.users where id = v_sys_1) <> 'ACTIVE'
+     or app_private.cockpit_active_system_admin_count() <> 1 then
+    raise exception 'Globales save_user umging Cockpit-Schutz: %',
+      v_response;
+  end if;
+
+  select pg_catalog.jsonb_build_object(
+    'id', portal_role.id,
+    'code', portal_role.code,
+    'name', portal_role.name,
+    'description', portal_role.description,
+    'active', false,
+    'sortOrder', portal_role.sort_order
+  )
+  into v_role_payload
+  from app_portal.portal_roles as portal_role
+  where portal_role.id = '00000000-0000-4000-8000-000000000003';
+
+  v_response := public.pd_api('save_role', v_role_payload);
+  if coalesce((v_response ->> 'ok')::boolean, false)
+     or v_response #>> '{error,code}' <> '42501'
+     or v_response #>> '{error,message}' <>
+       'COCKPIT_LAST_SYSTEM_ADMIN_REQUIRED'
+     or not (
+       select portal_role.is_active
+       from app_portal.portal_roles as portal_role
+       where portal_role.id = '00000000-0000-4000-8000-000000000003'
+     )
+     or app_private.cockpit_active_system_admin_count() <> 1 then
+    raise exception 'Globales save_role umging Cockpit-Schutz: %',
       v_response;
   end if;
 

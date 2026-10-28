@@ -174,10 +174,11 @@ begin
     p_user_id,
     'liveticker.manage'
   );
-  v_generator_effective := app_private.has_capability(
-    p_user_id,
-    'social_media_generator.use'
-  );
+  -- The generator has an established fachvertrag that additionally includes
+  -- an active SOCIAL_MEDIA team membership. Keep that source authoritative
+  -- instead of duplicating (or narrowing) its access decision here.
+  v_generator_effective :=
+    app_private.social_media_generator_user_has_access(p_user_id);
 
   return pg_catalog.jsonb_build_object(
     'schemaVersion', 2,
@@ -213,6 +214,75 @@ begin
       )
     )
   );
+end;
+$function$;
+
+-- Global Portal administration remains authoritative for Portal users and
+-- roles. These narrow wrappers only serialize the two existing mutations that
+-- can make a Cockpit SYSTEM_ADMIN globally inactive, then enforce the same
+-- last-SYSTEM_ADMIN invariant used by Cockpit administration. No Portal
+-- permission is added or accepted as a Cockpit role.
+alter function app_private.api_save_user(jsonb)
+  rename to api_save_user_before_cockpit_admin_r2;
+
+create function app_private.api_save_user(p_payload jsonb)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_result jsonb;
+begin
+  perform pg_catalog.pg_advisory_xact_lock(70303, 2);
+
+  v_result := app_private.api_save_user_before_cockpit_admin_r2(
+    p_payload
+  );
+
+  if exists (
+       select 1
+       from app_portal.audit_events as audit_event
+       where audit_event.action = 'COCKPIT_FIRST_SYSTEM_ADMIN_BOOTSTRAPPED'
+     )
+     and app_private.cockpit_active_system_admin_count() < 1 then
+    raise exception 'COCKPIT_LAST_SYSTEM_ADMIN_REQUIRED'
+      using errcode = '42501';
+  end if;
+
+  return v_result;
+end;
+$function$;
+
+alter function app_private.api_save_role(jsonb)
+  rename to api_save_role_before_cockpit_admin_r2;
+
+create function app_private.api_save_role(p_payload jsonb)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_result jsonb;
+begin
+  perform pg_catalog.pg_advisory_xact_lock(70303, 2);
+
+  v_result := app_private.api_save_role_before_cockpit_admin_r2(
+    p_payload
+  );
+
+  if exists (
+       select 1
+       from app_portal.audit_events as audit_event
+       where audit_event.action = 'COCKPIT_FIRST_SYSTEM_ADMIN_BOOTSTRAPPED'
+     )
+     and app_private.cockpit_active_system_admin_count() < 1 then
+    raise exception 'COCKPIT_LAST_SYSTEM_ADMIN_REQUIRED'
+      using errcode = '42501';
+  end if;
+
+  return v_result;
 end;
 $function$;
 
@@ -933,6 +1003,10 @@ revoke all on function
   app_private.cockpit_lock_admin_actor(),
   app_private.cockpit_active_system_admin_count(),
   app_private.cockpit_admin_user_projection(uuid),
+  app_private.api_save_user_before_cockpit_admin_r2(jsonb),
+  app_private.api_save_user(jsonb),
+  app_private.api_save_role_before_cockpit_admin_r2(jsonb),
+  app_private.api_save_role(jsonb),
   app_private.api_cockpit_admin_users_list(jsonb),
   app_private.api_cockpit_admin_user_get(jsonb),
   app_private.api_cockpit_admin_access_set(jsonb),
@@ -952,6 +1026,10 @@ grant execute on function
   app_private.cockpit_lock_admin_actor(),
   app_private.cockpit_active_system_admin_count(),
   app_private.cockpit_admin_user_projection(uuid),
+  app_private.api_save_user_before_cockpit_admin_r2(jsonb),
+  app_private.api_save_user(jsonb),
+  app_private.api_save_role_before_cockpit_admin_r2(jsonb),
+  app_private.api_save_role(jsonb),
   app_private.api_cockpit_admin_users_list(jsonb),
   app_private.api_cockpit_admin_user_get(jsonb),
   app_private.api_cockpit_admin_access_set(jsonb),
@@ -969,6 +1047,10 @@ comment on function app_private.api_cockpit_admin_access_set(jsonb) is
   'AP-03/R2 Cockpit-only role/enabled mutation with actor/target checks, strict revision, audit and concurrent last-SYSTEM_ADMIN protection.';
 comment on function app_private.api_cockpit_admin_personal_capabilities_set(jsonb) is
   'AP-03/R2 mutation for exactly the two personal Cockpit module capabilities; every other personal/effective source is preserved.';
+comment on function app_private.api_save_user(jsonb) is
+  'Existing Portal user mutation, serialized with AP-03/R2 and rejected if it would remove the last active Cockpit SYSTEM_ADMIN.';
+comment on function app_private.api_save_role(jsonb) is
+  'Existing Portal role mutation, serialized with AP-03/R2 and rejected if it would remove the last active Cockpit SYSTEM_ADMIN.';
 comment on function app_private.cockpit_bootstrap_first_system_admin(uuid, text, text) is
   'One-time postgres-only first Cockpit SYSTEM_ADMIN assignment. Requires an explicit target, operator reference and reason; never exposed through pd_api.';
 

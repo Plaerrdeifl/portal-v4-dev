@@ -47,3 +47,15 @@ end
 $cockpit_admin_concurrency_assert$;
 
 select 'COCKPIT_ADMIN_CONCURRENCY_OK' as result;
+
+-- Restore the two-admin baseline for the cross-contract race that follows.
+update app_portal.cockpit_access as cockpit_access
+set role = 'SYSTEM_ADMIN',
+    is_enabled = true,
+    revision = cockpit_access.revision + 1
+where cockpit_access.user_id in (
+  '00000000-0000-4321-8000-000000000001',
+  '00000000-0000-4321-8000-000000000002'
+);
+
+truncate table app_private.cockpit_admin_concurrency_results;

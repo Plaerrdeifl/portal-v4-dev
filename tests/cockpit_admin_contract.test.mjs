@@ -8,6 +8,8 @@ const migrationPath =
   "supabase/migrations/20261028175847_cockpit_admin_contract_r2.sql";
 const sqlTestPath = "supabase/tests/cockpit_admin_contract.sql";
 const concurrencyRunnerPath = "tests/run-cockpit-admin-concurrency.sh";
+const globalConcurrencyAssertPath =
+  "supabase/tests/cockpit_admin_global_concurrency_assert.sql";
 
 const read = (file) => fs.readFile(path.join(root, file), "utf8");
 
@@ -79,10 +81,27 @@ test("last SYSTEM_ADMIN and first bootstrap use the same serialized invariant", 
   const bootstrap = sql.match(
     /create function app_private\.cockpit_bootstrap_first_system_admin[\s\S]+?\n\$function\$;/i,
   )?.[0] ?? "";
+  const globalUserMutation = sql.match(
+    /create function app_private\.api_save_user\(p_payload jsonb\)[\s\S]+?\n\$function\$;/i,
+  )?.[0] ?? "";
+  const globalRoleMutation = sql.match(
+    /create function app_private\.api_save_role\(p_payload jsonb\)[\s\S]+?\n\$function\$;/i,
+  )?.[0] ?? "";
 
   assert.match(sql, /pg_advisory_xact_lock\(70303, 2\)/i);
   assert.match(sql, /cockpit_active_system_admin_count\(\) < 1/i);
   assert.match(sql, /COCKPIT_LAST_SYSTEM_ADMIN_REQUIRED/i);
+  for (const globalMutation of [globalUserMutation, globalRoleMutation]) {
+    assert.match(globalMutation, /pg_advisory_xact_lock\(70303, 2\)/i);
+    assert.match(
+      globalMutation,
+      /COCKPIT_FIRST_SYSTEM_ADMIN_BOOTSTRAPPED/i,
+    );
+    assert.match(globalMutation, /cockpit_active_system_admin_count\(\) < 1/i);
+    assert.match(globalMutation, /COCKPIT_LAST_SYSTEM_ADMIN_REQUIRED/i);
+  }
+  assert.match(sql, /api_save_user_before_cockpit_admin_r2/i);
+  assert.match(sql, /api_save_role_before_cockpit_admin_r2/i);
   assert.match(bootstrap, /COCKPIT_BOOTSTRAP_ALREADY_COMPLETED/i);
   assert.match(bootstrap, /p_target_user_id/i);
   assert.match(bootstrap, /p_operator_reference/i);
@@ -100,23 +119,42 @@ test("last SYSTEM_ADMIN and first bootstrap use the same serialized invariant", 
 });
 
 test("projections separate personal, effective and in-Cockpit rights", async () => {
-  const sql = await read(migrationPath);
+  const [sql, isolatedBase] = await Promise.all([
+    read(migrationPath),
+    read("supabase/tests/cockpit_admin_isolated_base.sql"),
+  ]);
   const projection = sql.match(
     /create function app_private\.cockpit_admin_user_projection[\s\S]+?\n\$function\$;/i,
+  )?.[0] ?? "";
+  const isolatedCapability = isolatedBase.match(
+    /create function app_private\.has_capability[\s\S]+?\n\$function\$;/i,
+  )?.[0] ?? "";
+  const isolatedGeneratorAccess = isolatedBase.match(
+    /create function app_private\.social_media_generator_user_has_access[\s\S]+?\n\$function\$;/i,
   )?.[0] ?? "";
 
   assert.match(projection, /'personallyAssigned'/i);
   assert.match(projection, /'effectiveFromAllSources'/i);
   assert.match(projection, /'effectiveInCockpit'/i);
   assert.match(projection, /app_private\.has_capability/i);
+  assert.match(
+    projection,
+    /app_private\.social_media_generator_user_has_access\(p_user_id\)/i,
+  );
   assert.match(projection, /app_private\.cockpit_user_has_access/i);
+  assert.doesNotMatch(
+    isolatedCapability,
+    /team\.code\s*=\s*'SOCIAL_MEDIA'/i,
+  );
+  assert.match(isolatedGeneratorAccess, /team\.code\s*=\s*'SOCIAL_MEDIA'/i);
   assert.match(sql, /'identityCreationAvailable', false/i);
 });
 
 test("SQL and real-session concurrency coverage are reproducible", async () => {
-  const [sqlTest, runner] = await Promise.all([
+  const [sqlTest, runner, globalConcurrencyAssert] = await Promise.all([
     read(sqlTestPath),
     read(concurrencyRunnerPath),
+    read(globalConcurrencyAssertPath),
   ]);
 
   for (const marker of [
@@ -131,6 +169,9 @@ test("SQL and real-session concurrency coverage are reproducible", async () => {
     "Effektive Generatorquelle wurde beim Entzug verloren",
     "Cockpit-Sperre hat globale Zustaende veraendert",
     "Letzter SYSTEM_ADMIN wurde nicht geschuetzt",
+    "Portalmutation wurde vor Cockpit-Bootstrap blockiert",
+    "Globales save_user umging Cockpit-Schutz",
+    "Globales save_role umging Cockpit-Schutz",
     "Auditnachweis fuer Cockpit-Schreibaktionen fehlt",
   ]) {
     assert.ok(sqlTest.includes(marker), `SQL-Testfall fehlt: ${marker}`);
@@ -140,6 +181,10 @@ test("SQL and real-session concurrency coverage are reproducible", async () => {
   assert.match(sqlTest, /^rollback;/m);
   assert.match(runner, /cockpit_admin_concurrency_fixture\.sql/);
   assert.match(runner, /cockpit_admin_concurrency_assert\.sql/);
+  assert.match(runner, /cockpit_admin_global_concurrency_assert\.sql/);
+  assert.match(runner, /cockpit_admin_concurrent_global_deactivate/);
   assert.match(runner, /pg_sleep\(2\)/);
   assert.match(runner, /wait "\$first_pid"/);
+  assert.match(globalConcurrencyAssert, /COCKPIT_LAST_SYSTEM_ADMIN_REQUIRED/);
+  assert.match(globalConcurrencyAssert, /USER_UPDATED/);
 });
