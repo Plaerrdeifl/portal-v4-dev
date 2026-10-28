@@ -123,7 +123,7 @@ test("versioned Cockpit release pins the private source and every generated file
   assert.equal(metadata.schemaVersion, 1);
   assert.equal(metadata.environment, "DEV");
   assert.equal(metadata.sourceRepository, "Plaerrdeifl/fanszene-cockpit");
-  assert.equal(metadata.sourceCommit, "11e67fc45266564504659064d2da2848ca32a53a");
+  assert.equal(metadata.sourceCommit, "14b07a572d0a0d412125abb2b63e6efda356a89d");
   assert.equal(
     metadata.sourcePackageLockSha256,
     "f0e8680fd6b0cc39e0267255a17d780a98f246ae1a06eb175635a45dd8598a27"
@@ -143,7 +143,7 @@ test("versioned Cockpit release pins the private source and every generated file
   );
 });
 
-test("Cockpit runtime is DEV-only, public, complete and fail-closed", async () => {
+test("Cockpit runtime is DEV-only, public and bound to the AP-03/R1 access contract", async () => {
   const output = await integrate("runtime-contract");
   const [index, manifestSource, offline, worker, runtimeSource] = await Promise.all([
     readFile(join(output, "index.html"), "utf8"),
@@ -185,8 +185,48 @@ test("Cockpit runtime is DEV-only, public, complete and fail-closed", async () =
     bundlePaths.map(path => readFile(join(output, path), "utf8"))
   )).join("\n");
 
-  assert.match(bundles, /contract-pending/);
-  assert.match(bundles, /keine vorläufige Freigabe/);
+  for (const contractMarker of [
+    "/rest/v1/rpc/pd_api",
+    "p_action",
+    "p_payload",
+    "Ungültige API-Antwort.",
+    "Anmeldung erforderlich.",
+    "cockpit_access_get",
+    "schemaVersion",
+    "cockpit-backend",
+    "SYSTEM_ADMIN",
+    "ADMIN",
+    "USER",
+    "liveticker.manage",
+    "social_media_generator.use",
+    "personallyAssigned",
+    "activeSocialMediaTeam",
+    "effectiveAllowed",
+    "Der serverseitige Cockpit-Zugangsvertrag ist ungültig.",
+    "Kein Cockpit-Zugang",
+    "Keine Fachmodule freigegeben"
+  ]) {
+    assert.ok(
+      bundles.includes(contractMarker),
+      `AP-03/R1-Vertragsmarker fehlt im Cockpit-Bundle: ${contractMarker}`
+    );
+  }
+
+  assert.doesNotMatch(bundles, /contract-pending|keine vorläufige Freigabe/);
+  assert.doesNotMatch(bundles, /portal\.admin/);
+  assert.match(bundles, /\.schemaVersion!==1\|\|.\.userId!==/);
+  assert.match(
+    bundles,
+    /\.active\?[^?]{0,20}\.allowed\?\{allowed:!0,source:`cockpit-backend`/
+  );
+  assert.match(
+    bundles,
+    /Object\.freeze\(\[\{id:`liveticker`,label:`Liveticker`[\s\S]{0,400}\{id:`bild-generator`,label:`Bild-Generator`/
+  );
+  assert.match(
+    bundles,
+    /id===`liveticker`\?[^:]{0,200}\.permissions\.liveticker\.effectiveAllowed:[^)]{0,200}\.permissions\.generator\.effectiveAllowed/
+  );
 });
 
 test("missing or divergent DEV browser configuration stops the Cockpit build", async () => {

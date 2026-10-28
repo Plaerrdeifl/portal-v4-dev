@@ -375,10 +375,51 @@ async function validateRelease() {
   );
   const applicationBundle = bundles.join("\n");
 
+  for (const requiredContractMarker of [
+    "/rest/v1/rpc/pd_api",
+    "p_action",
+    "p_payload",
+    "Ungültige API-Antwort.",
+    "Anmeldung erforderlich.",
+    "cockpit_access_get",
+    "schemaVersion",
+    "cockpit-backend",
+    "SYSTEM_ADMIN",
+    "ADMIN",
+    "USER",
+    "liveticker.manage",
+    "social_media_generator.use",
+    "personallyAssigned",
+    "activeSocialMediaTeam",
+    "effectiveAllowed",
+    "Der serverseitige Cockpit-Zugangsvertrag ist ungültig.",
+    "Kein Cockpit-Zugang",
+    "Keine Fachmodule freigegeben"
+  ]) {
+    assert(
+      applicationBundle.includes(requiredContractMarker),
+      `Das Cockpit-Artefakt enthält den AP-03/R1-Vertragsmarker nicht: ${requiredContractMarker}`
+    );
+  }
+
   assert(
-    applicationBundle.includes("contract-pending")
-      && applicationBundle.includes("keine vorläufige Freigabe"),
-    "Das Cockpit-Artefakt weist den AP-02-Fail-Closed-Zustand nicht nach."
+    !applicationBundle.includes("contract-pending")
+      && !applicationBundle.includes("keine vorläufige Freigabe"),
+    "Das Cockpit-Artefakt enthält noch den abgelösten AP-02-Vertragsstatus."
+  );
+  assert(
+    !applicationBundle.includes("portal.admin"),
+    "Das Cockpit-Artefakt darf portal.admin nicht als lokale Zugangsquelle auswerten."
+  );
+  assert(
+    /\.schemaVersion!==1\|\|.\.userId!==/.test(applicationBundle)
+      && /\.active\?[^?]{0,20}\.allowed\?\{allowed:!0,source:`cockpit-backend`/.test(applicationBundle),
+    "Das Cockpit-Artefakt bindet AP-03/R1 nicht an Schema, Sessionbenutzer und serverseitige Freigabe."
+  );
+  assert(
+    /Object\.freeze\(\[\{id:`liveticker`,label:`Liveticker`[\s\S]{0,400}\{id:`bild-generator`,label:`Bild-Generator`/.test(applicationBundle)
+      && /id===`liveticker`\?[^:]{0,200}\.permissions\.liveticker\.effectiveAllowed:[^)]{0,200}\.permissions\.generator\.effectiveAllowed/.test(applicationBundle),
+    "Das Cockpit-Artefakt begrenzt die Navigation nicht nachweisbar auf die zwei effektiven Fachrechte."
   );
 
   return { metadata, releaseRoot };

@@ -33,7 +33,7 @@ that credential into a build argument, committed file or browser runtime.
 
 ```bash
 git clone --no-checkout https://github.com/Plaerrdeifl/fanszene-cockpit.git /tmp/fanszene-cockpit
-git -C /tmp/fanszene-cockpit checkout --detach 11e67fc45266564504659064d2da2848ca32a53a
+git -C /tmp/fanszene-cockpit checkout --detach 14b07a572d0a0d412125abb2b63e6efda356a89d
 cd /tmp/fanszene-cockpit
 sha256sum package-lock.json
 npm ci
@@ -62,7 +62,7 @@ The portal test suite independently revalidates the complete contract.
   The exact 200 proxy `/cockpit/offline.html /cockpit/offline 200` keeps the
   source-owned worker URL non-redirected without introducing a Cockpit SPA or
   a global rewrite;
-- AP-02 has no URL subroutes. The pinned Cockpit shell keeps the selected module
+- AP-03/R1 has no URL subroutes. The pinned Cockpit shell keeps the selected module
   in React component state (`CockpitShell.tsx`) and switches modules with button
   click handlers; it does not expose module links or a client-side URL router;
 - `dist/cockpit/404.html` is integration-owned and deliberately outside the
@@ -72,4 +72,11 @@ The portal test suite independently revalidates the complete contract.
   unsupported deep-link promise;
 - the root Portal worker explicitly ignores `/cockpit` and its subtree;
 - LOCAL and PROD builds do not integrate this DEV release;
-- AP-02 remains fail-closed until the separate AP-03 backend contract exists.
+- Cockpit admission comes exclusively from the server-side
+  `cockpit_access_get` action. The release validates `schemaVersion: 1`, binds
+  the response to the current session user and uses only
+  `permissions.liveticker.effectiveAllowed` and
+  `permissions.generator.effectiveAllowed` for its two module entries.
+  Missing, invalid or stale API decisions remain fail-closed; neither
+  `portal.admin` nor personally assigned capability metadata grants local
+  Cockpit admission.
