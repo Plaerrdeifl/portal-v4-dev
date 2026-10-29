@@ -261,6 +261,30 @@ if (environment === "DEV") {
   }
 
   await writeFile(redirectsPath, `/ /cockpit/ 302\n${redirects}`);
+
+  // DEV-only retirement of the obsolete root-scope Portal worker.
+  // Existing registrations receive this as an update: no precache, fetch,
+  // push or notification handlers are installed. This worker unregisters
+  // only itself (scope /). All caches and other PWA registrations are kept,
+  // so no existing browser data is deleted as a side effect.
+  const devRootWorkerRetirement = `/* Cockpit DEV: retire the previous root-scope Portal PWA. */
+self.addEventListener("install", event => {
+  event.waitUntil(self.skipWaiting());
+});
+self.addEventListener("activate", event => {
+  event.waitUntil((async () => {
+    const scope = new URL(self.registration.scope);
+    const script = new URL(self.location.href);
+    if (
+      scope.origin !== script.origin
+      || scope.pathname !== "/"
+      || script.pathname !== "/service-worker.js"
+    ) return;
+    await self.registration.unregister();
+  })());
+});
+`;
+  await writeFile(resolve(dist, "service-worker.js"), devRootWorkerRetirement);
 }
 
 try {
