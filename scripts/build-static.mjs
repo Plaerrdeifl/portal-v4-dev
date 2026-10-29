@@ -1,4 +1,4 @@
-import { access, cp, mkdir, rm } from "node:fs/promises";
+import { access, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { execFile } from "node:child_process";
 import { resolve } from "node:path";
@@ -242,6 +242,18 @@ if (environment === "DEV") {
       env: process.env
     }
   );
+
+  // Exact DEV root entry only. Keep the legacy root files and worker intact
+  // until the separately verified browser/PWA migration can retire them.
+  // Never ship this redirect in LOCAL or PROD builds.
+  const redirectsPath = resolve(dist, "_redirects");
+  const redirects = await readFile(redirectsPath, "utf8");
+
+  if (redirects.split(/\r?\n/).some(line => /^\/\s+/.test(line))) {
+    throw new Error("Bereits vorhandener Root-Redirect verhindert die Cockpit-DEV-Umstellung.");
+  }
+
+  await writeFile(redirectsPath, `/ /cockpit/ 302\n${redirects}`);
 }
 
 try {
