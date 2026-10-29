@@ -177,7 +177,15 @@ test("M310 standalone registration is part of every static build artifact contra
     );
     assert.match(
       builtWorker,
-      /if \(request\.mode === "navigate"\) \{[\s\S]*?fetch\(request, \{ cache: "no-store" \}\)[\s\S]*?offlineDocument/
+      /Cockpit DEV: retire the previous root-scope Portal PWA/
+    );
+    assert.match(builtWorker, /self\.registration\.unregister\(\)/);
+    assert.doesNotMatch(builtWorker, /addEventListener\("fetch"/);
+    assert.equal(
+      await readFile(join(root, "service-worker.js"), "utf8")
+        .then(worker => worker.includes('if (request.mode === "navigate")')),
+      true,
+      "Die ursprüngliche Portal-Worker-Quelle bleibt für PROD erhalten."
     );
   } finally {
     await rm(fixture, { recursive: true, force: true });

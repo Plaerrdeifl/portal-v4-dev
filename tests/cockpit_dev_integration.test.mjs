@@ -11,6 +11,7 @@ import {
   writeFile
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { runInNewContext } from "node:vm";
 import { join, resolve } from "node:path";
 import { after, test } from "node:test";
 import { promisify } from "node:util";
@@ -423,10 +424,45 @@ test("portal build is deterministic and leaves existing app artifacts unchanged"
     assert.doesNotMatch(redirects, /^\/\* /m);
     assert.match(headers, /\/cockpit\/runtime-config\.js[\s\S]*Cache-Control: no-store/);
 
-    const cockpitGuard = portalWorker.indexOf('url.pathname === "/cockpit"');
-    const navigationHandler = portalWorker.indexOf('request.mode === "navigate"');
-    assert.ok(cockpitGuard >= 0 && cockpitGuard < navigationHandler);
-    assert.match(portalWorker, /url\.pathname\.startsWith\("\/cockpit\/"\)/);
+    // The replacement worker is intentionally NOT an app worker: it only
+    // unregisters its own obsolete root scope and preserves all caches.
+    assert.match(portalWorker, /Cockpit DEV: retire the previous root-scope Portal PWA/);
+    assert.match(portalWorker, /self\.registration\.unregister\(\)/);
+    assert.match(portalWorker, /self\.skipWaiting\(\)/);
+    assert.doesNotMatch(portalWorker, /caches\.|caches\[|cache\.delete|clients\.claim|addAll\(/);
+    const registered = new Map();
+    let unregistered = 0;
+    let skippedWaiting = 0;
+    const rootScope = "https://dev.plaerrdeifl.de/";
+    const self = {
+      location: { href: `${rootScope}service-worker.js` },
+      registration: {
+        scope: rootScope,
+        unregister: async () => { unregistered += 1; return true; }
+      },
+      skipWaiting: async () => { skippedWaiting += 1; },
+      addEventListener: (name, handler) => registered.set(name, handler)
+    };
+    runInNewContext(portalWorker, { self, URL, Promise });
+    assert.deepEqual([...registered.keys()].sort(), ["activate", "install"]);
+    let installed;
+    registered.get("install")({ waitUntil: promise => { installed = promise; } });
+    await installed;
+    assert.equal(skippedWaiting, 1);
+    let activated;
+    registered.get("activate")({ waitUntil: promise => { activated = promise; } });
+    await activated;
+    assert.equal(unregistered, 1, "Nur die eigene Root-Registrierung wird abgemeldet.");
+
+    self.registration.scope = `${rootScope}fanbus/`;
+    registered.get("activate")({ waitUntil: promise => { activated = promise; } });
+    await activated;
+    assert.equal(unregistered, 1, "Fanbus-Scope darf nie abgemeldet werden.");
+    self.registration.scope = rootScope;
+    self.location.href = `${rootScope}cockpit/service-worker.js`;
+    registered.get("activate")({ waitUntil: promise => { activated = promise; } });
+    await activated;
+    assert.equal(unregistered, 1, "Cockpit-Worker darf nie abgemeldet werden.");
 
     await execFileAsync(
       process.execPath,
@@ -453,6 +489,11 @@ test("portal build is deterministic and leaves existing app artifacts unchanged"
       await readFile(join(buildFixture, "dist", "_redirects"), "utf8"),
       await readFile(join(root, "_redirects"), "utf8"),
       "PROD darf weder Root-Cockpit-Redirect noch neue Cockpit-Artefakte enthalten."
+    );
+    assert.equal(
+      await readFile(join(buildFixture, "dist", "service-worker.js"), "utf8"),
+      await readFile(join(root, "service-worker.js"), "utf8"),
+      "PROD muss den originalen Portal-Service-Worker exakt behalten."
     );
 
     await writeFile(
@@ -484,6 +525,11 @@ test("portal build is deterministic and leaves existing app artifacts unchanged"
       await readFile(join(buildFixture, "dist", "_redirects"), "utf8"),
       await readFile(join(root, "_redirects"), "utf8"),
       "LOCAL darf keine DEV-Root-Umleitung übernehmen."
+    );
+    assert.equal(
+      await readFile(join(buildFixture, "dist", "service-worker.js"), "utf8"),
+      await readFile(join(root, "service-worker.js"), "utf8"),
+      "LOCAL muss den originalen Portal-Service-Worker exakt behalten."
     );
   } finally {
     await rm(buildFixture, { recursive: true, force: true });
