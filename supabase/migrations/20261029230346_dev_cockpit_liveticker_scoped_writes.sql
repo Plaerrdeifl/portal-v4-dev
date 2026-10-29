@@ -13,7 +13,7 @@ set search_path = ''
 as $function$
 declare
   v_state record;
-  v_action text := pg_catalog.lower(pg_catalog.btrim(pg_catalog.coalesce(p_action, '')));
+  v_action text := pg_catalog.lower(pg_catalog.btrim(coalesce(p_action, '')));
   v_cockpit jsonb;
   v_role text;
 begin
