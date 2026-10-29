@@ -1,6 +1,6 @@
-# PD-Portal – DECISIONS
+# Cockpit – DECISIONS (vormals PD-Portal)
 
-**Stand:** 26.10.2026  
+**Stand:** 29.10.2026  
 **Zweck:** Verbindliche fachliche und technische Entscheidungen. Diese Datei beschreibt Soll-Entscheidungen, nicht automatisch den aktuellen Implementierungs- oder Betriebsnachweis.
 
 ## D-001 – DEV und PROD bleiben strikt getrennt
@@ -86,9 +86,11 @@ Keine schnelle manuelle PROD-Schemaänderung als Endlösung.
 
 Fertigmeldung erst nach den für das Thema relevanten Tests und/oder Live-Prüfungen.
 
-## D-015 – Nextcloud-Berechtigung aus Portal-Team
+## D-015 – Historischer Nextcloud-Teamvertrag (Ablösung nach D-055)
 
-**Entscheidung:** Der gewünschte Social-Media-Zugriff auf Nextcloud wird aus der Portal-Teamzugehörigkeit abgeleitet.
+**Übergang:** Bestehende Nextcloud-/WordPress-Zugänge dürfen nicht durch Entfernen von Teamdaten unterbrochen werden. Als neues Cockpit-Zielmodell werden organisatorische Portalteams als Rechtequelle abgelöst; Migration der tatsächlichen Fremdclient-Rechte und -Verträge nur kontrolliert nach D-055.
+
+**Bisherige Entscheidung:** Der gewünschte Social-Media-Zugriff auf Nextcloud wird aus der Portal-Teamzugehörigkeit abgeleitet.
 
 Kein paralleles, unabhängig gepflegtes Berechtigungsmodell aufbauen, wenn es technisch nicht erforderlich ist.
 
@@ -155,7 +157,9 @@ Zentrale Plattform-/Supabase-Migrationen werden während der Modularisierung wei
 
 ## D-026 – Generatorzugriff nutzt bestehende Plattformidentität
 
-**Entscheidung:** Zugriff erfolgt über bestehende Plattformbenutzer. `social_media_generator.use` ist die fachliche Generator-Berechtigung; aktive Mitglieder des Portal-Teams `SOCIAL_MEDIA` erhalten ebenfalls Zugriff. `portal.admin` bleibt zentraler Admin-Wildcard.
+**Übergang nach D-055:** Team- und Portaladmin-abgeleitete Generatorrechte existieren im Altvertrag weiterhin; sie werden nicht unkontrolliert gelöscht oder als neue Cockpit-Rechtequelle perpetuiert. Ziel sind explizite, fachbezogene persönliche Capabilities mit kontrollierter Bestandsmigration und geprüfter Kompatibilität.
+
+**Bisheriger Fachvertrag:** Zugriff erfolgt über bestehende Plattformbenutzer. `social_media_generator.use` ist die fachliche Generator-Berechtigung; aktive Mitglieder des Portal-Teams `SOCIAL_MEDIA` erhalten ebenfalls Zugriff. `portal.admin` bleibt zentraler Admin-Wildcard.
 
 Normal- und Expert-Modus gehören zum Generator. In V1 ist der Expert-Modus eine benutzerspezifische Einstellung; eine spätere eigene Capability bleibt möglich.
 
@@ -208,15 +212,13 @@ Teamlogos werden zentral in Supabase Storage im Bucket `liveticker-team-logos` g
 
 Nextcloud ist für Teamlogos nicht die führende Quelle. Eine dort sichtbare Kopie kann für die menschliche Nutzung existieren, darf aber nicht Voraussetzung für Liveticker oder Generator sein.
 
-## D-034 – Das Gesamtprodukt heißt PD-Portal
+## D-034 – Produktname: Cockpit löst PD-Portal als Entwicklungsziel ab
 
-**Entscheidung:** Das Gesamtsystem wird fachlich und in der Kommunikation als **PD-Portal** bzw. **Portal** bezeichnet.
+**Aktualisierung durch D-054:** Das neue Gesamtprodukt heißt **Cockpit** (Fanszene Schweinfurt Cockpit). **PD-Portal/Portal 2.0 ist kein eigenständiges neues Zielprodukt mehr.** „Portal 1.0“, „Portal-Core“ und `portal-v4-dev` dürfen als Bezeichnungen des produktiven Altbestands beziehungsweise der weiterhin notwendigen technischen Plattform bestehen bleiben. Eine technische Umbenennung hat keinen Vorrang vor einer sicheren Ablösung.
 
-„Digitalplattform V4“ ist kein fortzuführender Produktname. Bestehende technische Namen wie `portal-v4-dev`, historische Migrationsbezeichner oder Legacy-Pfade dürfen während der kontrollierten Migration bestehen bleiben, bis ihre Umbenennung technisch sinnvoll und separat freigegeben ist.
+## D-035 – Das Cockpit wird modularisiert, nicht als Big-Bang neu geschrieben
 
-## D-035 – Das PD-Portal wird modularisiert, nicht als Big-Bang neu geschrieben
-
-**Entscheidung:** Große Fachdomänen werden schrittweise in klar abgegrenzte Repositories und Anwendungen überführt.
+**Aktualisierung durch D-054:** Große Fachdomänen werden schrittweise in das Cockpit als gemeinsames Zielprodukt mit klar abgegrenzten führenden Fachrepositories integriert. Ein separates Portal-2.0-Frontend wird nicht zusätzlich aufgebaut.
 
 Die Zielgrenzen umfassen insbesondere:
 
@@ -251,11 +253,11 @@ Die bestehenden zentralen Event-IDs und Eventtabellen bleiben führend. Fanbus, 
 
 Cross-Modul-Komfortfunktionen werden über stabile IDs und Integrations-/Navigationsverträge gelöst; Events übernimmt keine Fanbus-, Liveticker- oder Generator-Fachlogik.
 
-## D-038 – Standalone-Fachmodule bleiben vollständig ins Portal integriert
+## D-038 – Standalone-Fachmodule bleiben vollständig ins Cockpit integriert
 
-**Entscheidung:** Eigenständige Fachanwendungen wie Events, Liveticker oder Generator dürfen direkt aufrufbar sein und werden gleichzeitig vollständig in das PD-Portal integriert.
+**Aktualisierung durch D-054:** Eigenständige Fachanwendungen wie Liveticker, Generator und später Bus-Orga bleiben direkt aufrufbar und werden zugleich vollständig in das Cockpit integriert.
 
-Das Portal wird nicht zu einem bloßen Link-Hub. Es gibt keine zweite Portalimplementierung derselben Fachfunktion und kein iframe als Standardarchitektur für interne Fachmodule.
+Das Cockpit wird nicht zu einem bloßen Link-Hub. Es gibt keine zweite Portalimplementierung derselben Fachfunktion und kein iframe als Standardarchitektur für interne Fachmodule.
 
 ## D-039 – WordPress bleibt öffentliche Website- und WooCommerce-Schicht
 
@@ -319,7 +321,9 @@ PROD:
 - `https://plaerrdeifl.de/tasks` → Tasks
 - `https://plaerrdeifl.de/mail` → Mail
 
-DEV spiegelt dieselbe Pfadstruktur unter `https://dev.plaerrdeifl.de`.
+**DEV-Ziel ab D-054:** `https://dev.plaerrdeifl.de/` eröffnet künftig unmittelbar das Cockpit (beispielsweise durch einen geprüften Redirect nach `/cockpit/`, solange die Cockpit-PWA auf diesen Scope begrenzt ist). Die alte Portal-Root-Oberfläche ist kein neues Zielprodukt. PROD-Root bleibt ausdrücklich die WordPress-Website; keine implizite PROD-Routingänderung.
+
+DEV spiegelt bis zur kontrollierten Umstellung dieselbe Pfadstruktur unter `https://dev.plaerrdeifl.de`.
 
 Die öffentliche WordPress-Website bleibt auf `/`. Für PROD wird eine vorgeschaltete Pfad-Routing-Schicht vorgesehen, die die Portal-/Modulpfade an ihre Anwendungen und alle übrigen Websitepfade weiterhin an WordPress/Lima-City routet. Cloudflare ist dafür die vorgesehene Routing-Ebene.
 
@@ -329,9 +333,11 @@ DNS-/Nameserver-Änderungen, Cloudflare-Routing und Redirects sind eigene PROD-I
 
 Jede PWA muss Router-, Asset- und Service-Worker-Scope auf ihren eigenen Pfad begrenzen, damit kein Modul andere Portalpfade kontrolliert.
 
-## D-045 – Portal 2.0 wird vollständig auf DEV aufgebaut und gemeinsam nach PROD umgeschaltet
+## D-045 – Historische Portal-2.0-Gesamtreleaseplanung (durch D-054 ersetzt)
 
-**Entscheidung:** Während des Gesamtumbaus bleibt das bestehende PROD-System als Portal 1.0 in Betrieb. Das neue PD-Portal wird vollständig auf DEV aufgebaut, dort Modul für Modul integriert und als Gesamtsystem abgenommen.
+**Status ab 29.10.2026:** Das separate Zielprodukt und der gemeinsame Portal-2.0-Cutover sind **abgelöst**. Es gilt D-054 mit Cockpit als einzigem neuem Gesamtprodukt, und für jeden PROD-Release gelten die Sicherheits-/Freigabebedingungen aus D-053. Der folgende Text dokumentiert den vorherigen Plan und ist **keine fortgeltende eigenständige Zielvorgabe**.
+
+**Historische Entscheidung:** Während des Gesamtumbaus bleibt das bestehende PROD-System als Portal 1.0 in Betrieb. Das neue PD-Portal wird vollständig auf DEV aufgebaut, dort Modul für Modul integriert und als Gesamtsystem abgenommen.
 
 Es erfolgt grundsätzlich **kein regulärer modulweiser Portal-2.0-Cutover nach PROD**. Notwendige Fehlerbehebungen, Sicherheitskorrekturen und dringende Betriebsarbeiten an Portal 1.0 bleiben davon unberührt.
 
@@ -343,9 +349,11 @@ Der spätere PROD-Wechsel ist ein koordinierter Cutover mit Recovery-Punkt, ggf.
 
 **Ausdrücklich begrenzte Ausnahme – Fanszene Schweinfurt Cockpit (D-053):** Nur für das Cockpit und seine zwingend notwendigen, mit Portal 1.0 kompatiblen Backend-, Worker- und Fachabhängigkeiten darf nach vollständiger gesonderter Prüfung ein eigener PROD-Release vorbereitet und ausdrücklich freigegeben werden. Der Release des Cockpits ist weder eine allgemeine Modul-für-Modul-Freigabe noch der gemeinsame Portal-2.0-Cutover; die übrigen Module, Portal 1.0 und alle bisherigen Schutzregeln bleiben unberührt. Die Architekturentscheidung erlaubt **jetzt keine** PROD-Änderung.
 
-## D-046 – Für Benutzer gibt es eine gemeinsame installierbare PD-Portal-PWA
+## D-046 – Historisches PD-Portal-PWA-Zielbild (durch D-054 ersetzt)
 
-**Entscheidung:** Für die reguläre Portalnutzung gibt es **eine gemeinsame installierbare PD-Portal-PWA** als normalen Benutzereinstieg. Benutzer müssen nicht mehrere PWAs installieren, um das Portal und seine Fachfunktionen regulär zu verwenden. Die Fachanwendungen bleiben über die zentrale Portalnavigation integriert und zugleich unter ihren eigenen URLs direkt erreichbar; pro Fachfunktion gibt es nur eine führende Implementierung.
+**Status ab 29.10.2026:** Die Cockpit-PWA wird der normale gemeinsame Einstieg des neuen Produkts. Eine zweite Portal-2.0-PWA als parallele Zielanwendung wird **nicht** aufgebaut. Fach-PWAs für Liveticker, Generator und später Bus-Orga bleiben eigenständig installierbar, mit getrennten Scopes. Alte Root-/Portal-PWAs werden nur nach verifiziertem Übergang abgelöst; siehe D-057. Der folgende Text dokumentiert das frühere Zielbild.
+
+**Historische Entscheidung:** Für die reguläre Portalnutzung gibt es **eine gemeinsame installierbare PD-Portal-PWA** als normalen Benutzereinstieg. Benutzer müssen nicht mehrere PWAs installieren, um das Portal und seine Fachfunktionen regulär zu verwenden. Die Fachanwendungen bleiben über die zentrale Portalnavigation integriert und zugleich unter ihren eigenen URLs direkt erreichbar; pro Fachfunktion gibt es nur eine führende Implementierung.
 
 **Zusätzliche Fach-PWAs:** **Fanbus und Liveticker bleiben ausdrücklich eigenständig installierbare PWAs.** Der **Social-Media-Generator bleibt gemäß D-021 ebenfalls eine eigenständige PWA**. Das **Fanszene Schweinfurt Cockpit** ist zusätzlich eine eigenständig installierbare Anwendungs-PWA für genau Liveticker und Bild-Generator. Es ersetzt weder die gemeinsame Portal-PWA noch die beiden eigenständigen Fach-PWAs. Weitere Fachmodule dürfen entsprechend ihren freigegebenen fachlichen Entscheidungen zusätzliche eigenständig installierbare PWAs anbieten. Diese Installationsmöglichkeiten sind optional und ersetzen die gemeinsame Portal-PWA nicht; sie sind keine konkurrierenden Pflichtinstallationen.
 
@@ -419,7 +427,9 @@ Die bestehenden DEV-/PROD-Regeln bleiben unverändert. Insbesondere ist ein erfo
 
 ## D-050 – Fanszene Schweinfurt Cockpit ist eigenständige PWA und gemeinsamer Facheinstieg
 
-**Entscheidung:** Das **Fanszene Schweinfurt Cockpit** ist eine eigenständig installierbare **React-/TypeScript-/Vite-PWA** im neuen Repository `Plaerrdeifl/fanszene-cockpit`. Seine kanonische Adresse liegt unter `/cockpit/` (DEV `https://dev.plaerrdeifl.de/cockpit/`, langfristiges PROD-Ziel `https://plaerrdeifl.de/cockpit/`). Es nutzt `Plaerrdeifl/platform-ui` für Runtime-Konfiguration, Supabase-/Portalidentität, Session, `public.pd_api(text, jsonb)`, Bootstrap und UI-Grundlagen.
+**Aktualisierung durch D-054:** Das Cockpit ist **nicht mehr ein zusätzlicher Einstieg neben einem künftigen Portal 2.0**, sondern die alleinige neue Produktoberfläche. Die anfänglichen zwei Fachmodule bleiben Liveticker und Bildgenerator; Bus-Orga folgt danach. Die nachfolgende technische D-050-V1-Beschränkung auf zwei Module und eine zusätzliche Portal-PWA gilt nur für den bestehenden Ausbaustand, nicht als dauerhaftes Produktlimit.
+
+**Bisheriger PWA-Vertrag:** Das **Fanszene Schweinfurt Cockpit** ist eine eigenständig installierbare **React-/TypeScript-/Vite-PWA** im neuen Repository `Plaerrdeifl/fanszene-cockpit`. Seine kanonische Adresse liegt unter `/cockpit/` (DEV `https://dev.plaerrdeifl.de/cockpit/`, langfristiges PROD-Ziel `https://plaerrdeifl.de/cockpit/`). Es nutzt `Plaerrdeifl/platform-ui` für Runtime-Konfiguration, Supabase-/Portalidentität, Session, `public.pd_api(text, jsonb)`, Bootstrap und UI-Grundlagen.
 
 **Cockpit-Verantwortung:** App-Shell, Navigation, Anmeldung, Profil/Abmeldung sowie Cockpit-spezifische Zugangs-, Benutzer- und Rechteverwaltung. **Einzige Fachmodule:** Liveticker und Bild-Generator. Liveticker-Fachlogik, -Daten und -Worker bleiben in `Plaerrdeifl/liveticker`; Generator-Fachlogik, -Daten und -Worker bleiben in `Plaerrdeifl/social-media-generator`. Deren eigenständig installierbare PWAs und die gemeinsame Portal-PWA bleiben erhalten.
 
@@ -437,6 +447,8 @@ Die bestehenden DEV-/PROD-Regeln bleiben unverändert. Insbesondere ist ein erfo
 
 ## D-052 – Cockpit-Benutzerverwaltung bleibt zentral und verwendet begrenzte, auditierte Backend-Verträge
 
+**Ergänzung nach D-055:** Die aktuelle Darstellung teamabgeleiteter *effektiver* Generatorrechte ist für Altvertragskompatibilität beizubehalten, solange diese Quellen noch real wirksam sind. Das neue Cockpit baut **keine organisatorische Teamverwaltung** auf. Die spätere Abschaltung teamabgeleiteter und global-wildcardbasierter Fachzugriffe erfolgt erst nach vollständiger Berechtigungsinventur, Migration, Tests und separatem geprüften Cutover.
+
 **Entscheidung:** Benutzeridentitäten und globale Benutzerzustände bleiben bei Portal-Core bzw. Supabase Auth führend. Das Cockpit erstellt **keine** zweite Benutzer-/Auth-Datenbank. Neue Identitäten, Einladungen, Freischaltung und erforderliche Profiländerungen erfolgen ausschließlich über geeignete kontrollierte zentrale Backend-Funktionen. Cockpit-Benutzer-/Rollenverwaltung, Cockpit-Freigabe und -Sperre sind **anwendungsbezogen**; eine Cockpit-Sperre darf weder eine globale Portalbenutzersperre noch das Sperren anderer Module auslösen.
 
 **Administration:** Alle Verwaltungsaktionen laufen über auf genau diesen Zweck begrenzte `public.pd_api(text, jsonb)`-Actions. Sie prüfen serverseitig Akteur, ausdrückliche Cockpit-Rolle, konkreten Zielbenutzer, erlaubte Mutation und Rechte-Allowlist; sie sind auditierbar, konflikt-/revisionsgeschützt und schützen gegen Rechteausweitung und den Verlust des letzten Systemadministrators. Allgemeine Portal-Admin- oder unbeschränkte Benutzerrechte-Mutationsfunktionen werden nicht als direkte Cockpit-Adminoberfläche exponiert. Cockpit-Administratoren dürfen nur normale Cockpit-Benutzer und deren persönliche Liveticker-/Generatorrechte verwalten. Administrator- und Systemadministrator-Zuordnungen sind Systemadministratoren vorbehalten.
@@ -445,9 +457,11 @@ Die bestehenden DEV-/PROD-Regeln bleiben unverändert. Insbesondere ist ein erfo
 
 **Geltungsbereich:** Änderungen des zentralen Auth-/API-/Berechtigungsvertrags werden kompatibel mit anderen Portalmodulen ausgeführt; der Browser nutzt allein die bestehende `pd_api`-Grenze, niemals `service_role`. Dauerhafte Datenbankänderungen folgen D-042 mit nur einer führenden Migrationshistorie.
 
-## D-053 – Ausschließlich Cockpit erhält Option auf eigenständigen, gesondert freizugebenden PROD-Release
+## D-053 – Cockpit-PROD-Releases brauchen gesonderte Sicherheits- und Betriebsfreigabe
 
-**Entscheidung:** Als **einzige eng begrenzte Ausnahme** von der regulären gemeinsamen Portal-2.0-PROD-Umschaltung nach D-045 darf das Fanszene Schweinfurt Cockpit **einschließlich ausschließlich zwingend notwendiger und mit Portal 1.0 kompatibler Backend-, Worker- und Fachabhängigkeiten** eigenständig nach PROD veröffentlicht werden. Andere Module erhalten dadurch keine reguläre vorgezogene PROD-Freigabe; Portal 1.0 bleibt in Betrieb, der gemeinsame Portal-2.0-Cutover bleibt für das übrige Gesamtsystem verbindlich.
+**Aktualisierung durch D-054:** Das Cockpit ist nun das neue Gesamtprodukt, kein Ausnahmemodul neben einem künftig separat auszurollenden Portal 2.0. Die nachfolgend definierten, strengen PROD-Freigabebedingungen gelten weiter; die ehemalige Interpretation als *Ausnahme* von einem anderen Portal-2.0-Cutover entfällt. **Diese Entscheidung autorisiert keinerlei aktuelle PROD-Arbeit.**
+
+**Historischer Ausnahmevertrag / weiterhin geltende Sicherheitsbedingungen:** Als **einzige eng begrenzte Ausnahme** von der regulären gemeinsamen Portal-2.0-PROD-Umschaltung nach D-045 darf das Fanszene Schweinfurt Cockpit **einschließlich ausschließlich zwingend notwendiger und mit Portal 1.0 kompatibler Backend-, Worker- und Fachabhängigkeiten** eigenständig nach PROD veröffentlicht werden. Andere Module erhalten dadurch keine reguläre vorgezogene PROD-Freigabe; Portal 1.0 bleibt in Betrieb, der gemeinsame Portal-2.0-Cutover bleibt für das übrige Gesamtsystem verbindlich.
 
 **Zwingende Bedingungen vor jeder gesonderten PROD-Freigabe:**
 
@@ -461,3 +475,37 @@ Die bestehenden DEV-/PROD-Regeln bleiben unverändert. Insbesondere ist ein erfo
 8. **separate konkrete ausdrückliche PROD-Freigabe** des festgelegten Releaseumfangs.
 
 **Freigabegrenze:** Diese Entscheidung ist nur eine Architektur- und spätere Release-Option; sie autorisiert **jetzt weder PROD-Migrationen noch Worker-/Routing-/Frontend-Deployments**. Die zentrale `Plaerrdeifl/portal-v4-dev/supabase`-Migrationshistorie bleibt bis zu einem ausdrücklich freigegebenen atomaren Backend-Cutover führend (D-042).
+
+## D-054 – Cockpit ersetzt Portal 2.0 vollständig als neues Zielprodukt
+
+**Entscheidung vom 29.10.2026:** Das geplante **Portal 2.0 wird nicht als eigenständiges Produkt umgesetzt**. An seine Stelle tritt das **Fanszene Schweinfurt Cockpit** (kurz **Cockpit**) als einzige neue gemeinsame Anwendung und langfristiger Nachfolger der bisher für Portal 2.0 gedachten Funktionen. Das Cockpit ist weder ein Zusatz zu Portal 2.0 noch dessen vorübergehender Einstieg. Bestehende Repository- und Datenbanknamen wie `portal-v4-dev` bleiben vorläufig bestehen; sie definieren kein zweites Produkt.
+
+**Einführungsreihenfolge:** Zunächst Liveticker und Bildgenerator; **danach** Bus-Orga/Fanbus in der neuen Struktur; weitere bisher für Portal 2.0 vorgesehene Funktionen werden später einzeln freigegeben. Die führende Fachlogik bleibt in genau einem Fachrepository je Funktion. Liveticker und Bus-Orga bleiben auch eigenständig installierbare PWAs; für den Generator gilt bis zu einer gesonderten Entscheidung dessen Standalone-PWA-Vertrag. Cockpit ist der gemeinsame Einstieg, keine zweite Fachimplementierung.
+
+**DEV-Adresse:** `https://dev.plaerrdeifl.de/` eröffnet künftig das Cockpit. Der vorhandene Cockpit-Pfad `/cockpit/` und sein abgegrenzter PWA-/Service-Worker-Scope können erhalten bleiben; die Root-Adresse darf geprüft dorthin weiterleiten. Die alte Portal-Root-Oberfläche wird erst nach Inventar, Sicherung, Abhängigkeitsprüfung, Rückfallplan und DEV-E2E abgelöst. OAuth-/Login-, API-/Asset- und Fachmodulpfade bleiben funktionsfähig. Die produktive WordPress-Website unter `https://plaerrdeifl.de/` bleibt unverändert.
+
+**Gemeinsame Plattform:** Supabase Auth, zentrale Identitäten, individuelle Cockpit-Rollen, Fach-Capabilities, `public.pd_api(text, jsonb)`, geschützte Backendfunktionen, Worker, OAuth/OIDC und die einzige führende Migrationshistorie werden als benötigte Infrastruktur behalten. Es gibt weder eine parallele neue Portal-2.0-Oberfläche noch eine zweite Identität oder einen Big-Bang-Rewrite.
+
+**Vorrang:** Diese Entscheidung ersetzt widersprechende **Zielaussagen** in D-034/035/038/044–046/050/053. Die Betriebs-, Sicherheits-, Daten-, DEV-/PROD-Trennungs- und ausdrücklichen PROD-Freigaberegeln bleiben verbindlich.
+
+## D-055 – Cockpit verwendet keine organisatorischen Portalteams als Rollen- oder Rechtebasis
+
+**Entscheidung vom 29.10.2026:** Die **organisatorische Teamwelt des alten Portals** wird nicht in das neue Cockpit übernommen. Zugang, Verwaltung und Fachnutzung basieren auf zentraler Benutzeridentität, anwendungsbezogenen Cockpit-Rollen und ausdrücklichen Fach-Capabilities. Es gibt weder eine neue Teamzuordnung als Bedingung für Cockpit-Zugang noch eine zweite Teamverwaltung.
+
+**Abgrenzung:** Sportliche Mannschaften, Spielpläne, Kader, Mannschaftslogos und teambezogene Liveticker-Ausgaben sind **Fachdaten** und bleiben bestehen. Reisegruppen bei Bus-Orga sind ebenfalls keine organisatorischen Portalteams; Reisegruppe, Buchung und Hauptbuchung bleiben getrennte Fachbegriffe.
+
+**Kontrollierte Ablösung:** D-015/D-026/D-040/D-052 beschreiben noch tatsächlich existierende alte Portalteam-, `SOCIAL_MEDIA`- und `portal.admin`-Zugangsquellen. Diese bleiben für laufende Altverträge wirksam, bis Generator, Nextcloud, WordPress und andere Konsumenten inventarisiert und auf persönliche bzw. eng begrenzte Fachrechte sicher migriert sind. Keine stille Löschung, keine unkontrollierte Rechteausweitung und kein Wiederaufbau der alten organisatorischen Teamwelt. Die Abschaltung der Altquellen braucht einen eigenen geprüften Daten-/Rechte-Cutover.
+
+## D-056 – Legacy-Portal-READ_ONLY darf Cockpit-Schreibbetrieb nicht pauschal blockieren
+
+**Entscheidung vom 29.10.2026:** Ein bewusst zum Schutz der **alten DEV-Portaloberfläche** gesetztes `READ_ONLY` darf nicht automatisch die ausdrücklich autorisierten Cockpit-Verwaltungsaktionen stilllegen. Der derzeitige zentrale M900-Modus `platform.mode` gilt **technisch global**; die Cockpit-Actions für Zugang und persönliche Rechte werden als `USER_MUTATION` blockiert. Das ist ein **noch zu korrigierender Ist-/Soll-Konflikt**, kein bereits implementierter Fix.
+
+**Sicheres Ziel:** Ein gesonderter, serverseitig autorisierter und eng begrenzter Cockpit-Betriebsvertrag trennt die Legacy-Frontend-Sperre von Cockpit-Mutationen. Bestehende Cockpit-Rollen-, Zielbenutzer-, Revisions-, Audit- und Notfallschutzprüfungen gelten unverändert. Allgemeine Portal-/andere Fachmutationen, `MAINTENANCE`-Notfallsperren und Sicherheitsgrenzen dürfen nicht umgangen werden. Das Frontend muss denselben differenzierten Serververtrag abbilden. Kein pauschaler M900-Bypass und keine globale DEV-Umschaltung auf `NORMAL` als Ersatz für diese Korrektur.
+
+## D-057 – DEV-Altoberfläche nur mit Sicherung und nachgewiesener Entbehrlichkeit entfernen
+
+**Entscheidung vom 29.10.2026:** Die nicht mehr benötigte alte DEV-Portaloberfläche darf nach Archivierung entfernt werden, sobald das Cockpit über die DEV-Root-Adresse erreichbar ist und alle noch genutzten Dienste unverändert funktionieren. Identität, OAuth, API, Datenbanken, Migrationen, Worker, Fachmodule und erforderliche Pfade/Assets bleiben erhalten.
+
+**Pflichtreihenfolge:** Live-Inventar und Keep/Remove-Nachweis → reproduzierbare Sicherung inkl. Routing-/Build-Konfiguration und erforderlichem DEV-Datenstand → Root-Einstieg und abgegrenzte PWA-Scopes verifizieren → authentifizierte Rollen-/Mutation-/Login- und Modul-E2E → schrittweise Entfernung nachgewiesenen Altbestands → Recovery-Test. Keine pauschale Löschung von `portal-v4-dev`, `supabase`, Identitäts-/Teamtabellen oder genutzten APIs. Teamdaten erst nach D-055-Migration entfernen.
+
+**PROD-Schutz:** Portal 1.0 und WordPress bleiben unverändert; jeder Cockpit-PROD-Release braucht eine neue ausdrückliche Freigabe nach D-053.
