@@ -31,7 +31,7 @@ begin
   values
     (v_user,'USER',true,1),
     (v_admin,'ADMIN',true,1);
-  insert into app_portal.user_capabilities(user_id,capability_code,granted_by)
+  insert into app_portal.user_capabilities(user_id,capability_code,created_by)
   values (v_user,'liveticker.manage',v_admin);
 
   update app_portal.settings set
