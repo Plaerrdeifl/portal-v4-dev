@@ -2,31 +2,31 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/liveticker",
-  "sourceCommit": "251323ecd1c70abe535e0453ef1ad519ca5ca1b8",
+  "sourceCommit": "f3797dcaa47901f2d00bbca165157ce8f299a85b",
   "sourcePackageLockSha256": "0f87ce32d86bbbc93d1118e518d8373e5ce7097cc354e64e86b746b3723cde54",
   "sourceBuildCommand": "npm ci && npm run check && npm run build:cockpit && npm run verify:hosted-dev",
   "artifactRoot": "integrations/liveticker/release",
-  "artifactSha256": "72c6d313bc4b73fa621cf4e26c418f287b45b0dbadf35d8b57b02c02bd3a167a",
+  "artifactSha256": "67fdf39f0e6e209c9a35b9880c241d9d84599b142fb9e3a890e65f5461c59920",
   "files": [
     {
-      "path": "embed/chunks/ArchivePanel-R9oaSA1s.js",
-      "bytes": 23279,
-      "sha256": "3b4715601d948ced6854240e8d71d2dfeab351801b2de0af5917346974659451"
+      "path": "embed/chunks/ArchivePanel-GHEa8D2w.js",
+      "bytes": 23284,
+      "sha256": "8a94e4d8721c33c84523d593b396fbb904594f4add8acb434aeea585a1719363"
     },
     {
-      "path": "embed/chunks/GameWorkspace-DIEBLarW.js",
-      "bytes": 117274,
-      "sha256": "12143f8d7ad779b30f7fd7667916ad03e8b5dbb477275eb8fd2866cf19fd5bd2"
+      "path": "embed/chunks/GameWorkspace-DpRmE_32.js",
+      "bytes": 117279,
+      "sha256": "d56e91661bebfdc6fa2a89beb71446d6480d20796ff66ca0b8c1f980c94ff9a6"
     },
     {
-      "path": "embed/chunks/LivetickerAdmin-BV1eCoTH.js",
-      "bytes": 59654,
-      "sha256": "53cb15a0aa629732a1dafa10384a4af5a624b3cf6209d4a7dd04c5a7942418e4"
+      "path": "embed/chunks/LivetickerAdmin-axXlJcwD.js",
+      "bytes": 59659,
+      "sha256": "548796170fcbc2d38dd5d6de8afcc8e59c7d41052f4ab98064156967f3d93b83"
     },
     {
-      "path": "embed/chunks/api-CS-CXZJI.js",
-      "bytes": 316403,
-      "sha256": "1e284a289a92cf4d87a91ebf418ffc8fcd20fd580b5d8edd176816ae31919457"
+      "path": "embed/chunks/api-DzRo1Zw4.js",
+      "bytes": 316554,
+      "sha256": "d15edcaee68b05f6bdd7c5ae210fb6d5bc95238989167b10b22baf89dc44773f"
     },
     {
       "path": "embed/icons/icon-192.png",
@@ -45,8 +45,8 @@
     },
     {
       "path": "embed/module.js",
-      "bytes": 828182,
-      "sha256": "20eb5083d7225e2bdc21173cf87af10752d1b255b885ccd57bce284e3b61f3ab"
+      "bytes": 828240,
+      "sha256": "70247a1ca0caeb26414e37892aaa5c84127e7f5609e792b2df221192b743a661"
     },
     {
       "path": "embed/style.css",
@@ -54,29 +54,29 @@
       "sha256": "babca30a4167b41b45e528f807248e978c3d4e898088423ac9b3de84f53ae6b7"
     },
     {
-      "path": "standalone/assets/ArchivePanel-CMFcOpnh.js",
+      "path": "standalone/assets/ArchivePanel-CyW7r-De.js",
       "bytes": 17993,
-      "sha256": "4902f5eaff69a7356ffc21246b7658d0bfeda880e077678e5de9e5735838ed63"
+      "sha256": "dc0f266425dc08fb8bb7bc4a37203f6c573ad56f6cb2b48e3150b83ec6e70e8f"
     },
     {
-      "path": "standalone/assets/GameWorkspace-DusJm8ar.js",
+      "path": "standalone/assets/GameWorkspace-C1QOYLuI.js",
       "bytes": 84964,
-      "sha256": "c6cb263a34b2fdfd795376b3dd6582216c10eccf691ca7546a242bdfcfb92303"
+      "sha256": "f8fccc7edbb2611050ca7d2f6c581baf5077dae5e5afc60f1c7e158328478f1a"
     },
     {
-      "path": "standalone/assets/LivetickerAdmin-C9idVqpb.js",
+      "path": "standalone/assets/LivetickerAdmin-ZKH8-m2S.js",
       "bytes": 40698,
-      "sha256": "af3d75db800a0ca3d11d8e0195ff3c4c55e2f1ce2524df4c09dad2cc0ef57873"
+      "sha256": "1fbaa6c17500bbbe1aac3a5f6dcb1f184187c9982cad1c8b4573de8f146181ce"
+    },
+    {
+      "path": "standalone/assets/index-B4JdFkcV.js",
+      "bytes": 449373,
+      "sha256": "3589f8c4e0dc14da3184f5dc96ab936fedf661408dc8a7c48ccf6724e5b0c0f3"
     },
     {
       "path": "standalone/assets/index-B8zZ7vt3.css",
       "bytes": 58166,
       "sha256": "0c15b154dbdc040c900766a852611fa2dea33699034fc718dfe3d34dd1717e32"
-    },
-    {
-      "path": "standalone/assets/index-Cwk5ttwQ.js",
-      "bytes": 449234,
-      "sha256": "72d806b79b9d720471f031b625785b89abcf6a850641cad1ee9c26ac6d1013b7"
     },
     {
       "path": "standalone/icons/icon-192.png",
@@ -96,7 +96,7 @@
     {
       "path": "standalone/index.html",
       "bytes": 698,
-      "sha256": "82ff4f6220d692f17fedc03824f9e9fdc2b14b597f8da1eda9978ab3dd706e4b"
+      "sha256": "bcf721d84742f14b5e47a4ded33c1e3570d5a90a6d2cd507d16faf983d53ed7d"
     },
     {
       "path": "standalone/manifest.webmanifest",
@@ -111,7 +111,7 @@
     {
       "path": "standalone/sw.js",
       "bytes": 1541,
-      "sha256": "9051700eecda7550f5521f60db06952fbae304fac18eda0044e428930e526ca3"
+      "sha256": "5aa1999e16092dd190c8e315cc95992824eaa4b60acf72647166403d69189bc3"
     },
     {
       "path": "standalone/workbox-2fbc6a65.js",
