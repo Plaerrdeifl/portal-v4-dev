@@ -247,7 +247,14 @@ if (environment === "DEV") {
   // until the separately verified browser/PWA migration can retire them.
   // Never ship this redirect in LOCAL or PROD builds.
   const redirectsPath = resolve(dist, "_redirects");
-  const redirects = await readFile(redirectsPath, "utf8");
+  let redirects = "";
+
+  try {
+    redirects = await readFile(redirectsPath, "utf8");
+  } catch (error) {
+    // Minimal/isolated DEV builds can omit the optional _redirects file.
+    if (error?.code !== "ENOENT") throw error;
+  }
 
   if (redirects.split(/\r?\n/).some(line => /^\/\s+/.test(line))) {
     throw new Error("Bereits vorhandener Root-Redirect verhindert die Cockpit-DEV-Umstellung.");
