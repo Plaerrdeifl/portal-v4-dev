@@ -1,6 +1,8 @@
 \set ON_ERROR_STOP on
 begin;
 
+select plan(1);
+
 do $cockpit_lt_scoped_writes$
 declare
   v_user uuid := '00000000-0000-4587-8000-000000000001';
@@ -114,5 +116,8 @@ begin
   end if;
 end;
 $cockpit_lt_scoped_writes$;
+
+select pass('DEV-scoped Cockpit-Liveticker writes retain legacy and maintenance protection');
+select * from finish();
 
 rollback;
