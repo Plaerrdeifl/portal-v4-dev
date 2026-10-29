@@ -267,9 +267,11 @@ WordPress wird keine zweite führende Datenhaltung für Portalbenutzer, Portalte
 
 Fachdaten stammen aus dem jeweils zuständigen PD-Portal-Modul bzw. werden über definierte Integrationsschnittstellen konsumiert.
 
-## D-040 – WordPress-Login für berechtigte Nutzer wird an die Portalidentität gekoppelt
+## D-040 – WordPress-Login für berechtigte Nutzer wird an die zentrale Identität gekoppelt
 
-**Entscheidung:** WordPress wird als eigener Portal-OAuth/OIDC-/SSO-Client angebunden.
+**Übergang nach D-055:** Die bisherige Bezugnahme auf das Social-Media-Portalteam beschreibt einen Altvertrag. Der neue Cockpit-Zugriff benötigt eine zielgerichtete, serverseitig überprüfte fachliche Autorisierung ohne organisatorische Portalteams; Bestandsnutzer dürfen bei der Migration nicht still ausgesperrt werden.
+
+**Bisheriger SSO-Vertrag:** WordPress wird als eigener Portal-OAuth/OIDC-/SSO-Client angebunden.
 
 Insbesondere berechtigte Mitglieder des Social-Media-Teams sollen WordPress über ihre bestehende PD-Portal-Identität verwenden können. Die führende Zugangsentscheidung bleibt im Portal.
 
@@ -365,7 +367,7 @@ Die bestehende Portal-1.0-PWA unter `portal.plaerrdeifl.de` kann aufgrund des Or
 
 ## D-047 – Projektweite Architekturdateien werden in vorhandene Repositories gespiegelt
 
-**Entscheidung:** Die für die aktuelle Portal-2.0-Planung relevanten projektweiten Architekturdateien werden als synchronisierte Kopien unter `docs/pd-portal/` in allen bestehenden PD-Portal-Repositories abgelegt.
+**Entscheidung:** Die für die neue Cockpit-Zielarchitektur (vormals Portal-2.0-Planung) relevanten projektweiten Architekturdateien werden weiterhin als synchronisierte Kopien unter `docs/pd-portal/` in den betroffenen vorhandenen Repositories abgelegt.
 
 Die Spiegelung erzeugt keine neue fachliche Source of Truth. Für die Projektarbeit bleiben `ARCHITECTURE.md` und `DECISIONS.md` im ChatGPT-Projekt die verbindlichen Hauptquellen; die Repo-Kopien dienen Entwicklern und Coding-Agenten als lokaler Kontext. Projektweite Änderungen an diesen Dokumenten müssen kontrolliert auf die vorhandenen Repo-Spiegel übertragen werden, damit keine abweichenden lokalen Varianten entstehen.
 
