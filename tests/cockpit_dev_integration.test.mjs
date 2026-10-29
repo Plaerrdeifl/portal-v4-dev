@@ -124,7 +124,7 @@ test("versioned Cockpit release pins the private source and every generated file
   assert.equal(metadata.schemaVersion, 1);
   assert.equal(metadata.environment, "DEV");
   assert.equal(metadata.sourceRepository, "Plaerrdeifl/fanszene-cockpit");
-  assert.equal(metadata.sourceCommit, "ad14e4b3c48582469510a72fda8045e68b51f682");
+  assert.equal(metadata.sourceCommit, "1602a211d79cb5a62e6e32dae6e5569e9f76def3");
   assert.equal(
     metadata.sourcePackageLockSha256,
     "f0e8680fd6b0cc39e0267255a17d780a98f246ae1a06eb175635a45dd8598a27"
@@ -361,6 +361,10 @@ test("portal build is deterministic and leaves existing app artifacts unchanged"
       cp(
         join(root, "scripts", "integrate-cockpit-release.mjs"),
         join(buildFixture, "scripts", "integrate-cockpit-release.mjs")
+      ),
+      cp(
+        join(root, "scripts", "integrate-liveticker-release.mjs"),
+        join(buildFixture, "scripts", "integrate-liveticker-release.mjs")
       )
     ]);
 
@@ -380,8 +384,7 @@ test("portal build is deterministic and leaves existing app artifacts unchanged"
     for (const path of [
       "index.html",
       "events/index.html",
-      "fanbus/index.html",
-      "liveticker/index.html"
+      "fanbus/index.html"
     ]) {
       assert.equal(
         digest(await readFile(join(buildFixture, "dist", path))),
@@ -400,6 +403,19 @@ test("portal build is deterministic and leaves existing app artifacts unchanged"
       readFile(join(buildFixture, "dist", "service-worker.js"), "utf8")
     ]);
 
+    const [hostedLivetickerIndex, embeddedModule, hostedLivetickerConfig] = await Promise.all([
+      readFile(join(buildFixture, "dist", "liveticker", "index.html"), "utf8"),
+      readFile(join(buildFixture, "dist", "liveticker", "embed", "module.js"), "utf8"),
+      readFile(join(buildFixture, "dist", "liveticker", "runtime-config.js"), "utf8")
+    ]);
+    assert.equal(
+      hostedLivetickerIndex,
+      await readFile(join(root, "integrations", "liveticker", "release", "standalone", "index.html"), "utf8"),
+      "DEV veröffentlicht die führende Liveticker-PWA."
+    );
+    assert.match(embeddedModule, /mountLiveticker/);
+    assert.match(embeddedModule, /cockpit_access_get/);
+    assert.equal(hostedLivetickerConfig, await readFile(join(buildFixture, "dist", "cockpit", "runtime-config.js"), "utf8"));
     assert.match(portalIndex, /<title>Plärrdeifl Portal<\/title>/);
     assert.match(cockpitIndex, /<title>Fanszene Schweinfurt Cockpit<\/title>/);
     assert.notEqual(cockpitIndex, portalIndex);
@@ -491,6 +507,15 @@ test("portal build is deterministic and leaves existing app artifacts unchanged"
       "PROD darf weder Root-Cockpit-Redirect noch neue Cockpit-Artefakte enthalten."
     );
     assert.equal(
+      await readFile(join(buildFixture, "dist", "liveticker", "index.html"), "utf8"),
+      await readFile(join(root, "liveticker", "index.html"), "utf8"),
+      "PROD muss den bisherigen Liveticker beibehalten."
+    );
+    await assert.rejects(
+      readFile(join(buildFixture, "dist", "liveticker", "embed", "module.js")),
+      error => error?.code === "ENOENT"
+    );
+    assert.equal(
       await readFile(join(buildFixture, "dist", "service-worker.js"), "utf8"),
       await readFile(join(root, "service-worker.js"), "utf8"),
       "PROD muss den originalen Portal-Service-Worker exakt behalten."
@@ -525,6 +550,11 @@ test("portal build is deterministic and leaves existing app artifacts unchanged"
       await readFile(join(buildFixture, "dist", "_redirects"), "utf8"),
       await readFile(join(root, "_redirects"), "utf8"),
       "LOCAL darf keine DEV-Root-Umleitung übernehmen."
+    );
+    assert.equal(
+      await readFile(join(buildFixture, "dist", "liveticker", "index.html"), "utf8"),
+      await readFile(join(root, "liveticker", "index.html"), "utf8"),
+      "LOCAL darf die DEV-Liveticker-PWA nicht übernehmen."
     );
     assert.equal(
       await readFile(join(buildFixture, "dist", "service-worker.js"), "utf8"),

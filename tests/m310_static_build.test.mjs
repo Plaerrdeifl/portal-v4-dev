@@ -83,6 +83,10 @@ test("M310 standalone registration is part of every static build artifact contra
       cp(
         join(root, "scripts", "integrate-cockpit-release.mjs"),
         join(fixture, "scripts", "integrate-cockpit-release.mjs")
+      ),
+      cp(
+        join(root, "scripts", "integrate-liveticker-release.mjs"),
+        join(fixture, "scripts", "integrate-liveticker-release.mjs")
       )
     ]);
 

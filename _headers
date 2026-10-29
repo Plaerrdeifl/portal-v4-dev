@@ -16,3 +16,26 @@
 /cockpit/manifest.webmanifest
   Content-Type: application/manifest+json; charset=utf-8
   X-Content-Type-Options: nosniff
+
+/liveticker/runtime-config.js
+  Cache-Control: no-store
+  Content-Type: application/javascript; charset=utf-8
+  X-Content-Type-Options: nosniff
+
+/liveticker/sw.js
+  Cache-Control: no-cache
+  Content-Type: application/javascript; charset=utf-8
+  Service-Worker-Allowed: /liveticker/
+  X-Content-Type-Options: nosniff
+
+/liveticker/manifest.webmanifest
+  Content-Type: application/manifest+json; charset=utf-8
+  X-Content-Type-Options: nosniff
+
+/liveticker/embed/*.js
+  Content-Type: application/javascript; charset=utf-8
+  X-Content-Type-Options: nosniff
+
+/liveticker/embed/style.css
+  Content-Type: text/css; charset=utf-8
+  X-Content-Type-Options: nosniff

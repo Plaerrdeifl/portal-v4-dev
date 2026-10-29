@@ -1,0 +1,3462 @@
+import { a as e, i as t, n, o as r, t as i } from "./api-CS-CXZJI.js";
+import { C as a, E as o, S as s, T as c, _ as l, a as u, b as d, c as f, d as p, f as m, g as h, h as g, i as _, l as v, m as y, n as b, o as ee, p as x, r as S, s as C, t as w, u as T, v as E, w as D, x as O, y as k } from "./ArchivePanel-R9oaSA1s.js";
+//#region src/liveticker/transport.ts
+var A = r(), j = "LIVETICKER_WHATSAPP", M = "liveticker-whatsapp-jobs", N = /* @__PURE__ */ new Set([
+	"TEST",
+	"MAIN",
+	"BOTH"
+]);
+function P(e) {
+	return String(e ?? "").trim();
+}
+function F(e) {
+	let t = e || {};
+	return {
+		ready: t.ready === !0,
+		state: P(t.state).toUpperCase() || "UNREACHABLE",
+		enabled: typeof t.enabled == "boolean" ? t.enabled : void 0,
+		error: P(t.error) || null
+	};
+}
+function I(e) {
+	let t = e || {};
+	return {
+		ready: t.ready === !0,
+		state: P(t.state).toUpperCase() || "UNREACHABLE",
+		desiredConnected: t.desiredConnected !== !1,
+		error: P(t.error) || null
+	};
+}
+function te(e) {
+	let t = e || {}, n = P(t.mode).toUpperCase(), r = N.has(n) ? n : "TEST", i = Array.isArray(t.channels) ? t.channels.map((e) => {
+		let t = e || {}, n = P(t.code).toUpperCase();
+		return n ? {
+			code: n,
+			label: P(t.label) || n,
+			configured: t.configured === !0,
+			enabled: t.enabled === !0
+		} : null;
+	}).filter((e) => !!e) : [];
+	return {
+		ready: t.ready === !0,
+		mode: r,
+		channels: i
+	};
+}
+function L(e) {
+	return e instanceof Error ? e.message : P(e) || "Status nicht verfügbar";
+}
+async function R(e) {
+	let t = [i("worker_runtime_status", { workerCode: j }), i("liveticker_wpp_runtime_status", {})];
+	e === "PROD" && t.push(i("liveticker_whatsapp_routing_status", {}));
+	let n = await Promise.allSettled(t), r = [], a = n[0]?.status === "fulfilled" ? F(n[0].value) : {
+		ready: !1,
+		state: "UNREACHABLE",
+		enabled: !1,
+		error: L(n[0]?.reason)
+	};
+	n[0]?.status === "rejected" && r.push("WA-Worker: " + L(n[0].reason));
+	let o = n[1]?.status === "fulfilled" ? I(n[1].value) : {
+		ready: !1,
+		state: "UNREACHABLE",
+		desiredConnected: !0,
+		error: L(n[1]?.reason)
+	};
+	n[1]?.status === "rejected" && r.push("WPP: " + L(n[1].reason));
+	let s = null;
+	return e === "PROD" && (s = n[2]?.status === "fulfilled" ? te(n[2].value) : {
+		ready: !1,
+		mode: "TEST",
+		channels: []
+	}, n[2]?.status === "rejected" && r.push("Routing: " + L(n[2].reason))), {
+		ready: !!(a.ready && o.ready && (e === "DEV" || s?.ready)),
+		wa: a,
+		wpp: o,
+		routing: s,
+		errors: r
+	};
+}
+async function ne(e) {
+	return F(await i("worker_runtime_set", {
+		workerCode: j,
+		enabled: !!e
+	}));
+}
+async function z(e) {
+	return I(await i("liveticker_wpp_runtime_set", { connected: !!e }));
+}
+async function re() {
+	let e = n(), t = e.channel(M);
+	try {
+		return await t.httpSend("wake", {}), !0;
+	} catch (e) {
+		return console.warn("WhatsApp-Worker konnte nicht sofort geweckt werden.", e), !1;
+	} finally {
+		try {
+			await e.removeChannel(t);
+		} catch {}
+	}
+}
+//#endregion
+//#region src/components/ActionStickerPicker.tsx
+var B = t();
+function V(e, t) {
+	return !!(e && t && e.kind === t.kind && e.team === t.team);
+}
+function H({ stickerId: e, name: t }) {
+	let [n, r] = (0, A.useState)("");
+	return (0, A.useEffect)(() => {
+		let t = !1, n = "";
+		return _(e).then((e) => {
+			t || (n = URL.createObjectURL(e), r(n));
+		}, () => {
+			t || r("");
+		}), () => {
+			t = !0, n && URL.revokeObjectURL(n);
+		};
+	}, [e]), n ? /* @__PURE__ */ (0, B.jsx)("img", {
+		src: n,
+		alt: ""
+	}) : /* @__PURE__ */ (0, B.jsx)("span", {
+		className: "sticker-placeholder",
+		"aria-label": t,
+		children: "🖼"
+	});
+}
+function ie({ eventId: e, opponentTeamId: t, actionId: n, action: r, penaltyTeams: i = [], mutationsAllowed: a, transportReady: o, onPendingStickerChange: s }) {
+	let [c, l] = (0, A.useState)([]), [u, d] = (0, A.useState)(""), [m, _] = (0, A.useState)(""), [y, x] = (0, A.useState)(null), [w, T] = (0, A.useState)(null), [E, D] = (0, A.useState)(!1), [O, k] = (0, A.useState)("Sticker werden geladen …"), j = (0, A.useMemo)(() => r === "SITUATION" ? null : v({
+		action: r,
+		penaltyTeams: i
+	}), [r, i]), M = (0, A.useMemo)(() => r === "SITUATION" ? C(c, t) : b(c, {
+		action: r,
+		opponentTeamId: t,
+		penaltyTeams: i
+	}), [
+		r,
+		c,
+		t,
+		i
+	]), N = (0, A.useMemo)(() => M.find((e) => e.id === u) || null, [u, M]), P = f(y), F = r === "SITUATION" || !m || V(w, j);
+	(0, A.useEffect)(() => {
+		let e = !1;
+		return ee().then((t) => {
+			e || (l(t), k("Passende Aktionssticker geladen."));
+		}, (t) => {
+			e || (l([]), k(t instanceof Error ? t.message : "Aktionssticker konnten nicht geladen werden."));
+		}), () => {
+			e = !0;
+		};
+	}, [e]), (0, A.useEffect)(() => {
+		m || u && !M.some((e) => e.id === u) && d("");
+	}, [
+		m,
+		u,
+		M
+	]), (0, A.useEffect)(() => {
+		r !== "SITUATION" && m && w && u && s && s({
+			deliveryId: m,
+			stickerId: u,
+			actionId: n,
+			context: w
+		});
+	}, [
+		r,
+		n,
+		m,
+		s,
+		u,
+		w
+	]), (0, A.useEffect)(() => {
+		if (r !== "SITUATION" || P.tone !== "success") return;
+		let e = window.setTimeout(() => {
+			d(""), _(""), x(null), T(null), k("");
+		}, 2e3);
+		return () => window.clearTimeout(e);
+	}, [r, P.tone]);
+	let I = (0, A.useCallback)(async () => {
+		if (m) try {
+			let t = await g(e), n = p(t, m);
+			x(n);
+			let r = f(n);
+			r.tone === "success" ? k(F ? "Sticker gesendet · Aktion jetzt speichern." : "Sticker gesendet · Auswahl wurde danach geändert; er wird nicht falsch verknüpft.") : r.tone === "error" ? k(n?.error ? "Sticker fehlgeschlagen: " + n.error : "Sticker fehlgeschlagen.") : k("Sticker wird gesendet …");
+		} catch (e) {
+			k(e instanceof Error ? e.message : "Sticker-Status konnte nicht geladen werden.");
+		}
+	}, [
+		F,
+		m,
+		e
+	]);
+	(0, A.useEffect)(() => {
+		m && I();
+	}, [m, I]), (0, A.useEffect)(() => {
+		if (!m || P.terminal) return;
+		let e = window.setTimeout(() => void I(), 1e3);
+		return () => window.clearTimeout(e);
+	}, [
+		y,
+		m,
+		I,
+		P.terminal
+	]);
+	async function te() {
+		if (N && !E && (r === "SITUATION" || j)) {
+			if (!a) {
+				k("Sticker-Versand ist für diese Aktion nicht freigeschaltet.");
+				return;
+			}
+			if (!o) {
+				k("WhatsApp ist nicht vollständig bereit.");
+				return;
+			}
+			D(!0), x(null), T(r === "SITUATION" ? null : j), k("Sticker wird sofort gesendet …");
+			try {
+				let t = await S({
+					eventId: e,
+					stickerId: N.id
+				});
+				_(t), re(), k("Sticker wird gesendet …");
+			} catch (e) {
+				T(null), k(e instanceof Error ? e.message : "Sticker konnte nicht gesendet werden.");
+			} finally {
+				D(!1);
+			}
+		}
+	}
+	async function L() {
+		if (m && !E && P.retryable && a && o) {
+			D(!0), k("Sticker wird erneut gesendet …");
+			try {
+				await h({
+					eventId: e,
+					deliveryId: m
+				}), re(), x((e) => e && {
+					...e,
+					status: "PENDING",
+					stickerStatus: "PENDING",
+					attemptCount: e.attemptCount + 1,
+					error: null
+				}), await I();
+			} catch (e) {
+				k(e instanceof Error ? e.message : "Der erneute Sticker-Versuch konnte nicht gestartet werden.");
+			} finally {
+				D(!1);
+			}
+		}
+	}
+	return !j && r !== "SITUATION" ? /* @__PURE__ */ (0, B.jsxs)("div", {
+		className: "action-sticker-box",
+		children: [/* @__PURE__ */ (0, B.jsx)("strong", { children: "Aktionssticker" }), /* @__PURE__ */ (0, B.jsx)("p", {
+			className: "empty-note",
+			children: "Für gemischte Strafen beider Teams gibt es keinen eindeutigen Aktionssticker."
+		})]
+	}) : /* @__PURE__ */ (0, B.jsxs)("div", {
+		className: "action-sticker-box",
+		children: [
+			/* @__PURE__ */ (0, B.jsx)("div", {
+				className: "section-title-row",
+				children: /* @__PURE__ */ (0, B.jsxs)("div", { children: [/* @__PURE__ */ (0, B.jsx)("strong", { children: r === "SITUATION" ? "Situationssticker" : "Aktionssticker" }), /* @__PURE__ */ (0, B.jsx)("p", {
+					className: "action-sticker-hint",
+					children: r === "SITUATION" ? "Aktive Spiel-, Video- und allgemeine Sticker · immer separat ohne Liveticker-Aktion oder Text." : "Passender Sticker zur gewählten Aktion · immer separat ohne Text."
+				})] })
+			}),
+			M.length ? /* @__PURE__ */ (0, B.jsx)("div", {
+				className: "action-sticker-grid",
+				children: M.map((e) => /* @__PURE__ */ (0, B.jsxs)("button", {
+					className: u === e.id ? "sticker-card selected" : "sticker-card",
+					type: "button",
+					"aria-pressed": u === e.id,
+					disabled: E || !(!m || P.terminal),
+					onClick: () => {
+						m || (d(e.id), k("Aktionssticker ausgewählt."));
+					},
+					children: [/* @__PURE__ */ (0, B.jsx)(H, {
+						stickerId: e.id,
+						name: e.name
+					}), /* @__PURE__ */ (0, B.jsx)("strong", { children: e.name })]
+				}, e.id))
+			}) : /* @__PURE__ */ (0, B.jsx)("p", {
+				className: "empty-note",
+				children: "Für diese Aktion ist kein passender aktiver Sticker hinterlegt."
+			}),
+			N && !m && /* @__PURE__ */ (0, B.jsx)("button", {
+				className: "action-sticker-send",
+				type: "button",
+				disabled: E || !a || !o,
+				onClick: () => void te(),
+				children: E ? "Sticker wird gesendet …" : "Sticker sofort senden"
+			}),
+			m && /* @__PURE__ */ (0, B.jsxs)(B.Fragment, { children: [/* @__PURE__ */ (0, B.jsxs)("p", {
+				className: "sticker-delivery-status",
+				"data-tone": F ? P.tone : "error",
+				children: [r === "SITUATION" || F ? "Sticker " + P.label : "Sticker gesendet, aber die Aktion wurde danach geändert – keine automatische Verknüpfung.", P.tone === "error" && y?.error ? " · " + y.error : ""]
+			}), P.retryable && /* @__PURE__ */ (0, B.jsx)("button", {
+				className: "secondary-button action-sticker-send",
+				type: "button",
+				disabled: E || !a || !o,
+				onClick: () => void L(),
+				children: "Erneut senden"
+			})] }),
+			/* @__PURE__ */ (0, B.jsx)("p", {
+				className: "workspace-message",
+				children: O
+			})
+		]
+	});
+}
+//#endregion
+//#region src/components/ClassicFormControls.tsx
+function U(e) {
+	return String(e ?? "").trim().replace(/^#/, "").trim();
+}
+function W({ players: e, value: t, onChange: n, placeholder: r, numberAriaLabel: i }) {
+	let a = e.find((e) => e.id === t) || null, [o, s] = (0, A.useState)(a?.number || "");
+	return (0, A.useEffect)(() => {
+		s(a?.number || "");
+	}, [a?.id, a?.number]), /* @__PURE__ */ (0, B.jsxs)("div", {
+		className: "player-entry",
+		children: [/* @__PURE__ */ (0, B.jsx)("input", {
+			className: "jersey-number",
+			type: "text",
+			inputMode: "numeric",
+			autoComplete: "off",
+			placeholder: "#",
+			"aria-label": i,
+			value: o,
+			onChange: (t) => {
+				let r = U(t.target.value);
+				if (s(r), !r) {
+					n("");
+					return;
+				}
+				n(e.find((e) => U(e.number) === r)?.id || "");
+			}
+		}), /* @__PURE__ */ (0, B.jsxs)("select", {
+			value: t,
+			onChange: (t) => {
+				let r = t.target.value;
+				n(r);
+				let i = e.find((e) => e.id === r);
+				s(i?.number || "");
+			},
+			children: [/* @__PURE__ */ (0, B.jsx)("option", {
+				value: "",
+				children: r
+			}), e.map((e) => /* @__PURE__ */ (0, B.jsxs)("option", {
+				value: e.id,
+				children: [e.number ? "#" + e.number + " " : "", e.name]
+			}, e.id))]
+		})]
+	});
+}
+function G({ value: e, options: t, onChange: n, ariaLabel: r }) {
+	return /* @__PURE__ */ (0, B.jsx)("div", {
+		className: "classic-segmented",
+		role: "group",
+		"aria-label": r,
+		children: t.map((t) => /* @__PURE__ */ (0, B.jsx)("button", {
+			type: "button",
+			"aria-pressed": t.value === e,
+			onClick: () => n(t.value),
+			children: t.label
+		}, t.value))
+	});
+}
+//#endregion
+//#region src/components/ClassicEditablePreview.tsx
+function K({ generatedText: e, error: t, manualText: n, onManualTextChange: r }) {
+	let [i, a] = (0, A.useState)(!1), o = n ?? e;
+	async function s() {
+		try {
+			await navigator.clipboard.writeText(o);
+		} catch {}
+	}
+	return /* @__PURE__ */ (0, B.jsxs)("section", {
+		className: "classic-whatsapp-preview",
+		"aria-label": "WhatsApp-Vorschau",
+		children: [
+			/* @__PURE__ */ (0, B.jsx)("div", {
+				className: "classic-preview-head",
+				children: /* @__PURE__ */ (0, B.jsx)("h3", { children: "WhatsApp-Vorschau" })
+			}),
+			t ? /* @__PURE__ */ (0, B.jsx)("p", {
+				className: "form-error",
+				children: t
+			}) : i ? /* @__PURE__ */ (0, B.jsx)("textarea", {
+				className: "classic-output-textarea",
+				spellCheck: !0,
+				value: o,
+				onChange: (e) => r(e.target.value)
+			}) : /* @__PURE__ */ (0, B.jsx)("div", {
+				className: "output-preview",
+				children: o
+			}),
+			!t && /* @__PURE__ */ (0, B.jsxs)("div", {
+				className: "output-actions",
+				children: [i ? /* @__PURE__ */ (0, B.jsx)("button", {
+					className: "primary output-icon",
+					type: "button",
+					"aria-label": "Text übernehmen",
+					title: "Text übernehmen",
+					onClick: () => a(!1),
+					children: "✓"
+				}) : /* @__PURE__ */ (0, B.jsx)("button", {
+					className: "secondary output-icon",
+					type: "button",
+					"aria-label": "Text bearbeiten",
+					title: "Bearbeiten",
+					onClick: () => {
+						n === null && r(e), a(!0);
+					},
+					children: "✏️"
+				}), /* @__PURE__ */ (0, B.jsx)("button", {
+					className: "copy-button output-icon",
+					type: "button",
+					"aria-label": "Kopieren",
+					title: "Kopieren",
+					onClick: () => void s(),
+					children: "📋"
+				})]
+			})
+		]
+	});
+}
+//#endregion
+//#region src/liveticker/action-whatsapp.ts
+var ae = 4e3;
+function oe(e, t, { editingId: n = null, enabled: r = !1 } = {}) {
+	let i = String(t ?? "");
+	return !e || n || !r || !i.trim() || i.length > ae ? e : {
+		...e,
+		_whatsapp: Object.freeze({
+			publish: !0,
+			text: i
+		})
+	};
+}
+function se(e, t) {
+	let n = Array.isArray(e) ? e.slice() : [], r = String(t.id || "");
+	if (!r) return n;
+	let i = n.findIndex((e) => String(e?.id || "") === r);
+	return i >= 0 ? n.splice(i, 1, t) : n.push(t), n;
+}
+function q({ whatsappEnabled: e, transportReady: t }) {
+	return !(e && t);
+}
+async function ce(e) {
+	let t = String(e ?? "");
+	if (!t.trim()) return !1;
+	try {
+		return await navigator.clipboard.writeText(t), !0;
+	} catch {
+		return !1;
+	}
+}
+//#endregion
+//#region src/liveticker/goals.ts
+function le(e, t) {
+	let n = e.find((e) => e.id === t);
+	return n ? {
+		id: n.id,
+		name: n.name,
+		number: n.number,
+		position: n.position
+	} : null;
+}
+function ue(e, t) {
+	if (!t) return "";
+	let n = String(t.id || "").trim();
+	if (n && e.some((e) => e.id === n)) return n;
+	let r = String(t.name || "").trim();
+	return e.find((e) => e.name === r)?.id || "";
+}
+function de(e, t) {
+	let n = [e, ...t].filter((e) => !!e).map((e) => String(e.name || "").trim()).filter(Boolean);
+	if (new Set(n).size !== n.length) throw Error("Torschütze und Assists müssen unterschiedliche Spieler sein.");
+}
+function fe(e) {
+	let t = Number(e.minute);
+	if (!Number.isInteger(t) || t < 1) throw Error("Bitte eine gültige Spielminute ab 1 eingeben.");
+	de(e.player, e.assists);
+	let n = String(e.outputVariantId || "").trim();
+	if (!n) throw Error("Bitte eine Tor-Ausgabevariante wählen.");
+	return {
+		id: String(e.id || o()),
+		type: "goal",
+		team: e.team,
+		minute: t,
+		player: e.player,
+		assists: e.assists.filter(Boolean).slice(0, 2),
+		outputVariantId: n
+	};
+}
+function pe(e, t) {
+	let n = Array.isArray(e) ? e.slice() : [], r = String(t.id || ""), i = r ? n.findIndex((e) => String(e?.id || "") === r) : -1;
+	return i >= 0 ? n.splice(i, 1, t) : n.push(t), n;
+}
+function me(e, t, n, r = "") {
+	let i = String(n || "").trim();
+	return i && (Array.isArray(e) ? e : []).filter((e) => {
+		if (!e || typeof e != "object" || Array.isArray(e)) return !1;
+		let n = e;
+		return String(n.id || "") !== String(r || "") && n.type === "goal" && n.team === t && String(n.player?.name || "").trim() === i;
+	}).length >= 2 ? "hattrick" : "normal";
+}
+//#endregion
+//#region src/liveticker/legacy-rpc.ts
+var J = class extends Error {
+	status;
+	code;
+	details;
+	constructor(e, t, n = "", r = null) {
+		super(e), this.name = "LivetickerRpcError", this.status = t, this.code = n, this.details = r;
+	}
+};
+async function Y(t, r = {}) {
+	let i = e(), { data: a, error: o } = await n().auth.getSession(), s = a.session?.access_token;
+	if (o || !s) throw new J("Anmeldung erforderlich.", 401, "AUTH_REQUIRED", o);
+	let c = await fetch(i.supabaseUrl + "/rest/v1/rpc/" + t, {
+		method: "POST",
+		cache: "no-store",
+		headers: {
+			apikey: i.supabasePublishableKey,
+			Authorization: "Bearer " + s,
+			"Content-Type": "application/json"
+		},
+		body: JSON.stringify(r)
+	}), l = await c.text(), u = null;
+	try {
+		u = l ? JSON.parse(l) : null;
+	} catch {
+		u = l;
+	}
+	if (!c.ok) {
+		let e = u;
+		throw new J(e?.message || e?.hint || "RPC " + t + " fehlgeschlagen.", c.status, e?.code || "", u);
+	}
+	return u;
+}
+//#endregion
+//#region src/liveticker/games.ts
+var he = "plaerrdeifl.livetickerPrototype.eventId";
+function X(e) {
+	return String(e ?? "").trim();
+}
+function Z(e) {
+	return X(e) || null;
+}
+function ge(e) {
+	let t = e || {};
+	return {
+		id: X(t.id),
+		name: X(t.name),
+		number: Z(t.number),
+		position: Z(t.position)
+	};
+}
+function _e(e) {
+	let t = e || {};
+	return {
+		id: Z(t.id),
+		name: X(t.name),
+		shortName: X(t.shortName || t.short_name || t.name),
+		teamCode: Z(t.teamCode || t.team_code),
+		logoAssetPath: Z(t.logoAssetPath || t.logo_asset_path),
+		logoUrl: Z(t.logoUrl || t.logo_url),
+		homeClub: t.homeClub === !0 || t.home_club === !0,
+		players: Array.isArray(t.players) ? t.players.map(ge) : []
+	};
+}
+function Q(e) {
+	let t = e || {}, n = X(t.homeAway || t.home_away).toUpperCase();
+	if (!X(t.eventId || t.event_id)) throw Error("Spiel ohne eventId erhalten.");
+	if (n !== "HOME" && n !== "AWAY") throw Error("Spiel ohne gültiges homeAway erhalten.");
+	return {
+		eventId: X(t.eventId || t.event_id),
+		eventDate: X(t.eventDate || t.event_date),
+		eventTime: Z(t.eventTime || t.event_time),
+		venue: Z(t.venue),
+		homeAway: n,
+		displayTitle: X(t.displayTitle || t.display_title),
+		ownTeam: _e(t.ownTeam || t.own_team),
+		opponentTeam: _e(t.opponentTeam || t.opponent_team)
+	};
+}
+function ve(e) {
+	let t = e || {};
+	return {
+		eventId: X(t.eventId || t.event_id),
+		revision: Number(t.revision || 0),
+		minute: Math.max(1, Number(t.minute || 1)),
+		history: Array.isArray(t.history) ? t.history : [],
+		completedAt: Z(t.completedAt || t.completed_at)
+	};
+}
+async function ye() {
+	let e = await Y("pd_public_liveticker_games");
+	return Array.isArray(e?.games) ? e.games.map(Q) : [];
+}
+async function be(e) {
+	return ve(await Y("pd_public_liveticker_state", { p_event_id: e }));
+}
+function xe(e) {
+	localStorage.setItem(he, e);
+}
+function Se() {
+	return localStorage.getItem(he) || "";
+}
+function Ce(e) {
+	let t = /* @__PURE__ */ new Date(e.eventDate + "T12:00:00"), n = Number.isNaN(t.getTime()) ? e.eventDate : new Intl.DateTimeFormat("de-DE", {
+		day: "2-digit",
+		month: "2-digit",
+		year: "2-digit"
+	}).format(t), r = String(e.eventTime || "").slice(0, 5);
+	return n + (r ? " · " + r : "") + " · " + e.displayTitle;
+}
+function we({ environment: t = e().environment, hostname: n = globalThis.location?.hostname || "" } = {}) {
+	let r = n.trim().toLowerCase();
+	return t === "DEV" && ([
+		"localhost",
+		"127.0.0.1",
+		"::1",
+		"acer01"
+	].includes(r) || /^192\.168\.\d{1,3}\.\d{1,3}$/.test(r));
+}
+async function Te({ eventId: e, expectedRevision: t }) {
+	if (!we()) throw Error("Testspiel-Reset ist nur in der lokalen DEV-Entwicklung erlaubt.");
+	return await i("liveticker_game_reset", {
+		eventId: e,
+		expectedRevision: t
+	}), be(e);
+}
+var Ee = 5e3;
+function De({ windowMs: e = Ee, maxSaves: t = 20 } = {}) {
+	let n = [], r = !1;
+	return {
+		register(i = Date.now()) {
+			if (r) return !0;
+			let a = Number(i) - e;
+			return n = n.filter((e) => e >= a), n.push(Number(i)), n.length > t && (r = !0), r;
+		},
+		isOpen() {
+			return r;
+		},
+		reset() {
+			n = [], r = !1;
+		}
+	};
+}
+function Oe(e) {
+	let t = /* @__PURE__ */ new Map();
+	for (let n of Array.isArray(e) ? e : []) {
+		if (!n || typeof n != "object" || Array.isArray(n)) continue;
+		let e = String(n.id || "");
+		e && t.set(e, n);
+	}
+	return t;
+}
+function ke(e, t) {
+	return JSON.stringify(e) === JSON.stringify(t);
+}
+function Ae(e) {
+	if (!e || typeof e != "object" || Array.isArray(e)) return e;
+	let t = { ...e };
+	return delete t._whatsapp, t;
+}
+function je(e) {
+	return {
+		minute: Math.max(1, Number(e?.minute || 1)),
+		history: (Array.isArray(e?.history) ? e.history : []).map((e) => JSON.parse(JSON.stringify(Ae(e))))
+	};
+}
+function Me(e, t) {
+	let n = Oe(t.history), r = Oe(e.history), i = [], a = [], o = [];
+	for (let [e, t] of r) (!n.has(e) || !ke(n.get(e), t)) && i.push(t);
+	for (let [e, t] of n) r.has(e) || (a.push(e), o.push({
+		id: e,
+		expected: Ae(t)
+	}));
+	let s = {};
+	return i.length && (s.upserts = i), a.length && (s.deletes = a, s.deleteGuards = o), Number(e.minute || 1) !== Number(t.minute || 1) && (s.minute = Number(e.minute || 1)), s;
+}
+function Ne(e, t) {
+	let n = Oe(t.history), r = {}, i = (Array.isArray(e.upserts) ? e.upserts : []).filter((e) => {
+		if (!e || typeof e != "object" || Array.isArray(e)) return !1;
+		let t = String(e.id || "");
+		return t && (!n.has(t) || !ke(n.get(t), e));
+	}), a = new Map((Array.isArray(e.deleteGuards) ? e.deleteGuards : []).filter((e) => e?.id && e.expected).map((e) => [e.id, e])), o = (Array.isArray(e.deletes) ? e.deletes : []).filter((e) => n.has(e) && a.has(e));
+	return i.length && (r.upserts = i), o.length && (r.deletes = o, r.deleteGuards = o.map((e) => a.get(e)).filter((e) => !!e)), Object.prototype.hasOwnProperty.call(e, "minute") && Number(e.minute || 1) !== Number(t.minute || 1) && (r.minute = Number(e.minute || 1)), r;
+}
+function Pe(e) {
+	return Object.keys(e).length > 0;
+}
+function Fe(e) {
+	return Array.isArray(e.upserts) && e.upserts.some((e) => {
+		if (!e || typeof e != "object" || Array.isArray(e)) return !1;
+		let t = e._whatsapp;
+		return !(!t || typeof t != "object" || Array.isArray(t) || t.publish !== !0);
+	});
+}
+function Ie(e) {
+	let t = "plaerrdeifl.livetickerPrototype.clientId", n = e.toLowerCase() + "-";
+	try {
+		let e = localStorage.getItem(t);
+		if (e?.startsWith(n)) return e;
+		let r = n + o();
+		return localStorage.setItem(t, r), r;
+	} catch {
+		return n + Date.now();
+	}
+}
+async function Le({ eventId: e, localState: t, serverState: n, clientState: r, environment: i }) {
+	let a = Me(t, r);
+	if (!Pe(a)) return {
+		state: n,
+		clientState: je(n),
+		changes: a,
+		changed: !1,
+		wakeWhatsapp: !1,
+		rebased: !1
+	};
+	let o = async (t, n) => ve(await Y("pd_public_liveticker_sync", {
+		p_event_id: e,
+		p_expected_revision: n,
+		p_changes: t,
+		p_client_id: Ie(i)
+	}));
+	try {
+		let e = await o(a, n.revision);
+		return {
+			state: e,
+			clientState: je(e),
+			changes: a,
+			changed: !0,
+			wakeWhatsapp: Fe(a),
+			rebased: !1
+		};
+	} catch (t) {
+		if (!(t instanceof J) || t.code !== "PT409") throw t;
+		let n = ve(await Y("pd_public_liveticker_state", { p_event_id: e })), r = Ne(a, n);
+		if (!Pe(r)) return {
+			state: n,
+			clientState: je(n),
+			changes: r,
+			changed: !1,
+			wakeWhatsapp: !1,
+			rebased: !0
+		};
+		let i = await o(r, n.revision);
+		return {
+			state: i,
+			clientState: je(i),
+			changes: r,
+			changed: !0,
+			wakeWhatsapp: Fe(r),
+			rebased: !0
+		};
+	}
+}
+//#endregion
+//#region src/liveticker/history.ts
+function $(e) {
+	if (!e) return "";
+	let t = String(e.name || "").trim(), n = String(e.number || "").trim();
+	return n ? "#" + n + " " + t : t;
+}
+function Re(e) {
+	return !!(e && e.type === "penalty" && e.subtype === "penalty_shot");
+}
+function ze(e) {
+	return !(!e || e.team !== "mighty" && e.team !== "opponent" || e.type !== "goal" && (!Re(e) || e.result !== "scored"));
+}
+function Be(e) {
+	return (Array.isArray(e) ? e : []).reduce((e, t) => {
+		let n = t || {};
+		return ze(n) && n.team && (e[n.team] += 1), e;
+	}, {
+		mighty: 0,
+		opponent: 0
+	});
+}
+function Ve(e) {
+	return (Array.isArray(e) ? e : []).reduce((e, t) => {
+		let n = t || {};
+		return n.type === "shootout" && n.result === "scored" && (n.team === "mighty" || n.team === "opponent") && (e[n.team] += 1), e;
+	}, {
+		mighty: 0,
+		opponent: 0
+	});
+}
+function He(e) {
+	return (Array.isArray(e) ? e : []).map((e, t) => {
+		let n = e || {}, r = Number.parseInt(String(n.minute ?? ""), 10);
+		return {
+			event: n,
+			index: t,
+			minute: Number.isInteger(r) ? r : Infinity
+		};
+	}).sort((e, t) => e.minute - t.minute || e.index - t.index).map((e) => e.event);
+}
+function Ue(e) {
+	if (e.type === "shootout") return "Penaltyschießen";
+	let t = Number.parseInt(String(e.minute ?? ""), 10);
+	return !Number.isInteger(t) || t < 1 ? "Unbekannt" : t <= 20 ? "1. Drittel" : t <= 40 ? "2. Drittel" : t <= 60 ? "3. Drittel" : "Overtime";
+}
+function We(e, t) {
+	return e === "mighty" ? "Mighty Dogs" : t;
+}
+function Ge(e, t) {
+	if (e.type === "goal") {
+		let n = e.player?.name || "Torschütze offen";
+		return String(e.minute || "") + "' 🥅 " + n + " · " + We(e.team, t);
+	}
+	if (Re(e)) {
+		let t = e.player?.name || "Schütze offen";
+		return String(e.minute || "") + "' 🏒 Straf-Penalty · " + t + " · " + (e.result === "scored" ? "verwandelt" : "vergeben");
+	}
+	if (e.type === "shootout") return "🏒 " + (e.player?.name || We(e.team, t)) + " · " + (e.result === "scored" ? "verwandelt" : "vergeben");
+	let n = e.penalties?.[0] || null, r = n?.player?.name || (n ? We(n.team, t) : "Strafe"), i = n?.duration ? String(n.duration) + " Min." : "";
+	return String(e.minute || "") + "' 🚨 " + r + (i ? " · " + i : "");
+}
+function Ke(e, t) {
+	let n = Ue(e);
+	if (e.type === "goal") {
+		let t = $(e.player), r = Array.isArray(e.assists) ? e.assists.filter(Boolean).slice(0, 2).map($).filter(Boolean) : [];
+		return [
+			n,
+			t,
+			r.length ? "Assists: " + r.join(" · ") : ""
+		].filter(Boolean).join(" · ");
+	}
+	if (Re(e)) {
+		let t = e.player ? $(e.player) : "Schütze offen", r = e.goalie ? $(e.goalie) : "Goalie offen";
+		return n + " · " + t + " gegen " + r + " · " + (e.result === "scored" ? "verwandelt" : "vergeben");
+	}
+	return e.type === "shootout" ? e.player ? $(e.player) : We(e.team, t) : [n, (Array.isArray(e.penalties) ? e.penalties : []).map((e) => [e.duration ? String(e.duration) + " min" : "", e.reason || ""].filter(Boolean).join(" ")).filter(Boolean).join(" · ")].filter(Boolean).join(" · ");
+}
+//#endregion
+//#region src/liveticker/penalties.ts
+var qe = [
+	"Halten",
+	"Beinstellen",
+	"Haken",
+	"Stockschlag",
+	"Behinderung",
+	"Hoher Stock",
+	"Crosscheck",
+	"Bandencheck",
+	"Check gegen Kopf oder Nacken",
+	"Ellbogencheck",
+	"Kniecheck",
+	"Übertriebene Härte",
+	"Unsportliches Verhalten",
+	"Spielverzögerung",
+	"Zu viele Spieler auf dem Eis"
+], Je = [
+	"2",
+	"2+2",
+	"5",
+	"10",
+	"2+10",
+	"5+10",
+	"5+20",
+	"20"
+];
+function Ye(e) {
+	let t = String(e || "").split("+").map((e) => Number.parseInt(e, 10));
+	return !t.length || t.some((e) => !Number.isInteger(e) || e <= 0) ? {
+		parts: [],
+		total: 0
+	} : {
+		parts: t,
+		total: t.reduce((e, t) => e + t, 0)
+	};
+}
+function Xe(e) {
+	return Ye(e).parts.some((e) => e >= 5);
+}
+function Ze(e) {
+	return new Set(e.map((e) => e.team)).size > 1 ? "both" : e.some((e) => Xe(e.duration)) ? "major" : "normal";
+}
+function Qe(e) {
+	let t = Number(e.minute);
+	if (!Number.isInteger(t) || t < 1) throw Error("Bitte eine gültige Spielminute ab 1 eingeben.");
+	if (!Array.isArray(e.penalties) || !e.penalties.length) throw Error("Bitte mindestens eine Strafe erfassen.");
+	for (let t of e.penalties) {
+		if (t.team !== "mighty" && t.team !== "opponent") throw Error("Eine Strafe enthält kein gültiges Team.");
+		if (!Je.includes(t.duration)) throw Error("Eine Strafe enthält keine gültige Strafzeit.");
+		if (!String(t.reason || "").trim()) throw Error("Eine Strafe enthält keinen Strafgrund.");
+	}
+	let n = String(e.outputVariantId || "").trim();
+	if (!n) throw Error("Bitte eine Strafen-Ausgabevariante wählen.");
+	return {
+		id: String(e.id || o()),
+		type: "penalty",
+		minute: t,
+		penalties: e.penalties,
+		outputVariantId: n
+	};
+}
+function $e(e, t) {
+	let n = Array.isArray(e) ? e.slice() : [], r = n.findIndex((e) => String(e?.id || "") === String(t.id || ""));
+	return r >= 0 ? n.splice(r, 1, t) : n.push(t), n;
+}
+//#endregion
+//#region src/liveticker/textsystem.ts
+var et = /* @__PURE__ */ new Set([
+	"minute",
+	"scorer",
+	"assists",
+	"mighty_score",
+	"opponent_score",
+	"home_score",
+	"away_score",
+	"score",
+	"opponent_name"
+]), tt = /* @__PURE__ */ new Set([
+	"minute",
+	"player_name",
+	"jersey_number",
+	"player",
+	"penalty_duration",
+	"penalty_reason",
+	"team_name",
+	"opponent_name",
+	"penalty_line",
+	"penalties"
+]), nt = /* @__PURE__ */ new Set(["scorer", "assists"]), rt = /* @__PURE__ */ new Set([
+	"player_name",
+	"jersey_number",
+	"player",
+	"penalty_duration",
+	"penalty_reason",
+	"team_name",
+	"opponent_name",
+	"penalty_line"
+]), it = /* @__PURE__ */ new Set([
+	"minute",
+	"team_name",
+	"opponent_name",
+	"shooter",
+	"goalie",
+	"result"
+]), at = /* @__PURE__ */ new Set([
+	"team_name",
+	"opponent_name",
+	"shooter",
+	"result"
+]), ot = /\{\{([^{}]+)\}\}/g, st = /\{\{[a-z_]+\}\}/g;
+function ct(e) {
+	let t = e || {};
+	if (!Array.isArray(t.variants) || !t.variants.length) throw Error("Keine Liveticker-Ausgabevarianten verfügbar.");
+	return { variants: t.variants.map((e) => {
+		let t = e || {}, n = String(t.id || "").trim(), r = String(t.outputType || "").trim(), i = String(t.name || "").trim(), a = String(t.template ?? "");
+		if (!n || !r || !i || !a.trim()) throw Error("Eine Liveticker-Ausgabevariante ist unvollständig.");
+		return {
+			id: n,
+			outputType: r,
+			semanticKey: t.semanticKey ? String(t.semanticKey) : null,
+			name: i,
+			template: a,
+			sortOrder: Number(t.sortOrder || 0),
+			active: t.active !== !1,
+			default: t.default === !0,
+			revision: Number(t.revision || 0)
+		};
+	}) };
+}
+async function lt() {
+	return ct(await Y("pd_public_liveticker_templates"));
+}
+function ut(e, t, n = !1) {
+	return e.variants.filter((e) => e.outputType === t && (n || e.active)).slice().sort((e, t) => e.sortOrder - t.sortOrder || e.name.localeCompare(t.name, "de"));
+}
+function dt(e, t) {
+	let n = ut(e, t);
+	return n.find((e) => e.default) || n[0] || null;
+}
+function ft(e, t, n, r = []) {
+	let i = dt(e, t);
+	if (!i) throw Error("Liveticker-Ausgabevariante konnte nicht geladen werden.");
+	return ht(i.template, n, new Set(Object.keys(n)), new Set(r));
+}
+function pt(e, t, n) {
+	return ut(e, t).find((e) => e.semanticKey === n) || null;
+}
+function mt(e, t, n) {
+	return e.variants.find((e) => e.outputType === t && e.id === n) || null;
+}
+function ht(e, t, n, r) {
+	let i = String(e ?? "");
+	if ([...i.matchAll(ot)].map((e) => e[1].trim()).filter((e) => !n.has(e)).length || /\{\{|\}\}/.test(i.replace(st, ""))) throw Error("Der gespeicherte Liveticker-Ausgabetext enthält einen ungültigen Platzhalter.");
+	let a = Object.fromEntries([...n].map((e) => [e, String(t[e] ?? "")]));
+	return i.split("\n").filter((e) => ![...r].some((t) => e.includes("{{" + t + "}}") && !a[t])).map((e) => e.replace(st, (e) => a[e.slice(2, -2)])).join("\n");
+}
+function gt(e, t, n = !1) {
+	return ut(e, t === "mighty" ? "goal_mighty" : "goal_opponent", n);
+}
+function _t(e, t) {
+	return dt(e, t === "mighty" ? "goal_mighty" : "goal_opponent");
+}
+function vt(e, t, n) {
+	return mt(e, t === "mighty" ? "goal_mighty" : "goal_opponent", n);
+}
+function yt(e, t) {
+	return ht(e, t, et, nt);
+}
+function bt(e, t = !1) {
+	return ut(e, "penalty", t);
+}
+function xt(e) {
+	return dt(e, "penalty");
+}
+function St(e, t) {
+	return pt(e, "penalty", t) || xt(e);
+}
+function Ct(e, t) {
+	return ht(e, t, tt, rt);
+}
+function wt(e, t) {
+	return t === "AWAY" ? {
+		home: e.opponent,
+		away: e.mighty
+	} : {
+		home: e.mighty,
+		away: e.opponent
+	};
+}
+function Tt(e, t) {
+	let n = [];
+	for (let r of e) if (n.push(r), String(r?.id || "") === t) break;
+	return Be(n);
+}
+function Et(e) {
+	return e && String(e.name || "").trim() ? e : null;
+}
+function Dt({ event: e, history: t, game: n, snapshot: r }) {
+	if (e.type !== "goal" || e.team !== "mighty" && e.team !== "opponent") throw Error("Ungültige Tor-Aktion.");
+	let i = String(e.outputVariantId || ""), a = vt(r, e.team, i) || _t(r, e.team);
+	if (!a) throw Error("Keine Tor-Ausgabevariante verfügbar.");
+	let o = Tt(t, String(e.id || "")), s = wt(o, n.homeAway), c = Array.isArray(e.assists) ? e.assists.map(Et).filter((e) => !!e).slice(0, 2) : [];
+	return yt(a.template, {
+		minute: Number(e.minute || 1),
+		scorer: $(Et(e.player)),
+		assists: c.map($).join(" · "),
+		mighty_score: o.mighty,
+		opponent_score: o.opponent,
+		home_score: s.home,
+		away_score: s.away,
+		score: s.home + " : " + s.away,
+		opponent_name: n.opponentTeam.shortName
+	});
+}
+function Ot(e, t) {
+	return e === "mighty" ? "Mighty Dogs" : t.opponentTeam.shortName;
+}
+function kt(e, t) {
+	let n = e.player ? " · " + $(e.player) : "";
+	return Ot(e.team, t) + " · " + e.duration + " min · " + e.reason + n;
+}
+function At(e, t) {
+	let n = kt(e, t);
+	return Xe(e.duration) ? "🚨 *" + n + "*" : n;
+}
+function jt({ event: e, game: t, snapshot: n }) {
+	if (e.type !== "penalty" || e.subtype === "penalty_shot") throw Error("Ungültige Strafen-Aktion.");
+	let r = (Array.isArray(e.penalties) ? e.penalties : []).map((e) => ({
+		team: e.team,
+		duration: String(e.duration || ""),
+		reason: String(e.reason || ""),
+		player: Et(e.player)
+	})).filter((e) => (e.team === "mighty" || e.team === "opponent") && !!e.duration && !!e.reason);
+	if (!r.length) throw Error("Bitte mindestens eine Strafe erfassen.");
+	let i = mt(n, "penalty", String(e.outputVariantId || "")) || xt(n);
+	if (!i) throw Error("Keine Strafen-Ausgabevariante verfügbar.");
+	let a = r.length === 1 ? r[0] : null, o = [...new Set(r.map((e) => e.team))];
+	return Ct(i.template, {
+		minute: Number(e.minute || 1),
+		player_name: a?.player?.name || "",
+		jersey_number: a?.player?.number || "",
+		player: a?.player ? $(a.player) : "",
+		penalty_duration: a ? a.duration + " min" : "",
+		penalty_reason: a?.reason || "",
+		team_name: o.map((e) => Ot(e, t)).join(" + "),
+		opponent_name: t.opponentTeam.shortName,
+		penalty_line: a ? At(a, t) : "",
+		penalties: r.map((e) => At(e, t)).join("\n")
+	});
+}
+function Mt(e, t) {
+	return e === "mighty" ? "Mighty Dogs" : t.opponentTeam.shortName;
+}
+function Nt(e, t, n) {
+	let r = dt(e, t);
+	return String(r?.template || "").trim() || n;
+}
+function Pt({ event: e, game: t, snapshot: n }) {
+	if (e.type !== "penalty" || e.subtype !== "penalty_shot") throw Error("Ungültige Straf-Penalty-Aktion.");
+	if (e.team !== "mighty" && e.team !== "opponent") throw Error("Straf-Penalty ohne gültiges Team.");
+	let r = mt(n, "penalty_shot", String(e.outputVariantId || "")) || dt(n, "penalty_shot");
+	if (!r) throw Error("Keine Straf-Penalty-Ausgabevariante verfügbar.");
+	let i = e.team === "mighty" ? "opponent" : "mighty", a = e.player ? $(e.player) : Nt(n, "missing_shooter", "Schütze offen"), o = e.goalie ? $(e.goalie) : Nt(n, "missing_goalie", "Goalie offen");
+	return ht(r.template, {
+		minute: Number(e.minute || 1),
+		team_name: Mt(e.team, t),
+		opponent_name: Mt(i, t),
+		shooter: a,
+		goalie: o,
+		result: e.result === "scored" ? "✅ verwandelt" : "❌ vergeben"
+	}, it, /* @__PURE__ */ new Set());
+}
+function Ft({ event: e, game: t, snapshot: n }) {
+	if (e.type !== "shootout") throw Error("Ungültige Penaltyschießen-Aktion.");
+	if (e.team !== "mighty" && e.team !== "opponent") throw Error("Penaltyschießen ohne gültiges Team.");
+	let r = mt(n, "shootout_attempt", String(e.outputVariantId || "")) || dt(n, "shootout_attempt");
+	if (!r) throw Error("Keine Penaltyschießen-Ausgabevariante verfügbar.");
+	let i = e.player ? $(e.player) : Nt(n, "missing_shooter", "Schütze offen");
+	return ht(r.template, {
+		team_name: Mt(e.team, t),
+		opponent_name: t.opponentTeam.shortName,
+		shooter: i,
+		result: e.result === "scored" ? "✅ verwandelt" : "❌ vergeben"
+	}, at, /* @__PURE__ */ new Set());
+}
+//#endregion
+//#region src/components/GoalForm.tsx
+function It({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEnabled: a, whatsappTransportReady: s, editingEvent: c = null, defaultTeam: l = "mighty", compact: d = !1, submitModeControl: f, onSaved: p, onCancelEdit: m }) {
+	let h = c?.type === "goal" ? c : null, g = h ? h.team === "opponent" ? "opponent" : "mighty" : l, _ = g === "mighty" ? t.ownTeam.players : t.opponentTeam.players, v = g === "mighty" ? "goal_mighty" : "goal_opponent", [y, b] = (0, A.useState)(g), [ee, x] = (0, A.useState)(h ? Math.max(1, Number(h.minute || 1)) : n.minute), [S, C] = (0, A.useState)(ue(_, h?.player)), [w, E] = (0, A.useState)(ue(_, h?.assists?.[0])), [D, O] = (0, A.useState)(ue(_, h?.assists?.[1])), [k, j] = (0, A.useState)(String(h?.outputVariantId || "")), [M, N] = (0, A.useState)(!1), [P, F] = (0, A.useState)(""), [I, te] = (0, A.useState)(null), [L, R] = (0, A.useState)(!1), [ne, z] = (0, A.useState)(null), [V, H] = (0, A.useState)(""), U = (0, A.useRef)(String(h?.id || o())), ae = (0, A.useRef)(De()), de = (0, A.useRef)(new Set(h?.outputVariantId ? [v] : [])), J = (0, A.useRef)(y), Y = y === "mighty" ? t.ownTeam.players : t.opponentTeam.players, he = (0, A.useMemo)(() => gt(r, y), [r, y]), X = (0, A.useMemo)(() => le(Y, S), [Y, S]), Z = y === "mighty" ? "goal_mighty" : "goal_opponent", ge = (0, A.useMemo)(() => me(n.history, y, X?.name || "", U.current), [
+		X?.name,
+		n.history,
+		y
+	]);
+	(0, A.useEffect)(() => {
+		h || x(n.minute);
+	}, [
+		h,
+		n.minute,
+		t.eventId
+	]), (0, A.useEffect)(() => {
+		S && R(!1);
+	}, [S]), (0, A.useEffect)(() => {
+		J.current !== y && (J.current = y, C(""), E(""), O(""));
+	}, [y]), (0, A.useEffect)(() => {
+		let e = he.some((e) => e.id === k);
+		if (de.current.has(Z) && e) return;
+		let t = pt(r, Z, ge) || _t(r, y) || he[0] || null;
+		j(t?.id || "");
+	}, [
+		Z,
+		ge,
+		y,
+		r,
+		k,
+		he
+	]), (0, A.useEffect)(() => {
+		ae.current.reset(), z(null), H("");
+	}, [t.eventId]);
+	let _e = (0, A.useCallback)((e) => {
+		z(e), e && H("");
+	}, []), Q = (0, A.useMemo)(() => {
+		try {
+			let e = fe({
+				id: U.current,
+				team: y,
+				minute: ee,
+				player: X,
+				assists: [le(Y, w), le(Y, D)].filter((e) => !!e),
+				outputVariantId: k
+			}), i = pe(n.history, e);
+			return {
+				event: e,
+				history: i,
+				text: Dt({
+					event: e,
+					history: i,
+					game: t,
+					snapshot: r
+				}),
+				error: ""
+			};
+		} catch (e) {
+			return {
+				event: null,
+				history: n.history,
+				text: "",
+				error: e instanceof Error ? e.message : "Tor konnte nicht vorbereitet werden."
+			};
+		}
+	}, [
+		w,
+		D,
+		t,
+		ee,
+		Y,
+		X,
+		S,
+		n.history,
+		y,
+		r,
+		k
+	]), ve = I ?? Q.text;
+	async function ye(r = !1) {
+		if (!i) {
+			F("Schreibaktionen sind für diesen Stand nicht freigeschaltet.");
+			return;
+		}
+		if (!Q.event || Q.error) {
+			F(Q.error || "Tor konnte nicht vorbereitet werden.");
+			return;
+		}
+		let c = !String(Q.event.player?.name || "").trim();
+		if (!h && a && c && !r) {
+			R(!0), F("");
+			return;
+		}
+		if (R(!1), ae.current.register()) {
+			F("SYNC gestoppt · Seite neu laden");
+			return;
+		}
+		N(!0), F("Tor wird gespeichert …");
+		try {
+			let r = e(), i = a && !h, c = oe(Q.event, ve, {
+				editingId: h ? String(h.id || "") : null,
+				enabled: i
+			}) || Q.event, l = se(Q.history, c), d = q({
+				whatsappEnabled: i,
+				transportReady: s
+			}), f = await Le({
+				eventId: t.eventId,
+				localState: {
+					minute: ee,
+					history: l
+				},
+				serverState: n,
+				clientState: je(n),
+				environment: r.environment
+			});
+			p(f.state);
+			let g = "", _ = ne;
+			if (_ && _.actionId === String(Q.event.id || "")) {
+				if (T(_.context, Q.event)) try {
+					await u({
+						deliveryId: _.deliveryId,
+						actionId: _.actionId
+					}), z(null), H(""), g = " · Sticker mit Aktion verknüpft.";
+				} catch (e) {
+					let t = e instanceof Error ? e.message : "Sticker-Verknüpfung fehlgeschlagen.";
+					H(t), g = " · Sticker-Verknüpfung offen.";
+				}
+				else z(null), H("Sticker blieb unverknüpft, weil die Aktion nach dem Senden geändert wurde."), g = " · Sticker nicht verknüpft.";
+			}
+			f.wakeWhatsapp && re();
+			let v = d ? await ce(ve) : !1, y = (f.wakeWhatsapp ? " · WhatsApp-Text eingereiht." : d ? v ? " · Text kopiert." : " · Text kann aus der Vorschau kopiert werden." : "") + g;
+			h ? (F((f.rebased ? "Tor korrigiert · zwischenzeitliche Änderungen wurden berücksichtigt." : "Tor serverseitig korrigiert.") + y), m?.()) : (te(null), U.current = o(), x(f.state.minute), C(""), E(""), O(""), F((f.rebased ? "Tor gespeichert · zwischenzeitliche Änderungen wurden berücksichtigt." : "Tor serverseitig gespeichert.") + y));
+		} catch (e) {
+			F(e instanceof Error ? e.message : "Tor konnte nicht gespeichert werden.");
+		} finally {
+			N(!1);
+		}
+	}
+	return /* @__PURE__ */ (0, B.jsxs)("section", {
+		className: d ? "workspace-card action-card compact-action-card" : "workspace-card action-card",
+		children: [
+			!d && /* @__PURE__ */ (0, B.jsxs)("div", {
+				className: "workspace-header",
+				children: [/* @__PURE__ */ (0, B.jsxs)("div", { children: [/* @__PURE__ */ (0, B.jsx)("p", {
+					className: "eyebrow",
+					children: h ? "Korrektur" : "Aktion"
+				}), /* @__PURE__ */ (0, B.jsx)("h2", { children: h ? "Tor bearbeiten" : "Tor erfassen" })] }), /* @__PURE__ */ (0, B.jsx)("span", {
+					className: i ? "write-badge enabled" : "write-badge",
+					children: i ? "DEV schreiben" : "gesperrt"
+				})]
+			}),
+			!h && /* @__PURE__ */ (0, B.jsx)(ie, {
+				eventId: t.eventId,
+				opponentTeamId: t.opponentTeam.id,
+				actionId: U.current,
+				action: y === "mighty" ? "GOAL_MIGHTY" : "GOAL_OPPONENT",
+				mutationsAllowed: i,
+				transportReady: s,
+				onPendingStickerChange: _e
+			}, U.current),
+			/* @__PURE__ */ (0, B.jsxs)("div", {
+				className: "goal-form-grid classic-goal-fields",
+				children: [
+					!d && /* @__PURE__ */ (0, B.jsxs)("label", {
+						className: "field",
+						children: [/* @__PURE__ */ (0, B.jsx)("span", { children: "Team" }), /* @__PURE__ */ (0, B.jsxs)("select", {
+							value: y,
+							onChange: (e) => b(e.target.value),
+							children: [/* @__PURE__ */ (0, B.jsx)("option", {
+								value: "mighty",
+								children: t.ownTeam.shortName
+							}), /* @__PURE__ */ (0, B.jsx)("option", {
+								value: "opponent",
+								children: t.opponentTeam.shortName
+							})]
+						})]
+					}),
+					!d && /* @__PURE__ */ (0, B.jsxs)("label", {
+						className: "field",
+						children: [/* @__PURE__ */ (0, B.jsx)("span", { children: "Spielminute" }), /* @__PURE__ */ (0, B.jsx)("input", {
+							type: "number",
+							min: "1",
+							value: ee,
+							onChange: (e) => x(Number(e.target.value))
+						})]
+					}),
+					/* @__PURE__ */ (0, B.jsxs)("label", {
+						className: "field",
+						children: [/* @__PURE__ */ (0, B.jsxs)("span", { children: ["Torschütze ", y === "mighty" ? t.ownTeam.shortName : t.opponentTeam.shortName] }), /* @__PURE__ */ (0, B.jsx)(W, {
+							players: Y,
+							value: S,
+							onChange: C,
+							placeholder: "Spieler wählen",
+							numberAriaLabel: "Trikotnummer Torschütze"
+						})]
+					}),
+					/* @__PURE__ */ (0, B.jsxs)("details", {
+						className: "assist-details",
+						children: [/* @__PURE__ */ (0, B.jsx)("summary", { children: "Assists" }), /* @__PURE__ */ (0, B.jsxs)("div", {
+							className: "assist-grid",
+							children: [/* @__PURE__ */ (0, B.jsxs)("label", {
+								className: "field",
+								children: [/* @__PURE__ */ (0, B.jsx)("span", { children: "1. Assist" }), /* @__PURE__ */ (0, B.jsx)(W, {
+									players: Y,
+									value: w,
+									onChange: E,
+									placeholder: "Kein / 1. Assist noch unbekannt",
+									numberAriaLabel: "Trikotnummer Assist 1"
+								})]
+							}), /* @__PURE__ */ (0, B.jsxs)("label", {
+								className: "field",
+								children: [/* @__PURE__ */ (0, B.jsx)("span", { children: "2. Assist" }), /* @__PURE__ */ (0, B.jsx)(W, {
+									players: Y,
+									value: D,
+									onChange: O,
+									placeholder: "Kein / 2. Assist noch unbekannt",
+									numberAriaLabel: "Trikotnummer Assist 2"
+								})]
+							})]
+						})]
+					}),
+					/* @__PURE__ */ (0, B.jsxs)("fieldset", {
+						className: "classic-fieldset",
+						children: [/* @__PURE__ */ (0, B.jsx)("legend", { children: "Textvariante" }), /* @__PURE__ */ (0, B.jsx)(G, {
+							ariaLabel: "Textvariante",
+							value: k,
+							options: he.map((e) => ({
+								value: e.id,
+								label: e.name
+							})),
+							onChange: (e) => {
+								de.current.add(Z), j(e);
+							}
+						})]
+					})
+				]
+			}),
+			/* @__PURE__ */ (0, B.jsx)(K, {
+				generatedText: Q.text,
+				error: Q.error,
+				manualText: I,
+				onManualTextChange: te
+			}),
+			/* @__PURE__ */ (0, B.jsxs)("div", {
+				className: "classic-submit-block",
+				children: [
+					L && /* @__PURE__ */ (0, B.jsxs)("section", {
+						className: "open-scorer-warning",
+						role: "alert",
+						children: [
+							/* @__PURE__ */ (0, B.jsx)("strong", { children: "Torschütze offen – trotzdem senden?" }),
+							/* @__PURE__ */ (0, B.jsx)("span", { children: "Der Tor-Text wird ohne Spielernamen an WhatsApp gesendet." }),
+							/* @__PURE__ */ (0, B.jsxs)("div", {
+								className: "open-scorer-warning-actions",
+								children: [/* @__PURE__ */ (0, B.jsx)("button", {
+									className: "primary",
+									type: "button",
+									disabled: M,
+									onClick: () => void ye(!0),
+									children: "Trotzdem senden"
+								}), /* @__PURE__ */ (0, B.jsx)("button", {
+									className: "secondary-button",
+									type: "button",
+									disabled: M,
+									onClick: () => R(!1),
+									children: "Abbrechen"
+								})]
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, B.jsxs)("div", {
+						className: "liveticker-submit-row",
+						children: [f, /* @__PURE__ */ (0, B.jsx)("button", {
+							className: "primary submit-compact",
+							type: "button",
+							"aria-label": h ? "Korrektur speichern" : "Speichern",
+							title: h ? "Korrektur speichern" : "Speichern",
+							disabled: !i || M || !Q.event || !!Q.error,
+							onClick: () => void ye(),
+							children: /* @__PURE__ */ (0, B.jsx)("span", {
+								"aria-hidden": "true",
+								children: M ? "…" : "💾 📋"
+							})
+						})]
+					}),
+					P && /* @__PURE__ */ (0, B.jsx)("p", {
+						className: "liveticker-text-delivery-status",
+						children: P
+					}),
+					ne && V && /* @__PURE__ */ (0, B.jsx)("button", {
+						className: "secondary-button classic-retry-button",
+						type: "button",
+						disabled: M,
+						onClick: () => void (async () => {
+							try {
+								await u({
+									deliveryId: ne.deliveryId,
+									actionId: ne.actionId
+								}), z(null), H(""), F("Sticker nachträglich mit der Toraktion verknüpft.");
+							} catch (e) {
+								H(e instanceof Error ? e.message : "Sticker-Verknüpfung fehlgeschlagen.");
+							}
+						})(),
+						children: "Sticker-Verknüpfung erneut versuchen"
+					}),
+					h && /* @__PURE__ */ (0, B.jsx)("button", {
+						className: "secondary-button classic-cancel-button",
+						type: "button",
+						disabled: M,
+						onClick: m,
+						children: "Abbrechen"
+					}),
+					V && /* @__PURE__ */ (0, B.jsx)("p", {
+						className: "form-error",
+						children: V
+					})
+				]
+			})
+		]
+	});
+}
+//#endregion
+//#region src/components/PenaltyForm.tsx
+function Lt() {
+	return {
+		key: o(),
+		team: "mighty",
+		duration: "2",
+		reason: qe[0],
+		playerId: ""
+	};
+}
+function Rt(e, t) {
+	let n = t.team === "opponent" ? "opponent" : "mighty", r = n === "mighty" ? e.ownTeam.players : e.opponentTeam.players;
+	return {
+		key: o(),
+		team: n,
+		duration: String(t.duration || "2"),
+		reason: String(t.reason || qe[0]),
+		playerId: ue(r, t.player)
+	};
+}
+function zt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEnabled: a, whatsappTransportReady: s, editingEvent: c = null, compact: l = !1, submitModeControl: d, onSaved: f, onCancelEdit: p }) {
+	let m = c?.type === "penalty" && c.subtype !== "penalty_shot" ? c : null, h = m?.penalties?.length ? m.penalties.map((e) => Rt(t, e)) : [Lt()], [g, _] = (0, A.useState)(m ? Math.max(1, Number(m.minute || 1)) : n.minute), [v, y] = (0, A.useState)(h), [b, ee] = (0, A.useState)(String(m?.outputVariantId || "")), [x, S] = (0, A.useState)(!!m?.outputVariantId), [C, w] = (0, A.useState)(!1), [E, D] = (0, A.useState)(""), [O, k] = (0, A.useState)(null), [j, M] = (0, A.useState)(null), [N, P] = (0, A.useState)(""), F = (0, A.useRef)(String(m?.id || o())), I = (0, A.useRef)(De());
+	(0, A.useEffect)(() => {
+		m || _(n.minute);
+	}, [
+		m,
+		n.minute,
+		t.eventId
+	]), (0, A.useEffect)(() => {
+		I.current.reset(), M(null), P("");
+	}, [t.eventId]);
+	let te = (0, A.useCallback)((e) => {
+		M(e), e && P("");
+	}, []), L = (0, A.useMemo)(() => v.map((e) => {
+		let n = e.team === "mighty" ? t.ownTeam.players : t.opponentTeam.players;
+		return {
+			team: e.team,
+			duration: e.duration,
+			reason: e.reason,
+			player: le(n, e.playerId)
+		};
+	}), [t, v]), R = (0, A.useMemo)(() => bt(r), [r]), ne = (0, A.useMemo)(() => Ze(L), [L]);
+	(0, A.useEffect)(() => {
+		let e = R.some((e) => e.id === b);
+		if (x && e) return;
+		let t = St(r, ne);
+		ee(t?.id || R[0]?.id || "");
+	}, [
+		ne,
+		r,
+		b,
+		x,
+		R
+	]);
+	let z = (0, A.useMemo)(() => n.history.some((e) => String(e?.id || "") === F.current), [n.history]), V = (0, A.useMemo)(() => {
+		try {
+			let e = Qe({
+				id: F.current,
+				minute: g,
+				penalties: L,
+				outputVariantId: b
+			});
+			return {
+				event: e,
+				history: $e(n.history, e),
+				text: jt({
+					event: e,
+					game: t,
+					snapshot: r
+				}),
+				error: ""
+			};
+		} catch (e) {
+			return {
+				event: null,
+				history: n.history,
+				text: "",
+				error: e instanceof Error ? e.message : "Strafe konnte nicht vorbereitet werden."
+			};
+		}
+	}, [
+		t,
+		g,
+		L,
+		n.history,
+		r,
+		b
+	]);
+	function H(e, t) {
+		y((n) => n.map((n) => n.key === e ? t.team && t.team !== n.team ? {
+			...n,
+			...t,
+			playerId: ""
+		} : {
+			...n,
+			...t
+		} : n));
+	}
+	function U() {
+		if (m) {
+			p?.();
+			return;
+		}
+		F.current = o(), y([Lt()]), _(n.minute), S(!1), M(null), P(""), D("Neue Strafaktion vorbereitet.");
+	}
+	let ae = O ?? V.text;
+	async function ue() {
+		if (!i) {
+			D("Schreibaktionen sind für diesen Stand nicht freigeschaltet.");
+			return;
+		}
+		if (!V.event || V.error) {
+			D(V.error || "Strafe konnte nicht vorbereitet werden.");
+			return;
+		}
+		if (I.current.register()) {
+			D("SYNC gestoppt · Seite neu laden");
+			return;
+		}
+		w(!0), D("Strafe wird gespeichert …");
+		try {
+			let r = e(), i = m || z ? String(V.event.id || "") : null, o = a && !i, c = oe(V.event, ae, {
+				editingId: i,
+				enabled: o
+			}) || V.event, l = se(V.history, c), d = q({
+				whatsappEnabled: o,
+				transportReady: s
+			}), p = await Le({
+				eventId: t.eventId,
+				localState: {
+					minute: g,
+					history: l
+				},
+				serverState: n,
+				clientState: je(n),
+				environment: r.environment
+			});
+			f(p.state), _(p.state.minute);
+			let h = "", v = j;
+			if (v && v.actionId === String(V.event.id || "")) {
+				if (T(v.context, V.event)) try {
+					await u({
+						deliveryId: v.deliveryId,
+						actionId: v.actionId
+					}), M(null), P(""), h = " · Sticker mit Aktion verknüpft.";
+				} catch (e) {
+					let t = e instanceof Error ? e.message : "Sticker-Verknüpfung fehlgeschlagen.";
+					P(t), h = " · Sticker-Verknüpfung offen.";
+				}
+				else M(null), P("Sticker blieb unverknüpft, weil die Strafen nach dem Senden geändert wurden."), h = " · Sticker nicht verknüpft.";
+			}
+			p.wakeWhatsapp && re();
+			let y = d ? await ce(ae) : !1, b = (p.wakeWhatsapp ? " · WhatsApp-Text eingereiht." : d ? y ? " · Text kopiert." : " · Text kann aus der Vorschau kopiert werden." : "") + h;
+			k(null), D((p.rebased ? m || z ? "Strafe korrigiert · zwischenzeitliche Änderungen wurden berücksichtigt." : "Strafe gespeichert · zwischenzeitliche Änderungen wurden berücksichtigt." : m || z ? "Strafe serverseitig korrigiert · weitere Strafzeilen können ergänzt werden." : "Strafe serverseitig gespeichert · weitere Strafzeilen können ergänzt werden.") + b);
+		} catch (e) {
+			D(e instanceof Error ? e.message : "Strafe konnte nicht gespeichert werden.");
+		} finally {
+			w(!1);
+		}
+	}
+	return /* @__PURE__ */ (0, B.jsxs)("section", {
+		className: l ? "workspace-card action-card compact-action-card" : "workspace-card action-card",
+		children: [
+			!l && /* @__PURE__ */ (0, B.jsxs)("div", {
+				className: "workspace-header",
+				children: [/* @__PURE__ */ (0, B.jsxs)("div", { children: [/* @__PURE__ */ (0, B.jsx)("p", {
+					className: "eyebrow",
+					children: m ? "Korrektur" : "Aktion"
+				}), /* @__PURE__ */ (0, B.jsx)("h2", { children: m ? "Strafe bearbeiten" : "Strafe erfassen" })] }), /* @__PURE__ */ (0, B.jsx)("span", {
+					className: i ? "write-badge enabled" : "write-badge",
+					children: i ? "DEV schreiben" : "gesperrt"
+				})]
+			}),
+			!m && !z && /* @__PURE__ */ (0, B.jsx)(ie, {
+				eventId: t.eventId,
+				opponentTeamId: t.opponentTeam.id,
+				actionId: F.current,
+				action: "PENALTY",
+				penaltyTeams: L.map((e) => e.team),
+				mutationsAllowed: i,
+				transportReady: s,
+				onPendingStickerChange: te
+			}, F.current),
+			!l && /* @__PURE__ */ (0, B.jsxs)("label", {
+				className: "field",
+				children: [/* @__PURE__ */ (0, B.jsx)("span", { children: "Spielminute" }), /* @__PURE__ */ (0, B.jsx)("input", {
+					type: "number",
+					min: "1",
+					value: g,
+					onChange: (e) => _(Number(e.target.value))
+				})]
+			}),
+			/* @__PURE__ */ (0, B.jsx)("div", {
+				className: "penalty-rows classic-penalty-list",
+				children: v.map((e) => {
+					let n = e.team === "mighty" ? t.ownTeam.players : t.opponentTeam.players;
+					return /* @__PURE__ */ (0, B.jsxs)("article", {
+						className: "penalty-edit-row classic-penalty-row",
+						children: [/* @__PURE__ */ (0, B.jsxs)("div", {
+							className: "penalty-row-head",
+							children: [/* @__PURE__ */ (0, B.jsx)("strong", { children: "Strafe" }), /* @__PURE__ */ (0, B.jsxs)("div", {
+								className: "penalty-row-actions",
+								children: [/* @__PURE__ */ (0, B.jsx)("button", {
+									className: "add-penalty",
+									type: "button",
+									onClick: () => y((e) => [...e, Lt()]),
+									children: "Hinzufügen"
+								}), /* @__PURE__ */ (0, B.jsx)("button", {
+									className: "remove-penalty",
+									type: "button",
+									disabled: v.length === 1,
+									onClick: () => y((t) => t.filter((t) => t.key !== e.key)),
+									children: "Entfernen"
+								})]
+							})]
+						}), /* @__PURE__ */ (0, B.jsxs)("div", {
+							className: "penalty-grid",
+							children: [
+								/* @__PURE__ */ (0, B.jsxs)("label", {
+									className: "field",
+									children: [/* @__PURE__ */ (0, B.jsx)("span", { children: "Team" }), /* @__PURE__ */ (0, B.jsxs)("select", {
+										value: e.team,
+										onChange: (t) => H(e.key, { team: t.target.value }),
+										children: [/* @__PURE__ */ (0, B.jsx)("option", {
+											value: "mighty",
+											children: t.ownTeam.shortName
+										}), /* @__PURE__ */ (0, B.jsx)("option", {
+											value: "opponent",
+											children: t.opponentTeam.shortName
+										})]
+									})]
+								}),
+								/* @__PURE__ */ (0, B.jsxs)("label", {
+									className: "field",
+									children: [/* @__PURE__ */ (0, B.jsx)("span", { children: "Strafzeit" }), /* @__PURE__ */ (0, B.jsx)("select", {
+										value: e.duration,
+										onChange: (t) => H(e.key, { duration: t.target.value }),
+										children: Je.map((e) => /* @__PURE__ */ (0, B.jsxs)("option", {
+											value: e,
+											children: [e, " Min."]
+										}, e))
+									})]
+								}),
+								/* @__PURE__ */ (0, B.jsxs)("label", {
+									className: "field wide",
+									children: [/* @__PURE__ */ (0, B.jsx)("span", { children: "Spieler" }), /* @__PURE__ */ (0, B.jsx)(W, {
+										players: n,
+										value: e.playerId,
+										onChange: (t) => H(e.key, { playerId: t }),
+										placeholder: "Spieler noch unbekannt",
+										numberAriaLabel: "Trikotnummer"
+									})]
+								}),
+								/* @__PURE__ */ (0, B.jsxs)("label", {
+									className: "field wide",
+									children: [/* @__PURE__ */ (0, B.jsx)("span", { children: "Strafgrund" }), /* @__PURE__ */ (0, B.jsx)("select", {
+										value: e.reason,
+										onChange: (t) => H(e.key, { reason: t.target.value }),
+										children: qe.map((e) => /* @__PURE__ */ (0, B.jsx)("option", {
+											value: e,
+											children: e
+										}, e))
+									})]
+								})
+							]
+						})]
+					}, e.key);
+				})
+			}),
+			/* @__PURE__ */ (0, B.jsxs)("fieldset", {
+				className: "classic-fieldset",
+				children: [/* @__PURE__ */ (0, B.jsx)("legend", { children: "Textvariante" }), /* @__PURE__ */ (0, B.jsx)(G, {
+					ariaLabel: "Textvariante",
+					value: b,
+					options: R.map((e) => ({
+						value: e.id,
+						label: e.name
+					})),
+					onChange: (e) => {
+						ee(e), S(!0);
+					}
+				})]
+			}),
+			/* @__PURE__ */ (0, B.jsx)(K, {
+				generatedText: V.text,
+				error: V.error,
+				manualText: O,
+				onManualTextChange: k
+			}),
+			/* @__PURE__ */ (0, B.jsxs)("div", {
+				className: "classic-submit-block",
+				children: [
+					/* @__PURE__ */ (0, B.jsxs)("div", {
+						className: "liveticker-submit-row",
+						children: [d, /* @__PURE__ */ (0, B.jsx)("button", {
+							className: "primary submit-compact",
+							type: "button",
+							"aria-label": m ? "Korrektur speichern" : "Speichern",
+							title: m ? "Korrektur speichern" : "Speichern",
+							disabled: !i || C || !V.event || !!V.error,
+							onClick: () => void ue(),
+							children: /* @__PURE__ */ (0, B.jsx)("span", {
+								"aria-hidden": "true",
+								children: C ? "…" : "💾 📋"
+							})
+						})]
+					}),
+					E && /* @__PURE__ */ (0, B.jsx)("p", {
+						className: "liveticker-text-delivery-status",
+						children: E
+					}),
+					j && N && /* @__PURE__ */ (0, B.jsx)("button", {
+						className: "secondary-button classic-retry-button",
+						type: "button",
+						disabled: C,
+						onClick: () => void (async () => {
+							try {
+								await u({
+									deliveryId: j.deliveryId,
+									actionId: j.actionId
+								}), M(null), P(""), D("Sticker nachträglich mit der Strafaktion verknüpft.");
+							} catch (e) {
+								P(e instanceof Error ? e.message : "Sticker-Verknüpfung fehlgeschlagen.");
+							}
+						})(),
+						children: "Sticker-Verknüpfung erneut versuchen"
+					}),
+					!l && /* @__PURE__ */ (0, B.jsx)("button", {
+						className: "secondary-button",
+						type: "button",
+						disabled: C,
+						onClick: U,
+						children: m ? "Bearbeiten abbrechen" : "Neue Strafaktion"
+					}),
+					m && l && /* @__PURE__ */ (0, B.jsx)("button", {
+						className: "secondary-button classic-cancel-button",
+						type: "button",
+						disabled: C,
+						onClick: p,
+						children: "Abbrechen"
+					}),
+					N && /* @__PURE__ */ (0, B.jsx)("p", {
+						className: "form-error",
+						children: N
+					})
+				]
+			})
+		]
+	});
+}
+//#endregion
+//#region src/liveticker/situations.ts
+function Bt(e) {
+	return e === "mighty" ? "opponent" : "mighty";
+}
+function Vt(e) {
+	return e.filter((e) => e.position === "Tor" || e.position === "GOALIE").map((e) => e.position === "GOALIE" ? {
+		...e,
+		position: "Tor"
+	} : e);
+}
+function Ht({ id: e, minute: t, team: n, player: r, goalie: i, result: a, outputVariantId: s }) {
+	let c = Number(t);
+	if (!Number.isInteger(c) || c < 1) throw Error("Bitte eine gültige Spielminute ab 1 eingeben.");
+	if (!["scored", "missed"].includes(a)) throw Error("Ungültiges Straf-Penalty-Ergebnis.");
+	if (!String(s || "").trim()) throw Error("Bitte eine Straf-Penalty-Ausgabevariante wählen.");
+	let l = Bt(n);
+	return {
+		id: String(e || o()),
+		type: "penalty",
+		subtype: "penalty_shot",
+		minute: c,
+		team: n,
+		player: r,
+		goalie: i,
+		result: a,
+		outputVariantId: s,
+		penalties: [{
+			team: l,
+			duration: "Penalty",
+			reason: "Straf-Penalty",
+			player: null
+		}]
+	};
+}
+function Ut({ id: e, team: t, player: n, result: r, outputVariantId: i }) {
+	if (!["scored", "missed"].includes(r)) throw Error("Ungültiges Penaltyschießen-Ergebnis.");
+	if (!String(i || "").trim()) throw Error("Bitte eine Penaltyschießen-Ausgabevariante wählen.");
+	return {
+		id: String(e || o()),
+		type: "shootout",
+		team: t,
+		player: n,
+		result: r,
+		outputVariantId: i
+	};
+}
+function Wt(e, t) {
+	let n = Array.isArray(e) ? e.slice() : [], r = String(t.id || ""), i = r ? n.findIndex((e) => String(e?.id || "") === r) : -1;
+	return i >= 0 ? n.splice(i, 1, t) : n.push(t), n;
+}
+//#endregion
+//#region src/components/SituationForm.tsx
+function Gt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEnabled: a, whatsappTransportReady: s, editingEvent: c = null, compact: l = !1, submitModeControl: u, defaultKind: d = "penalty_shot", allowStickerOnly: f = !1, onSaved: p, onCancelEdit: m }) {
+	let h = c && (c.type === "shootout" || Re(c)) ? c : null, g = h ? h.type === "shootout" ? "shootout" : "penalty_shot" : d, _ = h?.team === "opponent" ? "opponent" : "mighty", v = _ === "mighty" ? t.ownTeam.players : t.opponentTeam.players, y = Vt(Bt(_) === "mighty" ? t.ownTeam.players : t.opponentTeam.players), [b, ee] = (0, A.useState)(g), [x, S] = (0, A.useState)(!!h || !f), [C, w] = (0, A.useState)(_), [T, E] = (0, A.useState)(h && g === "penalty_shot" ? Math.max(1, Number(h.minute || 1)) : n.minute), [D, O] = (0, A.useState)(ue(v, h?.player)), [k, j] = (0, A.useState)(g === "penalty_shot" ? ue(y, h?.goalie) : ""), [M, N] = (0, A.useState)(h?.result === "scored" ? "scored" : h?.result === "missed" || g === "penalty_shot" ? "missed" : "scored"), [P, F] = (0, A.useState)(String(h?.outputVariantId || "")), [I, te] = (0, A.useState)(!1), [L, R] = (0, A.useState)(""), [ne, z] = (0, A.useState)(null), V = (0, A.useRef)(String(h?.id || o())), H = (0, A.useRef)(De()), U = (0, A.useRef)(b), ae = (0, A.useRef)(C), de = C === "mighty" ? t.ownTeam.players : t.opponentTeam.players, fe = Bt(C), pe = Vt(fe === "mighty" ? t.ownTeam.players : t.opponentTeam.players), me = b === "penalty_shot" ? "penalty_shot" : "shootout_attempt", J = (0, A.useMemo)(() => ut(r, me), [me, r]);
+	(0, A.useEffect)(() => {
+		h || E(n.minute);
+	}, [
+		h,
+		n.minute,
+		t.eventId
+	]), (0, A.useEffect)(() => {
+		let e = J.some((e) => e.id === P);
+		if (h && e) return;
+		let t = dt(r, me);
+		F(t?.id || J[0]?.id || "");
+	}, [
+		h,
+		me,
+		r,
+		P,
+		J
+	]), (0, A.useEffect)(() => {
+		U.current !== b && (U.current = b, O(""), j(""), N(b === "penalty_shot" ? "missed" : "scored"), F(dt(r, me)?.id || J[0]?.id || ""));
+	}, [
+		b,
+		me,
+		r,
+		J
+	]), (0, A.useEffect)(() => {
+		ae.current !== C && (ae.current = C, O(""), j(""));
+	}, [C]), (0, A.useEffect)(() => {
+		H.current.reset();
+	}, [t.eventId]);
+	let Y = (0, A.useMemo)(() => {
+		try {
+			let e = le(de, D), i = b === "penalty_shot" ? Ht({
+				id: V.current,
+				minute: T,
+				team: C,
+				player: e,
+				goalie: le(pe, k),
+				result: M,
+				outputVariantId: P
+			}) : Ut({
+				id: V.current,
+				team: C,
+				player: e,
+				result: M,
+				outputVariantId: P
+			});
+			return {
+				event: i,
+				history: Wt(n.history, i),
+				text: b === "penalty_shot" ? Pt({
+					event: i,
+					game: t,
+					snapshot: r
+				}) : Ft({
+					event: i,
+					game: t,
+					snapshot: r
+				}),
+				error: ""
+			};
+		} catch (e) {
+			return {
+				event: null,
+				history: n.history,
+				text: "",
+				error: e instanceof Error ? e.message : "Spielsituation konnte nicht vorbereitet werden."
+			};
+		}
+	}, [
+		de,
+		t,
+		k,
+		pe,
+		b,
+		T,
+		D,
+		M,
+		n.history,
+		C,
+		r,
+		P
+	]), he = ne ?? Y.text;
+	async function X() {
+		if (!i) {
+			R("Schreibaktionen sind für diesen Stand nicht freigeschaltet.");
+			return;
+		}
+		if (!Y.event || Y.error) {
+			R(Y.error || "Spielsituation konnte nicht vorbereitet werden.");
+			return;
+		}
+		if (H.current.register()) {
+			R("SYNC gestoppt · Seite neu laden");
+			return;
+		}
+		te(!0), R("Spielsituation wird gespeichert …");
+		try {
+			let r = e(), i = a && !h, c = oe(Y.event, he, {
+				editingId: h ? String(h.id || "") : null,
+				enabled: i
+			}) || Y.event, l = se(Y.history, c), u = q({
+				whatsappEnabled: i,
+				transportReady: s
+			}), d = await Le({
+				eventId: t.eventId,
+				localState: {
+					minute: b === "penalty_shot" ? T : n.minute,
+					history: l
+				},
+				serverState: n,
+				clientState: je(n),
+				environment: r.environment
+			});
+			p(d.state), d.wakeWhatsapp && re();
+			let f = u ? await ce(he) : !1, g = d.wakeWhatsapp ? " · WhatsApp-Text eingereiht." : u ? f ? " · Text kopiert." : " · Text kann aus der Vorschau kopiert werden." : "";
+			h ? (R((d.rebased ? "Spielsituation korrigiert · zwischenzeitliche Änderungen wurden berücksichtigt." : "Spielsituation serverseitig korrigiert.") + g), m?.()) : (z(null), V.current = o(), O(""), j(""), E(d.state.minute), R((d.rebased ? "Spielsituation gespeichert · zwischenzeitliche Änderungen wurden berücksichtigt." : "Spielsituation serverseitig gespeichert.") + g));
+		} catch (e) {
+			R(e instanceof Error ? e.message : "Spielsituation konnte nicht gespeichert werden.");
+		} finally {
+			te(!1);
+		}
+	}
+	return /* @__PURE__ */ (0, B.jsxs)("section", {
+		className: l ? "workspace-card action-card compact-action-card" : "workspace-card action-card",
+		children: [
+			!l && /* @__PURE__ */ (0, B.jsxs)("div", {
+				className: "workspace-header",
+				children: [/* @__PURE__ */ (0, B.jsxs)("div", { children: [/* @__PURE__ */ (0, B.jsx)("p", {
+					className: "eyebrow",
+					children: h ? "Korrektur" : "Spielsituation"
+				}), /* @__PURE__ */ (0, B.jsx)("h2", { children: h ? b === "penalty_shot" ? "Straf-Penalty bearbeiten" : "Penaltyschießen bearbeiten" : b === "penalty_shot" ? "Straf-Penalty" : "Penaltyschießen" })] }), /* @__PURE__ */ (0, B.jsx)("span", {
+					className: i ? "write-badge enabled" : "write-badge",
+					children: i ? "DEV schreiben" : "gesperrt"
+				})]
+			}),
+			!h && f && /* @__PURE__ */ (0, B.jsx)(ie, {
+				eventId: t.eventId,
+				opponentTeamId: t.opponentTeam.id,
+				actionId: "",
+				action: "SITUATION",
+				mutationsAllowed: i,
+				transportReady: s
+			}),
+			f && !h && /* @__PURE__ */ (0, B.jsxs)("fieldset", {
+				className: "classic-fieldset",
+				children: [/* @__PURE__ */ (0, B.jsx)("legend", { children: "Situation" }), /* @__PURE__ */ (0, B.jsx)("div", {
+					className: "classic-segmented",
+					children: /* @__PURE__ */ (0, B.jsx)("button", {
+						type: "button",
+						"aria-pressed": x,
+						onClick: () => {
+							S((e) => !e), ee("penalty_shot");
+						},
+						children: "🏒 Straf-Penalty"
+					})
+				})]
+			}),
+			x && /* @__PURE__ */ (0, B.jsxs)(B.Fragment, { children: [
+				/* @__PURE__ */ (0, B.jsxs)("div", {
+					className: "goal-form-grid classic-situation-fields",
+					children: [
+						!l && /* @__PURE__ */ (0, B.jsxs)("label", {
+							className: "field",
+							children: [/* @__PURE__ */ (0, B.jsx)("span", { children: "Situation" }), /* @__PURE__ */ (0, B.jsxs)("select", {
+								value: b,
+								onChange: (e) => ee(e.target.value),
+								children: [/* @__PURE__ */ (0, B.jsx)("option", {
+									value: "penalty_shot",
+									children: "Straf-Penalty"
+								}), /* @__PURE__ */ (0, B.jsx)("option", {
+									value: "shootout",
+									children: "Penaltyschießen"
+								})]
+							})]
+						}),
+						/* @__PURE__ */ (0, B.jsxs)("label", {
+							className: "field",
+							children: [/* @__PURE__ */ (0, B.jsx)("span", { children: b === "penalty_shot" ? "Angreifendes Team" : "Mannschaft" }), /* @__PURE__ */ (0, B.jsxs)("select", {
+								value: C,
+								onChange: (e) => w(e.target.value),
+								children: [/* @__PURE__ */ (0, B.jsx)("option", {
+									value: "mighty",
+									children: t.ownTeam.shortName
+								}), /* @__PURE__ */ (0, B.jsx)("option", {
+									value: "opponent",
+									children: t.opponentTeam.shortName
+								})]
+							})]
+						}),
+						b === "penalty_shot" && !l && /* @__PURE__ */ (0, B.jsxs)("label", {
+							className: "field",
+							children: [/* @__PURE__ */ (0, B.jsx)("span", { children: "Spielminute" }), /* @__PURE__ */ (0, B.jsx)("input", {
+								type: "number",
+								min: "1",
+								value: T,
+								onChange: (e) => E(Number(e.target.value))
+							})]
+						}),
+						/* @__PURE__ */ (0, B.jsxs)("label", {
+							className: "field wide",
+							children: [/* @__PURE__ */ (0, B.jsx)("span", { children: b === "penalty_shot" ? "Schütze " + (C === "mighty" ? t.ownTeam.shortName : t.opponentTeam.shortName) : "Schütze" }), /* @__PURE__ */ (0, B.jsx)(W, {
+								players: de,
+								value: D,
+								onChange: O,
+								placeholder: "Schütze noch unbekannt",
+								numberAriaLabel: b === "penalty_shot" ? "Trikotnummer Straf-Penalty Schütze" : "Trikotnummer Penaltyschütze"
+							})]
+						}),
+						b === "penalty_shot" && /* @__PURE__ */ (0, B.jsxs)("label", {
+							className: "field wide",
+							children: [/* @__PURE__ */ (0, B.jsxs)("span", { children: ["Goalie ", fe === "mighty" ? t.ownTeam.shortName : t.opponentTeam.shortName] }), /* @__PURE__ */ (0, B.jsx)(W, {
+								players: pe,
+								value: k,
+								onChange: j,
+								placeholder: "Goalie noch unbekannt",
+								numberAriaLabel: "Trikotnummer verteidigender Goalie"
+							})]
+						}),
+						/* @__PURE__ */ (0, B.jsxs)("fieldset", {
+							className: "classic-fieldset wide",
+							children: [/* @__PURE__ */ (0, B.jsx)("legend", { children: "Ergebnis" }), /* @__PURE__ */ (0, B.jsx)(G, {
+								ariaLabel: "Ergebnis",
+								value: M,
+								options: [{
+									value: "scored",
+									label: "✅ Verwandelt"
+								}, {
+									value: "missed",
+									label: "❌ Vergeben"
+								}],
+								onChange: (e) => N(e)
+							})]
+						}),
+						/* @__PURE__ */ (0, B.jsxs)("fieldset", {
+							className: "classic-fieldset wide",
+							children: [/* @__PURE__ */ (0, B.jsx)("legend", { children: "Textvariante" }), /* @__PURE__ */ (0, B.jsx)(G, {
+								ariaLabel: "Textvariante",
+								value: P,
+								options: J.map((e) => ({
+									value: e.id,
+									label: e.name
+								})),
+								onChange: F
+							})]
+						})
+					]
+				}),
+				/* @__PURE__ */ (0, B.jsx)(K, {
+					generatedText: Y.text,
+					error: Y.error,
+					manualText: ne,
+					onManualTextChange: z
+				}),
+				/* @__PURE__ */ (0, B.jsxs)("div", {
+					className: "classic-submit-block",
+					children: [
+						/* @__PURE__ */ (0, B.jsxs)("div", {
+							className: "liveticker-submit-row",
+							children: [u, /* @__PURE__ */ (0, B.jsx)("button", {
+								className: "primary submit-compact",
+								type: "button",
+								"aria-label": h ? "Korrektur speichern" : "Speichern",
+								title: h ? "Korrektur speichern" : "Speichern",
+								disabled: !i || I || !Y.event || !!Y.error,
+								onClick: () => void X(),
+								children: /* @__PURE__ */ (0, B.jsx)("span", {
+									"aria-hidden": "true",
+									children: I ? "…" : "💾 📋"
+								})
+							})]
+						}),
+						L && /* @__PURE__ */ (0, B.jsx)("p", {
+							className: "liveticker-text-delivery-status",
+							children: L
+						}),
+						h && /* @__PURE__ */ (0, B.jsx)("button", {
+							className: "secondary-button classic-cancel-button",
+							type: "button",
+							disabled: I,
+							onClick: m,
+							children: "Abbrechen"
+						})
+					]
+				})
+			] })
+		]
+	});
+}
+//#endregion
+//#region src/liveticker/minute.ts
+var Kt = Object.freeze({
+	P1: Object.freeze({
+		key: "P1",
+		label: "1. Drittel",
+		order: 1
+	}),
+	P2: Object.freeze({
+		key: "P2",
+		label: "2. Drittel",
+		order: 2
+	}),
+	P3: Object.freeze({
+		key: "P3",
+		label: "3. Drittel",
+		order: 3
+	}),
+	OT: Object.freeze({
+		key: "OT",
+		label: "Overtime",
+		order: 4
+	})
+});
+function qt(e) {
+	let t = Number.parseInt(String(e ?? ""), 10);
+	if (!Number.isInteger(t) || t < 1) throw Error("Bitte eine gültige Spielminute ab 1 eingeben.");
+	return t;
+}
+function Jt(e) {
+	let t = qt(e);
+	return t <= 20 ? Kt.P1 : t <= 40 ? Kt.P2 : t <= 60 ? Kt.P3 : Kt.OT;
+}
+function Yt(e, t) {
+	let n = qt(e), r = Number.parseInt(String(t), 10);
+	if (!Number.isInteger(r)) throw Error("Ungültige Minutenänderung.");
+	return Math.max(1, n + r);
+}
+//#endregion
+//#region src/components/MinuteControl.tsx
+function Xt({ minute: e, disabled: t, saving: n, onCommit: r }) {
+	let [i, a] = (0, A.useState)(String(e)), [o, s] = (0, A.useState)("");
+	(0, A.useEffect)(() => {
+		a(String(e)), s("");
+	}, [e]);
+	let c = (0, A.useMemo)(() => {
+		try {
+			return Jt(i);
+		} catch {
+			return Jt(e);
+		}
+	}, [i, e]);
+	async function l(t) {
+		try {
+			let n = qt(t);
+			if (a(String(n)), s(""), n === e) return;
+			await r(n);
+		} catch (t) {
+			a(String(e)), s(t instanceof Error ? t.message : "Spielminute konnte nicht gespeichert werden.");
+		}
+	}
+	async function u(t) {
+		try {
+			let n = Yt(i || e, t);
+			if (a(String(n)), s(""), n === e) return;
+			await r(n);
+		} catch (t) {
+			a(String(e)), s(t instanceof Error ? t.message : "Spielminute konnte nicht gespeichert werden.");
+		}
+	}
+	return /* @__PURE__ */ (0, B.jsxs)("section", {
+		className: "minute-card",
+		children: [
+			/* @__PURE__ */ (0, B.jsxs)("div", {
+				className: "minute-heading",
+				children: [/* @__PURE__ */ (0, B.jsxs)("div", { children: [/* @__PURE__ */ (0, B.jsx)("p", {
+					className: "eyebrow",
+					children: "Spielzeit"
+				}), /* @__PURE__ */ (0, B.jsx)("h2", { children: "Spielminute" })] }), /* @__PURE__ */ (0, B.jsx)("strong", {
+					className: "segment-badge",
+					children: c.label
+				})]
+			}),
+			/* @__PURE__ */ (0, B.jsxs)("div", {
+				className: "minute-control",
+				children: [
+					/* @__PURE__ */ (0, B.jsx)("button", {
+						className: "minute-button",
+						type: "button",
+						"aria-label": "Eine Minute zurück",
+						disabled: t || n,
+						onClick: () => void u(-1),
+						children: "−"
+					}),
+					/* @__PURE__ */ (0, B.jsx)("input", {
+						className: "minute-input",
+						type: "number",
+						inputMode: "numeric",
+						min: "1",
+						step: "1",
+						value: i,
+						disabled: t || n,
+						"aria-label": "Spielminute",
+						onChange: (e) => a(e.target.value),
+						onBlur: () => void l(i),
+						onKeyDown: (t) => {
+							t.key === "Enter" && t.currentTarget.blur(), t.key === "Escape" && (a(String(e)), s(""), t.currentTarget.blur());
+						}
+					}),
+					/* @__PURE__ */ (0, B.jsx)("button", {
+						className: "minute-button",
+						type: "button",
+						"aria-label": "Eine Minute weiter",
+						disabled: t || n,
+						onClick: () => void u(1),
+						children: "+"
+					})
+				]
+			}),
+			/* @__PURE__ */ (0, B.jsx)("p", {
+				className: "minute-help",
+				children: n ? "Minute wird serverseitig gespeichert …" : t ? "Spielzeit ist in diesem Zustand schreibgeschützt." : "Änderungen werden revision-sicher im zentralen Spielstand gespeichert."
+			}),
+			o && /* @__PURE__ */ (0, B.jsx)("p", {
+				className: "form-error",
+				children: o
+			})
+		]
+	});
+}
+//#endregion
+//#region src/components/GraphicsPanel.tsx
+function Zt(e) {
+	return JSON.stringify([
+		e.downloadUrl,
+		e.sha256,
+		e.bytes
+	]);
+}
+function Qt(e, t) {
+	return e + ":" + t;
+}
+function $t() {
+	return typeof File == "function" && typeof navigator.share == "function" && typeof navigator.canShare == "function";
+}
+function en(e) {
+	return e.downloadUrl ? (window.location.assign(e.downloadUrl), "downloaded") : "invalid";
+}
+function tn({ eventId: e, mutationsAllowed: t, gameCompleted: n, summaryTextForKind: r, onFinalGraphicReady: i, activeKind: o, compact: u = !1 }) {
+	let [f, h] = (0, A.useState)({ jobs: [] }), [_, v] = (0, A.useState)(() => o || "PERIOD_1"), [b, ee] = (0, A.useState)(!0), [S, C] = (0, A.useState)(""), [w, T] = (0, A.useState)(""), [j, M] = (0, A.useState)("Grafikstatus wird geladen …"), [N, P] = (0, A.useState)(""), [F, I] = (0, A.useState)(0), [te, L] = (0, A.useState)(0), [R, ne] = (0, A.useState)({}), z = (0, A.useRef)(/* @__PURE__ */ new Map()), V = (0, A.useRef)(/* @__PURE__ */ new Map()), H = (0, A.useRef)(null), ie = (0, A.useRef)(/* @__PURE__ */ new Set()), U = (0, A.useRef)(i);
+	(0, A.useEffect)(() => {
+		U.current = i;
+	}, [i]), (0, A.useEffect)(() => {
+		v(o || "PERIOD_1"), ne({});
+	}, [e, o]), (0, A.useEffect)(() => {
+		o && v(o);
+	}, [o]);
+	let W = (0, A.useCallback)(async () => {
+		if (e) try {
+			let t = await D(e), n = null;
+			try {
+				n = await g(e), P("");
+			} catch (e) {
+				P(e instanceof Error ? e.message : "WhatsApp-Status konnte nicht geladen werden.");
+			}
+			h(t);
+			let r = !1, i = {};
+			for (let o of l) {
+				let s = a(t, o), c = Qt(e, o), l = V.current.get(c) || null;
+				if (s?.status === "SUCCEEDED" && s.jobId) {
+					if (!l || l.jobId !== s.jobId) {
+						let t = y(e, s.jobId);
+						t ? (l = {
+							eventId: e,
+							jobId: s.jobId,
+							deliveryId: t
+						}, V.current.set(c, l), r = !0) : l && (V.current.delete(c), l = null, r = !0);
+					}
+				} else l && (V.current.delete(c), l = null, r = !0);
+				if (l && l.jobId === s?.jobId && n) {
+					let e = p(n, l.deliveryId);
+					e && (i[o] = e);
+				}
+			}
+			r && L((e) => e + 1), n && ne(i);
+			let o = H.current, s = o?.eventId === e ? o.jobId : "", c = a(t, "FINAL"), u = k(s, c);
+			u === "failed" ? (H.current = null, M("Endergebnis · Flyer-Erstellung fehlgeschlagen; Spiel bleibt aktiv.")) : u === "ready" && s && !ie.current.has(s) ? (ie.current.add(s), H.current = null, M("Endergebnis · Flyer fertig; Spiel wird abgeschlossen …"), Promise.resolve(U.current?.(s)).catch((e) => {
+				M(e instanceof Error ? e.message : "FINAL-Flyer ist fertig, aber das Spiel konnte nicht abgeschlossen werden.");
+			})) : M("Grafikstatus aktualisiert.");
+		} catch (e) {
+			M(e instanceof Error ? e.message : "Grafikstatus konnte nicht geladen werden.");
+		} finally {
+			ee(!1);
+		}
+	}, [e]);
+	(0, A.useEffect)(() => {
+		ee(!0), W();
+	}, [W]);
+	let G = (0, A.useMemo)(() => a(f, _), [_, f]), K = (0, A.useMemo)(() => G?.status === "SUCCEEDED" && G.result?.artifacts || [], [G]), ae = (0, A.useMemo)(() => K.find((e) => e.kind === "POST") || null, [K]), oe = f.jobs.some((e) => d(e)), se = V.current.get(Qt(e, _)) || null, q = R[_] || null, ce = !(!se || q && m(q.status)), le = l.some((t) => {
+		if (!V.current.get(Qt(e, t))) return !1;
+		let n = R[t];
+		return !n || !m(n.status);
+	});
+	(0, A.useEffect)(() => {
+		if (!oe && !le) return;
+		let e = window.setTimeout(() => void W(), le ? 1e3 : 2500);
+		return () => window.clearTimeout(e);
+	}, [
+		oe,
+		le,
+		W,
+		f,
+		R
+	]), (0, A.useEffect)(() => {
+		if (K.length) for (let e of K) {
+			let t = Zt(e);
+			if (z.current.has(t)) continue;
+			let n = {
+				prepared: null,
+				pending: !0,
+				failed: !1
+			};
+			z.current.set(t, n), I((e) => e + 1), c(e).then((e) => {
+				n.prepared = e, n.pending = !1, I((e) => e + 1);
+			}, () => {
+				n.pending = !1, n.failed = !0, I((e) => e + 1);
+			});
+		}
+	}, [K]);
+	async function ue(r) {
+		if (!t || n) {
+			M("Grafik-Erstellung ist für dieses Spiel nicht freigeschaltet.");
+			return;
+		}
+		if (!(S || d(a(f, r)))) {
+			v(r), C(r), M(s(r) + " · Flyer wird angelegt …");
+			try {
+				let t = await E(e, r);
+				r === "FINAL" && (H.current = {
+					eventId: e,
+					jobId: t
+				}), M(s(r) + " · Flyer wird erstellt …"), await W();
+			} catch (e) {
+				M(e instanceof Error ? e.message : "Grafik konnte nicht angelegt werden.");
+			} finally {
+				C("");
+			}
+		}
+	}
+	async function de(n) {
+		if (!t) {
+			M("WhatsApp-Versand ist in diesem Stand nicht freigeschaltet.");
+			return;
+		}
+		let i = a(f, n);
+		if (i?.status !== "SUCCEEDED") return;
+		let o = i.result?.artifacts.find((e) => e.kind === "POST") || null;
+		if (!o) {
+			M("POST-Flyer fehlt – WhatsApp wird nicht gesendet.");
+			return;
+		}
+		let c = V.current.get(Qt(e, n)), l = R[n];
+		if (!c || l && m(l.status)) {
+			T(n), M(s(n) + " · POST + Text werden an WhatsApp übergeben …");
+			try {
+				let t = await x({
+					eventId: e,
+					graphicJobId: i.jobId,
+					kind: n,
+					artifact: o,
+					message: r(n)
+				});
+				re(), V.current.set(Qt(e, n), {
+					eventId: e,
+					jobId: i.jobId,
+					deliveryId: t
+				}), L((e) => e + 1), ne((e) => ({
+					...e,
+					[n]: {
+						id: t,
+						status: "QUEUED",
+						stickerStatus: "NOT_REQUESTED",
+						textStatus: "PENDING",
+						attemptCount: 0,
+						linkedActionId: null,
+						error: null
+					}
+				})), await W();
+			} catch (e) {
+				M(e instanceof Error ? e.message : "WhatsApp-Versand konnte nicht angelegt werden.");
+			} finally {
+				T("");
+			}
+		}
+	}
+	function fe(e) {
+		let t = z.current.get(Zt(e))?.prepared;
+		try {
+			if (t && typeof File == "function" && typeof navigator.share == "function" && typeof navigator.canShare == "function") {
+				let n = new File([t.blob], t.filename, { type: "image/png" });
+				if (navigator.canShare({ files: [n] })) {
+					navigator.share({
+						files: [n],
+						title: s(_) + " · " + (e.kind === "POST" ? "Post" : "Story")
+					}).catch((t) => {
+						t?.name !== "AbortError" && en(e);
+					});
+					return;
+				}
+			}
+		} catch (t) {
+			if (t?.name === "AbortError") return;
+			en(e);
+			return;
+		}
+		en(e);
+	}
+	let pe = q?.status === "SUCCEEDED" ? "✅ POST + Text erfolgreich an WhatsApp gesendet." : q?.status === "FAILED" ? "WhatsApp-Versand fehlgeschlagen." : se ? "POST + Text werden an WhatsApp gesendet …" : "";
+	return /* @__PURE__ */ (0, B.jsxs)("section", {
+		className: u ? "classic-graphics-panel" : "workspace-card",
+		children: [
+			!u && /* @__PURE__ */ (0, B.jsx)("div", {
+				className: "workspace-header compact",
+				children: /* @__PURE__ */ (0, B.jsxs)("div", { children: [/* @__PURE__ */ (0, B.jsx)("p", {
+					className: "eyebrow",
+					children: "Grafikausgabe"
+				}), /* @__PURE__ */ (0, B.jsx)("h2", { children: "Flyer" })] })
+			}),
+			!u && /* @__PURE__ */ (0, B.jsx)("div", {
+				className: "graphic-kind-tabs",
+				children: l.map((e) => {
+					let t = a(f, e), n = t?.status === "SUCCEEDED" ? "✓" : d(t) ? "…" : t?.status === "FAILED" ? "!" : "—";
+					return /* @__PURE__ */ (0, B.jsxs)("button", {
+						className: e === _ ? "graphic-kind-tab active" : "graphic-kind-tab",
+						type: "button",
+						onClick: () => v(e),
+						children: [
+							s(e),
+							" ",
+							n
+						]
+					}, e);
+				})
+			}),
+			/* @__PURE__ */ (0, B.jsxs)("div", {
+				className: "graphic-result",
+				children: [
+					u ? /* @__PURE__ */ (0, B.jsx)("p", {
+						className: "graphic-status",
+						"data-state": G?.status === "SUCCEEDED" ? "success" : G?.status === "FAILED" ? "error" : d(G) ? "active" : "idle",
+						children: O(G)
+					}) : /* @__PURE__ */ (0, B.jsxs)("div", {
+						className: "graphic-result-head",
+						children: [/* @__PURE__ */ (0, B.jsxs)("div", { children: [/* @__PURE__ */ (0, B.jsx)("strong", { children: s(_) }), /* @__PURE__ */ (0, B.jsx)("span", { children: O(G) })] }), /* @__PURE__ */ (0, B.jsx)("button", {
+							className: "secondary-button compact-button",
+							type: "button",
+							disabled: b,
+							onClick: () => void W(),
+							children: "Aktualisieren"
+						})]
+					}),
+					G?.status === "SUCCEEDED" && K.length > 0 && /* @__PURE__ */ (0, B.jsx)("div", {
+						className: "graphic-artifact-grid",
+						children: K.map((e) => {
+							let t = z.current.get(Zt(e)), n = $t() && !!t?.pending && !t?.prepared && !t?.failed;
+							return /* @__PURE__ */ (0, B.jsx)("button", {
+								className: "graphic-artifact-button",
+								type: "button",
+								disabled: n,
+								onClick: () => fe(e),
+								children: n ? (e.kind === "POST" ? "Post" : "Story") + " wird vorbereitet …" : e.kind === "POST" ? "Post teilen" : "Story teilen"
+							}, e.kind + e.downloadUrl);
+						})
+					}),
+					G?.status === "SUCCEEDED" && !K.length && /* @__PURE__ */ (0, B.jsx)("p", {
+						className: "empty-note",
+						children: "Flyer ist fertig, aber es wurden keine sicheren Post-/Story-Links geliefert."
+					}),
+					G?.status === "SUCCEEDED" && /* @__PURE__ */ (0, B.jsxs)("div", {
+						className: "whatsapp-summary-actions",
+						children: [/* @__PURE__ */ (0, B.jsx)("button", {
+							type: "button",
+							disabled: !t || !ae || w === _ || ce,
+							onClick: () => void de(_),
+							children: w === _ || ce ? "📲 Wird an WhatsApp gesendet …" : q?.status === "SUCCEEDED" ? "📲 Erneut an WhatsApp senden" : q?.status === "FAILED" ? "📲 WhatsApp erneut versuchen" : "📲 An WhatsApp senden"
+						}), pe && /* @__PURE__ */ (0, B.jsxs)("p", {
+							className: "whatsapp-delivery-note",
+							"data-state": q?.status === "SUCCEEDED" ? "success" : q?.status === "FAILED" ? "error" : "active",
+							children: [pe, q?.status === "FAILED" && q.error ? " " + q.error : ""]
+						})]
+					}),
+					/* @__PURE__ */ (0, B.jsx)("div", {
+						className: "graphic-actions",
+						children: G?.status === "SUCCEEDED" ? /* @__PURE__ */ (0, B.jsx)("button", {
+							className: "secondary-button",
+							type: "button",
+							disabled: !t || n || !!S,
+							onClick: () => void ue(_),
+							children: "Neu erstellen"
+						}) : /* @__PURE__ */ (0, B.jsx)("button", {
+							type: "button",
+							disabled: !t || n || !!S || d(G),
+							onClick: () => void ue(_),
+							children: S === _ || d(G) ? "Flyer wird erstellt …" : G?.status === "FAILED" ? "Erneut erstellen" : "🖼️ Flyer erstellen"
+						})
+					})
+				]
+			}),
+			(!u || b || G?.status === "FAILED") && /* @__PURE__ */ (0, B.jsx)("p", {
+				className: "workspace-message",
+				"data-loading": b ? "true" : "false",
+				children: j
+			}),
+			N && /* @__PURE__ */ (0, B.jsxs)("p", {
+				className: "whatsapp-delivery-note",
+				"data-state": "error",
+				children: ["WhatsApp-Status: ", N]
+			}),
+			!u && /* @__PURE__ */ (0, B.jsx)("p", {
+				className: "graphic-safety-note",
+				children: "WhatsApp gilt erst nach bestätigtem Delivery-Status als erfolgreich."
+			})
+		]
+	});
+}
+//#endregion
+//#region src/components/TextDeliveryMode.tsx
+function nn({ transport: e, manualCopyMode: t, onManualCopyModeChange: n, compact: r = !1 }) {
+	let i = e.ready && !t, a = e.ready ? i ? "Neue Aktionen senden ihren Text automatisch über WhatsApp." : "Neue Aktionen werden gespeichert und nur kopiert." : "WhatsApp ist nicht vollständig bereit. Neue Aktionen fallen auf Kopieren zurück.";
+	return r ? /* @__PURE__ */ (0, B.jsxs)("div", {
+		className: "liveticker-text-mode",
+		role: "group",
+		"aria-label": "Textausgabe",
+		title: a,
+		children: [
+			/* @__PURE__ */ (0, B.jsx)("button", {
+				type: "button",
+				"aria-pressed": i,
+				disabled: !e.ready,
+				onClick: () => n(!1),
+				children: "📲 WhatsApp"
+			}),
+			/* @__PURE__ */ (0, B.jsx)("button", {
+				type: "button",
+				"aria-pressed": !i,
+				onClick: () => n(!0),
+				children: "📋 Nur kopieren"
+			}),
+			e.errors.length > 0 && /* @__PURE__ */ (0, B.jsx)("span", {
+				className: "visually-hidden",
+				role: "status",
+				children: e.errors.join(" · ")
+			})
+		]
+	}) : /* @__PURE__ */ (0, B.jsxs)("section", {
+		className: "text-delivery-card",
+		children: [
+			/* @__PURE__ */ (0, B.jsxs)("div", {
+				className: "text-delivery-heading",
+				children: [/* @__PURE__ */ (0, B.jsxs)("div", { children: [/* @__PURE__ */ (0, B.jsx)("p", {
+					className: "eyebrow",
+					children: "Textausgabe"
+				}), /* @__PURE__ */ (0, B.jsx)("h2", { children: "Neue Aktionen" })] }), /* @__PURE__ */ (0, B.jsx)("span", {
+					className: e.ready ? "write-badge enabled" : "write-badge",
+					children: e.ready ? "Transport bereit" : "Transport nicht bereit"
+				})]
+			}),
+			/* @__PURE__ */ (0, B.jsxs)("div", {
+				className: "text-delivery-toggle",
+				role: "group",
+				"aria-label": "Textausgabe",
+				children: [/* @__PURE__ */ (0, B.jsx)("button", {
+					type: "button",
+					"aria-pressed": i,
+					disabled: !e.ready,
+					onClick: () => n(!1),
+					children: "📲 WhatsApp"
+				}), /* @__PURE__ */ (0, B.jsx)("button", {
+					type: "button",
+					"aria-pressed": !i,
+					onClick: () => n(!0),
+					children: "📋 Nur kopieren"
+				})]
+			}),
+			/* @__PURE__ */ (0, B.jsx)("p", {
+				className: "text-delivery-status",
+				children: a
+			}),
+			e.errors.length > 0 && /* @__PURE__ */ (0, B.jsx)("p", {
+				className: "form-error",
+				children: e.errors.join(" · ")
+			})
+		]
+	});
+}
+//#endregion
+//#region src/liveticker/finalization.ts
+async function rn({ eventId: e, serverState: t, environment: n }) {
+	if (t.completedAt) return {
+		state: t,
+		rebased: !1
+	};
+	let r = async (t) => ve(await Y("pd_public_liveticker_complete", {
+		p_event_id: e,
+		p_expected_revision: t,
+		p_client_id: Ie(n)
+	}));
+	try {
+		return {
+			state: await r(t.revision),
+			rebased: !1
+		};
+	} catch (t) {
+		if (!(t instanceof J) || t.code !== "PT409") throw t;
+		let n = ve(await Y("pd_public_liveticker_state", { p_event_id: e }));
+		return n.completedAt ? {
+			state: n,
+			rebased: !0
+		} : {
+			state: await r(n.revision),
+			rebased: !0
+		};
+	}
+}
+//#endregion
+//#region src/liveticker/summary.ts
+var an = {
+	P1: 1,
+	P2: 2,
+	P3: 3,
+	OT: 4
+};
+function on(e) {
+	if (e.type === "shootout") return 5;
+	let t = Number.parseInt(String(e.minute ?? ""), 10);
+	return !Number.isInteger(t) || t < 1 ? 99 : t <= 20 ? 1 : t <= 40 ? 2 : t <= 60 ? 3 : 4;
+}
+function sn(e, t, n) {
+	let r = dt(e, t);
+	return String(r?.template || "").trim() || n;
+}
+function cn(e, t) {
+	return e === "mighty" ? "Mighty Dogs" : t.opponentTeam.shortName;
+}
+function ln(e, t, n, r, i = null) {
+	let a = i ? an[i] : null;
+	return He(e).filter((e) => ze(e) && e.team === t && (a === null || on(e) <= a)).map((e) => {
+		let t = Re(e) ? "🏒 Straf-Penalty · " + (e.player ? $(e.player) : sn(r, "missing_shooter", "Schütze offen")) : e.player ? $(e.player) : sn(r, "missing_goal_scorer", "Torschütze offen");
+		return ft(r, "goal_summary_line", {
+			minute: Number(e.minute || 1),
+			scorer: t
+		});
+	});
+}
+function un({ history: e, segmentKey: t, game: n, snapshot: r }) {
+	let i = an[t];
+	if (!i) throw Error("Für diesen Abschnitt gibt es keine Drittelzusammenfassung.");
+	let a = He(e).reduce((e, t) => (ze(t) && t.team && on(t) <= i && (e[t.team] += 1), e), {
+		mighty: 0,
+		opponent: 0
+	}), o = ln(e, "mighty", n, r, t), s = ln(e, "opponent", n, r, t), c = wt(a, n.homeAway);
+	return ft(r, "period_summary", {
+		period_label: t === "OT" ? "Overtime" : t === "P1" ? "1. Drittel" : t === "P2" ? "2. Drittel" : "3. Drittel",
+		score_line: c.home + ":" + c.away,
+		own_goals: (o.length ? o : [sn(r, "no_goals", "Keine Tore")]).join("\n"),
+		opponent_goals: (s.length ? s : [sn(r, "no_goals", "Keine Tore")]).join("\n"),
+		opponent_name: n.opponentTeam.shortName
+	});
+}
+function dn(e, t, n, r) {
+	let i = [];
+	for (let n of He(e)) if (n.type === "penalty") {
+		if (Re(n)) {
+			(n.team === "mighty" ? "opponent" : "mighty") === t && i.push(ft(r, "penalty_shot_summary_line", {
+				minute: Number(n.minute || 1),
+				shooter: n.player ? $(n.player) : sn(r, "missing_shooter", "Schütze offen"),
+				goalie: n.goalie ? $(n.goalie) : sn(r, "missing_goalie", "Goalie offen"),
+				result: n.result === "scored" ? "verwandelt" : "vergeben"
+			}));
+			continue;
+		}
+		for (let e of Array.isArray(n.penalties) ? n.penalties : []) {
+			if (e.team !== t) continue;
+			let a = e.player ? $(e.player) : "ohne Spieler", o = String(e.duration || ""), s = String(e.reason || ""), c = ft(r, "penalty_summary_line", {
+				minute: Number(n.minute || 1),
+				player: a,
+				penalty_duration: o + " min",
+				penalty_reason: s
+			});
+			i.push(Xe(o) ? "🚨 *" + c + "*" : c);
+		}
+	}
+	return i.length ? i : [sn(r, "no_penalties", "Keine Strafen")];
+}
+function fn(e, t, n) {
+	let r = He(e).filter((e) => e.type === "shootout");
+	if (!r.length) return "";
+	let i = Ve(e), a = r.map((e) => {
+		if (e.team !== "mighty" && e.team !== "opponent") throw Error("Penaltyschießen ohne gültiges Team.");
+		return ft(n, "shootout_summary_line", {
+			team_name: cn(e.team, t),
+			shooter: e.player ? $(e.player) : sn(n, "missing_shooter", "Schütze offen"),
+			result: e.result === "scored" ? "verwandelt" : "vergeben"
+		});
+	});
+	return ft(n, "shootout_summary", {
+		mighty_score: i.mighty,
+		opponent_score: i.opponent,
+		opponent_name: t.opponentTeam.shortName,
+		shootout_attempts: a.join("\n")
+	});
+}
+function pn(e) {
+	let t = Be(e);
+	if (He(e).filter((e) => e.type === "shootout").length) {
+		let n = Ve(e);
+		return n.mighty === n.opponent ? {
+			...t,
+			suffix: "Penaltyschießen läuft"
+		} : {
+			mighty: t.mighty + +(n.mighty > n.opponent),
+			opponent: t.opponent + +(n.opponent > n.mighty),
+			suffix: "n. P."
+		};
+	}
+	return He(e).some((e) => ze(e) && Number(e.minute) > 60) ? {
+		...t,
+		suffix: "n. V."
+	} : {
+		...t,
+		suffix: ""
+	};
+}
+function mn({ history: e, game: t, snapshot: n }) {
+	let r = pn(e), i = wt(r, t.homeAway), a = r.suffix ? " " + r.suffix : "", o = t.homeAway === "AWAY" ? t.opponentTeam.shortName + " " + i.home + ":" + i.away + " Mighty Dogs" + a : "Mighty Dogs " + i.home + ":" + i.away + " " + t.opponentTeam.shortName + a, s = ln(e, "mighty", t, n), c = ln(e, "opponent", t, n);
+	return ft(n, "final_summary", {
+		score_line: o,
+		own_goals: (s.length ? s : [sn(n, "no_goals", "Keine Tore")]).join("\n"),
+		opponent_goals: (c.length ? c : [sn(n, "no_goals", "Keine Tore")]).join("\n"),
+		own_penalties: dn(e, "mighty", t, n).join("\n"),
+		opponent_penalties: dn(e, "opponent", t, n).join("\n"),
+		shootout_summary: fn(e, t, n),
+		opponent_name: t.opponentTeam.shortName
+	}, ["shootout_summary"]);
+}
+function hn({ kind: e, history: t, game: n, snapshot: r }) {
+	return e === "PERIOD_1" ? un({
+		history: t,
+		segmentKey: "P1",
+		game: n,
+		snapshot: r
+	}) : e === "PERIOD_2" ? un({
+		history: t,
+		segmentKey: "P2",
+		game: n,
+		snapshot: r
+	}) : mn({
+		history: t,
+		game: n,
+		snapshot: r
+	});
+}
+//#endregion
+//#region src/components/GameWorkspace.tsx
+function gn({ history: e, opponentShortName: t, mutationsAllowed: n, deletingId: r, editingId: i, onEdit: a, onDelete: o }) {
+	let [s, c] = (0, A.useState)(!1), l = (0, A.useMemo)(() => He(e).reverse(), [e]), u = s ? l : l.slice(0, 5);
+	return l.length ? /* @__PURE__ */ (0, B.jsxs)(B.Fragment, { children: [/* @__PURE__ */ (0, B.jsx)("div", {
+		className: "history-list",
+		children: u.map((e, s) => {
+			let c = e, l = c.type === "penalty" && !Re(c) && Array.isArray(c.penalties) && c.penalties.some((e) => Xe(String(e.duration || "")));
+			return /* @__PURE__ */ (0, B.jsxs)("details", {
+				className: l ? "history-item major" : "history-item",
+				children: [/* @__PURE__ */ (0, B.jsxs)("summary", { children: [/* @__PURE__ */ (0, B.jsx)("span", { children: Ge(c, t) }), /* @__PURE__ */ (0, B.jsx)("span", {
+					className: "history-chevron",
+					"aria-hidden": "true",
+					children: "⌄"
+				})] }), /* @__PURE__ */ (0, B.jsxs)("div", {
+					className: "history-detail-body",
+					children: [/* @__PURE__ */ (0, B.jsx)("p", { children: Ke(e, t) }), /* @__PURE__ */ (0, B.jsxs)("div", {
+						className: "inline-actions",
+						children: [/* @__PURE__ */ (0, B.jsx)("button", {
+							className: "secondary-button compact-button",
+							type: "button",
+							disabled: !n || i === String(e.id || ""),
+							onClick: () => a(e),
+							children: i === String(e.id || "") ? "Wird bearbeitet" : "Bearbeiten"
+						}), /* @__PURE__ */ (0, B.jsx)("button", {
+							className: "danger-button compact-button",
+							type: "button",
+							disabled: !n || r === String(e.id || ""),
+							onClick: () => void o(e),
+							children: r === String(e.id || "") ? "Wird zurückgenommen …" : "Zurücknehmen"
+						})]
+					})]
+				})]
+			}, String(e.id || s));
+		})
+	}), l.length > 5 && /* @__PURE__ */ (0, B.jsx)("button", {
+		className: "history-toggle",
+		type: "button",
+		onClick: () => c((e) => !e),
+		children: s ? "Weniger anzeigen ▴" : "Alle Ereignisse anzeigen ▾"
+	})] }) : /* @__PURE__ */ (0, B.jsx)("p", {
+		className: "empty-note",
+		children: "Noch keine Aktion erfasst."
+	});
+}
+function _n({ mutationsAllowed: t }) {
+	let n = e().environment, [r, i] = (0, A.useState)([]), [o, s] = (0, A.useState)(""), [c, l] = (0, A.useState)(null), [u, f] = (0, A.useState)(null), [p, m] = (0, A.useState)(!0), [h, g] = (0, A.useState)("Spiele werden geladen …"), [_, v] = (0, A.useState)(""), [y, b] = (0, A.useState)(null), [ee, x] = (0, A.useState)(!1), [S, C] = (0, A.useState)(!1), [T, E] = (0, A.useState)(!1), [O, k] = (0, A.useState)(!1), [j, M] = (0, A.useState)("GOAL_MIGHTY"), [N, P] = (0, A.useState)(""), [F, I] = (0, A.useState)(""), [te, L] = (0, A.useState)("PERIOD_1"), [re, V] = (0, A.useState)(!1), [H, ie] = (0, A.useState)({
+		PERIOD_1: "—",
+		PERIOD_2: "—",
+		FINAL: "—"
+	}), [U, W] = (0, A.useState)({
+		ready: !1,
+		wa: {
+			ready: !1,
+			state: "UNREACHABLE"
+		},
+		wpp: {
+			ready: !1,
+			state: "UNREACHABLE",
+			desiredConnected: !0,
+			error: null
+		},
+		routing: null,
+		errors: []
+	}), G = (0, A.useRef)(De());
+	(0, A.useEffect)(() => {
+		let e = !1;
+		return (async () => {
+			try {
+				let [t, n] = await Promise.all([ye(), lt()]);
+				if (e) return;
+				if (f(n), !t.length) {
+					i([]), l(null), g("Keine Spiele im zentralen Kalender verfügbar."), m(!1);
+					return;
+				}
+				let r = Se(), a = t.find((e) => e.eventId === r) || t[0];
+				i(t), s(a.eventId), xe(a.eventId);
+				let o = await be(a.eventId);
+				if (e) return;
+				l(o), g("Zentraler Liveticker-State geladen."), m(!1);
+			} catch (t) {
+				if (e) return;
+				g(t instanceof Error ? t.message : "Spiele konnten nicht geladen werden."), m(!1);
+			}
+		})(), () => {
+			e = !0;
+		};
+	}, []), (0, A.useEffect)(() => {
+		let e = !1, t = 0, r = async () => {
+			let i = await R(n);
+			e || (W(i), t = window.setTimeout(r, 5e3));
+		};
+		return r(), () => {
+			e = !0, t && window.clearTimeout(t);
+		};
+	}, [n]);
+	let K = (0, A.useMemo)(() => r.find((e) => e.eventId === o) || null, [r, o]);
+	(0, A.useEffect)(() => {
+		if (!o) return;
+		let e = !1, t = 0, n = async () => {
+			try {
+				let t = await D(o);
+				if (e) return;
+				let n = {};
+				for (let e of [
+					"PERIOD_1",
+					"PERIOD_2",
+					"FINAL"
+				]) {
+					let r = a(t, e);
+					n[e] = r?.status === "SUCCEEDED" ? "✓" : d(r) ? "…" : r?.status === "FAILED" ? "!" : "—";
+				}
+				ie(n);
+			} catch {
+				e || ie({
+					PERIOD_1: "—",
+					PERIOD_2: "—",
+					FINAL: "—"
+				});
+			} finally {
+				e || (t = window.setTimeout(n, 5e3));
+			}
+		};
+		return n(), () => {
+			e = !0, t && window.clearTimeout(t);
+		};
+	}, [o]);
+	let ae = (0, A.useMemo)(() => Be(c?.history || []), [c?.history]), oe = (0, A.useMemo)(() => Ve(c?.history || []), [c?.history]), se = (0, A.useMemo)(() => (c?.history || []).some((e) => e?.type === "shootout"), [c?.history]), q = (0, A.useMemo)(() => Jt(c?.minute || 1), [c?.minute]);
+	function ce(e) {
+		b(e), e.type === "goal" ? M(e.team === "opponent" ? "GOAL_OPPONENT" : "GOAL_MIGHTY") : e.type === "penalty" && !Re(e) ? M("PENALTY") : e.type === "shootout" ? M("SHOOTOUT") : M("SITUATION");
+	}
+	async function le(n) {
+		if (!c || !K || !n.id) return;
+		if (!t || c.completedAt) {
+			g("Schreibaktionen sind für diesen Stand nicht freigeschaltet.");
+			return;
+		}
+		let r = Ge(n, K.opponentTeam.shortName);
+		if (!window.confirm("Aktion „" + r + "“ wirklich zurücknehmen?")) return;
+		if (G.current.register()) {
+			g("SYNC gestoppt · Seite neu laden");
+			return;
+		}
+		let i = String(n.id);
+		v(i), g("Aktion wird zurückgenommen …");
+		try {
+			let t = e(), n = c.history.filter((e) => String(e?.id || "") !== i), r = await Le({
+				eventId: K.eventId,
+				localState: {
+					minute: c.minute,
+					history: n
+				},
+				serverState: c,
+				clientState: je(c),
+				environment: t.environment
+			});
+			l(r.state), String(y?.id || "") === i && b(null), g(r.rebased ? "Aktion zurückgenommen · zwischenzeitliche Änderungen wurden berücksichtigt." : "Aktion serverseitig zurückgenommen.");
+		} catch (e) {
+			g(e instanceof Error ? e.message : "Aktion konnte nicht zurückgenommen werden.");
+		} finally {
+			v("");
+		}
+	}
+	async function ue(n) {
+		if (c && K) {
+			if (!t || c.completedAt) {
+				g("Schreibaktionen sind für diesen Stand nicht freigeschaltet.");
+				return;
+			}
+			if (G.current.register()) {
+				g("SYNC gestoppt · Seite neu laden");
+				return;
+			}
+			x(!0), g("Spielminute wird gespeichert …");
+			try {
+				let t = e(), r = await Le({
+					eventId: K.eventId,
+					localState: {
+						minute: n,
+						history: c.history
+					},
+					serverState: c,
+					clientState: je(c),
+					environment: t.environment
+				});
+				l(r.state), g(r.rebased ? "Spielminute gespeichert · zwischenzeitliche Änderungen wurden berücksichtigt." : "Spielminute serverseitig gespeichert.");
+			} catch (e) {
+				throw g(e instanceof Error ? e.message : "Spielminute konnte nicht gespeichert werden."), e;
+			} finally {
+				x(!1);
+			}
+		}
+	}
+	async function de() {
+		if (c && K && !S && we() && window.confirm("Testspiel „" + K.displayTitle + "“ wirklich als neuen Testlauf starten? Aktionen, Spielminute und aktuelle Versand-/Grafikstatus werden zurückgesetzt.")) {
+			C(!0), g("Testspiel wird zurückgesetzt …");
+			try {
+				let e = await Te({
+					eventId: K.eventId,
+					expectedRevision: c.revision
+				});
+				l(e), b(null), M("GOAL_MIGHTY"), V(!1), ie({
+					PERIOD_1: "—",
+					PERIOD_2: "—",
+					FINAL: "—"
+				}), G.current.reset(), g("Neuer Testlauf gestartet.");
+			} catch (e) {
+				g(e instanceof Error ? e.message : "Testspiel konnte nicht zurückgesetzt werden.");
+			} finally {
+				C(!1);
+			}
+		}
+	}
+	function fe(e) {
+		if (c && K) {
+			if (e === "FINAL") {
+				if (c.minute < 60) {
+					g("Der Endstand kann erst ab Minute 60 erstellt werden.");
+					return;
+				}
+				if (!c.completedAt && !window.confirm("Spiel wirklich beenden? Der Endstand-Flyer wird jetzt vorbereitet. Nach erfolgreicher Erstellung wird das Spiel abgeschlossen und archiviert.")) return;
+			}
+			L(e), V(!0);
+		}
+	}
+	async function pe() {
+		if (c && K && !(!t || c.completedAt || T)) {
+			E(!0), g("FINAL-Flyer fertig · Spiel wird abgeschlossen und archiviert …");
+			try {
+				let t = e(), n = await rn({
+					eventId: K.eventId,
+					serverState: c,
+					environment: t.environment
+				});
+				l(n.state), g(n.rebased ? "Spiel abgeschlossen · zwischenzeitlicher Serverstand wurde berücksichtigt." : "Spiel abgeschlossen und archiviert.");
+			} catch (e) {
+				throw g(e instanceof Error ? e.message : "FINAL-Flyer ist fertig, aber das Spiel konnte nicht abgeschlossen werden."), e;
+			} finally {
+				E(!1);
+			}
+		}
+	}
+	function me(e) {
+		e.open && e.parentElement?.querySelectorAll("details.worker-control").forEach((t) => {
+			t !== e && (t.open = !1);
+		});
+	}
+	async function J() {
+		if (!N) {
+			P("wa"), I("");
+			try {
+				await ne(!U.wa.enabled), W(await R(n));
+			} catch (e) {
+				I(e instanceof Error ? e.message : "WhatsApp-Worker konnte nicht geändert werden.");
+			} finally {
+				P("");
+			}
+		}
+	}
+	async function Y() {
+		if (!(N || n !== "PROD")) {
+			P("wpp"), I("");
+			try {
+				await z(U.wpp.desiredConnected === !1), W(await R(n));
+			} catch (e) {
+				I(e instanceof Error ? e.message : "WPP konnte nicht geändert werden.");
+			} finally {
+				P("");
+			}
+		}
+	}
+	async function he(e) {
+		s(e), xe(e), m(!0), g("Spielstand wird geladen …"), b(null), M("GOAL_MIGHTY"), V(!1), G.current.reset();
+		try {
+			let t = await be(e);
+			l(t), g("Zentraler Liveticker-State geladen.");
+		} catch (e) {
+			l(null), g(e instanceof Error ? e.message : "Spielstand konnte nicht geladen werden.");
+		} finally {
+			m(!1);
+		}
+	}
+	return /* @__PURE__ */ (0, B.jsxs)("div", {
+		className: "classic-ticker-stack",
+		children: [
+			/* @__PURE__ */ (0, B.jsxs)("section", {
+				className: "card classic-score-card",
+				"aria-label": "Aktueller Spielstand",
+				children: [
+					/* @__PURE__ */ (0, B.jsxs)("div", {
+						className: "classic-system-strip status-bar-tools",
+						"aria-label": "Systemstatus",
+						children: [/* @__PURE__ */ (0, B.jsxs)("details", {
+							className: "worker-control",
+							onToggle: (e) => me(e.currentTarget),
+							children: [/* @__PURE__ */ (0, B.jsx)("summary", {
+								title: "Nur der " + n + "-WhatsApp-Worker",
+								children: /* @__PURE__ */ (0, B.jsxs)("span", {
+									className: "worker-indicator",
+									children: [
+										/* @__PURE__ */ (0, B.jsx)("span", {
+											className: U.wa.ready ? "worker-dot active" : U.wa.enabled ? "worker-dot starting" : "worker-dot",
+											children: "●"
+										}),
+										/* @__PURE__ */ (0, B.jsxs)("span", { children: ["WA ", n] }),
+										/* @__PURE__ */ (0, B.jsx)("strong", { children: U.wa.ready ? "AKTIV" : U.wa.enabled ? "STARTET …" : "AUS" })
+									]
+								})
+							}), /* @__PURE__ */ (0, B.jsx)("div", {
+								className: "worker-control-body",
+								children: /* @__PURE__ */ (0, B.jsx)("button", {
+									type: "button",
+									disabled: !!N,
+									onClick: () => void J(),
+									children: N === "wa" ? "Speichert …" : U.wa.enabled ? "Ausschalten" : "Einschalten"
+								})
+							})]
+						}), /* @__PURE__ */ (0, B.jsxs)("details", {
+							className: "worker-control",
+							onToggle: (e) => me(e.currentTarget),
+							children: [/* @__PURE__ */ (0, B.jsx)("summary", {
+								title: "Globale WhatsApp-Verbindung für DEV und PROD",
+								children: /* @__PURE__ */ (0, B.jsxs)("span", {
+									className: "worker-indicator",
+									children: [
+										/* @__PURE__ */ (0, B.jsx)("span", {
+											className: U.wpp.ready ? "worker-dot active" : U.wpp.state === "CONNECTING" ? "worker-dot starting" : "worker-dot",
+											children: "●"
+										}),
+										/* @__PURE__ */ (0, B.jsx)("span", { children: "WPP GLOBAL" }),
+										/* @__PURE__ */ (0, B.jsx)("strong", { children: U.wpp.ready ? "VERBUNDEN" : U.wpp.state })
+									]
+								})
+							}), /* @__PURE__ */ (0, B.jsx)("div", {
+								className: "worker-control-body",
+								children: /* @__PURE__ */ (0, B.jsx)("button", {
+									type: "button",
+									disabled: !!N || n !== "PROD",
+									onClick: () => void Y(),
+									children: n === "PROD" ? N === "wpp" ? "Speichert …" : U.wpp.desiredConnected === !1 ? "Verbinden" : "Trennen" : "Steuerung nur in PROD"
+								})
+							})]
+						})]
+					}),
+					F && /* @__PURE__ */ (0, B.jsx)("p", {
+						className: "classic-runtime-message",
+						children: F
+					}),
+					/* @__PURE__ */ (0, B.jsxs)("div", {
+						className: "classic-segment-bar",
+						children: [/* @__PURE__ */ (0, B.jsx)("strong", { children: q.label }), se && /* @__PURE__ */ (0, B.jsxs)("span", { children: [
+							"Penaltyschießen · ",
+							oe.mighty,
+							":",
+							oe.opponent
+						] })]
+					}),
+					/* @__PURE__ */ (0, B.jsxs)("label", {
+						className: "classic-game-field",
+						children: [
+							/* @__PURE__ */ (0, B.jsx)("span", { children: "Spiel" }),
+							/* @__PURE__ */ (0, B.jsx)("select", {
+								value: o,
+								disabled: p || !r.length,
+								onChange: (e) => void he(e.target.value),
+								children: r.map((e) => /* @__PURE__ */ (0, B.jsx)("option", {
+									value: e.eventId,
+									children: Ce(e)
+								}, e.eventId))
+							}),
+							/* @__PURE__ */ (0, B.jsx)("small", {
+								"data-state": p ? "pending" : h && h !== "Zentraler Liveticker-State geladen." ? "error" : "success",
+								children: p ? "Lädt …" : h && h !== "Zentraler Liveticker-State geladen." ? h : "Synchronisiert"
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, B.jsxs)("div", {
+						className: "classic-live-row",
+						children: [/* @__PURE__ */ (0, B.jsxs)("div", {
+							className: "classic-score-field",
+							children: [/* @__PURE__ */ (0, B.jsx)("span", {
+								className: "classic-control-label",
+								children: "Spielstand"
+							}), /* @__PURE__ */ (0, B.jsxs)("div", {
+								className: "classic-scoreboard",
+								children: [
+									/* @__PURE__ */ (0, B.jsxs)("div", { children: [/* @__PURE__ */ (0, B.jsx)("span", { children: "Heim" }), /* @__PURE__ */ (0, B.jsx)("strong", { children: K ? K.homeAway === "HOME" ? ae.mighty : ae.opponent : 0 })] }),
+									/* @__PURE__ */ (0, B.jsx)("b", { children: ":" }),
+									/* @__PURE__ */ (0, B.jsxs)("div", { children: [/* @__PURE__ */ (0, B.jsx)("span", { children: "Gast" }), /* @__PURE__ */ (0, B.jsx)("strong", { children: K ? K.homeAway === "HOME" ? ae.opponent : ae.mighty : 0 })] })
+								]
+							})]
+						}), c && /* @__PURE__ */ (0, B.jsxs)("div", {
+							className: "classic-minute-field",
+							children: [/* @__PURE__ */ (0, B.jsx)("span", {
+								className: "classic-control-label",
+								children: "Spielminute"
+							}), /* @__PURE__ */ (0, B.jsx)(Xt, {
+								minute: c.minute,
+								disabled: !t || !!c.completedAt,
+								saving: ee,
+								onCommit: ue
+							})]
+						})]
+					}),
+					/* @__PURE__ */ (0, B.jsx)("div", {
+						className: "classic-output-strip",
+						"aria-label": "Drittel- und Endausgaben",
+						children: [
+							"PERIOD_1",
+							"PERIOD_2",
+							"FINAL"
+						].map((e) => {
+							let t = H[e];
+							return /* @__PURE__ */ (0, B.jsxs)("button", {
+								className: t === "✓" ? "ready" : t === "…" ? "active" : "",
+								type: "button",
+								disabled: !K || !c || e === "FINAL" && c.minute < 60,
+								onClick: () => fe(e),
+								children: [
+									e === "PERIOD_1" ? "1. Drittel" : e === "PERIOD_2" ? "2. Drittel" : "Spiel beenden",
+									" ",
+									t
+								]
+							}, e);
+						})
+					}),
+					re && K && c && u && /* @__PURE__ */ (0, B.jsxs)("section", {
+						className: "classic-output-drawer",
+						children: [/* @__PURE__ */ (0, B.jsxs)("div", {
+							className: "classic-drawer-head",
+							children: [/* @__PURE__ */ (0, B.jsx)("strong", { children: te === "PERIOD_1" ? "1. Drittel · Ausgabe" : te === "PERIOD_2" ? "2. Drittel · Ausgabe" : "Endstand · Ausgabe" }), /* @__PURE__ */ (0, B.jsx)("button", {
+								type: "button",
+								onClick: () => V(!1),
+								children: "Schließen"
+							})]
+						}), /* @__PURE__ */ (0, B.jsx)(tn, {
+							eventId: K.eventId,
+							mutationsAllowed: t && !T,
+							gameCompleted: !!c.completedAt,
+							activeKind: te,
+							compact: !0,
+							summaryTextForKind: (e) => hn({
+								kind: e,
+								history: c.history,
+								game: K,
+								snapshot: u
+							}),
+							onFinalGraphicReady: pe
+						})]
+					}),
+					(p || h && h !== "Zentraler Liveticker-State geladen.") && /* @__PURE__ */ (0, B.jsx)("p", {
+						className: "classic-load-message",
+						"data-loading": p ? "true" : "false",
+						children: h
+					})
+				]
+			}),
+			K && c && u && /* @__PURE__ */ (0, B.jsxs)("section", {
+				className: "card classic-composer",
+				children: [
+					/* @__PURE__ */ (0, B.jsx)("div", {
+						className: "classic-composer-title",
+						children: /* @__PURE__ */ (0, B.jsx)("h2", { children: "Aktion" })
+					}),
+					y && /* @__PURE__ */ (0, B.jsxs)("section", {
+						className: "editing-banner",
+						children: [/* @__PURE__ */ (0, B.jsxs)("div", { children: [/* @__PURE__ */ (0, B.jsx)("strong", { children: "Aktion wird bearbeitet" }), /* @__PURE__ */ (0, B.jsx)("span", { children: Ge(y, K.opponentTeam.shortName) })] }), /* @__PURE__ */ (0, B.jsx)("button", {
+							className: "secondary-button",
+							type: "button",
+							onClick: () => b(null),
+							children: "Abbrechen"
+						})]
+					}),
+					/* @__PURE__ */ (0, B.jsxs)("div", {
+						className: c.minute >= 60 ? "classic-action-grid shootout-available" : "classic-action-grid",
+						role: "group",
+						"aria-label": "Aktion auswählen",
+						children: [
+							/* @__PURE__ */ (0, B.jsxs)("button", {
+								type: "button",
+								"aria-pressed": j === "GOAL_MIGHTY",
+								onClick: () => {
+									b(null), M("GOAL_MIGHTY");
+								},
+								children: [/* @__PURE__ */ (0, B.jsx)("span", {
+									"aria-hidden": "true",
+									children: "🥅"
+								}), /* @__PURE__ */ (0, B.jsx)("span", { children: "Tor Dogs" })]
+							}),
+							/* @__PURE__ */ (0, B.jsxs)("button", {
+								type: "button",
+								"aria-pressed": j === "PENALTY",
+								onClick: () => {
+									b(null), M("PENALTY");
+								},
+								children: [/* @__PURE__ */ (0, B.jsx)("span", {
+									"aria-hidden": "true",
+									children: "🚨"
+								}), /* @__PURE__ */ (0, B.jsx)("span", { children: "Strafe" })]
+							}),
+							/* @__PURE__ */ (0, B.jsxs)("button", {
+								type: "button",
+								"aria-pressed": j === "GOAL_OPPONENT",
+								onClick: () => {
+									b(null), M("GOAL_OPPONENT");
+								},
+								children: [/* @__PURE__ */ (0, B.jsx)("span", {
+									"aria-hidden": "true",
+									children: "🥅"
+								}), /* @__PURE__ */ (0, B.jsx)("span", { children: "Tor Gegner" })]
+							}),
+							/* @__PURE__ */ (0, B.jsxs)("button", {
+								type: "button",
+								"aria-pressed": j === "SITUATION",
+								onClick: () => {
+									b(null), M("SITUATION");
+								},
+								children: [/* @__PURE__ */ (0, B.jsx)("span", {
+									"aria-hidden": "true",
+									children: "💬"
+								}), /* @__PURE__ */ (0, B.jsx)("span", { children: "Situation" })]
+							}),
+							c.minute >= 60 && /* @__PURE__ */ (0, B.jsxs)("button", {
+								className: "classic-shootout-action",
+								type: "button",
+								"aria-pressed": j === "SHOOTOUT",
+								onClick: () => {
+									b(null), M("SHOOTOUT");
+								},
+								children: [/* @__PURE__ */ (0, B.jsx)("span", {
+									"aria-hidden": "true",
+									children: "🏒"
+								}), /* @__PURE__ */ (0, B.jsx)("span", { children: "Penaltyschießen" })]
+							})
+						]
+					}),
+					j === "GOAL_MIGHTY" && /* @__PURE__ */ (0, B.jsx)(It, {
+						game: K,
+						state: c,
+						textsystem: u,
+						mutationsAllowed: t && !c.completedAt,
+						whatsappEnabled: U.ready && !O,
+						whatsappTransportReady: U.ready,
+						editingEvent: y,
+						defaultTeam: "mighty",
+						compact: !0,
+						submitModeControl: /* @__PURE__ */ (0, B.jsx)(nn, {
+							transport: U,
+							manualCopyMode: O,
+							onManualCopyModeChange: k,
+							compact: !0
+						}),
+						onSaved: l,
+						onCancelEdit: () => b(null)
+					}, (y ? "edit-" : "new-") + "goal-mighty-" + K.eventId + "-" + String(y?.id || "")),
+					j === "GOAL_OPPONENT" && /* @__PURE__ */ (0, B.jsx)(It, {
+						game: K,
+						state: c,
+						textsystem: u,
+						mutationsAllowed: t && !c.completedAt,
+						whatsappEnabled: U.ready && !O,
+						whatsappTransportReady: U.ready,
+						editingEvent: y,
+						defaultTeam: "opponent",
+						compact: !0,
+						submitModeControl: /* @__PURE__ */ (0, B.jsx)(nn, {
+							transport: U,
+							manualCopyMode: O,
+							onManualCopyModeChange: k,
+							compact: !0
+						}),
+						onSaved: l,
+						onCancelEdit: () => b(null)
+					}, (y ? "edit-" : "new-") + "goal-opponent-" + K.eventId + "-" + String(y?.id || "")),
+					j === "PENALTY" && /* @__PURE__ */ (0, B.jsx)(zt, {
+						game: K,
+						state: c,
+						textsystem: u,
+						mutationsAllowed: t && !c.completedAt,
+						whatsappEnabled: U.ready && !O,
+						whatsappTransportReady: U.ready,
+						editingEvent: y,
+						compact: !0,
+						submitModeControl: /* @__PURE__ */ (0, B.jsx)(nn, {
+							transport: U,
+							manualCopyMode: O,
+							onManualCopyModeChange: k,
+							compact: !0
+						}),
+						onSaved: l,
+						onCancelEdit: () => b(null)
+					}, (y ? "edit-" : "new-") + "penalty-" + K.eventId + "-" + String(y?.id || "")),
+					j === "SITUATION" && /* @__PURE__ */ (0, B.jsx)(Gt, {
+						game: K,
+						state: c,
+						textsystem: u,
+						mutationsAllowed: t && !c.completedAt,
+						whatsappEnabled: U.ready && !O,
+						whatsappTransportReady: U.ready,
+						editingEvent: y,
+						compact: !0,
+						defaultKind: "penalty_shot",
+						allowStickerOnly: !0,
+						submitModeControl: /* @__PURE__ */ (0, B.jsx)(nn, {
+							transport: U,
+							manualCopyMode: O,
+							onManualCopyModeChange: k,
+							compact: !0
+						}),
+						onSaved: l,
+						onCancelEdit: () => b(null)
+					}, (y ? "edit-" : "new-") + "situation-" + K.eventId + "-" + String(y?.id || "")),
+					j === "SHOOTOUT" && /* @__PURE__ */ (0, B.jsx)(Gt, {
+						game: K,
+						state: c,
+						textsystem: u,
+						mutationsAllowed: t && !c.completedAt,
+						whatsappEnabled: U.ready && !O,
+						whatsappTransportReady: U.ready,
+						editingEvent: y,
+						compact: !0,
+						defaultKind: "shootout",
+						submitModeControl: /* @__PURE__ */ (0, B.jsx)(nn, {
+							transport: U,
+							manualCopyMode: O,
+							onManualCopyModeChange: k,
+							compact: !0
+						}),
+						onSaved: l,
+						onCancelEdit: () => b(null)
+					}, (y ? "edit-" : "new-") + "shootout-" + K.eventId + "-" + String(y?.id || ""))
+				]
+			}),
+			K && /* @__PURE__ */ (0, B.jsxs)("section", {
+				className: "card classic-history",
+				children: [/* @__PURE__ */ (0, B.jsx)("h2", { children: "Letzte Ereignisse" }), /* @__PURE__ */ (0, B.jsx)(gn, {
+					history: c?.history || [],
+					opponentShortName: K.opponentTeam.shortName,
+					mutationsAllowed: t && !c?.completedAt,
+					deletingId: _,
+					editingId: String(y?.id || ""),
+					onEdit: ce,
+					onDelete: le
+				})]
+			}),
+			we() && K && c && /* @__PURE__ */ (0, B.jsx)("div", {
+				className: "classic-footer-actions",
+				children: /* @__PURE__ */ (0, B.jsx)("button", {
+					className: "secondary-button danger-button",
+					type: "button",
+					disabled: S,
+					onClick: () => void de(),
+					children: S ? "Testspiel wird zurückgesetzt …" : "Testspiel zurücksetzen"
+				})
+			}),
+			/* @__PURE__ */ (0, B.jsxs)("details", {
+				className: "classic-secondary-drawer",
+				children: [/* @__PURE__ */ (0, B.jsx)("summary", { children: "Archiv" }), /* @__PURE__ */ (0, B.jsx)(w, {})]
+			})
+		]
+	});
+}
+//#endregion
+export { _n as GameWorkspace };

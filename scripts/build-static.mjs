@@ -243,6 +243,13 @@ if (environment === "DEV") {
     }
   );
 
+  // DEV-only source-owned Liveticker release: standalone PWA plus Cockpit module.
+  await execFileAsync(
+    process.execPath,
+    [resolve(root, "scripts", "integrate-liveticker-release.mjs")],
+    { cwd: root, env: process.env }
+  );
+
   // Exact DEV root entry only. Keep the legacy root files and worker intact
   // until the separately verified browser/PWA migration can retire them.
   // Never ship this redirect in LOCAL or PROD builds.
