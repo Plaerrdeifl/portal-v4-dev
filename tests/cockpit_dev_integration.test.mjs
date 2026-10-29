@@ -410,6 +410,16 @@ test("portal build is deterministic and leaves existing app artifacts unchanged"
       redirects.split(/\r?\n/).filter(line => line.startsWith("/cockpit")),
       ["/cockpit/offline.html /cockpit/offline 200"]
     );
+    assert.deepEqual(
+      redirects.split(/\r?\n/).filter(line => /^\/\s+/.test(line)),
+      ["/ /cockpit/ 302"],
+      "Nur der exakte DEV-Root-Pfad darf aufs Cockpit weiterleiten."
+    );
+    assert.equal(
+      redirects,
+      `/ /cockpit/ 302\n${await readFile(join(root, "_redirects"), "utf8")}`,
+      "Sämtliche bestehenden OAuth-/Cockpit-Redirects bleiben unverändert."
+    );
     assert.doesNotMatch(redirects, /^\/\* /m);
     assert.match(headers, /\/cockpit\/runtime-config\.js[\s\S]*Cache-Control: no-store/);
 
@@ -439,6 +449,11 @@ test("portal build is deterministic and leaves existing app artifacts unchanged"
       readFile(join(buildFixture, "dist", "cockpit", "index.html")),
       error => error?.code === "ENOENT"
     );
+    assert.equal(
+      await readFile(join(buildFixture, "dist", "_redirects"), "utf8"),
+      await readFile(join(root, "_redirects"), "utf8"),
+      "PROD darf weder Root-Cockpit-Redirect noch neue Cockpit-Artefakte enthalten."
+    );
 
     await writeFile(
       join(buildFixture, "js", "runtime-config.js"),
@@ -464,6 +479,11 @@ test("portal build is deterministic and leaves existing app artifacts unchanged"
     await assert.rejects(
       readFile(join(buildFixture, "dist", "cockpit", "offline.html")),
       error => error?.code === "ENOENT"
+    );
+    assert.equal(
+      await readFile(join(buildFixture, "dist", "_redirects"), "utf8"),
+      await readFile(join(root, "_redirects"), "utf8"),
+      "LOCAL darf keine DEV-Root-Umleitung übernehmen."
     );
   } finally {
     await rm(buildFixture, { recursive: true, force: true });
