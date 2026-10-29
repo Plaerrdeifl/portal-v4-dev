@@ -2,21 +2,21 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/fanszene-cockpit",
-  "sourceCommit": "14b07a572d0a0d412125abb2b63e6efda356a89d",
+  "sourceCommit": "e9b55234ec28a2234d50bbd9fbd556e1b09c309f",
   "sourcePackageLockSha256": "f0e8680fd6b0cc39e0267255a17d780a98f246ae1a06eb175635a45dd8598a27",
   "sourceBuildCommand": "npm ci && npm run check",
   "artifactRoot": "integrations/cockpit/release",
-  "artifactSha256": "e4dd056fbaa4e9f2bfa07c88094767b6f1b51a401a80bcd3e75a2b00067759c0",
+  "artifactSha256": "18e1957c58300eb9933fca4823c87b4a96bf163ad34257e062fde4d71fb8242d",
   "files": [
     {
-      "path": "assets/index-BMiuHIri.js",
-      "bytes": 453169,
-      "sha256": "e8c90959a9bfab669f9011127377c9dbf1c0bc42159bb3fe45647309f046e471"
+      "path": "assets/index-BPI2QmZ7.css",
+      "bytes": 8132,
+      "sha256": "ac4d6df5519b0733c5ae30ba132d5ac59d398cc5bd99c229d7d4a252b7e56127"
     },
     {
-      "path": "assets/index-DzY2ZrY0.css",
-      "bytes": 3140,
-      "sha256": "08766f7acab611d026accc6709986a8394b9a6a98cf0fc6b1a0fe3b27c59a3cd"
+      "path": "assets/index-ChEucc0d.js",
+      "bytes": 475248,
+      "sha256": "845b8a562a3f1c2b6c78e1c35f1357b347f67fd79af7b9e18e87dda8170a2d3c"
     },
     {
       "path": "icons/cockpit-192.png",
@@ -41,7 +41,7 @@
     {
       "path": "index.html",
       "bytes": 841,
-      "sha256": "b1a2985903bb81243e52059cf7af6011b97a7b73c733836aa2c8930731306b4e"
+      "sha256": "ab96f6eb4eff48e06b77233c9bc133cc6e7f1640c581ca56b9c06808a233189a"
     },
     {
       "path": "manifest.webmanifest",
