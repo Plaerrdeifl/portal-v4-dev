@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "environment": "DEV",
+  "sourceRepository": "Plaerrdeifl/liveticker",
+  "sourceCommit": "251323ecd1c70abe535e0453ef1ad519ca5ca1b8",
+  "sourcePackageLockSha256": "0f87ce32d86bbbc93d1118e518d8373e5ce7097cc354e64e86b746b3723cde54",
+  "sourceBuildCommand": "npm ci && npm run check && npm run build:cockpit && npm run verify:hosted-dev",
+  "artifactRoot": "integrations/liveticker/release",
+  "artifactSha256": "72c6d313bc4b73fa621cf4e26c418f287b45b0dbadf35d8b57b02c02bd3a167a",
+  "files": [
+    {
+      "path": "embed/chunks/ArchivePanel-R9oaSA1s.js",
+      "bytes": 23279,
+      "sha256": "3b4715601d948ced6854240e8d71d2dfeab351801b2de0af5917346974659451"
+    },
+    {
+      "path": "embed/chunks/GameWorkspace-DIEBLarW.js",
+      "bytes": 117274,
+      "sha256": "12143f8d7ad779b30f7fd7667916ad03e8b5dbb477275eb8fd2866cf19fd5bd2"
+    },
+    {
+      "path": "embed/chunks/LivetickerAdmin-BV1eCoTH.js",
+      "bytes": 59654,
+      "sha256": "53cb15a0aa629732a1dafa10384a4af5a624b3cf6209d4a7dd04c5a7942418e4"
+    },
+    {
+      "path": "embed/chunks/api-CS-CXZJI.js",
+      "bytes": 316403,
+      "sha256": "1e284a289a92cf4d87a91ebf418ffc8fcd20fd580b5d8edd176816ae31919457"
+    },
+    {
+      "path": "embed/icons/icon-192.png",
+      "bytes": 63310,
+      "sha256": "5d5a69e6e497513c6cd91734e20c9ac1115ae7b9edfcbe94cc19e7a31537baac"
+    },
+    {
+      "path": "embed/icons/icon-512.png",
+      "bytes": 400255,
+      "sha256": "373106a8a6e867e7c6705221bac0186958870d1931d25025466e2d44a2ef36fc"
+    },
+    {
+      "path": "embed/icons/icon-maskable-512.png",
+      "bytes": 400255,
+      "sha256": "373106a8a6e867e7c6705221bac0186958870d1931d25025466e2d44a2ef36fc"
+    },
+    {
+      "path": "embed/module.js",
+      "bytes": 828182,
+      "sha256": "20eb5083d7225e2bdc21173cf87af10752d1b255b885ccd57bce284e3b61f3ab"
+    },
+    {
+      "path": "embed/style.css",
+      "bytes": 58178,
+      "sha256": "babca30a4167b41b45e528f807248e978c3d4e898088423ac9b3de84f53ae6b7"
+    },
+    {
+      "path": "standalone/assets/ArchivePanel-CMFcOpnh.js",
+      "bytes": 17993,
+      "sha256": "4902f5eaff69a7356ffc21246b7658d0bfeda880e077678e5de9e5735838ed63"
+    },
+    {
+      "path": "standalone/assets/GameWorkspace-DusJm8ar.js",
+      "bytes": 84964,
+      "sha256": "c6cb263a34b2fdfd795376b3dd6582216c10eccf691ca7546a242bdfcfb92303"
+    },
+    {
+      "path": "standalone/assets/LivetickerAdmin-C9idVqpb.js",
+      "bytes": 40698,
+      "sha256": "af3d75db800a0ca3d11d8e0195ff3c4c55e2f1ce2524df4c09dad2cc0ef57873"
+    },
+    {
+      "path": "standalone/assets/index-B8zZ7vt3.css",
+      "bytes": 58166,
+      "sha256": "0c15b154dbdc040c900766a852611fa2dea33699034fc718dfe3d34dd1717e32"
+    },
+    {
+      "path": "standalone/assets/index-Cwk5ttwQ.js",
+      "bytes": 449234,
+      "sha256": "72d806b79b9d720471f031b625785b89abcf6a850641cad1ee9c26ac6d1013b7"
+    },
+    {
+      "path": "standalone/icons/icon-192.png",
+      "bytes": 63310,
+      "sha256": "5d5a69e6e497513c6cd91734e20c9ac1115ae7b9edfcbe94cc19e7a31537baac"
+    },
+    {
+      "path": "standalone/icons/icon-512.png",
+      "bytes": 400255,
+      "sha256": "373106a8a6e867e7c6705221bac0186958870d1931d25025466e2d44a2ef36fc"
+    },
+    {
+      "path": "standalone/icons/icon-maskable-512.png",
+      "bytes": 400255,
+      "sha256": "373106a8a6e867e7c6705221bac0186958870d1931d25025466e2d44a2ef36fc"
+    },
+    {
+      "path": "standalone/index.html",
+      "bytes": 698,
+      "sha256": "82ff4f6220d692f17fedc03824f9e9fdc2b14b597f8da1eda9978ab3dd706e4b"
+    },
+    {
+      "path": "standalone/manifest.webmanifest",
+      "bytes": 546,
+      "sha256": "dd45fe5b808cf26fba8b2bb15b514e0338eac45def24a4c37b0aba9bdae2fdbc"
+    },
+    {
+      "path": "standalone/registerSW.js",
+      "bytes": 156,
+      "sha256": "13ccfb59e9dbda07e376905f4f69d46d0edf9d68d617eb8b9c24686f2a61fc48"
+    },
+    {
+      "path": "standalone/sw.js",
+      "bytes": 1541,
+      "sha256": "9051700eecda7550f5521f60db06952fbae304fac18eda0044e428930e526ca3"
+    },
+    {
+      "path": "standalone/workbox-2fbc6a65.js",
+      "bytes": 15026,
+      "sha256": "39c2e6ae44c3f29666f6a328b6523bf13a053a1d95c74af8ddea82b1045b0b6e"
+    }
+  ]
+}
