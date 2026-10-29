@@ -305,14 +305,14 @@ Ausgenommen sind notwendige Fehlerbehebungen, Sicherheitsprobleme oder ausdrück
 
 **Kontrollierter Hauptphasenwechsel:** Eine Hauptphase darf nach ausdrücklicher Koordinatorentscheidung auch **kontrolliert pausiert** werden, wenn Quellcode, offene PRs, Integrationsstand, fehlende Abnahmen und Wiederaufnahmepunkt nachvollziehbar gesichert und von einer vollständigen Fachabnahme unterschieden sind. Eine pausierte Hauptphase wird bis zur ausdrücklich freigegebenen Wiederaufnahme nicht parallel als zweite Hauptimplementierung fortgesetzt. Dringende Ausnahmen bleiben separat freigabepflichtig.
 
-## D-044 – Kanonische Portal- und Modulpfade liegen unter der gemeinsamen Vereinsdomain
+## D-044 – Kanonische Cockpit- und Modulpfade liegen unter der gemeinsamen Vereinsdomain
 
-**Entscheidung:** Die langfristigen Benutzeradressen des PD-Portals und seiner Fachmodule werden unter der gemeinsamen Vereinsdomain geführt.
+**Aktualisierung durch D-054:** Für das neue Gesamtprodukt ist das Cockpit die gemeinsame Anwendung; der unten aufgeführte technische Portal-Core-Pfad beschreibt den bisherigen beziehungsweise gegebenenfalls noch benötigten Legacy-Vertrag und **kein zweites neues Produkt**. Die langfristigen Benutzeradressen liegen unter der gemeinsamen Vereinsdomain. Jede PROD-Routingänderung erfordert eine eigene Freigabe.
 
 PROD:
 
 - `https://plaerrdeifl.de/` → öffentliche WordPress-Website
-- `https://plaerrdeifl.de/portal` → Portal-Core / Dashboard
+- `https://plaerrdeifl.de/portal` → bisheriger technischer Portal-Core-/Legacy-Pfad, kein paralleles neues Dashboard
 - `https://plaerrdeifl.de/cockpit/` → Fanszene Schweinfurt Cockpit
 - `https://plaerrdeifl.de/events` → Events
 - `https://plaerrdeifl.de/fanbus` → Fanbus
@@ -433,7 +433,7 @@ Die bestehenden DEV-/PROD-Regeln bleiben unverändert. Insbesondere ist ein erfo
 
 **Bisheriger PWA-Vertrag:** Das **Fanszene Schweinfurt Cockpit** ist eine eigenständig installierbare **React-/TypeScript-/Vite-PWA** im neuen Repository `Plaerrdeifl/fanszene-cockpit`. Seine kanonische Adresse liegt unter `/cockpit/` (DEV `https://dev.plaerrdeifl.de/cockpit/`, langfristiges PROD-Ziel `https://plaerrdeifl.de/cockpit/`). Es nutzt `Plaerrdeifl/platform-ui` für Runtime-Konfiguration, Supabase-/Portalidentität, Session, `public.pd_api(text, jsonb)`, Bootstrap und UI-Grundlagen.
 
-**Cockpit-Verantwortung:** App-Shell, Navigation, Anmeldung, Profil/Abmeldung sowie Cockpit-spezifische Zugangs-, Benutzer- und Rechteverwaltung. **Einzige Fachmodule:** Liveticker und Bild-Generator. Liveticker-Fachlogik, -Daten und -Worker bleiben in `Plaerrdeifl/liveticker`; Generator-Fachlogik, -Daten und -Worker bleiben in `Plaerrdeifl/social-media-generator`. Deren eigenständig installierbare PWAs und die gemeinsame Portal-PWA bleiben erhalten.
+**Cockpit-Verantwortung:** App-Shell, Navigation, Anmeldung, Profil/Abmeldung sowie Cockpit-spezifische Zugangs-, Benutzer- und Rechteverwaltung. **Aktuell anfängliche Fachmodule:** Liveticker und Bild-Generator; Bus-Orga folgt danach gemäß D-054. Liveticker-Fachlogik, -Daten und -Worker bleiben in `Plaerrdeifl/liveticker`; Generator-Fachlogik, -Daten und -Worker bleiben in `Plaerrdeifl/social-media-generator`. Deren eigenständig installierbare PWAs und die gemeinsame Portal-PWA bleiben erhalten.
 
 **Code-Integration:** Fachkomponenten werden aus den führenden Fachrepositories über kontrollierte, versionierte Integrations-/Komponentenverträge gemeinsam genutzt, nicht dauerhaft dupliziert. Keine konkurrierenden Liveticker- oder Generatorimplementierungen, kein zweites Benutzer-, Team-, Rollen-, Auth- oder API-System und kein iframe als Standardlösung. Cockpit und andere PWAs grenzen Manifest-ID, Start-URL, Router-, Asset- und Service-Worker-Scopes auf ihre eigenen Pfade ab.
 
