@@ -382,6 +382,11 @@ async function validateRelease() {
     "Ungültige API-Antwort.",
     "Anmeldung erforderlich.",
     "cockpit_access_get",
+    "cockpit_admin_users_list",
+    "cockpit_admin_user_get",
+    "cockpit_admin_access_set",
+    "cockpit_admin_personal_capabilities_set",
+    "identityCreationAvailable",
     "schemaVersion",
     "cockpit-backend",
     "SYSTEM_ADMIN",
@@ -398,7 +403,7 @@ async function validateRelease() {
   ]) {
     assert(
       applicationBundle.includes(requiredContractMarker),
-      `Das Cockpit-Artefakt enthält den AP-03/R1-Vertragsmarker nicht: ${requiredContractMarker}`
+      `Das Cockpit-Artefakt enthält den AP-03/R3-Vertragsmarker nicht: ${requiredContractMarker}`
     );
   }
 
@@ -412,9 +417,13 @@ async function validateRelease() {
     "Das Cockpit-Artefakt darf portal.admin nicht als lokale Zugangsquelle auswerten."
   );
   assert(
+    /identityCreationAvailable:!1/.test(applicationBundle),
+    "Das Cockpit-Artefakt muss die Benutzeranlage deaktiviert lassen."
+  );
+  assert(
     /\.schemaVersion!==1\|\|.\.userId!==/.test(applicationBundle)
       && /\.active\?[^?]{0,20}\.allowed\?\{allowed:!0,source:`cockpit-backend`/.test(applicationBundle),
-    "Das Cockpit-Artefakt bindet AP-03/R1 nicht an Schema, Sessionbenutzer und serverseitige Freigabe."
+    "Das Cockpit-Artefakt bindet AP-03/R3 nicht an Schema, Sessionbenutzer und serverseitige Freigabe."
   );
   assert(
     /Object\.freeze\(\[\{id:`liveticker`,label:`Liveticker`[\s\S]{0,400}\{id:`bild-generator`,label:`Bild-Generator`/.test(applicationBundle)

@@ -123,7 +123,7 @@ test("versioned Cockpit release pins the private source and every generated file
   assert.equal(metadata.schemaVersion, 1);
   assert.equal(metadata.environment, "DEV");
   assert.equal(metadata.sourceRepository, "Plaerrdeifl/fanszene-cockpit");
-  assert.equal(metadata.sourceCommit, "14b07a572d0a0d412125abb2b63e6efda356a89d");
+  assert.equal(metadata.sourceCommit, "ad14e4b3c48582469510a72fda8045e68b51f682");
   assert.equal(
     metadata.sourcePackageLockSha256,
     "f0e8680fd6b0cc39e0267255a17d780a98f246ae1a06eb175635a45dd8598a27"
@@ -143,7 +143,7 @@ test("versioned Cockpit release pins the private source and every generated file
   );
 });
 
-test("Cockpit runtime is DEV-only, public and bound to the AP-03/R1 access contract", async () => {
+test("Cockpit runtime is DEV-only, public and bound to the AP-03/R3 contracts", async () => {
   const output = await integrate("runtime-contract");
   const [index, manifestSource, offline, worker, runtimeSource] = await Promise.all([
     readFile(join(output, "index.html"), "utf8"),
@@ -192,6 +192,11 @@ test("Cockpit runtime is DEV-only, public and bound to the AP-03/R1 access contr
     "Ungültige API-Antwort.",
     "Anmeldung erforderlich.",
     "cockpit_access_get",
+    "cockpit_admin_users_list",
+    "cockpit_admin_user_get",
+    "cockpit_admin_access_set",
+    "cockpit_admin_personal_capabilities_set",
+    "identityCreationAvailable",
     "schemaVersion",
     "cockpit-backend",
     "SYSTEM_ADMIN",
@@ -208,12 +213,13 @@ test("Cockpit runtime is DEV-only, public and bound to the AP-03/R1 access contr
   ]) {
     assert.ok(
       bundles.includes(contractMarker),
-      `AP-03/R1-Vertragsmarker fehlt im Cockpit-Bundle: ${contractMarker}`
+      `AP-03/R3-Vertragsmarker fehlt im Cockpit-Bundle: ${contractMarker}`
     );
   }
 
   assert.doesNotMatch(bundles, /contract-pending|keine vorläufige Freigabe/);
   assert.doesNotMatch(bundles, /portal\.admin/);
+  assert.match(bundles, /identityCreationAvailable:!1/);
   assert.match(bundles, /\.schemaVersion!==1\|\|.\.userId!==/);
   assert.match(
     bundles,
