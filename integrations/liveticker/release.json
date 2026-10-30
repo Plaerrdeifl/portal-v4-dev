@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/liveticker",
-  "sourceCommit": "8df00bc10f7077227f35a7065c29bd84ad07c977",
+  "sourceCommit": "d1b113e0fe14b42bd857d3cf86ee1f35c468dc78",
   "sourcePackageLockSha256": "0f87ce32d86bbbc93d1118e518d8373e5ce7097cc354e64e86b746b3723cde54",
-  "sourceBuildCommand": "npm ci --include=dev --allow-remote=root && npm run check && npm run build:cockpit && npm run verify:hosted-dev && npm run test:embed-build",
+  "sourceBuildCommand": "npm ci --include=dev && npm run build && npm run build:cockpit && npm run verify:hosted-dev && npm run test:embed-build",
   "sourceBuildEnvironment": {
     "VITE_APP_ENV": "DEV",
     "VITE_LIVETICKER_HOSTED": "enabled",
@@ -14,10 +14,10 @@
   },
   "sourceToolchain": {
     "node": "24.19.0",
-    "npm": "12.0.1"
+    "npm": "11.9.0"
   },
   "artifactRoot": "integrations/liveticker/release",
-  "artifactSha256": "fa8c884dd3bac43bea58580eeedd334f21fb74a67991932d879dba5073d3589f",
+  "artifactSha256": "0fd422b40ab2e97d31ce32f678032f073f69324defe2c161062cc1fbb812b2df",
   "files": [
     {
       "path": "embed/chunks/ArchivePanel-BVXbNyJt.js",
@@ -61,33 +61,33 @@
     },
     {
       "path": "embed/style.css",
-      "bytes": 58270,
-      "sha256": "2fde75e53f79c0e4c6b2950d12c04c1c7034e0edee9cd268925ae7826981ccce"
+      "bytes": 58552,
+      "sha256": "2e4464646166058bbe51eab834a409f509c93b9c836c09c9c831a72e8a5fc521"
     },
     {
-      "path": "standalone/assets/ArchivePanel-Dde--oSU.js",
+      "path": "standalone/assets/ArchivePanel-D4PtdwB5.js",
       "bytes": 17993,
-      "sha256": "b3477d3a68deba38bb07d4b9f8db4420d0bc9f6ae14f5443beef40e01dfbca1c"
+      "sha256": "a59eecb4122c1aea7d26a7b503ce2213f6ec2767a8cb6e5b0ee2c6b8b9ece86d"
     },
     {
-      "path": "standalone/assets/GameWorkspace-CYqEPveo.js",
+      "path": "standalone/assets/GameWorkspace-BWKVyrGf.js",
       "bytes": 84964,
-      "sha256": "fcd8d987048a270ffe780d98f0dc957b97814248d9a17990294f7a74bfdfc10a"
+      "sha256": "e68b22399076a848926999b1a90f719f20c25443f3040268041981de438930e9"
     },
     {
-      "path": "standalone/assets/LivetickerAdmin-C33mnlAx.js",
+      "path": "standalone/assets/LivetickerAdmin-DWboIanw.js",
       "bytes": 40698,
-      "sha256": "1bf42ea8cb2eda9ec57ae07e896740d8e7f221a902de4ccef532fba237f282c8"
+      "sha256": "3a63f4b0336e56a80cd6ab4b82bac4525daa3fc6d8ac440aed52533eb75560c2"
     },
     {
-      "path": "standalone/assets/index-A_aAp-IB.js",
+      "path": "standalone/assets/index-BK5miljj.js",
       "bytes": 449628,
-      "sha256": "48b80c8236611f20d3bb6cf3e5ffe35d4a2fb946e49a511f6964f9721f22ac7e"
+      "sha256": "25b417e78041023e4da3df5a4bd87b1af77649c893273d691486c2d6fd86891f"
     },
     {
-      "path": "standalone/assets/index-CP2g3oLW.css",
-      "bytes": 58258,
-      "sha256": "979bebd8fcccbf1cfbcd815f63d493f07579f3fd222ec31220e82eefb1570fd3"
+      "path": "standalone/assets/index-DHEaTYIM.css",
+      "bytes": 58540,
+      "sha256": "0ca85ed245fa62c774f2c5eba0bd67f9cc861af54d74fe733d463e5274f9fbe9"
     },
     {
       "path": "standalone/icons/icon-192.png",
@@ -107,7 +107,7 @@
     {
       "path": "standalone/index.html",
       "bytes": 698,
-      "sha256": "07cbef5b893f08029890f5937775949c8f7e705206111649e13f802b4c0adec9"
+      "sha256": "f691b7a9603999eba8d57ee8dc3dce4a07dde542d30227c243c25b972c1b62f9"
     },
     {
       "path": "standalone/manifest.webmanifest",
@@ -122,7 +122,7 @@
     {
       "path": "standalone/sw.js",
       "bytes": 1541,
-      "sha256": "a825ef7178136951559c869fa3427528bc0f252e89afb388d71008c6d80f372a"
+      "sha256": "e4e486efffa93788ffddbe1afcf2b12eec5fbd7394faaa942d14941491d6eeff"
     },
     {
       "path": "standalone/workbox-2fbc6a65.js",
