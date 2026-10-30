@@ -8830,20 +8830,27 @@ function oe({ onCredential: e, onDevPortalLogin: t }) {
 		if (t) return;
 		let r = n.current;
 		if (!r) return;
-		let a = !1;
-		return ae(r, async (t, n) => {
-			if (!a) {
-				i("Google-Anmeldung wird geprüft …");
-				try {
-					await e(t, n);
-				} catch (e) {
-					a || i(e instanceof Error ? e.message : "Anmeldung fehlgeschlagen.");
+		let a = !1, o = -1, s = 0, c = () => {
+			let t = Math.floor(r.getBoundingClientRect().width);
+			a || t === o || (o = t, ae(r, async (t, n) => {
+				if (!a) {
+					i("Google-Anmeldung wird geprüft …");
+					try {
+						await e(t, n);
+					} catch (e) {
+						a || i(e instanceof Error ? e.message : "Anmeldung fehlgeschlagen.");
+					}
 				}
-			}
-		}).catch((e) => {
-			a || i(e instanceof Error ? e.message : "Google-Anmeldung konnte nicht geladen werden.");
-		}), () => {
-			a = !0;
+			}).catch((e) => {
+				a || i(e instanceof Error ? e.message : "Google-Anmeldung konnte nicht geladen werden.");
+			}));
+		};
+		c();
+		let l = typeof ResizeObserver > "u" ? null : new ResizeObserver(() => {
+			cancelAnimationFrame(s), s = requestAnimationFrame(c);
+		});
+		return l?.observe(r), () => {
+			a = !0, l?.disconnect(), cancelAnimationFrame(s);
 		};
 	}, [e, t]);
 	async function a() {
@@ -9189,14 +9196,21 @@ function ye() {
 }
 //#endregion
 //#region src/embed.tsx
-function be(e) {
-	if (!e || e.shadowRoot || !e.isConnected) throw Error("Liveticker-Modul kann nicht sicher gestartet werden.");
-	let t = e.attachShadow({ mode: "open" }), n = document.createElement("link");
+var be = /* @__PURE__ */ new WeakSet(), xe = /* @__PURE__ */ new WeakSet();
+function Se(e) {
+	if (!e || !e.isConnected || be.has(e) || e.shadowRoot && !xe.has(e.shadowRoot)) throw Error("Liveticker-Modul kann nicht sicher gestartet werden.");
+	let t = e.shadowRoot ?? e.attachShadow({ mode: "open" });
+	xe.add(t);
+	let n = document.createElement("link");
 	n.rel = "stylesheet", n.href = "/liveticker/embed/style.css", t.append(n);
 	let r = document.createElement("div");
 	t.append(r);
 	let i = (0, h.createRoot)(r);
-	return i.render(/* @__PURE__ */ (0, x.jsx)(ye, {})), () => i.unmount();
+	be.add(e), i.render(/* @__PURE__ */ (0, x.jsx)(ye, {}));
+	let a = !0;
+	return () => {
+		a && (a = !1, i.unmount(), t.replaceChildren(), be.delete(e));
+	};
 }
 //#endregion
-export { be as mountLiveticker };
+export { Se as mountLiveticker };
