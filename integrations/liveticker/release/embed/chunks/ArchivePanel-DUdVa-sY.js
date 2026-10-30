@@ -97,37 +97,37 @@ function b(e) {
 function x(e, t) {
 	return e.jobs.find((e) => e.kind === t) || null;
 }
-function S(e) {
+function ee(e) {
 	return e?.status === "QUEUED" || e?.status === "PROCESSING";
 }
-function ee(e) {
+function te(e) {
 	return e ? e.status === "QUEUED" ? "Warteschlange" : e.status === "PROCESSING" ? "Wird erzeugt" : e.status === "SUCCEEDED" ? "Fertig" : e.status === "FAILED" ? "Fehlgeschlagen" : e.status || "Unbekannt" : "Noch nicht erzeugt";
 }
-function te(e, t) {
+function ne(e, t) {
 	return e ? !t || t.jobId !== e ? "wait" : t.status === "SUCCEEDED" ? "ready" : t.status === "FAILED" ? "failed" : "wait" : "none";
 }
-async function C(e) {
+async function S(e) {
 	return b(await i("social_media_generator_liveticker_render_status", { eventId: e }));
 }
-function w(e, t) {
+function re(e, t) {
 	return x(e, "FINAL")?.status === "SUCCEEDED" ? e : x(t, "FINAL")?.status === "SUCCEEDED" ? t : e.jobs.length ? e : t;
 }
-async function T(e) {
+async function C(e) {
 	let t = null, n = null;
 	try {
-		if (t = await C(e), x(t, "FINAL")?.status === "SUCCEEDED") return t;
+		if (t = await S(e), x(t, "FINAL")?.status === "SUCCEEDED") return t;
 	} catch (e) {
 		n = e;
 	}
 	try {
 		let n = b(await i("liveticker_graphics_status", { eventId: e }));
-		return t ? w(t, n) : n;
+		return t ? re(t, n) : n;
 	} catch (e) {
 		if (t) return t;
 		throw n || e;
 	}
 }
-async function ne(e, t) {
+async function w(e, t) {
 	let n = await i("social_media_generator_liveticker_render_start", {
 		eventId: e,
 		kind: t
@@ -135,7 +135,7 @@ async function ne(e, t) {
 	if (!u(r)) throw Error("Generator-Request wurde ohne gültige Request-ID angelegt.");
 	return r;
 }
-async function re(e, t = fetch) {
+async function T(e, t = fetch) {
 	let n = h(e);
 	if (!n) throw Error("LIVETICKER_GRAPHIC_SHARE_INVALID");
 	let r = await t(n, {
@@ -159,15 +159,61 @@ async function re(e, t = fetch) {
 function E(e) {
 	return String(e ?? "").trim();
 }
-function D() {
+function ie() {
 	return o();
 }
-function ie(e) {
+var D = /* @__PURE__ */ new Map();
+function O(e, t) {
+	let n = "plaerrdeifl.liveticker.pending-request.v1:" + e, r = JSON.stringify(t);
+	try {
+		let e = typeof localStorage > "u" ? null : localStorage, t = e ? e.getItem(n) : D.get(n);
+		if (t) {
+			let e = JSON.parse(t);
+			if (!u(e.id) || e.fingerprint !== r) throw Error("Vorheriger Versandauftrag ist noch unbestätigt. Bitte erst dessen Status prüfen.");
+			return e.id;
+		}
+		let i = ie(), a = JSON.stringify({
+			id: i,
+			fingerprint: r
+		});
+		if (e) e.setItem(n, a);
+		else if (typeof window > "u") D.set(n, a);
+		else throw Error("Versandauftrag konnte nicht für sichere Wiederholung vorgemerkt werden.");
+		return i;
+	} catch (e) {
+		throw e instanceof Error ? e : /* @__PURE__ */ Error("Versandauftrag konnte nicht sicher vorgemerkt werden.");
+	}
+}
+function k(e) {
+	let t = "plaerrdeifl.liveticker.pending-request.v1:" + e;
+	try {
+		typeof localStorage < "u" && localStorage.removeItem(t), D.delete(t);
+	} catch {}
+}
+function ae(e) {
 	let t = e || {};
 	return { deliveries: Array.isArray(t.deliveries) ? t.deliveries.map((e) => {
 		let t = e || {};
 		return {
 			id: E(t.id),
+			targets: Array.isArray(t.targets) ? t.targets.map((e) => {
+				let t = e || {};
+				return {
+					id: E(t.id),
+					code: E(t.code),
+					label: E(t.label),
+					status: E(t.status).toUpperCase(),
+					attemptCount: Math.max(0, Number(t.attemptCount || 0)),
+					stickerStatus: E(t.stickerStatus),
+					textStatus: E(t.textStatus),
+					imageStatus: E(t.imageStatus),
+					error: E(t.error) || null,
+					stickerMessageRecorded: t.stickerMessageRecorded === !0,
+					textMessageRecorded: t.textMessageRecorded === !0,
+					imageMessageRecorded: t.imageMessageRecorded === !0,
+					ackStatus: E(t.ackStatus) || "NOT_CONFIRMED"
+				};
+			}) : [],
 			deliveryMode: E(t.deliveryMode || t.delivery_mode).toUpperCase(),
 			status: E(t.status).toUpperCase(),
 			stickerStatus: E(t.stickerStatus || t.sticker_status).toUpperCase() || "NOT_REQUESTED",
@@ -180,43 +226,43 @@ function ie(e) {
 		};
 	}).filter((e) => !!e.id) : [] };
 }
-function ae(e, t) {
+function oe(e, t) {
 	return e.deliveries.find((e) => e.id === t) || null;
 }
-function oe(e) {
+function se(e) {
 	let t = E(e).toUpperCase();
 	return t === "SUCCEEDED" || t === "FAILED";
 }
-function se(e, t, n) {
+function ce(e, t, n) {
 	let r = (E(e.filename).split(/[\\/]/).pop() || "").replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^_+|_+$/g, "");
 	return /^[A-Za-z0-9._-]{1,96}[.]png$/i.test(r) ? r : "liveticker_" + t.toLowerCase() + "_" + E(n).slice(0, 8) + ".png";
 }
-function ce(e) {
+function le(e) {
 	let t = E(e);
 	if (!t) throw Error("Text fehlt – WhatsApp wird nicht gesendet.");
 	if (t.length > 4e3) throw Error("WhatsApp-Text ist länger als 4.000 Zeichen.");
 	return t;
 }
-function O(e, t) {
+function A(e, t) {
 	return "plaerrdeifl.liveticker.summary-delivery.v1:" + e + ":" + t;
 }
-function k(e, t, n) {
+function j(e, t, n) {
 	try {
-		localStorage.setItem(O(e, t), n);
+		localStorage.setItem(A(e, t), n);
 	} catch {}
 }
-function A(e, t) {
+function M(e, t) {
 	try {
-		let n = E(localStorage.getItem(O(e, t)));
+		let n = E(localStorage.getItem(A(e, t)));
 		return u(n) ? n : "";
 	} catch {
 		return "";
 	}
 }
-async function j(e) {
-	return ie(await i("liveticker_whatsapp_deliveries_list", { eventId: e }));
+async function N(e) {
+	return ae(await i("liveticker_whatsapp_deliveries_list", { eventId: e }));
 }
-async function M({ eventId: e, deliveryId: t }) {
+async function P({ eventId: e, deliveryId: t }) {
 	if (!u(e)) throw Error("Das Spiel ist ungültig.");
 	if (!u(t)) throw Error("Der Versandauftrag ist ungültig.");
 	await i("liveticker_whatsapp_delivery_retry", {
@@ -224,28 +270,32 @@ async function M({ eventId: e, deliveryId: t }) {
 		jobId: t
 	});
 }
-async function N({ eventId: e, graphicJobId: t, kind: n, artifact: r, message: a }) {
-	let o = ce(a), s = E(((await i("liveticker_whatsapp_delivery_enqueue", {
+async function F({ eventId: e, graphicJobId: t, kind: n, artifact: r, message: a }) {
+	let o = le(a), s = "summary:" + e + ":" + t, c = O(s, [
+		r.downloadUrl,
+		o,
+		n
+	]), l = E(((await i("liveticker_whatsapp_delivery_enqueue", {
 		eventId: e,
 		deliveryMode: "IMAGE_WITH_CAPTION",
-		idempotencyKey: D(),
+		idempotencyKey: c,
 		imageUrl: r.downloadUrl,
-		imageFilename: se(r, n, t),
+		imageFilename: ce(r, n, t),
 		message: o
 	}) || {}).delivery || {}).id);
-	if (!u(s)) throw Error("WhatsApp-Delivery-ID fehlt.");
-	return k(e, t, s), s;
+	if (!u(l)) throw Error("WhatsApp-Delivery-ID fehlt.");
+	return k(s), j(e, t, l), l;
 }
 //#endregion
 //#region src/liveticker/stickers.ts
-function P(e) {
+function I(e) {
 	return String(e ?? "").trim();
 }
-function F(e) {
-	return P(e).toUpperCase();
+function L(e) {
+	return I(e).toUpperCase();
 }
-function I(e) {
-	let t = e || {}, n = P(t.id), r = F(t.audience), i = F(t.category);
+function R(e) {
+	let t = e || {}, n = I(t.id), r = L(t.audience), i = L(t.category);
 	return !u(n) || ![
 		"OUR_TEAM",
 		"OPPONENT",
@@ -259,34 +309,39 @@ function I(e) {
 		"GENERAL"
 	].includes(i) ? null : {
 		id: n,
-		name: P(t.name) || "Sticker",
-		slug: P(t.slug),
-		mimeType: P(t.mimeType || t.mime_type) || "image/webp",
+		name: I(t.name) || "Sticker",
+		slug: I(t.slug),
+		mimeType: I(t.mimeType || t.mime_type) || "image/webp",
 		active: t.active === !0,
 		sortOrder: Number(t.sortOrder || t.sort_order || 0),
 		width: Number(t.width || 0),
 		height: Number(t.height || 0),
 		fileSize: Number(t.fileSize || t.file_size || 0),
 		audience: r,
-		opponentTeamId: P(t.opponentTeamId || t.opponent_team_id) || null,
+		opponentTeamId: I(t.opponentTeamId || t.opponent_team_id) || null,
 		category: i
 	};
 }
-function L(e) {
+function z(e) {
 	let t = e || {};
-	return Array.isArray(t.stickers) ? t.stickers.map(I).filter((e) => !!e).sort((e, t) => e.sortOrder - t.sortOrder || e.name.localeCompare(t.name, "de")) : [];
+	return Array.isArray(t.stickers) ? t.stickers.map(R).filter((e) => !!e).sort((e, t) => e.sortOrder - t.sortOrder || e.name.localeCompare(t.name, "de")) : [];
 }
-function R(e, t) {
-	let n = P(t);
+function B(e, t) {
+	let n = I(t);
 	return e.filter((e) => !e.active || [
 		"GOAL",
 		"AGAINST",
 		"PENALTY"
 	].includes(e.category) ? !1 : e.audience !== "OPPONENT" || !!n && e.opponentTeamId === n);
 }
-function z(e) {
-	let t = F(e?.stickerStatus || "NOT_REQUESTED");
-	return t === "SENT" ? {
+function V(e) {
+	let t = L(e?.stickerStatus || "NOT_REQUESTED");
+	return e?.targets?.some((e) => e.error === "DELIVERY_OUTCOME_UNKNOWN") ? {
+		label: "VERSANDERGEBNIS UNKLAR – ZUSTELLUNG PRÜFEN",
+		tone: "error",
+		retryable: !1,
+		terminal: !0
+	} : t === "SENT" ? {
 		label: "GESENDET ✓",
 		tone: "success",
 		retryable: !1,
@@ -308,10 +363,10 @@ function z(e) {
 		terminal: !1
 	};
 }
-async function B() {
-	return L(await i("liveticker_whatsapp_stickers_list", { includeInactive: !1 }));
+async function H() {
+	return z(await i("liveticker_whatsapp_stickers_list", { includeInactive: !1 }));
 }
-async function V(e) {
+async function U(e) {
 	if (!u(e)) throw Error("Der Sticker ist ungültig.");
 	let r = n(), { data: i, error: a } = await t().auth.getSession(), o = i.session?.access_token;
 	if (a || !o) throw Error("Anmeldung erforderlich.");
@@ -328,25 +383,25 @@ async function V(e) {
 	if (c.type !== "image/webp" || c.size < 1 || c.size > 102400) throw Error("Die Sticker-Vorschau ist ungültig.");
 	return c;
 }
-async function H({ eventId: e, stickerId: t }) {
+async function W({ eventId: e, stickerId: t }) {
 	if (!u(e)) throw Error("Das Spiel ist ungültig.");
 	if (!u(t)) throw Error("Der Sticker ist ungültig.");
-	let n = P(((await i("liveticker_whatsapp_sticker_enqueue", {
+	let n = "sticker:" + e + ":" + t, r = I(((await i("liveticker_whatsapp_sticker_enqueue", {
 		eventId: e,
 		stickerId: t,
-		idempotencyKey: D()
+		idempotencyKey: O(n, [e, t])
 	}) || {}).delivery || {}).id);
-	if (!u(n)) throw Error("Der Sticker-Versandauftrag konnte nicht bestätigt werden.");
-	return n;
+	if (!u(r)) throw Error("Der Sticker-Versandauftrag konnte nicht bestätigt werden.");
+	return k(n), r;
 }
-function U(e, { action: t, opponentTeamId: n, penaltyTeams: r = [] }) {
-	let i = P(n);
+function ue(e, { action: t, opponentTeamId: n, penaltyTeams: r = [] }) {
+	let i = I(n);
 	if (t === "GOAL_MIGHTY") return e.filter((e) => e.active && e.audience === "OUR_TEAM" && e.category === "GOAL");
 	if (t === "GOAL_OPPONENT") return e.filter((e) => e.active && e.audience === "OPPONENT" && e.category === "AGAINST" && !!i && e.opponentTeamId === i);
 	let a = [...new Set(r)];
 	return a.length === 1 ? e.filter((e) => !e.active || e.category !== "PENALTY" ? !1 : a[0] === "mighty" ? e.audience === "OUR_TEAM" : e.audience === "OPPONENT" && !!i && e.opponentTeamId === i) : [];
 }
-function le({ action: e, penaltyTeams: t = [] }) {
+function de({ action: e, penaltyTeams: t = [] }) {
 	if (e === "GOAL_MIGHTY") return {
 		kind: "GOAL",
 		team: "mighty"
@@ -361,24 +416,24 @@ function le({ action: e, penaltyTeams: t = [] }) {
 		team: n[0]
 	} : null;
 }
-function W(e, t) {
+function fe(e, t) {
 	if (!e || !t || typeof t != "object" || Array.isArray(t)) return !1;
-	let n = t, r = P(n.team).toLowerCase();
+	let n = t, r = I(n.team).toLowerCase();
 	if (e.kind === "GOAL") return n.type === "goal" && r === e.team;
 	if (n.type !== "penalty" || n.subtype === "penalty_shot") return !1;
-	let i = Array.isArray(n.penalties) ? n.penalties : [], a = [...new Set(i.map((e) => P(e.team).toLowerCase()).filter((e) => e === "mighty" || e === "opponent"))];
+	let i = Array.isArray(n.penalties) ? n.penalties : [], a = [...new Set(i.map((e) => I(e.team).toLowerCase()).filter((e) => e === "mighty" || e === "opponent"))];
 	return a.length === 1 && a[0] === e.team;
 }
-function ue(e) {
-	let t = P(e);
+function pe(e) {
+	let t = I(e);
 	if (!/^[A-Za-z0-9._:-]{1,100}$/.test(t)) throw Error("Die Liveticker-Aktionsreferenz ist ungültig.");
 	return t;
 }
-async function de({ deliveryId: e, actionId: t }) {
+async function me({ deliveryId: e, actionId: t }) {
 	if (!u(e)) throw Error("Der Versandauftrag ist ungültig.");
 	await i("liveticker_whatsapp_delivery_link", {
 		jobId: e,
-		actionId: ue(t)
+		actionId: pe(t)
 	});
 }
 //#endregion
@@ -390,7 +445,7 @@ function K(e) {
 function q(e) {
 	return K(e) || null;
 }
-function J(e) {
+function he(e) {
 	let t = e || {}, n = K(t.eventId || t.event_id), r = K(t.homeAway || t.home_away).toUpperCase(), i = K(t.completedAt || t.completed_at);
 	if (!n) throw Error("Archivspiel ohne eventId erhalten.");
 	if (r !== "HOME" && r !== "AWAY") throw Error("Archivspiel ohne gültiges homeAway erhalten.");
@@ -413,11 +468,11 @@ function J(e) {
 		shootoutCount: Math.max(0, Number(t.shootoutCount || t.shootout_count || 0))
 	};
 }
-function Y(e) {
+function J(e) {
 	let t = e || {};
-	return Array.isArray(t.games) ? t.games.map(J) : [];
+	return Array.isArray(t.games) ? t.games.map(he) : [];
 }
-function X(e) {
+function Y(e) {
 	let t = e.homeAway === "AWAY" ? e.opponentScore : e.ownScore, n = e.homeAway === "AWAY" ? e.ownScore : e.opponentScore;
 	return {
 		home: t,
@@ -425,7 +480,7 @@ function X(e) {
 		label: t + ":" + n + (e.suffix ? " " + e.suffix : "")
 	};
 }
-function Z(e) {
+function X(e) {
 	let t = /* @__PURE__ */ new Date(e + "T12:00:00");
 	return Number.isNaN(t.getTime()) ? e : new Intl.DateTimeFormat("de-DE", {
 		day: "2-digit",
@@ -433,14 +488,14 @@ function Z(e) {
 		year: "numeric"
 	}).format(t);
 }
-function fe(e) {
+function Z(e) {
 	let t = new Date(e);
 	return Number.isNaN(t.getTime()) ? e : new Intl.DateTimeFormat("de-DE", {
 		dateStyle: "short",
 		timeStyle: "short"
 	}).format(t);
 }
-function pe(e) {
+function ge(e) {
 	let t = x(e, "FINAL");
 	if (t?.status !== "SUCCEEDED") return {
 		post: "",
@@ -461,12 +516,12 @@ function Q({ environment: e = n().environment, hostname: t = globalThis.location
 		"acer01"
 	].includes(r);
 }
-async function me() {
-	return Y(await i("liveticker_archive_list", {}));
+async function _e() {
+	return J(await i("liveticker_archive_list", {}));
 }
-async function he(e) {
+async function ve(e) {
 	if (!Q()) throw Error("Archiv-Reset ist nur in der lokalen DEV-Entwicklung erlaubt.");
-	return Y(await i("liveticker_game_reset", {
+	return J(await i("liveticker_game_reset", {
 		eventId: e.eventId,
 		expectedRevision: e.revision
 	}));
@@ -474,7 +529,7 @@ async function he(e) {
 //#endregion
 //#region src/components/ArchivePanel.tsx
 var $ = e();
-function ge({ initiallyOpen: e = !1 } = {}) {
+function ye({ initiallyOpen: e = !1 } = {}) {
 	let [t, n] = (0, G.useState)(e), [r, i] = (0, G.useState)([]), [a, o] = (0, G.useState)(""), [s, c] = (0, G.useState)({
 		post: "",
 		story: ""
@@ -482,7 +537,7 @@ function ge({ initiallyOpen: e = !1 } = {}) {
 	async function v() {
 		u(!0), g("Spielarchiv wird geladen …");
 		try {
-			let e = await me();
+			let e = await _e();
 			i(e), g(e.length ? "Spielarchiv geladen." : "Noch keine abgeschlossenen Spiele im Liveticker-Archiv."), a && !e.some((e) => e.eventId === a) && (o(""), c({
 				post: "",
 				story: ""
@@ -507,8 +562,8 @@ function ge({ initiallyOpen: e = !1 } = {}) {
 		return f(!0), c({
 			post: "",
 			story: ""
-		}), T(_.eventId).then((t) => {
-			e || (c(pe(t)), f(!1));
+		}), C(_.eventId).then((t) => {
+			e || (c(ge(t)), f(!1));
 		}, () => {
 			e || (c({
 				post: "",
@@ -522,7 +577,7 @@ function ge({ initiallyOpen: e = !1 } = {}) {
 		if (_ && !p && Q() && window.confirm("Spiel „" + _.displayTitle + "“ wirklich zurücksetzen? Tore, Strafen, Penaltyschießen und Spielminute werden geleert.")) {
 			m(!0), g("Spiel wird zurückgesetzt …");
 			try {
-				let e = await he(_);
+				let e = await ve(_);
 				i(e), o(""), c({
 					post: "",
 					story: ""
@@ -547,7 +602,7 @@ function ge({ initiallyOpen: e = !1 } = {}) {
 		})]
 	});
 	if (_) {
-		let e = X(_);
+		let e = Y(_);
 		return /* @__PURE__ */ (0, $.jsxs)("section", {
 			className: "workspace-card",
 			children: [
@@ -574,8 +629,8 @@ function ge({ initiallyOpen: e = !1 } = {}) {
 				/* @__PURE__ */ (0, $.jsxs)("div", {
 					className: "archive-facts",
 					children: [
-						/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: "Spieltag" }), /* @__PURE__ */ (0, $.jsx)("strong", { children: Z(_.eventDate) })] }),
-						/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: "Abgeschlossen" }), /* @__PURE__ */ (0, $.jsx)("strong", { children: fe(_.completedAt) })] }),
+						/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: "Spieltag" }), /* @__PURE__ */ (0, $.jsx)("strong", { children: X(_.eventDate) })] }),
+						/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: "Abgeschlossen" }), /* @__PURE__ */ (0, $.jsx)("strong", { children: Z(_.completedAt) })] }),
 						/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: "Letzte Spielminute" }), /* @__PURE__ */ (0, $.jsx)("strong", { children: _.minute })] }),
 						/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: "Tore erfasst" }), /* @__PURE__ */ (0, $.jsx)("strong", { children: _.goalCount })] }),
 						/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: "Strafen erfasst" }), /* @__PURE__ */ (0, $.jsx)("strong", { children: _.penaltyCount })] }),
@@ -655,9 +710,9 @@ function ge({ initiallyOpen: e = !1 } = {}) {
 					type: "button",
 					onClick: () => o(e.eventId),
 					children: [/* @__PURE__ */ (0, $.jsxs)("span", { children: [/* @__PURE__ */ (0, $.jsx)("strong", { children: e.displayTitle }), /* @__PURE__ */ (0, $.jsxs)("small", { children: [
-						Z(e.eventDate),
+						X(e.eventDate),
 						" · Endstand ",
-						X(e).label
+						Y(e).label
 					] })] }), /* @__PURE__ */ (0, $.jsx)("span", {
 						"aria-hidden": "true",
 						children: "›"
@@ -676,4 +731,4 @@ function ge({ initiallyOpen: e = !1 } = {}) {
 	});
 }
 //#endregion
-export { x as C, o as E, f as S, re as T, s as _, de as a, S as b, z as c, ae as d, oe as f, M as g, j as h, V as i, le as l, A as m, U as n, B as o, N as p, H as r, R as s, ge as t, W as u, ne as v, C as w, ee as x, te as y };
+export { x as C, o as E, f as S, T, s as _, me as a, ee as b, V as c, oe as d, se as f, P as g, N as h, U as i, de as l, M as m, ue as n, H as o, F as p, W as r, B as s, ye as t, fe as u, w as v, S as w, te as x, ne as y };
