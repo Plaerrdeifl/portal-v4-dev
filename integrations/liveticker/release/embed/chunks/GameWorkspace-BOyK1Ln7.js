@@ -129,7 +129,7 @@ function re({ environment: e, status: t, disabled: n, onChange: r, onToggle: i }
 		}
 	}
 	return /* @__PURE__ */ (0, W.jsxs)("details", {
-		className: "worker-control",
+		className: "worker-control whatsapp-channel-control",
 		onToggle: (e) => i?.(e.currentTarget),
 		children: [/* @__PURE__ */ (0, W.jsxs)("summary", { children: ["WhatsApp-Ziel · ", t.routing?.mode === "BOTH" ? "Beide Kanäle" : t.routing?.channels.find((e) => e.code === t.routing?.mode)?.label || "Nicht verfügbar"] }), /* @__PURE__ */ (0, W.jsxs)("div", {
 			className: "worker-control-body whatsapp-channel-picker",
