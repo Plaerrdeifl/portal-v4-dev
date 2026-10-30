@@ -124,7 +124,7 @@ test("versioned Cockpit release pins the private source and every generated file
   assert.equal(metadata.schemaVersion, 1);
   assert.equal(metadata.environment, "DEV");
   assert.equal(metadata.sourceRepository, "Plaerrdeifl/fanszene-cockpit");
-  assert.equal(metadata.sourceCommit, "1602a211d79cb5a62e6e32dae6e5569e9f76def3");
+  assert.equal(metadata.sourceCommit, "abf0dd7b776ac507a24ec880548535f6a1e4cb1a");
   assert.equal(
     metadata.sourcePackageLockSha256,
     "f0e8680fd6b0cc39e0267255a17d780a98f246ae1a06eb175635a45dd8598a27"
