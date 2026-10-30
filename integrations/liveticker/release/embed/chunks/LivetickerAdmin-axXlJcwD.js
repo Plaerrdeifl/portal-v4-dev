@@ -1,5 +1,5 @@
-import { a as e, i as t, n, o as r, t as i } from "./api-CS-CXZJI.js";
-import { i as a, t as o } from "./ArchivePanel-R9oaSA1s.js";
+import { a as e, n as t, o as n, s as r, t as i } from "./api-DzRo1Zw4.js";
+import { i as a, t as o } from "./ArchivePanel-GHEa8D2w.js";
 //#region src/liveticker/admin-stickers.ts
 var s = r(), c = [
 	"image/png",
@@ -69,8 +69,8 @@ function v({ audience: e, category: t, opponentTeamId: n }) {
 	};
 }
 async function y() {
-	let { data: e, error: t } = await n().auth.getSession(), r = e.session?.access_token;
-	if (t || !r) throw Error("Anmeldung erforderlich.");
+	let { data: e, error: n } = await t().auth.getSession(), r = e.session?.access_token;
+	if (n || !r) throw Error("Anmeldung erforderlich.");
 	return r;
 }
 async function b(e, t) {
@@ -84,8 +84,8 @@ async function x() {
 async function S(e) {
 	return a(e);
 }
-async function C(t, n) {
-	let r = _(t), i = g(n), a = e(), o = await y(), s = new FormData();
+async function C(e, t) {
+	let r = _(e), i = g(t), a = n(), o = await y(), s = new FormData();
 	return s.set("action", "upload"), s.set("name", r), s.set("file", i), b(await fetch(a.supabaseUrl + "/functions/v1/liveticker-whatsapp-stickers", {
 		method: "POST",
 		headers: {
@@ -114,12 +114,12 @@ async function E(e, t) {
 		...n
 	});
 }
-async function D(t) {
-	let n = e(), r = await y();
-	await b(await fetch(n.supabaseUrl + "/functions/v1/liveticker-whatsapp-stickers?stickerId=" + encodeURIComponent(t), {
+async function D(e) {
+	let t = n(), r = await y();
+	await b(await fetch(t.supabaseUrl + "/functions/v1/liveticker-whatsapp-stickers?stickerId=" + encodeURIComponent(e), {
 		method: "DELETE",
 		headers: {
-			apikey: n.supabasePublishableKey,
+			apikey: t.supabasePublishableKey,
 			Authorization: "Bearer " + r
 		}
 	}), "Der Sticker konnte nicht gelöscht werden.");
@@ -231,15 +231,15 @@ async function R(e) {
 		expectedRevision: e.revision
 	}));
 }
-function z(t) {
-	return t.logoStorageBucket && t.logoStoragePath ? e().supabaseUrl + "/storage/v1/object/public/" + encodeURIComponent(t.logoStorageBucket) + "/" + t.logoStoragePath.split("/").map(encodeURIComponent).join("/") : t.logoAssetPath || t.logoUrl || "";
+function z(e) {
+	return e.logoStorageBucket && e.logoStoragePath ? n().supabaseUrl + "/storage/v1/object/public/" + encodeURIComponent(e.logoStorageBucket) + "/" + e.logoStoragePath.split("/").map(encodeURIComponent).join("/") : e.logoAssetPath || e.logoUrl || "";
 }
-async function B(t) {
-	let n = await i("liveticker_team_logo_get", { teamId: t }) || {};
-	if (n.uploaded !== !0) return "";
-	let r = O(n.storageBucket || n.storage_bucket), a = O(n.storagePath || n.storage_path);
-	if (r && a) return e().supabaseUrl + "/storage/v1/object/public/" + encodeURIComponent(r) + "/" + a.split("/").map(encodeURIComponent).join("/");
-	let o = O(n.mime).toLowerCase(), s = O(n.dataBase64 || n.data_base64);
+async function B(e) {
+	let t = await i("liveticker_team_logo_get", { teamId: e }) || {};
+	if (t.uploaded !== !0) return "";
+	let r = O(t.storageBucket || t.storage_bucket), a = O(t.storagePath || t.storage_path);
+	if (r && a) return n().supabaseUrl + "/storage/v1/object/public/" + encodeURIComponent(r) + "/" + a.split("/").map(encodeURIComponent).join("/");
+	let o = O(t.mime).toLowerCase(), s = O(t.dataBase64 || t.data_base64);
 	if (![
 		"image/png",
 		"image/jpeg",
@@ -247,11 +247,11 @@ async function B(t) {
 	].includes(o) || !s) throw Error("Teamlogo-Antwort ist ungültig.");
 	return "data:" + o + ";base64," + s;
 }
-async function V(t, r) {
-	let i = e(), { data: a, error: o } = await n().auth.getSession(), s = a.session?.access_token;
+async function V(e, r) {
+	let i = n(), { data: a, error: o } = await t().auth.getSession(), s = a.session?.access_token;
 	if (o || !s) throw Error("Anmeldung erforderlich.");
 	let c = new FormData();
-	c.set("teamId", t.id), c.set("expectedRevision", String(t.revision)), c.set("file", r);
+	c.set("teamId", e.id), c.set("expectedRevision", String(e.revision)), c.set("file", r);
 	let l = await fetch(i.supabaseUrl + "/functions/v1/liveticker-team-logos", {
 		method: "POST",
 		headers: {
@@ -264,7 +264,7 @@ async function V(t, r) {
 }
 //#endregion
 //#region src/components/StickerAdminPanel.tsx
-var H = t(), ee = {
+var H = e(), ee = {
 	OUR_TEAM: "Unsere",
 	OPPONENT: "Gegner",
 	GENERAL: "Allgemein"

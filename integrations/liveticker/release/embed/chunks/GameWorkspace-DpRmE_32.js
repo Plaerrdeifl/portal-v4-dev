@@ -1,5 +1,5 @@
-import { a as e, i as t, n, o as r, t as i } from "./api-CS-CXZJI.js";
-import { C as a, E as o, S as s, T as c, _ as l, a as u, b as d, c as f, d as p, f as m, g as h, h as g, i as _, l as v, m as y, n as b, o as ee, p as x, r as S, s as C, t as w, u as T, v as E, w as D, x as O, y as k } from "./ArchivePanel-R9oaSA1s.js";
+import { a as e, n as t, o as n, s as r, t as i } from "./api-DzRo1Zw4.js";
+import { C as a, E as o, S as s, T as c, _ as l, a as u, b as d, c as f, d as p, f as m, g as h, h as g, i as _, l as v, m as y, n as b, o as ee, p as x, r as S, s as C, t as w, u as T, v as E, w as D, x as O, y as k } from "./ArchivePanel-GHEa8D2w.js";
 //#region src/liveticker/transport.ts
 var A = r(), j = "LIVETICKER_WHATSAPP", M = "liveticker-whatsapp-jobs", N = /* @__PURE__ */ new Set([
 	"TEST",
@@ -86,20 +86,20 @@ async function z(e) {
 	return I(await i("liveticker_wpp_runtime_set", { connected: !!e }));
 }
 async function re() {
-	let e = n(), t = e.channel(M);
+	let e = t(), n = e.channel(M);
 	try {
-		return await t.httpSend("wake", {}), !0;
+		return await n.httpSend("wake", {}), !0;
 	} catch (e) {
 		return console.warn("WhatsApp-Worker konnte nicht sofort geweckt werden.", e), !1;
 	} finally {
 		try {
-			await e.removeChannel(t);
+			await e.removeChannel(n);
 		} catch {}
 	}
 }
 //#endregion
 //#region src/components/ActionStickerPicker.tsx
-var B = t();
+var B = e();
 function V(e, t) {
 	return !!(e && t && e.kind === t.kind && e.team === t.team);
 }
@@ -512,10 +512,10 @@ var J = class extends Error {
 		super(e), this.name = "LivetickerRpcError", this.status = t, this.code = n, this.details = r;
 	}
 };
-async function Y(t, r = {}) {
-	let i = e(), { data: a, error: o } = await n().auth.getSession(), s = a.session?.access_token;
+async function Y(e, r = {}) {
+	let i = n(), { data: a, error: o } = await t().auth.getSession(), s = a.session?.access_token;
 	if (o || !s) throw new J("Anmeldung erforderlich.", 401, "AUTH_REQUIRED", o);
-	let c = await fetch(i.supabaseUrl + "/rest/v1/rpc/" + t, {
+	let c = await fetch(i.supabaseUrl + "/rest/v1/rpc/" + e, {
 		method: "POST",
 		cache: "no-store",
 		headers: {
@@ -531,8 +531,8 @@ async function Y(t, r = {}) {
 		u = l;
 	}
 	if (!c.ok) {
-		let e = u;
-		throw new J(e?.message || e?.hint || "RPC " + t + " fehlgeschlagen.", c.status, e?.code || "", u);
+		let t = u;
+		throw new J(t?.message || t?.hint || "RPC " + e + " fehlgeschlagen.", c.status, t?.code || "", u);
 	}
 	return u;
 }
@@ -613,9 +613,9 @@ function Ce(e) {
 	}).format(t), r = String(e.eventTime || "").slice(0, 5);
 	return n + (r ? " · " + r : "") + " · " + e.displayTitle;
 }
-function we({ environment: t = e().environment, hostname: n = globalThis.location?.hostname || "" } = {}) {
-	let r = n.trim().toLowerCase();
-	return t === "DEV" && ([
+function we({ environment: e = n().environment, hostname: t = globalThis.location?.hostname || "" } = {}) {
+	let r = t.trim().toLowerCase();
+	return e === "DEV" && ([
 		"localhost",
 		"127.0.0.1",
 		"::1",
@@ -1123,18 +1123,18 @@ function Ft({ event: e, game: t, snapshot: n }) {
 }
 //#endregion
 //#region src/components/GoalForm.tsx
-function It({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEnabled: a, whatsappTransportReady: s, editingEvent: c = null, defaultTeam: l = "mighty", compact: d = !1, submitModeControl: f, onSaved: p, onCancelEdit: m }) {
-	let h = c?.type === "goal" ? c : null, g = h ? h.team === "opponent" ? "opponent" : "mighty" : l, _ = g === "mighty" ? t.ownTeam.players : t.opponentTeam.players, v = g === "mighty" ? "goal_mighty" : "goal_opponent", [y, b] = (0, A.useState)(g), [ee, x] = (0, A.useState)(h ? Math.max(1, Number(h.minute || 1)) : n.minute), [S, C] = (0, A.useState)(ue(_, h?.player)), [w, E] = (0, A.useState)(ue(_, h?.assists?.[0])), [D, O] = (0, A.useState)(ue(_, h?.assists?.[1])), [k, j] = (0, A.useState)(String(h?.outputVariantId || "")), [M, N] = (0, A.useState)(!1), [P, F] = (0, A.useState)(""), [I, te] = (0, A.useState)(null), [L, R] = (0, A.useState)(!1), [ne, z] = (0, A.useState)(null), [V, H] = (0, A.useState)(""), U = (0, A.useRef)(String(h?.id || o())), ae = (0, A.useRef)(De()), de = (0, A.useRef)(new Set(h?.outputVariantId ? [v] : [])), J = (0, A.useRef)(y), Y = y === "mighty" ? t.ownTeam.players : t.opponentTeam.players, he = (0, A.useMemo)(() => gt(r, y), [r, y]), X = (0, A.useMemo)(() => le(Y, S), [Y, S]), Z = y === "mighty" ? "goal_mighty" : "goal_opponent", ge = (0, A.useMemo)(() => me(n.history, y, X?.name || "", U.current), [
+function It({ game: e, state: t, textsystem: r, mutationsAllowed: i, whatsappEnabled: a, whatsappTransportReady: s, editingEvent: c = null, defaultTeam: l = "mighty", compact: d = !1, submitModeControl: f, onSaved: p, onCancelEdit: m }) {
+	let h = c?.type === "goal" ? c : null, g = h ? h.team === "opponent" ? "opponent" : "mighty" : l, _ = g === "mighty" ? e.ownTeam.players : e.opponentTeam.players, v = g === "mighty" ? "goal_mighty" : "goal_opponent", [y, b] = (0, A.useState)(g), [ee, x] = (0, A.useState)(h ? Math.max(1, Number(h.minute || 1)) : t.minute), [S, C] = (0, A.useState)(ue(_, h?.player)), [w, E] = (0, A.useState)(ue(_, h?.assists?.[0])), [D, O] = (0, A.useState)(ue(_, h?.assists?.[1])), [k, j] = (0, A.useState)(String(h?.outputVariantId || "")), [M, N] = (0, A.useState)(!1), [P, F] = (0, A.useState)(""), [I, te] = (0, A.useState)(null), [L, R] = (0, A.useState)(!1), [ne, z] = (0, A.useState)(null), [V, H] = (0, A.useState)(""), U = (0, A.useRef)(String(h?.id || o())), ae = (0, A.useRef)(De()), de = (0, A.useRef)(new Set(h?.outputVariantId ? [v] : [])), J = (0, A.useRef)(y), Y = y === "mighty" ? e.ownTeam.players : e.opponentTeam.players, he = (0, A.useMemo)(() => gt(r, y), [r, y]), X = (0, A.useMemo)(() => le(Y, S), [Y, S]), Z = y === "mighty" ? "goal_mighty" : "goal_opponent", ge = (0, A.useMemo)(() => me(t.history, y, X?.name || "", U.current), [
 		X?.name,
-		n.history,
+		t.history,
 		y
 	]);
 	(0, A.useEffect)(() => {
-		h || x(n.minute);
+		h || x(t.minute);
 	}, [
 		h,
-		n.minute,
-		t.eventId
+		t.minute,
+		e.eventId
 	]), (0, A.useEffect)(() => {
 		S && R(!1);
 	}, [S]), (0, A.useEffect)(() => {
@@ -1153,26 +1153,26 @@ function It({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 		he
 	]), (0, A.useEffect)(() => {
 		ae.current.reset(), z(null), H("");
-	}, [t.eventId]);
+	}, [e.eventId]);
 	let _e = (0, A.useCallback)((e) => {
 		z(e), e && H("");
 	}, []), Q = (0, A.useMemo)(() => {
 		try {
-			let e = fe({
+			let n = fe({
 				id: U.current,
 				team: y,
 				minute: ee,
 				player: X,
 				assists: [le(Y, w), le(Y, D)].filter((e) => !!e),
 				outputVariantId: k
-			}), i = pe(n.history, e);
+			}), i = pe(t.history, n);
 			return {
-				event: e,
+				event: n,
 				history: i,
 				text: Dt({
-					event: e,
+					event: n,
 					history: i,
-					game: t,
+					game: e,
 					snapshot: r
 				}),
 				error: ""
@@ -1180,7 +1180,7 @@ function It({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 		} catch (e) {
 			return {
 				event: null,
-				history: n.history,
+				history: t.history,
 				text: "",
 				error: e instanceof Error ? e.message : "Tor konnte nicht vorbereitet werden."
 			};
@@ -1188,12 +1188,12 @@ function It({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 	}, [
 		w,
 		D,
-		t,
+		e,
 		ee,
 		Y,
 		X,
 		S,
-		n.history,
+		t.history,
 		y,
 		r,
 		k
@@ -1218,20 +1218,20 @@ function It({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 		}
 		N(!0), F("Tor wird gespeichert …");
 		try {
-			let r = e(), i = a && !h, c = oe(Q.event, ve, {
+			let r = n(), i = a && !h, c = oe(Q.event, ve, {
 				editingId: h ? String(h.id || "") : null,
 				enabled: i
 			}) || Q.event, l = se(Q.history, c), d = q({
 				whatsappEnabled: i,
 				transportReady: s
 			}), f = await Le({
-				eventId: t.eventId,
+				eventId: e.eventId,
 				localState: {
 					minute: ee,
 					history: l
 				},
-				serverState: n,
-				clientState: je(n),
+				serverState: t,
+				clientState: je(t),
 				environment: r.environment
 			});
 			p(f.state);
@@ -1271,8 +1271,8 @@ function It({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 				})]
 			}),
 			!h && /* @__PURE__ */ (0, B.jsx)(ie, {
-				eventId: t.eventId,
-				opponentTeamId: t.opponentTeam.id,
+				eventId: e.eventId,
+				opponentTeamId: e.opponentTeam.id,
 				actionId: U.current,
 				action: y === "mighty" ? "GOAL_MIGHTY" : "GOAL_OPPONENT",
 				mutationsAllowed: i,
@@ -1289,10 +1289,10 @@ function It({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 							onChange: (e) => b(e.target.value),
 							children: [/* @__PURE__ */ (0, B.jsx)("option", {
 								value: "mighty",
-								children: t.ownTeam.shortName
+								children: e.ownTeam.shortName
 							}), /* @__PURE__ */ (0, B.jsx)("option", {
 								value: "opponent",
-								children: t.opponentTeam.shortName
+								children: e.opponentTeam.shortName
 							})]
 						})]
 					}),
@@ -1307,7 +1307,7 @@ function It({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 					}),
 					/* @__PURE__ */ (0, B.jsxs)("label", {
 						className: "field",
-						children: [/* @__PURE__ */ (0, B.jsxs)("span", { children: ["Torschütze ", y === "mighty" ? t.ownTeam.shortName : t.opponentTeam.shortName] }), /* @__PURE__ */ (0, B.jsx)(W, {
+						children: [/* @__PURE__ */ (0, B.jsxs)("span", { children: ["Torschütze ", y === "mighty" ? e.ownTeam.shortName : e.opponentTeam.shortName] }), /* @__PURE__ */ (0, B.jsx)(W, {
 							players: Y,
 							value: S,
 							onChange: C,
@@ -1461,28 +1461,28 @@ function Rt(e, t) {
 		playerId: ue(r, t.player)
 	};
 }
-function zt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEnabled: a, whatsappTransportReady: s, editingEvent: c = null, compact: l = !1, submitModeControl: d, onSaved: f, onCancelEdit: p }) {
-	let m = c?.type === "penalty" && c.subtype !== "penalty_shot" ? c : null, h = m?.penalties?.length ? m.penalties.map((e) => Rt(t, e)) : [Lt()], [g, _] = (0, A.useState)(m ? Math.max(1, Number(m.minute || 1)) : n.minute), [v, y] = (0, A.useState)(h), [b, ee] = (0, A.useState)(String(m?.outputVariantId || "")), [x, S] = (0, A.useState)(!!m?.outputVariantId), [C, w] = (0, A.useState)(!1), [E, D] = (0, A.useState)(""), [O, k] = (0, A.useState)(null), [j, M] = (0, A.useState)(null), [N, P] = (0, A.useState)(""), F = (0, A.useRef)(String(m?.id || o())), I = (0, A.useRef)(De());
+function zt({ game: e, state: t, textsystem: r, mutationsAllowed: i, whatsappEnabled: a, whatsappTransportReady: s, editingEvent: c = null, compact: l = !1, submitModeControl: d, onSaved: f, onCancelEdit: p }) {
+	let m = c?.type === "penalty" && c.subtype !== "penalty_shot" ? c : null, h = m?.penalties?.length ? m.penalties.map((t) => Rt(e, t)) : [Lt()], [g, _] = (0, A.useState)(m ? Math.max(1, Number(m.minute || 1)) : t.minute), [v, y] = (0, A.useState)(h), [b, ee] = (0, A.useState)(String(m?.outputVariantId || "")), [x, S] = (0, A.useState)(!!m?.outputVariantId), [C, w] = (0, A.useState)(!1), [E, D] = (0, A.useState)(""), [O, k] = (0, A.useState)(null), [j, M] = (0, A.useState)(null), [N, P] = (0, A.useState)(""), F = (0, A.useRef)(String(m?.id || o())), I = (0, A.useRef)(De());
 	(0, A.useEffect)(() => {
-		m || _(n.minute);
+		m || _(t.minute);
 	}, [
 		m,
-		n.minute,
-		t.eventId
+		t.minute,
+		e.eventId
 	]), (0, A.useEffect)(() => {
 		I.current.reset(), M(null), P("");
-	}, [t.eventId]);
+	}, [e.eventId]);
 	let te = (0, A.useCallback)((e) => {
 		M(e), e && P("");
-	}, []), L = (0, A.useMemo)(() => v.map((e) => {
-		let n = e.team === "mighty" ? t.ownTeam.players : t.opponentTeam.players;
+	}, []), L = (0, A.useMemo)(() => v.map((t) => {
+		let n = t.team === "mighty" ? e.ownTeam.players : e.opponentTeam.players;
 		return {
-			team: e.team,
-			duration: e.duration,
-			reason: e.reason,
-			player: le(n, e.playerId)
+			team: t.team,
+			duration: t.duration,
+			reason: t.reason,
+			player: le(n, t.playerId)
 		};
-	}), [t, v]), R = (0, A.useMemo)(() => bt(r), [r]), ne = (0, A.useMemo)(() => Ze(L), [L]);
+	}), [e, v]), R = (0, A.useMemo)(() => bt(r), [r]), ne = (0, A.useMemo)(() => Ze(L), [L]);
 	(0, A.useEffect)(() => {
 		let e = R.some((e) => e.id === b);
 		if (x && e) return;
@@ -1495,20 +1495,20 @@ function zt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 		x,
 		R
 	]);
-	let z = (0, A.useMemo)(() => n.history.some((e) => String(e?.id || "") === F.current), [n.history]), V = (0, A.useMemo)(() => {
+	let z = (0, A.useMemo)(() => t.history.some((e) => String(e?.id || "") === F.current), [t.history]), V = (0, A.useMemo)(() => {
 		try {
-			let e = Qe({
+			let n = Qe({
 				id: F.current,
 				minute: g,
 				penalties: L,
 				outputVariantId: b
 			});
 			return {
-				event: e,
-				history: $e(n.history, e),
+				event: n,
+				history: $e(t.history, n),
 				text: jt({
-					event: e,
-					game: t,
+					event: n,
+					game: e,
 					snapshot: r
 				}),
 				error: ""
@@ -1516,16 +1516,16 @@ function zt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 		} catch (e) {
 			return {
 				event: null,
-				history: n.history,
+				history: t.history,
 				text: "",
 				error: e instanceof Error ? e.message : "Strafe konnte nicht vorbereitet werden."
 			};
 		}
 	}, [
-		t,
+		e,
 		g,
 		L,
-		n.history,
+		t.history,
 		r,
 		b
 	]);
@@ -1544,7 +1544,7 @@ function zt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 			p?.();
 			return;
 		}
-		F.current = o(), y([Lt()]), _(n.minute), S(!1), M(null), P(""), D("Neue Strafaktion vorbereitet.");
+		F.current = o(), y([Lt()]), _(t.minute), S(!1), M(null), P(""), D("Neue Strafaktion vorbereitet.");
 	}
 	let ae = O ?? V.text;
 	async function ue() {
@@ -1562,20 +1562,20 @@ function zt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 		}
 		w(!0), D("Strafe wird gespeichert …");
 		try {
-			let r = e(), i = m || z ? String(V.event.id || "") : null, o = a && !i, c = oe(V.event, ae, {
+			let r = n(), i = m || z ? String(V.event.id || "") : null, o = a && !i, c = oe(V.event, ae, {
 				editingId: i,
 				enabled: o
 			}) || V.event, l = se(V.history, c), d = q({
 				whatsappEnabled: o,
 				transportReady: s
 			}), p = await Le({
-				eventId: t.eventId,
+				eventId: e.eventId,
 				localState: {
 					minute: g,
 					history: l
 				},
-				serverState: n,
-				clientState: je(n),
+				serverState: t,
+				clientState: je(t),
 				environment: r.environment
 			});
 			f(p.state), _(p.state.minute);
@@ -1615,8 +1615,8 @@ function zt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 				})]
 			}),
 			!m && !z && /* @__PURE__ */ (0, B.jsx)(ie, {
-				eventId: t.eventId,
-				opponentTeamId: t.opponentTeam.id,
+				eventId: e.eventId,
+				opponentTeamId: e.opponentTeam.id,
 				actionId: F.current,
 				action: "PENALTY",
 				penaltyTeams: L.map((e) => e.team),
@@ -1635,8 +1635,8 @@ function zt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 			}),
 			/* @__PURE__ */ (0, B.jsx)("div", {
 				className: "penalty-rows classic-penalty-list",
-				children: v.map((e) => {
-					let n = e.team === "mighty" ? t.ownTeam.players : t.opponentTeam.players;
+				children: v.map((t) => {
+					let n = t.team === "mighty" ? e.ownTeam.players : e.opponentTeam.players;
 					return /* @__PURE__ */ (0, B.jsxs)("article", {
 						className: "penalty-edit-row classic-penalty-row",
 						children: [/* @__PURE__ */ (0, B.jsxs)("div", {
@@ -1652,7 +1652,7 @@ function zt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 									className: "remove-penalty",
 									type: "button",
 									disabled: v.length === 1,
-									onClick: () => y((t) => t.filter((t) => t.key !== e.key)),
+									onClick: () => y((e) => e.filter((e) => e.key !== t.key)),
 									children: "Entfernen"
 								})]
 							})]
@@ -1662,22 +1662,22 @@ function zt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 								/* @__PURE__ */ (0, B.jsxs)("label", {
 									className: "field",
 									children: [/* @__PURE__ */ (0, B.jsx)("span", { children: "Team" }), /* @__PURE__ */ (0, B.jsxs)("select", {
-										value: e.team,
-										onChange: (t) => H(e.key, { team: t.target.value }),
+										value: t.team,
+										onChange: (e) => H(t.key, { team: e.target.value }),
 										children: [/* @__PURE__ */ (0, B.jsx)("option", {
 											value: "mighty",
-											children: t.ownTeam.shortName
+											children: e.ownTeam.shortName
 										}), /* @__PURE__ */ (0, B.jsx)("option", {
 											value: "opponent",
-											children: t.opponentTeam.shortName
+											children: e.opponentTeam.shortName
 										})]
 									})]
 								}),
 								/* @__PURE__ */ (0, B.jsxs)("label", {
 									className: "field",
 									children: [/* @__PURE__ */ (0, B.jsx)("span", { children: "Strafzeit" }), /* @__PURE__ */ (0, B.jsx)("select", {
-										value: e.duration,
-										onChange: (t) => H(e.key, { duration: t.target.value }),
+										value: t.duration,
+										onChange: (e) => H(t.key, { duration: e.target.value }),
 										children: Je.map((e) => /* @__PURE__ */ (0, B.jsxs)("option", {
 											value: e,
 											children: [e, " Min."]
@@ -1688,8 +1688,8 @@ function zt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 									className: "field wide",
 									children: [/* @__PURE__ */ (0, B.jsx)("span", { children: "Spieler" }), /* @__PURE__ */ (0, B.jsx)(W, {
 										players: n,
-										value: e.playerId,
-										onChange: (t) => H(e.key, { playerId: t }),
+										value: t.playerId,
+										onChange: (e) => H(t.key, { playerId: e }),
 										placeholder: "Spieler noch unbekannt",
 										numberAriaLabel: "Trikotnummer"
 									})]
@@ -1697,8 +1697,8 @@ function zt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 								/* @__PURE__ */ (0, B.jsxs)("label", {
 									className: "field wide",
 									children: [/* @__PURE__ */ (0, B.jsx)("span", { children: "Strafgrund" }), /* @__PURE__ */ (0, B.jsx)("select", {
-										value: e.reason,
-										onChange: (t) => H(e.key, { reason: t.target.value }),
+										value: t.reason,
+										onChange: (e) => H(t.key, { reason: e.target.value }),
 										children: qe.map((e) => /* @__PURE__ */ (0, B.jsx)("option", {
 											value: e,
 											children: e
@@ -1707,7 +1707,7 @@ function zt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 								})
 							]
 						})]
-					}, e.key);
+					}, t.key);
 				})
 			}),
 			/* @__PURE__ */ (0, B.jsxs)("fieldset", {
@@ -1844,14 +1844,14 @@ function Wt(e, t) {
 }
 //#endregion
 //#region src/components/SituationForm.tsx
-function Gt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEnabled: a, whatsappTransportReady: s, editingEvent: c = null, compact: l = !1, submitModeControl: u, defaultKind: d = "penalty_shot", allowStickerOnly: f = !1, onSaved: p, onCancelEdit: m }) {
-	let h = c && (c.type === "shootout" || Re(c)) ? c : null, g = h ? h.type === "shootout" ? "shootout" : "penalty_shot" : d, _ = h?.team === "opponent" ? "opponent" : "mighty", v = _ === "mighty" ? t.ownTeam.players : t.opponentTeam.players, y = Vt(Bt(_) === "mighty" ? t.ownTeam.players : t.opponentTeam.players), [b, ee] = (0, A.useState)(g), [x, S] = (0, A.useState)(!!h || !f), [C, w] = (0, A.useState)(_), [T, E] = (0, A.useState)(h && g === "penalty_shot" ? Math.max(1, Number(h.minute || 1)) : n.minute), [D, O] = (0, A.useState)(ue(v, h?.player)), [k, j] = (0, A.useState)(g === "penalty_shot" ? ue(y, h?.goalie) : ""), [M, N] = (0, A.useState)(h?.result === "scored" ? "scored" : h?.result === "missed" || g === "penalty_shot" ? "missed" : "scored"), [P, F] = (0, A.useState)(String(h?.outputVariantId || "")), [I, te] = (0, A.useState)(!1), [L, R] = (0, A.useState)(""), [ne, z] = (0, A.useState)(null), V = (0, A.useRef)(String(h?.id || o())), H = (0, A.useRef)(De()), U = (0, A.useRef)(b), ae = (0, A.useRef)(C), de = C === "mighty" ? t.ownTeam.players : t.opponentTeam.players, fe = Bt(C), pe = Vt(fe === "mighty" ? t.ownTeam.players : t.opponentTeam.players), me = b === "penalty_shot" ? "penalty_shot" : "shootout_attempt", J = (0, A.useMemo)(() => ut(r, me), [me, r]);
+function Gt({ game: e, state: t, textsystem: r, mutationsAllowed: i, whatsappEnabled: a, whatsappTransportReady: s, editingEvent: c = null, compact: l = !1, submitModeControl: u, defaultKind: d = "penalty_shot", allowStickerOnly: f = !1, onSaved: p, onCancelEdit: m }) {
+	let h = c && (c.type === "shootout" || Re(c)) ? c : null, g = h ? h.type === "shootout" ? "shootout" : "penalty_shot" : d, _ = h?.team === "opponent" ? "opponent" : "mighty", v = _ === "mighty" ? e.ownTeam.players : e.opponentTeam.players, y = Vt(Bt(_) === "mighty" ? e.ownTeam.players : e.opponentTeam.players), [b, ee] = (0, A.useState)(g), [x, S] = (0, A.useState)(!!h || !f), [C, w] = (0, A.useState)(_), [T, E] = (0, A.useState)(h && g === "penalty_shot" ? Math.max(1, Number(h.minute || 1)) : t.minute), [D, O] = (0, A.useState)(ue(v, h?.player)), [k, j] = (0, A.useState)(g === "penalty_shot" ? ue(y, h?.goalie) : ""), [M, N] = (0, A.useState)(h?.result === "scored" ? "scored" : h?.result === "missed" || g === "penalty_shot" ? "missed" : "scored"), [P, F] = (0, A.useState)(String(h?.outputVariantId || "")), [I, te] = (0, A.useState)(!1), [L, R] = (0, A.useState)(""), [ne, z] = (0, A.useState)(null), V = (0, A.useRef)(String(h?.id || o())), H = (0, A.useRef)(De()), U = (0, A.useRef)(b), ae = (0, A.useRef)(C), de = C === "mighty" ? e.ownTeam.players : e.opponentTeam.players, fe = Bt(C), pe = Vt(fe === "mighty" ? e.ownTeam.players : e.opponentTeam.players), me = b === "penalty_shot" ? "penalty_shot" : "shootout_attempt", J = (0, A.useMemo)(() => ut(r, me), [me, r]);
 	(0, A.useEffect)(() => {
-		h || E(n.minute);
+		h || E(t.minute);
 	}, [
 		h,
-		n.minute,
-		t.eventId
+		t.minute,
+		e.eventId
 	]), (0, A.useEffect)(() => {
 		let e = J.some((e) => e.id === P);
 		if (h && e) return;
@@ -1874,34 +1874,34 @@ function Gt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 		ae.current !== C && (ae.current = C, O(""), j(""));
 	}, [C]), (0, A.useEffect)(() => {
 		H.current.reset();
-	}, [t.eventId]);
+	}, [e.eventId]);
 	let Y = (0, A.useMemo)(() => {
 		try {
-			let e = le(de, D), i = b === "penalty_shot" ? Ht({
+			let n = le(de, D), i = b === "penalty_shot" ? Ht({
 				id: V.current,
 				minute: T,
 				team: C,
-				player: e,
+				player: n,
 				goalie: le(pe, k),
 				result: M,
 				outputVariantId: P
 			}) : Ut({
 				id: V.current,
 				team: C,
-				player: e,
+				player: n,
 				result: M,
 				outputVariantId: P
 			});
 			return {
 				event: i,
-				history: Wt(n.history, i),
+				history: Wt(t.history, i),
 				text: b === "penalty_shot" ? Pt({
 					event: i,
-					game: t,
+					game: e,
 					snapshot: r
 				}) : Ft({
 					event: i,
-					game: t,
+					game: e,
 					snapshot: r
 				}),
 				error: ""
@@ -1909,21 +1909,21 @@ function Gt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 		} catch (e) {
 			return {
 				event: null,
-				history: n.history,
+				history: t.history,
 				text: "",
 				error: e instanceof Error ? e.message : "Spielsituation konnte nicht vorbereitet werden."
 			};
 		}
 	}, [
 		de,
-		t,
+		e,
 		k,
 		pe,
 		b,
 		T,
 		D,
 		M,
-		n.history,
+		t.history,
 		C,
 		r,
 		P
@@ -1943,20 +1943,20 @@ function Gt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 		}
 		te(!0), R("Spielsituation wird gespeichert …");
 		try {
-			let r = e(), i = a && !h, c = oe(Y.event, he, {
+			let r = n(), i = a && !h, c = oe(Y.event, he, {
 				editingId: h ? String(h.id || "") : null,
 				enabled: i
 			}) || Y.event, l = se(Y.history, c), u = q({
 				whatsappEnabled: i,
 				transportReady: s
 			}), d = await Le({
-				eventId: t.eventId,
+				eventId: e.eventId,
 				localState: {
-					minute: b === "penalty_shot" ? T : n.minute,
+					minute: b === "penalty_shot" ? T : t.minute,
 					history: l
 				},
-				serverState: n,
-				clientState: je(n),
+				serverState: t,
+				clientState: je(t),
 				environment: r.environment
 			});
 			p(d.state), d.wakeWhatsapp && re();
@@ -1982,8 +1982,8 @@ function Gt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 				})]
 			}),
 			!h && f && /* @__PURE__ */ (0, B.jsx)(ie, {
-				eventId: t.eventId,
-				opponentTeamId: t.opponentTeam.id,
+				eventId: e.eventId,
+				opponentTeamId: e.opponentTeam.id,
 				actionId: "",
 				action: "SITUATION",
 				mutationsAllowed: i,
@@ -2028,10 +2028,10 @@ function Gt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 								onChange: (e) => w(e.target.value),
 								children: [/* @__PURE__ */ (0, B.jsx)("option", {
 									value: "mighty",
-									children: t.ownTeam.shortName
+									children: e.ownTeam.shortName
 								}), /* @__PURE__ */ (0, B.jsx)("option", {
 									value: "opponent",
-									children: t.opponentTeam.shortName
+									children: e.opponentTeam.shortName
 								})]
 							})]
 						}),
@@ -2046,7 +2046,7 @@ function Gt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 						}),
 						/* @__PURE__ */ (0, B.jsxs)("label", {
 							className: "field wide",
-							children: [/* @__PURE__ */ (0, B.jsx)("span", { children: b === "penalty_shot" ? "Schütze " + (C === "mighty" ? t.ownTeam.shortName : t.opponentTeam.shortName) : "Schütze" }), /* @__PURE__ */ (0, B.jsx)(W, {
+							children: [/* @__PURE__ */ (0, B.jsx)("span", { children: b === "penalty_shot" ? "Schütze " + (C === "mighty" ? e.ownTeam.shortName : e.opponentTeam.shortName) : "Schütze" }), /* @__PURE__ */ (0, B.jsx)(W, {
 								players: de,
 								value: D,
 								onChange: O,
@@ -2056,7 +2056,7 @@ function Gt({ game: t, state: n, textsystem: r, mutationsAllowed: i, whatsappEna
 						}),
 						b === "penalty_shot" && /* @__PURE__ */ (0, B.jsxs)("label", {
 							className: "field wide",
-							children: [/* @__PURE__ */ (0, B.jsxs)("span", { children: ["Goalie ", fe === "mighty" ? t.ownTeam.shortName : t.opponentTeam.shortName] }), /* @__PURE__ */ (0, B.jsx)(W, {
+							children: [/* @__PURE__ */ (0, B.jsxs)("span", { children: ["Goalie ", fe === "mighty" ? e.ownTeam.shortName : e.opponentTeam.shortName] }), /* @__PURE__ */ (0, B.jsx)(W, {
 								players: pe,
 								value: k,
 								onChange: j,
@@ -2841,8 +2841,8 @@ function gn({ history: e, opponentShortName: t, mutationsAllowed: n, deletingId:
 		children: "Noch keine Aktion erfasst."
 	});
 }
-function _n({ mutationsAllowed: t }) {
-	let n = e().environment, [r, i] = (0, A.useState)([]), [o, s] = (0, A.useState)(""), [c, l] = (0, A.useState)(null), [u, f] = (0, A.useState)(null), [p, m] = (0, A.useState)(!0), [h, g] = (0, A.useState)("Spiele werden geladen …"), [_, v] = (0, A.useState)(""), [y, b] = (0, A.useState)(null), [ee, x] = (0, A.useState)(!1), [S, C] = (0, A.useState)(!1), [T, E] = (0, A.useState)(!1), [O, k] = (0, A.useState)(!1), [j, M] = (0, A.useState)("GOAL_MIGHTY"), [N, P] = (0, A.useState)(""), [F, I] = (0, A.useState)(""), [te, L] = (0, A.useState)("PERIOD_1"), [re, V] = (0, A.useState)(!1), [H, ie] = (0, A.useState)({
+function _n({ mutationsAllowed: e }) {
+	let t = n().environment, [r, i] = (0, A.useState)([]), [o, s] = (0, A.useState)(""), [c, l] = (0, A.useState)(null), [u, f] = (0, A.useState)(null), [p, m] = (0, A.useState)(!0), [h, g] = (0, A.useState)("Spiele werden geladen …"), [_, v] = (0, A.useState)(""), [y, b] = (0, A.useState)(null), [ee, x] = (0, A.useState)(!1), [S, C] = (0, A.useState)(!1), [T, E] = (0, A.useState)(!1), [O, k] = (0, A.useState)(!1), [j, M] = (0, A.useState)("GOAL_MIGHTY"), [N, P] = (0, A.useState)(""), [F, I] = (0, A.useState)(""), [te, L] = (0, A.useState)("PERIOD_1"), [re, V] = (0, A.useState)(!1), [H, ie] = (0, A.useState)({
 		PERIOD_1: "—",
 		PERIOD_2: "—",
 		FINAL: "—"
@@ -2884,14 +2884,14 @@ function _n({ mutationsAllowed: t }) {
 			e = !0;
 		};
 	}, []), (0, A.useEffect)(() => {
-		let e = !1, t = 0, r = async () => {
-			let i = await R(n);
-			e || (W(i), t = window.setTimeout(r, 5e3));
+		let e = !1, n = 0, r = async () => {
+			let i = await R(t);
+			e || (W(i), n = window.setTimeout(r, 5e3));
 		};
 		return r(), () => {
-			e = !0, t && window.clearTimeout(t);
+			e = !0, n && window.clearTimeout(n);
 		};
-	}, [n]);
+	}, [t]);
 	let K = (0, A.useMemo)(() => r.find((e) => e.eventId === o) || null, [r, o]);
 	(0, A.useEffect)(() => {
 		if (!o) return;
@@ -2927,30 +2927,30 @@ function _n({ mutationsAllowed: t }) {
 	function ce(e) {
 		b(e), e.type === "goal" ? M(e.team === "opponent" ? "GOAL_OPPONENT" : "GOAL_MIGHTY") : e.type === "penalty" && !Re(e) ? M("PENALTY") : e.type === "shootout" ? M("SHOOTOUT") : M("SITUATION");
 	}
-	async function le(n) {
-		if (!c || !K || !n.id) return;
-		if (!t || c.completedAt) {
+	async function le(t) {
+		if (!c || !K || !t.id) return;
+		if (!e || c.completedAt) {
 			g("Schreibaktionen sind für diesen Stand nicht freigeschaltet.");
 			return;
 		}
-		let r = Ge(n, K.opponentTeam.shortName);
+		let r = Ge(t, K.opponentTeam.shortName);
 		if (!window.confirm("Aktion „" + r + "“ wirklich zurücknehmen?")) return;
 		if (G.current.register()) {
 			g("SYNC gestoppt · Seite neu laden");
 			return;
 		}
-		let i = String(n.id);
+		let i = String(t.id);
 		v(i), g("Aktion wird zurückgenommen …");
 		try {
-			let t = e(), n = c.history.filter((e) => String(e?.id || "") !== i), r = await Le({
+			let e = n(), t = c.history.filter((e) => String(e?.id || "") !== i), r = await Le({
 				eventId: K.eventId,
 				localState: {
 					minute: c.minute,
-					history: n
+					history: t
 				},
 				serverState: c,
 				clientState: je(c),
-				environment: t.environment
+				environment: e.environment
 			});
 			l(r.state), String(y?.id || "") === i && b(null), g(r.rebased ? "Aktion zurückgenommen · zwischenzeitliche Änderungen wurden berücksichtigt." : "Aktion serverseitig zurückgenommen.");
 		} catch (e) {
@@ -2959,9 +2959,9 @@ function _n({ mutationsAllowed: t }) {
 			v("");
 		}
 	}
-	async function ue(n) {
+	async function ue(t) {
 		if (c && K) {
-			if (!t || c.completedAt) {
+			if (!e || c.completedAt) {
 				g("Schreibaktionen sind für diesen Stand nicht freigeschaltet.");
 				return;
 			}
@@ -2971,15 +2971,15 @@ function _n({ mutationsAllowed: t }) {
 			}
 			x(!0), g("Spielminute wird gespeichert …");
 			try {
-				let t = e(), r = await Le({
+				let e = n(), r = await Le({
 					eventId: K.eventId,
 					localState: {
-						minute: n,
+						minute: t,
 						history: c.history
 					},
 					serverState: c,
 					clientState: je(c),
-					environment: t.environment
+					environment: e.environment
 				});
 				l(r.state), g(r.rebased ? "Spielminute gespeichert · zwischenzeitliche Änderungen wurden berücksichtigt." : "Spielminute serverseitig gespeichert.");
 			} catch (e) {
@@ -3022,15 +3022,15 @@ function _n({ mutationsAllowed: t }) {
 		}
 	}
 	async function pe() {
-		if (c && K && !(!t || c.completedAt || T)) {
+		if (c && K && !(!e || c.completedAt || T)) {
 			E(!0), g("FINAL-Flyer fertig · Spiel wird abgeschlossen und archiviert …");
 			try {
-				let t = e(), n = await rn({
+				let e = n(), t = await rn({
 					eventId: K.eventId,
 					serverState: c,
-					environment: t.environment
+					environment: e.environment
 				});
-				l(n.state), g(n.rebased ? "Spiel abgeschlossen · zwischenzeitlicher Serverstand wurde berücksichtigt." : "Spiel abgeschlossen und archiviert.");
+				l(t.state), g(t.rebased ? "Spiel abgeschlossen · zwischenzeitlicher Serverstand wurde berücksichtigt." : "Spiel abgeschlossen und archiviert.");
 			} catch (e) {
 				throw g(e instanceof Error ? e.message : "FINAL-Flyer ist fertig, aber das Spiel konnte nicht abgeschlossen werden."), e;
 			} finally {
@@ -3047,7 +3047,7 @@ function _n({ mutationsAllowed: t }) {
 		if (!N) {
 			P("wa"), I("");
 			try {
-				await ne(!U.wa.enabled), W(await R(n));
+				await ne(!U.wa.enabled), W(await R(t));
 			} catch (e) {
 				I(e instanceof Error ? e.message : "WhatsApp-Worker konnte nicht geändert werden.");
 			} finally {
@@ -3056,10 +3056,10 @@ function _n({ mutationsAllowed: t }) {
 		}
 	}
 	async function Y() {
-		if (!(N || n !== "PROD")) {
+		if (!(N || t !== "PROD")) {
 			P("wpp"), I("");
 			try {
-				await z(U.wpp.desiredConnected === !1), W(await R(n));
+				await z(U.wpp.desiredConnected === !1), W(await R(t));
 			} catch (e) {
 				I(e instanceof Error ? e.message : "WPP konnte nicht geändert werden.");
 			} finally {
@@ -3092,7 +3092,7 @@ function _n({ mutationsAllowed: t }) {
 							className: "worker-control",
 							onToggle: (e) => me(e.currentTarget),
 							children: [/* @__PURE__ */ (0, B.jsx)("summary", {
-								title: "Nur der " + n + "-WhatsApp-Worker",
+								title: "Nur der " + t + "-WhatsApp-Worker",
 								children: /* @__PURE__ */ (0, B.jsxs)("span", {
 									className: "worker-indicator",
 									children: [
@@ -3100,7 +3100,7 @@ function _n({ mutationsAllowed: t }) {
 											className: U.wa.ready ? "worker-dot active" : U.wa.enabled ? "worker-dot starting" : "worker-dot",
 											children: "●"
 										}),
-										/* @__PURE__ */ (0, B.jsxs)("span", { children: ["WA ", n] }),
+										/* @__PURE__ */ (0, B.jsxs)("span", { children: ["WA ", t] }),
 										/* @__PURE__ */ (0, B.jsx)("strong", { children: U.wa.ready ? "AKTIV" : U.wa.enabled ? "STARTET …" : "AUS" })
 									]
 								})
@@ -3133,9 +3133,9 @@ function _n({ mutationsAllowed: t }) {
 								className: "worker-control-body",
 								children: /* @__PURE__ */ (0, B.jsx)("button", {
 									type: "button",
-									disabled: !!N || n !== "PROD",
+									disabled: !!N || t !== "PROD",
 									onClick: () => void Y(),
-									children: n === "PROD" ? N === "wpp" ? "Speichert …" : U.wpp.desiredConnected === !1 ? "Verbinden" : "Trennen" : "Steuerung nur in PROD"
+									children: t === "PROD" ? N === "wpp" ? "Speichert …" : U.wpp.desiredConnected === !1 ? "Verbinden" : "Trennen" : "Steuerung nur in PROD"
 								})
 							})]
 						})]
@@ -3194,7 +3194,7 @@ function _n({ mutationsAllowed: t }) {
 								children: "Spielminute"
 							}), /* @__PURE__ */ (0, B.jsx)(Xt, {
 								minute: c.minute,
-								disabled: !t || !!c.completedAt,
+								disabled: !e || !!c.completedAt,
 								saving: ee,
 								onCommit: ue
 							})]
@@ -3233,7 +3233,7 @@ function _n({ mutationsAllowed: t }) {
 							})]
 						}), /* @__PURE__ */ (0, B.jsx)(tn, {
 							eventId: K.eventId,
-							mutationsAllowed: t && !T,
+							mutationsAllowed: e && !T,
 							gameCompleted: !!c.completedAt,
 							activeKind: te,
 							compact: !0,
@@ -3336,7 +3336,7 @@ function _n({ mutationsAllowed: t }) {
 						game: K,
 						state: c,
 						textsystem: u,
-						mutationsAllowed: t && !c.completedAt,
+						mutationsAllowed: e && !c.completedAt,
 						whatsappEnabled: U.ready && !O,
 						whatsappTransportReady: U.ready,
 						editingEvent: y,
@@ -3355,7 +3355,7 @@ function _n({ mutationsAllowed: t }) {
 						game: K,
 						state: c,
 						textsystem: u,
-						mutationsAllowed: t && !c.completedAt,
+						mutationsAllowed: e && !c.completedAt,
 						whatsappEnabled: U.ready && !O,
 						whatsappTransportReady: U.ready,
 						editingEvent: y,
@@ -3374,7 +3374,7 @@ function _n({ mutationsAllowed: t }) {
 						game: K,
 						state: c,
 						textsystem: u,
-						mutationsAllowed: t && !c.completedAt,
+						mutationsAllowed: e && !c.completedAt,
 						whatsappEnabled: U.ready && !O,
 						whatsappTransportReady: U.ready,
 						editingEvent: y,
@@ -3392,7 +3392,7 @@ function _n({ mutationsAllowed: t }) {
 						game: K,
 						state: c,
 						textsystem: u,
-						mutationsAllowed: t && !c.completedAt,
+						mutationsAllowed: e && !c.completedAt,
 						whatsappEnabled: U.ready && !O,
 						whatsappTransportReady: U.ready,
 						editingEvent: y,
@@ -3412,7 +3412,7 @@ function _n({ mutationsAllowed: t }) {
 						game: K,
 						state: c,
 						textsystem: u,
-						mutationsAllowed: t && !c.completedAt,
+						mutationsAllowed: e && !c.completedAt,
 						whatsappEnabled: U.ready && !O,
 						whatsappTransportReady: U.ready,
 						editingEvent: y,
@@ -3434,7 +3434,7 @@ function _n({ mutationsAllowed: t }) {
 				children: [/* @__PURE__ */ (0, B.jsx)("h2", { children: "Letzte Ereignisse" }), /* @__PURE__ */ (0, B.jsx)(gn, {
 					history: c?.history || [],
 					opponentShortName: K.opponentTeam.shortName,
-					mutationsAllowed: t && !c?.completedAt,
+					mutationsAllowed: e && !c?.completedAt,
 					deletingId: _,
 					editingId: String(y?.id || ""),
 					onEdit: ce,

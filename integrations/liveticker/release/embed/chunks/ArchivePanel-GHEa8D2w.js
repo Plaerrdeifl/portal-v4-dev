@@ -1,4 +1,4 @@
-import { a as e, i as t, n, o as r, t as i } from "./api-CS-CXZJI.js";
+import { a as e, n as t, o as n, s as r, t as i } from "./api-DzRo1Zw4.js";
 //#region src/platform/uuid.ts
 function a(e) {
 	let t = /* @__PURE__ */ new Uint8Array(16);
@@ -311,11 +311,11 @@ function z(e) {
 async function B() {
 	return L(await i("liveticker_whatsapp_stickers_list", { includeInactive: !1 }));
 }
-async function V(t) {
-	if (!u(t)) throw Error("Der Sticker ist ungültig.");
-	let r = e(), { data: i, error: a } = await n().auth.getSession(), o = i.session?.access_token;
+async function V(e) {
+	if (!u(e)) throw Error("Der Sticker ist ungültig.");
+	let r = n(), { data: i, error: a } = await t().auth.getSession(), o = i.session?.access_token;
 	if (a || !o) throw Error("Anmeldung erforderlich.");
-	let s = await fetch(r.supabaseUrl + "/functions/v1/liveticker-whatsapp-stickers?stickerId=" + encodeURIComponent(t), {
+	let s = await fetch(r.supabaseUrl + "/functions/v1/liveticker-whatsapp-stickers?stickerId=" + encodeURIComponent(e), {
 		method: "GET",
 		cache: "no-store",
 		headers: {
@@ -452,9 +452,9 @@ function pe(e) {
 		story: n.find((e) => e.kind === "STORY")?.downloadUrl || ""
 	};
 }
-function Q({ environment: t = e().environment, hostname: n = globalThis.location?.hostname || "" } = {}) {
-	let r = n.trim().toLowerCase();
-	return t === "DEV" && [
+function Q({ environment: e = n().environment, hostname: t = globalThis.location?.hostname || "" } = {}) {
+	let r = t.trim().toLowerCase();
+	return e === "DEV" && [
 		"localhost",
 		"127.0.0.1",
 		"::1",
@@ -473,7 +473,7 @@ async function he(e) {
 }
 //#endregion
 //#region src/components/ArchivePanel.tsx
-var $ = t();
+var $ = e();
 function ge({ initiallyOpen: e = !1 } = {}) {
 	let [t, n] = (0, G.useState)(e), [r, i] = (0, G.useState)([]), [a, o] = (0, G.useState)(""), [s, c] = (0, G.useState)({
 		post: "",
