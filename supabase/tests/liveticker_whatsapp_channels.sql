@@ -24,7 +24,8 @@ begin
  insert into app_portal.cockpit_access(user_id,role,is_enabled,revision) values(actor,'USER',true,1);
  insert into app_portal.user_capabilities(user_id,capability_code,created_by) values(actor,'liveticker.manage',actor);
  insert into app_modules.events(id,event_type,title,event_date,event_time,venue,visibility)
- values(event,'GAME','Isolated channel SQL fixture','2036-01-01','18:00','Fixture','INTERNAL');
+ values(event,'GAME','Isolated channel SQL fixture','2036-01-01','18:00','Fixture','PUBLIC');
+ insert into app_modules.event_games(event_id,home_away,opponent_name) values(event,'HOME','Isolated fixture opponent');
  insert into app_modules.liveticker_whatsapp_stickers(id,name,slug,storage_path,width,height,file_size,sha256)
  values(sticker,'Fixture','fixture-00000003','stickers/dev/'||sticker||'.webp',512,512,1,repeat('a',64));
  perform set_config('request.jwt.claim.sub',actor::text,true);
