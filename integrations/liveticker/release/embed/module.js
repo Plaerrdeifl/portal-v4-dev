@@ -8982,7 +8982,7 @@ async function ge() {
 }
 //#endregion
 //#region src/App.tsx
-var _e = (0, m.lazy)(async () => ({ default: (await import("./chunks/GameWorkspace-DGGoT2Vx.js")).GameWorkspace })), ve = (0, m.lazy)(async () => ({ default: (await import("./chunks/LivetickerAdmin-DQ5qxIt1.js")).LivetickerAdmin }));
+var _e = (0, m.lazy)(async () => ({ default: (await import("./chunks/GameWorkspace-BOyK1Ln7.js")).GameWorkspace })), ve = (0, m.lazy)(async () => ({ default: (await import("./chunks/LivetickerAdmin-DQ5qxIt1.js")).LivetickerAdmin }));
 function ye() {
 	let [e, t] = (0, m.useState)({ kind: "loading" }), [r, o] = (0, m.useState)("ticker"), s = (0, m.useCallback)(async () => {
 		t({ kind: "loading" });
