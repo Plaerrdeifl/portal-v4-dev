@@ -2,29 +2,29 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/fanszene-cockpit",
-  "sourceCommit": "5a45e215900ea27542f8f4b40798195506501f43",
+  "sourceCommit": "e05ede1b00c5779e139e41909ca4bf852955d1d9",
   "sourcePackageLockSha256": "4e778cf58cee437f4546258f2d5a7ac0a5fcf52ed605fc07eb3ff7e603a5408f",
-  "sourceBuildCommand": "npm ci --include=dev --allow-remote=root && npm run build && npm run test:login-browser",
+  "sourceBuildCommand": "npm ci --include=dev --allow-remote=root && npm run check",
   "sourceBuildEnvironment": {
     "VITE_APP_ENV": "DEV",
-    "CHROMIUM_PATH": "/usr/bin/chromium"
+    "CHROMIUM_PATH": "/snap/bin/chromium"
   },
   "sourceToolchain": {
-    "node": "24.19.0",
+    "node": "24.20.0",
     "npm": "12.0.1"
   },
   "artifactRoot": "integrations/cockpit/release",
-  "artifactSha256": "920ddd2ce46bd24e075fb7eed5a33aa3c66a9db37ab4ce8415bb68f6c1620e60",
+  "artifactSha256": "9db043675eea883ec4a338b23d9f83125e45d65714bbb3d4a31c75d8ba989465",
   "files": [
     {
-      "path": "assets/index-DTBaLhmk.css",
-      "bytes": 8483,
-      "sha256": "66f6ea7238d6c69e39df7309f31f25380bbf89034e72d3de1de45223bc2dbd59"
+      "path": "assets/index-DRLbKLUJ.js",
+      "bytes": 483118,
+      "sha256": "d09420c50748f5af69325adaf59826324a57c1030f6d3316604150f7d083884f"
     },
     {
-      "path": "assets/index-KULFalAi.js",
-      "bytes": 478091,
-      "sha256": "c2e8a18a1458116ff9654f16ad1bf04f45f80c3160ba55b9e7be241c0d070372"
+      "path": "assets/index-Z7GKcZyG.css",
+      "bytes": 18857,
+      "sha256": "1827b05358ffba5591576014c0da70bf4ca0cd96f5a4e7d2c77612aa6cbb78a8"
     },
     {
       "path": "icons/cockpit-192.png",
@@ -49,7 +49,7 @@
     {
       "path": "index.html",
       "bytes": 841,
-      "sha256": "6cd62bfebdba227bea6e99092cef842e6b5fb2aedd9afb9ec877d9262a99d381"
+      "sha256": "0798cf5a56800cc6582f21d5e01696e97d76db73cce8282a233da42b0acfc613"
     },
     {
       "path": "manifest.webmanifest",
