@@ -1,4 +1,4 @@
-import { a as e, n as t, o as n, s as r, t as i } from "./api-DzRo1Zw4.js";
+import { a as e, n as t, o as n, s as r, t as i } from "./api-DqcqenPV.js";
 //#region src/platform/uuid.ts
 function a(e) {
 	let t = /* @__PURE__ */ new Uint8Array(16);
