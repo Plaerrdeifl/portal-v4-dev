@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/fanszene-cockpit",
-  "sourceCommit": "40bf04f94833d05fbd395b46a1db3532641198d3",
-  "sourcePackageLockSha256": "f0e8680fd6b0cc39e0267255a17d780a98f246ae1a06eb175635a45dd8598a27",
-  "sourceBuildCommand": "npm ci --include=dev --allow-remote=root && npm run check",
+  "sourceCommit": "5a45e215900ea27542f8f4b40798195506501f43",
+  "sourcePackageLockSha256": "4e778cf58cee437f4546258f2d5a7ac0a5fcf52ed605fc07eb3ff7e603a5408f",
+  "sourceBuildCommand": "npm ci --include=dev --allow-remote=root && npm run build && npm run test:login-browser",
   "sourceBuildEnvironment": {
     "VITE_APP_ENV": "DEV",
     "CHROMIUM_PATH": "/usr/bin/chromium"
@@ -14,7 +14,7 @@
     "npm": "12.0.1"
   },
   "artifactRoot": "integrations/cockpit/release",
-  "artifactSha256": "5f9442d85afe6c6d19fd4a841263d3c53d2ea90ac5d049a3c0e41ee0d8a3a3bd",
+  "artifactSha256": "920ddd2ce46bd24e075fb7eed5a33aa3c66a9db37ab4ce8415bb68f6c1620e60",
   "files": [
     {
       "path": "assets/index-DTBaLhmk.css",
@@ -22,9 +22,9 @@
       "sha256": "66f6ea7238d6c69e39df7309f31f25380bbf89034e72d3de1de45223bc2dbd59"
     },
     {
-      "path": "assets/index-DvJG0rjW.js",
-      "bytes": 477853,
-      "sha256": "348891f0ec5665a445c3bfb05ad07ec049a567886ad5114b65a8a733521b9503"
+      "path": "assets/index-KULFalAi.js",
+      "bytes": 478091,
+      "sha256": "c2e8a18a1458116ff9654f16ad1bf04f45f80c3160ba55b9e7be241c0d070372"
     },
     {
       "path": "icons/cockpit-192.png",
@@ -49,7 +49,7 @@
     {
       "path": "index.html",
       "bytes": 841,
-      "sha256": "1ec1320f9b98586427597ee878a98254ab625919c26e8d539be3f23b2c92ee74"
+      "sha256": "6cd62bfebdba227bea6e99092cef842e6b5fb2aedd9afb9ec877d9262a99d381"
     },
     {
       "path": "manifest.webmanifest",
