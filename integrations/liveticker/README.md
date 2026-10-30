@@ -5,6 +5,15 @@ ausgeliefert. Die Source-SHA und jedes einzelne JS-/CSS-/PWA-Asset sind in
 release.json mit Dateigröße und SHA-256 verankert; die verifizierende
 Integration liegt in scripts/integrate-liveticker-release.mjs.
 
+Für einen reproduzierbaren Neubau wird sourceCommit sauber ausgecheckt und die
+in sourceToolchain festgehaltene Node-/npm-Version verwendet. sourceBuildEnvironment
+enthält die Buildwerte; andere geerbte VITE_-Variablen werden vor dem Build entfernt.
+sourceBuildCommand installiert auch bei NODE_ENV=production ausdrücklich die
+Build-Abhängigkeiten und führt Quelltests, Hosted-Prüfung und Chromium-Regression aus.
+Die Dateihashes beziehen sich auf die unveränderten Ausgaben dist/ (standalone)
+und dist-embed/ (embed). Der Gesamthash verwendet die geordnete Verkettung
+`sha256 + "  " + bytes + "  " + path + "\n"` aus release.json.
+
 Der DEV-Build veröffentlicht dieselbe Fachanwendung in zwei Formen:
 
 1. standalone nach /liveticker/ – eigenständig installierbare PWA mit
