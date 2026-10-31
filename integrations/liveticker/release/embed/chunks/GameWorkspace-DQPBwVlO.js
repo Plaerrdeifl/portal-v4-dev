@@ -196,10 +196,10 @@ function se({ delivery: e }) {
 }
 //#endregion
 //#region src/components/ActionStickerPicker.tsx
-function Q(e, t) {
+function ce(e, t) {
 	return !!(e && t && e.kind === t.kind && e.team === t.team);
 }
-function ce({ stickerId: e, name: t }) {
+function le({ stickerId: e, name: t }) {
 	let [n, r] = (0, z.useState)("");
 	return (0, z.useEffect)(() => {
 		let t = !1, n = "";
@@ -219,7 +219,7 @@ function ce({ stickerId: e, name: t }) {
 		children: "🖼"
 	});
 }
-function le({ eventId: e, opponentTeamId: t, actionId: n, action: r, penaltyTeams: i = [], mutationsAllowed: a, transportReady: o, onPendingStickerChange: s }) {
+function Q({ eventId: e, opponentTeamId: t, actionId: n, action: r, penaltyTeams: i = [], mutationsAllowed: a, transportReady: o, onPendingStickerChange: s }) {
 	let [c, l] = (0, z.useState)([]), [u, d] = (0, z.useState)(""), [m, _] = (0, z.useState)(""), [y, S] = (0, z.useState)(null), [T, E] = (0, z.useState)(null), [D, O] = (0, z.useState)(!1), [k, A] = (0, z.useState)("Sticker werden geladen …"), j = (0, z.useMemo)(() => r === "SITUATION" ? null : v({
 		action: r,
 		penaltyTeams: i
@@ -232,7 +232,7 @@ function le({ eventId: e, opponentTeamId: t, actionId: n, action: r, penaltyTeam
 		c,
 		t,
 		i
-	]), N = (0, z.useMemo)(() => M.find((e) => e.id === u) || null, [u, M]), P = f(y), F = r === "SITUATION" || !m || Q(T, j);
+	]), N = (0, z.useMemo)(() => M.find((e) => e.id === u) || null, [u, M]), P = f(y), F = r === "SITUATION" || !m || ce(T, j);
 	(0, z.useEffect)(() => {
 		let e = !1;
 		return x().then((t) => {
@@ -366,7 +366,7 @@ function le({ eventId: e, opponentTeamId: t, actionId: n, action: r, penaltyTeam
 					onClick: () => {
 						m || (d(e.id), A("Aktionssticker ausgewählt."));
 					},
-					children: [/* @__PURE__ */ (0, Z.jsx)(ce, {
+					children: [/* @__PURE__ */ (0, Z.jsx)(le, {
 						stickerId: e.id,
 						name: e.name
 					}), /* @__PURE__ */ (0, Z.jsx)("strong", { children: e.name })]
@@ -1246,7 +1246,7 @@ function Ft({ game: e, state: t, textsystem: r, mutationsAllowed: i, whatsappEna
 					children: i ? "DEV schreiben" : "gesperrt"
 				})]
 			}),
-			!h && /* @__PURE__ */ (0, Z.jsx)(le, {
+			!h && /* @__PURE__ */ (0, Z.jsx)(Q, {
 				eventId: e.eventId,
 				opponentTeamId: e.opponentTeam.id,
 				actionId: U.current,
@@ -1590,7 +1590,7 @@ function Rt({ game: e, state: t, textsystem: r, mutationsAllowed: i, whatsappEna
 					children: i ? "DEV schreiben" : "gesperrt"
 				})]
 			}),
-			!m && !B && /* @__PURE__ */ (0, Z.jsx)(le, {
+			!m && !B && /* @__PURE__ */ (0, Z.jsx)(Q, {
 				eventId: e.eventId,
 				opponentTeamId: e.opponentTeam.id,
 				actionId: F.current,
@@ -1957,7 +1957,7 @@ function Wt({ game: e, state: t, textsystem: r, mutationsAllowed: i, whatsappEna
 					children: i ? "DEV schreiben" : "gesperrt"
 				})]
 			}),
-			!h && f && /* @__PURE__ */ (0, Z.jsx)(le, {
+			!h && f && /* @__PURE__ */ (0, Z.jsx)(Q, {
 				eventId: e.eventId,
 				opponentTeamId: e.opponentTeam.id,
 				actionId: "",
@@ -2339,7 +2339,7 @@ function en({ eventId: e, mutationsAllowed: t, gameCompleted: n, summaryTextForK
 			});
 		}
 	}, [K]);
-	async function Q(r) {
+	async function ce(r) {
 		if (!t || n) {
 			N("Grafik-Erstellung ist für dieses Spiel nicht freigeschaltet.");
 			return;
@@ -2359,7 +2359,7 @@ function en({ eventId: e, mutationsAllowed: t, gameCompleted: n, summaryTextForK
 			}
 		}
 	}
-	async function ce(n) {
+	async function le(n) {
 		if (!t) {
 			N("WhatsApp-Versand ist in diesem Stand nicht freigeschaltet.");
 			return;
@@ -2412,7 +2412,7 @@ function en({ eventId: e, mutationsAllowed: t, gameCompleted: n, summaryTextForK
 			}
 		}
 	}
-	function le(e) {
+	function Q(e) {
 		let t = V.current.get(Xt(e))?.prepared;
 		try {
 			if (t && typeof File == "function" && typeof navigator.share == "function" && typeof navigator.canShare == "function") {
@@ -2486,7 +2486,7 @@ function en({ eventId: e, mutationsAllowed: t, gameCompleted: n, summaryTextForK
 								className: "graphic-artifact-button",
 								type: "button",
 								disabled: n,
-								onClick: () => le(e),
+								onClick: () => Q(e),
 								children: n ? (e.kind === "POST" ? "Post" : "Story") + " wird vorbereitet …" : e.kind === "POST" ? "Post teilen" : "Story teilen"
 							}, e.kind + e.downloadUrl);
 						})
@@ -2501,7 +2501,7 @@ function en({ eventId: e, mutationsAllowed: t, gameCompleted: n, summaryTextForK
 							/* @__PURE__ */ (0, Z.jsx)("button", {
 								type: "button",
 								disabled: !t || !q || E === v || X || !!Y?.targets?.some((e) => e.error === "DELIVERY_OUTCOME_UNKNOWN"),
-								onClick: () => void ce(v),
+								onClick: () => void le(v),
 								children: E === v || X ? "📲 Wird an WhatsApp gesendet …" : Y?.status === "SUCCEEDED" ? "📲 Erneut an WhatsApp senden" : Y?.status === "FAILED" ? "📲 WhatsApp erneut versuchen" : "📲 An WhatsApp senden"
 							}),
 							/* @__PURE__ */ (0, Z.jsx)(se, { delivery: Y }),
@@ -2518,12 +2518,12 @@ function en({ eventId: e, mutationsAllowed: t, gameCompleted: n, summaryTextForK
 							className: "secondary-button",
 							type: "button",
 							disabled: !t || n || !!w,
-							onClick: () => void Q(v),
+							onClick: () => void ce(v),
 							children: "Neu erstellen"
 						}) : /* @__PURE__ */ (0, Z.jsx)("button", {
 							type: "button",
 							disabled: !t || n || !!w || d(G),
-							onClick: () => void Q(v),
+							onClick: () => void ce(v),
 							children: w === v || d(G) ? "Flyer wird erstellt …" : G?.status === "FAILED" ? "Erneut erstellen" : "🖼️ Flyer erstellen"
 						})
 					})
@@ -2850,22 +2850,31 @@ function gn({ mutationsAllowed: e }) {
 		},
 		routing: null,
 		errors: []
-	}), se = (0, z.useRef)(Ee());
+	}), se = (0, z.useRef)(Ee()), [ce, le] = (0, z.useState)(null);
 	(0, z.useEffect)(() => {
+		let e = !1;
+		return ct().then((t) => {
+			e || (f(t), le(null));
+		}).catch((t) => {
+			e || le(t instanceof Error ? t.message : "Textbausteine konnten nicht geladen werden.");
+		}), () => {
+			e = !0;
+		};
+	}, []), (0, z.useEffect)(() => {
 		let e = !1;
 		return (async () => {
 			try {
-				let [t, n] = await Promise.all([F(), ct()]);
+				let t = await F();
 				if (e) return;
-				if (f(n), !t.length) {
-					i([]), l(null), g("Keine Spiele im zentralen Kalender verfügbar."), m(!1);
+				if (!t.length) {
+					i([]), l(null), g("Keine Spiele im Spielplan verfügbar."), m(!1);
 					return;
 				}
-				let r = te(), a = t.find((e) => e.eventId === r) || t[0];
-				i(t), s(a.eventId), I(a.eventId);
-				let o = await ee(a.eventId);
+				let n = te(), r = t.find((e) => e.eventId === n) || t[0];
+				i(t), s(r.eventId), I(r.eventId);
+				let a = await ee(r.eventId);
 				if (e) return;
-				l(o), g("Zentraler Liveticker-State geladen."), m(!1);
+				l(a), g("Zentraler Liveticker-State geladen."), m(!1);
 			} catch (t) {
 				if (e) return;
 				g(t instanceof Error ? t.message : "Spiele konnten nicht geladen werden."), m(!1);
@@ -2913,11 +2922,11 @@ function gn({ mutationsAllowed: e }) {
 			e = !0, t && window.clearTimeout(t);
 		};
 	}, [o]);
-	let ce = (0, z.useMemo)(() => ze(c?.history || []), [c?.history]), le = (0, z.useMemo)(() => Be(c?.history || []), [c?.history]), ue = (0, z.useMemo)(() => (c?.history || []).some((e) => e?.type === "shootout"), [c?.history]), de = (0, z.useMemo)(() => qt(c?.minute || 1), [c?.minute]);
-	function fe(e) {
+	let ue = (0, z.useMemo)(() => ze(c?.history || []), [c?.history]), de = (0, z.useMemo)(() => Be(c?.history || []), [c?.history]), fe = (0, z.useMemo)(() => (c?.history || []).some((e) => e?.type === "shootout"), [c?.history]), pe = (0, z.useMemo)(() => qt(c?.minute || 1), [c?.minute]);
+	function me(e) {
 		b(e), e.type === "goal" ? P(e.team === "opponent" ? "GOAL_OPPONENT" : "GOAL_MIGHTY") : e.type === "penalty" && !Le(e) ? P("PENALTY") : e.type === "shootout" ? P("SHOOTOUT") : P("SITUATION");
 	}
-	async function pe(t) {
+	async function he(t) {
 		if (!c || !Q || !t.id) return;
 		if (!e || c.completedAt) {
 			g("Schreibaktionen sind für diesen Stand nicht freigeschaltet.");
@@ -2949,7 +2958,7 @@ function gn({ mutationsAllowed: e }) {
 			v("");
 		}
 	}
-	async function me(t) {
+	async function ge(t) {
 		if (c && Q) {
 			if (!e || c.completedAt) {
 				g("Schreibaktionen sind für diesen Stand nicht freigeschaltet.");
@@ -2979,7 +2988,7 @@ function gn({ mutationsAllowed: e }) {
 			}
 		}
 	}
-	async function he() {
+	async function _e() {
 		if (c && Q && !C && N() && window.confirm("Testspiel „" + Q.displayTitle + "“ wirklich als neuen Testlauf starten? Aktionen, Spielminute und aktuelle Versand-/Grafikstatus werden zurückgesetzt.")) {
 			w(!0), g("Testspiel wird zurückgesetzt …");
 			try {
@@ -2999,7 +3008,7 @@ function gn({ mutationsAllowed: e }) {
 			}
 		}
 	}
-	function ge(e) {
+	function ve(e) {
 		if (c && Q) {
 			if (e === "FINAL") {
 				if (c.minute < 60) {
@@ -3011,7 +3020,7 @@ function gn({ mutationsAllowed: e }) {
 			ne(e), W(!0);
 		}
 	}
-	async function _e() {
+	async function ye() {
 		if (c && Q && !(!e || c.completedAt || E)) {
 			D(!0), g("FINAL-Flyer fertig · Spiel wird abgeschlossen und archiviert …");
 			try {
@@ -3028,12 +3037,12 @@ function gn({ mutationsAllowed: e }) {
 			}
 		}
 	}
-	function ve(e) {
+	function be(e) {
 		e.open && e.parentElement?.querySelectorAll("details.worker-control").forEach((t) => {
 			t !== e && (t.open = !1);
 		});
 	}
-	async function ye() {
+	async function xe() {
 		if (!R) {
 			B("wa"), H("");
 			try {
@@ -3045,7 +3054,7 @@ function gn({ mutationsAllowed: e }) {
 			}
 		}
 	}
-	async function be() {
+	async function Se() {
 		if (!(R || t !== "PROD")) {
 			B("wpp"), H("");
 			try {
@@ -3057,7 +3066,7 @@ function gn({ mutationsAllowed: e }) {
 			}
 		}
 	}
-	async function xe(e) {
+	async function Ce(e) {
 		s(e), I(e), m(!0), g("Spielstand wird geladen …"), b(null), P("GOAL_MIGHTY"), W(!1), se.current.reset();
 		try {
 			let t = await ee(e);
@@ -3081,7 +3090,7 @@ function gn({ mutationsAllowed: e }) {
 						children: [
 							/* @__PURE__ */ (0, Z.jsxs)("details", {
 								className: "worker-control",
-								onToggle: (e) => ve(e.currentTarget),
+								onToggle: (e) => be(e.currentTarget),
 								children: [/* @__PURE__ */ (0, Z.jsx)("summary", {
 									title: "Nur der " + t + "-WhatsApp-Worker",
 									children: /* @__PURE__ */ (0, Z.jsxs)("span", {
@@ -3100,14 +3109,14 @@ function gn({ mutationsAllowed: e }) {
 									children: /* @__PURE__ */ (0, Z.jsx)("button", {
 										type: "button",
 										disabled: !!R,
-										onClick: () => void ye(),
+										onClick: () => void xe(),
 										children: R === "wa" ? "Speichert …" : Y.wa.enabled ? "Ausschalten" : "Einschalten"
 									})
 								})]
 							}),
 							/* @__PURE__ */ (0, Z.jsxs)("details", {
 								className: "worker-control",
-								onToggle: (e) => ve(e.currentTarget),
+								onToggle: (e) => be(e.currentTarget),
 								children: [/* @__PURE__ */ (0, Z.jsx)("summary", {
 									title: "Globale WhatsApp-Verbindung für DEV und PROD",
 									children: /* @__PURE__ */ (0, Z.jsxs)("span", {
@@ -3126,7 +3135,7 @@ function gn({ mutationsAllowed: e }) {
 									children: /* @__PURE__ */ (0, Z.jsx)("button", {
 										type: "button",
 										disabled: !!R || t !== "PROD",
-										onClick: () => void be(),
+										onClick: () => void Se(),
 										children: t === "PROD" ? R === "wpp" ? "Speichert …" : Y.wpp.desiredConnected === !1 ? "Verbinden" : "Trennen" : "Steuerung nur in PROD"
 									})
 								})]
@@ -3135,7 +3144,7 @@ function gn({ mutationsAllowed: e }) {
 								environment: t,
 								status: Y,
 								disabled: !e,
-								onToggle: ve,
+								onToggle: be,
 								onChange: ae
 							})
 						]
@@ -3154,11 +3163,11 @@ function gn({ mutationsAllowed: e }) {
 					}),
 					/* @__PURE__ */ (0, Z.jsxs)("div", {
 						className: "classic-segment-bar",
-						children: [/* @__PURE__ */ (0, Z.jsx)("strong", { children: de.label }), ue && /* @__PURE__ */ (0, Z.jsxs)("span", { children: [
+						children: [/* @__PURE__ */ (0, Z.jsx)("strong", { children: pe.label }), fe && /* @__PURE__ */ (0, Z.jsxs)("span", { children: [
 							"Penaltyschießen · ",
-							le.mighty,
+							de.mighty,
 							":",
-							le.opponent
+							de.opponent
 						] })]
 					}),
 					/* @__PURE__ */ (0, Z.jsxs)("label", {
@@ -3168,7 +3177,7 @@ function gn({ mutationsAllowed: e }) {
 							/* @__PURE__ */ (0, Z.jsx)("select", {
 								value: o,
 								disabled: p || !r.length,
-								onChange: (e) => void xe(e.target.value),
+								onChange: (e) => void Ce(e.target.value),
 								children: r.map((e) => /* @__PURE__ */ (0, Z.jsx)("option", {
 									value: e.eventId,
 									children: L(e)
@@ -3190,9 +3199,9 @@ function gn({ mutationsAllowed: e }) {
 							}), /* @__PURE__ */ (0, Z.jsxs)("div", {
 								className: "classic-scoreboard",
 								children: [
-									/* @__PURE__ */ (0, Z.jsxs)("div", { children: [/* @__PURE__ */ (0, Z.jsx)("span", { children: "Heim" }), /* @__PURE__ */ (0, Z.jsx)("strong", { children: Q ? Q.homeAway === "HOME" ? ce.mighty : ce.opponent : 0 })] }),
+									/* @__PURE__ */ (0, Z.jsxs)("div", { children: [/* @__PURE__ */ (0, Z.jsx)("span", { children: "Heim" }), /* @__PURE__ */ (0, Z.jsx)("strong", { children: Q ? Q.homeAway === "HOME" ? ue.mighty : ue.opponent : 0 })] }),
 									/* @__PURE__ */ (0, Z.jsx)("b", { children: ":" }),
-									/* @__PURE__ */ (0, Z.jsxs)("div", { children: [/* @__PURE__ */ (0, Z.jsx)("span", { children: "Gast" }), /* @__PURE__ */ (0, Z.jsx)("strong", { children: Q ? Q.homeAway === "HOME" ? ce.opponent : ce.mighty : 0 })] })
+									/* @__PURE__ */ (0, Z.jsxs)("div", { children: [/* @__PURE__ */ (0, Z.jsx)("span", { children: "Gast" }), /* @__PURE__ */ (0, Z.jsx)("strong", { children: Q ? Q.homeAway === "HOME" ? ue.opponent : ue.mighty : 0 })] })
 								]
 							})]
 						}), c && /* @__PURE__ */ (0, Z.jsxs)("div", {
@@ -3204,7 +3213,7 @@ function gn({ mutationsAllowed: e }) {
 								minute: c.minute,
 								disabled: !e || !!c.completedAt,
 								saving: x,
-								onCommit: me
+								onCommit: ge
 							})]
 						})]
 					}),
@@ -3221,7 +3230,7 @@ function gn({ mutationsAllowed: e }) {
 								className: t === "✓" ? "ready" : t === "…" ? "active" : "",
 								type: "button",
 								disabled: !Q || !c || e === "FINAL" && c.minute < 60,
-								onClick: () => ge(e),
+								onClick: () => ve(e),
 								children: [
 									e === "PERIOD_1" ? "1. Drittel" : e === "PERIOD_2" ? "2. Drittel" : "Spiel beenden",
 									" ",
@@ -3251,7 +3260,7 @@ function gn({ mutationsAllowed: e }) {
 								game: Q,
 								snapshot: u
 							}),
-							onFinalGraphicReady: _e
+							onFinalGraphicReady: ye
 						})]
 					}),
 					(p || h && h !== "Zentraler Liveticker-State geladen.") && /* @__PURE__ */ (0, Z.jsx)("p", {
@@ -3260,6 +3269,11 @@ function gn({ mutationsAllowed: e }) {
 						children: h
 					})
 				]
+			}),
+			Q && c && !u && /* @__PURE__ */ (0, Z.jsx)("p", {
+				className: "classic-load-message",
+				role: ce ? "alert" : "status",
+				children: ce ? `Aktionen gesperrt: ${ce}. Bitte den Spieltag neu laden.` : "Textbausteine werden geladen. Aktionen sind bis dahin gesperrt."
 			}),
 			Q && c && u && /* @__PURE__ */ (0, Z.jsxs)("section", {
 				className: "card classic-composer",
@@ -3445,8 +3459,8 @@ function gn({ mutationsAllowed: e }) {
 					mutationsAllowed: e && !c?.completedAt,
 					deletingId: _,
 					editingId: String(y?.id || ""),
-					onEdit: fe,
-					onDelete: pe
+					onEdit: me,
+					onDelete: he
 				})]
 			}),
 			N() && Q && c && /* @__PURE__ */ (0, Z.jsx)("div", {
@@ -3455,7 +3469,7 @@ function gn({ mutationsAllowed: e }) {
 					className: "secondary-button danger-button",
 					type: "button",
 					disabled: C,
-					onClick: () => void he(),
+					onClick: () => void _e(),
 					children: C ? "Testspiel wird zurückgesetzt …" : "Testspiel zurücksetzen"
 				})
 			}),
