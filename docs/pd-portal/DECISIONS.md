@@ -245,7 +245,7 @@ Gemeinsame technische Plattformlogik wird über gemeinsame Pakete bzw. `Plaerrde
 
 Fachlogik bleibt im jeweiligen Fachrepository.
 
-## D-037 – Events ist die zentrale Termin- und Spielplan-Fachquelle
+## D-037 – Events ist die zentrale Termin- und Spielplan-Fachquelle (durch D-058 abgelöst)
 
 **Entscheidung:** Kalender, Spielplan und allgemeine Veranstaltungen bilden eine eigene Events-Domäne im Repository `Plaerrdeifl/events`.
 
@@ -511,3 +511,14 @@ Die bestehenden DEV-/PROD-Regeln bleiben unverändert. Insbesondere ist ein erfo
 **Pflichtreihenfolge:** Live-Inventar und Keep/Remove-Nachweis → reproduzierbare Sicherung inkl. Routing-/Build-Konfiguration und erforderlichem DEV-Datenstand → Root-Einstieg und abgegrenzte PWA-Scopes verifizieren → authentifizierte Rollen-/Mutation-/Login- und Modul-E2E → schrittweise Entfernung nachgewiesenen Altbestands → Recovery-Test. Keine pauschale Löschung von `portal-v4-dev`, `supabase`, Identitäts-/Teamtabellen oder genutzten APIs. Teamdaten erst nach D-055-Migration entfernen.
 
 **PROD-Schutz:** Portal 1.0 und WordPress bleiben unverändert; jeder Cockpit-PROD-Release braucht eine neue ausdrückliche Freigabe nach D-053.
+
+
+## D-058 – Liveticker verwaltet Spieltage; das Events-Fachmodul entfällt
+
+**Entscheidung vom 31.10.2026:** Der Liveticker ist die führende Fachanwendung für den Spielplan. Die Bedienoberfläche liegt unter Liveticker → Verwaltung → Spieltage. Dort können Spiele angelegt, bearbeitet, abgesagt und wieder freigegeben werden. Die getrennte Events-PWA ist kein Bestandteil der Zielanwendung. Spieltagsmutationen werden ausschließlich über eng begrenzte, serverseitig geprüfte Actions von public.pd_api(text,jsonb) und die Capability liveticker.manage durchgeführt, niemals durch eine zweite allgemeine Events-Administrationswelt.
+
+**Daten-/Migrationsschutz:** Bestehende Spiel-UUIDs und die Beziehungen zu Liveticker-Aktionen, FINAL/Archiv, Grafikjobs, Fanbusreisen, Publishing sowie Generator bleiben erhalten. app_modules.events und app_modules.event_games bleiben während der Entkopplung die physischen Kompatibilitätstabellen; sie werden fachlich vom Liveticker geführt. Ein separater Events-Daten-Cutover erfolgt erst nach Umstellung aller Referenzen und erfolgreichen Recovery-Tests. Keine Kopie, keine Kaskadenlöschung, keine vorzeitige Datenbankumbenennung. Die zwei Nicht-Spiel-Termine bleiben gesichert, bis ein verantwortlicher Nachfolgefachbereich definiert ist.
+
+**Bus-Orga:** Fanbus behält Fahrten und Buchungslogik, konsumiert aber den Liveticker-Spielplan über stabile Spiel-UUIDs. Abgesagte Auswärtsspiele dürfen nicht als neue Fahrt angeboten werden. Änderungen mit aktiven Fanbusfahrten sowie abgeschlossene Spiele werden geschützt. Die vorhandene Bus-Orga wird auf DEV vorbereitet, aber nicht ohne spätere gesonderte Abnahme regulär aktiviert.
+
+**Schutz/Reihenfolge:** Die zentrale Migrationshistorie in portal-v4-dev/supabase bleibt führend. Rechte, Revisionsprüfung, Audit und M900/DEV-Cockpit-Write-Gate sind verbindlich. Vor einem echten Liveticker-Livetest sind WPP/WhatsApp-Delivery und -Ack, Fehlermeldung, Retry, Archiv/FINAL sowie DEV-Authentifizierung und PWA-Routing Ende-zu-Ende zu prüfen. Keine PROD-Änderungen ohne ausdrückliche Freigabe. D-058 ersetzt D-037 und alle widersprechenden fachlichen Spielplan-Zuordnungen.

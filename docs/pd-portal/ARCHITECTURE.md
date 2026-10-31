@@ -108,30 +108,20 @@ Die bestehende Generator-Rechteprojektion berücksichtigt noch alte Team-/Wildca
 
 **PWA:** Das Cockpit behält zunächst Manifest-/Installations-ID, Start-URL, Assets und Worker-Scope `/cockpit/`. Der neue DEV-Root-Einstieg kann geprüft dorthin verweisen. Liveticker, Bildgenerator und später Bus-Orga behalten eigene PWAs mit begrenzten Scopes. Ein Root-Service-Worker darf nicht unkontrolliert die übrigen Module übernehmen.
 
-### Events / Spielplan
+### Spieltage / Liveticker-Fachquelle
 
-`Plaerrdeifl/events`
+Der Liveticker (Repository Plaerrdeifl/liveticker) führt den Spielplan
+unter Verwaltung → Spieltage. Er besitzt keine zweite Spielplanwelt.
+Fanbus und Generator konsumieren diese Daten über stabile IDs und
+definierte zentrale API-Verträge.
 
-Verantwortet:
-
-- Kalender
-- Spielplan
-- allgemeine Veranstaltungen
-- interne und öffentliche Terminansichten
-- Event- und Spieldaten
-- externe Eventreferenzen
-- kontrollierten ICS-Import
-
-Events ist vorgelagerte Fachdatenquelle für Fanbus, Liveticker und Social-Media-Spieltag.
-
-Führende Tabellen sind insbesondere:
-
-- `app_modules.events`
-- `app_modules.event_games`
-- `app_modules.event_external_refs`
-- `app_modules.event_import_runs`
-
-Bestehende Event-UUIDs bleiben erhalten.
+Die physischen Tabellen app_modules.events und app_modules.event_games
+sowie die vorhandenen Event-UUIDs bleiben aus Kompatibilitätsgründen
+erhalten, solange Liveticker-Aktionen, Grafik-/FINAL-Jobs,
+Fanbusfahrten und Publishing darauf referenzieren. Fachliche
+Eigentümerschaft ist bereits Liveticker; physische Umbenennung und
+Abschaltung der alten Events-PWA folgen erst nach sicherem, getesteten
+Daten-/Verbraucher-Cutover. Zwei Nicht-Spiel-Termine sind zu bewahren.
 
 ### Fanbus
 
