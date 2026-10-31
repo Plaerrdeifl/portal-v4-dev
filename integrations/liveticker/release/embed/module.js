@@ -8927,11 +8927,11 @@ async function le() {
 		active: !1,
 		allowed: !1
 	};
-	let i = await s("bootstrap"), a = ce(i);
+	let [i, a] = await Promise.all([s("bootstrap"), s("cockpit_access_get")]), o = ce(i);
 	{
-		let e = await s("cockpit_access_get"), t = e && typeof e == "object" && !Array.isArray(e) ? e : null, r = t?.portal, i = t?.cockpit, o = t?.permissions?.liveticker;
-		if (!t || t.schemaVersion !== 1 || t.userId !== n.user.id || typeof r?.active != "boolean" || typeof i?.allowed != "boolean" || typeof o?.effectiveAllowed != "boolean" || o.capability !== "liveticker.manage") throw Error("Der serverseitige Cockpit-Liveticker-Zugang ist ungültig.");
-		a = r.active && i.allowed && o.effectiveAllowed;
+		let e = a, t = e && typeof e == "object" && !Array.isArray(e) ? e : null, r = t?.portal, i = t?.cockpit, s = t?.permissions?.liveticker;
+		if (!t || t.schemaVersion !== 1 || t.userId !== n.user.id || typeof r?.active != "boolean" || typeof i?.allowed != "boolean" || typeof s?.effectiveAllowed != "boolean" || s.capability !== "liveticker.manage") throw Error("Der serverseitige Cockpit-Liveticker-Zugang ist ungültig.");
+		o = r.active && i.allowed && s.effectiveAllowed;
 	}
 	return {
 		session: n,
@@ -8939,7 +8939,7 @@ async function le() {
 		bootstrap: i,
 		authenticated: !0,
 		active: i.state === "ACTIVE",
-		allowed: a
+		allowed: o
 	};
 }
 async function ue(e, t = "") {
@@ -9001,7 +9001,7 @@ async function _e() {
 }
 //#endregion
 //#region src/App.tsx
-var ve = (0, m.lazy)(async () => ({ default: (await import("./chunks/GameWorkspace-DoNL-t8r.js")).GameWorkspace })), ye = (0, m.lazy)(async () => ({ default: (await import("./chunks/LivetickerAdmin-Cp2HNhXS.js")).LivetickerAdmin }));
+var ve = (0, m.lazy)(async () => ({ default: (await import("./chunks/GameWorkspace-DQPBwVlO.js")).GameWorkspace })), ye = (0, m.lazy)(async () => ({ default: (await import("./chunks/LivetickerAdmin-Cp2HNhXS.js")).LivetickerAdmin }));
 function be({ embedded: e = !1 } = {}) {
 	let [t, r] = (0, m.useState)({ kind: "loading" }), [o, s] = (0, m.useState)("ticker"), c = (0, m.useCallback)(async () => {
 		r({ kind: "loading" });

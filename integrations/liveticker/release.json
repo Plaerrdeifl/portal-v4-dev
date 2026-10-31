@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/liveticker",
-  "sourceCommit": "b2d680e2f651a48f42115eb1a81568d5058604b3",
+  "sourceCommit": "de3cdf073704b58c08d3f3608af800474bdbd791",
   "sourcePackageLockSha256": "0f87ce32d86bbbc93d1118e518d8373e5ce7097cc354e64e86b746b3723cde54",
   "sourceBuildCommand": "npm ci --include=dev --allow-remote=root && npm run check && npm run build && npm run build:cockpit && npm run verify:hosted-dev && npm run test:embed-build",
   "sourceBuildEnvironment": {
@@ -17,7 +17,7 @@
     "npm": "12.0.1"
   },
   "artifactRoot": "integrations/liveticker/release",
-  "artifactSha256": "ce3e45b43c7f5ada02cb6c873009d943650fee53d9709df6128dea35737bf2e5",
+  "artifactSha256": "cd4bf71bc50132be9f56ea4779607a04c5330b2bdbf85ffdc7d104c8033e73eb",
   "files": [
     {
       "path": "embed/chunks/ArchivePanel-DUdVa-sY.js",
@@ -25,9 +25,9 @@
       "sha256": "e4066617fc2e660680e9bc90d26f604d21ef1b16c0a0866c275b142b73b0b402"
     },
     {
-      "path": "embed/chunks/GameWorkspace-DoNL-t8r.js",
-      "bytes": 118863,
-      "sha256": "11f5be92339d8f3d4c24bc6cef3f0cb9e2d127077542585f904c224f52bc8aef"
+      "path": "embed/chunks/GameWorkspace-DQPBwVlO.js",
+      "bytes": 119378,
+      "sha256": "b9ccbc0b3c81136d621f8188834b36f47bb061c1fe722149be20997fa65a9906"
     },
     {
       "path": "embed/chunks/LivetickerAdmin-Cp2HNhXS.js",
@@ -66,8 +66,8 @@
     },
     {
       "path": "embed/module.js",
-      "bytes": 301628,
-      "sha256": "5ddc216632da7ab82a5ddb85591e3aa4b479d87a7bbb7dc79e79a920cdf265c3"
+      "bytes": 301645,
+      "sha256": "9c2de4c9b513277c213da163556b28c642288ffcdde6c31589a971d70be183a1"
     },
     {
       "path": "embed/style.css",
@@ -75,29 +75,29 @@
       "sha256": "e791521b0afbb3f58d4c65a66ce0c8d8d3d3b8f9e8c7dffed6846534a6cc8cf0"
     },
     {
-      "path": "standalone/assets/ArchivePanel-CETF0QSL.js",
+      "path": "standalone/assets/ArchivePanel-BhWOhGV-.js",
       "bytes": 19540,
-      "sha256": "c2d74ea957fa3aa90fce697d118fae1beca16c87399d9f5c2b17c6c6c0f926ab"
+      "sha256": "5a42e6bcbbbad527079db9c0e4515b950ab559d6ad70d17ce26e78c97155cfee"
     },
     {
-      "path": "standalone/assets/GameWorkspace-CBGge3Gp.js",
-      "bytes": 85667,
-      "sha256": "445f4c63f318a747e84a55b73d427a72fa2dccd21ffae919c57f3dfc4d8b437e"
+      "path": "standalone/assets/GameWorkspace-C_tXTCPi.js",
+      "bytes": 86061,
+      "sha256": "060a5efb1b007cd9a78553b2b1fdb96283786f43690c1da73d3f09cc67becc17"
     },
     {
-      "path": "standalone/assets/LivetickerAdmin-nBc_dK9g.js",
+      "path": "standalone/assets/LivetickerAdmin-DEW6MjMT.js",
       "bytes": 41353,
-      "sha256": "c819a8be5c872af20fc4c55384bbdc841ba4feaccf86e48a0dce9c5756ab0862"
+      "sha256": "e40c813d5812027dbf57b53d33f72372497b1518f5077c877e9bdadaf0d72912"
     },
     {
-      "path": "standalone/assets/SpieltageAdmin-BPu_rdGY.js",
+      "path": "standalone/assets/SpieltageAdmin-DVlYKvd4.js",
       "bytes": 6443,
-      "sha256": "967cf7dc6c4bab8f7b9316309d46f528f2fec2a51d765c8272065d4431c07b0f"
+      "sha256": "0c3a2ee24a16676b0c749ef762fe01f283faacdb0224e5c38b9b329e8fb2746b"
     },
     {
-      "path": "standalone/assets/games-6i-B2YM3.js",
+      "path": "standalone/assets/games-Dvy-td58.js",
       "bytes": 3120,
-      "sha256": "54fb9a1f31599847b127416b7905ecce8d30b9e98d9c05528d3c03e4cdb31658"
+      "sha256": "c880731793d5d4dda53cae71c5f9ea2f71d4f203c638930b0d81ad986f9423a7"
     },
     {
       "path": "standalone/assets/index-BBoOC1ti.css",
@@ -105,9 +105,9 @@
       "sha256": "a24decd244afc7a3bd67d180b87560dcdec03e64f30a02e4fd2aa2dcebef0d93"
     },
     {
-      "path": "standalone/assets/index-qdvuNHEJ.js",
-      "bytes": 452301,
-      "sha256": "f5120900e837eaf2b0c4b6739a5e871086f363f810e95f36d5d7d33e5fe2bc1b"
+      "path": "standalone/assets/index-DwGFKvpm.js",
+      "bytes": 452315,
+      "sha256": "42e454d888a33cdc9ca24830333fb928de30e1acc958c98ab7bae33b320c9853"
     },
     {
       "path": "standalone/assets/workbox-window.prod.es5-Bd17z0YL.js",
@@ -132,7 +132,7 @@
     {
       "path": "standalone/index.html",
       "bytes": 616,
-      "sha256": "12355359f33d1ffee849334203df39a7d6391cc7ca3249a2d4c279b6d7d027f4"
+      "sha256": "6e3e71975f21868e54e93181fc5a466e8faa723dc84c3210e5b3ab810c35bc54"
     },
     {
       "path": "standalone/manifest.webmanifest",
@@ -142,7 +142,7 @@
     {
       "path": "standalone/sw.js",
       "bytes": 1643,
-      "sha256": "1f2667b6eb9d858feb625591917c472ed51185c9fb2efec482c71f36e3caa9d4"
+      "sha256": "4f51c4a44b0d001099a289c651d25055c54fe9d058cf67da17dd85afde1eca7d"
     },
     {
       "path": "standalone/workbox-2fbc6a65.js",
