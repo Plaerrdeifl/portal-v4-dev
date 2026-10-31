@@ -1681,8 +1681,9 @@ function _e({ mutationsAllowed: e }) {
 }
 //#endregion
 //#region src/components/LivetickerAdmin.tsx
-function ve({ mutationsAllowed: e }) {
-	let [t, n] = (0, s.useState)("teams");
+var ve = (0, s.lazy)(() => import("./SpieltageAdmin-B2IeB1gn.js").then((e) => ({ default: e.SpieltageAdmin })));
+function ye({ mutationsAllowed: e, onOpenGame: t }) {
+	let [n, r] = (0, s.useState)("spieltage");
 	return /* @__PURE__ */ (0, H.jsxs)("div", {
 		className: "workspace-stack",
 		children: [/* @__PURE__ */ (0, H.jsxs)("nav", {
@@ -1691,31 +1692,46 @@ function ve({ mutationsAllowed: e }) {
 			children: [
 				/* @__PURE__ */ (0, H.jsx)("button", {
 					type: "button",
-					"aria-pressed": t === "teams",
-					onClick: () => n("teams"),
+					"aria-pressed": n === "spieltage",
+					onClick: () => r("spieltage"),
+					children: "Spieltage"
+				}),
+				/* @__PURE__ */ (0, H.jsx)("button", {
+					type: "button",
+					"aria-pressed": n === "teams",
+					onClick: () => r("teams"),
 					children: "Teams & Kader"
 				}),
 				/* @__PURE__ */ (0, H.jsx)("button", {
 					type: "button",
-					"aria-pressed": t === "stickers",
-					onClick: () => n("stickers"),
+					"aria-pressed": n === "stickers",
+					onClick: () => r("stickers"),
 					children: "WhatsApp-Sticker"
 				}),
 				/* @__PURE__ */ (0, H.jsx)("button", {
 					type: "button",
-					"aria-pressed": t === "templates",
-					onClick: () => n("templates"),
+					"aria-pressed": n === "templates",
+					onClick: () => r("templates"),
 					children: "Textausgaben"
 				}),
 				/* @__PURE__ */ (0, H.jsx)("button", {
 					type: "button",
-					"aria-pressed": t === "archive",
-					onClick: () => n("archive"),
+					"aria-pressed": n === "archive",
+					onClick: () => r("archive"),
 					children: "Archiv"
 				})
 			]
-		}), t === "teams" ? /* @__PURE__ */ (0, H.jsx)(se, { mutationsAllowed: e }) : t === "stickers" ? /* @__PURE__ */ (0, H.jsx)(re, { mutationsAllowed: e }) : t === "templates" ? /* @__PURE__ */ (0, H.jsx)(_e, { mutationsAllowed: e }) : /* @__PURE__ */ (0, H.jsx)(o, { initiallyOpen: !0 })]
+		}), n === "spieltage" ? /* @__PURE__ */ (0, H.jsx)(s.Suspense, {
+			fallback: /* @__PURE__ */ (0, H.jsx)("p", {
+				role: "status",
+				children: "Spieltage werden geöffnet …"
+			}),
+			children: /* @__PURE__ */ (0, H.jsx)(ve, {
+				mutationsAllowed: e,
+				onOpenGame: t
+			})
+		}) : n === "teams" ? /* @__PURE__ */ (0, H.jsx)(se, { mutationsAllowed: e }) : n === "stickers" ? /* @__PURE__ */ (0, H.jsx)(re, { mutationsAllowed: e }) : n === "templates" ? /* @__PURE__ */ (0, H.jsx)(_e, { mutationsAllowed: e }) : /* @__PURE__ */ (0, H.jsx)(o, { initiallyOpen: !0 })]
 	});
 }
 //#endregion
-export { ve as LivetickerAdmin };
+export { ye as LivetickerAdmin };

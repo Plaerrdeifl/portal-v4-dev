@@ -9001,7 +9001,7 @@ async function _e() {
 }
 //#endregion
 //#region src/App.tsx
-var ve = (0, m.lazy)(async () => ({ default: (await import("./chunks/GameWorkspace-BOyK1Ln7.js")).GameWorkspace })), ye = (0, m.lazy)(async () => ({ default: (await import("./chunks/LivetickerAdmin-DQ5qxIt1.js")).LivetickerAdmin }));
+var ve = (0, m.lazy)(async () => ({ default: (await import("./chunks/GameWorkspace-DoNL-t8r.js")).GameWorkspace })), ye = (0, m.lazy)(async () => ({ default: (await import("./chunks/LivetickerAdmin-Cp2HNhXS.js")).LivetickerAdmin }));
 function be({ embedded: e = !1 } = {}) {
 	let [t, r] = (0, m.useState)({ kind: "loading" }), [o, s] = (0, m.useState)("ticker"), c = (0, m.useCallback)(async () => {
 		r({ kind: "loading" });
@@ -9177,7 +9177,10 @@ function be({ embedded: e = !1 } = {}) {
 						children: "Liveticker"
 					}), /* @__PURE__ */ (0, x.jsx)("h2", { children: "Verwaltung wird geladen …" })]
 				}),
-				children: /* @__PURE__ */ (0, x.jsx)(ye, { mutationsAllowed: a(t.platform, i().mutationsEnabled, i().environment === "DEV" && !0) })
+				children: /* @__PURE__ */ (0, x.jsx)(ye, {
+					mutationsAllowed: a(t.platform, i().mutationsEnabled, i().environment === "DEV" && !0),
+					onOpenGame: () => s("ticker")
+				})
 			}),
 			/* @__PURE__ */ (0, x.jsxs)("footer", {
 				className: "classic-app-footer",
