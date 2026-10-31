@@ -97,37 +97,37 @@ function b(e) {
 function x(e, t) {
 	return e.jobs.find((e) => e.kind === t) || null;
 }
-function ee(e) {
+function S(e) {
 	return e?.status === "QUEUED" || e?.status === "PROCESSING";
 }
-function te(e) {
+function C(e) {
 	return e ? e.status === "QUEUED" ? "Warteschlange" : e.status === "PROCESSING" ? "Wird erzeugt" : e.status === "SUCCEEDED" ? "Fertig" : e.status === "FAILED" ? "Fehlgeschlagen" : e.status || "Unbekannt" : "Noch nicht erzeugt";
 }
-function ne(e, t) {
+function w(e, t) {
 	return e ? !t || t.jobId !== e ? "wait" : t.status === "SUCCEEDED" ? "ready" : t.status === "FAILED" ? "failed" : "wait" : "none";
 }
-async function S(e) {
+async function T(e) {
 	return b(await i("social_media_generator_liveticker_render_status", { eventId: e }));
 }
-function re(e, t) {
+function ee(e, t) {
 	return x(e, "FINAL")?.status === "SUCCEEDED" ? e : x(t, "FINAL")?.status === "SUCCEEDED" ? t : e.jobs.length ? e : t;
 }
-async function C(e) {
+async function te(e) {
 	let t = null, n = null;
 	try {
-		if (t = await S(e), x(t, "FINAL")?.status === "SUCCEEDED") return t;
+		if (t = await T(e), x(t, "FINAL")?.status === "SUCCEEDED") return t;
 	} catch (e) {
 		n = e;
 	}
 	try {
 		let n = b(await i("liveticker_graphics_status", { eventId: e }));
-		return t ? re(t, n) : n;
+		return t ? ee(t, n) : n;
 	} catch (e) {
 		if (t) return t;
 		throw n || e;
 	}
 }
-async function w(e, t) {
+async function ne(e, t) {
 	let n = await i("social_media_generator_liveticker_render_start", {
 		eventId: e,
 		kind: t
@@ -135,7 +135,7 @@ async function w(e, t) {
 	if (!u(r)) throw Error("Generator-Request wurde ohne gültige Request-ID angelegt.");
 	return r;
 }
-async function T(e, t = fetch) {
+async function re(e, t = fetch) {
 	let n = h(e);
 	if (!n) throw Error("LIVETICKER_GRAPHIC_SHARE_INVALID");
 	let r = await t(n, {
@@ -159,38 +159,38 @@ async function T(e, t = fetch) {
 function E(e) {
 	return String(e ?? "").trim();
 }
-function ie() {
+function D() {
 	return o();
 }
-var D = /* @__PURE__ */ new Map();
-function O(e, t) {
+var O = /* @__PURE__ */ new Map();
+function k(e, t) {
 	let n = "plaerrdeifl.liveticker.pending-request.v1:" + e, r = JSON.stringify(t);
 	try {
-		let e = typeof localStorage > "u" ? null : localStorage, t = e ? e.getItem(n) : D.get(n);
+		let e = typeof localStorage > "u" ? null : localStorage, t = e ? e.getItem(n) : O.get(n);
 		if (t) {
 			let e = JSON.parse(t);
 			if (!u(e.id) || e.fingerprint !== r) throw Error("Vorheriger Versandauftrag ist noch unbestätigt. Bitte erst dessen Status prüfen.");
 			return e.id;
 		}
-		let i = ie(), a = JSON.stringify({
+		let i = D(), a = JSON.stringify({
 			id: i,
 			fingerprint: r
 		});
 		if (e) e.setItem(n, a);
-		else if (typeof window > "u") D.set(n, a);
+		else if (typeof window > "u") O.set(n, a);
 		else throw Error("Versandauftrag konnte nicht für sichere Wiederholung vorgemerkt werden.");
 		return i;
 	} catch (e) {
 		throw e instanceof Error ? e : /* @__PURE__ */ Error("Versandauftrag konnte nicht sicher vorgemerkt werden.");
 	}
 }
-function k(e) {
+function A(e) {
 	let t = "plaerrdeifl.liveticker.pending-request.v1:" + e;
 	try {
-		typeof localStorage < "u" && localStorage.removeItem(t), D.delete(t);
+		typeof localStorage < "u" && localStorage.removeItem(t), O.delete(t);
 	} catch {}
 }
-function ae(e) {
+function ie(e) {
 	let t = e || {};
 	return { deliveries: Array.isArray(t.deliveries) ? t.deliveries.map((e) => {
 		let t = e || {};
@@ -226,41 +226,41 @@ function ae(e) {
 		};
 	}).filter((e) => !!e.id) : [] };
 }
-function oe(e, t) {
+function ae(e, t) {
 	return e.deliveries.find((e) => e.id === t) || null;
 }
-function se(e) {
+function oe(e) {
 	let t = E(e).toUpperCase();
 	return t === "SUCCEEDED" || t === "FAILED";
 }
-function ce(e, t, n) {
+function se(e, t, n) {
 	let r = (E(e.filename).split(/[\\/]/).pop() || "").replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^_+|_+$/g, "");
 	return /^[A-Za-z0-9._-]{1,96}[.]png$/i.test(r) ? r : "liveticker_" + t.toLowerCase() + "_" + E(n).slice(0, 8) + ".png";
 }
-function le(e) {
+function ce(e) {
 	let t = E(e);
 	if (!t) throw Error("Text fehlt – WhatsApp wird nicht gesendet.");
 	if (t.length > 4e3) throw Error("WhatsApp-Text ist länger als 4.000 Zeichen.");
 	return t;
 }
-function A(e, t) {
+function j(e, t) {
 	return "plaerrdeifl.liveticker.summary-delivery.v1:" + e + ":" + t;
 }
-function j(e, t, n) {
+function le(e, t, n) {
 	try {
-		localStorage.setItem(A(e, t), n);
+		localStorage.setItem(j(e, t), n);
 	} catch {}
 }
 function M(e, t) {
 	try {
-		let n = E(localStorage.getItem(A(e, t)));
+		let n = E(localStorage.getItem(j(e, t)));
 		return u(n) ? n : "";
 	} catch {
 		return "";
 	}
 }
 async function N(e) {
-	return ae(await i("liveticker_whatsapp_deliveries_list", { eventId: e }));
+	return ie(await i("liveticker_whatsapp_deliveries_list", { eventId: e }));
 }
 async function P({ eventId: e, deliveryId: t }) {
 	if (!u(e)) throw Error("Das Spiel ist ungültig.");
@@ -271,7 +271,7 @@ async function P({ eventId: e, deliveryId: t }) {
 	});
 }
 async function F({ eventId: e, graphicJobId: t, kind: n, artifact: r, message: a }) {
-	let o = le(a), s = "summary:" + e + ":" + t, c = O(s, [
+	let o = ce(a), s = "summary:" + e + ":" + t, c = k(s, [
 		r.downloadUrl,
 		o,
 		n
@@ -280,11 +280,11 @@ async function F({ eventId: e, graphicJobId: t, kind: n, artifact: r, message: a
 		deliveryMode: "IMAGE_WITH_CAPTION",
 		idempotencyKey: c,
 		imageUrl: r.downloadUrl,
-		imageFilename: ce(r, n, t),
+		imageFilename: se(r, n, t),
 		message: o
 	}) || {}).delivery || {}).id);
 	if (!u(l)) throw Error("WhatsApp-Delivery-ID fehlt.");
-	return k(s), j(e, t, l), l;
+	return A(s), le(e, t, l), l;
 }
 //#endregion
 //#region src/liveticker/stickers.ts
@@ -389,10 +389,10 @@ async function W({ eventId: e, stickerId: t }) {
 	let n = "sticker:" + e + ":" + t, r = I(((await i("liveticker_whatsapp_sticker_enqueue", {
 		eventId: e,
 		stickerId: t,
-		idempotencyKey: O(n, [e, t])
+		idempotencyKey: k(n, [e, t])
 	}) || {}).delivery || {}).id);
 	if (!u(r)) throw Error("Der Sticker-Versandauftrag konnte nicht bestätigt werden.");
-	return k(n), r;
+	return A(n), r;
 }
 function ue(e, { action: t, opponentTeamId: n, penaltyTeams: r = [] }) {
 	let i = I(n);
@@ -529,63 +529,67 @@ async function ve(e) {
 //#endregion
 //#region src/components/ArchivePanel.tsx
 var $ = e();
-function ye({ initiallyOpen: e = !1 } = {}) {
+function ye(e) {
+	let t = e instanceof Error ? e.message.trim() : "";
+	return t ? "Endflyer-Status konnte nicht geladen werden: " + t : "Endflyer-Status konnte nicht geladen werden.";
+}
+function be({ initiallyOpen: e = !1 } = {}) {
 	let [t, n] = (0, G.useState)(e), [r, i] = (0, G.useState)([]), [a, o] = (0, G.useState)(""), [s, c] = (0, G.useState)({
 		post: "",
 		story: ""
-	}), [l, u] = (0, G.useState)(!1), [d, f] = (0, G.useState)(!1), [p, m] = (0, G.useState)(!1), [h, g] = (0, G.useState)(""), _ = (0, G.useMemo)(() => r.find((e) => e.eventId === a) || null, [r, a]);
-	async function v() {
-		u(!0), g("Spielarchiv wird geladen …");
+	}), [l, u] = (0, G.useState)(!1), [d, f] = (0, G.useState)(!1), [p, m] = (0, G.useState)(null), [h, g] = (0, G.useState)(0), [_, v] = (0, G.useState)(!1), [y, b] = (0, G.useState)(""), x = (0, G.useMemo)(() => r.find((e) => e.eventId === a) || null, [r, a]);
+	async function S() {
+		u(!0), b("Spielarchiv wird geladen …");
 		try {
 			let e = await _e();
-			i(e), g(e.length ? "Spielarchiv geladen." : "Noch keine abgeschlossenen Spiele im Liveticker-Archiv."), a && !e.some((e) => e.eventId === a) && (o(""), c({
+			i(e), b(e.length ? "Spielarchiv geladen." : "Noch keine abgeschlossenen Spiele im Liveticker-Archiv."), a && !e.some((e) => e.eventId === a) && (o(""), c({
 				post: "",
 				story: ""
 			}));
 		} catch (e) {
-			g(e instanceof Error ? e.message : "Spielarchiv konnte nicht geladen werden.");
+			b(e instanceof Error ? e.message : "Spielarchiv konnte nicht geladen werden.");
 		} finally {
 			u(!1);
 		}
 	}
 	(0, G.useEffect)(() => {
-		t && v();
+		t && S();
 	}, [t]), (0, G.useEffect)(() => {
-		if (!_) {
+		if (!x) {
 			c({
 				post: "",
 				story: ""
-			});
+			}), m(null);
 			return;
 		}
 		let e = !1;
-		return f(!0), c({
+		return f(!0), m(null), c({
 			post: "",
 			story: ""
-		}), C(_.eventId).then((t) => {
-			e || (c(ge(t)), f(!1));
-		}, () => {
+		}), te(x.eventId).then((t) => {
+			e || (c(ge(t)), m(null), f(!1));
+		}, (t) => {
 			e || (c({
 				post: "",
 				story: ""
-			}), f(!1));
+			}), m(ye(t)), f(!1));
 		}), () => {
 			e = !0;
 		};
-	}, [_]);
-	async function y() {
-		if (_ && !p && Q() && window.confirm("Spiel „" + _.displayTitle + "“ wirklich zurücksetzen? Tore, Strafen, Penaltyschießen und Spielminute werden geleert.")) {
-			m(!0), g("Spiel wird zurückgesetzt …");
+	}, [x, h]);
+	async function C() {
+		if (x && !_ && Q() && window.confirm("Spiel „" + x.displayTitle + "“ wirklich zurücksetzen? Tore, Strafen, Penaltyschießen und Spielminute werden geleert.")) {
+			v(!0), b("Spiel wird zurückgesetzt …");
 			try {
-				let e = await ve(_);
+				let e = await ve(x);
 				i(e), o(""), c({
 					post: "",
 					story: ""
-				}), g("Spiel wurde lokal in DEV zurückgesetzt.");
+				}), b("Spiel wurde lokal in DEV zurückgesetzt.");
 			} catch (e) {
-				g(e instanceof Error ? e.message : "Spiel konnte nicht zurückgesetzt werden.");
+				b(e instanceof Error ? e.message : "Spiel konnte nicht zurückgesetzt werden.");
 			} finally {
-				m(!1);
+				v(!1);
 			}
 		}
 	}
@@ -601,8 +605,8 @@ function ye({ initiallyOpen: e = !1 } = {}) {
 			children: "Archiv öffnen"
 		})]
 	});
-	if (_) {
-		let e = Y(_);
+	if (x) {
+		let e = Y(x);
 		return /* @__PURE__ */ (0, $.jsxs)("section", {
 			className: "workspace-card",
 			children: [
@@ -611,7 +615,7 @@ function ye({ initiallyOpen: e = !1 } = {}) {
 					children: [/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("p", {
 						className: "eyebrow",
 						children: "Liveticker · Archiv"
-					}), /* @__PURE__ */ (0, $.jsx)("h2", { children: _.displayTitle })] }), /* @__PURE__ */ (0, $.jsx)("button", {
+					}), /* @__PURE__ */ (0, $.jsx)("h2", { children: x.displayTitle })] }), /* @__PURE__ */ (0, $.jsx)("button", {
 						className: "secondary-button compact-button",
 						type: "button",
 						onClick: () => o(""),
@@ -623,18 +627,18 @@ function ye({ initiallyOpen: e = !1 } = {}) {
 					children: [
 						/* @__PURE__ */ (0, $.jsx)("span", { children: "Endstand" }),
 						/* @__PURE__ */ (0, $.jsx)("strong", { children: e.label }),
-						/* @__PURE__ */ (0, $.jsx)("small", { children: _.displayTitle })
+						/* @__PURE__ */ (0, $.jsx)("small", { children: x.displayTitle })
 					]
 				}),
 				/* @__PURE__ */ (0, $.jsxs)("div", {
 					className: "archive-facts",
 					children: [
-						/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: "Spieltag" }), /* @__PURE__ */ (0, $.jsx)("strong", { children: X(_.eventDate) })] }),
-						/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: "Abgeschlossen" }), /* @__PURE__ */ (0, $.jsx)("strong", { children: Z(_.completedAt) })] }),
-						/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: "Letzte Spielminute" }), /* @__PURE__ */ (0, $.jsx)("strong", { children: _.minute })] }),
-						/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: "Tore erfasst" }), /* @__PURE__ */ (0, $.jsx)("strong", { children: _.goalCount })] }),
-						/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: "Strafen erfasst" }), /* @__PURE__ */ (0, $.jsx)("strong", { children: _.penaltyCount })] }),
-						/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: "Spielort" }), /* @__PURE__ */ (0, $.jsx)("strong", { children: _.venue || "–" })] })
+						/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: "Spieltag" }), /* @__PURE__ */ (0, $.jsx)("strong", { children: X(x.eventDate) })] }),
+						/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: "Abgeschlossen" }), /* @__PURE__ */ (0, $.jsx)("strong", { children: Z(x.completedAt) })] }),
+						/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: "Letzte Spielminute" }), /* @__PURE__ */ (0, $.jsx)("strong", { children: x.minute })] }),
+						/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: "Tore erfasst" }), /* @__PURE__ */ (0, $.jsx)("strong", { children: x.goalCount })] }),
+						/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: "Strafen erfasst" }), /* @__PURE__ */ (0, $.jsx)("strong", { children: x.penaltyCount })] }),
+						/* @__PURE__ */ (0, $.jsxs)("div", { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: "Spielort" }), /* @__PURE__ */ (0, $.jsx)("strong", { children: x.venue || "–" })] })
 					]
 				}),
 				/* @__PURE__ */ (0, $.jsxs)("div", {
@@ -644,7 +648,19 @@ function ye({ initiallyOpen: e = !1 } = {}) {
 						children: "Instagram"
 					}), /* @__PURE__ */ (0, $.jsx)("strong", { children: "Endflyer" })] }), d ? /* @__PURE__ */ (0, $.jsx)("p", {
 						className: "empty-note",
+						role: "status",
 						children: "Endflyer werden geladen …"
+					}) : p ? /* @__PURE__ */ (0, $.jsxs)("div", {
+						className: "archive-flyer-error",
+						children: [/* @__PURE__ */ (0, $.jsx)("p", {
+							role: "alert",
+							children: p
+						}), /* @__PURE__ */ (0, $.jsx)("button", {
+							className: "secondary-button compact-button",
+							type: "button",
+							onClick: () => g((e) => e + 1),
+							children: "Erneut laden"
+						})]
 					}) : s.post || s.story ? /* @__PURE__ */ (0, $.jsxs)("div", {
 						className: "inline-actions",
 						children: [s.post && /* @__PURE__ */ (0, $.jsx)("a", {
@@ -668,13 +684,13 @@ function ye({ initiallyOpen: e = !1 } = {}) {
 				Q() && /* @__PURE__ */ (0, $.jsx)("button", {
 					className: "danger-button",
 					type: "button",
-					disabled: p,
-					onClick: () => void y(),
-					children: p ? "Wird zurückgesetzt …" : "Spiel zurücksetzen"
+					disabled: _,
+					onClick: () => void C(),
+					children: _ ? "Wird zurückgesetzt …" : "Spiel zurücksetzen"
 				}),
 				/* @__PURE__ */ (0, $.jsx)("p", {
 					className: "workspace-message",
-					children: h
+					children: y
 				})
 			]
 		});
@@ -693,7 +709,7 @@ function ye({ initiallyOpen: e = !1 } = {}) {
 						className: "secondary-button compact-button",
 						type: "button",
 						disabled: l,
-						onClick: () => void v(),
+						onClick: () => void S(),
 						children: "Aktualisieren"
 					}), /* @__PURE__ */ (0, $.jsx)("button", {
 						className: "secondary-button compact-button",
@@ -725,10 +741,10 @@ function ye({ initiallyOpen: e = !1 } = {}) {
 			/* @__PURE__ */ (0, $.jsx)("p", {
 				className: "workspace-message",
 				"data-loading": l ? "true" : "false",
-				children: h
+				children: y
 			})
 		]
 	});
 }
 //#endregion
-export { x as C, o as E, f as S, T, s as _, me as a, ee as b, V as c, oe as d, se as f, P as g, N as h, U as i, de as l, M as m, ue as n, H as o, F as p, W as r, B as s, ye as t, fe as u, w as v, S as w, te as x, ne as y };
+export { x as C, o as E, f as S, re as T, s as _, me as a, S as b, V as c, ae as d, oe as f, P as g, N as h, U as i, de as l, M as m, ue as n, H as o, F as p, W as r, B as s, be as t, fe as u, ne as v, T as w, C as x, w as y };
