@@ -2,22 +2,22 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/liveticker",
-  "sourceCommit": "642aef59c99860675a83696b179dbd0443b5aa8e",
+  "sourceCommit": "addefb7347b4b652a4a694bfdeecefe3a10373c2",
   "sourcePackageLockSha256": "0f87ce32d86bbbc93d1118e518d8373e5ce7097cc354e64e86b746b3723cde54",
-  "sourceBuildCommand": "npm ci --include=dev && npm run build && npm run build:cockpit && npm run verify:hosted-dev && npm run test:embed-build",
+  "sourceBuildCommand": "npm ci --include=dev --allow-remote=root && npm run check && npm run build && npm run build:cockpit && npm run verify:hosted-dev && npm run test:embed-build",
   "sourceBuildEnvironment": {
     "VITE_APP_ENV": "DEV",
     "VITE_LIVETICKER_HOSTED": "enabled",
     "VITE_LIVETICKER_MUTATIONS": "enabled",
     "NODE_ENV": "production",
-    "CHROMIUM_BIN": "chromium"
+    "CHROMIUM_BIN": "/snap/bin/chromium"
   },
   "sourceToolchain": {
-    "node": "24.19.0",
-    "npm": "11.9.0"
+    "node": "24.20.0",
+    "npm": "12.0.1"
   },
   "artifactRoot": "integrations/liveticker/release",
-  "artifactSha256": "29f08cee47022db0aed20a741c79178ce1470bf239c97ccea4566823954fece5",
+  "artifactSha256": "a131a7a6c1602a4caf8f1b448cc760856e542344b5ebc9a23c9631f6619c4797",
   "files": [
     {
       "path": "embed/chunks/ArchivePanel-DUdVa-sY.js",
@@ -56,38 +56,38 @@
     },
     {
       "path": "embed/module.js",
-      "bytes": 301282,
-      "sha256": "f385457df1e2dc93ce3aac828a27d88a9e26cbed6abdd692bc00721e05b08cb0"
+      "bytes": 301583,
+      "sha256": "0706c5ce231f0023ebc620ee067d4ae6eb77fe5c0b12ca0cb4720e7f8f7101ab"
     },
     {
       "path": "embed/style.css",
-      "bytes": 59131,
-      "sha256": "df0c3f00ed8c02ef43a0ab5557ec1e6229bf6a9342ba5ba230277c6a87fcf3f1"
+      "bytes": 59211,
+      "sha256": "530ae88af22e9fd5fb280abc86ccf7398491764cf927a1eed23fc4e4ac0e5a01"
     },
     {
-      "path": "standalone/assets/ArchivePanel-BkAP6Z2y.js",
+      "path": "standalone/assets/ArchivePanel-CUliREO3.js",
       "bytes": 19535,
-      "sha256": "437df56e7c8d3e353a63c24679dab6df0c28bd82a9936d0633e75b94de925efe"
+      "sha256": "2f91d662dcad6ff430299f267d1a3930a1378a97e29dc2eaa49060af28371d35"
     },
     {
-      "path": "standalone/assets/GameWorkspace-BKjf9e90.js",
+      "path": "standalone/assets/GameWorkspace-BfmNq1T1.js",
       "bytes": 88538,
-      "sha256": "84590d685cbaef9fb7e53497c88f2efeb77d4ac2e5ca7bf5e2f93762a5e820ec"
+      "sha256": "ca7e014e79f9fcb5aff8adf641df72679aa6614f5c84739e7c053e9b790df608"
     },
     {
-      "path": "standalone/assets/LivetickerAdmin-DTFBNJ-4.js",
+      "path": "standalone/assets/LivetickerAdmin-7NnVQv9o.js",
       "bytes": 40698,
-      "sha256": "8a971e8b89986973cc7582a285eece1ec11c3f46652273501b7713b55a2d1eee"
+      "sha256": "376519f14feeb9b52b29ce2ae3da6fbca73c0c4cd5639b2b8bdf35f1c88de203"
     },
     {
-      "path": "standalone/assets/index-D3UCdvEm.css",
-      "bytes": 59119,
-      "sha256": "637a66954301d28981a4200a16ceed90bdee9efd48cc8afc444d8b1237c382f3"
+      "path": "standalone/assets/index-CG1Cr8Iq.js",
+      "bytes": 449840,
+      "sha256": "112bc36717bcd87cd7bfc23b516a12940a328df49f3b7503313340ffb6f49324"
     },
     {
-      "path": "standalone/assets/index-JSuQxwYJ.js",
-      "bytes": 449628,
-      "sha256": "a7ea11ccc3335d126118c86f8814a6d02cf6a780c465be4c921b839e48d5b623"
+      "path": "standalone/assets/index-CnHy-f_O.css",
+      "bytes": 59199,
+      "sha256": "e9e009e8102f31a7a1ebda8bc995253b38282c2fe4a5b861d3040d7c6959e924"
     },
     {
       "path": "standalone/icons/icon-192.png",
@@ -107,7 +107,7 @@
     {
       "path": "standalone/index.html",
       "bytes": 698,
-      "sha256": "f737780527df90e916c83734c542a939050dc106d15b4a57320312d535706ac4"
+      "sha256": "997e47ffc760871dc4b1c143fe987498de3bea8477785cc16115ccfd4dd1def1"
     },
     {
       "path": "standalone/manifest.webmanifest",
@@ -122,7 +122,7 @@
     {
       "path": "standalone/sw.js",
       "bytes": 1541,
-      "sha256": "3fbf4c587852e9732ed14e786aaa74a3819390578c6cb159509b3419c43f5970"
+      "sha256": "90848e4598b66b84ff1010a9eab0a4a18e6f99a9b524591b2483b2ef0cb06055"
     },
     {
       "path": "standalone/workbox-2fbc6a65.js",
