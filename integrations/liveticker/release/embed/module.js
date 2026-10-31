@@ -8890,13 +8890,32 @@ function oe({ onCredential: e, onDevPortalLogin: t }) {
 	});
 }
 //#endregion
+//#region src/components/LivetickerTopline.tsx
+function se({ embedded: e, hosted: t }) {
+	return e ? null : /* @__PURE__ */ (0, x.jsxs)("header", {
+		className: "classic-topline",
+		children: [/* @__PURE__ */ (0, x.jsxs)("div", {
+			className: "classic-brand",
+			"aria-label": "Plärrdeifl Liveticker",
+			children: [/* @__PURE__ */ (0, x.jsx)("img", {
+				src: t ? "/liveticker/icons/icon-192.png" : "/icons/icon-192.png",
+				alt: ""
+			}), /* @__PURE__ */ (0, x.jsxs)("span", { children: [/* @__PURE__ */ (0, x.jsx)("strong", { children: "Plärrdeifl" }), /* @__PURE__ */ (0, x.jsx)("small", { children: "LIVETICKER" })] })]
+		}), t ? /* @__PURE__ */ (0, x.jsx)("a", {
+			className: "liveticker-back-to-cockpit",
+			href: "/cockpit/",
+			children: "← Cockpit"
+		}) : null]
+	});
+}
+//#endregion
 //#region src/platform/auth.ts
-function se(e) {
+function ce(e) {
 	if (!e || e.state !== "ACTIVE") return !1;
 	let t = new Set(e.permissions || []);
 	return t.has("portal.admin") || t.has("liveticker.manage");
 }
-async function ce() {
+async function le() {
 	let { data: e, error: t } = await r().auth.getSession();
 	if (t) throw t;
 	let n = e.session;
@@ -8908,7 +8927,7 @@ async function ce() {
 		active: !1,
 		allowed: !1
 	};
-	let i = await s("bootstrap"), a = se(i);
+	let i = await s("bootstrap"), a = ce(i);
 	{
 		let e = await s("cockpit_access_get"), t = e && typeof e == "object" && !Array.isArray(e) ? e : null, r = t?.portal, i = t?.cockpit, o = t?.permissions?.liveticker;
 		if (!t || t.schemaVersion !== 1 || t.userId !== n.user.id || typeof r?.active != "boolean" || typeof i?.allowed != "boolean" || typeof o?.effectiveAllowed != "boolean" || o.capability !== "liveticker.manage") throw Error("Der serverseitige Cockpit-Liveticker-Zugang ist ungültig.");
@@ -8923,7 +8942,7 @@ async function ce() {
 		allowed: a
 	};
 }
-async function le(e, t = "") {
+async function ue(e, t = "") {
 	let n = String(e || "").trim();
 	if (!n) throw Error("Google hat kein gültiges ID-Token zurückgegeben.");
 	let i = r(), a = {
@@ -8934,25 +8953,25 @@ async function le(e, t = "") {
 	let { data: o, error: s } = await i.auth.signInWithIdToken(a);
 	if (s) throw s;
 	if (!o.session) throw Error("Die Google-Anmeldung hat keine Portalsitzung erzeugt.");
-	return ce();
+	return le();
 }
-async function ue() {
+async function de() {
 	let { error: e } = await r().auth.signOut();
 	if (e) throw e;
 }
 //#endregion
 //#region src/platform/dev-handoff.ts
-var de = "https://dev.plaerrdeifl.de/liveticker-local-handoff", fe = "pd_session";
-function pe(e) {
+var fe = "https://dev.plaerrdeifl.de/liveticker-local-handoff", pe = "pd_session";
+function me(e) {
 	return typeof e == "string" ? e.trim() : "";
 }
-function me(e) {
+function he(e) {
 	let t = String(e || "").replace(/^#/, "");
 	if (!t) return null;
-	let n = new URLSearchParams(t).get(fe);
+	let n = new URLSearchParams(t).get(pe);
 	if (!n) return null;
 	try {
-		let e = JSON.parse(n), t = pe(e.accessToken), r = pe(e.refreshToken);
+		let e = JSON.parse(n), t = me(e.accessToken), r = me(e.refreshToken);
 		return !t || !r ? null : {
 			accessToken: t,
 			refreshToken: r
@@ -8961,15 +8980,15 @@ function me(e) {
 		return null;
 	}
 }
-function he() {
+function ge() {
 	let e = window.location.pathname + window.location.search;
 	window.history.replaceState(null, "", e);
 }
-async function ge() {
+async function _e() {
 	if (i().environment !== "DEV") return !1;
-	let e = me(window.location.hash);
+	let e = he(window.location.hash);
 	if (!e) return !1;
-	he();
+	ge();
 	let t = r(), { error: n } = await t.auth.setSession({
 		access_token: e.accessToken,
 		refresh_token: e.refreshToken
@@ -8982,76 +9001,76 @@ async function ge() {
 }
 //#endregion
 //#region src/App.tsx
-var _e = (0, m.lazy)(async () => ({ default: (await import("./chunks/GameWorkspace-BOyK1Ln7.js")).GameWorkspace })), ve = (0, m.lazy)(async () => ({ default: (await import("./chunks/LivetickerAdmin-DQ5qxIt1.js")).LivetickerAdmin }));
-function ye() {
-	let [e, t] = (0, m.useState)({ kind: "loading" }), [r, o] = (0, m.useState)("ticker"), s = (0, m.useCallback)(async () => {
-		t({ kind: "loading" });
+var ve = (0, m.lazy)(async () => ({ default: (await import("./chunks/GameWorkspace-BOyK1Ln7.js")).GameWorkspace })), ye = (0, m.lazy)(async () => ({ default: (await import("./chunks/LivetickerAdmin-DQ5qxIt1.js")).LivetickerAdmin }));
+function be({ embedded: e = !1 } = {}) {
+	let [t, r] = (0, m.useState)({ kind: "loading" }), [o, s] = (0, m.useState)("ticker"), c = (0, m.useCallback)(async () => {
+		r({ kind: "loading" });
 		try {
-			await ge();
+			await _e();
 			let e = await n();
 			if (!e.available || e.mode === "MAINTENANCE") {
-				t({
+				r({
 					kind: "maintenance",
 					platform: e
 				});
 				return;
 			}
-			let r = await ce();
-			if (!r.authenticated) {
-				t({ kind: "signed-out" });
+			let t = await le();
+			if (!t.authenticated) {
+				r({ kind: "signed-out" });
 				return;
 			}
-			if (!r.allowed) {
-				t({
+			if (!t.allowed) {
+				r({
 					kind: "denied",
-					auth: r
+					auth: t
 				});
 				return;
 			}
-			t({
+			r({
 				kind: "ready",
-				auth: r,
+				auth: t,
 				platform: e
 			});
 		} catch (e) {
-			t({
+			r({
 				kind: "error",
 				message: e instanceof Error ? e.message : "Liveticker konnte nicht gestartet werden."
 			});
 		}
 	}, []);
 	(0, m.useEffect)(() => {
-		s();
-	}, [s]);
-	let c = (0, m.useCallback)(async (e, r) => {
-		let i = await le(e, r), a = await n();
+		c();
+	}, [c]);
+	let l = (0, m.useCallback)(async (e, t) => {
+		let i = await ue(e, t), a = await n();
 		if (!a.available || a.mode === "MAINTENANCE") {
-			t({
+			r({
 				kind: "maintenance",
 				platform: a
 			});
 			return;
 		}
 		if (!i.allowed) {
-			t({
+			r({
 				kind: "denied",
 				auth: i
 			});
 			return;
 		}
-		t({
+		r({
 			kind: "ready",
 			auth: i,
 			platform: a
 		});
 	}, []);
 	(0, m.useCallback)(async () => {
-		window.location.assign(de);
+		window.location.assign(fe);
 	}, []);
-	let l = (0, m.useCallback)(async () => {
-		await ue(), t({ kind: "signed-out" });
+	let u = (0, m.useCallback)(async () => {
+		await de(), r({ kind: "signed-out" });
 	}, []);
-	if (e.kind === "loading") return /* @__PURE__ */ (0, x.jsx)("main", {
+	if (t.kind === "loading") return /* @__PURE__ */ (0, x.jsx)("main", {
 		className: "shell",
 		children: /* @__PURE__ */ (0, x.jsxs)("section", {
 			className: "card",
@@ -9065,7 +9084,7 @@ function ye() {
 			]
 		})
 	});
-	if (e.kind === "maintenance") return /* @__PURE__ */ (0, x.jsx)("main", {
+	if (t.kind === "maintenance") return /* @__PURE__ */ (0, x.jsx)("main", {
 		className: "shell",
 		children: /* @__PURE__ */ (0, x.jsxs)("section", {
 			className: "card",
@@ -9075,23 +9094,23 @@ function ye() {
 					children: "Plärrdeifl Liveticker"
 				}),
 				/* @__PURE__ */ (0, x.jsx)("h1", { children: "Wartungsmodus" }),
-				/* @__PURE__ */ (0, x.jsx)("p", { children: e.platform.message || "Der Liveticker ist vorübergehend nicht verfügbar." }),
+				/* @__PURE__ */ (0, x.jsx)("p", { children: t.platform.message || "Der Liveticker ist vorübergehend nicht verfügbar." }),
 				/* @__PURE__ */ (0, x.jsx)("button", {
 					type: "button",
-					onClick: () => void s(),
+					onClick: () => void c(),
 					children: "Erneut prüfen"
 				})
 			]
 		})
 	});
-	if (e.kind === "signed-out") return /* @__PURE__ */ (0, x.jsx)("main", {
+	if (t.kind === "signed-out") return /* @__PURE__ */ (0, x.jsx)("main", {
 		className: "shell",
 		children: /* @__PURE__ */ (0, x.jsx)(oe, {
-			onCredential: c,
+			onCredential: l,
 			onDevPortalLogin: (i().environment, void 0)
 		})
 	});
-	if (e.kind === "denied") return /* @__PURE__ */ (0, x.jsx)("main", {
+	if (t.kind === "denied") return /* @__PURE__ */ (0, x.jsx)("main", {
 		className: "shell",
 		children: /* @__PURE__ */ (0, x.jsxs)("section", {
 			className: "card",
@@ -9108,13 +9127,13 @@ function ye() {
 				] }),
 				/* @__PURE__ */ (0, x.jsx)("button", {
 					type: "button",
-					onClick: () => void l(),
+					onClick: () => void u(),
 					children: "Abmelden"
 				})
 			]
 		})
 	});
-	if (e.kind === "error") return /* @__PURE__ */ (0, x.jsx)("main", {
+	if (t.kind === "error") return /* @__PURE__ */ (0, x.jsx)("main", {
 		className: "shell",
 		children: /* @__PURE__ */ (0, x.jsxs)("section", {
 			className: "card",
@@ -9124,35 +9143,24 @@ function ye() {
 					children: "Plärrdeifl Liveticker"
 				}),
 				/* @__PURE__ */ (0, x.jsx)("h1", { children: "Start fehlgeschlagen" }),
-				/* @__PURE__ */ (0, x.jsx)("p", { children: e.message }),
+				/* @__PURE__ */ (0, x.jsx)("p", { children: t.message }),
 				/* @__PURE__ */ (0, x.jsx)("button", {
 					type: "button",
-					onClick: () => void s(),
+					onClick: () => void c(),
 					children: "Erneut versuchen"
 				})
 			]
 		})
 	});
-	let u = e.auth.bootstrap?.user, d = [u?.firstName, u?.lastName].filter(Boolean).join(" ");
+	let d = t.auth.bootstrap?.user, f = [d?.firstName, d?.lastName].filter(Boolean).join(" ");
 	return /* @__PURE__ */ (0, x.jsxs)("main", {
-		className: "app-shell classic-shell",
+		className: e ? "app-shell classic-shell classic-shell--embedded" : "app-shell classic-shell",
 		children: [
-			/* @__PURE__ */ (0, x.jsxs)("header", {
-				className: "classic-topline",
-				children: [/* @__PURE__ */ (0, x.jsxs)("div", {
-					className: "classic-brand",
-					"aria-label": "Plärrdeifl Liveticker",
-					children: [/* @__PURE__ */ (0, x.jsx)("img", {
-						src: "/liveticker/icons/icon-192.png",
-						alt: ""
-					}), /* @__PURE__ */ (0, x.jsxs)("span", { children: [/* @__PURE__ */ (0, x.jsx)("strong", { children: "Plärrdeifl" }), /* @__PURE__ */ (0, x.jsx)("small", { children: "LIVETICKER" })] })]
-				}), /* @__PURE__ */ (0, x.jsx)("a", {
-					className: "liveticker-back-to-cockpit",
-					href: "/cockpit/",
-					children: "← Cockpit"
-				})]
+			/* @__PURE__ */ (0, x.jsx)(se, {
+				embedded: e,
+				hosted: !0
 			}),
-			r === "ticker" ? /* @__PURE__ */ (0, x.jsx)(m.Suspense, {
+			o === "ticker" ? /* @__PURE__ */ (0, x.jsx)(m.Suspense, {
 				fallback: /* @__PURE__ */ (0, x.jsxs)("section", {
 					className: "workspace-card",
 					children: [/* @__PURE__ */ (0, x.jsx)("p", {
@@ -9160,7 +9168,7 @@ function ye() {
 						children: "Liveticker"
 					}), /* @__PURE__ */ (0, x.jsx)("h2", { children: "Spieltag wird geladen …" })]
 				}),
-				children: /* @__PURE__ */ (0, x.jsx)(_e, { mutationsAllowed: a(e.platform, i().mutationsEnabled, i().environment === "DEV" && !0) })
+				children: /* @__PURE__ */ (0, x.jsx)(ve, { mutationsAllowed: a(t.platform, i().mutationsEnabled, i().environment === "DEV" && !0) })
 			}) : /* @__PURE__ */ (0, x.jsx)(m.Suspense, {
 				fallback: /* @__PURE__ */ (0, x.jsxs)("section", {
 					className: "workspace-card",
@@ -9169,11 +9177,11 @@ function ye() {
 						children: "Liveticker"
 					}), /* @__PURE__ */ (0, x.jsx)("h2", { children: "Verwaltung wird geladen …" })]
 				}),
-				children: /* @__PURE__ */ (0, x.jsx)(ve, { mutationsAllowed: a(e.platform, i().mutationsEnabled, i().environment === "DEV" && !0) })
+				children: /* @__PURE__ */ (0, x.jsx)(ye, { mutationsAllowed: a(t.platform, i().mutationsEnabled, i().environment === "DEV" && !0) })
 			}),
 			/* @__PURE__ */ (0, x.jsxs)("footer", {
 				className: "classic-app-footer",
-				title: d || "Portalzugang aktiv",
+				title: f || "Portalzugang aktiv",
 				children: [
 					i().environment === "DEV" && /* @__PURE__ */ (0, x.jsx)("span", {
 						className: "dev-badge",
@@ -9181,12 +9189,12 @@ function ye() {
 					}),
 					/* @__PURE__ */ (0, x.jsx)("button", {
 						type: "button",
-						onClick: () => o(r === "ticker" ? "admin" : "ticker"),
-						children: r === "ticker" ? "Verwaltung" : "← Spieltag"
+						onClick: () => s(o === "ticker" ? "admin" : "ticker"),
+						children: o === "ticker" ? "Verwaltung" : "← Spieltag"
 					}),
 					/* @__PURE__ */ (0, x.jsx)("button", {
 						type: "button",
-						onClick: () => void l(),
+						onClick: () => void u(),
 						children: "Abmelden"
 					})
 				]
@@ -9196,21 +9204,21 @@ function ye() {
 }
 //#endregion
 //#region src/embed.tsx
-var be = /* @__PURE__ */ new WeakSet(), xe = /* @__PURE__ */ new WeakSet();
-function Se(e) {
-	if (!e || !e.isConnected || be.has(e) || e.shadowRoot && !xe.has(e.shadowRoot)) throw Error("Liveticker-Modul kann nicht sicher gestartet werden.");
+var xe = /* @__PURE__ */ new WeakSet(), Se = /* @__PURE__ */ new WeakSet();
+function Ce(e) {
+	if (!e || !e.isConnected || xe.has(e) || e.shadowRoot && !Se.has(e.shadowRoot)) throw Error("Liveticker-Modul kann nicht sicher gestartet werden.");
 	let t = e.shadowRoot ?? e.attachShadow({ mode: "open" });
-	xe.add(t);
+	Se.add(t);
 	let n = document.createElement("link");
 	n.rel = "stylesheet", n.href = "/liveticker/embed/style.css", t.append(n);
 	let r = document.createElement("div");
 	t.append(r);
 	let i = (0, h.createRoot)(r);
-	be.add(e), i.render(/* @__PURE__ */ (0, x.jsx)(ye, {}));
+	xe.add(e), i.render(/* @__PURE__ */ (0, x.jsx)(be, { embedded: !0 }));
 	let a = !0;
 	return () => {
-		a && (a = !1, i.unmount(), t.replaceChildren(), be.delete(e));
+		a && (a = !1, i.unmount(), t.replaceChildren(), xe.delete(e));
 	};
 }
 //#endregion
-export { Se as mountLiveticker };
+export { Ce as mountLiveticker };
