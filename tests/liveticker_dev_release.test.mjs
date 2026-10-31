@@ -64,8 +64,17 @@ test("existing integrator verifies release hashes and copies the complete DEV re
   assert.equal(pwa.id, "/liveticker/");
   assert.equal(pwa.scope, "/liveticker/");
   assert.equal(pwa.start_url, "/liveticker/");
-  assert.match(await readFile(join(dir, "dist/liveticker/registerSW.js"), "utf8"),
-    /register\('\/liveticker\/sw\.js', \{ scope: '\/liveticker\/' \}\)/);
+  assert.ok(manifest.files.some(file =>
+    /^standalone\/assets\/workbox-window[^/]+\.js$/.test(file.path)
+  ));
+  const entry = manifest.files.find(file =>
+    /^standalone\/assets\/index-[A-Za-z0-9_-]+\.js$/.test(file.path)
+  );
+  assert.ok(entry);
+  const bundle = await readFile(join(dir, "dist/liveticker",
+    entry.path.replace(/^standalone\//, "")), "utf8");
+  assert.match(bundle, /\/liveticker\/sw\.js/);
+  assert.match(bundle, /Neue Liveticker-Version verfügbar/);
 });
 
 test("Liveticker integration rejects non-DEV environments and the wrong project", async (t) => {

@@ -48,10 +48,19 @@ for(const f of manifest.files){
 }
 guard(hash(Buffer.from(canonical))===manifest.artifactSha256,'Liveticker-Gesamthash ungültig.');
 for(const f of ['standalone/index.html','standalone/manifest.webmanifest','standalone/sw.js',
-  'standalone/registerSW.js','embed/module.js','embed/style.css','standalone/icons/icon-192.png']){
+  'embed/module.js','embed/style.css','standalone/icons/icon-192.png']){
   guard(declared.includes(f),'Liveticker-Release unvollständig: '+f);
 }
 guard(declared.some(x=>/^embed\/chunks\/[^/]+\.js$/.test(x)),'Codechunks fehlen.');
+guard(declared.some(x=>/^standalone\/assets\/workbox-window[^/]+\.js$/.test(x)),
+  'PWA-Update-Registrierung fehlt.');
+const standaloneEntry=declared.find(x=>/^standalone\/assets\/index-[A-Za-z0-9_-]+\.js$/.test(x));
+guard(Boolean(standaloneEntry),'Standalone-JavaScript fehlt.');
+const entryCode=await readFile(resolve(source,standaloneEntry),'utf8');
+guard(entryCode.includes('/liveticker/sw.js') &&
+  entryCode.includes('Neue Liveticker-Version verfügbar'),
+  'Sichere manuelle PWA-Aktualisierung fehlt.');
+
 const pwa=JSON.parse(await readFile(resolve(source,'standalone/manifest.webmanifest'),'utf8'));
 guard(pwa.id==='/liveticker/' && pwa.scope==='/liveticker/' &&
   pwa.start_url==='/liveticker/' && pwa.icons.length>0 &&
