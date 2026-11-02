@@ -13,27 +13,58 @@ declare
       "lt-post-headline-shadow": {"style": {"opacity": 0.24}},
       "lt-post-headline": {"style": {"textEffect": "ice-glow"}},
       "lt-post-status": {"style": {"textEffect": "frost-metal"}},
+      "lt-post-score": {"style": {"strokeWidth": 0}},
       "lt-post-goals-shadow": {"style": {"classicOverlayRole": "goal-shadow"}},
-      "lt-post-goals-heading": {"style": {"classicOverlayRole": "goal-heading"}},
+      "lt-post-goals-heading": {"style": {
+        "classicOverlayRole": "goal-heading",
+        "fill": "#f8fdff", "stroke": "#168bdf", "strokeWidth": 8
+      }},
       "lt-post-goals": {
-        "style": {"classicOverlayRole": "goal-lines"},
+        "style": {
+          "classicOverlayRole": "goal-lines",
+          "fontSize": 42, "lineHeight": 58, "strokeWidth": 2
+        },
         "binding": {"goalScorerFormat": "classic"}
-      }
+      },
+      "lt-post-footer": {
+        "x": 250, "y": 1020, "width": 580, "height": 60,
+        "style": {
+          "fontSize": 34, "strokeWidth": 2.8, "letterSpacing": 3.3
+        }
+      },
+      "lt-post-footer-line-l": {"width": 200},
+      "lt-post-footer-line-r": {"x": 842, "width": 200}
     },
     "LIVETICKER_STORY": {
       "lt-story-headline-shadow": {"style": {"opacity": 0.24}},
       "lt-story-headline": {"style": {"textEffect": "ice-glow"}},
       "lt-story-status": {"style": {"textEffect": "frost-metal"}},
+      "lt-story-score": {"style": {"strokeWidth": 0, "fontSize": 198}},
       "lt-story-goals-shadow": {
         "style": {"classicOverlayRole": "goal-shadow", "textAlign": "center"}
       },
       "lt-story-goals-heading": {
-        "style": {"classicOverlayRole": "goal-heading", "textAlign": "center"}
+        "style": {
+          "classicOverlayRole": "goal-heading",
+          "textAlign": "center", "fill": "#f8fdff", 
+          "stroke": "#168bdf", "strokeWidth": 10
+        }
       },
       "lt-story-goals": {
-        "style": {"classicOverlayRole": "goal-lines", "blockAlign": "center"},
+        "style": {
+          "classicOverlayRole": "goal-lines", "blockAlign": "center",
+          "fontSize": 52, "lineHeight": 69, "strokeWidth": 2
+        },
         "binding": {"goalScorerFormat": "classic"}
-      }
+      },
+      "lt-story-footer": {
+        "x": 200, "y": 1766, "width": 680, "height": 65,
+        "style": {
+          "fontSize": 42, "strokeWidth": 2.8, "letterSpacing": 4.2
+        }
+      },
+      "lt-story-footer-line-l": {"y": 1805, "width": 150},
+      "lt-story-footer-line-r": {"x": 894, "y": 1805, "width": 150}
     }
   }
   $patches$::jsonb;
@@ -98,6 +129,9 @@ begin
       v_patch := v_patches->r.system_key->(v_element->>'id');
       if v_patch is not null then
         v_seen := v_seen + 1;
+        -- Geometry fields are immutable in v2, but v3 can recompose
+        -- the footer without touching the source template.
+        v_element := v_element || (v_patch - 'style' - 'binding');
         if v_patch ? 'style' then
           v_element := jsonb_set(
             v_element, '{style}',
