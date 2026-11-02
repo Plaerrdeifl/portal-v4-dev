@@ -2,22 +2,22 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/liveticker",
-  "sourceCommit": "53824e3d253945c089cca6ea8fa8180c6dda1a9b",
+  "sourceCommit": "8beb5d64c6d12cd53c7d6aefcd0df91f60b800a4",
   "sourcePackageLockSha256": "0f87ce32d86bbbc93d1118e518d8373e5ce7097cc354e64e86b746b3723cde54",
-  "sourceBuildCommand": "npm ci --include=dev --allow-remote=root && npm run check && npm run build && npm run build:cockpit && npm run verify:hosted-dev && npm run test:embed-build",
+  "sourceBuildCommand": "npm ci --include=dev --no-audit && npm run check && npm run build:cockpit && npm run verify:hosted-dev && npm run test:embed-build && node scripts/tests/contrast.node.mjs",
   "sourceBuildEnvironment": {
     "VITE_APP_ENV": "DEV",
     "VITE_LIVETICKER_HOSTED": "enabled",
     "VITE_LIVETICKER_MUTATIONS": "enabled",
     "NODE_ENV": "production",
-    "CHROMIUM_BIN": "/snap/bin/chromium"
+    "CHROMIUM_BIN": "/home/benny/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome"
   },
   "sourceToolchain": {
     "node": "24.20.0",
     "npm": "12.0.1"
   },
   "artifactRoot": "integrations/liveticker/release",
-  "artifactSha256": "f4674ea7408f0fdb07e1188ca0b8957ade63102672367c40b495415da6441c31",
+  "artifactSha256": "70983d4d5561e05884c7037d416a1e0855ecfb40f96f0984a966d017175a8bd1",
   "files": [
     {
       "path": "embed/chunks/ArchivePanel-B4WCPdA9.js",
@@ -71,43 +71,43 @@
     },
     {
       "path": "embed/style.css",
-      "bytes": 61368,
-      "sha256": "e791521b0afbb3f58d4c65a66ce0c8d8d3d3b8f9e8c7dffed6846534a6cc8cf0"
+      "bytes": 63604,
+      "sha256": "9349e16c90efa44e818b09954b06be10d8a84652666c9d7a6fececae7346fa72"
     },
     {
-      "path": "standalone/assets/ArchivePanel-zi2if3pc.js",
+      "path": "standalone/assets/ArchivePanel-CiCyRYBa.js",
       "bytes": 20042,
-      "sha256": "78df418c9c134f6ed3c12f9d4efd2146c293ef0f909baed70d1474a495d3d780"
+      "sha256": "3ef959081944fd91481de84c59a7073994c3d44bbbaef1831d3721e139a9d845"
     },
     {
-      "path": "standalone/assets/GameWorkspace-CF45Oa6K.js",
+      "path": "standalone/assets/GameWorkspace-DcLZVcAU.js",
       "bytes": 86061,
-      "sha256": "0cef0395a582c0a76b022f8db7b52ef65306f9d032d968e89130555fb4a8c614"
+      "sha256": "06158eb1da0e9303a2218ee65e7efb153c939b4b27a464c1f27e327027deadd9"
     },
     {
-      "path": "standalone/assets/LivetickerAdmin-BwikaUyc.js",
+      "path": "standalone/assets/LivetickerAdmin-B-vfingH.js",
       "bytes": 41353,
-      "sha256": "db5ba119e729a65555d361b73c561ef5a46d39b06a9585beba8ad7ad6d97926f"
+      "sha256": "b00e185acdef38fd1b8a1b6bfaf79fae7a7b00a348cd81252f445ceceb57495d"
     },
     {
-      "path": "standalone/assets/SpieltageAdmin-C440iQ8Z.js",
+      "path": "standalone/assets/SpieltageAdmin-D-YgNXr4.js",
       "bytes": 6443,
-      "sha256": "d09afb2dfa93fafcab395ca73befb8beb2cd4ccbc3d162b98cfd5cdadc6fc008"
+      "sha256": "3556f9a9425df4c578076129af3e55a9509dae935ba571219821b6155307fe90"
     },
     {
-      "path": "standalone/assets/games-BnE_JCme.js",
+      "path": "standalone/assets/games-B2o4q8K1.js",
       "bytes": 3120,
-      "sha256": "528a8e09aefc12174464d5a0036a87e2c98fd158142c00688d067fa88d27087e"
+      "sha256": "1ebf0081264074e3471ac5687d4d79cde494bd2027e3d87dba1c2492da6f37b6"
     },
     {
-      "path": "standalone/assets/index-BBoOC1ti.css",
-      "bytes": 61356,
-      "sha256": "a24decd244afc7a3bd67d180b87560dcdec03e64f30a02e4fd2aa2dcebef0d93"
+      "path": "standalone/assets/index-BSTs_gq4.css",
+      "bytes": 63592,
+      "sha256": "f716f99cdac776721c38dc235b94d594e3eb37958a6f62035248506e030704a8"
     },
     {
-      "path": "standalone/assets/index-UmT8CJqE.js",
+      "path": "standalone/assets/index-soAwv5vD.js",
       "bytes": 452315,
-      "sha256": "961b4213fa1b733c3174b13d4d0c1430c42529ccb46a574d8ab61e25d86792b9"
+      "sha256": "2430723b50f3b6c848b29fa5dcdd2b3fd70e9da74b96725c42e85518c1c871ba"
     },
     {
       "path": "standalone/assets/workbox-window.prod.es5-Bd17z0YL.js",
@@ -132,7 +132,7 @@
     {
       "path": "standalone/index.html",
       "bytes": 616,
-      "sha256": "3d1d589f650ed507572fb9a30f2fd4aa1d2891faa8bdf801254b2c269eff91b6"
+      "sha256": "15748bab170670f9b2466adcf80a536833e4dc3a324ac3426ee0f91488d99b01"
     },
     {
       "path": "standalone/manifest.webmanifest",
@@ -142,7 +142,7 @@
     {
       "path": "standalone/sw.js",
       "bytes": 1643,
-      "sha256": "6175ba855454f4d90f51d701d171346a2d577e9f8d2dcbf3891b4306ae775b46"
+      "sha256": "f2abe3eb68de2c317201ad4eed6ec56f353d053af90dcdd73ba658d6bcb61f72"
     },
     {
       "path": "standalone/workbox-2fbc6a65.js",
