@@ -135,14 +135,14 @@ begin
         if v_patch ? 'style' then
           v_element := jsonb_set(
             v_element, '{style}',
-            coalesce(v_element->'style','{}'::jsonb) || v_patch->'style',
+            coalesce(v_element->'style','{}'::jsonb) || (v_patch->'style'),
             true
           );
         end if;
         if v_patch ? 'binding' then
           v_element := jsonb_set(
             v_element, '{binding}',
-            coalesce(v_element->'binding','{}'::jsonb) || v_patch->'binding',
+            coalesce(v_element->'binding','{}'::jsonb) || (v_patch->'binding'),
             true
           );
         end if;
