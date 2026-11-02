@@ -57,7 +57,7 @@ begin
         join lateral (select old.value as original from jsonb_array_elements(v_previous->'elements') with ordinality old(value,ordinality)
           where old.ordinality=e.ordinality) prior on true
         where (e.value-'style') is distinct from (prior.original-'style')
-          or (e.value->'style'-'textEffect') is distinct from (prior.original->'style'-'textEffect')
+          or ((e.value->'style')-'textEffect') is distinct from ((prior.original->'style')-'textEffect')
       ) then
         raise exception 'V4_CHANGED_NON_EFFECT_DATA';
       end if;
