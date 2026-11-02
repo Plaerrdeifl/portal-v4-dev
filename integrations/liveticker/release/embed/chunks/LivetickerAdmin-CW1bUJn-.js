@@ -1,5 +1,5 @@
 import { a as e, n as t, o as n, s as r, t as i } from "./api-DqcqenPV.js";
-import { i as a, t as o } from "./ArchivePanel-B4WCPdA9.js";
+import { i as a, t as o } from "./ArchivePanel-C51-BSvz.js";
 //#region src/liveticker/admin-stickers.ts
 var s = r(), c = [
 	"image/png",
