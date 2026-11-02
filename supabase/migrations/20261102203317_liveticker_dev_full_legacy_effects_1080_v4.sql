@@ -68,7 +68,7 @@ begin
     -- Change only the three presentation selectors. All other document
     -- coordinates, font fallbacks, logo refs and protected bindings survive.
     select jsonb_agg(
-      case when v_patches->r.system_key ? (e.value->>'id') then
+      case when (v_patches->r.system_key) ? (e.value->>'id') then
         jsonb_set(e.value,'{style,textEffect}',
           v_patches->r.system_key->(e.value->>'id'),true)
       else e.value end
