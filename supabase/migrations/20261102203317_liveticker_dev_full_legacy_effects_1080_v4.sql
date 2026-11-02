@@ -29,8 +29,10 @@ begin
   if v_environment = 'PROD' then
     raise exception 'LIVETICKER_FULL_LEGACY_V4_DEV_ONLY' using errcode = '55000';
   end if;
+  -- Local CI databases have no release environment and should only check
+  -- migration parsing/contracts, never publish release templates.
   if v_environment is distinct from 'DEV' then
-    raise exception 'LIVETICKER_FULL_LEGACY_V4_UNKNOWN_ENV' using errcode = '55000';
+    return;
   end if;
   for r in
     select id,system_key,current_published_version_id
