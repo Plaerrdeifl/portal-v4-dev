@@ -50,7 +50,8 @@ jobs:
             supabase/tests/liveticker_whatsapp_channels.sql \
             supabase/tests/social_media_system_templates_v1.sql \
             supabase/tests/social_media_liveticker_goal_scorers.sql \
-            supabase/tests/liveticker_final_archive_ready.sql
+            supabase/tests/liveticker_final_archive_ready.sql \
+            supabase/tests/liveticker_dev_overlay_v2.sql
 
       - name: Lint database errors
         run: supabase db lint --local --level error --fail-on error
