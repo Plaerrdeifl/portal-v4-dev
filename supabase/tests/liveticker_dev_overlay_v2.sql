@@ -30,15 +30,11 @@ begin
   end if;
 
   if v_env='DEV' then
-    if not exists (
-      select 1 from app_social_media.templates
-      where system_key='LIVETICKER_POST' and current_published_version_id=v_post_expected
-    ) or not exists (
-      select 1 from app_social_media.templates
-      where system_key='LIVETICKER_STORY' and current_published_version_id=v_story_expected
-    ) then
-      raise exception 'DEV overlay v2 not published for both formats';
-    end if;
+    -- V2 is now immutable history: V3 may be the current published version.
+    select document into strict v_post
+    from app_social_media.template_versions where id=v_post_expected;
+    select document into strict v_story
+    from app_social_media.template_versions where id=v_story_expected;
     if v_post->'elements'->0 <> v_post_original->'elements'->0
        or v_story->'elements'->0 <> v_story_original->'elements'->0 then
       raise exception 'Original DEV background altered';
@@ -71,6 +67,6 @@ begin
   end if;
 end;
 $check$;
-select pass('DEV-only classic-overlay template versions preserve 1080 formats, imagery and bindings');
+select pass('Historical DEV overlay v2 remains immutable and retains imagery and bindings');
 select * from finish();
 rollback;
