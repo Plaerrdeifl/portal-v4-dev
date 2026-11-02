@@ -10,8 +10,13 @@ declare
  mode text; kind text; job uuid; selected_count integer; jobrow app_modules.liveticker_whatsapp_jobs%rowtype;
  target_a uuid; target_b uuid; result jsonb; before_targets jsonb;
 begin
- if exists(select 1 from app_private.liveticker_whatsapp_channels where send_approved) then
-  raise exception 'Migration must not approve existing live channels for DEV sends';
+ if (select send_approved from app_private.liveticker_whatsapp_channels where code='TEST') is distinct from true
+ or (select send_approved from app_private.liveticker_whatsapp_channels where code='MAIN') is distinct from false then
+  raise exception 'Only the explicitly approved DEV TEST channel may send; MAIN must remain denied';
+ end if;
+ if (app_private.liveticker_whatsapp_routing_status_internal()->>'mode') <> 'TEST'
+ or (app_private.liveticker_whatsapp_routing_status_internal()->>'deliveryApproved')::boolean is distinct from true then
+  raise exception 'DEV TEST routing must be the sole enabled destination';
  end if;
  if not exists(select 1 from app_private.liveticker_whatsapp_channels where code='TEST' and waha_channel_id='120363407159499081@newsletter')
  or not exists(select 1 from app_private.liveticker_whatsapp_channels where code='MAIN' and waha_channel_id='120363419694534195@newsletter') then
