@@ -120,7 +120,7 @@ select is((select status from app_social_media.liveticker_render_requests
 select is((public.pd_social_media_render_worker_work_status()->>'liveticker')::boolean,
  true,'Terminal failed lease continues waking the existing worker for reconciliation');
 select lives_ok(
- $ select public.pd_social_media_liveticker_render_worker_claim() $,
+ 'select public.pd_social_media_liveticker_render_worker_claim()',
  'Recovery notices terminal failure even when worker_complete was never called'
 );
 select is((select status from app_modules.liveticker_finalizations
