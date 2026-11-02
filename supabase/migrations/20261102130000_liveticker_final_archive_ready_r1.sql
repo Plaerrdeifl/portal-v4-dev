@@ -270,10 +270,18 @@ returns void language plpgsql security definer set search_path = ''
 as $fn$
 declare v_request_id uuid;
 begin
+  -- A lease may exhaust attempts inside the legacy claim RPC without invoking
+  -- worker_complete. Detect this terminal state without requiring a browser.
+  update app_modules.liveticker_finalizations f
+  set status='GRAPHIC_FAILED',error_code='LIVETICKER_FINAL_GRAPHIC_FAILED',
+      next_retry_at=null,updated_at=now()
+  from app_social_media.liveticker_render_requests r
+  where r.id=f.request_id and f.status='RENDERING' and r.status='FAILED';
+
   select f.request_id into v_request_id
   from app_modules.liveticker_finalizations f
   join app_social_media.liveticker_render_requests r on r.id=f.request_id
-  where f.status in ('FINALIZE_PENDING','RETRYABLE_ERROR')
+  where f.status in ('RENDERING','FINALIZE_PENDING','RETRYABLE_ERROR')
     and r.status='SUCCEEDED'
     and (f.next_retry_at is null or f.next_retry_at <= now())
   order by f.updated_at,f.event_id
@@ -320,8 +328,10 @@ as $fn$
       or exists(
         select 1 from app_modules.liveticker_finalizations f
         join app_social_media.liveticker_render_requests r on r.id=f.request_id
-        where f.status in ('FINALIZE_PENDING','RETRYABLE_ERROR') and r.status='SUCCEEDED'
-          and (f.next_retry_at is null or f.next_retry_at<=now())
+        where (
+          (f.status in ('RENDERING','FINALIZE_PENDING','RETRYABLE_ERROR') and r.status='SUCCEEDED')
+          or (f.status='RENDERING' and r.status='FAILED')
+        ) and (f.next_retry_at is null or f.next_retry_at<=now())
       )
     )
   );
