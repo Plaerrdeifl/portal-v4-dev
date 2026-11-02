@@ -414,6 +414,11 @@ as $fn$
 declare v_message text;
 begin
   perform app_private.liveticker_require_operator();
+  -- Lock the game before inspecting the FINAL intent, using the same lock
+  -- order as FINAL start and completion. A concurrent first FINAL request
+  -- must not slip past a pre-lock, stale guard read.
+  perform 1 from app_modules.liveticker_game_states
+  where event_id = p_event_id for update;
   if exists(
     select 1 from app_modules.liveticker_finalizations
     where event_id=p_event_id and status in ('RENDERING','FINALIZE_PENDING','RETRYABLE_ERROR')
