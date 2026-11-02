@@ -469,7 +469,7 @@ async function stickerAsset(stickerId: string) {
       || !Number.isSafeInteger(fileSize)
       || fileSize < 1
       || fileSize > MAX_STICKER_BYTES
-      || !/^stickers\/prod\/[0-9a-f-]{36}[.]webp$/i.test(storagePath)
+      || !/^stickers\/dev\/[0-9a-f-]{36}[.]webp$/i.test(storagePath)
       || !/^[0-9a-f]{64}$/.test(expectedSha)) throw new GatewayError();
   const config = runtime();
   const response = await fetch(
