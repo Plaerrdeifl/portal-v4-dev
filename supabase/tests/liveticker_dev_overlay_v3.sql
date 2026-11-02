@@ -31,7 +31,7 @@ begin
       select v.document into strict v_document
       from app_social_media.templates t
       join app_social_media.template_versions v
-        on v.id=t.current_published_version_id
+        on v.template_id=t.id
       where t.system_key=v_key and v.id=v_id and v.version_number=3
         and v.status='PUBLISHED';
       select document into strict v_previous
