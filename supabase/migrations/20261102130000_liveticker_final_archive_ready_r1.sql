@@ -426,4 +426,26 @@ revoke all on function public.pd_public_liveticker_sync(uuid,integer,jsonb,text)
 grant execute on function public.pd_public_liveticker_sync(uuid,integer,jsonb,text)
   to authenticated,service_role;
 
+-- Private implementation is never directly executable by client or service roles.
+revoke all on function
+  app_private.liveticker_finalization_json(uuid),
+  app_private.api_liveticker_finalization_status(jsonb),
+  app_private.api_liveticker_finalization_start(jsonb),
+  app_private.liveticker_finalization_process(uuid),
+  app_private.liveticker_finalization_recover_one(),
+  app_private.platform_action_classification(text),
+  app_private.require_platform_user_write_allowed(text,uuid),
+  app_private.pd_api_dispatch_current(text,jsonb)
+from public,anon,authenticated,service_role;
+grant execute on function
+  app_private.liveticker_finalization_json(uuid),
+  app_private.api_liveticker_finalization_status(jsonb),
+  app_private.api_liveticker_finalization_start(jsonb),
+  app_private.liveticker_finalization_process(uuid),
+  app_private.liveticker_finalization_recover_one(),
+  app_private.platform_action_classification(text),
+  app_private.require_platform_user_write_allowed(text,uuid),
+  app_private.pd_api_dispatch_current(text,jsonb)
+to postgres;
+
 commit;
