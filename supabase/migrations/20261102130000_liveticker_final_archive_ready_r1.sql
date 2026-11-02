@@ -224,12 +224,19 @@ begin
   select * into v_job from app_social_media.liveticker_render_requests where id=p_request_id;
   if v_job.status='SUCCEEDED' and p_success
      and v_job.last_completed_claim_token=p_claim_token then
+    begin
+      perform app_private.liveticker_finalization_process(p_request_id);
+    exception when others then
+      null; -- Scheduled recovery remains authoritative for transient failures.
+    end;
     return app_private.social_media_liveticker_render_request_json(p_request_id);
   end if;
   v_result := public.pd_social_media_liveticker_render_worker_complete_before_final_r1(
     p_request_id,p_claim_token,p_success,p_error_code,p_result_manifest
   );
   if p_success then
+    update app_modules.liveticker_finalizations set status='FINALIZE_PENDING',
+      updated_at=now() where request_id=p_request_id and status='RENDERING';
     begin
       perform app_private.liveticker_finalization_process(p_request_id);
     exception when others then
@@ -373,6 +380,19 @@ begin
 end;
 $fn$;
 
+
+-- Register only the new, explicitly handled API actions.
+alter function app_private.pd_api_current_actions()
+  rename to pd_api_current_actions_before_final_r1;
+create function app_private.pd_api_current_actions()
+returns text[] language sql stable security definer set search_path = ''
+as $fn$
+  select app_private.pd_api_current_actions_before_final_r1()
+    || array['liveticker_finalization_start','liveticker_finalization_status']::text[];
+$fn$;
+revoke all on function app_private.pd_api_current_actions() from public,anon,authenticated,service_role;
+grant execute on function app_private.pd_api_current_actions() to postgres;
+
 -- Guard the canonical game sync against changes while a chosen final is being
 -- rendered. Explicit REVIEW allows operator corrections and a fresh FINAL.
 alter function public.pd_public_liveticker_sync(uuid,integer,jsonb,text)
@@ -383,6 +403,7 @@ create function public.pd_public_liveticker_sync(
 as $fn$
 declare v_message text;
 begin
+  perform app_private.liveticker_require_operator();
   if exists(
     select 1 from app_modules.liveticker_finalizations
     where event_id=p_event_id and status in ('RENDERING','FINALIZE_PENDING','RETRYABLE_ERROR')
