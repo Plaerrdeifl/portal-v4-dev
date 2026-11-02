@@ -1,6 +1,6 @@
 \set ON_ERROR_STOP on
 begin;
-select plan(1);
+select plan(3);
 do $check$
 declare
   v_env text := app_private.platform_release_environment();
@@ -71,6 +71,18 @@ begin
   end loop;
 end;
 $check$;
+select is(
+  '{"key":"liveticker.goalScorers","source":"central","protected":true,"renderer":"liveticker-goal-scorers"}'::jsonb
+    || ('{"goalScorerFormat":"classic"}'::jsonb),
+  '{"key":"liveticker.goalScorers","source":"central","protected":true,"renderer":"liveticker-goal-scorers","goalScorerFormat":"classic"}'::jsonb,
+  'The V3 binding merge must retain protected central scorer metadata'
+);
+select is(
+  '{"fill":"#ffffff","fontFamily":"Komika Axis","fontSize":34}'::jsonb
+    || ('{"fontSize":42,"classicOverlayRole":"goal-lines"}'::jsonb),
+  '{"fill":"#ffffff","fontFamily":"Komika Axis","fontSize":42,"classicOverlayRole":"goal-lines"}'::jsonb,
+  'The V3 style merge must retain original typography properties'
+);
 select pass('Classic DEV v3 keeps the original canvas, imagery, protected data and opt-in effects');
 select * from finish();
 rollback;
