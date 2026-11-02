@@ -16,7 +16,7 @@ from app_portal.portal_roles where code='PORTAL_USER' and is_active limit 1;
 insert into app_modules.events(id,event_type,title,event_date,event_time,venue,visibility)
 select ('00000000-0000-4555-9700-0000000000'||suffix)::uuid,
   'GAME','FINAL lifecycle fixture '||suffix,'2036-11-02','18:00','DEV fixture','PUBLIC'
-from (values ('11'),('12'),('13'),('14'),('15'),('16')) t(suffix);
+from (values ('11'),('12'),('13'),('14'),('15'),('16'),('17')) t(suffix);
 
 insert into app_modules.liveticker_game_states(event_id,revision,minute)
 select id,7,60 from app_modules.events
@@ -30,16 +30,18 @@ select
  ('00000000-0000-4555-9701-0000000000'||substring(id::text,35,2))::uuid,
  '00000000-0000-4500-8800-000000000091',id,'FINAL',7,'{}'::jsonb,
  case when right(id::text,2) in ('13') then 'FAILED'
-      when right(id::text,2) in ('16') then 'PROCESSING'
+      when right(id::text,2) in ('16','17') then 'PROCESSING'
       else 'SUCCEEDED' end,
- case when right(id::text,2)='16' then 1 else 0 end,3,
- case when right(id::text,2)='13' or right(id::text,2)='16' then null
+ case when right(id::text,2)='16' then 1 when right(id::text,2)='17' then 3 else 0 end,3,
+ case when right(id::text,2) in ('13','16','17') then null
       else jsonb_build_object('sourceRevision',7,'artifacts',
         jsonb_build_array(jsonb_build_object('kind','POST'),
                           jsonb_build_object('kind','STORY'))) end,
- case when right(id::text,2)='16' then '00000000-0000-4555-9702-000000000016'::uuid else null end,
- case when right(id::text,2)='16' then now() else null end,
- case when right(id::text,2)='16' then now()+interval '5 minutes' else null end
+ case when right(id::text,2) in ('16','17') then
+   ('00000000-0000-4555-9702-0000000000'||right(id::text,2))::uuid else null end,
+ case when right(id::text,2) in ('16','17') then now() else null end,
+ case when right(id::text,2)='16' then now()+interval '5 minutes'
+      when right(id::text,2)='17' then now()-interval '1 minute' else null end
 from app_modules.events where title like 'FINAL lifecycle fixture %';
 
 insert into app_modules.liveticker_finalizations(
@@ -108,6 +110,25 @@ select lives_ok(
 select is((select status from app_modules.liveticker_finalizations
  where event_id='00000000-0000-4555-9700-000000000015'),'COMPLETED',
  'Worker polling recovery completes previously successful FINAL');
+
+select is((select status from app_modules.liveticker_finalizations
+ where event_id='00000000-0000-4555-9700-000000000013'),'GRAPHIC_FAILED',
+ 'Existing worker recovery detects terminally failed FINAL graphic');
+select is((select status from app_social_media.liveticker_render_requests
+ where event_id='00000000-0000-4555-9700-000000000017'),'FAILED',
+ 'Expired lease with exhausted attempt count is marked FAILED');
+select is((public.pd_social_media_render_worker_work_status()->>'liveticker')::boolean,
+ true,'Terminal failed lease continues waking the existing worker for reconciliation');
+select lives_ok(
+ $ select public.pd_social_media_liveticker_render_worker_claim() $,
+ 'Recovery notices terminal failure even when worker_complete was never called'
+);
+select is((select status from app_modules.liveticker_finalizations
+ where event_id='00000000-0000-4555-9700-000000000017'),'GRAPHIC_FAILED',
+ 'No FINAL intent remains stuck after lease exhaustion');
+select is((select completed_at from app_modules.liveticker_game_states
+ where event_id='00000000-0000-4555-9700-000000000017'),null::timestamptz,
+ 'Failed lease must not archive an active game');
 
 select lives_ok(
  $$ select public.pd_social_media_liveticker_render_worker_complete(
