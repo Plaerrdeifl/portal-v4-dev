@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/fanszene-cockpit",
-  "sourceCommit": "c2de5778b8a2dde36d5c1ec0def217289bbc8c08",
+  "sourceCommit": "2a8abd6d7e94850f9a8dee86536cae5d07e02049",
   "sourcePackageLockSha256": "4e778cf58cee437f4546258f2d5a7ac0a5fcf52ed605fc07eb3ff7e603a5408f",
   "sourceBuildCommand": "npm ci --include=dev --allow-remote=root && npm run check",
   "sourceBuildEnvironment": {
@@ -14,22 +14,22 @@
     "npm": "12.0.1"
   },
   "artifactRoot": "integrations/cockpit/release",
-  "artifactSha256": "1f909da5bc96f691c76efcdc6e23b47f46445ab5c90bfcf26049c9dc60062fb0",
+  "artifactSha256": "6ebc3571b5de7c14cc35e0d4d76a23f8b3f8d2aced112841b54d6c8a1599aee6",
   "files": [
     {
-      "path": "assets/UserManagement-D4ev3wkj.js",
+      "path": "assets/UserManagement-BbCnHa0a.js",
       "bytes": 16440,
-      "sha256": "3d8c4a2be4c4a603be856fcde9f4a42ec4bb1e94f426d7406ad39f254c6e55c2"
+      "sha256": "9a59c25dc8bf08d6453dc4a958ca1e1ba4b58fadaef56e16ef94440097f93135"
     },
     {
-      "path": "assets/index-BTz4c8sO.js",
-      "bytes": 467411,
-      "sha256": "555ea095df753686926a5656756ac3d002911a15e5ac729f27ccbcf835916897"
+      "path": "assets/index-4B-ffMXq.js",
+      "bytes": 467867,
+      "sha256": "211e922e7cd27fb02481c3708ca2390d286b367d182dca1d221209689fd209f7"
     },
     {
-      "path": "assets/index-TzYE3qAw.css",
-      "bytes": 19542,
-      "sha256": "2ddafda4b079ceda19a1679b6714c8faf330e910ad3d16f1c798245bbb2ffbb1"
+      "path": "assets/index-Ds9xnppV.css",
+      "bytes": 20657,
+      "sha256": "b7e5e870e885a99398281076d0ed47cd88abc3cbcec21f428223a1404f1f1441"
     },
     {
       "path": "icons/cockpit-192.png",
@@ -53,18 +53,18 @@
     },
     {
       "path": "index.html",
-      "bytes": 841,
-      "sha256": "f2313efa5069c1bcb3e5a770f3626849c406dd490c9a25e0e5f63c5f25307768"
+      "bytes": 865,
+      "sha256": "55af9834fbd4d8746e46604cf3a4e7863b4fb59bcc340261926b4b160e07cf64"
     },
     {
       "path": "manifest.webmanifest",
-      "bytes": 920,
-      "sha256": "e8e6318af6bbf2062112cd00656352435ea2f5b3a2bb0af6b16af0d678caa042"
+      "bytes": 923,
+      "sha256": "a554f5bec5c68e791b2a57cd453205bf8d74af03d79ab3e7be16ca68ec56fd46"
     },
     {
       "path": "offline.html",
       "bytes": 2030,
-      "sha256": "7627aa8363ce8a3bf63a7932ba09d292622815ef179f3ae61b6b2be45fce315f"
+      "sha256": "5aa0e447075164b9957fb4093e44099fc547319119cb39775d37ccc16cf4d8ee"
     },
     {
       "path": "service-worker.js",

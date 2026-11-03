@@ -308,7 +308,7 @@ async function validateRelease() {
   const manifest = JSON.parse(manifestSource);
 
   assert(
-    /<title>Fanszene Schweinfurt Cockpit<\/title>/.test(index),
+    /<title>Schweinfurter Eishockey Fans – Cockpit<\/title>/.test(index),
     "Das Cockpit-Artefakt besitzt nicht den erwarteten Inhalt."
   );
   assert(
@@ -406,6 +406,13 @@ async function validateRelease() {
       `Das Cockpit-Artefakt enthält den AP-03/R3-Vertragsmarker nicht: ${requiredContractMarker}`
     );
   }
+
+  assert(
+    applicationBundle.includes("Schweinfurter")
+      && applicationBundle.includes("Eishockey Fans")
+      && applicationBundle.includes("Cockpit lädt"),
+    "Das Cockpit-Artefakt besitzt keinen neuen Startbildschirm."
+  );
 
   assert(
     !applicationBundle.includes("contract-pending")
