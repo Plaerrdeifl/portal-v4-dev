@@ -156,6 +156,9 @@ function j(e) {
 		name: r,
 		shortName: i,
 		teamCode: a,
+		primaryColor: O(t.primaryColor ?? t.primary_color).toUpperCase() || null,
+		secondaryColor: O(t.secondaryColor ?? t.secondary_color).toUpperCase() || null,
+		teamColorSource: ["LOGO", "MANUAL"].includes(O(t.teamColorSource ?? t.team_color_source)) ? O(t.teamColorSource ?? t.team_color_source) : "UNSET",
 		logoAssetPath: O(t.logoAssetPath || t.logo_asset_path) || null,
 		logoUrl: O(t.logoUrl || t.logo_url) || null,
 		logoStorageBucket: O(t.logoStorageBucket || t.logo_storage_bucket) || null,
@@ -206,10 +209,15 @@ async function F() {
 	return M(await i("liveticker_teams_list", {}));
 }
 async function I(e) {
-	let t = N(e);
+	let t = N(e), n = e.primaryColor !== void 0 || e.secondaryColor !== void 0, r = O(e.primaryColor).toUpperCase(), a = O(e.secondaryColor).toUpperCase();
+	if (n && !(r === "" && a === "" || /^#[0-9A-F]{6}$/.test(r) && /^#[0-9A-F]{6}$/.test(a))) throw Error("Bitte beide Teamfarben als HEX-Werte eingeben oder beide leer lassen.");
 	return M(await i("liveticker_team_save", {
 		...e.id ? { id: e.id } : {},
 		...t,
+		...n ? {
+			primaryColor: r,
+			secondaryColor: a
+		} : {},
 		homeClub: !!e.homeClub,
 		active: !!e.active,
 		...e.expectedRevision === void 0 ? {} : { expectedRevision: e.expectedRevision }
@@ -695,6 +703,8 @@ var G = {
 	name: "",
 	shortName: "",
 	teamCode: "",
+	primaryColor: "",
+	secondaryColor: "",
 	homeClub: !1,
 	active: !0,
 	revision: 0
@@ -716,6 +726,8 @@ function q(e) {
 		name: e.name,
 		shortName: e.shortName,
 		teamCode: e.teamCode,
+		primaryColor: e.primaryColor || "",
+		secondaryColor: e.secondaryColor || "",
 		homeClub: e.homeClub,
 		active: e.active,
 		revision: e.revision
@@ -818,25 +830,29 @@ function se({ mutationsAllowed: e }) {
 			}
 			y(!0), C(""), x("Team wird gespeichert …");
 			try {
-				let e = J(c, m), t = await I({
+				let e = J(c, m), t = !m && w !== null && (a.primaryColor.trim().toUpperCase() !== (w.primaryColor || "") || a.secondaryColor.trim().toUpperCase() !== (w.secondaryColor || "")), n = await I({
 					...a.id ? { id: a.id } : {},
 					name: a.name,
 					shortName: a.shortName,
 					teamCode: a.teamCode,
+					...t ? {
+						primaryColor: a.primaryColor,
+						secondaryColor: a.secondaryColor
+					} : {},
 					homeClub: a.homeClub,
 					active: a.active,
 					...a.id ? { expectedRevision: a.revision } : {}
-				}), n = a.id || t.teams.find((e) => e.name === a.name.trim() && e.shortName === a.shortName.trim())?.id || "";
-				if (e && n) {
-					let r = t.teams.find((e) => e.id === n);
-					if (!r) throw Error("Gespeichertes Team wurde nicht gefunden.");
+				}), r = a.id || n.teams.find((e) => e.name === a.name.trim() && e.shortName === a.shortName.trim())?.id || "";
+				if (e && r) {
+					let t = n.teams.find((e) => e.id === r);
+					if (!t) throw Error("Gespeichertes Team wurde nicht gefunden.");
 					try {
-						await V(r, e), t = await F();
+						await V(t, e), n = await F();
 					} catch (e) {
-						throw t = await F().catch(() => t), D(t, n), Error("Team wurde gespeichert, aber das Logo nicht: " + (e instanceof Error ? e.message : "Unbekannter Fehler."));
+						throw n = await F().catch(() => n), D(n, r), Error("Team wurde gespeichert, aber das Logo nicht: " + (e instanceof Error ? e.message : "Unbekannter Fehler."));
 					}
 				}
-				D(t, n), h(!1), l(null), x(a.id ? "Team aktualisiert." : "Team angelegt.");
+				D(n, r), h(!1), l(null), x(a.id ? "Team aktualisiert." : "Team angelegt.");
 			} catch (e) {
 				C(e instanceof Error ? e.message : "Team konnte nicht gespeichert werden.");
 			} finally {
@@ -1011,8 +1027,73 @@ function se({ mutationsAllowed: e }) {
 											}
 										}
 									})]
+								}),
+								/* @__PURE__ */ (0, H.jsxs)("label", {
+									className: "field",
+									children: [/* @__PURE__ */ (0, H.jsx)("span", { children: "Primärfarbe · Vereinsdesign" }), /* @__PURE__ */ (0, H.jsxs)("span", {
+										style: {
+											display: "flex",
+											gap: "0.5rem",
+											alignItems: "center"
+										},
+										children: [/* @__PURE__ */ (0, H.jsx)("input", {
+											"aria-label": "Primärfarbe auswählen",
+											type: "color",
+											value: /^#[0-9A-Fa-f]{6}$/.test(a.primaryColor) ? a.primaryColor : "#2457DF",
+											disabled: !e || v || m,
+											onChange: (e) => o((t) => ({
+												...t,
+												primaryColor: e.target.value.toUpperCase()
+											}))
+										}), /* @__PURE__ */ (0, H.jsx)("input", {
+											"aria-label": "Primärfarbe als HEX",
+											value: a.primaryColor,
+											placeholder: "#2457DF",
+											maxLength: 7,
+											disabled: !e || v || m,
+											onChange: (e) => o((t) => ({
+												...t,
+												primaryColor: e.target.value.toUpperCase()
+											}))
+										})]
+									})]
+								}),
+								/* @__PURE__ */ (0, H.jsxs)("label", {
+									className: "field",
+									children: [/* @__PURE__ */ (0, H.jsx)("span", { children: "Sekundärfarbe · Vereinsdesign" }), /* @__PURE__ */ (0, H.jsxs)("span", {
+										style: {
+											display: "flex",
+											gap: "0.5rem",
+											alignItems: "center"
+										},
+										children: [/* @__PURE__ */ (0, H.jsx)("input", {
+											"aria-label": "Sekundärfarbe auswählen",
+											type: "color",
+											value: /^#[0-9A-Fa-f]{6}$/.test(a.secondaryColor) ? a.secondaryColor : "#1C1D24",
+											disabled: !e || v || m,
+											onChange: (e) => o((t) => ({
+												...t,
+												secondaryColor: e.target.value.toUpperCase()
+											}))
+										}), /* @__PURE__ */ (0, H.jsx)("input", {
+											"aria-label": "Sekundärfarbe als HEX",
+											value: a.secondaryColor,
+											placeholder: "#1C1D24",
+											maxLength: 7,
+											disabled: !e || v || m,
+											onChange: (e) => o((t) => ({
+												...t,
+												secondaryColor: e.target.value.toUpperCase()
+											}))
+										})]
+									})]
 								})
 							]
+						}),
+						/* @__PURE__ */ (0, H.jsx)("p", {
+							className: "empty-note",
+							role: "status",
+							children: m ? "Teamfarben können direkt nach dem Anlegen gespeichert werden." : w?.teamColorSource === "LOGO" ? "Die Farben wurden aus dem Original-Teamlogo abgeleitet. Bitte prüfen und bei Bedarf korrigieren." : w?.teamColorSource === "MANUAL" ? "Diese Farben wurden manuell angepasst." : "Noch keine Teamfarben hinterlegt. Bitte Primär- und Sekundärfarbe wählen."
 						}),
 						/* @__PURE__ */ (0, H.jsxs)("div", {
 							className: "admin-check-row",
