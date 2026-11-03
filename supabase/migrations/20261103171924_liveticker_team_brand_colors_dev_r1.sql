@@ -39,7 +39,18 @@ with palette(logo_sha256, primary_color, secondary_color) as (
     ('c2dd51a349e87d7c688603edfea3675e0d1c0e2a3f9e280a5b4fbf599bf4967f', '#BD1B2D', '#181D24'),
     ('600af558a450f30016f0e89065f627cd63060d466e44e8f35643ae48d3c8028b', '#CFBD75', '#181D24'),
     ('54d8e3d0baca967b8a28577563ff2c57b6d313d3a88a34a3700d6a265db9f1ba', '#992D3F', '#181D24'),
-    ('30c7f34614cdb27eacfb4e4992d2fadecea083c80d2cd4e1fea2549bae0c006', '#091B3F', '#F31B09')
+    ('30c7f34614cdb27eacfb4e4992d2fadecea083c80d2cd4e1fea2549bae0c006', '#091B3F', '#F31B09'),
+    ('c08892244622f8d56d32e9cbf58e8e9066e26d0579a541c5e764b5ba9b22bd3a', '#F31B3F', '#181D24'),
+    ('0f2a832e67659d2c0feb70ad3fb031e4fa5f0fd6c45bb0efd81edf40b894363c', '#991B1B', '#181D24'),
+    ('e24360e7cc7d8f72bfc24db4f1cc96d0f95c8743347aca471bcbcc74bb102563', '#1B2D51', '#FFCF09'),
+    ('fc9e4fbd94739583c9dd9b85406333eee8c6cf4251bb609d64c0171b7a6a7c7c', '#FFCF1B', '#181D24'),
+    ('6ccf6aff387acfd06d36d77fa2a4b0c33813ef92cce245dcbcfe7fe253e276a6', '#091B3F', '#BD1B1B'),
+    ('eded1958dd8199b275f386e65ef9f47f2744f6925220aa84be10a1186d640499', '#1B2D51', '#87631B'),
+    ('aefba13d41049859fce0877e7b515286c3e8bc59621e3d05562e0b93ef085dd5', '#F3CF09', '#E11B3F'),
+    ('4923ec1a4b9ec5f27b7f4c1ca10e5b25cd498cfdc7c874934194213d340c5311', '#0963CF', '#181D24'),
+    ('fc801382f95a3db63ade9c74522d0e852cde6fc3312a9ba03a3ae102697493e6', '#BD1B2D', '#181D24'),
+    ('400a2250fb13cc9947ba2f59a4139dd4e9cebdf3337978b0691b8426c0e57c42', '#BD2D2D', '#181D24'),
+    ('2bf45f27ae7d0bafa08e3ca3cddc751a13b4d55f311dcff621c57f8515fb2705', '#091B3F', '#F31B09')
 )
 update app_modules.liveticker_teams as t
   set primary_color=palette.primary_color,
