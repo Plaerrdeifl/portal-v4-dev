@@ -78,7 +78,7 @@ AS $function$ begin
   'revision',t.revision,
   'players',coalesce((select jsonb_agg(jsonb_build_object('id',p.id,'teamId',p.team_id,'name',p.full_name,'number',p.jersey_number,'position',p.position,'active',p.is_active,'revision',p.revision)
     order by case p.position when 'GOALIE' then 1 when 'DEFENSE' then 2 else 3 end,case when p.jersey_number ~ '^[0-9]+$' then p.jersey_number::integer else 9999 end,p.full_name) from app_modules.liveticker_players p where p.team_id=t.id),'[]'::jsonb)) order by t.is_home_club desc,t.name) from app_modules.liveticker_teams t),'[]'::jsonb));
-end; $function$
+end; $function$;
 
 
 CREATE OR REPLACE FUNCTION app_private.api_liveticker_team_save(p_payload jsonb)
@@ -170,7 +170,7 @@ begin
 
   return app_private.api_liveticker_teams_list();
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION app_private.liveticker_team_json(p_team_id uuid)
@@ -197,7 +197,7 @@ AS $function$
      from app_modules.liveticker_players p where p.team_id=t.id and p.is_active
    ),'[]'::jsonb)
  ) from app_modules.liveticker_teams t where t.id=p_team_id and t.is_active;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION app_private.api_social_media_generator_media_teams_list()
@@ -239,5 +239,5 @@ begin
     '[]'::jsonb
   );
 end;
-$function$
+$function$;
 
