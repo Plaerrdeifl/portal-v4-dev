@@ -13,7 +13,7 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   assert.equal(metadata.schemaVersion, 1)
   assert.equal(metadata.environment, 'DEV')
   assert.equal(metadata.sourceRepository, 'Plaerrdeifl/social-media-generator')
-  assert.equal(metadata.sourceCommit, '8cdcbb051322939280855fb0f267d88eb1888885')
+  assert.equal(metadata.sourceCommit, '5f0dfaa3890ed708826985e9eb7eb9ce25ebfaf2')
   assert.equal(metadata.artifactPath, 'assets/generator-dev/embed')
   assert.match(metadata.sourcePackageLockSha256, /^[a-f0-9]{64}$/)
   assert.equal(metadata.files.length, 4)
@@ -25,6 +25,7 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   }
   const js = await readFile(join(release, 'module.js'), 'utf8')
   const css = await readFile(join(release, 'style.css'), 'utf8')
+  assert.doesNotMatch(js, /process\.env\.NODE_ENV/)
   assert.match(js, /mountGenerator/)
   assert.match(js, /social_media_generator_bootstrap/)
   assert.match(css, /generator-workspace/)
