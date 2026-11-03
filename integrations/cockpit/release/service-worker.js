@@ -1,5 +1,5 @@
 const COCKPIT_CACHE_PREFIX = 'pd-cockpit-'
-const COCKPIT_CACHE = `${COCKPIT_CACHE_PREFIX}shell-v2`
+const COCKPIT_CACHE = `${COCKPIT_CACHE_PREFIX}shell-v3`
 const COCKPIT_PATH = '/cockpit/'
 const COCKPIT_ASSET_PATH = `${COCKPIT_PATH}assets/`
 const COCKPIT_RUNTIME_CONFIG = `${COCKPIT_PATH}runtime-config.js`
