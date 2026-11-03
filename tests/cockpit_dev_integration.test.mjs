@@ -124,7 +124,7 @@ test("versioned Cockpit release pins the private source and every generated file
   assert.equal(metadata.schemaVersion, 1);
   assert.equal(metadata.environment, "DEV");
   assert.equal(metadata.sourceRepository, "Plaerrdeifl/fanszene-cockpit");
-  assert.equal(metadata.sourceCommit, "2a8abd6d7e94850f9a8dee86536cae5d07e02049");
+  assert.equal(metadata.sourceCommit, "2e154d01e3cf61e7ea5945c5dff6d7acb5d2d088");
   assert.equal(
     metadata.sourcePackageLockSha256,
     "4e778cf58cee437f4546258f2d5a7ac0a5fcf52ed605fc07eb3ff7e603a5408f"
@@ -165,7 +165,7 @@ test("Cockpit runtime is DEV-only, public and bound to the AP-03/R3 contracts", 
   assert.match(offline, /Du bist offline/);
   assert.doesNotMatch(offline, /<script\b|runtime-config\.js|localStorage|sessionStorage|Liveticker|Bild-Generator/i);
   assert.match(worker, /const COCKPIT_PATH = '\/cockpit\/'/);
-  assert.match(worker, /shell-v2/);
+  assert.match(worker, /shell-v3/);
   assert.match(worker, /COCKPIT_OFFLINE_DOCUMENT = `\$\{COCKPIT_PATH\}offline\.html`/);
   assert.match(worker, /response\.redirected/);
   assert.match(worker, /caches\.delete\(key\)/);
@@ -288,7 +288,7 @@ test("Cockpit files expose a root-only route contract with an isolated 404", asy
   assert.doesNotMatch(offline, /data-route="login"|Plärrdeifl Portal/);
   assert.equal(JSON.parse(manifestSource).scope, "/cockpit/");
   assert.match(worker, /const COCKPIT_PATH = '\/cockpit\/'/);
-  assert.match(worker, /shell-v2/);
+  assert.match(worker, /shell-v3/);
   assert.equal(parseRuntime(runtimeSource).environment, "DEV");
 
   assert.match(

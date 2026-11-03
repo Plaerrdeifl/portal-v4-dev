@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/fanszene-cockpit",
-  "sourceCommit": "2a8abd6d7e94850f9a8dee86536cae5d07e02049",
+  "sourceCommit": "2e154d01e3cf61e7ea5945c5dff6d7acb5d2d088",
   "sourcePackageLockSha256": "4e778cf58cee437f4546258f2d5a7ac0a5fcf52ed605fc07eb3ff7e603a5408f",
   "sourceBuildCommand": "npm ci --include=dev --allow-remote=root && npm run check",
   "sourceBuildEnvironment": {
@@ -14,7 +14,7 @@
     "npm": "12.0.1"
   },
   "artifactRoot": "integrations/cockpit/release",
-  "artifactSha256": "6ebc3571b5de7c14cc35e0d4d76a23f8b3f8d2aced112841b54d6c8a1599aee6",
+  "artifactSha256": "f2587473d1a83b5fdc390a9108edf49cd4c136b4efc900abbdc5cb02659a682c",
   "files": [
     {
       "path": "assets/UserManagement-BbCnHa0a.js",
@@ -69,7 +69,7 @@
     {
       "path": "service-worker.js",
       "bytes": 3637,
-      "sha256": "af024764c68cd84dcc0cc1371721863397a94bc68ba080dbd5a267e89ac54efa"
+      "sha256": "cdc49e45f0e706974d5b8c77141be8e59556fdc88889b7f6f9083d33b01c8d5f"
     }
   ]
 }

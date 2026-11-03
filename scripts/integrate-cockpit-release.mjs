@@ -345,7 +345,7 @@ async function validateRelease() {
     "Der Cockpit-Service-Worker besitzt keinen festen /cockpit/-Pfad."
   );
   assert(
-    /shell-v2/.test(worker)
+    /shell-v3/.test(worker)
       && /COCKPIT_OFFLINE_DOCUMENT = `\$\{COCKPIT_PATH\}offline\.html`/.test(worker)
       && /response\.redirected/.test(worker),
     "Der Cockpit-Service-Worker besitzt nicht den redirect-sicheren Offline-Vertrag v2."

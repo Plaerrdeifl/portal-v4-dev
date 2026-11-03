@@ -33,7 +33,7 @@ that credential into a build argument, committed file or browser runtime.
 
 ```bash
 git clone --no-checkout https://github.com/Plaerrdeifl/fanszene-cockpit.git /tmp/fanszene-cockpit
-git -C /tmp/fanszene-cockpit checkout --detach 2a8abd6d7e94850f9a8dee86536cae5d07e02049
+git -C /tmp/fanszene-cockpit checkout --detach 2e154d01e3cf61e7ea5945c5dff6d7acb5d2d088
 cd /tmp/fanszene-cockpit
 sha256sum package-lock.json
 npm ci
@@ -55,7 +55,7 @@ The portal test suite independently revalidates the complete contract.
   artifact and never cached;
 - `offline.html`: source-generated, standalone and fail-closed without Runtime,
   Auth, Session-/Rechtewiederherstellung oder Fachmodule;
-- Service-Worker cache `pd-cockpit-shell-v2`: pre-caches the non-redirected
+- Service-Worker cache `pd-cockpit-shell-v3`: pre-caches the non-redirected
   offline document, rejects redirected/missing fallbacks and removes older
   Cockpit cache versions on activation;
 - Cloudflare Pages redirects physical `.html` files to extensionless routes.
