@@ -65,7 +65,7 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 	function T(e, t) {
 		return typeof e == "object" && e && e.key != null ? ae("" + e.key) : t.toString(36);
 	}
-	function E(e) {
+	function se(e) {
 		switch (e.status) {
 			case "fulfilled": return e.value;
 			case "rejected": throw e.reason;
@@ -80,7 +80,7 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 		}
 		throw e;
 	}
-	function se(e, r, i, a, o) {
+	function ce(e, r, i, a, o) {
 		var s = typeof e;
 		(s === "undefined" || s === "boolean") && (e = null);
 		var c = !1;
@@ -96,30 +96,30 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 				case n:
 					c = !0;
 					break;
-				case d: return c = e._init, se(c(e._payload), r, i, a, o);
+				case d: return c = e._init, ce(c(e._payload), r, i, a, o);
 			}
 		}
-		if (c) return o = o(e), c = a === "" ? "." + T(e, 0) : a, ee(o) ? (i = "", c != null && (i = c.replace(oe, "$&/") + "/"), se(o, r, i, "", function(e) {
+		if (c) return o = o(e), c = a === "" ? "." + T(e, 0) : a, ee(o) ? (i = "", c != null && (i = c.replace(oe, "$&/") + "/"), ce(o, r, i, "", function(e) {
 			return e;
 		})) : o != null && (ie(o) && (o = re(o, i + (o.key == null || e && e.key === o.key ? "" : ("" + o.key).replace(oe, "$&/") + "/") + c)), r.push(o)), 1;
 		c = 0;
 		var l = a === "" ? "." : a + ":";
-		if (ee(e)) for (var u = 0; u < e.length; u++) a = e[u], s = l + T(a, u), c += se(a, r, i, s, o);
-		else if (u = h(e), typeof u == "function") for (e = u.call(e), u = 0; !(a = e.next()).done;) a = a.value, s = l + T(a, u++), c += se(a, r, i, s, o);
+		if (ee(e)) for (var u = 0; u < e.length; u++) a = e[u], s = l + T(a, u), c += ce(a, r, i, s, o);
+		else if (u = h(e), typeof u == "function") for (e = u.call(e), u = 0; !(a = e.next()).done;) a = a.value, s = l + T(a, u++), c += ce(a, r, i, s, o);
 		else if (s === "object") {
-			if (typeof e.then == "function") return se(E(e), r, i, a, o);
+			if (typeof e.then == "function") return ce(se(e), r, i, a, o);
 			throw r = String(e), Error("Objects are not valid as a React child (found: " + (r === "[object Object]" ? "object with keys {" + Object.keys(e).join(", ") + "}" : r) + "). If you meant to render a collection of children, use an array instead.");
 		}
 		return c;
 	}
-	function D(e, t, n) {
+	function le(e, t, n) {
 		if (e == null) return e;
 		var r = [], i = 0;
-		return se(e, r, "", "", function(e) {
+		return ce(e, r, "", "", function(e) {
 			return t.call(n, e, i++);
 		}), r;
 	}
-	function ce(e) {
+	function ue(e) {
 		if (e._status === -1) {
 			var t = e._result, n = t();
 			n.then(function(t) {
@@ -131,7 +131,7 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 		if (e._status === 1) return e._result.default;
 		throw e._result;
 	}
-	var le = typeof reportError == "function" ? reportError : function(e) {
+	var de = typeof reportError == "function" ? reportError : function(e) {
 		if (typeof window == "object" && typeof window.ErrorEvent == "function") {
 			var t = new window.ErrorEvent("error", {
 				bubbles: !0,
@@ -146,40 +146,40 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 		}
 		console.error(e);
 	};
-	function ue(e) {
+	function fe(e) {
 		var t = C.T, n = {};
 		n.types = t === null ? null : t.types, C.T = n;
 		try {
 			var r = e(), i = C.S;
-			i !== null && i(n, r), typeof r == "object" && r && typeof r.then == "function" && r.then(te, le);
+			i !== null && i(n, r), typeof r == "object" && r && typeof r.then == "function" && r.then(te, de);
 		} catch (e) {
-			le(e);
+			de(e);
 		} finally {
 			t !== null && n.types !== null && (t.types = n.types), C.T = t;
 		}
 	}
-	function de(e) {
+	function pe(e) {
 		var t = C.T;
 		if (t !== null) {
 			var n = t.types;
 			n === null ? t.types = [e] : n.indexOf(e) === -1 && n.push(e);
-		} else ue(de.bind(null, e));
+		} else fe(pe.bind(null, e));
 	}
-	var fe = {
-		map: D,
+	var me = {
+		map: le,
 		forEach: function(e, t, n) {
-			D(e, function() {
+			le(e, function() {
 				t.apply(this, arguments);
 			}, n);
 		},
 		count: function(e) {
 			var t = 0;
-			return D(e, function() {
+			return le(e, function() {
 				t++;
 			}), t;
 		},
 		toArray: function(e) {
-			return D(e, function(e) {
+			return le(e, function(e) {
 				return e;
 			}) || [];
 		},
@@ -188,12 +188,12 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 			return e;
 		}
 	};
-	e.Activity = f, e.Children = fe, e.Component = y, e.Fragment = r, e.Profiler = a, e.PureComponent = x, e.StrictMode = i, e.Suspense = l, e.ViewTransition = p, e.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE = C, e.__COMPILER_RUNTIME = {
+	e.Activity = f, e.Children = me, e.Component = y, e.Fragment = r, e.Profiler = a, e.PureComponent = x, e.StrictMode = i, e.Suspense = l, e.ViewTransition = p, e.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE = C, e.__COMPILER_RUNTIME = {
 		__proto__: null,
 		c: function(e) {
 			return C.H.useMemoCache(e);
 		}
-	}, e.addTransitionType = de, e.cache = function(e) {
+	}, e.addTransitionType = pe, e.cache = function(e) {
 		return function() {
 			return e.apply(null, arguments);
 		};
@@ -247,7 +247,7 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 				_status: -1,
 				_result: e
 			},
-			_init: ce
+			_init: ue
 		};
 	}, e.memo = function(e, t) {
 		return {
@@ -255,7 +255,7 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 			type: e,
 			compare: t === void 0 ? null : t
 		};
-	}, e.startTransition = ue, e.unstable_useCacheRefresh = function() {
+	}, e.startTransition = fe, e.unstable_useCacheRefresh = function() {
 		return C.H.useCacheRefresh();
 	}, e.use = function(e) {
 		return C.H.use(e);
@@ -805,36 +805,36 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 		}
 		return null;
 	}
-	var w = Object.assign, re = Symbol.for("react.element"), ie = Symbol.for("react.transitional.element"), ae = Symbol.for("react.portal"), oe = Symbol.for("react.fragment"), T = Symbol.for("react.strict_mode"), E = Symbol.for("react.profiler"), se = Symbol.for("react.consumer"), D = Symbol.for("react.context"), ce = Symbol.for("react.forward_ref"), le = Symbol.for("react.suspense"), ue = Symbol.for("react.suspense_list"), de = Symbol.for("react.memo"), fe = Symbol.for("react.lazy"), pe = Symbol.for("react.activity"), me = Symbol.for("react.legacy_hidden"), he = Symbol.for("react.memo_cache_sentinel"), ge = Symbol.for("react.view_transition"), _e = Symbol.for("react.recoverable"), ve = Symbol.iterator;
-	function ye(e) {
-		return typeof e != "object" || !e ? null : (e = ve && e[ve] || e["@@iterator"], typeof e == "function" ? e : null);
+	var w = Object.assign, re = Symbol.for("react.element"), ie = Symbol.for("react.transitional.element"), ae = Symbol.for("react.portal"), oe = Symbol.for("react.fragment"), T = Symbol.for("react.strict_mode"), se = Symbol.for("react.profiler"), ce = Symbol.for("react.consumer"), le = Symbol.for("react.context"), ue = Symbol.for("react.forward_ref"), de = Symbol.for("react.suspense"), fe = Symbol.for("react.suspense_list"), pe = Symbol.for("react.memo"), me = Symbol.for("react.lazy"), he = Symbol.for("react.activity"), ge = Symbol.for("react.legacy_hidden"), _e = Symbol.for("react.memo_cache_sentinel"), ve = Symbol.for("react.view_transition"), ye = Symbol.for("react.recoverable"), be = Symbol.iterator;
+	function E(e) {
+		return typeof e != "object" || !e ? null : (e = be && e[be] || e["@@iterator"], typeof e == "function" ? e : null);
 	}
-	var be = Symbol.for("react.client.reference");
-	function xe(e) {
+	var xe = Symbol.for("react.client.reference");
+	function D(e) {
 		if (e == null) return null;
-		if (typeof e == "function") return e.$$typeof === be ? null : e.displayName || e.name || null;
+		if (typeof e == "function") return e.$$typeof === xe ? null : e.displayName || e.name || null;
 		if (typeof e == "string") return e;
 		switch (e) {
 			case oe: return "Fragment";
-			case E: return "Profiler";
+			case se: return "Profiler";
 			case T: return "StrictMode";
-			case le: return "Suspense";
-			case ue: return "SuspenseList";
-			case pe: return "Activity";
-			case ge: return "ViewTransition";
+			case de: return "Suspense";
+			case fe: return "SuspenseList";
+			case he: return "Activity";
+			case ve: return "ViewTransition";
 		}
 		if (typeof e == "object") switch (e.$$typeof) {
 			case ae: return "Portal";
-			case D: return e.displayName || "Context";
-			case se: return (e._context.displayName || "Context") + ".Consumer";
-			case ce:
+			case le: return e.displayName || "Context";
+			case ce: return (e._context.displayName || "Context") + ".Consumer";
+			case ue:
 				var t = e.render;
 				return e = e.displayName, e ||= (e = t.displayName || t.name || "", e === "" ? "ForwardRef" : "ForwardRef(" + e + ")"), e;
-			case de: return t = e.displayName || null, t === null ? xe(e.type) || "Memo" : t;
-			case fe:
+			case pe: return t = e.displayName || null, t === null ? D(e.type) || "Memo" : t;
+			case me:
 				t = e._payload, e = e._init;
 				try {
-					return xe(e(t));
+					return D(e(t));
 				} catch {}
 		}
 		return null;
@@ -2160,16 +2160,16 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 		if (r = e, typeof r == "function") Li(r) && (o = 1);
 		else if (typeof r == "string") o = qm(e, n, De.current) ? 26 : e === "html" || e === "head" || e === "body" ? 27 : 5;
 		else a: switch (r) {
-			case pe: return e = Ii(31, n, t, i), e.elementType = pe, e.lanes = a, e;
+			case he: return e = Ii(31, n, t, i), e.elementType = he, e.lanes = a, e;
 			case oe: return Vi(n.children, i, a, t);
 			case T:
 				o = 8, i |= 24;
 				break;
-			case E: return e = Ii(12, n, t, i | 2), e.elementType = E, e.lanes = a, e;
-			case le: return e = Ii(13, n, t, i), e.elementType = le, e.lanes = a, e;
-			case ue: return e = Ii(19, n, t, i), e.elementType = ue, e.lanes = a, e;
-			case me:
-			case ge: return e = i | 32, e = Ii(30, n, t, e), e.elementType = ge, e.lanes = a, e.stateNode = {
+			case se: return e = Ii(12, n, t, i | 2), e.elementType = se, e.lanes = a, e;
+			case de: return e = Ii(13, n, t, i), e.elementType = de, e.lanes = a, e;
+			case fe: return e = Ii(19, n, t, i), e.elementType = fe, e.lanes = a, e;
+			case ge:
+			case ve: return e = i | 32, e = Ii(30, n, t, e), e.elementType = ve, e.lanes = a, e.stateNode = {
 				autoName: null,
 				paired: null,
 				clones: null,
@@ -2177,19 +2177,19 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 			}, e;
 			default:
 				if (typeof r == "object" && r) switch (r.$$typeof) {
-					case D:
+					case le:
 						o = 10;
 						break a;
-					case se:
+					case ce:
 						o = 9;
 						break a;
-					case ce:
+					case ue:
 						o = 11;
 						break a;
-					case de:
+					case pe:
 						o = 14;
 						break a;
-					case fe:
+					case me:
 						o = 16, r = null;
 						break a;
 				}
@@ -2448,7 +2448,7 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 			});
 		};
 	}, Ma = t.unstable_scheduleCallback, Na = t.unstable_NormalPriority, Pa = {
-		$$typeof: D,
+		$$typeof: le,
 		Consumer: null,
 		Provider: null,
 		_currentValue: null,
@@ -2638,7 +2638,7 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 		}
 		function l(e, t, n, r) {
 			var a = n.type;
-			return a === oe ? (e = d(e, t, n.props.children, r, n.key), co(e, n), e) : t !== null && (t.elementType === a || typeof a == "object" && a && a.$$typeof === fe && to(a) === t.type) ? (t = i(t, n.props), co(t, n), t.return = e, t) : (t = Bi(n.type, n.key, n.props, null, e.mode, r), co(t, n), t.return = e, t);
+			return a === oe ? (e = d(e, t, n.props.children, r, n.key), co(e, n), e) : t !== null && (t.elementType === a || typeof a == "object" && a && a.$$typeof === me && to(a) === t.type) ? (t = i(t, n.props), co(t, n), t.return = e, t) : (t = Bi(n.type, n.key, n.props, null, e.mode, r), co(t, n), t.return = e, t);
 		}
 		function u(e, t, n, r) {
 			return t === null || t.tag !== 4 || t.stateNode.containerInfo !== n.containerInfo || t.stateNode.implementation !== n.implementation ? (t = Wi(n, e.mode, r), t.return = e, t) : (t = i(t, n.children || []), t.return = e, t);
@@ -2652,11 +2652,11 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 				switch (t.$$typeof) {
 					case ie: return n = Bi(t.type, t.key, t.props, null, e.mode, n), co(n, t), n.return = e, n;
 					case ae: return t = Wi(t, e.mode, n), t.return = e, t;
-					case fe: return t = to(t), f(e, t, n);
+					case me: return t = to(t), f(e, t, n);
 				}
-				if (Se(t) || ye(t)) return t = Vi(t, e.mode, n, null), t.return = e, t;
+				if (Se(t) || E(t)) return t = Vi(t, e.mode, n, null), t.return = e, t;
 				if (typeof t.then == "function") return f(e, so(t), n);
-				if (t.$$typeof === D) return f(e, ka(e, t), n);
+				if (t.$$typeof === le) return f(e, ka(e, t), n);
 				lo(e, t);
 			}
 			return null;
@@ -2668,11 +2668,11 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 				switch (n.$$typeof) {
 					case ie: return n.key === i ? l(e, t, n, r) : null;
 					case ae: return n.key === i ? u(e, t, n, r) : null;
-					case fe: return n = to(n), p(e, t, n, r);
+					case me: return n = to(n), p(e, t, n, r);
 				}
-				if (Se(n) || ye(n)) return i === null ? d(e, t, n, r, null) : null;
+				if (Se(n) || E(n)) return i === null ? d(e, t, n, r, null) : null;
 				if (typeof n.then == "function") return p(e, t, so(n), r);
-				if (n.$$typeof === D) return p(e, t, ka(e, n), r);
+				if (n.$$typeof === le) return p(e, t, ka(e, n), r);
 				lo(e, n);
 			}
 			return null;
@@ -2683,11 +2683,11 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 				switch (r.$$typeof) {
 					case ie: return e = e.get(r.key === null ? n : r.key) || null, l(t, e, r, i);
 					case ae: return e = e.get(r.key === null ? n : r.key) || null, u(t, e, r, i);
-					case fe: return r = to(r), m(e, t, n, r, i);
+					case me: return r = to(r), m(e, t, n, r, i);
 				}
-				if (Se(r) || ye(r)) return e = e.get(n) || null, d(t, e, r, i, null);
+				if (Se(r) || E(r)) return e = e.get(n) || null, d(t, e, r, i, null);
 				if (typeof r.then == "function") return m(e, t, n, so(r), i);
-				if (r.$$typeof === D) return m(e, t, n, ka(t, r), i);
+				if (r.$$typeof === le) return m(e, t, n, ka(t, r), i);
 				lo(t, r);
 			}
 			return null;
@@ -2745,7 +2745,7 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 											n(e, r.sibling), c = i(r, a.props.children), co(c, a), c.return = e, e = c;
 											break a;
 										}
-									} else if (r.elementType === l || typeof l == "object" && l && l.$$typeof === fe && to(l) === r.type) {
+									} else if (r.elementType === l || typeof l == "object" && l && l.$$typeof === me && to(l) === r.type) {
 										n(e, r.sibling), c = i(r, a.props), co(c, a), c.return = e, e = c;
 										break a;
 									}
@@ -2773,15 +2773,15 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 							c = Wi(a, e.mode, c), c.return = e, e = c;
 						}
 						return o(e);
-					case fe: return a = to(a), _(e, r, a, c);
+					case me: return a = to(a), _(e, r, a, c);
 				}
 				if (Se(a)) return h(e, r, a, c);
-				if (ye(a)) {
-					if (l = ye(a), typeof l != "function") throw Error(s(150));
+				if (E(a)) {
+					if (l = E(a), typeof l != "function") throw Error(s(150));
 					return a = l.call(a), g(e, r, a, c);
 				}
 				if (typeof a.then == "function") return _(e, r, so(a), c);
-				if (a.$$typeof === D) return _(e, r, ka(e, a), c);
+				if (a.$$typeof === le) return _(e, r, ka(e, a), c);
 				lo(e, a);
 			}
 			return typeof a == "string" && a !== "" || typeof a == "number" || typeof a == "bigint" ? (a = "" + a, r !== null && r.tag === 6 ? (n(e, r.sibling), c = i(r, a), c.return = e, e = c) : (n(e, r), c = Hi(a, e.mode, c), c.return = e, e = c), o(e)) : n(e, r);
@@ -3099,8 +3099,8 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 	function us(e) {
 		if (typeof e == "object" && e) {
 			if (typeof e.then == "function") return ls(e);
-			if (e.$$typeof === _e) return;
-			if (e.$$typeof === D) return Oa(e);
+			if (e.$$typeof === ye) return;
+			if (e.$$typeof === le) return Oa(e);
 		}
 		throw Error(s(438, String(e)));
 	}
@@ -3118,7 +3118,7 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 		if (t ??= {
 			data: [],
 			index: 0
-		}, n === null && (n = cs(), V.updateQueue = n), n.memoCache = t, n = t.data[t.index], n === void 0) for (n = t.data[t.index] = Array(e), r = 0; r < e; r++) n[r] = he;
+		}, n === null && (n = cs(), V.updateQueue = n), n.memoCache = t, n = t.data[t.index], n === void 0) for (n = t.data[t.index] = Array(e), r = 0; r < e; r++) n[r] = _e;
 		return t.index++, n;
 	}
 	function fs(e, t) {
@@ -4395,20 +4395,20 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 					else {
 						if (e != null) {
 							var i = e.$$typeof;
-							if (i === ce) {
+							if (i === ue) {
 								t.tag = 11, t = Fc(null, t, e, r, n);
 								break a;
 							}
-							if (i === de) {
+							if (i === pe) {
 								t.tag = 14, t = Ic(null, t, e, r, n);
 								break a;
 							}
-							if (i === D) {
+							if (i === le) {
 								t.tag = 10, t.type = e, t = cl(null, t, n);
 								break a;
 							}
 						}
-						throw t = xe(e) || e, Error(s(306, t, ""));
+						throw t = D(e) || e, Error(s(306, t, ""));
 					}
 				}
 				return t;
@@ -8613,7 +8613,7 @@ var e = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t
 		}
 	}
 	var sh = {
-		$$typeof: D,
+		$$typeof: le,
 		Provider: null,
 		Consumer: null,
 		_currentValue: Ce,
@@ -9240,7 +9240,7 @@ function T(e) {
 	}
 	return e;
 }
-function E(e, t) {
+function se(e, t) {
 	return new Promise((n) => {
 		if (t?.aborted) {
 			n();
@@ -9255,10 +9255,10 @@ function E(e, t) {
 		t?.addEventListener("abort", i);
 	});
 }
-function se(e, t, n, r) {
+function ce(e, t, n, r) {
 	return !(!r || n >= ee || !ne.includes(e) || !C.includes(t));
 }
-async function D(e, t, n, r) {
+async function le(e, t, n, r) {
 	let i = 0;
 	for (;;) {
 		let a = T({}, n.headers);
@@ -9275,20 +9275,20 @@ async function D(e, t, n, r) {
 			if (e?.name === "AbortError" || e?.code === "ABORT_ERR" || !ne.includes(n.method)) throw e;
 			if (r && i < ee) {
 				let e = te(i);
-				i++, await E(e, n.signal);
+				i++, await se(e, n.signal);
 				continue;
 			}
 			throw e;
 		}
-		if (se(n.method, o.status, i, r)) {
+		if (ce(n.method, o.status, i, r)) {
 			let e = o.headers?.get("Retry-After") ?? null, t = e === null ? te(i) : Math.max(0, parseInt(e, 10) || 0) * 1e3;
-			await o.text(), i++, await E(t, n.signal);
+			await o.text(), i++, await se(t, n.signal);
 			continue;
 		}
 		return o;
 	}
 }
-var ce = class {
+var ue = class {
 	constructor(e) {
 		this.shouldThrowOnError = !1, this.retryEnabled = !0, this.method = e.method, this.url = e.url, this.headers = new Headers(e.headers), this.schema = e.schema, this.body = e.body, this.shouldThrowOnError = e.shouldThrowOnError ?? !1, this.signal = e.signal, this.isMaybeSingle = e.isMaybeSingle ?? !1, this.shouldStripNulls = e.shouldStripNulls ?? !1, this.urlLengthLimit = e.urlLengthLimit ?? 8e3, this.retryEnabled = e.retry ?? !0, this.fetch = e.fetch ? e.fetch : fetch;
 	}
@@ -9316,7 +9316,7 @@ var ce = class {
 			n.headers.forEach((t, n) => {
 				e[n] = t;
 			});
-			let t = await D(r, n.url.toString(), {
+			let t = await le(r, n.url.toString(), {
 				method: n.method,
 				headers: e,
 				body: JSON.stringify(n.body, (e, t) => typeof t == "bigint" ? t.toString() : t),
@@ -9403,7 +9403,7 @@ var ce = class {
 	overrideTypes() {
 		return this;
 	}
-}, le = class extends ce {
+}, de = class extends ue {
 	throwOnError() {
 		return super.throwOnError();
 	}
@@ -9457,7 +9457,7 @@ var ce = class {
 	maxAffected(e) {
 		return this.headers.append("Prefer", "handling=strict"), this.headers.append("Prefer", `max-affected=${e}`), this;
 	}
-}, ue = /* @__PURE__ */ RegExp("[,()]"), de = class extends le {
+}, fe = /* @__PURE__ */ RegExp("[,()]"), pe = class extends de {
 	throwOnError() {
 		return super.throwOnError();
 	}
@@ -9510,11 +9510,11 @@ var ce = class {
 		return this.url.searchParams.append(e, `isdistinct.${t}`), this;
 	}
 	in(e, t) {
-		let n = Array.from(new Set(t)).map((e) => typeof e == "string" && ue.test(e) ? `"${e}"` : `${e}`).join(",");
+		let n = Array.from(new Set(t)).map((e) => typeof e == "string" && fe.test(e) ? `"${e}"` : `${e}`).join(",");
 		return this.url.searchParams.append(e, `in.(${n})`), this;
 	}
 	notIn(e, t) {
-		let n = Array.from(new Set(t)).map((e) => typeof e == "string" && ue.test(e) ? `"${e}"` : `${e}`).join(",");
+		let n = Array.from(new Set(t)).map((e) => typeof e == "string" && fe.test(e) ? `"${e}"` : `${e}`).join(",");
 		return this.url.searchParams.append(e, `not.in.(${n})`), this;
 	}
 	contains(e, t) {
@@ -9562,7 +9562,7 @@ var ce = class {
 	filter(e, t, n) {
 		return this.url.searchParams.append(e, `${t}.${n}`), this;
 	}
-}, fe = class {
+}, me = class {
 	constructor(e, { headers: t = {}, schema: n, fetch: r, urlLengthLimit: i = 8e3, retry: a }) {
 		this.url = e, this.headers = new Headers(t), this.schema = n, this.fetch = r, this.urlLengthLimit = i, this.retry = a;
 	}
@@ -9574,7 +9574,7 @@ var ce = class {
 	}
 	select(e, t) {
 		let { head: n = !1, count: r } = t ?? {}, i = n ? "HEAD" : "GET", a = !1, o = (e ?? "*").split("").map((e) => /\s/.test(e) && !a ? "" : (e === "\"" && (a = !a), e)).join(""), { url: s, headers: c } = this.cloneRequestState();
-		return s.searchParams.set("select", o), r && c.append("Prefer", `count=${r}`), new de({
+		return s.searchParams.set("select", o), r && c.append("Prefer", `count=${r}`), new pe({
 			method: i,
 			url: s,
 			headers: c,
@@ -9593,7 +9593,7 @@ var ce = class {
 				r.searchParams.set("columns", e.join(","));
 			}
 		}
-		return new de({
+		return new pe({
 			method: "POST",
 			url: r,
 			headers: i,
@@ -9613,7 +9613,7 @@ var ce = class {
 				a.searchParams.set("columns", e.join(","));
 			}
 		}
-		return new de({
+		return new pe({
 			method: "POST",
 			url: a,
 			headers: o,
@@ -9626,7 +9626,7 @@ var ce = class {
 	}
 	update(e, { count: t } = {}) {
 		let { url: n, headers: r } = this.cloneRequestState();
-		return t && r.append("Prefer", `count=${t}`), new de({
+		return t && r.append("Prefer", `count=${t}`), new pe({
 			method: "PATCH",
 			url: n,
 			headers: r,
@@ -9639,7 +9639,7 @@ var ce = class {
 	}
 	delete({ count: e } = {}) {
 		let { url: t, headers: n } = this.cloneRequestState();
-		return e && n.append("Prefer", `count=${e}`), new de({
+		return e && n.append("Prefer", `count=${e}`), new pe({
 			method: "DELETE",
 			url: t,
 			headers: n,
@@ -9650,7 +9650,7 @@ var ce = class {
 		});
 	}
 };
-function pe(e, t) {
+function he(e, t) {
 	try {
 		let t = JSON.parse(e);
 		if (t && typeof t == "object" && !Array.isArray(t)) return new S({
@@ -9667,7 +9667,7 @@ function pe(e, t) {
 		code: ""
 	});
 }
-function me(e, t, n) {
+function ge(e, t, n) {
 	let r = e;
 	return {
 		success: !1,
@@ -9683,7 +9683,7 @@ function me(e, t, n) {
 		statusText: n
 	};
 }
-var he = class e {
+var _e = class e {
 	constructor(e, { headers: t = {}, schema: n, fetch: r, timeout: i, urlLengthLimit: a = 8e3, retry: o } = {}) {
 		this.url = e, this.headers = new Headers(t), this.schemaName = n, this.urlLengthLimit = a;
 		let s = r ?? globalThis.fetch;
@@ -9703,7 +9703,7 @@ var he = class e {
 	}
 	from(e) {
 		if (!e || typeof e != "string" || e.trim() === "") throw Error("Invalid relation name: relation must be a non-empty string.");
-		return new fe(new URL(`${this.url}/${e}`), {
+		return new me(new URL(`${this.url}/${e}`), {
 			headers: new Headers(this.headers),
 			schema: this.schemaName,
 			fetch: this.fetch,
@@ -9730,18 +9730,18 @@ var he = class e {
 		});
 		let r = e.fetch ?? globalThis.fetch, i;
 		try {
-			i = await D(r, `${e.url}/`, {
+			i = await le(r, `${e.url}/`, {
 				method: "GET",
 				headers: n
 			}, e.retry ?? !0);
 		} catch (e) {
-			return me(e, 0, "");
+			return ge(e, 0, "");
 		}
 		let a;
 		try {
 			a = await i.text();
 		} catch (e) {
-			return me(e, i.status, i.statusText);
+			return ge(e, i.status, i.statusText);
 		}
 		if (i.ok) try {
 			return {
@@ -9755,7 +9755,7 @@ var he = class e {
 		} catch {}
 		return {
 			success: !1,
-			error: pe(a, i.statusText),
+			error: he(a, i.statusText),
 			data: null,
 			count: null,
 			status: i.status,
@@ -9768,7 +9768,7 @@ var he = class e {
 			o.searchParams.append(e, t);
 		})) : (a = "POST", s = t);
 		let u = new Headers(this.headers);
-		return l ? u.set("Prefer", i ? `count=${i},return=minimal` : "return=minimal") : i && u.set("Prefer", `count=${i}`), new de({
+		return l ? u.set("Prefer", i ? `count=${i},return=minimal` : "return=minimal") : i && u.set("Prefer", `count=${i}`), new pe({
 			method: a,
 			url: o,
 			headers: u,
@@ -9779,7 +9779,7 @@ var he = class e {
 			retry: this.retry
 		});
 	}
-}, ge = class {
+}, ve = class {
 	constructor() {}
 	static detectEnvironment() {
 		if (typeof WebSocket < "u") return {
@@ -9834,7 +9834,7 @@ var he = class e {
 			return !1;
 		}
 	}
-}, _e = "realtime-js/2.117.2", ve = "1.0.0", ye = "2.0.0", be = ye, xe = 1e4, Se = 15e3, O = 1e4, k = {
+}, ye = "realtime-js/2.117.2", be = "1.0.0", E = "2.0.0", xe = E, D = 1e4, Se = 15e3, O = 1e4, k = {
 	closed: "closed",
 	errored: "errored",
 	joined: "joined",
@@ -11653,7 +11653,7 @@ var jt = "\n  addEventListener(\"message\", (e) => {\n    if (e.data.event === \
 		t === this._authGeneration && (this.accessToken ? this._manuallySetToken = !1 : r && (this._manuallySetToken = !0), this.accessTokenValue != n && (this.accessTokenValue = n, this.channels.forEach((e) => {
 			let t = {
 				access_token: n,
-				version: _e
+				version: ye
 			};
 			e.updateJoinPayload(t), e.joinedOnce && e.channelAdapter.isJoined() && e.channelAdapter.push(Ce.access_token, { access_token: n });
 		})));
@@ -11712,13 +11712,13 @@ var jt = "\n  addEventListener(\"message\", (e) => {\n    if (e.data.event === \
 	_initializeOptions(e) {
 		this.worker = e?.worker ?? !1, this.accessToken = e?.accessToken ?? null;
 		let t = {};
-		t.timeout = e?.timeout ?? xe, t.heartbeatIntervalMs = e?.heartbeatIntervalMs ?? Et.HEARTBEAT_INTERVAL, this._disconnectOnEmptyChannelsAfterMs = e?.disconnectOnEmptyChannelsAfterMs ?? 2 * (e?.heartbeatIntervalMs ?? Et.HEARTBEAT_INTERVAL), t.transport = e?.transport ?? ge.getWebSocketConstructor(), t.params = e?.params, t.logger = e?.logger, t.heartbeatCallback = this._wrapHeartbeatCallback(e?.heartbeatCallback), t.sessionStorage = e?.sessionStorage ?? At(), t.reconnectAfterMs = e?.reconnectAfterMs ?? ((e) => Dt[e - 1] || Ot);
-		let n, r, i = e?.vsn ?? be;
+		t.timeout = e?.timeout ?? D, t.heartbeatIntervalMs = e?.heartbeatIntervalMs ?? Et.HEARTBEAT_INTERVAL, this._disconnectOnEmptyChannelsAfterMs = e?.disconnectOnEmptyChannelsAfterMs ?? 2 * (e?.heartbeatIntervalMs ?? Et.HEARTBEAT_INTERVAL), t.transport = e?.transport ?? ve.getWebSocketConstructor(), t.params = e?.params, t.logger = e?.logger, t.heartbeatCallback = this._wrapHeartbeatCallback(e?.heartbeatCallback), t.sessionStorage = e?.sessionStorage ?? At(), t.reconnectAfterMs = e?.reconnectAfterMs ?? ((e) => Dt[e - 1] || Ot);
+		let n, r, i = e?.vsn ?? xe;
 		switch (i) {
-			case ve:
+			case be:
 				n = (e, t) => t(JSON.stringify(e)), r = (e, t) => t(JSON.parse(e));
 				break;
-			case ye:
+			case E:
 				n = this.serializer.encode.bind(this.serializer), r = this.serializer.decode.bind(this.serializer);
 				break;
 			default: throw Error(`Unsupported serializer version: ${t.vsn}`);
@@ -17021,7 +17021,7 @@ var Na = class extends Qi {
 			headers: this.headers,
 			accessToken: this._getAccessToken.bind(this),
 			fetch: this.fetch
-		}, o.realtime)), this.accessToken && Promise.resolve(this.accessToken()).then((e) => this.realtime.setAuth(e)).catch((e) => console.warn("Failed to set initial Realtime auth token:", e)), this.rest = new he(new URL("rest/v1", r).href, {
+		}, o.realtime)), this.accessToken && Promise.resolve(this.accessToken()).then((e) => this.realtime.setAuth(e)).catch((e) => console.warn("Failed to set initial Realtime auth token:", e)), this.rest = new _e(new URL("rest/v1", r).href, {
 			headers: this.headers,
 			schema: o.db.schema,
 			fetch: this.fetch,
@@ -18855,21 +18855,21 @@ var Ws = {
 	background: "Hintergrund",
 	group: "Gruppe"
 };
-function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLabel: i = "Grafikeditor", bindingContext: a }) {
-	let [o, s] = (0, l.useReducer)(Rs, e, Ls), [c, u] = (0, l.useState)(!1), [d, f] = (0, l.useState)([]), [p, m] = (0, l.useState)("preview"), [h, g] = (0, l.useState)(!1), [_, v] = (0, l.useState)(!1), [y, b] = (0, l.useState)(null), [x, S] = (0, l.useState)(null), [ee, te] = (0, l.useState)(!1), [C, ne] = (0, l.useState)({}), w = (0, l.useRef)({}), re = (0, l.useRef)(null), ie = (0, l.useRef)(null), ae = (0, l.useRef)(null), oe = (0, l.useRef)(null), T = (0, l.useRef)(!1), E = Ms(o.status, c);
+function Ks({ draft: e, onDraftChanged: t, onClose: n, onTemplateCreated: r, persistence: i, editorLabel: a = "Grafikeditor", bindingContext: o }) {
+	let [s, c] = (0, l.useReducer)(Rs, e, Ls), [u, d] = (0, l.useState)(!1), [f, p] = (0, l.useState)([]), [m, h] = (0, l.useState)("preview"), [g, _] = (0, l.useState)(!1), [v, y] = (0, l.useState)(!1), [b, x] = (0, l.useState)(!1), [S, ee] = (0, l.useState)(e.title), [te, C] = (0, l.useState)("Allgemein"), [ne, w] = (0, l.useState)(""), [re, ie] = (0, l.useState)(!1), [ae, oe] = (0, l.useState)(null), T = (0, l.useRef)(!1), [se, ce] = (0, l.useState)(null), [le, ue] = (0, l.useState)(null), [de, fe] = (0, l.useState)(!1), [pe, me] = (0, l.useState)({}), he = (0, l.useRef)({}), ge = (0, l.useRef)(null), _e = (0, l.useRef)(null), ve = (0, l.useRef)(null), ye = (0, l.useRef)(null), be = (0, l.useRef)(!1), E = Ms(s.status, u);
 	(0, l.useEffect)(() => {
-		e.id !== o.draftId && s({
+		e.id !== s.draftId && c({
 			type: "load",
 			draft: e
 		});
-	}, [e, o.draftId]);
-	let se = (0, l.useMemo)(() => wo(o.document, a, C), [
-		o.document,
-		a,
-		C
-	]), D = (0, l.useMemo)(() => o.selectedElementId ? Vo(o.document.elements, o.selectedElementId) : null, [o.document.elements, o.selectedElementId]), ce = (0, l.useMemo)(() => d.map((e) => Vo(o.document.elements, e)).filter((e) => !!e), [o.document.elements, d]), le = (0, l.useMemo)(() => Qs(o.document.elements), [o.document.elements]);
+	}, [e, s.draftId]);
+	let xe = (0, l.useMemo)(() => wo(s.document, o, pe), [
+		s.document,
+		o,
+		pe
+	]), D = (0, l.useMemo)(() => s.selectedElementId ? Vo(s.document.elements, s.selectedElementId) : null, [s.document.elements, s.selectedElementId]), Se = (0, l.useMemo)(() => f.map((e) => Vo(s.document.elements, e)).filter((e) => !!e), [s.document.elements, f]), O = (0, l.useMemo)(() => Qs(s.document.elements), [s.document.elements]);
 	(0, l.useEffect)(() => {
-		let e = !1, t = Us(o.document.elements).filter((e) => !w.current[e]);
+		let e = !1, t = Us(s.document.elements).filter((e) => !he.current[e]);
 		return Promise.all(t.map(async (t) => {
 			try {
 				let n = await fs(t);
@@ -18877,7 +18877,7 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 					URL.revokeObjectURL(n);
 					return;
 				}
-				w.current[t] = n, ne((e) => ({
+				he.current[t] = n, me((e) => ({
 					...e,
 					[t]: n
 				}));
@@ -18887,48 +18887,48 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 		})), () => {
 			e = !0;
 		};
-	}, [o.document.elements]), (0, l.useEffect)(() => () => {
-		Object.values(w.current).forEach((e) => URL.revokeObjectURL(e));
+	}, [s.document.elements]), (0, l.useEffect)(() => () => {
+		Object.values(he.current).forEach((e) => URL.revokeObjectURL(e));
 	}, []), (0, l.useEffect)(() => {
-		if (!o.selectedElementId) {
-			d.length > 0 && f([]);
+		if (!s.selectedElementId) {
+			f.length > 0 && p([]);
 			return;
 		}
-		d.includes(o.selectedElementId) || f([o.selectedElementId]);
-	}, [o.selectedElementId]), (0, l.useEffect)(() => {
-		let e = re.current;
+		f.includes(s.selectedElementId) || p([s.selectedElementId]);
+	}, [s.selectedElementId]), (0, l.useEffect)(() => {
+		let e = ge.current;
 		e && e.querySelectorAll("[data-pd-id]").forEach((e) => {
-			d.includes(e.getAttribute("data-pd-id") ?? "") ? e.setAttribute("data-pd-selected", "true") : e.removeAttribute("data-pd-selected");
+			f.includes(e.getAttribute("data-pd-id") ?? "") ? e.setAttribute("data-pd-selected", "true") : e.removeAttribute("data-pd-selected");
 		});
-	}, [se, d]), (0, l.useEffect)(() => {
+	}, [xe, f]), (0, l.useEffect)(() => {
 		let e = (e) => {
 			if (!_s(e)) return;
 			let t = e.ctrlKey || e.metaKey;
 			if (t && e.key.toLowerCase() === "g") {
-				e.preventDefault(), e.shiftKey ? ve() : _e();
+				e.preventDefault(), e.shiftKey ? Oe() : De();
 				return;
 			}
 			if (t && e.key.toLowerCase() === "z") {
-				e.preventDefault(), s({ type: e.shiftKey ? "redo" : "undo" });
+				e.preventDefault(), c({ type: e.shiftKey ? "redo" : "undo" });
 				return;
 			}
 			if (t && e.key.toLowerCase() === "y") {
-				e.preventDefault(), s({ type: "redo" });
+				e.preventDefault(), c({ type: "redo" });
 				return;
 			}
 			if ((e.key === "Delete" || e.key === "Backspace") && D && !D.locked && !D.binding?.protected && !E) {
-				e.preventDefault(), Se();
+				e.preventDefault(), Me();
 				return;
 			}
-			if (D && d.length === 1 && !D.locked && !E && [
+			if (D && f.length === 1 && !D.locked && !E && [
 				"ArrowLeft",
 				"ArrowRight",
 				"ArrowUp",
 				"ArrowDown"
 			].includes(e.key)) {
 				e.preventDefault();
-				let t = e.shiftKey ? 10 : 1, n = e.key === "ArrowLeft" ? -t : e.key === "ArrowRight" ? t : 0, r = e.key === "ArrowUp" ? -t : e.key === "ArrowDown" ? t : 0, i = Ko(o.document, D.id, n, r);
-				s({
+				let t = e.shiftKey ? 10 : 1, n = e.key === "ArrowLeft" ? -t : e.key === "ArrowRight" ? t : 0, r = e.key === "ArrowUp" ? -t : e.key === "ArrowDown" ? t : 0, i = Ko(s.document, D.id, n, r);
+				c({
 					type: "documentChanged",
 					document: i,
 					selectedElementId: D.id
@@ -18937,236 +18937,236 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 		};
 		return window.addEventListener("keydown", e), () => window.removeEventListener("keydown", e);
 	});
-	let ue = async () => {
-		if (!(E || T.current)) {
-			if (!o.title.trim()) {
-				s({
+	let k = async () => {
+		if (!(E || be.current)) {
+			if (!s.title.trim()) {
+				c({
 					type: "saveFailed",
 					message: "Bitte einen Titel eingeben."
 				});
 				return;
 			}
-			T.current = !0, s({ type: "saveStarted" });
+			be.current = !0, c({ type: "saveStarted" });
 			try {
-				let e = r ? await r.save({
-					id: o.draftId,
-					title: o.title.trim(),
-					document: o.document,
-					expectedVersion: o.version
+				let e = i ? await i.save({
+					id: s.draftId,
+					title: s.title.trim(),
+					document: s.document,
+					expectedVersion: s.version
 				}) : await z.saveDraft({
-					draftId: o.draftId,
-					title: o.title.trim(),
-					document: o.document,
-					expectedVersion: o.version
+					draftId: s.draftId,
+					title: s.title.trim(),
+					document: s.document,
+					expectedVersion: s.version
 				});
-				s({
+				c({
 					type: "saveSucceeded",
 					draft: e
 				}), t(e);
 			} catch (e) {
-				console.error(`${r?.logLabel ?? "Generator draft"} save failed`, e), Xa(e) ? s({
+				console.error(`${i?.logLabel ?? "Generator draft"} save failed`, e), Xa(e) ? c({
 					type: "conflict",
-					message: r?.conflictMessage ?? "Dieser Entwurf wurde zwischenzeitlich geändert. Lade die aktuelle Version neu; deine lokale Änderung wird nicht automatisch überschrieben."
-				}) : s({
+					message: i?.conflictMessage ?? "Dieser Entwurf wurde zwischenzeitlich geändert. Lade die aktuelle Version neu; deine lokale Änderung wird nicht automatisch überschrieben."
+				}) : c({
 					type: "saveFailed",
 					message: B(e)
 				});
 			} finally {
-				T.current = !1;
+				be.current = !1;
 			}
 		}
 	};
 	(0, l.useEffect)(() => {
-		if (o.status !== "dirty" || c || !o.title.trim()) return;
+		if (s.status !== "dirty" || u || !s.title.trim()) return;
 		let e = window.setTimeout(() => {
-			ue();
+			k();
 		}, 1400);
 		return () => window.clearTimeout(e);
 	}, [
-		o.status,
-		o.title,
-		o.document,
-		o.version,
-		c
+		s.status,
+		s.title,
+		s.document,
+		s.version,
+		u
 	]), (0, l.useEffect)(() => {
 		let e = () => {
-			o.status === "dirty" && !c && o.title.trim() && ue();
+			s.status === "dirty" && !u && s.title.trim() && k();
 		}, t = () => {
 			document.visibilityState === "hidden" && e();
 		}, n = () => {
 			e();
 		}, r = (t) => {
-			(o.status === "saving" || Ns(o.status)) && (e(), t.preventDefault(), t.returnValue = "");
+			(s.status === "saving" || Ns(s.status)) && (e(), t.preventDefault(), t.returnValue = "");
 		};
 		return document.addEventListener("visibilitychange", t), window.addEventListener("pagehide", n), window.addEventListener("beforeunload", r), () => {
 			document.removeEventListener("visibilitychange", t), window.removeEventListener("pagehide", n), window.removeEventListener("beforeunload", r);
 		};
 	}, [
-		o.status,
-		o.title,
-		o.document,
-		o.version,
-		c
+		s.status,
+		s.title,
+		s.document,
+		s.version,
+		u
 	]);
-	let de = async () => {
-		u(!0);
+	let Ce = async () => {
+		d(!0);
 		try {
-			let e = r ? await r.reload(o.draftId) : await z.getDraft(o.draftId);
-			s({
+			let e = i ? await i.reload(s.draftId) : await z.getDraft(s.draftId);
+			c({
 				type: "load",
 				draft: e
 			}), t(e);
 		} catch (e) {
-			console.error(`${r?.logLabel ?? "Generator draft"} reload failed`, e), s({
+			console.error(`${i?.logLabel ?? "Generator draft"} reload failed`, e), c({
 				type: "reloadFailed",
 				message: B(e)
 			});
 		} finally {
-			u(!1);
+			d(!1);
 		}
-	}, fe = () => {
-		E || Ps(o.status, () => window.confirm("Lokale ungespeicherte Änderungen verwerfen und die Serverversion neu laden?")) && de();
-	}, pe = () => {
-		E || Ps(o.status, () => window.confirm("Ungespeicherte Änderungen verwerfen und schließen?")) && n();
-	}, me = (e, t = !1) => {
-		if (b(null), !e) {
-			f([]), s({
+	}, we = () => {
+		E || Ps(s.status, () => window.confirm("Lokale ungespeicherte Änderungen verwerfen und die Serverversion neu laden?")) && Ce();
+	}, Te = () => {
+		E || Ps(s.status, () => window.confirm("Ungespeicherte Änderungen verwerfen und schließen?")) && n();
+	}, A = (e, t = !1) => {
+		if (ce(null), !e) {
+			p([]), c({
 				type: "elementSelected",
 				elementId: void 0
 			});
 			return;
 		}
 		if (!t) {
-			f([e]), s({
+			p([e]), c({
 				type: "elementSelected",
 				elementId: e
 			});
 			return;
 		}
-		let n = d.includes(e), r = n ? d.filter((t) => t !== e) : [...d, e];
-		f(r), s({
+		let n = f.includes(e), r = n ? f.filter((t) => t !== e) : [...f, e];
+		p(r), c({
 			type: "elementSelected",
-			elementId: n ? o.selectedElementId === e ? r.at(-1) : o.selectedElementId : e
+			elementId: n ? s.selectedElementId === e ? r.at(-1) : s.selectedElementId : e
 		});
-	}, he = (e) => {
+	}, Ee = (e) => {
 		if (!E) {
-			if (x === "replace" && D?.binding?.protected) {
-				b("Diese Systembindung bleibt mit der zentralen Datenquelle verknüpft."), S(null);
+			if (le === "replace" && D?.binding?.protected) {
+				ce("Diese Systembindung bleibt mit der zentralen Datenquelle verknüpft."), ue(null);
 				return;
 			}
-			if (x === "replace" && D?.type === "logo") {
-				let t = Ho(o.document, D.id, (t) => t.type === "logo" ? {
+			if (le === "replace" && D?.type === "logo") {
+				let t = Ho(s.document, D.id, (t) => t.type === "logo" ? {
 					...t,
 					name: `${e.name} Logo`,
 					mediaId: e.mediaId,
 					href: e.href,
 					preserveAspectRatio: "xMidYMid meet"
 				} : t);
-				f([D.id]), s({
+				p([D.id]), c({
 					type: "documentChanged",
 					document: t,
 					selectedElementId: D.id
 				});
 			} else {
-				let t = Lo(o.document, e);
-				f([t.elementId]), s({
+				let t = Lo(s.document, e);
+				p([t.elementId]), c({
 					type: "documentChanged",
 					document: t.document,
 					selectedElementId: t.elementId
 				});
 			}
-			S(null);
+			ue(null);
 		}
-	}, ge = (e) => {
+	}, j = (e) => {
 		if (E) return;
-		let t = Ro(o.document, e);
-		f([t.elementId]), s({
+		let t = Ro(s.document, e);
+		p([t.elementId]), c({
 			type: "documentChanged",
 			document: t.document,
 			selectedElementId: t.elementId
-		}), te(!1);
-	}, _e = () => {
-		if (E || d.length < 2) return;
-		if (ce.some((e) => e.binding?.protected)) {
-			b("Systemgebundene Elemente bleiben einzeln, damit ihre Datenbindung eindeutig bleibt.");
+		}), fe(!1);
+	}, De = () => {
+		if (E || f.length < 2) return;
+		if (Se.some((e) => e.binding?.protected)) {
+			ce("Systemgebundene Elemente bleiben einzeln, damit ihre Datenbindung eindeutig bleibt.");
 			return;
 		}
-		let e = Wo(o.document, d);
+		let e = Wo(s.document, f);
 		if (!e.groupId) {
-			b("Zum Gruppieren müssen die ausgewählten Elemente auf derselben Ebene liegen.");
+			ce("Zum Gruppieren müssen die ausgewählten Elemente auf derselben Ebene liegen.");
 			return;
 		}
-		f([e.groupId]), b(null), s({
+		p([e.groupId]), ce(null), c({
 			type: "documentChanged",
 			document: e.document,
 			selectedElementId: e.groupId
 		});
-	}, ve = () => {
+	}, Oe = () => {
 		if (E || !D || D.type !== "group") return;
-		let e = Go(o.document, D.id);
-		e.childIds.length !== 0 && (f(e.childIds), b(null), s({
+		let e = Go(s.document, D.id);
+		e.childIds.length !== 0 && (p(e.childIds), ce(null), c({
 			type: "documentChanged",
 			document: e.document,
 			selectedElementId: e.childIds.at(-1) ?? null
 		}));
-	}, ye = (e) => {
+	}, ke = (e) => {
 		if (!D || E) return;
-		let t = Ho(o.document, D.id, e);
-		s({
+		let t = Ho(s.document, D.id, e);
+		c({
 			type: "documentChanged",
 			document: t,
 			selectedElementId: D.id
 		});
-	}, be = (e, t) => {
+	}, Ae = (e, t) => {
 		if (D?.type === "group") {
 			if (e !== "x" && e !== "y") return;
-			let n = $s(t, D[e]), r = Ko(o.document, D.id, e === "x" ? n - D.x : 0, e === "y" ? n - D.y : 0);
-			s({
+			let n = $s(t, D[e]), r = Ko(s.document, D.id, e === "x" ? n - D.x : 0, e === "y" ? n - D.y : 0);
+			c({
 				type: "documentChanged",
 				document: r,
 				selectedElementId: D.id
 			});
 			return;
 		}
-		ye((n) => ({
+		ke((n) => ({
 			...n,
 			[e]: e === "width" || e === "height" ? Math.max(1, $s(t, n[e])) : $s(t, n[e])
 		}));
-	}, xe = (e) => {
-		ye((t) => ({
+	}, je = (e) => {
+		ke((t) => ({
 			...t,
 			style: {
 				...t.style,
 				...e
 			}
 		}));
-	}, Se = () => {
-		if (!D || d.length !== 1 || D.locked || D.binding?.protected || E) return;
-		let e = V(o.document, D.id);
-		f([]), s({
+	}, Me = () => {
+		if (!D || f.length !== 1 || D.locked || D.binding?.protected || E) return;
+		let e = V(s.document, D.id);
+		p([]), c({
 			type: "documentChanged",
 			document: e,
 			selectedElementId: null
 		});
-	}, O = () => {
+	}, Ne = () => {
 		if (!D || D.binding?.protected || E) return;
-		let e = H(o.document, D.id);
-		e.duplicatedId && (f([e.duplicatedId]), s({
+		let e = H(s.document, D.id);
+		e.duplicatedId && (p([e.duplicatedId]), c({
 			type: "documentChanged",
 			document: e.document,
 			selectedElementId: e.duplicatedId
 		}));
-	}, k = (e) => {
+	}, Pe = (e) => {
 		if (!D || D.locked || E) return;
-		let t = Uo(o.document, D.id, e);
-		s({
+		let t = Uo(s.document, D.id, e);
+		c({
 			type: "documentChanged",
 			document: t,
 			selectedElementId: D.id
 		});
-	}, Ce = (e) => {
-		if (!D || d.length !== 1 || D.locked || E) return;
-		let t = o.document.format, n = D.x, r = D.y;
+	}, Fe = (e) => {
+		if (!D || f.length !== 1 || D.locked || E) return;
+		let t = s.document.format, n = D.x, r = D.y;
 		switch (e) {
 			case "left":
 				n = 0;
@@ -19185,18 +19185,18 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 				break;
 			case "bottom": r = Math.round(t.height - D.height);
 		}
-		let i = Ko(o.document, D.id, n - D.x, r - D.y);
-		s({
+		let i = Ko(s.document, D.id, n - D.x, r - D.y);
+		c({
 			type: "documentChanged",
 			document: i,
 			selectedElementId: D.id
 		});
-	}, we = (e, t) => {
-		if (!D || d.length !== 1 || D.type === "group" || D.locked || E) return;
-		let n = re.current?.querySelector("svg");
+	}, Ie = (e, t) => {
+		if (!D || f.length !== 1 || D.type === "group" || D.locked || E) return;
+		let n = ge.current?.querySelector("svg");
 		if (!(n instanceof SVGSVGElement)) return;
 		let r = n.getBoundingClientRect();
-		r.width <= 0 || r.height <= 0 || (oe.current = {
+		r.width <= 0 || r.height <= 0 || (ye.current = {
 			pointerId: e.pointerId,
 			elementId: D.id,
 			direction: t,
@@ -19210,58 +19210,58 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 			latestY: D.y,
 			latestWidth: D.width,
 			latestHeight: D.height,
-			scaleX: o.document.format.width / r.width,
-			scaleY: o.document.format.height / r.height
+			scaleX: s.document.format.width / r.width,
+			scaleY: s.document.format.height / r.height
 		}, e.currentTarget.setPointerCapture(e.pointerId), e.stopPropagation(), e.preventDefault());
-	}, Te = (e) => {
-		let t = ie.current;
+	}, Le = (e) => {
+		let t = _e.current;
 		if (!t) return;
-		let n = o.document.format.width, r = o.document.format.height;
+		let n = s.document.format.width, r = s.document.format.height;
 		t.style.left = `${e.latestX / n * 100}%`, t.style.top = `${e.latestY / r * 100}%`, t.style.width = `${e.latestWidth / n * 100}%`, t.style.height = `${e.latestHeight / r * 100}%`;
-	}, A = (e) => {
-		let t = oe.current;
+	}, Re = (e) => {
+		let t = ye.current;
 		if (!t || t.pointerId !== e.pointerId) return !1;
 		let n = (e.clientX - t.startClientX) * t.scaleX, r = (e.clientY - t.startClientY) * t.scaleY, i = t.startX, a = t.startY, o = t.startWidth, s = t.startHeight;
-		return t.direction.includes("e") && (o = Math.max(16, Math.round(t.startWidth + n))), t.direction.includes("s") && (s = Math.max(16, Math.round(t.startHeight + r))), t.direction.includes("w") && (i = Math.min(Math.round(t.startX + n), t.startX + t.startWidth - 16), o = t.startWidth - (i - t.startX)), t.direction.includes("n") && (a = Math.min(Math.round(t.startY + r), t.startY + t.startHeight - 16), s = t.startHeight - (a - t.startY)), t.latestX = i, t.latestY = a, t.latestWidth = o, t.latestHeight = s, Te(t), !0;
-	}, Ee = (e, t) => {
-		let n = oe.current;
+		return t.direction.includes("e") && (o = Math.max(16, Math.round(t.startWidth + n))), t.direction.includes("s") && (s = Math.max(16, Math.round(t.startHeight + r))), t.direction.includes("w") && (i = Math.min(Math.round(t.startX + n), t.startX + t.startWidth - 16), o = t.startWidth - (i - t.startX)), t.direction.includes("n") && (a = Math.min(Math.round(t.startY + r), t.startY + t.startHeight - 16), s = t.startHeight - (a - t.startY)), t.latestX = i, t.latestY = a, t.latestWidth = o, t.latestHeight = s, Le(t), !0;
+	}, ze = (e, t) => {
+		let n = ye.current;
 		if (!n || n.pointerId !== e) return !1;
-		if (oe.current = null, !t) {
-			let e = ie.current;
+		if (ye.current = null, !t) {
+			let e = _e.current;
 			if (e) {
-				let t = o.document.format.width, r = o.document.format.height;
+				let t = s.document.format.width, r = s.document.format.height;
 				e.style.left = `${n.startX / t * 100}%`, e.style.top = `${n.startY / r * 100}%`, e.style.width = `${n.startWidth / t * 100}%`, e.style.height = `${n.startHeight / r * 100}%`;
 			}
 			return !0;
 		}
 		if (n.latestX === n.startX && n.latestY === n.startY && n.latestWidth === n.startWidth && n.latestHeight === n.startHeight) return !0;
-		let r = Ho(o.document, n.elementId, (e) => ({
+		let r = Ho(s.document, n.elementId, (e) => ({
 			...e,
 			x: n.latestX,
 			y: n.latestY,
 			width: n.latestWidth,
 			height: n.latestHeight
 		}));
-		return s({
+		return c({
 			type: "documentChanged",
 			document: r,
 			selectedElementId: n.elementId
 		}), !0;
-	}, j = (e) => {
+	}, Be = (e) => {
 		if (e.button !== 0 || E) return;
 		let t = e.target;
 		if (!(t instanceof Element)) return;
 		let n = t.closest("[data-pd-id]"), r = n?.getAttribute("data-pd-id") ?? void 0;
-		if (D?.type === "group" && d.length === 1 && n?.closest(`[data-pd-id="${CSS.escape(D.id)}"]`)) {
+		if (D?.type === "group" && f.length === 1 && n?.closest(`[data-pd-id="${CSS.escape(D.id)}"]`)) {
 			let e = n.closest(`[data-pd-id="${CSS.escape(D.id)}"]`);
 			e && (n = e, r = D.id);
 		}
 		let i = e.shiftKey || e.ctrlKey || e.metaKey;
-		if (me(r, i), i || !r || !n) return;
-		let a = Vo(o.document.elements, r), s = re.current?.querySelector("svg");
-		if (!a || a.locked || !(s instanceof SVGSVGElement)) return;
-		let c = s.getBoundingClientRect();
-		c.width <= 0 || c.height <= 0 || (ae.current = {
+		if (A(r, i), i || !r || !n) return;
+		let a = Vo(s.document.elements, r), o = ge.current?.querySelector("svg");
+		if (!a || a.locked || !(o instanceof SVGSVGElement)) return;
+		let c = o.getBoundingClientRect();
+		c.width <= 0 || c.height <= 0 || (ve.current = {
 			pointerId: e.pointerId,
 			elementId: r,
 			startClientX: e.clientX,
@@ -19270,33 +19270,58 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 			startElementY: a.y,
 			latestElementX: a.x,
 			latestElementY: a.y,
-			scaleX: o.document.format.width / c.width,
-			scaleY: o.document.format.height / c.height,
+			scaleX: s.document.format.width / c.width,
+			scaleY: s.document.format.height / c.height,
 			svgNode: n,
 			originalTransform: n.getAttribute("transform")
 		}, e.currentTarget.setPointerCapture(e.pointerId), e.preventDefault());
-	}, De = (e) => {
-		if (A(e)) return;
-		let t = ae.current;
+	}, Ve = (e) => {
+		if (Re(e)) return;
+		let t = ve.current;
 		if (!t || t.pointerId !== e.pointerId) return;
 		let n = (e.clientX - t.startClientX) * t.scaleX, r = (e.clientY - t.startClientY) * t.scaleY;
 		t.latestElementX = Math.round(t.startElementX + n), t.latestElementY = Math.round(t.startElementY + r);
 		let i = `translate(${t.latestElementX - t.startElementX} ${t.latestElementY - t.startElementY})`;
 		t.svgNode.setAttribute("transform", t.originalTransform ? `${i} ${t.originalTransform}` : i);
-	}, Oe = (e, t, n) => {
-		let r = ae.current;
-		if (!r || r.pointerId !== t || (r.originalTransform ? r.svgNode.setAttribute("transform", r.originalTransform) : r.svgNode.removeAttribute("transform"), e.hasPointerCapture(t) && e.releasePointerCapture(t), ae.current = null, !n || r.latestElementX === r.startElementX && r.latestElementY === r.startElementY)) return;
-		let i = Ko(o.document, r.elementId, r.latestElementX - r.startElementX, r.latestElementY - r.startElementY);
-		s({
+	}, He = (e, t, n) => {
+		let r = ve.current;
+		if (!r || r.pointerId !== t || (r.originalTransform ? r.svgNode.setAttribute("transform", r.originalTransform) : r.svgNode.removeAttribute("transform"), e.hasPointerCapture(t) && e.releasePointerCapture(t), ve.current = null, !n || r.latestElementX === r.startElementX && r.latestElementY === r.startElementY)) return;
+		let i = Ko(s.document, r.elementId, r.latestElementX - r.startElementX, r.latestElementY - r.startElementY);
+		c({
 			type: "documentChanged",
 			document: i,
 			selectedElementId: r.elementId
 		});
-	}, ke = (e) => {
-		Ee(e.pointerId, !0) || Oe(e.currentTarget, e.pointerId, !0);
-	}, Ae = (e) => {
-		Ee(e.pointerId, !1) || Oe(e.currentTarget, e.pointerId, !1);
-	}, je = (o.status === "dirty" || o.status === "error") && !!o.title.trim();
+	}, Ue = (e) => {
+		ze(e.pointerId, !0) || He(e.currentTarget, e.pointerId, !0);
+	}, We = (e) => {
+		ze(e.pointerId, !1) || He(e.currentTarget, e.pointerId, !1);
+	}, Ge = async (e) => {
+		e.preventDefault();
+		let t = S.trim(), n = te.trim();
+		if (!(!r || E || T.current)) {
+			if (!t || !n) {
+				oe("Bitte Vorlagenname und Kategorie eingeben.");
+				return;
+			}
+			T.current = !0, ie(!0), oe(null);
+			try {
+				r(await z.createTemplate({
+					name: t,
+					category: n,
+					description: ne.trim(),
+					document: {
+						...s.document,
+						title: t
+					}
+				}));
+			} catch (e) {
+				console.error("Generator create template from graphic failed", e), oe(B(e));
+			} finally {
+				T.current = !1, ie(!1);
+			}
+		}
+	}, Ke = (s.status === "dirty" || s.status === "error") && !!s.title.trim();
 	return /* @__PURE__ */ (0, U.jsxs)("section", {
 		className: "editor",
 		"aria-labelledby": "editor-title",
@@ -19305,56 +19330,129 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 				className: "workspace-head editor-head",
 				children: [/* @__PURE__ */ (0, U.jsxs)("div", { children: [/* @__PURE__ */ (0, U.jsx)("p", {
 					className: "panel-label",
-					children: i
+					children: a
 				}), /* @__PURE__ */ (0, U.jsx)("h2", {
 					id: "editor-title",
-					children: o.title || "Unbenannter Entwurf"
+					children: s.title || "Unbenannter Entwurf"
 				})] }), /* @__PURE__ */ (0, U.jsxs)("div", {
 					className: "editor-actions",
 					children: [
 						/* @__PURE__ */ (0, U.jsx)("span", {
-							className: `save-state save-state-${o.status}`,
+							className: `save-state save-state-${s.status}`,
 							role: "status",
-							children: c ? "Lädt …" : Ws[o.status]
+							children: u ? "Lädt …" : Ws[s.status]
 						}),
 						/* @__PURE__ */ (0, U.jsx)("button", {
 							className: "secondary-button",
-							onClick: fe,
+							onClick: we,
 							disabled: E,
 							children: "Neu laden"
 						}),
 						/* @__PURE__ */ (0, U.jsx)("button", {
 							className: "primary-button",
-							onClick: () => void ue(),
-							disabled: !je || E,
-							children: "Speichern"
+							onClick: () => void k(),
+							disabled: !Ke || E,
+							children: a === "Vorlageneditor" ? "Vorlagenentwurf speichern" : "Speichern"
 						}),
 						/* @__PURE__ */ (0, U.jsx)("button", {
 							className: "secondary-button",
-							onClick: pe,
+							onClick: Te,
 							disabled: E,
 							children: "Schließen"
 						})
 					]
 				})]
 			}),
-			o.status === "conflict" ? /* @__PURE__ */ (0, U.jsxs)("div", {
+			s.status === "conflict" ? /* @__PURE__ */ (0, U.jsxs)("div", {
 				className: "message-box conflict-box",
 				role: "alert",
 				children: [
 					/* @__PURE__ */ (0, U.jsx)("strong", { children: "Versionskonflikt" }),
-					/* @__PURE__ */ (0, U.jsx)("p", { children: o.message }),
+					/* @__PURE__ */ (0, U.jsx)("p", { children: s.message }),
 					/* @__PURE__ */ (0, U.jsx)("button", {
 						className: "primary-button",
-						onClick: fe,
+						onClick: we,
 						disabled: E,
 						children: "Neu laden"
 					})
 				]
-			}) : o.message ? /* @__PURE__ */ (0, U.jsx)("div", {
+			}) : s.message ? /* @__PURE__ */ (0, U.jsx)("div", {
 				className: "message-box error-box",
 				role: "alert",
-				children: o.message
+				children: s.message
+			}) : null,
+			r && !i ? /* @__PURE__ */ (0, U.jsxs)("section", {
+				className: "editor-template-copy",
+				"aria-label": "Grafik als Vorlage speichern",
+				children: [/* @__PURE__ */ (0, U.jsx)("button", {
+					type: "button",
+					className: "secondary-button compact-button",
+					"aria-controls": "editor-template-copy-form",
+					"aria-expanded": b,
+					disabled: E || re,
+					onClick: () => {
+						b || (ee(s.title), oe(null)), x((e) => !e);
+					},
+					children: "Als neue Vorlage speichern"
+				}), b ? /* @__PURE__ */ (0, U.jsxs)("form", {
+					id: "editor-template-copy-form",
+					className: "editor-template-copy-form",
+					onSubmit: (e) => void Ge(e),
+					children: [
+						/* @__PURE__ */ (0, U.jsxs)("p", { children: [
+							"Legt eine ",
+							/* @__PURE__ */ (0, U.jsx)("strong", { children: "neue, unveröffentlichte Vorlage" }),
+							" aus dieser Grafik an. Die ursprüngliche Grafik und veröffentlichte Liveticker-Vorlagen bleiben unverändert. Auch noch nicht in der Grafik gespeicherte Änderungen werden übernommen."
+						] }),
+						/* @__PURE__ */ (0, U.jsxs)("label", {
+							className: "field",
+							children: [/* @__PURE__ */ (0, U.jsx)("span", { children: "Vorlagenname" }), /* @__PURE__ */ (0, U.jsx)("input", {
+								required: !0,
+								maxLength: 160,
+								value: S,
+								onChange: (e) => ee(e.target.value)
+							})]
+						}),
+						/* @__PURE__ */ (0, U.jsxs)("label", {
+							className: "field",
+							children: [/* @__PURE__ */ (0, U.jsx)("span", { children: "Kategorie" }), /* @__PURE__ */ (0, U.jsx)("input", {
+								required: !0,
+								maxLength: 80,
+								value: te,
+								onChange: (e) => C(e.target.value)
+							})]
+						}),
+						/* @__PURE__ */ (0, U.jsxs)("label", {
+							className: "field",
+							children: [/* @__PURE__ */ (0, U.jsx)("span", { children: "Beschreibung (optional)" }), /* @__PURE__ */ (0, U.jsx)("textarea", {
+								maxLength: 2e3,
+								rows: 2,
+								value: ne,
+								onChange: (e) => w(e.target.value)
+							})]
+						}),
+						ae ? /* @__PURE__ */ (0, U.jsx)("p", {
+							role: "alert",
+							className: "error-text",
+							children: ae
+						}) : null,
+						/* @__PURE__ */ (0, U.jsxs)("div", {
+							className: "editor-template-copy-actions",
+							children: [/* @__PURE__ */ (0, U.jsx)("button", {
+								className: "primary-button",
+								type: "submit",
+								disabled: E || re,
+								children: re ? "Vorlage wird angelegt …" : "Neue Vorlage anlegen"
+							}), /* @__PURE__ */ (0, U.jsx)("button", {
+								className: "secondary-button",
+								type: "button",
+								disabled: re,
+								onClick: () => x(!1),
+								children: "Abbrechen"
+							})]
+						})
+					]
+				}) : null]
 			}) : null,
 			/* @__PURE__ */ (0, U.jsxs)("div", {
 				className: "editor-mobile-controls",
@@ -19363,31 +19461,31 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 					type: "button",
 					className: "secondary-button",
 					"aria-controls": "editor-mobile-export",
-					"aria-expanded": h,
-					onClick: () => g((e) => !e),
-					children: h ? "Export schließen" : "PNG exportieren"
+					"aria-expanded": g,
+					onClick: () => _((e) => !e),
+					children: g ? "Export schließen" : "PNG exportieren"
 				}), /* @__PURE__ */ (0, U.jsx)("button", {
 					type: "button",
 					className: "secondary-button",
 					"aria-controls": "editor-mobile-tools",
-					"aria-expanded": _,
-					onClick: () => v((e) => !e),
-					children: _ ? "Werkzeuge schließen" : "Werkzeuge"
+					"aria-expanded": v,
+					onClick: () => y((e) => !e),
+					children: v ? "Werkzeuge schließen" : "Werkzeuge"
 				})]
 			}),
 			/* @__PURE__ */ (0, U.jsx)("div", {
 				id: "editor-mobile-export",
-				className: `editor-mobile-disclosure ${h ? "is-open" : ""}`,
+				className: `editor-mobile-disclosure ${g ? "is-open" : ""}`,
 				children: /* @__PURE__ */ (0, U.jsx)(ws, {
-					draftId: o.draftId,
-					version: o.version,
-					editorStatus: o.status,
-					bindingContext: a
+					draftId: s.draftId,
+					version: s.version,
+					editorStatus: s.status,
+					bindingContext: o
 				})
 			}),
 			/* @__PURE__ */ (0, U.jsx)("div", {
 				id: "editor-mobile-tools",
-				className: `editor-mobile-disclosure ${_ ? "is-open" : ""}`,
+				className: `editor-mobile-disclosure ${v ? "is-open" : ""}`,
 				children: /* @__PURE__ */ (0, U.jsxs)("div", {
 					className: "editor-toolbar",
 					"aria-label": "Editor-Werkzeuge",
@@ -19397,13 +19495,13 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 							/* @__PURE__ */ (0, U.jsx)("button", {
 								className: "secondary-button compact-button",
 								disabled: E,
-								onClick: () => s({ type: "textAdded" }),
+								onClick: () => c({ type: "textAdded" }),
 								children: "+ Text"
 							}),
 							/* @__PURE__ */ (0, U.jsx)("button", {
 								className: "secondary-button compact-button",
 								disabled: E,
-								onClick: () => s({
+								onClick: () => c({
 									type: "shapeAdded",
 									shape: "rect"
 								}),
@@ -19412,7 +19510,7 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 							/* @__PURE__ */ (0, U.jsx)("button", {
 								className: "secondary-button compact-button",
 								disabled: E,
-								onClick: () => s({
+								onClick: () => c({
 									type: "shapeAdded",
 									shape: "ellipse"
 								}),
@@ -19421,13 +19519,13 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 							/* @__PURE__ */ (0, U.jsx)("button", {
 								className: "secondary-button compact-button",
 								disabled: E,
-								onClick: () => S("add"),
+								onClick: () => ue("add"),
 								children: "+ Teamlogo"
 							}),
 							/* @__PURE__ */ (0, U.jsx)("button", {
 								className: "primary-button compact-button",
 								disabled: E,
-								onClick: () => te(!0),
+								onClick: () => fe(!0),
 								children: "+ Medien"
 							})
 						]
@@ -19435,46 +19533,46 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 						className: "toolbar-group",
 						children: [/* @__PURE__ */ (0, U.jsx)("button", {
 							className: "secondary-button compact-button",
-							disabled: !Fs(o) || E,
-							onClick: () => s({ type: "undo" }),
+							disabled: !Fs(s) || E,
+							onClick: () => c({ type: "undo" }),
 							title: "Rückgängig (Strg/Cmd + Z)",
 							children: "Rückgängig"
 						}), /* @__PURE__ */ (0, U.jsx)("button", {
 							className: "secondary-button compact-button",
-							disabled: !Is(o) || E,
-							onClick: () => s({ type: "redo" }),
+							disabled: !Is(s) || E,
+							onClick: () => c({ type: "redo" }),
 							title: "Wiederholen (Strg/Cmd + Umschalt + Z)",
 							children: "Wiederholen"
 						})]
 					})]
 				})
 			}),
-			x ? /* @__PURE__ */ (0, U.jsx)(js, {
-				onSelect: he,
-				onClose: () => S(null)
+			le ? /* @__PURE__ */ (0, U.jsx)(js, {
+				onSelect: Ee,
+				onClose: () => ue(null)
 			}) : null,
-			ee ? /* @__PURE__ */ (0, U.jsx)(bs, {
-				onSelect: ge,
-				onClose: () => te(!1)
+			de ? /* @__PURE__ */ (0, U.jsx)(bs, {
+				onSelect: j,
+				onClose: () => fe(!1)
 			}) : null,
 			/* @__PURE__ */ (0, U.jsx)("nav", {
 				className: "editor-mobile-tabs",
 				"aria-label": "Grafikeditor-Bereiche",
 				children: [
 					["preview", "Vorschau"],
-					["layers", `Ebenen (${le.length})`],
+					["layers", `Ebenen (${O.length})`],
 					["properties", "Bearbeiten"]
 				].map(([e, t]) => /* @__PURE__ */ (0, U.jsx)("button", {
 					type: "button",
-					className: `editor-mobile-tab ${p === e ? "is-active" : ""}`,
-					"aria-current": p === e ? "page" : void 0,
-					onClick: () => m(e),
+					className: `editor-mobile-tab ${m === e ? "is-active" : ""}`,
+					"aria-current": m === e ? "page" : void 0,
+					onClick: () => h(e),
 					children: t
 				}, e))
 			}),
 			/* @__PURE__ */ (0, U.jsxs)("div", {
 				className: "editor-grid editor-grid-three",
-				"data-mobile-panel": p,
+				"data-mobile-panel": m,
 				children: [
 					/* @__PURE__ */ (0, U.jsxs)("aside", {
 						className: "editor-sidebar",
@@ -19483,10 +19581,10 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 							/* @__PURE__ */ (0, U.jsxs)("label", {
 								className: "field",
 								children: [/* @__PURE__ */ (0, U.jsx)("span", { children: "Draft-Titel" }), /* @__PURE__ */ (0, U.jsx)("input", {
-									value: o.title,
+									value: s.title,
 									maxLength: 160,
 									disabled: E,
-									onChange: (e) => s({
+									onChange: (e) => c({
 										type: "titleChanged",
 										title: e.target.value
 									})
@@ -19499,17 +19597,17 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 									children: /* @__PURE__ */ (0, U.jsxs)("div", { children: [/* @__PURE__ */ (0, U.jsx)("span", {
 										className: "field-label",
 										children: "Ebenen"
-									}), /* @__PURE__ */ (0, U.jsxs)("small", { children: [le.length, " Element(e)"] })] })
-								}), le.length === 0 ? /* @__PURE__ */ (0, U.jsx)("p", {
+									}), /* @__PURE__ */ (0, U.jsxs)("small", { children: [O.length, " Element(e)"] })] })
+								}), O.length === 0 ? /* @__PURE__ */ (0, U.jsx)("p", {
 									className: "empty-copy",
 									children: "Noch keine Elemente vorhanden."
 								}) : /* @__PURE__ */ (0, U.jsx)("div", {
 									className: "layer-list",
-									children: le.map(({ element: e, depth: t }) => /* @__PURE__ */ (0, U.jsxs)("button", {
-										className: d.includes(e.id) ? "layer-row layer-row-selected" : "layer-row",
+									children: O.map(({ element: e, depth: t }) => /* @__PURE__ */ (0, U.jsxs)("button", {
+										className: f.includes(e.id) ? "layer-row layer-row-selected" : "layer-row",
 										style: { paddingLeft: `${12 + t * 16}px` },
 										onClick: (t) => {
-											me(e.id, t.shiftKey || t.ctrlKey || t.metaKey), m("properties");
+											A(e.id, t.shiftKey || t.ctrlKey || t.metaKey), h("properties");
 										},
 										children: [/* @__PURE__ */ (0, U.jsx)("span", { children: e.name || Gs[e.type] }), /* @__PURE__ */ (0, U.jsxs)("small", { children: [e.locked ? "🔒 " : "", Gs[e.type]] })]
 									}, e.id))
@@ -19518,40 +19616,40 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 							/* @__PURE__ */ (0, U.jsxs)("dl", {
 								className: "draft-meta",
 								children: [
-									/* @__PURE__ */ (0, U.jsxs)("div", { children: [/* @__PURE__ */ (0, U.jsx)("dt", { children: "Version" }), /* @__PURE__ */ (0, U.jsx)("dd", { children: o.version })] }),
-									/* @__PURE__ */ (0, U.jsxs)("div", { children: [/* @__PURE__ */ (0, U.jsx)("dt", { children: "Schema" }), /* @__PURE__ */ (0, U.jsx)("dd", { children: o.document.schemaVersion })] }),
+									/* @__PURE__ */ (0, U.jsxs)("div", { children: [/* @__PURE__ */ (0, U.jsx)("dt", { children: "Version" }), /* @__PURE__ */ (0, U.jsx)("dd", { children: s.version })] }),
+									/* @__PURE__ */ (0, U.jsxs)("div", { children: [/* @__PURE__ */ (0, U.jsx)("dt", { children: "Schema" }), /* @__PURE__ */ (0, U.jsx)("dd", { children: s.document.schemaVersion })] }),
 									/* @__PURE__ */ (0, U.jsxs)("div", { children: [/* @__PURE__ */ (0, U.jsx)("dt", { children: "Format" }), /* @__PURE__ */ (0, U.jsxs)("dd", { children: [
-										o.document.format.width,
+										s.document.format.width,
 										" × ",
-										o.document.format.height
+										s.document.format.height
 									] })] })
 								]
 							})
 						]
 					}),
 					/* @__PURE__ */ (0, U.jsx)("div", {
-						ref: re,
+						ref: ge,
 						className: "canvas-stage editor-canvas",
 						id: "editor-canvas-panel",
-						onPointerDown: j,
-						onPointerMove: De,
-						onPointerUp: ke,
-						onPointerCancel: Ae,
+						onPointerDown: Be,
+						onPointerMove: Ve,
+						onPointerUp: Ue,
+						onPointerCancel: We,
 						role: "presentation",
 						children: /* @__PURE__ */ (0, U.jsxs)("div", {
 							className: "canvas-preview dynamic-preview canvas-preview-frame",
-							style: { aspectRatio: `${o.document.format.width} / ${o.document.format.height}` },
+							style: { aspectRatio: `${s.document.format.width} / ${s.document.format.height}` },
 							children: [/* @__PURE__ */ (0, U.jsx)("div", {
 								className: "canvas-svg-host",
-								dangerouslySetInnerHTML: { __html: se }
-							}), D && d.length === 1 ? /* @__PURE__ */ (0, U.jsx)("div", {
-								ref: ie,
+								dangerouslySetInnerHTML: { __html: xe }
+							}), D && f.length === 1 ? /* @__PURE__ */ (0, U.jsx)("div", {
+								ref: _e,
 								className: "selection-overlay",
 								style: {
-									left: `${D.x / o.document.format.width * 100}%`,
-									top: `${D.y / o.document.format.height * 100}%`,
-									width: `${D.width / o.document.format.width * 100}%`,
-									height: `${D.height / o.document.format.height * 100}%`
+									left: `${D.x / s.document.format.width * 100}%`,
+									top: `${D.y / s.document.format.height * 100}%`,
+									width: `${D.width / s.document.format.width * 100}%`,
+									height: `${D.height / s.document.format.height * 100}%`
 								},
 								"aria-hidden": "true",
 								children: D.type === "group" ? null : [
@@ -19564,7 +19662,7 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 									className: `resize-handle resize-handle-${e}`,
 									disabled: E || !!D.locked,
 									tabIndex: -1,
-									onPointerDown: (t) => we(t, e),
+									onPointerDown: (t) => Ie(t, e),
 									"aria-label": `Elementgröße ${e}`
 								}, e))
 							}) : null]
@@ -19573,7 +19671,7 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 					/* @__PURE__ */ (0, U.jsx)("aside", {
 						className: "editor-sidebar inspector-sidebar",
 						id: "editor-properties-panel",
-						children: ce.length > 1 ? /* @__PURE__ */ (0, U.jsxs)("div", {
+						children: Se.length > 1 ? /* @__PURE__ */ (0, U.jsxs)("div", {
 							className: "inspector multi-selection-inspector",
 							children: [
 								/* @__PURE__ */ (0, U.jsxs)("div", {
@@ -19581,7 +19679,7 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 									children: [/* @__PURE__ */ (0, U.jsxs)("div", { children: [/* @__PURE__ */ (0, U.jsx)("p", {
 										className: "panel-label",
 										children: "Mehrfachauswahl"
-									}), /* @__PURE__ */ (0, U.jsxs)("h3", { children: [ce.length, " Elemente"] })] }), /* @__PURE__ */ (0, U.jsx)("span", {
+									}), /* @__PURE__ */ (0, U.jsxs)("h3", { children: [Se.length, " Elemente"] })] }), /* @__PURE__ */ (0, U.jsx)("span", {
 										className: "mode-badge",
 										children: "Auswahl"
 									})]
@@ -19590,14 +19688,14 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 									className: "empty-copy",
 									children: "Strg/Cmd- oder Shift-Klick fügt weitere Elemente zur Auswahl hinzu oder entfernt sie wieder."
 								}),
-								y ? /* @__PURE__ */ (0, U.jsx)("p", {
+								se ? /* @__PURE__ */ (0, U.jsx)("p", {
 									className: "selection-message",
-									children: y
+									children: se
 								}) : null,
 								/* @__PURE__ */ (0, U.jsx)("button", {
 									className: "primary-button",
 									disabled: E,
-									onClick: _e,
+									onClick: De,
 									title: "Gruppieren (Strg/Cmd + G)",
 									children: "Gruppieren"
 								})
@@ -19605,20 +19703,20 @@ function Ks({ draft: e, onDraftChanged: t, onClose: n, persistence: r, editorLab
 						}) : D ? /* @__PURE__ */ (0, U.jsx)(qs, {
 							element: D,
 							interactionLocked: E,
-							onNameChange: (e) => ye((t) => ({
+							onNameChange: (e) => ke((t) => ({
 								...t,
 								name: e
 							})),
-							onCommonNumberChange: be,
-							onStyleChange: xe,
-							onElementChange: ye,
-							bindingContext: a,
-							onAlign: Ce,
-							onUngroup: ve,
-							onChooseTeamLogo: () => S("replace"),
-							onDelete: Se,
-							onDuplicate: O,
-							onMove: k
+							onCommonNumberChange: Ae,
+							onStyleChange: je,
+							onElementChange: ke,
+							bindingContext: o,
+							onAlign: Fe,
+							onUngroup: Oe,
+							onChooseTeamLogo: () => ue("replace"),
+							onDelete: Me,
+							onDuplicate: Ne,
+							onMove: Pe
 						}) : /* @__PURE__ */ (0, U.jsxs)("div", {
 							className: "inspector-empty",
 							children: [
@@ -20966,7 +21064,7 @@ function Tc({ expertMode: e, onMediaPackageOpen: t, onActivityChange: n }) {
 	}, [e]), (0, l.useEffect)(() => {
 		n?.(!!b);
 	}, [b, n]);
-	let E = (0, l.useMemo)(() => {
+	let se = (0, l.useMemo)(() => {
 		let t = v.trim().toLocaleLowerCase("de");
 		return r.filter((n) => !e && (!n.isActive || !n.publishedVersion) || g && !n.isFavorite ? !1 : !t || [
 			n.name,
@@ -20978,7 +21076,7 @@ function Tc({ expertMode: e, onMediaPackageOpen: t, onActivityChange: n }) {
 		e,
 		g,
 		v
-	]), se = async (e) => {
+	]), ce = async (e) => {
 		h(e.id), p(null);
 		try {
 			let t = !e.isFavorite;
@@ -20991,7 +21089,7 @@ function Tc({ expertMode: e, onMediaPackageOpen: t, onActivityChange: n }) {
 		} finally {
 			h(null);
 		}
-	}, D = async (e) => {
+	}, le = async (e) => {
 		let n = e.publishedVersion;
 		if (n) {
 			h(e.id), p(null);
@@ -21009,7 +21107,7 @@ function Tc({ expertMode: e, onMediaPackageOpen: t, onActivityChange: n }) {
 				h(null);
 			}
 		}
-	}, ce = async (e) => {
+	}, ue = async (e) => {
 		h(e.id), p(null);
 		try {
 			let t = e.draftVersion ? await z.getPackageTemplate({
@@ -21023,7 +21121,7 @@ function Tc({ expertMode: e, onMediaPackageOpen: t, onActivityChange: n }) {
 		} finally {
 			h(null);
 		}
-	}, le = async (e) => {
+	}, de = async (e) => {
 		let t = e.draftVersion;
 		if (t && window.confirm(`Paket-Vorlage „${e.name}“ als Version ${t.versionNumber} veröffentlichen?`)) {
 			h(e.id), p(null);
@@ -21092,19 +21190,19 @@ function Tc({ expertMode: e, onMediaPackageOpen: t, onActivityChange: n }) {
 						role: "alert",
 						children: f
 					}) : null,
-					u === "loading" ? /* @__PURE__ */ (0, U.jsx)("p", { children: "Paket-Vorlagen werden geladen …" }) : E.length === 0 ? /* @__PURE__ */ (0, U.jsx)("p", {
+					u === "loading" ? /* @__PURE__ */ (0, U.jsx)("p", { children: "Paket-Vorlagen werden geladen …" }) : se.length === 0 ? /* @__PURE__ */ (0, U.jsx)("p", {
 						className: "empty-copy",
 						children: "Noch keine veröffentlichte Paket-Vorlage vorhanden."
 					}) : /* @__PURE__ */ (0, U.jsx)("div", {
 						className: "package-template-grid",
-						children: E.map((t) => /* @__PURE__ */ (0, U.jsx)(Ec, {
+						children: se.map((t) => /* @__PURE__ */ (0, U.jsx)(Ec, {
 							item: t,
 							expertMode: e,
 							busy: m === t.id,
-							onFavorite: () => void se(t),
-							onCreate: () => void D(t),
-							onEdit: () => void ce(t),
-							onPublish: () => void le(t)
+							onFavorite: () => void ce(t),
+							onCreate: () => void le(t),
+							onEdit: () => void ue(t),
+							onPublish: () => void de(t)
 						}, t.id))
 					})
 				]
@@ -21510,55 +21608,55 @@ var Mc = (e, t) => `${e}x${t}`, Nc = (e, t) => Mo.find((n) => n.width === e && n
 	}).format(/* @__PURE__ */ new Date());
 	return `${e.name} – ${t}`;
 };
-function Fc({ expertMode: e, onDraftCreated: t, onEditingChange: n }) {
-	let [r, i] = (0, l.useState)([]), [a, o] = (0, l.useState)("loading"), [s, c] = (0, l.useState)(null), [u, d] = (0, l.useState)(""), [f, p] = (0, l.useState)("ALL"), [m, h] = (0, l.useState)("ALL"), [g, _] = (0, l.useState)(!1), [v, y] = (0, l.useState)(null), [b, x] = (0, l.useState)(null), [S, ee] = (0, l.useState)("Neue Vorlage"), [te, C] = (0, l.useState)("Allgemein"), [ne, w] = (0, l.useState)(""), [re, ie] = (0, l.useState)("square"), [ae, oe] = (0, l.useState)(!1), T = async () => {
-		o("loading"), c(null);
+function Fc({ expertMode: e, onDraftCreated: t, initialEditing: n, onInitialEditingClosed: r, onEditingChange: i }) {
+	let [a, o] = (0, l.useState)([]), [s, c] = (0, l.useState)("loading"), [u, d] = (0, l.useState)(null), [f, p] = (0, l.useState)(""), [m, h] = (0, l.useState)("ALL"), [g, _] = (0, l.useState)("ALL"), [v, y] = (0, l.useState)(!1), [b, x] = (0, l.useState)(null), [S, ee] = (0, l.useState)(n ?? null), [te, C] = (0, l.useState)("Neue Vorlage"), [ne, w] = (0, l.useState)("Allgemein"), [re, ie] = (0, l.useState)(""), [ae, oe] = (0, l.useState)("square"), [T, se] = (0, l.useState)(!1), ce = async () => {
+		c("loading"), d(null);
 		try {
 			let t = await z.listTemplates(e);
-			i(t.templates), o("ready");
+			o(t.templates), c("ready");
 		} catch (e) {
-			console.error("Generator template list failed", e), c(B(e)), o("error");
+			console.error("Generator template list failed", e), d(B(e)), c("error");
 		}
 	};
 	(0, l.useEffect)(() => {
-		T();
+		ce();
 	}, [e]), (0, l.useEffect)(() => {
-		n?.(!!b);
-	}, [b, n]);
-	let E = (0, l.useMemo)(() => Array.from(new Set(r.map((e) => e.category).filter(Boolean))).sort((e, t) => e.localeCompare(t, "de")), [r]), se = (0, l.useMemo)(() => {
-		let t = u.trim().toLocaleLowerCase("de");
-		return r.filter((n) => {
-			if (!e && (!n.isActive || !n.publishedVersion) || g && !n.isFavorite || f !== "ALL" && n.category !== f) return !1;
+		i?.(!!S);
+	}, [S, i]);
+	let le = (0, l.useMemo)(() => Array.from(new Set(a.map((e) => e.category).filter(Boolean))).sort((e, t) => e.localeCompare(t, "de")), [a]), ue = (0, l.useMemo)(() => {
+		let t = f.trim().toLocaleLowerCase("de");
+		return a.filter((n) => {
+			if (!e && (!n.isActive || !n.publishedVersion) || v && !n.isFavorite || m !== "ALL" && n.category !== m) return !1;
 			let r = n.publishedVersion;
-			return m !== "ALL" && (!r || Mc(r.format.width, r.format.height) !== m) ? !1 : !t || [
+			return g !== "ALL" && (!r || Mc(r.format.width, r.format.height) !== g) ? !1 : !t || [
 				n.name,
 				n.category,
 				n.description
 			].some((e) => e.toLocaleLowerCase("de").includes(t));
 		});
 	}, [
-		r,
+		a,
 		e,
-		g,
-		f,
+		v,
 		m,
-		u
-	]), D = async (e) => {
-		y(e.id), c(null);
+		g,
+		f
+	]), de = async (e) => {
+		x(e.id), d(null);
 		try {
 			let t = !e.isFavorite;
-			await z.setTemplateFavorite(e.id, t), i((n) => n.map((n) => n.id === e.id ? {
+			await z.setTemplateFavorite(e.id, t), o((n) => n.map((n) => n.id === e.id ? {
 				...n,
 				isFavorite: t
 			} : n));
 		} catch (e) {
-			c(B(e));
+			d(B(e));
 		} finally {
-			y(null);
+			x(null);
 		}
-	}, ce = async (e) => {
+	}, fe = async (e) => {
 		if (e.publishedVersion) {
-			y(e.id), c(null);
+			x(e.id), d(null);
 			try {
 				t(await z.createDraftFromTemplate({
 					title: Pc(e),
@@ -21566,46 +21664,46 @@ function Fc({ expertMode: e, onDraftCreated: t, onEditingChange: n }) {
 					versionId: e.publishedVersion.id
 				}));
 			} catch (e) {
-				console.error("Template draft creation failed", e), c(B(e));
+				console.error("Template draft creation failed", e), d(B(e));
 			} finally {
-				y(null);
+				x(null);
 			}
 		}
-	}, le = async (e) => {
-		y(e.id), c(null);
+	}, pe = async (e) => {
+		x(e.id), d(null);
 		try {
 			let t = e.draftVersion ? await z.getTemplate({
 				templateId: e.id,
 				versionId: e.draftVersion.id,
 				mode: "DRAFT"
 			}) : await z.beginTemplateDraft(e.id);
-			x(t);
+			ee(t);
 		} catch (e) {
-			console.error("Template draft open failed", e), c(B(e));
+			console.error("Template draft open failed", e), d(B(e));
 		} finally {
-			y(null);
+			x(null);
 		}
-	}, ue = async (e) => {
+	}, me = async (e) => {
 		let t = e.draftVersion;
 		if (t && window.confirm(`Vorlage „${e.name}“ als Version ${t.versionNumber} veröffentlichen?`)) {
-			y(e.id), c(null);
+			x(e.id), d(null);
 			try {
 				await z.publishTemplate({
 					templateId: e.id,
 					versionId: t.id,
 					expectedRevision: t.revision
-				}), await T();
+				}), await ce();
 			} catch (e) {
-				console.error("Template publish failed", e), c(B(e)), await T();
+				console.error("Template publish failed", e), d(B(e)), await ce();
 			} finally {
-				y(null);
+				x(null);
 			}
 		}
 	};
-	return b ? /* @__PURE__ */ (0, U.jsx)(Lc, {
-		initial: b,
+	return S ? /* @__PURE__ */ (0, U.jsx)(Lc, {
+		initial: S,
 		onClose: () => {
-			x(null), T();
+			ee(null), r?.(), ce();
 		}
 	}) : /* @__PURE__ */ (0, U.jsxs)("section", {
 		className: "template-workspace",
@@ -21617,12 +21715,23 @@ function Fc({ expertMode: e, onDraftCreated: t, onEditingChange: n }) {
 					children: [/* @__PURE__ */ (0, U.jsxs)("div", { children: [/* @__PURE__ */ (0, U.jsx)("p", {
 						className: "panel-label",
 						children: "Vorlagen"
-					}), /* @__PURE__ */ (0, U.jsx)("h2", { children: "Vorlagenbrowser" })] }), /* @__PURE__ */ (0, U.jsx)("button", {
+					}), /* @__PURE__ */ (0, U.jsx)("h2", { children: "Vorlagen verwalten" })] }), /* @__PURE__ */ (0, U.jsx)("button", {
 						className: "secondary-button compact-button",
-						disabled: a === "loading",
-						onClick: () => void T(),
+						disabled: s === "loading",
+						onClick: () => void ce(),
 						children: "Aktualisieren"
 					})]
+				}),
+				/* @__PURE__ */ (0, U.jsxs)("p", {
+					className: "template-workflow-explainer",
+					children: [
+						/* @__PURE__ */ (0, U.jsx)("strong", { children: "Grafik aus Vorlage erstellen" }),
+						" legt eine Einzelgrafik unter „Meine Entwürfe“ an. ",
+						/* @__PURE__ */ (0, U.jsx)("strong", { children: "Vorlage bearbeiten" }),
+						" erstellt dagegen einen neuen Vorlagenentwurf. Erst",
+						/* @__PURE__ */ (0, U.jsx)("strong", { children: " Vorlage veröffentlichen" }),
+						" aktiviert ihn für neue Grafiken."
+					]
 				}),
 				/* @__PURE__ */ (0, U.jsxs)("div", {
 					className: "template-filters",
@@ -21631,20 +21740,20 @@ function Fc({ expertMode: e, onDraftCreated: t, onEditingChange: n }) {
 							className: "field template-search",
 							children: [/* @__PURE__ */ (0, U.jsx)("span", { children: "Suchen" }), /* @__PURE__ */ (0, U.jsx)("input", {
 								type: "search",
-								value: u,
+								value: f,
 								placeholder: "Name, Kategorie oder Beschreibung",
-								onChange: (e) => d(e.target.value)
+								onChange: (e) => p(e.target.value)
 							})]
 						}),
 						/* @__PURE__ */ (0, U.jsxs)("label", {
 							className: "field",
 							children: [/* @__PURE__ */ (0, U.jsx)("span", { children: "Kategorie" }), /* @__PURE__ */ (0, U.jsxs)("select", {
-								value: f,
-								onChange: (e) => p(e.target.value),
+								value: m,
+								onChange: (e) => h(e.target.value),
 								children: [/* @__PURE__ */ (0, U.jsx)("option", {
 									value: "ALL",
 									children: "Alle"
-								}), E.map((e) => /* @__PURE__ */ (0, U.jsx)("option", {
+								}), le.map((e) => /* @__PURE__ */ (0, U.jsx)("option", {
 									value: e,
 									children: e
 								}, e))]
@@ -21653,8 +21762,8 @@ function Fc({ expertMode: e, onDraftCreated: t, onEditingChange: n }) {
 						/* @__PURE__ */ (0, U.jsxs)("label", {
 							className: "field",
 							children: [/* @__PURE__ */ (0, U.jsx)("span", { children: "Format" }), /* @__PURE__ */ (0, U.jsxs)("select", {
-								value: m,
-								onChange: (e) => h(e.target.value),
+								value: g,
+								onChange: (e) => _(e.target.value),
 								children: [/* @__PURE__ */ (0, U.jsx)("option", {
 									value: "ALL",
 									children: "Alle"
@@ -21668,30 +21777,30 @@ function Fc({ expertMode: e, onDraftCreated: t, onEditingChange: n }) {
 							className: "switch-row template-favorite-filter",
 							children: [/* @__PURE__ */ (0, U.jsx)("input", {
 								type: "checkbox",
-								checked: g,
-								onChange: (e) => _(e.target.checked)
+								checked: v,
+								onChange: (e) => y(e.target.checked)
 							}), /* @__PURE__ */ (0, U.jsx)("span", { children: "Nur Favoriten" })]
 						})
 					]
 				}),
-				s ? /* @__PURE__ */ (0, U.jsx)("p", {
+				u ? /* @__PURE__ */ (0, U.jsx)("p", {
 					className: "error-text",
 					role: "alert",
-					children: s
+					children: u
 				}) : null,
-				a === "loading" ? /* @__PURE__ */ (0, U.jsx)("p", { children: "Vorlagen werden geladen …" }) : se.length === 0 ? /* @__PURE__ */ (0, U.jsx)("p", {
+				s === "loading" ? /* @__PURE__ */ (0, U.jsx)("p", { children: "Vorlagen werden geladen …" }) : ue.length === 0 ? /* @__PURE__ */ (0, U.jsx)("p", {
 					className: "empty-copy",
-					children: r.length === 0 ? "Noch keine Vorlagen vorhanden." : "Keine Vorlage passt zu den aktuellen Filtern."
+					children: a.length === 0 ? "Noch keine Vorlagen vorhanden." : "Keine Vorlage passt zu den aktuellen Filtern."
 				}) : /* @__PURE__ */ (0, U.jsx)("div", {
 					className: "template-grid",
-					children: se.map((t) => /* @__PURE__ */ (0, U.jsx)(Ic, {
+					children: ue.map((t) => /* @__PURE__ */ (0, U.jsx)(Ic, {
 						template: t,
 						expertMode: e,
-						busy: v === t.id,
-						onFavorite: () => void D(t),
-						onCreateDraft: () => void ce(t),
-						onEdit: () => void le(t),
-						onPublish: () => void ue(t)
+						busy: b === t.id,
+						onFavorite: () => void de(t),
+						onCreateDraft: () => void fe(t),
+						onEdit: () => void pe(t),
+						onPublish: () => void me(t)
 					}, t.id))
 				})
 			]
@@ -21708,48 +21817,48 @@ function Fc({ expertMode: e, onDraftCreated: t, onEditingChange: n }) {
 				className: "template-create-form",
 				onSubmit: async (e) => {
 					e.preventDefault();
-					let t = S.trim(), n = te.trim(), r = Mo.find((e) => e.code === re) ?? Mo[2];
+					let t = te.trim(), n = ne.trim(), r = Mo.find((e) => e.code === ae) ?? Mo[2];
 					if (!t || !n) {
-						c("Vorlagenname und Kategorie sind erforderlich.");
+						d("Vorlagenname und Kategorie sind erforderlich.");
 						return;
 					}
-					oe(!0), c(null);
+					se(!0), d(null);
 					try {
 						let e = await z.createTemplate({
 							name: t,
 							category: n,
-							description: ne.trim(),
+							description: re.trim(),
 							document: Fo(t, r)
 						});
-						x(e), ee("Neue Vorlage"), w(""), await T();
+						ee(e), C("Neue Vorlage"), ie(""), await ce();
 					} catch (e) {
-						console.error("Template create failed", e), c(B(e));
+						console.error("Template create failed", e), d(B(e));
 					} finally {
-						oe(!1);
+						se(!1);
 					}
 				},
 				children: [
 					/* @__PURE__ */ (0, U.jsxs)("label", {
 						className: "field",
 						children: [/* @__PURE__ */ (0, U.jsx)("span", { children: "Name" }), /* @__PURE__ */ (0, U.jsx)("input", {
-							value: S,
-							maxLength: 160,
-							onChange: (e) => ee(e.target.value)
-						})]
-					}),
-					/* @__PURE__ */ (0, U.jsxs)("label", {
-						className: "field",
-						children: [/* @__PURE__ */ (0, U.jsx)("span", { children: "Kategorie" }), /* @__PURE__ */ (0, U.jsx)("input", {
 							value: te,
-							maxLength: 80,
+							maxLength: 160,
 							onChange: (e) => C(e.target.value)
 						})]
 					}),
 					/* @__PURE__ */ (0, U.jsxs)("label", {
 						className: "field",
+						children: [/* @__PURE__ */ (0, U.jsx)("span", { children: "Kategorie" }), /* @__PURE__ */ (0, U.jsx)("input", {
+							value: ne,
+							maxLength: 80,
+							onChange: (e) => w(e.target.value)
+						})]
+					}),
+					/* @__PURE__ */ (0, U.jsxs)("label", {
+						className: "field",
 						children: [/* @__PURE__ */ (0, U.jsx)("span", { children: "Format" }), /* @__PURE__ */ (0, U.jsx)("select", {
-							value: re,
-							onChange: (e) => ie(e.target.value),
+							value: ae,
+							onChange: (e) => oe(e.target.value),
 							children: Mo.map((e) => /* @__PURE__ */ (0, U.jsxs)("option", {
 								value: e.code,
 								children: [
@@ -21765,15 +21874,15 @@ function Fc({ expertMode: e, onDraftCreated: t, onEditingChange: n }) {
 					/* @__PURE__ */ (0, U.jsxs)("label", {
 						className: "field template-description-field",
 						children: [/* @__PURE__ */ (0, U.jsx)("span", { children: "Beschreibung" }), /* @__PURE__ */ (0, U.jsx)("input", {
-							value: ne,
+							value: re,
 							maxLength: 2e3,
-							onChange: (e) => w(e.target.value)
+							onChange: (e) => ie(e.target.value)
 						})]
 					}),
 					/* @__PURE__ */ (0, U.jsx)("button", {
 						className: "primary-button",
-						disabled: ae,
-						children: ae ? "Wird angelegt …" : "Vorlagen-Draft anlegen"
+						disabled: T,
+						children: T ? "Wird angelegt …" : "Vorlagen-Draft anlegen"
 					})
 				]
 			})]
@@ -21815,7 +21924,7 @@ function Ic({ template: e, expertMode: t, busy: n, onFavorite: r, onCreateDraft:
 				children: [
 					s ? /* @__PURE__ */ (0, U.jsxs)(U.Fragment, { children: [/* @__PURE__ */ (0, U.jsxs)("span", { children: ["V", s.versionNumber] }), /* @__PURE__ */ (0, U.jsx)("span", { children: Nc(s.format.width, s.format.height) })] }) : /* @__PURE__ */ (0, U.jsx)("span", { children: "Noch nicht veröffentlicht" }),
 					e.isActive ? null : /* @__PURE__ */ (0, U.jsx)("span", { children: "Deaktiviert" }),
-					c ? /* @__PURE__ */ (0, U.jsxs)("span", { children: ["Draft V", c.versionNumber] }) : null
+					c ? /* @__PURE__ */ (0, U.jsxs)("span", { children: ["Vorlagenentwurf V", c.versionNumber] }) : null
 				]
 			}),
 			/* @__PURE__ */ (0, U.jsxs)("div", {
@@ -21824,17 +21933,17 @@ function Ic({ template: e, expertMode: t, busy: n, onFavorite: r, onCreateDraft:
 					className: "primary-button compact-button",
 					disabled: n || !s || !e.isActive,
 					onClick: i,
-					children: n ? "Bitte warten …" : "Entwurf erstellen"
+					children: n ? "Bitte warten …" : "Grafik aus Vorlage erstellen"
 				}), l ? /* @__PURE__ */ (0, U.jsxs)(U.Fragment, { children: [/* @__PURE__ */ (0, U.jsx)("button", {
 					className: "secondary-button compact-button",
 					disabled: n,
 					onClick: a,
-					children: c ? "Draft bearbeiten" : "Neue Version"
+					children: c ? "Vorlagenentwurf bearbeiten" : "Vorlage bearbeiten"
 				}), c ? /* @__PURE__ */ (0, U.jsx)("button", {
 					className: "secondary-button compact-button",
 					disabled: n,
 					onClick: o,
-					children: "Veröffentlichen"
+					children: "Vorlage veröffentlichen"
 				}) : null] }) : null]
 			})
 		]
@@ -21846,49 +21955,56 @@ function Lc({ initial: e, onClose: t }) {
 		r(e);
 	}, [e.version.id]), /* @__PURE__ */ (0, U.jsxs)("section", {
 		className: "template-editor-wrap",
-		children: [/* @__PURE__ */ (0, U.jsxs)("div", {
-			className: "template-editor-context",
-			children: [
-				/* @__PURE__ */ (0, U.jsxs)("span", {
-					className: "mode-badge",
-					children: ["Vorlage · Draft V", n.version.versionNumber]
-				}),
-				/* @__PURE__ */ (0, U.jsx)("span", { children: n.template.category }),
-				n.template.systemKey ? /* @__PURE__ */ (0, U.jsxs)("span", {
-					className: "mode-badge",
-					children: ["Systembindung · ", n.template.systemKey]
-				}) : null
-			]
-		}), /* @__PURE__ */ (0, U.jsx)(Ks, {
-			draft: Qa(n),
-			persistence: {
-				save: async (e) => {
-					let t = await z.saveTemplateDraft({
-						templateId: n.template.id,
-						versionId: n.version.id,
-						expectedRevision: e.expectedVersion,
-						name: e.title,
-						category: n.template.category,
-						description: n.template.description,
-						document: e.document
-					});
-					return r(t), Qa(t);
+		children: [
+			/* @__PURE__ */ (0, U.jsxs)("div", {
+				className: "template-editor-context",
+				children: [
+					/* @__PURE__ */ (0, U.jsxs)("span", {
+						className: "mode-badge",
+						children: ["Vorlage · Entwurf V", n.version.versionNumber]
+					}),
+					/* @__PURE__ */ (0, U.jsx)("span", { children: n.template.category }),
+					n.template.systemKey ? /* @__PURE__ */ (0, U.jsxs)("span", {
+						className: "mode-badge",
+						children: ["Systembindung · ", n.template.systemKey]
+					}) : null
+				]
+			}),
+			/* @__PURE__ */ (0, U.jsxs)("p", {
+				className: "template-editor-hint",
+				children: [/* @__PURE__ */ (0, U.jsx)("strong", { children: "Du bearbeitest die Vorlage selbst." }), " Speichern sichert den Vorlagenentwurf, veröffentlicht ihn aber nicht. Schließe danach den Editor und wähle in der Vorlagenübersicht „Vorlage veröffentlichen“. Bereits erstellte Grafiken bleiben unverändert."]
+			}),
+			/* @__PURE__ */ (0, U.jsx)(Ks, {
+				draft: Qa(n),
+				persistence: {
+					save: async (e) => {
+						let t = await z.saveTemplateDraft({
+							templateId: n.template.id,
+							versionId: n.version.id,
+							expectedRevision: e.expectedVersion,
+							name: e.title,
+							category: n.template.category,
+							description: n.template.description,
+							document: e.document
+						});
+						return r(t), Qa(t);
+					},
+					reload: async () => {
+						let e = await z.getTemplate({
+							templateId: n.template.id,
+							versionId: n.version.id,
+							mode: "DRAFT"
+						});
+						return r(e), Qa(e);
+					},
+					conflictMessage: "Dieser Vorlagen-Draft wurde zwischenzeitlich geändert. Lade die aktuelle Version neu; deine lokalen Änderungen werden nicht automatisch überschrieben.",
+					logLabel: "Generator template draft"
 				},
-				reload: async () => {
-					let e = await z.getTemplate({
-						templateId: n.template.id,
-						versionId: n.version.id,
-						mode: "DRAFT"
-					});
-					return r(e), Qa(e);
-				},
-				conflictMessage: "Dieser Vorlagen-Draft wurde zwischenzeitlich geändert. Lade die aktuelle Version neu; deine lokalen Änderungen werden nicht automatisch überschrieben.",
-				logLabel: "Generator template draft"
-			},
-			editorLabel: "Vorlageneditor",
-			onDraftChanged: () => void 0,
-			onClose: t
-		})]
+				editorLabel: "Vorlageneditor",
+				onDraftChanged: () => void 0,
+				onClose: t
+			})
+		]
 	});
 }
 //#endregion
@@ -21918,7 +22034,7 @@ var Rc = (e) => {
 	},
 	templates: {
 		title: "Vorlagen",
-		description: "Eine fertige Vorlage auswählen und daraus eine Grafik erstellen."
+		description: "Vorlagenversionen bearbeiten oder aus einer veröffentlichten Vorlage eine eigene Grafik erstellen."
 	},
 	packages: {
 		title: "Pakete",
@@ -21926,16 +22042,16 @@ var Rc = (e) => {
 	}
 };
 function Bc({ expertMode: e, onEditingChange: t }) {
-	let [n, r] = (0, l.useState)([]), [i, a] = (0, l.useState)("loading"), [o, s] = (0, l.useState)(null), [c, u] = (0, l.useState)(null), [d, f] = (0, l.useState)(null), [p, m] = (0, l.useState)("home"), [h, g] = (0, l.useState)(!1), [_, v] = (0, l.useState)(!1), [y, b] = (0, l.useState)(null), [x, S] = (0, l.useState)("Neuer Entwurf"), [ee, te] = (0, l.useState)(Mo[0].code), [C, ne] = (0, l.useState)(!1);
+	let [n, r] = (0, l.useState)([]), [i, a] = (0, l.useState)("loading"), [o, s] = (0, l.useState)(null), [c, u] = (0, l.useState)(null), [d, f] = (0, l.useState)(null), [p, m] = (0, l.useState)("home"), [h, g] = (0, l.useState)(!1), [_, v] = (0, l.useState)(null), [y, b] = (0, l.useState)(!1), [x, S] = (0, l.useState)(null), [ee, te] = (0, l.useState)("Neuer Entwurf"), [C, ne] = (0, l.useState)(Mo[0].code), [w, re] = (0, l.useState)(!1);
 	(0, l.useEffect)(() => {
-		t?.(c !== null || h || _);
+		t?.(c !== null || h || y);
 	}, [
 		c,
 		h,
-		_,
+		y,
 		t
 	]);
-	let w = async () => {
+	let ie = async () => {
 		a("loading"), s(null);
 		try {
 			let e = await z.listDrafts();
@@ -21945,49 +22061,52 @@ function Bc({ expertMode: e, onEditingChange: t }) {
 		}
 	};
 	(0, l.useEffect)(() => {
-		w();
+		ie();
 	}, []);
-	let re = (e) => {
+	let ae = (e) => {
 		u(e), r((t) => [Za(e), ...t.filter((t) => t.id !== e.id)]), a("ready");
-	}, ie = async (e) => {
+	}, oe = async (e) => {
 		e.preventDefault();
-		let t = x.trim(), n = Mo.find((e) => e.code === ee) ?? Mo[0];
+		let t = ee.trim(), n = Mo.find((e) => e.code === C) ?? Mo[0];
 		if (!t) {
 			s("Bitte einen Titel eingeben.");
 			return;
 		}
-		ne(!0), s(null);
+		re(!0), s(null);
 		try {
 			let e = await z.createDraft(t, Fo(t, n));
-			re(e);
+			ae(e);
 		} catch (e) {
 			console.error("Generator draft create failed", e), s(B(e));
 		} finally {
-			ne(!1);
+			re(!1);
 		}
-	}, ae = async (e) => {
-		b(e), s(null);
+	}, T = async (e) => {
+		S(e), s(null);
 		try {
 			u(await z.getDraft(e));
 		} catch (e) {
 			console.error("Generator draft open failed", e), s(B(e));
 		} finally {
-			b(null);
+			S(null);
 		}
-	}, oe = (e) => {
+	}, se = (e) => {
 		u(e), r((t) => {
 			let n = t.filter((t) => t.id !== e.id);
 			return [Za(e), ...n];
 		});
-	}, T = () => {
+	}, ce = (e) => {
+		u(null), v(e), m("templates");
+	}, le = () => {
 		u(null), d && z.getMediaPackage(d.id).then(f).catch((e) => {
 			console.error("Media package refresh after draft close failed", e);
 		});
 	};
 	if (c) return /* @__PURE__ */ (0, U.jsx)(Ks, {
 		draft: c,
-		onDraftChanged: oe,
-		onClose: T,
+		onDraftChanged: se,
+		onClose: le,
+		onTemplateCreated: e ? ce : void 0,
 		editorLabel: c.mediaPackageId ? "Medienpaket · Grafikeditor" : "Grafikeditor",
 		bindingContext: c.mediaPackageId && d ? {
 			...c.bindingContext,
@@ -21997,12 +22116,12 @@ function Bc({ expertMode: e, onEditingChange: t }) {
 	if (d) return /* @__PURE__ */ (0, U.jsx)(yc, {
 		initial: d,
 		onClose: () => {
-			f(null), m("packages"), w();
+			f(null), m("packages"), ie();
 		},
-		onOpenDraft: (e) => void ae(e),
+		onOpenDraft: (e) => void T(e),
 		onChange: f
 	});
-	let E = h || _, se = p === "home" ? null : zc[p];
+	let ue = h || y, de = p === "home" ? null : zc[p];
 	return /* @__PURE__ */ (0, U.jsx)("div", {
 		className: "generator-manager",
 		children: p === "home" ? /* @__PURE__ */ (0, U.jsxs)("section", {
@@ -22101,7 +22220,7 @@ function Bc({ expertMode: e, onEditingChange: t }) {
 				]
 			})]
 		}) : /* @__PURE__ */ (0, U.jsxs)(U.Fragment, { children: [
-			E ? null : /* @__PURE__ */ (0, U.jsxs)("header", {
+			ue ? null : /* @__PURE__ */ (0, U.jsxs)("header", {
 				className: "workspace-view-head",
 				children: [/* @__PURE__ */ (0, U.jsx)("button", {
 					type: "button",
@@ -22113,12 +22232,12 @@ function Bc({ expertMode: e, onEditingChange: t }) {
 						className: "panel-label",
 						children: "Generator"
 					}),
-					/* @__PURE__ */ (0, U.jsx)("h2", { children: se?.title }),
-					/* @__PURE__ */ (0, U.jsx)("p", { children: se?.description })
+					/* @__PURE__ */ (0, U.jsx)("h2", { children: de?.title }),
+					/* @__PURE__ */ (0, U.jsx)("p", { children: de?.description })
 				] })]
 			}),
-			p === "matchday" ? /* @__PURE__ */ (0, U.jsx)(fc, { onDraftCreated: re }) : null,
-			p === "fanbus" ? /* @__PURE__ */ (0, U.jsx)(vc, { onDraftCreated: re }) : null,
+			p === "matchday" ? /* @__PURE__ */ (0, U.jsx)(fc, { onDraftCreated: ae }) : null,
+			p === "fanbus" ? /* @__PURE__ */ (0, U.jsx)(vc, { onDraftCreated: ae }) : null,
 			p === "create" ? /* @__PURE__ */ (0, U.jsxs)("section", {
 				className: "panel create-panel focused-panel",
 				"aria-labelledby": "create-title",
@@ -22133,21 +22252,21 @@ function Bc({ expertMode: e, onEditingChange: t }) {
 					}),
 					/* @__PURE__ */ (0, U.jsxs)("form", {
 						className: "create-form",
-						onSubmit: (e) => void ie(e),
+						onSubmit: (e) => void oe(e),
 						children: [
 							/* @__PURE__ */ (0, U.jsxs)("label", {
 								className: "field",
 								children: [/* @__PURE__ */ (0, U.jsx)("span", { children: "Titel" }), /* @__PURE__ */ (0, U.jsx)("input", {
-									value: x,
+									value: ee,
 									maxLength: 160,
-									onChange: (e) => S(e.target.value)
+									onChange: (e) => te(e.target.value)
 								})]
 							}),
 							/* @__PURE__ */ (0, U.jsxs)("label", {
 								className: "field",
 								children: [/* @__PURE__ */ (0, U.jsx)("span", { children: "Format" }), /* @__PURE__ */ (0, U.jsx)("select", {
-									value: ee,
-									onChange: (e) => te(e.target.value),
+									value: C,
+									onChange: (e) => ne(e.target.value),
 									children: Mo.map((e) => /* @__PURE__ */ (0, U.jsxs)("option", {
 										value: e.code,
 										children: [
@@ -22167,8 +22286,8 @@ function Bc({ expertMode: e, onEditingChange: t }) {
 							}) : null,
 							/* @__PURE__ */ (0, U.jsx)("button", {
 								className: "primary-button",
-								disabled: C,
-								children: C ? "Wird angelegt …" : "Entwurf anlegen"
+								disabled: w,
+								children: w ? "Wird angelegt …" : "Entwurf anlegen"
 							})
 						]
 					})
@@ -22189,7 +22308,7 @@ function Bc({ expertMode: e, onEditingChange: t }) {
 						})] }), /* @__PURE__ */ (0, U.jsx)("button", {
 							className: "secondary-button compact-button",
 							disabled: i === "loading",
-							onClick: () => void w(),
+							onClick: () => void ie(),
 							children: "Aktualisieren"
 						})]
 					}),
@@ -22208,22 +22327,24 @@ function Bc({ expertMode: e, onEditingChange: t }) {
 							Rc(e.updatedAt)
 						] })] }), /* @__PURE__ */ (0, U.jsx)("button", {
 							className: "secondary-button compact-button",
-							disabled: y !== null,
-							onClick: () => void ae(e.id),
-							children: y === e.id ? "Lädt …" : "Öffnen"
+							disabled: x !== null,
+							onClick: () => void T(e.id),
+							children: x === e.id ? "Lädt …" : "Öffnen"
 						})] }, e.id))
 					})
 				]
 			}) : null,
 			p === "templates" ? /* @__PURE__ */ (0, U.jsx)(Fc, {
 				expertMode: e,
-				onDraftCreated: re,
+				onDraftCreated: ae,
+				initialEditing: _,
+				onInitialEditingClosed: () => v(null),
 				onEditingChange: g
 			}) : null,
 			p === "packages" ? /* @__PURE__ */ (0, U.jsx)(Tc, {
 				expertMode: e,
 				onMediaPackageOpen: f,
-				onActivityChange: v
+				onActivityChange: b
 			}) : null
 		] })
 	});

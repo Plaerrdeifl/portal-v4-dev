@@ -13,7 +13,7 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   assert.equal(metadata.schemaVersion, 1)
   assert.equal(metadata.environment, 'DEV')
   assert.equal(metadata.sourceRepository, 'Plaerrdeifl/social-media-generator')
-  assert.equal(metadata.sourceCommit, 'd1fc8e00f72e0e521a9bcd2cd4bb7af1bed90c15')
+  assert.equal(metadata.sourceCommit, 'cd7ebf426c4daace120908d17d0a3ca0c552c2ad')
   assert.equal(metadata.artifactPath, 'assets/generator-dev/embed')
   assert.match(metadata.sourcePackageLockSha256, /^[a-f0-9]{64}$/)
   assert.equal(metadata.files.length, 4)
@@ -33,6 +33,12 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   assert.match(js, /Grafikeditor-Bereiche/)
   assert.match(css, /editor-mobile-tabs/)
   assert.match(css, /editor-mobile-disclosure/)
+  // The template action must not be confused with a graphic draft or auto-publishing.
+  for (const label of ['Grafik aus Vorlage erstellen', 'Vorlage bearbeiten',
+    'Vorlagenentwurf bearbeiten', 'Vorlage veröffentlichen',
+    'Als neue Vorlage speichern']) {
+    assert.ok(js.includes(label), `Missing template workflow: ${label}`)
+  }
   for (const effect of ['ice-depth-glow', 'metal-depth', 'sticker-gloss', 'ice-glow', 'frost-metal']) {
     assert.ok(js.includes(effect), `Missing trusted text effect: ${effect}`)
   }
