@@ -33,7 +33,7 @@ that credential into a build argument, committed file or browser runtime.
 
 ```bash
 git clone --no-checkout https://github.com/Plaerrdeifl/fanszene-cockpit.git /tmp/fanszene-cockpit
-git -C /tmp/fanszene-cockpit checkout --detach 2e154d01e3cf61e7ea5945c5dff6d7acb5d2d088
+git -C /tmp/fanszene-cockpit checkout --detach 7c2c784a845e3d68e8ca0b261197fe7d7ab65270
 cd /tmp/fanszene-cockpit
 sha256sum package-lock.json
 npm ci

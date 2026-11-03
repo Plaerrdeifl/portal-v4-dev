@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/fanszene-cockpit",
-  "sourceCommit": "14badeefc0a9adc502d03bf3854f1783b4c00508",
+  "sourceCommit": "7c2c784a845e3d68e8ca0b261197fe7d7ab65270",
   "sourcePackageLockSha256": "4e778cf58cee437f4546258f2d5a7ac0a5fcf52ed605fc07eb3ff7e603a5408f",
   "sourceBuildCommand": "npm ci --include=dev --allow-remote=root && npm run check",
   "sourceBuildEnvironment": {
@@ -14,17 +14,17 @@
     "npm": "12.0.1"
   },
   "artifactRoot": "integrations/cockpit/release",
-  "artifactSha256": "cb01f4a78cc0012c3b76be443e26b62481c3fca7ab48319b199a1f03236dd2f4",
+  "artifactSha256": "9115346dcea58220bd99ee59fce10d8d27dde8510bbb9eca83804fbb49a297e1",
   "files": [
     {
-      "path": "assets/UserManagement-BZCorZEK.js",
-      "bytes": 16435,
-      "sha256": "9951958a97cac1477981a8dae7d7c9184cf2408fa8ad6e6bd3dcf3bb6c4e2549"
+      "path": "assets/UserManagement-Cj7Ntz7S.js",
+      "bytes": 16440,
+      "sha256": "584e951531f4c6cab1b4012a45a70fe9048737ac5be34bc2b538b9256055541d"
     },
     {
-      "path": "assets/index-B5IhkiNO.js",
-      "bytes": 469474,
-      "sha256": "06cc5d149724b5d88c09283bc9ff53d7ed741c1323ba33ddcf3d9938ee5ec7d7"
+      "path": "assets/index-CSDYaCiJ.js",
+      "bytes": 469724,
+      "sha256": "230f64e784902e187cd70fe23011e51625e60fa0a99abe63241448a199e498d5"
     },
     {
       "path": "assets/index-Ds9xnppV.css",
@@ -54,7 +54,7 @@
     {
       "path": "index.html",
       "bytes": 865,
-      "sha256": "282a9dd845edadf6784b73da5ac4cd3b08285e077402a6e8da0c67f473e8fc7f"
+      "sha256": "d1a6df75c5e95dd5ccde26c8bea2692dea43a5adc8e12832fe561de83dfb84ff"
     },
     {
       "path": "manifest.webmanifest",
