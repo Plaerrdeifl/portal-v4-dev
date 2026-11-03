@@ -124,7 +124,7 @@ test("versioned Cockpit release pins the private source and every generated file
   assert.equal(metadata.schemaVersion, 1);
   assert.equal(metadata.environment, "DEV");
   assert.equal(metadata.sourceRepository, "Plaerrdeifl/fanszene-cockpit");
-  assert.equal(metadata.sourceCommit, "c2de5778b8a2dde36d5c1ec0def217289bbc8c08");
+  assert.equal(metadata.sourceCommit, "2a8abd6d7e94850f9a8dee86536cae5d07e02049");
   assert.equal(
     metadata.sourcePackageLockSha256,
     "4e778cf58cee437f4546258f2d5a7ac0a5fcf52ed605fc07eb3ff7e603a5408f"
@@ -156,7 +156,7 @@ test("Cockpit runtime is DEV-only, public and bound to the AP-03/R3 contracts", 
   const manifest = JSON.parse(manifestSource);
   const runtime = parseRuntime(runtimeSource);
 
-  assert.match(index, /<title>Fanszene Schweinfurt Cockpit<\/title>/);
+  assert.match(index, /<title>Schweinfurter Eishockey Fans – Cockpit<\/title>/);
   assert.match(index, /src="\/cockpit\/runtime-config\.js"/);
   assert.equal(manifest.id, "/cockpit/");
   assert.equal(manifest.start_url, "/cockpit/");
@@ -280,7 +280,7 @@ test("Cockpit files expose a root-only route contract with an isolated 404", asy
     readFile(join(root, "_redirects"), "utf8")
   ]);
 
-  assert.match(index, /Fanszene Schweinfurt Cockpit/);
+  assert.match(index, /Schweinfurter Eishockey Fans – Cockpit/);
   assert.match(notFound, /data-cockpit-route-contract="root-only-v1"/);
   assert.match(notFound, /href="\/cockpit\/"/);
   assert.doesNotMatch(notFound, /data-route="login"|Plärrdeifl Portal/);
@@ -417,7 +417,7 @@ test("portal build is deterministic and leaves existing app artifacts unchanged"
     assert.match(embeddedModule, /cockpit_access_get/);
     assert.equal(hostedLivetickerConfig, await readFile(join(buildFixture, "dist", "cockpit", "runtime-config.js"), "utf8"));
     assert.match(portalIndex, /<title>Plärrdeifl Portal<\/title>/);
-    assert.match(cockpitIndex, /<title>Fanszene Schweinfurt Cockpit<\/title>/);
+    assert.match(cockpitIndex, /<title>Schweinfurter Eishockey Fans – Cockpit<\/title>/);
     assert.notEqual(cockpitIndex, portalIndex);
     assert.match(cockpitNotFound, /data-cockpit-route-contract="root-only-v1"/);
     assert.notEqual(cockpitNotFound, portalIndex);

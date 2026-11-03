@@ -1,7 +1,7 @@
 {
   "id": "/cockpit/",
-  "name": "Fanszene Schweinfurt Cockpit",
-  "short_name": "Fanszene Cockpit",
+  "name": "Schweinfurter Eishockey Fans – Cockpit",
+  "short_name": "Cockpit",
   "description": "Gemeinsamer Zugang zu Liveticker und Bild-Generator.",
   "lang": "de",
   "start_url": "/cockpit/",
