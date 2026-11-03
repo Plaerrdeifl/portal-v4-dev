@@ -13,7 +13,7 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   assert.equal(metadata.schemaVersion, 1)
   assert.equal(metadata.environment, 'DEV')
   assert.equal(metadata.sourceRepository, 'Plaerrdeifl/social-media-generator')
-  assert.equal(metadata.sourceCommit, '5f0dfaa3890ed708826985e9eb7eb9ce25ebfaf2')
+  assert.equal(metadata.sourceCommit, '649e9bcbc3b5dac10f9c1e050b0fe4685da31127')
   assert.equal(metadata.artifactPath, 'assets/generator-dev/embed')
   assert.match(metadata.sourcePackageLockSha256, /^[a-f0-9]{64}$/)
   assert.equal(metadata.files.length, 4)

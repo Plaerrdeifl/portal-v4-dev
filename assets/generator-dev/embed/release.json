@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/social-media-generator",
-  "sourceCommit": "5f0dfaa3890ed708826985e9eb7eb9ce25ebfaf2",
+  "sourceCommit": "649e9bcbc3b5dac10f9c1e050b0fe4685da31127",
   "sourcePackageLockSha256": "69e88b031faad78b0283b37c39735c82e68650f21928cd5ccc0b06ea6c446311",
   "sourceBuildCommand": "npm ci --ignore-scripts && npm run build",
   "artifactPath": "assets/generator-dev/embed",
@@ -19,8 +19,8 @@
     },
     {
       "path": "module.js",
-      "sha256": "23aba924757391c37dd18dec3120ee1390bf340b74bf2a603f7ae5812a249359",
-      "bytes": 743160
+      "sha256": "0ac9a0108db9c92738c9e1d27455e0b1dcf6b7c29e50d118d60d33dec14911b3",
+      "bytes": 743707
     },
     {
       "path": "style.css",
