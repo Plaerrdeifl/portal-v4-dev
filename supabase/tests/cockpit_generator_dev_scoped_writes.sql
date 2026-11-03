@@ -9,6 +9,19 @@ declare
   v_no_generator uuid := '00000000-0000-4603-8000-000000000002';
   v_no_cockpit uuid := '00000000-0000-4603-8000-000000000003';
   v_role_id uuid;
+  v_response jsonb;
+  v_draft_id uuid;
+  v_document jsonb := jsonb_build_object(
+    'id','cockpit-generator-dev-readonly-e2e',
+    'title','Cockpit DEV Generator Test',
+    'schemaVersion',1,
+    'format',jsonb_build_object('width',1080,'height',1080),
+    'elements','[]'::jsonb,
+    'metadata',jsonb_build_object(
+      'createdAt','2026-11-03T00:00:00.000Z',
+      'updatedAt','2026-11-03T00:00:00.000Z'
+    )
+  );
   v_action text;
   v_user uuid;
   v_state record;
@@ -85,6 +98,45 @@ begin
     end if;
     perform app_private.require_platform_user_write_allowed(v_action,v_actor);
   end loop;
+
+  -- Exercise the actual public Browser API, not just the private guard:
+  -- creating, reading and saving a draft must work as this JWT actor.
+  v_response := public.pd_api(
+    'social_media_generator_draft_create',
+    jsonb_build_object('title','Cockpit DEV Generator Test','document',v_document)
+  );
+  if v_response #>> '{ok}' is distinct from 'true'
+     or v_response #>> '{data,version}' is distinct from '1' then
+    raise exception 'Cockpit Generator draft creation failed: %',v_response;
+  end if;
+  v_draft_id := (v_response #>> '{data,id}')::uuid;
+  v_response := public.pd_api(
+    'social_media_generator_draft_get',
+    jsonb_build_object('draftId',v_draft_id)
+  );
+  if v_response #>> '{ok}' is distinct from 'true'
+     or v_response #> '{data,document}' is distinct from v_document then
+    raise exception 'Cockpit Generator draft reading failed: %',v_response;
+  end if;
+  v_response := public.pd_api(
+    'social_media_generator_draft_save',
+    jsonb_build_object(
+      'draftId',v_draft_id,
+      'title','Cockpit DEV Generator Test gespeichert',
+      'document',v_document,
+      'expectedVersion',1
+    )
+  );
+  if v_response #>> '{ok}' is distinct from 'true'
+     or v_response #>> '{data,version}' is distinct from '2' then
+    raise exception 'Cockpit Generator draft saving failed: %',v_response;
+  end if;
+  if not exists (
+    select 1 from app_social_media.drafts
+    where id=v_draft_id and owner_user_id=v_actor and version=2
+  ) then
+    raise exception 'Cockpit Generator draft write breached ownership';
+  end if;
 
   foreach v_action in array array[
     'event_create',
