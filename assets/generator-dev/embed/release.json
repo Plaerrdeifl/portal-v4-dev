@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "environment": "DEV",
+  "sourceRepository": "Plaerrdeifl/social-media-generator",
+  "sourceCommit": "8cdcbb051322939280855fb0f267d88eb1888885",
+  "sourcePackageLockSha256": "69e88b031faad78b0283b37c39735c82e68650f21928cd5ccc0b06ea6c446311",
+  "sourceBuildCommand": "npm ci --ignore-scripts && npm run build",
+  "artifactPath": "assets/generator-dev/embed",
+  "files": [
+    {
+      "path": "liveticker/post-background.jpg",
+      "sha256": "a8e49de969ee6d731e72b405ec05366a8da595dda98aa1340d9ded777d0fbe1a",
+      "bytes": 470996
+    },
+    {
+      "path": "liveticker/story-background.jpg",
+      "sha256": "c62cf39f0c523a01fb893dd688616b1e631e6d0ff888fe7a5f5f36b0ac0f12cb",
+      "bytes": 377655
+    },
+    {
+      "path": "module.js",
+      "sha256": "ee622502c48d5b85357de242df1f676d34103db612a6c99f4e9d38e75f4699fe",
+      "bytes": 1304361
+    },
+    {
+      "path": "style.css",
+      "sha256": "a68189d0535de54745eed8f3eb1d1fbeac7c1789da5244a45eb5edc4f7785a17",
+      "bytes": 31249
+    }
+  ]
+}
