@@ -13,7 +13,7 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   assert.equal(metadata.schemaVersion, 1)
   assert.equal(metadata.environment, 'DEV')
   assert.equal(metadata.sourceRepository, 'Plaerrdeifl/social-media-generator')
-  assert.equal(metadata.sourceCommit, 'a3df8f277e14ce9fd3ace61ee62f49d178a6dbc2')
+  assert.equal(metadata.sourceCommit, '58c2499c0c8eed34aba460ddcf575fed38d06940')
   assert.equal(metadata.artifactPath, 'assets/generator-dev/embed')
   assert.match(metadata.sourcePackageLockSha256, /^[a-f0-9]{64}$/)
   assert.equal(metadata.files.length, 4)
@@ -44,6 +44,7 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   }
   // Team-color sticker preview must use central team API without editing templates.
   assert.match(js, /Sticker-Master \(DEV-Prototyp\)/)
+  assert.match(js, /Tor-Master: Ice-Impact-Entwurf/)
   assert.match(js, /social_media_generator_media_teams_list/)
   assert.match(css, /sticker-brand-comparison/)
   assert.doesNotMatch(js, /registerSW\(|serviceWorker\.register/)
