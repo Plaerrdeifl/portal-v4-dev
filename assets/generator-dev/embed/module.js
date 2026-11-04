@@ -22440,606 +22440,163 @@ function Kc(e, t) {
 		logoVersion: i.sourceVersion
 	};
 }
-//#endregion
-//#region src/components/TorStickerMaster.tsx
 var qc = [
-	"M251 16 L283 142 L244 164 Z",
-	"M334 19 L319 153 L285 173 Z",
-	"M439 55 L358 163 L343 139 Z",
-	"M489 160 L375 218 L376 172 Z",
-	"M492 321 L377 292 L396 264 Z",
-	"M437 421 L340 339 L360 312 Z",
-	"M320 482 L287 352 L312 343 Z",
-	"M170 475 L221 335 L195 322 Z",
-	"M38 368 L169 298 L150 277 Z",
-	"M19 238 L162 221 L149 244 Z",
-	"M56 109 L166 198 L193 161 Z",
-	"M158 40 L220 157 L204 191 Z"
-], Jc = [
-	"M166 50 L230 170 L199 160 Z",
-	"M304 18 L292 145 L267 107 Z",
-	"M449 119 L372 194 L377 169 Z",
-	"M489 278 L399 294 L409 267 Z",
-	"M462 382 L393 344 L411 319 Z",
-	"M367 473 L301 362 L326 345 Z",
-	"M75 435 L173 334 L169 364 Z",
-	"M17 310 L140 282 L139 302 Z",
-	"M26 153 L151 204 L132 223 Z"
-], Yc = [
-	[
-		102,
-		121,
-		5
-	],
-	[
-		154,
-		86,
-		5
-	],
-	[
-		204,
-		67,
-		4
-	],
-	[
-		303,
-		74,
-		6
-	],
-	[
-		341,
-		125,
-		3
-	],
-	[
-		437,
-		138,
-		6
-	],
-	[
-		459,
-		210,
-		4
-	],
-	[
-		471,
-		305,
-		5
-	],
-	[
-		449,
-		356,
-		4
-	],
-	[
-		426,
-		420,
-		6
-	],
-	[
-		362,
-		466,
-		4
-	],
-	[
-		270,
-		482,
-		5
-	],
-	[
-		177,
-		460,
-		4
-	],
-	[
-		87,
-		412,
-		4
-	],
-	[
-		39,
-		303,
-		5
-	],
-	[
-		61,
-		212,
-		5
-	]
-], Xc = "M249 8 279 46 299 14 314 70 363 22 359 91 413 49 405 116 470 78 453 147 501 152 464 201 503 237 458 266 498 310 436 322 480 382 422 364 438 426 388 397 377 475 332 424 307 504 267 438 229 503 200 437 160 490 158 421 88 472 106 391 38 422 76 355 7 367 48 308 6 260 65 223 15 166 88 167 48 105 114 123 118 55 168 90 190 25 213 84 Z";
-function Zc({ brand: e }) {
-	let t = e.id.replace(/[^A-Za-z0-9]/g, ""), n = "ice-tor-" + t, r = "gold-tor-" + t, i = "metal-tor-" + t, a = "net-tor-" + t, o = "letter-clip-tor-" + t, s = "glow-tor-" + t, c = "shadow-tor-" + t, l = {
-		x: 256,
-		y: 427,
-		textAnchor: "middle",
-		fontSize: 119,
-		fontFamily: "Impact, \"Arial Black\", \"DejaVu Sans\", sans-serif",
-		fontWeight: 1e3,
-		letterSpacing: "-5px",
-		textLength: 462,
-		lengthAdjust: "spacingAndGlyphs",
-		transform: "translate(70 0) skewX(-9)"
+	"00_ice_backdrop.png",
+	"01_goal_puck.png",
+	"02_badge.png",
+	"03_primary_mask.png",
+	"04_secondary_mask.png",
+	"05_wordmark_metal.png",
+	"06_wordmark_primary_mask.png",
+	"07_wordmark_secondary_mask.png",
+	"08_specular.png"
+], Jc = /* @__PURE__ */ new Map();
+function Yc(e) {
+	let t = Jc.get(e);
+	if (t) return t;
+	let n = new Promise((t, n) => {
+		let r = new Image();
+		r.crossOrigin = "anonymous", r.onload = () => t(r), r.onerror = () => n(/* @__PURE__ */ Error("PNG/Logo konnte nicht geladen werden: " + e.split("/").pop())), r.src = e;
+	});
+	return Jc.set(e, n), n.catch(() => Jc.delete(e)), n;
+}
+function Xc(e, t = "/assets/generator-dev/embed/") {
+	return t.replace(/\/?$/, "/") + "sticker/tor-v2/" + e;
+}
+function Zc(e, t, n, r) {
+	let i = e.getContext("2d");
+	if (!i) throw Error("Canvas 2D ist nicht verfügbar");
+	i.clearRect(0, 0, 768, 768), i.globalCompositeOperation = "source-over", i.drawImage(n, 0, 0, 768, 768), i.globalCompositeOperation = "source-in", i.fillStyle = r, i.fillRect(0, 0, 768, 768), i.globalCompositeOperation = "source-over", t.drawImage(e, 0, 0);
+}
+async function Qc(e, t, n = Yc) {
+	let r = qc.map((e) => Xc(e)), i = await Promise.all([...r.map(n), n(t.logoHref)]), a = i[i.length - 1];
+	if (!a?.naturalWidth || !a.naturalHeight) throw Error("Original-Teamlogo ist nicht verfügbar");
+	let o = e.getContext("2d", { alpha: !0 });
+	if (!o) throw Error("Canvas 2D ist nicht verfügbar");
+	e.width = 768, e.height = 768, o.clearRect(0, 0, 768, 768);
+	let s = document.createElement("canvas");
+	s.width = 768, s.height = 768, o.drawImage(i[0], 0, 0), o.drawImage(i[1], 0, 0), o.drawImage(i[2], 0, 0), Zc(s, o, i[3], t.primaryColor), Zc(s, o, i[4], t.secondaryColor);
+	let c = {
+		x: 152,
+		y: 207,
+		w: 177,
+		h: 182
+	}, l = Math.min(c.w / a.naturalWidth, c.h / a.naturalHeight), u = a.naturalWidth * l, d = a.naturalHeight * l;
+	o.drawImage(a, c.x + (c.w - u) / 2, c.y + (c.h - d) / 2, u, d), o.drawImage(i[5], 0, 0), Zc(s, o, i[6], t.primaryColor), Zc(s, o, i[7], t.secondaryColor), o.drawImage(i[8], 0, 0);
+}
+function $c(e, t, n) {
+	return new Promise((r, i) => {
+		e.toBlob((e) => {
+			e ? r(e) : i(/* @__PURE__ */ Error("Sticker-Export konnte nicht erstellt werden"));
+		}, t, n);
+	});
+}
+async function el(e, t) {
+	let n = document.createElement("canvas");
+	n.width = 512, n.height = 512;
+	let r = n.getContext("2d", { alpha: !0 });
+	if (!r) throw Error("Canvas-Export ist nicht verfügbar");
+	if (r.drawImage(e, 0, 0, 512, 512), t === "image/png") return $c(n, "image/png");
+	for (let e of [
+		.88,
+		.76,
+		.64,
+		.52,
+		.4,
+		.32,
+		.24,
+		.18,
+		.12,
+		.08
+	]) {
+		let t = await $c(n, "image/webp", e);
+		if (t.type !== "image/webp") throw Error("Dieser Browser unterstützt keinen WebP-Export");
+		if (t.size <= 102400) return t;
+	}
+	throw Error("WebP überschreitet 100 KiB. Bitte PNG prüfen; kein fehlerhaftes WebP ausgegeben.");
+}
+//#endregion
+//#region src/components/TorPngPreview.tsx
+function tl(e, t) {
+	return "tor-" + e.toLocaleLowerCase("de").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/ß/g, "ss").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + "." + t;
+}
+function nl({ brand: e }) {
+	let t = (0, l.useRef)(null), [n, r] = (0, l.useState)(!1), [i, a] = (0, l.useState)(""), [o, s] = (0, l.useState)(!1);
+	(0, l.useEffect)(() => {
+		let n = !0;
+		r(!1), a("");
+		let i = t.current;
+		if (i) return Qc(i, e).then(() => {
+			n && r(!0);
+		}).catch((e) => {
+			n && a(e instanceof Error ? e.message : "Sticker-Renderfehler");
+		}), () => {
+			n = !1;
+		};
+	}, [
+		e.id,
+		e.logoHref,
+		e.logoVersion,
+		e.primaryColor,
+		e.secondaryColor
+	]);
+	let c = async (r) => {
+		if (n && !o && t.current) {
+			s(!0), a("");
+			try {
+				let n = await el(t.current, r === "png" ? "image/png" : "image/webp"), i = URL.createObjectURL(n), a = document.createElement("a");
+				a.href = i, a.download = tl(e.name, r), document.body.appendChild(a), a.click(), a.remove(), window.setTimeout(() => URL.revokeObjectURL(i), 4e3);
+			} catch (e) {
+				a(e instanceof Error ? e.message : "Export fehlgeschlagen");
+			} finally {
+				s(!1);
+			}
+		}
 	};
-	return /* @__PURE__ */ (0, U.jsxs)("svg", {
-		className: "sticker-tor-preview",
-		viewBox: "0 0 512 512",
-		role: "img",
-		"aria-label": "Tor-Stickermaster – " + e.name,
+	return /* @__PURE__ */ (0, U.jsxs)("div", {
+		className: "sticker-render-area",
 		children: [
-			/* @__PURE__ */ (0, U.jsxs)("defs", { children: [
-				/* @__PURE__ */ (0, U.jsxs)("linearGradient", {
-					id: n,
-					x1: "0",
-					x2: "0.8",
-					y1: "0",
-					y2: "1",
-					children: [
-						/* @__PURE__ */ (0, U.jsx)("stop", { stopColor: "#F9FFFF" }),
-						/* @__PURE__ */ (0, U.jsx)("stop", {
-							offset: ".28",
-							stopColor: "#C4F9FF"
-						}),
-						/* @__PURE__ */ (0, U.jsx)("stop", {
-							offset: ".62",
-							stopColor: "#39BBFF"
-						}),
-						/* @__PURE__ */ (0, U.jsx)("stop", {
-							offset: "1",
-							stopColor: "#0966B5"
-						})
-					]
-				}),
-				/* @__PURE__ */ (0, U.jsxs)("linearGradient", {
-					id: r,
-					x1: "0",
-					x2: ".9",
-					y1: "0",
-					y2: "1",
-					children: [
-						/* @__PURE__ */ (0, U.jsx)("stop", { stopColor: "#FFFFFF" }),
-						/* @__PURE__ */ (0, U.jsx)("stop", {
-							offset: ".14",
-							stopColor: "#FFF5B4"
-						}),
-						/* @__PURE__ */ (0, U.jsx)("stop", {
-							offset: ".42",
-							stopColor: "#FFC929"
-						}),
-						/* @__PURE__ */ (0, U.jsx)("stop", {
-							offset: ".7",
-							stopColor: "#E69300"
-						}),
-						/* @__PURE__ */ (0, U.jsx)("stop", {
-							offset: "1",
-							stopColor: "#5E2D06"
-						})
-					]
-				}),
-				/* @__PURE__ */ (0, U.jsxs)("linearGradient", {
-					id: i,
-					x1: "0",
-					x2: ".2",
-					y1: "0",
-					y2: "1",
-					children: [
-						/* @__PURE__ */ (0, U.jsx)("stop", { stopColor: "#FFFFFF" }),
-						/* @__PURE__ */ (0, U.jsx)("stop", {
-							offset: ".31",
-							stopColor: "#FFFFFF"
-						}),
-						/* @__PURE__ */ (0, U.jsx)("stop", {
-							offset: ".49",
-							stopColor: "#DEF4FF"
-						}),
-						/* @__PURE__ */ (0, U.jsx)("stop", {
-							offset: ".55",
-							stopColor: "#FFFFFF"
-						}),
-						/* @__PURE__ */ (0, U.jsx)("stop", {
-							offset: ".67",
-							stopColor: "#FFF4C6"
-						}),
-						/* @__PURE__ */ (0, U.jsx)("stop", {
-							offset: ".82",
-							stopColor: "#DEAA3E"
-						}),
-						/* @__PURE__ */ (0, U.jsx)("stop", {
-							offset: ".95",
-							stopColor: "#9A5610"
-						}),
-						/* @__PURE__ */ (0, U.jsx)("stop", {
-							offset: "1",
-							stopColor: "#FCE4A3"
-						})
-					]
-				}),
-				/* @__PURE__ */ (0, U.jsx)("pattern", {
-					id: a,
-					patternUnits: "userSpaceOnUse",
-					width: "13",
-					height: "13",
-					children: /* @__PURE__ */ (0, U.jsx)("path", {
-						d: "M0 0 H13 V13",
-						stroke: "#EAF8FF",
-						strokeWidth: "1.6",
-						fill: "none"
-					})
-				}),
-				/* @__PURE__ */ (0, U.jsx)("filter", {
-					id: s,
-					x: "-60%",
-					y: "-60%",
-					width: "220%",
-					height: "220%",
-					children: /* @__PURE__ */ (0, U.jsx)("feGaussianBlur", { stdDeviation: "4" })
-				}),
-				/* @__PURE__ */ (0, U.jsx)("filter", {
-					id: c,
-					x: "-40%",
-					y: "-40%",
-					width: "180%",
-					height: "180%",
-					children: /* @__PURE__ */ (0, U.jsx)("feDropShadow", {
-						dx: "4",
-						dy: "8",
-						stdDeviation: "5",
-						floodColor: "#000000",
-						floodOpacity: ".92"
-					})
-				}),
-				/* @__PURE__ */ (0, U.jsx)("clipPath", {
-					id: o,
-					children: /* @__PURE__ */ (0, U.jsx)("text", {
-						...l,
-						children: "TOOOR!"
-					})
-				})
-			] }),
-			/* @__PURE__ */ (0, U.jsx)("path", {
-				d: Xc,
-				fill: "#050A12",
-				stroke: "#FDFEFF",
-				strokeWidth: "13",
-				strokeLinejoin: "round"
+			/* @__PURE__ */ (0, U.jsx)("canvas", {
+				ref: t,
+				width: 768,
+				height: 768,
+				className: "sticker-tor-preview",
+				role: "img",
+				"aria-label": "PNG-Tor-Sticker für " + e.name
 			}),
-			/* @__PURE__ */ (0, U.jsx)("path", {
-				d: Xc,
-				fill: "none",
-				stroke: "#0A121D",
-				strokeWidth: "5",
-				strokeLinejoin: "round"
-			}),
-			/* @__PURE__ */ (0, U.jsxs)("g", {
-				strokeLinejoin: "round",
-				strokeWidth: "2.5",
-				children: [qc.map((e, t) => /* @__PURE__ */ (0, U.jsx)("path", {
-					d: e,
-					fill: "url(#" + n + ")",
-					stroke: t % 2 ? "#FFFFFF" : "#BCEFFF"
-				}, e)), Jc.map((t, n) => /* @__PURE__ */ (0, U.jsx)("path", {
-					d: t,
-					fill: n % 2 == 0 ? e.primaryColor : "url(#" + r + ")",
-					stroke: "#FFEE95",
-					strokeWidth: "2.1"
-				}, t))]
-			}),
-			/* @__PURE__ */ (0, U.jsx)("path", {
-				d: "M18 252 188 260 30 269 M267 13 254 181 244 7\n        M479 203 340 233 489 245 M401 475 310 341 475 439",
-				fill: "none",
-				stroke: "#8BE8FF",
-				strokeWidth: "5",
-				opacity: ".75"
-			}),
-			/* @__PURE__ */ (0, U.jsxs)("g", {
-				transform: "rotate(-10 343 214)",
-				filter: "url(#" + c + ")",
-				children: [
-					/* @__PURE__ */ (0, U.jsx)("rect", {
-						x: "207",
-						y: "90",
-						width: "267",
-						height: "231",
-						rx: "24",
-						fill: "#090F1B",
-						stroke: "#0A0D14",
-						strokeWidth: "29"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("rect", {
-						x: "207",
-						y: "90",
-						width: "267",
-						height: "231",
-						rx: "24",
-						fill: "#0A1621",
-						stroke: e.primaryColor,
-						strokeWidth: "20"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("rect", {
-						x: "207",
-						y: "90",
-						width: "267",
-						height: "231",
-						rx: "24",
-						fill: "none",
-						stroke: "url(#" + r + ")",
-						strokeWidth: "10"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("rect", {
-						x: "222",
-						y: "105",
-						width: "236",
-						height: "200",
-						rx: "13",
-						fill: "url(#" + a + ")",
-						stroke: "#C9F7FF",
-						strokeWidth: "5"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("path", {
-						d: "M224 129 Q339 96 456 131 M222 274 Q338 288 456 270",
-						stroke: "#5BD5FF",
-						strokeWidth: "4",
-						fill: "none"
-					})
-				]
-			}),
-			/* @__PURE__ */ (0, U.jsxs)("g", {
-				transform: "rotate(-15 352 251)",
-				children: [
-					/* @__PURE__ */ (0, U.jsx)("path", {
-						d: "M201 301 Q267 247 335 230",
-						stroke: "#0C9BFF",
-						strokeWidth: "26",
-						opacity: ".4",
-						fill: "none"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("path", {
-						d: "M185 307 Q272 247 330 233",
-						stroke: "#FFFFFF",
-						strokeWidth: "9",
-						opacity: ".85",
-						fill: "none"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("path", {
-						d: "M221 320 Q293 256 342 238",
-						stroke: "#40C9FF",
-						strokeWidth: "5",
-						fill: "none"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("ellipse", {
-						cx: "364",
-						cy: "233",
-						rx: "53",
-						ry: "27",
-						fill: "#03070D",
-						stroke: "#E9F9FF",
-						strokeWidth: "7"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("ellipse", {
-						cx: "364",
-						cy: "233",
-						rx: "47",
-						ry: "21",
-						fill: "#0E1721",
-						stroke: "#78D8FF",
-						strokeWidth: "2"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("path", {
-						d: "M324 229 Q365 214 399 230",
-						stroke: "#FFFFFF",
-						strokeWidth: "2",
-						fill: "none",
-						opacity: ".85"
-					})
-				]
-			}),
-			/* @__PURE__ */ (0, U.jsxs)("g", {
-				fill: "#E3F7FF",
-				opacity: ".87",
-				children: [
-					/* @__PURE__ */ (0, U.jsx)("circle", {
-						cx: "290",
-						cy: "258",
-						r: "3"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("circle", {
-						cx: "309",
-						cy: "274",
-						r: "5"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("circle", {
-						cx: "337",
-						cy: "299",
-						r: "3"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("circle", {
-						cx: "389",
-						cy: "291",
-						r: "3"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("circle", {
-						cx: "267",
-						cy: "308",
-						r: "4"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("circle", {
-						cx: "412",
-						cy: "307",
-						r: "3"
-					})
-				]
-			}),
-			/* @__PURE__ */ (0, U.jsxs)("g", {
-				filter: "url(#" + c + ")",
-				children: [
-					/* @__PURE__ */ (0, U.jsx)("path", {
-						d: "M69 302 84 182 Q85 153 105 139",
-						fill: "none",
-						stroke: "#050A11",
-						strokeWidth: "20",
-						strokeLinecap: "round"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("path", {
-						d: "M69 302 84 182 Q85 153 105 139",
-						fill: "none",
-						stroke: "#ECF9FF",
-						strokeWidth: "12",
-						strokeLinecap: "round"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("path", {
-						d: "M240 301 232 175 Q229 145 211 135",
-						fill: "none",
-						stroke: "#050A11",
-						strokeWidth: "20",
-						strokeLinecap: "round"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("path", {
-						d: "M240 301 232 175 Q229 145 211 135",
-						fill: "none",
-						stroke: "#ECF9FF",
-						strokeWidth: "12",
-						strokeLinecap: "round"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("path", {
-						d: "M96 124 210 109 248 155 243 253 152 325 59 258 55 169 Z",
-						fill: "#060A11",
-						stroke: "#02050B",
-						strokeWidth: "20",
-						strokeLinejoin: "round"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("path", {
-						d: "M96 124 210 109 248 155 243 253 152 325 59 258 55 169 Z",
-						fill: e.primaryColor,
-						fillOpacity: ".19",
-						stroke: e.primaryColor,
-						strokeWidth: "13",
-						strokeLinejoin: "round"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("path", {
-						d: "M96 124 210 109 248 155 243 253 152 325 59 258 55 169 Z",
-						fill: "none",
-						stroke: "#FFFFFF",
-						strokeWidth: "4",
-						strokeLinejoin: "round"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("image", {
-						href: e.logoHref,
-						x: "78",
-						y: "124",
-						width: "165",
-						height: "166",
-						preserveAspectRatio: "xMidYMid meet"
-					})
-				]
-			}),
-			Yc.map(([t, n, r], i) => /* @__PURE__ */ (0, U.jsxs)("g", { children: [/* @__PURE__ */ (0, U.jsx)("circle", {
-				cx: t,
-				cy: n,
-				r: r * 2.3,
-				fill: "#FFCF22",
-				filter: "url(#" + s + ")",
-				opacity: ".85"
-			}), /* @__PURE__ */ (0, U.jsx)("circle", {
-				cx: t,
-				cy: n,
-				r,
-				fill: i % 3 == 0 ? e.secondaryColor : "#FFE657",
-				stroke: "#FFFFFF",
-				strokeWidth: ".8"
-			})] }, i)),
-			/* @__PURE__ */ (0, U.jsxs)("g", {
-				filter: "url(#" + c + ")",
-				paintOrder: "stroke",
-				children: [
-					/* @__PURE__ */ (0, U.jsx)("text", {
-						...l,
-						y: 448,
-						fill: "#080B0F",
-						stroke: "#080B0F",
-						strokeWidth: "35",
-						children: "TOOOR!"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("text", {
-						...l,
-						y: 440,
-						fill: "#74400A",
-						stroke: "#09090B",
-						strokeWidth: "27",
-						children: "TOOOR!"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("text", {
-						...l,
-						fill: "#14120E",
-						stroke: "#02050A",
-						strokeWidth: "28",
-						children: "TOOOR!"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("text", {
-						...l,
-						fill: "url(#" + r + ")",
-						stroke: "url(#" + r + ")",
-						strokeWidth: "19",
-						children: "TOOOR!"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("text", {
-						...l,
-						fill: "url(#" + i + ")",
-						stroke: "#080E14",
-						strokeWidth: "11",
-						children: "TOOOR!"
-					}),
-					/* @__PURE__ */ (0, U.jsx)("text", {
-						...l,
-						fill: "url(#" + i + ")",
-						stroke: "#F7FDFF",
-						strokeWidth: "2",
-						children: "TOOOR!"
-					})
-				]
-			}),
-			/* @__PURE__ */ (0, U.jsx)("g", {
-				clipPath: "url(#" + o + ")",
-				children: /* @__PURE__ */ (0, U.jsx)("rect", {
-					x: "12",
-					y: "389",
-					width: "488",
-					height: "62",
-					fill: "url(#" + r + ")",
-					opacity: ".62"
-				})
-			}),
-			/* @__PURE__ */ (0, U.jsxs)("g", {
-				clipPath: "url(#" + o + ")",
-				opacity: ".44",
-				strokeLinecap: "round",
-				children: [/* @__PURE__ */ (0, U.jsx)("path", {
-					d: "M39 414 95 399 145 434 202 398 266 439 321 400 394 433 473 405",
-					stroke: "#FFF8DB",
-					strokeWidth: "3",
-					fill: "none"
-				}), /* @__PURE__ */ (0, U.jsx)("path", {
-					d: "M55 377 108 430 173 375 234 430 281 377 352 434 425 374",
-					stroke: "#A15E23",
-					strokeWidth: "2",
-					fill: "none"
+			!n && !i ? /* @__PURE__ */ (0, U.jsx)("small", {
+				role: "status",
+				children: "PNG-Ebenen werden geladen …"
+			}) : null,
+			i ? /* @__PURE__ */ (0, U.jsx)("p", {
+				role: "alert",
+				className: "sticker-prototype-note",
+				children: i
+			}) : null,
+			/* @__PURE__ */ (0, U.jsxs)("div", {
+				className: "sticker-export-actions",
+				children: [/* @__PURE__ */ (0, U.jsx)("button", {
+					type: "button",
+					disabled: !n || o,
+					onClick: () => void c("png"),
+					children: "PNG 512 × 512"
+				}), /* @__PURE__ */ (0, U.jsx)("button", {
+					type: "button",
+					disabled: !n || o,
+					onClick: () => void c("webp"),
+					children: "WhatsApp-WebP"
 				})]
-			}),
-			/* @__PURE__ */ (0, U.jsx)("path", {
-				d: "M90 468 Q263 498 435 456",
-				fill: "none",
-				stroke: "#D7F5FF",
-				strokeWidth: "3.4",
-				opacity: ".62"
 			})
 		]
 	});
 }
 //#endregion
 //#region src/components/StickerWorkspace.tsx
-function Qc({ brand: e }) {
+function rl({ brand: e }) {
 	return /* @__PURE__ */ (0, U.jsxs)("article", {
 		className: "sticker-brand-card",
 		children: [
-			/* @__PURE__ */ (0, U.jsx)(Zc, { brand: e }),
+			/* @__PURE__ */ (0, U.jsx)(nl, { brand: e }),
 			/* @__PURE__ */ (0, U.jsx)("h3", { children: e.name }),
 			/* @__PURE__ */ (0, U.jsxs)("div", {
 				className: "sticker-brand-colors",
@@ -23055,7 +22612,7 @@ function Qc({ brand: e }) {
 		]
 	});
 }
-function $c() {
+function il() {
 	let [e, t] = (0, l.useState)([]), [n, r] = (0, l.useState)(!0), [i, a] = (0, l.useState)(""), [o, s] = (0, l.useState)("");
 	(0, l.useEffect)(() => {
 		let e = !0;
@@ -23078,14 +22635,14 @@ function $c() {
 				className: "panel-label",
 				children: "Sticker · DEV"
 			}),
-			/* @__PURE__ */ (0, U.jsx)("h2", { children: "Tor-Master: Ice-Impact-Entwurf" }),
-			/* @__PURE__ */ (0, U.jsx)("p", { children: "Die beiden Vorschauen verwenden dasselbe feste Layout. Logo und Vereinsfarben stammen aus der zentralen DEV-Teamverwaltung – ohne Kopie der Teamdaten." }),
+			/* @__PURE__ */ (0, U.jsx)("h2", { children: "Tor-Master: PNG-Farbmasken" }),
+			/* @__PURE__ */ (0, U.jsx)("p", { children: "Die beiden PNG-Vorschauen verwenden dieselben neun festen Ebenen und Farbmasken. Logo und Vereinsfarben stammen aus der zentralen DEV-Teamverwaltung – ohne Kopie der Teamdaten." }),
 			/* @__PURE__ */ (0, U.jsxs)("p", {
 				className: "sticker-prototype-note",
 				children: [
-					"Achtung: Diese SVG-Grafik ist eine",
-					/* @__PURE__ */ (0, U.jsx)("strong", { children: " Vektorannäherung an Bayreuth, kein freigegebenes Bayreuth-Design" }),
-					". Es werden noch keine WhatsApp-Sticker oder ZIP-Pakete erzeugt."
+					"Die Farbmasken verwenden direkt die gespeicherten Vereinsfarben. ",
+					/* @__PURE__ */ (0, U.jsx)("strong", { children: " Das PNG-Master ist ein technischer Prototyp und optisch noch nicht freigegeben." }),
+					" PNG- und WhatsApp-WebP-Testexporte sind hier verfügbar."
 				]
 			}),
 			n ? /* @__PURE__ */ (0, U.jsx)("p", {
@@ -23106,7 +22663,7 @@ function $c() {
 				})]
 			}), /* @__PURE__ */ (0, U.jsxs)("div", {
 				className: "sticker-brand-comparison",
-				children: [/* @__PURE__ */ (0, U.jsx)(Qc, { brand: d }), m ? /* @__PURE__ */ (0, U.jsx)(Qc, { brand: m }) : null]
+				children: [/* @__PURE__ */ (0, U.jsx)(rl, { brand: d }), m ? /* @__PURE__ */ (0, U.jsx)(rl, { brand: m }) : null]
 			})] }) : /* @__PURE__ */ (0, U.jsx)("p", {
 				role: "alert",
 				children: "Für die Mighty Dogs fehlen Original-Logo oder gültige Teamfarben."
@@ -23116,7 +22673,7 @@ function $c() {
 }
 //#endregion
 //#region src/components/GeneratorWorkspace.tsx
-function el({ bootstrap: e }) {
+function al({ bootstrap: e }) {
 	let [t, n] = (0, l.useState)(e.preferences.expertMode), [r, i] = (0, l.useState)(!1), [a, o] = (0, l.useState)("graphics");
 	return /* @__PURE__ */ (0, U.jsxs)("div", {
 		className: "generator-workspace",
@@ -23168,14 +22725,14 @@ function el({ bootstrap: e }) {
 					onEditingChange: i
 				})
 			}),
-			a === "stickers" && !r ? /* @__PURE__ */ (0, U.jsx)($c, {}) : null
+			a === "stickers" && !r ? /* @__PURE__ */ (0, U.jsx)(il, {}) : null
 		]
 	});
 }
 //#endregion
 //#region src/embed.tsx
-var tl = null;
-function nl({ userId: e, onReady: t, onFailure: n }) {
+var ol = null;
+function sl({ userId: e, onReady: t, onFailure: n }) {
 	let [r, i] = (0, l.useState)({ kind: "loading" }), [a, o] = (0, l.useState)(0);
 	return (0, l.useEffect)(() => {
 		r.kind === "ready" && t?.(), (r.kind === "error" || r.kind === "denied") && n?.();
@@ -23207,7 +22764,7 @@ function nl({ userId: e, onReady: t, onFailure: n }) {
 		}), () => {
 			t = !1;
 		};
-	}, [a, e]), r.kind === "ready" ? /* @__PURE__ */ (0, U.jsx)(el, { bootstrap: r.bootstrap }) : r.kind === "loading" ? /* @__PURE__ */ (0, U.jsx)("p", {
+	}, [a, e]), r.kind === "ready" ? /* @__PURE__ */ (0, U.jsx)(al, { bootstrap: r.bootstrap }) : r.kind === "loading" ? /* @__PURE__ */ (0, U.jsx)("p", {
 		role: "status",
 		children: "Generator-Berechtigung wird geprüft …"
 	}) : /* @__PURE__ */ (0, U.jsxs)("section", {
@@ -23225,8 +22782,8 @@ function nl({ userId: e, onReady: t, onFailure: n }) {
 		]
 	});
 }
-function rl(e, t) {
-	if (tl) throw Error("Der Bild-Generator ist bereits eingebunden.");
+function cl(e, t) {
+	if (ol) throw Error("Der Bild-Generator ist bereits eingebunden.");
 	if (!e || !t?.pdApi || !t?.getAccessToken || !t?.userId) throw Error("Ungültiger Generator-Integrationsvertrag.");
 	let n = e.attachShadow({ mode: "open" }), r = document.createElement("style");
 	r.textContent = ":host{display:block;font-family:Inter,system-ui,sans-serif;color:#f4f4f4;color-scheme:dark}.generator-embed-root{min-width:0}";
@@ -23235,15 +22792,15 @@ function rl(e, t) {
 	let a = document.createElement("div");
 	a.className = "generator-embed-root", n.append(r, i, a), Ga(t.pdApi), os(t.getAccessToken);
 	let o = (0, u.createRoot)(a);
-	o.render(/* @__PURE__ */ (0, U.jsx)(nl, {
+	o.render(/* @__PURE__ */ (0, U.jsx)(sl, {
 		userId: t.userId,
 		onReady: t.onReady,
 		onFailure: t.onFailure
 	}));
 	let s = !1, c = () => {
-		s || (s = !0, o.unmount(), n.replaceChildren(), Ga(null), os(null), tl = null);
+		s || (s = !0, o.unmount(), n.replaceChildren(), Ga(null), os(null), ol = null);
 	};
-	return tl = c, c;
+	return ol = c, c;
 }
 //#endregion
-export { rl as mountGenerator };
+export { cl as mountGenerator };
