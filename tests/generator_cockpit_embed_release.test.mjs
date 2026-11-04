@@ -13,7 +13,7 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   assert.equal(metadata.schemaVersion, 1)
   assert.equal(metadata.environment, 'DEV')
   assert.equal(metadata.sourceRepository, 'Plaerrdeifl/social-media-generator')
-  assert.equal(metadata.sourceCommit, '09fdc9495d67142d48a7cbb8924ac17b10c80af6')
+  assert.equal(metadata.sourceCommit, 'fb89b7f93a78948e04d02b3ef978c72d3fc617af')
   assert.equal(metadata.artifactPath, 'assets/generator-dev/embed')
   assert.match(metadata.sourcePackageLockSha256, /^[a-f0-9]{64}$/)
   assert.equal(metadata.files.length, 4)
@@ -61,6 +61,37 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
     assert.equal(bytes.byteLength, file.bytes, file.path)
     assert.equal(hash(bytes), file.sha256, file.path)
   }
+  assert.equal(metadata.timeoutLayers.length, 22)
+  assert.equal(new Set(metadata.timeoutLayers.map(file => file.path)).size, 22)
+  for (const file of metadata.timeoutLayers) {
+    assert.match(file.path, /^(?:embed\/)?sticker\/timeout-v1\/(?:layers|masks)\/\d{2}_[a-z0-9_]+\.png$/)
+    const bytes = await readFile(join(root, 'assets/generator-dev', file.path))
+    assert.equal(bytes.byteLength, file.bytes, file.path)
+    assert.equal(hash(bytes), file.sha256, file.path)
+    assert.deepEqual([...bytes.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10])
+    assert.equal(bytes.readUInt32BE(16), 1254, file.path)
+    assert.equal(bytes.readUInt32BE(20), 1254, file.path)
+    assert.equal(bytes[25], 6, 'RGBA alpha: ' + file.path)
+  }
+  assert.deepEqual(metadata.timeoutManifests.map(file => file.path), [
+    'sticker/timeout-v1/manifest.json', 'embed/sticker/timeout-v1/manifest.json'
+  ])
+  for (const file of metadata.timeoutManifests) {
+    const bytes = await readFile(join(root, 'assets/generator-dev', file.path))
+    assert.equal(bytes.byteLength, file.bytes, file.path)
+    assert.equal(hash(bytes), file.sha256, file.path)
+    const master = JSON.parse(bytes)
+    assert.equal(master.version, 'timeout-v1')
+    assert.equal(master.layers.length, 6)
+    assert.equal(master.masks.length, 5)
+    assert.equal(master.size, 1254)
+    for (const [name, expected] of Object.entries(master.files)) {
+      for (const prefix of ['sticker/timeout-v1/', 'embed/sticker/timeout-v1/']) {
+        const layer = metadata.timeoutLayers.find(item => item.path === prefix + name)
+        assert.equal(layer?.sha256, expected.sha256, prefix + name)
+      }
+    }
+  }
   const js = await readFile(join(release, 'module.js'), 'utf8')
   const css = await readFile(join(release, 'style.css'), 'utf8')
   assert.doesNotMatch(js, /process\.env\.NODE_ENV/)
@@ -82,10 +113,12 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   }
   // Team-color sticker preview must use central team API without editing templates.
   assert.match(js, /Sticker-Master \(DEV-Prototyp\)/)
-  assert.match(js, /Tor-Master: PNG-Farbmasken/)
+  assert.match(js, /Sticker-Vorschau/)
+  assert.match(js, /TIMEOUT/)
   assert.match(js, /WhatsApp-WebP/)
   assert.match(js, /source-in/)
   assert.match(js, /sticker\/tor-v3/)
+  assert.match(js, /sticker\/timeout-v1/)
   assert.match(js, /social_media_generator_media_teams_list/)
   assert.match(css, /sticker-brand-comparison/)
   assert.doesNotMatch(js, /registerSW\(|serviceWorker\.register/)

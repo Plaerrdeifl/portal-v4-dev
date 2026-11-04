@@ -1,0 +1,127 @@
+{
+  "version": "timeout-v1",
+  "size": 1254,
+  "sourceSha256": "62bede5d5fb007e9c95dcbdf1b346ed013023a879bfa9874be9b6cb8f9a5d7e9",
+  "layers": [
+    "layers/00_ice_explosion_background_neutral.png",
+    "layers/01_tactics_board_neutral.png",
+    "layers/02_logo_badge_neutral.png",
+    "layers/03_whistle_neutral.png",
+    "layers/04_wordmark_neutral.png",
+    "layers/05_puck_foreground_neutral.png"
+  ],
+  "masks": [
+    {
+      "path": "masks/10_primary_badge_frame.png",
+      "color": "primaryColor",
+      "opacity": 0.85
+    },
+    {
+      "path": "masks/11_primary_tactics_board.png",
+      "color": "primaryColor",
+      "opacity": 0.85
+    },
+    {
+      "path": "masks/12_primary_whistle_trail.png",
+      "color": "primaryColor",
+      "opacity": 0.85
+    },
+    {
+      "path": "masks/13_primary_wordmark_edges.png",
+      "color": "primaryColor",
+      "opacity": 0.85
+    },
+    {
+      "path": "masks/14_secondary_ice_sparks.png",
+      "color": "secondaryColor",
+      "opacity": 0.85
+    }
+  ],
+  "logoSlot": {
+    "x": 161,
+    "y": 250,
+    "w": 347,
+    "h": 299,
+    "fit": "contain",
+    "polygon": [
+      [
+        244,
+        256
+      ],
+      [
+        403,
+        250
+      ],
+      [
+        518,
+        335
+      ],
+      [
+        500,
+        482
+      ],
+      [
+        396,
+        553
+      ],
+      [
+        253,
+        549
+      ],
+      [
+        154,
+        461
+      ],
+      [
+        164,
+        336
+      ]
+    ]
+  },
+  "files": {
+    "layers/00_ice_explosion_background_neutral.png": {
+      "sha256": "67622f96d298f1bc0c929f724722266e81de82862fba6d818800b368e476c0d1",
+      "bytes": 348033
+    },
+    "layers/01_tactics_board_neutral.png": {
+      "sha256": "f1ea02e0ae820c1e400c253d86b7187638c1ad0521cbde8208be98bb5f5b86f4",
+      "bytes": 462961
+    },
+    "layers/02_logo_badge_neutral.png": {
+      "sha256": "fc0766c829460f313830e19bb45cab4080eeab2785a93f4923df485950cb117e",
+      "bytes": 371929
+    },
+    "layers/03_whistle_neutral.png": {
+      "sha256": "be8edc903b434809c0fed5333ca081dfa1ae56751afba881e18b7158dab1d8bc",
+      "bytes": 477464
+    },
+    "layers/04_wordmark_neutral.png": {
+      "sha256": "29888fd5b31a99d8bb0c399dc3c96ddb95c4c6fae9434bd52862c9985340c547",
+      "bytes": 1082751
+    },
+    "layers/05_puck_foreground_neutral.png": {
+      "sha256": "63dcaaf95e781635f1610b0773f5fcce7f36faebb601464e095c240ef7da8f0a",
+      "bytes": 230108
+    },
+    "masks/10_primary_badge_frame.png": {
+      "sha256": "0cd7073d1b2e954fcdf0a962d4156eb0ef9a4adb42e6174ad31eff8dc18cfdce",
+      "bytes": 59400
+    },
+    "masks/11_primary_tactics_board.png": {
+      "sha256": "c0822e20ab980d792e2452d10320501a01b8c4bcf0cacf51873f4e7ddf9c338a",
+      "bytes": 69771
+    },
+    "masks/12_primary_whistle_trail.png": {
+      "sha256": "f1cb543825fb23397255f0bb904b7a9e2db41c9c767b80c3f086d24bc773ff04",
+      "bytes": 86751
+    },
+    "masks/13_primary_wordmark_edges.png": {
+      "sha256": "1c303697b4aa0d38160f62331df4aa5e1ce79965d932a2d7ed2dfd6992ee352f",
+      "bytes": 175639
+    },
+    "masks/14_secondary_ice_sparks.png": {
+      "sha256": "fa8ea1dbf887eba3a93c7c8a6f4e27be011cd5c982f882ba262a3af04edef54f",
+      "bytes": 137277
+    }
+  }
+}
