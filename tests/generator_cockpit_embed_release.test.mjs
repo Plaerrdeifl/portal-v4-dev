@@ -13,7 +13,7 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   assert.equal(metadata.schemaVersion, 1)
   assert.equal(metadata.environment, 'DEV')
   assert.equal(metadata.sourceRepository, 'Plaerrdeifl/social-media-generator')
-  assert.equal(metadata.sourceCommit, '58c2499c0c8eed34aba460ddcf575fed38d06940')
+  assert.equal(metadata.sourceCommit, '4d6a5637c7a8b555f246ba067bb828c7d1a9b258')
   assert.equal(metadata.artifactPath, 'assets/generator-dev/embed')
   assert.match(metadata.sourcePackageLockSha256, /^[a-f0-9]{64}$/)
   assert.equal(metadata.files.length, 4)
@@ -22,6 +22,14 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
     const data = await readFile(join(release, file.path))
     assert.equal(data.byteLength, file.bytes, file.path)
     assert.equal(hash(data), file.sha256, file.path)
+  }
+  assert.equal(metadata.masterLayers.length, 18)
+  for (const layer of metadata.masterLayers) {
+    assert.match(layer.path, /^(?:embed\/)?sticker\/tor-v2\/\d{2}_[a-z0-9_]+\.png$/)
+    const data = await readFile(join(root, 'assets/generator-dev', layer.path))
+    assert.deepEqual([...data.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10])
+    assert.equal(data.byteLength, layer.bytes, layer.path)
+    assert.equal(hash(data), layer.sha256, layer.path)
   }
   const js = await readFile(join(release, 'module.js'), 'utf8')
   const css = await readFile(join(release, 'style.css'), 'utf8')
@@ -44,7 +52,10 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   }
   // Team-color sticker preview must use central team API without editing templates.
   assert.match(js, /Sticker-Master \(DEV-Prototyp\)/)
-  assert.match(js, /Tor-Master: Ice-Impact-Entwurf/)
+  assert.match(js, /Tor-Master: PNG-Farbmasken/)
+  assert.match(js, /WhatsApp-WebP/)
+  assert.match(js, /source-in/)
+  assert.match(js, /sticker\/tor-v2/)
   assert.match(js, /social_media_generator_media_teams_list/)
   assert.match(css, /sticker-brand-comparison/)
   assert.doesNotMatch(js, /registerSW\(|serviceWorker\.register/)

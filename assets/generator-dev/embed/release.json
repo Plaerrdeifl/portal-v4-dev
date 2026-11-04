@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/social-media-generator",
-  "sourceCommit": "58c2499c0c8eed34aba460ddcf575fed38d06940",
+  "sourceCommit": "4d6a5637c7a8b555f246ba067bb828c7d1a9b258",
   "sourcePackageLockSha256": "69e88b031faad78b0283b37c39735c82e68650f21928cd5ccc0b06ea6c446311",
   "sourceBuildCommand": "npm ci --ignore-scripts --no-audit --no-fund && npm run check (DEV, VITE_BASE_PATH=/assets/generator-dev/)",
   "artifactPath": "assets/generator-dev/embed",
@@ -19,13 +19,105 @@
     },
     {
       "path": "module.js",
-      "sha256": "e3a9c51e97d1c4fe5d22c6f7ebb3b100662a106abb7d0c34e418c888d08f4021",
-      "bytes": 769865
+      "sha256": "84f322b14ecdb74dfed010632c8d6d61c0c69f574a0ba4bbb5040176c04d026f",
+      "bytes": 761374
     },
     {
       "path": "style.css",
-      "sha256": "19d722157b4a771d7c2dd9b9d4df4244482650e5d8f992ac727843be9968c25e",
-      "bytes": 36652
+      "sha256": "34939df794d9990db80ef5fb03d53c3a393ce656f5d24a0e6efa564ada4b0144",
+      "bytes": 37005
+    }
+  ],
+  "masterLayers": [
+    {
+      "path": "sticker/tor-v2/00_ice_backdrop.png",
+      "sha256": "9fc5b59e428b4d99c08af0bf449374af1dd44d7e2454c36fcd0e9a629c10f007",
+      "bytes": 109079
+    },
+    {
+      "path": "sticker/tor-v2/01_goal_puck.png",
+      "sha256": "f3e874d0369d1afb494e36aed86ab0d76ce40b52517f3072c1ac809ee31d80a7",
+      "bytes": 27339
+    },
+    {
+      "path": "sticker/tor-v2/02_badge.png",
+      "sha256": "42ba1f1b2a46c0b13b58e65fad37df941a50442d9251d403a1b241f462253209",
+      "bytes": 4793
+    },
+    {
+      "path": "sticker/tor-v2/03_primary_mask.png",
+      "sha256": "b68b34eadd01eda703d67e387361a5e8f7dd01941299d4490818127ae004d9a2",
+      "bytes": 5138
+    },
+    {
+      "path": "sticker/tor-v2/04_secondary_mask.png",
+      "sha256": "e94b8351479608ff1eff4084ec95d047fae575df2d1971dbe7aaa6fbb168ba7c",
+      "bytes": 5934
+    },
+    {
+      "path": "sticker/tor-v2/05_wordmark_metal.png",
+      "sha256": "326d715facc78d2ca100334922b03b63bf158f1b31683c929229bd538c767e19",
+      "bytes": 164215
+    },
+    {
+      "path": "sticker/tor-v2/06_wordmark_primary_mask.png",
+      "sha256": "d737ba90abc80229741ba0217b8290ce278c0c7f7a3f081d4254745881ed9ead",
+      "bytes": 31126
+    },
+    {
+      "path": "sticker/tor-v2/07_wordmark_secondary_mask.png",
+      "sha256": "62467f85d7327f5b134bf9318146609e93583c35c0a773e3770864a5e7569aa3",
+      "bytes": 4854
+    },
+    {
+      "path": "sticker/tor-v2/08_specular.png",
+      "sha256": "eac3947ab4d2db45165432382b788784ff0b29702ffb2c55dd1628c59245a793",
+      "bytes": 3976
+    },
+    {
+      "path": "embed/sticker/tor-v2/00_ice_backdrop.png",
+      "sha256": "9fc5b59e428b4d99c08af0bf449374af1dd44d7e2454c36fcd0e9a629c10f007",
+      "bytes": 109079
+    },
+    {
+      "path": "embed/sticker/tor-v2/01_goal_puck.png",
+      "sha256": "f3e874d0369d1afb494e36aed86ab0d76ce40b52517f3072c1ac809ee31d80a7",
+      "bytes": 27339
+    },
+    {
+      "path": "embed/sticker/tor-v2/02_badge.png",
+      "sha256": "42ba1f1b2a46c0b13b58e65fad37df941a50442d9251d403a1b241f462253209",
+      "bytes": 4793
+    },
+    {
+      "path": "embed/sticker/tor-v2/03_primary_mask.png",
+      "sha256": "b68b34eadd01eda703d67e387361a5e8f7dd01941299d4490818127ae004d9a2",
+      "bytes": 5138
+    },
+    {
+      "path": "embed/sticker/tor-v2/04_secondary_mask.png",
+      "sha256": "e94b8351479608ff1eff4084ec95d047fae575df2d1971dbe7aaa6fbb168ba7c",
+      "bytes": 5934
+    },
+    {
+      "path": "embed/sticker/tor-v2/05_wordmark_metal.png",
+      "sha256": "326d715facc78d2ca100334922b03b63bf158f1b31683c929229bd538c767e19",
+      "bytes": 164215
+    },
+    {
+      "path": "embed/sticker/tor-v2/06_wordmark_primary_mask.png",
+      "sha256": "d737ba90abc80229741ba0217b8290ce278c0c7f7a3f081d4254745881ed9ead",
+      "bytes": 31126
+    },
+    {
+      "path": "embed/sticker/tor-v2/07_wordmark_secondary_mask.png",
+      "sha256": "62467f85d7327f5b134bf9318146609e93583c35c0a773e3770864a5e7569aa3",
+      "bytes": 4854
+    },
+    {
+      "path": "embed/sticker/tor-v2/08_specular.png",
+      "sha256": "eac3947ab4d2db45165432382b788784ff0b29702ffb2c55dd1628c59245a793",
+      "bytes": 3976
     }
   ]
 }
