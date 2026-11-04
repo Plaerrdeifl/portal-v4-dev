@@ -1,0 +1,143 @@
+{
+  "name": "Empty Net PNG Master V1 – Bayreuth-style registered cutouts",
+  "type": "empty-net-png-masked-v1",
+  "created": "2026-11-04",
+  "reference": "source/bayreuth_empty_net_reference.png",
+  "reference_sha256": "a4806c1ae4530ced72fca1007692a1431821426228467cf21d98c056fd4ad429",
+  "dimensions": [
+    1254,
+    1254
+  ],
+  "team_data_source": "central DEV social_media_generator_media_teams_list; no secondary database",
+  "source_logo_removed_from_production_layers": true,
+  "logo_slot": {
+    "x": 161,
+    "y": 270,
+    "width": 400,
+    "height": 378,
+    "fit": "contain",
+    "original_only": true
+  },
+  "limitations": [
+    "registered cutouts of flattened approved reference; hidden art cannot be reconstructed",
+    "not freely relocatable Photoshop layers",
+    "color masks are automated proposals and require final visual review",
+    "gold is NOT a fixed team color; each mapped highlight is separately tintable",
+    "badge source includes neutralized metallic accents and is independent of team logo",
+    "the two sample colors/logos are previews; runtime must load the central DEV records"
+  ],
+  "draw_order": [
+    "layers/00_crystal_ice_background.png",
+    "layers/00a_badge_under_shadow.png",
+    "layers/01_ice_crystal_shards_neutral.png",
+    "masks/10_primary_ice_sparks.png",
+    "masks/13_secondary_ice_sparkles.png",
+    "layers/02_empty_goal_net_neutral.png",
+    "masks/11_primary_goal_frame.png",
+    "layers/03_metal_octagon_badge_neutral.png",
+    "masks/15_primary_badge_neon.png",
+    "DYNAMIC_ORIGINAL_TEAM_LOGO (contain, manifest logo_slot)",
+    "layers/04_empty_net_chrome_wordmark_neutral.png",
+    "masks/12_primary_empty_net_wordmark.png",
+    "masks/14_secondary_wordmark_reflections.png"
+  ],
+  "mask_technology": "RGBA white with actual varying alpha, source-in color per central team; retain highlight shading",
+  "files": [
+    {
+      "path": "layers/00_crystal_ice_background.png",
+      "size": 2693928,
+      "sha256": "4db156cfc72904050659fb086e721fb2246c3b611fa32bc94380db2f79369f56",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    },
+    {
+      "path": "layers/00a_badge_under_shadow.png",
+      "size": 78502,
+      "sha256": "a408d3a74e6a241d6f928f9ed46b44d2d9df5742ca02d271f8846b037579d2d5",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    },
+    {
+      "path": "layers/01_ice_crystal_shards_neutral.png",
+      "size": 170765,
+      "sha256": "3c7949c79e71a85692fa20124d51c6206f8dd0bb09f1700bc155fbebe4f354a7",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    },
+    {
+      "path": "layers/02_empty_goal_net_neutral.png",
+      "size": 628130,
+      "sha256": "9e06975aae539175feb1f4e0487b03ec5297e4986913a12885cfa7919b822f33",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    },
+    {
+      "path": "layers/03_metal_octagon_badge_neutral.png",
+      "size": 556566,
+      "sha256": "2a531097316f3ee97c3f3842ebff5003d3b03ca47b2703b9d3be9ce590474f0e",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    },
+    {
+      "path": "layers/04_empty_net_chrome_wordmark_neutral.png",
+      "size": 1163506,
+      "sha256": "9d0dcf7ed90652a995edf0f99777884d9a509605230703a025dc1172c812a603",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    },
+    {
+      "path": "masks/10_primary_ice_sparks.png",
+      "size": 22534,
+      "sha256": "e4e5605b82caddcb06144c43a704ad8516f0fc503b5b3d6c91b8614a02243d4b",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    },
+    {
+      "path": "masks/11_primary_goal_frame.png",
+      "size": 62387,
+      "sha256": "df3af7245f48389fb49a5c6ac57ec5b4824c0f6de11163913d1c77cd1db9812a",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    },
+    {
+      "path": "masks/12_primary_empty_net_wordmark.png",
+      "size": 221170,
+      "sha256": "356e20ff3ee5f6f69300a070ab6f0e3c5009eec060f6615fdc8e7f04a1b6297c",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    },
+    {
+      "path": "masks/13_secondary_ice_sparkles.png",
+      "size": 20905,
+      "sha256": "6bb206d4c7be9d468609a21f3d3a018aae55a2213163347af386baefd84ff44f",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    },
+    {
+      "path": "masks/14_secondary_wordmark_reflections.png",
+      "size": 166820,
+      "sha256": "225658061f47b75c2ae83dbb73a256c3da59f124756121713b52ce920aacc480",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    },
+    {
+      "path": "masks/15_primary_badge_neon.png",
+      "size": 263315,
+      "sha256": "efe71ecf39885ed2eff98c9cb1a75f859626ffe9f641e1690f6319ecc97b3cba",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    }
+  ]
+}
