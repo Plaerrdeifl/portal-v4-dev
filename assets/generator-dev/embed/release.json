@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/social-media-generator",
-  "sourceCommit": "cd7ebf426c4daace120908d17d0a3ca0c552c2ad",
+  "sourceCommit": "a3df8f277e14ce9fd3ace61ee62f49d178a6dbc2",
   "sourcePackageLockSha256": "69e88b031faad78b0283b37c39735c82e68650f21928cd5ccc0b06ea6c446311",
-  "sourceBuildCommand": "npm ci --ignore-scripts && npm run build",
+  "sourceBuildCommand": "npm ci --ignore-scripts --no-audit --no-fund && npm run check (VITE_BASE_PATH=/assets/generator-dev/, VITE_APP_ENV=DEV)",
   "artifactPath": "assets/generator-dev/embed",
   "files": [
     {
@@ -19,13 +19,13 @@
     },
     {
       "path": "module.js",
-      "sha256": "2cb0567da468c66341bff45f5c6621d5eee88560b2ba654c309af4388b25c5b9",
-      "bytes": 752457
+      "sha256": "6852f05c17aae4f171b4d46c5447c7011661a3e0481a6d3a4f2c796bb892b45e",
+      "bytes": 760300
     },
     {
       "path": "style.css",
-      "sha256": "f775e3812f0e5b821f5984215399e820d53bb13fc70e89c2e9d5f7bceacaf461",
-      "bytes": 35535
+      "sha256": "19d722157b4a771d7c2dd9b9d4df4244482650e5d8f992ac727843be9968c25e",
+      "bytes": 36652
     }
   ]
 }

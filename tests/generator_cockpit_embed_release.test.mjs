@@ -13,7 +13,7 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   assert.equal(metadata.schemaVersion, 1)
   assert.equal(metadata.environment, 'DEV')
   assert.equal(metadata.sourceRepository, 'Plaerrdeifl/social-media-generator')
-  assert.equal(metadata.sourceCommit, 'cd7ebf426c4daace120908d17d0a3ca0c552c2ad')
+  assert.equal(metadata.sourceCommit, 'a3df8f277e14ce9fd3ace61ee62f49d178a6dbc2')
   assert.equal(metadata.artifactPath, 'assets/generator-dev/embed')
   assert.match(metadata.sourcePackageLockSha256, /^[a-f0-9]{64}$/)
   assert.equal(metadata.files.length, 4)
@@ -42,6 +42,10 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   for (const effect of ['ice-depth-glow', 'metal-depth', 'sticker-gloss', 'ice-glow', 'frost-metal']) {
     assert.ok(js.includes(effect), `Missing trusted text effect: ${effect}`)
   }
+  // Team-color sticker preview must use central team API without editing templates.
+  assert.match(js, /Sticker-Master \(DEV-Prototyp\)/)
+  assert.match(js, /social_media_generator_media_teams_list/)
+  assert.match(css, /sticker-brand-comparison/)
   assert.doesNotMatch(js, /registerSW\(|serviceWorker\.register/)
   const cockpitDir = join(root, 'integrations/cockpit/release/assets')
   const bundles = (await readdir(cockpitDir)).filter(name => /^index-.+\.js$/.test(name))
