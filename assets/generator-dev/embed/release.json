@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/social-media-generator",
-  "sourceCommit": "4d6a5637c7a8b555f246ba067bb828c7d1a9b258",
+  "sourceCommit": "09fdc9495d67142d48a7cbb8924ac17b10c80af6",
   "sourcePackageLockSha256": "69e88b031faad78b0283b37c39735c82e68650f21928cd5ccc0b06ea6c446311",
-  "sourceBuildCommand": "npm ci --ignore-scripts --no-audit --no-fund && npm run check (DEV, VITE_BASE_PATH=/assets/generator-dev/)",
+  "sourceBuildCommand": "VITE_BASE_PATH=/assets/generator-dev/ npm run check",
   "artifactPath": "assets/generator-dev/embed",
   "files": [
     {
@@ -19,8 +19,8 @@
     },
     {
       "path": "module.js",
-      "sha256": "84f322b14ecdb74dfed010632c8d6d61c0c69f574a0ba4bbb5040176c04d026f",
-      "bytes": 761374
+      "sha256": "19f0cc0077771325e37010138dc6e92a4be30a1ed0b80dd64af13188d1c18699",
+      "bytes": 763882
     },
     {
       "path": "style.css",
@@ -30,94 +30,162 @@
   ],
   "masterLayers": [
     {
-      "path": "sticker/tor-v2/00_ice_backdrop.png",
-      "sha256": "9fc5b59e428b4d99c08af0bf449374af1dd44d7e2454c36fcd0e9a629c10f007",
-      "bytes": 109079
+      "path": "sticker/tor-v3/00_ice_backdrop.png",
+      "sha256": "1dfac6bb81d1eec4703a69e40df2d066732932e78ca9e597c86ff38c4b409bda",
+      "bytes": 774114
     },
     {
-      "path": "sticker/tor-v2/01_goal_puck.png",
-      "sha256": "f3e874d0369d1afb494e36aed86ab0d76ce40b52517f3072c1ac809ee31d80a7",
-      "bytes": 27339
+      "path": "sticker/tor-v3/01_goal_puck.png",
+      "sha256": "9edc25d31edb9f400a9c9e689de362b3afa6c870b19f76d407a0ec5056af141f",
+      "bytes": 463735
     },
     {
-      "path": "sticker/tor-v2/02_badge.png",
-      "sha256": "42ba1f1b2a46c0b13b58e65fad37df941a50442d9251d403a1b241f462253209",
-      "bytes": 4793
+      "path": "sticker/tor-v3/02_badge.png",
+      "sha256": "df880c6e020f199a1285899e43f7e2870d276c2d2668f564b05cfd881c4630b0",
+      "bytes": 121354
     },
     {
-      "path": "sticker/tor-v2/03_primary_mask.png",
-      "sha256": "b68b34eadd01eda703d67e387361a5e8f7dd01941299d4490818127ae004d9a2",
-      "bytes": 5138
+      "path": "sticker/tor-v3/03_primary_mask.png",
+      "sha256": "0e7c7cd431c59f4ec2f6670acdcc57b8da4eeba043a974e6bd514398fe97340e",
+      "bytes": 243281
     },
     {
-      "path": "sticker/tor-v2/04_secondary_mask.png",
-      "sha256": "e94b8351479608ff1eff4084ec95d047fae575df2d1971dbe7aaa6fbb168ba7c",
-      "bytes": 5934
+      "path": "sticker/tor-v3/04_secondary_mask.png",
+      "sha256": "0856ef3d4f049983b2905b81b5b4ae349453d1c74625c3028ff0cd3f5002061b",
+      "bytes": 227398
     },
     {
-      "path": "sticker/tor-v2/05_wordmark_metal.png",
-      "sha256": "326d715facc78d2ca100334922b03b63bf158f1b31683c929229bd538c767e19",
-      "bytes": 164215
+      "path": "sticker/tor-v3/05_wordmark_metal.png",
+      "sha256": "30be1f0ded555797c0e9025bc8bfd6acef35f37153dfbf920657212973724f2e",
+      "bytes": 228954
     },
     {
-      "path": "sticker/tor-v2/06_wordmark_primary_mask.png",
-      "sha256": "d737ba90abc80229741ba0217b8290ce278c0c7f7a3f081d4254745881ed9ead",
-      "bytes": 31126
+      "path": "sticker/tor-v3/06_wordmark_primary_mask.png",
+      "sha256": "53447918f54f05e485beb6a0214541accd4dfa47a5dfc1a5d79e5c9661851e5a",
+      "bytes": 118350
     },
     {
-      "path": "sticker/tor-v2/07_wordmark_secondary_mask.png",
-      "sha256": "62467f85d7327f5b134bf9318146609e93583c35c0a773e3770864a5e7569aa3",
-      "bytes": 4854
+      "path": "sticker/tor-v3/07_wordmark_secondary_mask.png",
+      "sha256": "8d32543fc2cd98f2bc611819ea5f73b645e9c54b8508c1cb16af72c7690c23e7",
+      "bytes": 12313
     },
     {
-      "path": "sticker/tor-v2/08_specular.png",
-      "sha256": "eac3947ab4d2db45165432382b788784ff0b29702ffb2c55dd1628c59245a793",
-      "bytes": 3976
+      "path": "sticker/tor-v3/08_specular.png",
+      "sha256": "a46f5465e2606894832ff18043d32d449f82141dea26e683a16e2887887b4a01",
+      "bytes": 63328
     },
     {
-      "path": "embed/sticker/tor-v2/00_ice_backdrop.png",
-      "sha256": "9fc5b59e428b4d99c08af0bf449374af1dd44d7e2454c36fcd0e9a629c10f007",
-      "bytes": 109079
+      "path": "embed/sticker/tor-v3/00_ice_backdrop.png",
+      "sha256": "1dfac6bb81d1eec4703a69e40df2d066732932e78ca9e597c86ff38c4b409bda",
+      "bytes": 774114
     },
     {
-      "path": "embed/sticker/tor-v2/01_goal_puck.png",
-      "sha256": "f3e874d0369d1afb494e36aed86ab0d76ce40b52517f3072c1ac809ee31d80a7",
-      "bytes": 27339
+      "path": "embed/sticker/tor-v3/01_goal_puck.png",
+      "sha256": "9edc25d31edb9f400a9c9e689de362b3afa6c870b19f76d407a0ec5056af141f",
+      "bytes": 463735
     },
     {
-      "path": "embed/sticker/tor-v2/02_badge.png",
-      "sha256": "42ba1f1b2a46c0b13b58e65fad37df941a50442d9251d403a1b241f462253209",
-      "bytes": 4793
+      "path": "embed/sticker/tor-v3/02_badge.png",
+      "sha256": "df880c6e020f199a1285899e43f7e2870d276c2d2668f564b05cfd881c4630b0",
+      "bytes": 121354
     },
     {
-      "path": "embed/sticker/tor-v2/03_primary_mask.png",
-      "sha256": "b68b34eadd01eda703d67e387361a5e8f7dd01941299d4490818127ae004d9a2",
-      "bytes": 5138
+      "path": "embed/sticker/tor-v3/03_primary_mask.png",
+      "sha256": "0e7c7cd431c59f4ec2f6670acdcc57b8da4eeba043a974e6bd514398fe97340e",
+      "bytes": 243281
     },
     {
-      "path": "embed/sticker/tor-v2/04_secondary_mask.png",
-      "sha256": "e94b8351479608ff1eff4084ec95d047fae575df2d1971dbe7aaa6fbb168ba7c",
-      "bytes": 5934
+      "path": "embed/sticker/tor-v3/04_secondary_mask.png",
+      "sha256": "0856ef3d4f049983b2905b81b5b4ae349453d1c74625c3028ff0cd3f5002061b",
+      "bytes": 227398
     },
     {
-      "path": "embed/sticker/tor-v2/05_wordmark_metal.png",
-      "sha256": "326d715facc78d2ca100334922b03b63bf158f1b31683c929229bd538c767e19",
-      "bytes": 164215
+      "path": "embed/sticker/tor-v3/05_wordmark_metal.png",
+      "sha256": "30be1f0ded555797c0e9025bc8bfd6acef35f37153dfbf920657212973724f2e",
+      "bytes": 228954
     },
     {
-      "path": "embed/sticker/tor-v2/06_wordmark_primary_mask.png",
-      "sha256": "d737ba90abc80229741ba0217b8290ce278c0c7f7a3f081d4254745881ed9ead",
-      "bytes": 31126
+      "path": "embed/sticker/tor-v3/06_wordmark_primary_mask.png",
+      "sha256": "53447918f54f05e485beb6a0214541accd4dfa47a5dfc1a5d79e5c9661851e5a",
+      "bytes": 118350
     },
     {
-      "path": "embed/sticker/tor-v2/07_wordmark_secondary_mask.png",
-      "sha256": "62467f85d7327f5b134bf9318146609e93583c35c0a773e3770864a5e7569aa3",
-      "bytes": 4854
+      "path": "embed/sticker/tor-v3/07_wordmark_secondary_mask.png",
+      "sha256": "8d32543fc2cd98f2bc611819ea5f73b645e9c54b8508c1cb16af72c7690c23e7",
+      "bytes": 12313
     },
     {
-      "path": "embed/sticker/tor-v2/08_specular.png",
-      "sha256": "eac3947ab4d2db45165432382b788784ff0b29702ffb2c55dd1628c59245a793",
-      "bytes": 3976
+      "path": "embed/sticker/tor-v3/08_specular.png",
+      "sha256": "a46f5465e2606894832ff18043d32d449f82141dea26e683a16e2887887b4a01",
+      "bytes": 63328
+    }
+  ],
+  "sourceToolchain": {
+    "node": "v24.19.0",
+    "npm": "11.9.0"
+  },
+  "masterManifests": [
+    {
+      "path": "sticker/tor-v3/manifest.json",
+      "sha256": "2b6309357c8629fde98031d6abdab1f85d022d752a9243d29953c0413cb97dce",
+      "bytes": 2183
+    },
+    {
+      "path": "embed/sticker/tor-v3/manifest.json",
+      "sha256": "2b6309357c8629fde98031d6abdab1f85d022d752a9243d29953c0413cb97dce",
+      "bytes": 2183
+    }
+  ],
+  "standaloneFiles": [
+    {
+      "path": "assets/App-H52afXBU.js",
+      "sha256": "9d90bc98fffe6953ade85cd417906bbf02b047f5acba959ccd5f58dcfac9d37a",
+      "bytes": 361322
+    },
+    {
+      "path": "assets/App-eL1mvvj8.css",
+      "sha256": "154acf9fb01711b1730a9f7dc6858551dcb5f45af603dcfb3aff92b8adaabad2",
+      "bytes": 36993
+    },
+    {
+      "path": "assets/index-K-xinJ1B.js",
+      "sha256": "8118b8c617acd8172f7a85ffc5c96878d08d593067ce593be290891e05c503fb",
+      "bytes": 221376
+    },
+    {
+      "path": "index.html",
+      "sha256": "a1c37402fd73193402eb03673b40d87a4acca3997d722971e68bba7f10ee2b56",
+      "bytes": 599
+    },
+    {
+      "path": "liveticker/post-background.jpg",
+      "sha256": "a8e49de969ee6d731e72b405ec05366a8da595dda98aa1340d9ded777d0fbe1a",
+      "bytes": 470996
+    },
+    {
+      "path": "liveticker/story-background.jpg",
+      "sha256": "c62cf39f0c523a01fb893dd688616b1e631e6d0ff888fe7a5f5f36b0ac0f12cb",
+      "bytes": 377655
+    },
+    {
+      "path": "manifest.webmanifest",
+      "sha256": "32229ebc5994e42f8ac45f1476a552aaacf617eeb3edfa42bc8787847f55e8ea",
+      "bytes": 297
+    },
+    {
+      "path": "registerSW.js",
+      "sha256": "18cf84c43502df90bf2c7b2a49b504bb70ce9486ce2024e205c2f3f4b0ea7114",
+      "bytes": 176
+    },
+    {
+      "path": "sw.js",
+      "sha256": "bb370b33d0a44c7b056880d1bf5444f586306ec963c0d47f07056e59374a287e",
+      "bytes": 1137
+    },
+    {
+      "path": "workbox-9c191d2f.js",
+      "sha256": "04b086f1b2f4215ee4b659a7bc9c76162894abdb43fa876247bc7c0bd6fd1c37",
+      "bytes": 15112
     }
   ]
 }

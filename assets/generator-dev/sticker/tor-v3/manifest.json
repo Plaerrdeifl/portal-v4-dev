@@ -1,0 +1,110 @@
+{
+  "version": "tor-v3",
+  "size": 768,
+  "logoSlot": {
+    "x": 116,
+    "y": 181,
+    "w": 219,
+    "h": 192
+  },
+  "registration": {
+    "backdrop": [
+      "00_ice_neutral.png",
+      [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      [
+        12,
+        12,
+        744,
+        744
+      ]
+    ],
+    "goal": [
+      "10_hockey_goal_puck.png",
+      [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      [
+        118,
+        8,
+        610,
+        610
+      ]
+    ],
+    "badge": [
+      "20_logo_badge.png",
+      [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      [
+        59,
+        119,
+        335,
+        335
+      ]
+    ],
+    "wordmark": [
+      "30_toooor_chrome.png",
+      [
+        0,
+        345,
+        1254,
+        940
+      ],
+      [
+        26,
+        410,
+        716,
+        302
+      ]
+    ]
+  },
+  "layers": {
+    "00_ice_backdrop.png": {
+      "sha256": "1dfac6bb81d1eec4703a69e40df2d066732932e78ca9e597c86ff38c4b409bda",
+      "bytes": 774114
+    },
+    "01_goal_puck.png": {
+      "sha256": "9edc25d31edb9f400a9c9e689de362b3afa6c870b19f76d407a0ec5056af141f",
+      "bytes": 463735
+    },
+    "02_badge.png": {
+      "sha256": "df880c6e020f199a1285899e43f7e2870d276c2d2668f564b05cfd881c4630b0",
+      "bytes": 121354
+    },
+    "03_primary_mask.png": {
+      "sha256": "0e7c7cd431c59f4ec2f6670acdcc57b8da4eeba043a974e6bd514398fe97340e",
+      "bytes": 243281
+    },
+    "04_secondary_mask.png": {
+      "sha256": "0856ef3d4f049983b2905b81b5b4ae349453d1c74625c3028ff0cd3f5002061b",
+      "bytes": 227398
+    },
+    "05_wordmark_metal.png": {
+      "sha256": "30be1f0ded555797c0e9025bc8bfd6acef35f37153dfbf920657212973724f2e",
+      "bytes": 228954
+    },
+    "06_wordmark_primary_mask.png": {
+      "sha256": "53447918f54f05e485beb6a0214541accd4dfa47a5dfc1a5d79e5c9661851e5a",
+      "bytes": 118350
+    },
+    "07_wordmark_secondary_mask.png": {
+      "sha256": "8d32543fc2cd98f2bc611819ea5f73b645e9c54b8508c1cb16af72c7690c23e7",
+      "bytes": 12313
+    },
+    "08_specular.png": {
+      "sha256": "a46f5465e2606894832ff18043d32d449f82141dea26e683a16e2887887b4a01",
+      "bytes": 63328
+    }
+  }
+}
