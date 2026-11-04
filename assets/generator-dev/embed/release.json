@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/social-media-generator",
-  "sourceCommit": "fb89b7f93a78948e04d02b3ef978c72d3fc617af",
+  "sourceCommit": "c6f9f4d7ffafbb6191c30980bcce6173b520122f",
   "sourcePackageLockSha256": "69e88b031faad78b0283b37c39735c82e68650f21928cd5ccc0b06ea6c446311",
   "sourceBuildCommand": "VITE_BASE_PATH=/assets/generator-dev/ npm run build",
   "artifactPath": "assets/generator-dev/embed",
@@ -19,13 +19,13 @@
     },
     {
       "path": "module.js",
-      "sha256": "37d8567b7563c76d31fde7c7615e4686ba573d31562df388a58d45ee20169918",
-      "bytes": 768585
+      "sha256": "db9ab07e2fb6c34dbabcd74472e5f1997289b3c8319614f8e9ee7d89d8b94707",
+      "bytes": 773877
     },
     {
       "path": "style.css",
-      "sha256": "34939df794d9990db80ef5fb03d53c3a393ce656f5d24a0e6efa564ada4b0144",
-      "bytes": 37005
+      "sha256": "0936baacd3c6858fd25d0e55b5484426161c34e9e0201e8c9e191f59944866c6",
+      "bytes": 37082
     }
   ],
   "masterLayers": [
@@ -121,8 +121,8 @@
     }
   ],
   "sourceToolchain": {
-    "node": "v24.19.0",
-    "npm": "11.9.0"
+    "node": "24.x (GitHub Actions)",
+    "npm": "CI-provided"
   },
   "masterManifests": [
     {
@@ -138,23 +138,23 @@
   ],
   "standaloneFiles": [
     {
-      "path": "assets/App-D6C5CBfI.js",
-      "sha256": "08bdcfb5cb4b7358ace9df34858a0e2854799a895ed58c4b7b60336aa66ba27d",
-      "bytes": 365160
+      "path": "assets/App-B-jifKq9.css",
+      "sha256": "dca06c9fd199ec6b44bee653cddca20bd208ab9153e615055cdc90f272b149d0",
+      "bytes": 37070
     },
     {
-      "path": "assets/App-eL1mvvj8.css",
-      "sha256": "154acf9fb01711b1730a9f7dc6858551dcb5f45af603dcfb3aff92b8adaabad2",
-      "bytes": 36993
+      "path": "assets/App-DTqO8KLs.js",
+      "sha256": "d99c96724dad623a472fcd75181d3aec48bc7dbe8a08e76db7ef820fe1346cd6",
+      "bytes": 370044
     },
     {
-      "path": "assets/index-BskT3sOD.js",
-      "sha256": "237aa813c4bd6453f304d535ea4ed1b6d55047fb78c2454068126fa648dd7f3e",
+      "path": "assets/index-CI_5Rqe4.js",
+      "sha256": "0689c73621973651e603dfa969db4b92b0daf2298ad44145bd5f72634324d1fc",
       "bytes": 221376
     },
     {
       "path": "index.html",
-      "sha256": "61b5ce42a42316017ded41b2036ba2a07406021ebb6dddb6aca4a314d7f6d61b",
+      "sha256": "0ba4971c67a1629c1b4befdd6e0c3cf657e45f6b85e0c21e32d4156ae95cda53",
       "bytes": 599
     },
     {
@@ -179,7 +179,7 @@
     },
     {
       "path": "sw.js",
-      "sha256": "6325c85f9de30422eeb1d08bf8d06a707aa7880fd9cf254ae36a47895201e2fd",
+      "sha256": "d272cf17767d7687fed65c73db3f52f439a428642bd89764989c15114814084c",
       "bytes": 1137
     },
     {
@@ -310,6 +310,144 @@
       "path": "embed/sticker/timeout-v1/manifest.json",
       "sha256": "b927ad004cc3b56ae9bd29ee95fc97dea3bce160ec6ba7d32113fc5da9deac6c",
       "bytes": 3216
+    }
+  ],
+  "sourceMergeCommit": "7f3e4cdb5f8f7b0fc4aa5836c89fa0ea6e296b82",
+  "sourceArtifactSha256": "06f8f421dba59797d89a986e7aeaa3e83022cc6f49f0442ae3c27259d4e8c0b0",
+  "sourceWorkflowRunId": 41927986666,
+  "sourceArtifactId": 13369862218,
+  "emptyNetLayers": [
+    {
+      "path": "sticker/empty-net-v1/layers/00_crystal_ice_background.png",
+      "sha256": "4db156cfc72904050659fb086e721fb2246c3b611fa32bc94380db2f79369f56",
+      "bytes": 2693928
+    },
+    {
+      "path": "sticker/empty-net-v1/layers/00a_badge_under_shadow.png",
+      "sha256": "a408d3a74e6a241d6f928f9ed46b44d2d9df5742ca02d271f8846b037579d2d5",
+      "bytes": 78502
+    },
+    {
+      "path": "sticker/empty-net-v1/layers/01_ice_crystal_shards_neutral.png",
+      "sha256": "3c7949c79e71a85692fa20124d51c6206f8dd0bb09f1700bc155fbebe4f354a7",
+      "bytes": 170765
+    },
+    {
+      "path": "sticker/empty-net-v1/layers/02_empty_goal_net_neutral.png",
+      "sha256": "9e06975aae539175feb1f4e0487b03ec5297e4986913a12885cfa7919b822f33",
+      "bytes": 628130
+    },
+    {
+      "path": "sticker/empty-net-v1/layers/03_metal_octagon_badge_neutral.png",
+      "sha256": "2a531097316f3ee97c3f3842ebff5003d3b03ca47b2703b9d3be9ce590474f0e",
+      "bytes": 556566
+    },
+    {
+      "path": "sticker/empty-net-v1/layers/04_empty_net_chrome_wordmark_neutral.png",
+      "sha256": "9d0dcf7ed90652a995edf0f99777884d9a509605230703a025dc1172c812a603",
+      "bytes": 1163506
+    },
+    {
+      "path": "sticker/empty-net-v1/masks/10_primary_ice_sparks.png",
+      "sha256": "e4e5605b82caddcb06144c43a704ad8516f0fc503b5b3d6c91b8614a02243d4b",
+      "bytes": 22534
+    },
+    {
+      "path": "sticker/empty-net-v1/masks/11_primary_goal_frame.png",
+      "sha256": "df3af7245f48389fb49a5c6ac57ec5b4824c0f6de11163913d1c77cd1db9812a",
+      "bytes": 62387
+    },
+    {
+      "path": "sticker/empty-net-v1/masks/12_primary_empty_net_wordmark.png",
+      "sha256": "356e20ff3ee5f6f69300a070ab6f0e3c5009eec060f6615fdc8e7f04a1b6297c",
+      "bytes": 221170
+    },
+    {
+      "path": "sticker/empty-net-v1/masks/13_secondary_ice_sparkles.png",
+      "sha256": "6bb206d4c7be9d468609a21f3d3a018aae55a2213163347af386baefd84ff44f",
+      "bytes": 20905
+    },
+    {
+      "path": "sticker/empty-net-v1/masks/14_secondary_wordmark_reflections.png",
+      "sha256": "225658061f47b75c2ae83dbb73a256c3da59f124756121713b52ce920aacc480",
+      "bytes": 166820
+    },
+    {
+      "path": "sticker/empty-net-v1/masks/15_primary_badge_neon.png",
+      "sha256": "efe71ecf39885ed2eff98c9cb1a75f859626ffe9f641e1690f6319ecc97b3cba",
+      "bytes": 263315
+    },
+    {
+      "path": "embed/sticker/empty-net-v1/layers/00_crystal_ice_background.png",
+      "sha256": "4db156cfc72904050659fb086e721fb2246c3b611fa32bc94380db2f79369f56",
+      "bytes": 2693928
+    },
+    {
+      "path": "embed/sticker/empty-net-v1/layers/00a_badge_under_shadow.png",
+      "sha256": "a408d3a74e6a241d6f928f9ed46b44d2d9df5742ca02d271f8846b037579d2d5",
+      "bytes": 78502
+    },
+    {
+      "path": "embed/sticker/empty-net-v1/layers/01_ice_crystal_shards_neutral.png",
+      "sha256": "3c7949c79e71a85692fa20124d51c6206f8dd0bb09f1700bc155fbebe4f354a7",
+      "bytes": 170765
+    },
+    {
+      "path": "embed/sticker/empty-net-v1/layers/02_empty_goal_net_neutral.png",
+      "sha256": "9e06975aae539175feb1f4e0487b03ec5297e4986913a12885cfa7919b822f33",
+      "bytes": 628130
+    },
+    {
+      "path": "embed/sticker/empty-net-v1/layers/03_metal_octagon_badge_neutral.png",
+      "sha256": "2a531097316f3ee97c3f3842ebff5003d3b03ca47b2703b9d3be9ce590474f0e",
+      "bytes": 556566
+    },
+    {
+      "path": "embed/sticker/empty-net-v1/layers/04_empty_net_chrome_wordmark_neutral.png",
+      "sha256": "9d0dcf7ed90652a995edf0f99777884d9a509605230703a025dc1172c812a603",
+      "bytes": 1163506
+    },
+    {
+      "path": "embed/sticker/empty-net-v1/masks/10_primary_ice_sparks.png",
+      "sha256": "e4e5605b82caddcb06144c43a704ad8516f0fc503b5b3d6c91b8614a02243d4b",
+      "bytes": 22534
+    },
+    {
+      "path": "embed/sticker/empty-net-v1/masks/11_primary_goal_frame.png",
+      "sha256": "df3af7245f48389fb49a5c6ac57ec5b4824c0f6de11163913d1c77cd1db9812a",
+      "bytes": 62387
+    },
+    {
+      "path": "embed/sticker/empty-net-v1/masks/12_primary_empty_net_wordmark.png",
+      "sha256": "356e20ff3ee5f6f69300a070ab6f0e3c5009eec060f6615fdc8e7f04a1b6297c",
+      "bytes": 221170
+    },
+    {
+      "path": "embed/sticker/empty-net-v1/masks/13_secondary_ice_sparkles.png",
+      "sha256": "6bb206d4c7be9d468609a21f3d3a018aae55a2213163347af386baefd84ff44f",
+      "bytes": 20905
+    },
+    {
+      "path": "embed/sticker/empty-net-v1/masks/14_secondary_wordmark_reflections.png",
+      "sha256": "225658061f47b75c2ae83dbb73a256c3da59f124756121713b52ce920aacc480",
+      "bytes": 166820
+    },
+    {
+      "path": "embed/sticker/empty-net-v1/masks/15_primary_badge_neon.png",
+      "sha256": "efe71ecf39885ed2eff98c9cb1a75f859626ffe9f641e1690f6319ecc97b3cba",
+      "bytes": 263315
+    }
+  ],
+  "emptyNetManifests": [
+    {
+      "path": "sticker/empty-net-v1/manifest.json",
+      "sha256": "34922ff9cdf94b0f7279a28f45c35fe35e4bc8418ec0e5742bb30625d3748bbe",
+      "bytes": 4741
+    },
+    {
+      "path": "embed/sticker/empty-net-v1/manifest.json",
+      "sha256": "34922ff9cdf94b0f7279a28f45c35fe35e4bc8418ec0e5742bb30625d3748bbe",
+      "bytes": 4741
     }
   ]
 }
