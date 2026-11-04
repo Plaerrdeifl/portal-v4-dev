@@ -13,7 +13,7 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   assert.equal(metadata.schemaVersion, 1)
   assert.equal(metadata.environment, 'DEV')
   assert.equal(metadata.sourceRepository, 'Plaerrdeifl/social-media-generator')
-  assert.equal(metadata.sourceCommit, '4d6a5637c7a8b555f246ba067bb828c7d1a9b258')
+  assert.equal(metadata.sourceCommit, '09fdc9495d67142d48a7cbb8924ac17b10c80af6')
   assert.equal(metadata.artifactPath, 'assets/generator-dev/embed')
   assert.match(metadata.sourcePackageLockSha256, /^[a-f0-9]{64}$/)
   assert.equal(metadata.files.length, 4)
@@ -24,12 +24,42 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
     assert.equal(hash(data), file.sha256, file.path)
   }
   assert.equal(metadata.masterLayers.length, 18)
+  assert.equal(new Set(metadata.masterLayers.map(layer => layer.path)).size, 18)
   for (const layer of metadata.masterLayers) {
-    assert.match(layer.path, /^(?:embed\/)?sticker\/tor-v2\/\d{2}_[a-z0-9_]+\.png$/)
+    assert.match(layer.path, /^(?:embed\/)?sticker\/tor-v3\/\d{2}_[a-z0-9_]+\.png$/)
     const data = await readFile(join(root, 'assets/generator-dev', layer.path))
     assert.deepEqual([...data.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10])
     assert.equal(data.byteLength, layer.bytes, layer.path)
     assert.equal(hash(data), layer.sha256, layer.path)
+    assert.equal(data.readUInt32BE(16), 768, layer.path)
+    assert.equal(data.readUInt32BE(20), 768, layer.path)
+    assert.equal(data[25], 6, 'RGBA alpha: ' + layer.path)
+  }
+  assert.deepEqual(metadata.masterManifests.map(file => file.path), [
+    'sticker/tor-v3/manifest.json', 'embed/sticker/tor-v3/manifest.json'
+  ])
+  for (const file of metadata.masterManifests) {
+    const bytes = await readFile(join(root, 'assets/generator-dev', file.path))
+    assert.equal(bytes.byteLength, file.bytes)
+    assert.equal(hash(bytes), file.sha256)
+    const master = JSON.parse(bytes)
+    assert.equal(master.version, 'tor-v3')
+    assert.equal(master.size, 768)
+    for (const [name, expected] of Object.entries(master.layers)) {
+      for (const prefix of ['sticker/tor-v3/', 'embed/sticker/tor-v3/']) {
+        const layer = metadata.masterLayers.find(item => item.path === prefix + name)
+        assert.equal(layer?.sha256, expected.sha256, prefix + name)
+      }
+    }
+  }
+  for (const path of ['index.html', 'manifest.webmanifest', 'registerSW.js', 'sw.js']) {
+    assert.ok(metadata.standaloneFiles.some(file => file.path === path), path)
+  }
+  for (const file of metadata.standaloneFiles) {
+    assert.match(file.path, /^(?:assets\/[^/]+\.(?:js|css)|liveticker\/[^/]+\.jpg|index\.html|manifest\.webmanifest|registerSW\.js|sw\.js|workbox-[a-f0-9]+\.js)$/)
+    const bytes = await readFile(join(root, 'assets/generator-dev', file.path))
+    assert.equal(bytes.byteLength, file.bytes, file.path)
+    assert.equal(hash(bytes), file.sha256, file.path)
   }
   const js = await readFile(join(release, 'module.js'), 'utf8')
   const css = await readFile(join(release, 'style.css'), 'utf8')
@@ -55,7 +85,7 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   assert.match(js, /Tor-Master: PNG-Farbmasken/)
   assert.match(js, /WhatsApp-WebP/)
   assert.match(js, /source-in/)
-  assert.match(js, /sticker\/tor-v2/)
+  assert.match(js, /sticker\/tor-v3/)
   assert.match(js, /social_media_generator_media_teams_list/)
   assert.match(css, /sticker-brand-comparison/)
   assert.doesNotMatch(js, /registerSW\(|serviceWorker\.register/)
