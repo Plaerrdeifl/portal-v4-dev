@@ -1,11 +1,11 @@
 {
   "type": "dev-generator-release",
   "source_repository": "Plaerrdeifl/social-media-generator",
-  "source_merge_sha": "a0404cc080b21c42d2b62278d25bb74dc77d88ba",
-  "source_build_sha": "6149312736cc92455558e6f3bf6057a8f48a71bb",
-  "source_pr": 48,
-  "workflow_run_id": 41989214598,
-  "artifact_id": 13396698530,
-  "artifact_sha256": "d63a168f040e76049e0a9625a915094797311eb42049c4290d1ab7b3771c5526",
+  "source_merge_sha": "2fcf1d91bb706e5ab9645d2278328d24b988581f",
+  "source_build_sha": "5b0cc5471e037c86126f710ce12609553fa96268",
+  "source_pr": 49,
+  "workflow_run_id": 42118681100,
+  "artifact_id": 13456963284,
+  "artifact_sha256": "98daa5f86495d22e70543b1ff22535efd9862bb637f6d388335163e403f5e0f3",
   "deployment_environment": "DEV-only"
 }

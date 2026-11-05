@@ -13,10 +13,10 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   assert.equal(metadata.schemaVersion, 1)
   assert.equal(metadata.environment, 'DEV')
   assert.equal(metadata.sourceRepository, 'Plaerrdeifl/social-media-generator')
-  assert.equal(metadata.sourceCommit, '6149312736cc92455558e6f3bf6057a8f48a71bb')
-  assert.equal(metadata.sourceMergeCommit, 'a0404cc080b21c42d2b62278d25bb74dc77d88ba')
-  assert.equal(metadata.sourceWorkflowRunId, 41989214598)
-  assert.equal(metadata.sourceArtifactId, 13396698530)
+  assert.equal(metadata.sourceCommit, '5b0cc5471e037c86126f710ce12609553fa96268')
+  assert.equal(metadata.sourceMergeCommit, '2fcf1d91bb706e5ab9645d2278328d24b988581f')
+  assert.equal(metadata.sourceWorkflowRunId, 42118681100)
+  assert.equal(metadata.sourceArtifactId, 13456963284)
   assert.equal(metadata.artifactPath, 'assets/generator-dev/embed')
   assert.match(metadata.sourcePackageLockSha256, /^[a-f0-9]{64}$/)
   assert.equal(metadata.files.length, 4)
@@ -164,6 +164,45 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
       assert.equal(layer?.sha256, material.sha256, prefix + material.path)
     }
   }
+  assert.equal(metadata.spielbeginnHeimLayers.length, 10)
+  assert.equal(new Set(metadata.spielbeginnHeimLayers.map(file => file.path)).size, 10)
+  for (const file of metadata.spielbeginnHeimLayers) {
+    assert.match(file.path, /^(?:embed\/)?sticker\/spielbeginn-heim-v7\/(?:layers|masks)\/\d{2}_[a-z0-9_]+\.png$/)
+    const bytes = await readFile(join(root, 'assets/generator-dev', file.path))
+    assert.equal(bytes.byteLength, file.bytes, file.path)
+    assert.equal(hash(bytes), file.sha256, file.path)
+    assert.deepEqual([...bytes.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10])
+    assert.equal(bytes.readUInt32BE(16), 1254, file.path)
+    assert.equal(bytes.readUInt32BE(20), 1254, file.path)
+    assert.equal(bytes[25], 6, 'RGBA alpha: ' + file.path)
+  }
+  assert.deepEqual(metadata.spielbeginnHeimManifests.map(file => file.path), [
+    'sticker/spielbeginn-heim-v7/manifest.json',
+    'embed/sticker/spielbeginn-heim-v7/manifest.json'
+  ])
+  for (const file of metadata.spielbeginnHeimManifests) {
+    const bytes = await readFile(join(root, 'assets/generator-dev', file.path))
+    assert.equal(bytes.byteLength, file.bytes, file.path)
+    assert.equal(hash(bytes), file.sha256, file.path)
+    const master = JSON.parse(bytes)
+    assert.equal(master.stickerType, 'SPIELBEGINN HEIM')
+    assert.equal(master.variant, 'home-fixed-mighty-dogs')
+    assert.equal(master.canvas.width, 1254)
+    assert.equal(master.canvas.height, 1254)
+    assert.equal(master.canvas.mode, 'RGBA')
+    assert.equal(master.assets.length, 5)
+    assert.equal(master.drawOrder.length, 6)
+    assert.equal(master.opponentLogoSlot.fit, 'contain')
+    assert.equal(master.opponentLogoSlot.originalOnly, true)
+    assert.equal(master.opponentLogoSlot.addedFrame, false)
+    const prefix = file.path.startsWith('embed/')
+      ? 'embed/sticker/spielbeginn-heim-v7/'
+      : 'sticker/spielbeginn-heim-v7/'
+    for (const material of master.assets) {
+      const layer = metadata.spielbeginnHeimLayers.find(item => item.path === prefix + material.path)
+      assert.equal(layer?.sha256, material.sha256, prefix + material.path)
+    }
+  }
   const rootRelease = JSON.parse(await readFile(join(root, 'assets/generator-dev/release.json'), 'utf8'))
   assert.equal(rootRelease.source_build_sha, metadata.sourceCommit)
   assert.equal(rootRelease.source_merge_sha, metadata.sourceMergeCommit)
@@ -196,8 +235,10 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   assert.match(js, /TIMEOUT/)
   assert.match(js, /EMPTY NET/)
   assert.match(js, /STRAFE/)
+  assert.match(js, /SPIELBEGINN HEIM/)
   assert.match(js, /sticker\/empty-net-v1/)
   assert.match(js, /sticker\/strafe-v1/)
+  assert.match(js, /sticker\/spielbeginn-heim-v7/)
   assert.match(js, /WhatsApp-WebP/)
   assert.match(js, /source-in/)
   assert.match(js, /sticker\/tor-v3/)
