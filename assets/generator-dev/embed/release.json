@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/social-media-generator",
-  "sourceCommit": "c6f9f4d7ffafbb6191c30980bcce6173b520122f",
+  "sourceCommit": "5b0cc5471e037c86126f710ce12609553fa96268",
   "sourcePackageLockSha256": "69e88b031faad78b0283b37c39735c82e68650f21928cd5ccc0b06ea6c446311",
   "sourceBuildCommand": "VITE_BASE_PATH=/assets/generator-dev/ npm run build",
   "artifactPath": "assets/generator-dev/embed",
@@ -19,8 +19,8 @@
     },
     {
       "path": "module.js",
-      "sha256": "db9ab07e2fb6c34dbabcd74472e5f1997289b3c8319614f8e9ee7d89d8b94707",
-      "bytes": 773877
+      "sha256": "fe6936c90aa31040ed0b4dadcb2da248893d94f7e8b21deff15ed4066de64a10",
+      "bytes": 785523
     },
     {
       "path": "style.css",
@@ -143,18 +143,18 @@
       "bytes": 37070
     },
     {
-      "path": "assets/App-DTqO8KLs.js",
-      "sha256": "d99c96724dad623a472fcd75181d3aec48bc7dbe8a08e76db7ef820fe1346cd6",
-      "bytes": 370044
+      "path": "assets/App-eUQYS-T2.js",
+      "sha256": "55b952be04e715250cf84b08033204763129410083569e3fba9e4753390ec8dd",
+      "bytes": 379519
     },
     {
-      "path": "assets/index-CI_5Rqe4.js",
-      "sha256": "0689c73621973651e603dfa969db4b92b0daf2298ad44145bd5f72634324d1fc",
+      "path": "assets/index-BkDcEYNG.js",
+      "sha256": "cbbe8df71af385bf693ee65acc2da4148dff420457d1496de26600d7947a07c9",
       "bytes": 221376
     },
     {
       "path": "index.html",
-      "sha256": "0ba4971c67a1629c1b4befdd6e0c3cf657e45f6b85e0c21e32d4156ae95cda53",
+      "sha256": "578604687206ae6ad73c1a9370e63e99347cbb69dfad31640b9e8957836853ff",
       "bytes": 599
     },
     {
@@ -179,7 +179,7 @@
     },
     {
       "path": "sw.js",
-      "sha256": "d272cf17767d7687fed65c73db3f52f439a428642bd89764989c15114814084c",
+      "sha256": "cb9fddf57bdde3f31be737cc94fc442841f47ac61d3e1c7db20913b9863dd3ae",
       "bytes": 1137
     },
     {
@@ -312,10 +312,10 @@
       "bytes": 3216
     }
   ],
-  "sourceMergeCommit": "7f3e4cdb5f8f7b0fc4aa5836c89fa0ea6e296b82",
-  "sourceArtifactSha256": "06f8f421dba59797d89a986e7aeaa3e83022cc6f49f0442ae3c27259d4e8c0b0",
-  "sourceWorkflowRunId": 41927986666,
-  "sourceArtifactId": 13369862218,
+  "sourceMergeCommit": "2fcf1d91bb706e5ab9645d2278328d24b988581f",
+  "sourceArtifactSha256": "98daa5f86495d22e70543b1ff22535efd9862bb637f6d388335163e403f5e0f3",
+  "sourceWorkflowRunId": 42118681100,
+  "sourceArtifactId": 13456963284,
   "emptyNetLayers": [
     {
       "path": "sticker/empty-net-v1/layers/00_crystal_ice_background.png",
@@ -448,6 +448,214 @@
       "path": "embed/sticker/empty-net-v1/manifest.json",
       "sha256": "34922ff9cdf94b0f7279a28f45c35fe35e4bc8418ec0e5742bb30625d3748bbe",
       "bytes": 4741
+    }
+  ],
+  "strafeLayers": [
+    {
+      "path": "sticker/strafe-v1/layers/00_ice_and_arena_backdrop_registered.png",
+      "sha256": "a22678482ff4e01b1b4a8870fd36939e4995bd8fe0bca8de815770beb377498f",
+      "bytes": 320216
+    },
+    {
+      "path": "embed/sticker/strafe-v1/layers/00_ice_and_arena_backdrop_registered.png",
+      "sha256": "a22678482ff4e01b1b4a8870fd36939e4995bd8fe0bca8de815770beb377498f",
+      "bytes": 320216
+    },
+    {
+      "path": "sticker/strafe-v1/layers/00a_crystal_ice_behind_badge.png",
+      "sha256": "ae62cf5b5262938f218f0c844e68a89bdf63eb90ac917e488f429036f13834d1",
+      "bytes": 681937
+    },
+    {
+      "path": "embed/sticker/strafe-v1/layers/00a_crystal_ice_behind_badge.png",
+      "sha256": "ae62cf5b5262938f218f0c844e68a89bdf63eb90ac917e488f429036f13834d1",
+      "bytes": 681937
+    },
+    {
+      "path": "sticker/strafe-v1/layers/01_referee_and_arm_registered.png",
+      "sha256": "d3b8669fe5761277626f8be5c01221622273c21159d9034e919a980d6b3fef70",
+      "bytes": 1021220
+    },
+    {
+      "path": "embed/sticker/strafe-v1/layers/01_referee_and_arm_registered.png",
+      "sha256": "d3b8669fe5761277626f8be5c01221622273c21159d9034e919a980d6b3fef70",
+      "bytes": 1021220
+    },
+    {
+      "path": "sticker/strafe-v1/layers/02_rink_and_boards_registered.png",
+      "sha256": "b7cd51c792a82793d82a1383d1a7a2a39df0135560ce29d969dedb1a0034566f",
+      "bytes": 32628
+    },
+    {
+      "path": "embed/sticker/strafe-v1/layers/02_rink_and_boards_registered.png",
+      "sha256": "b7cd51c792a82793d82a1383d1a7a2a39df0135560ce29d969dedb1a0034566f",
+      "bytes": 32628
+    },
+    {
+      "path": "sticker/strafe-v1/layers/03_chrome_badge_logo_slot_neutral.png",
+      "sha256": "de5ded789d5bf6180223f6d126e0dc6afb1ad2e9c74de59e3a7edaaa21c61da5",
+      "bytes": 584401
+    },
+    {
+      "path": "embed/sticker/strafe-v1/layers/03_chrome_badge_logo_slot_neutral.png",
+      "sha256": "de5ded789d5bf6180223f6d126e0dc6afb1ad2e9c74de59e3a7edaaa21c61da5",
+      "bytes": 584401
+    },
+    {
+      "path": "sticker/strafe-v1/layers/04_metal_strafe_wordmark_registered.png",
+      "sha256": "a17634ea2db1eaaa39819f2b9313fe2e0627f718ba3816a89b38bf83a1724761",
+      "bytes": 1045744
+    },
+    {
+      "path": "embed/sticker/strafe-v1/layers/04_metal_strafe_wordmark_registered.png",
+      "sha256": "a17634ea2db1eaaa39819f2b9313fe2e0627f718ba3816a89b38bf83a1724761",
+      "bytes": 1045744
+    },
+    {
+      "path": "sticker/strafe-v1/layers/05_puck_and_trail_registered.png",
+      "sha256": "6c74dfb84d2f394e8389ba4454275ec3d4f75766208990706c85ca35fcbd01e5",
+      "bytes": 239447
+    },
+    {
+      "path": "embed/sticker/strafe-v1/layers/05_puck_and_trail_registered.png",
+      "sha256": "6c74dfb84d2f394e8389ba4454275ec3d4f75766208990706c85ca35fcbd01e5",
+      "bytes": 239447
+    },
+    {
+      "path": "sticker/strafe-v1/masks/10_primary_arena_neon.png",
+      "sha256": "4a928850175053da7f332503196dddb9af6b1ed4aba7ced52d9664a278245739",
+      "bytes": 151263
+    },
+    {
+      "path": "embed/sticker/strafe-v1/masks/10_primary_arena_neon.png",
+      "sha256": "4a928850175053da7f332503196dddb9af6b1ed4aba7ced52d9664a278245739",
+      "bytes": 151263
+    },
+    {
+      "path": "sticker/strafe-v1/masks/11_primary_strafe_metal_rim.png",
+      "sha256": "8f0802b3a131398a8cad79982cd4edd14e748829375f6367d1356d6952d043cb",
+      "bytes": 264475
+    },
+    {
+      "path": "embed/sticker/strafe-v1/masks/11_primary_strafe_metal_rim.png",
+      "sha256": "8f0802b3a131398a8cad79982cd4edd14e748829375f6367d1356d6952d043cb",
+      "bytes": 264475
+    },
+    {
+      "path": "sticker/strafe-v1/masks/12_primary_ice_crystal_sparks.png",
+      "sha256": "ea73085ac66f05599c9f3c5eff40a207f34d13d0ebc9aa511393c0f6ef0e4a9b",
+      "bytes": 149644
+    },
+    {
+      "path": "embed/sticker/strafe-v1/masks/12_primary_ice_crystal_sparks.png",
+      "sha256": "ea73085ac66f05599c9f3c5eff40a207f34d13d0ebc9aa511393c0f6ef0e4a9b",
+      "bytes": 149644
+    },
+    {
+      "path": "sticker/strafe-v1/masks/13_primary_badge_chrome_light.png",
+      "sha256": "ff02b21c4fe8d4e2b0f6cec00889909f3cd0c0d4ba49931632022aa690d1e7dd",
+      "bytes": 134644
+    },
+    {
+      "path": "embed/sticker/strafe-v1/masks/13_primary_badge_chrome_light.png",
+      "sha256": "ff02b21c4fe8d4e2b0f6cec00889909f3cd0c0d4ba49931632022aa690d1e7dd",
+      "bytes": 134644
+    },
+    {
+      "path": "sticker/strafe-v1/masks/14_secondary_ice_reflections.png",
+      "sha256": "e5f16624f7c7859efd801b970182765570df5f5d70a94206c83e1b268053791f",
+      "bytes": 74493
+    },
+    {
+      "path": "embed/sticker/strafe-v1/masks/14_secondary_ice_reflections.png",
+      "sha256": "e5f16624f7c7859efd801b970182765570df5f5d70a94206c83e1b268053791f",
+      "bytes": 74493
+    },
+    {
+      "path": "sticker/strafe-v1/masks/15_secondary_wordmark_specular.png",
+      "sha256": "c163d5a39587c05f18c1b7ac4bcdf99654e6a1b85c8f5298248c3a0926b6693f",
+      "bytes": 33040
+    },
+    {
+      "path": "embed/sticker/strafe-v1/masks/15_secondary_wordmark_specular.png",
+      "sha256": "c163d5a39587c05f18c1b7ac4bcdf99654e6a1b85c8f5298248c3a0926b6693f",
+      "bytes": 33040
+    }
+  ],
+  "strafeManifests": [
+    {
+      "path": "sticker/strafe-v1/manifest.json",
+      "sha256": "6cc2ca2604753299cd683dcc6cbff3c05c0138cb7c6f87033f9ed33a09a830d2",
+      "bytes": 5273
+    },
+    {
+      "path": "embed/sticker/strafe-v1/manifest.json",
+      "sha256": "6cc2ca2604753299cd683dcc6cbff3c05c0138cb7c6f87033f9ed33a09a830d2",
+      "bytes": 5273
+    }
+  ],
+  "spielbeginnHeimLayers": [
+    {
+      "path": "sticker/spielbeginn-heim-v7/layers/00_home_core_no_opponent.png",
+      "sha256": "74085e4d00d211c52bc11661c682834d612396541c2cafbacfc4ab09754a144b",
+      "bytes": 2162417
+    },
+    {
+      "path": "embed/sticker/spielbeginn-heim-v7/layers/00_home_core_no_opponent.png",
+      "sha256": "74085e4d00d211c52bc11661c682834d612396541c2cafbacfc4ab09754a144b",
+      "bytes": 2162417
+    },
+    {
+      "path": "sticker/spielbeginn-heim-v7/layers/01_right_arena_environment.png",
+      "sha256": "004636b5a5c51a7dd2e0615a2a4f131f2ae560b438a16d40f1023d6ac2530019",
+      "bytes": 674465
+    },
+    {
+      "path": "embed/sticker/spielbeginn-heim-v7/layers/01_right_arena_environment.png",
+      "sha256": "004636b5a5c51a7dd2e0615a2a4f131f2ae560b438a16d40f1023d6ac2530019",
+      "bytes": 674465
+    },
+    {
+      "path": "sticker/spielbeginn-heim-v7/masks/10_opponent_primary_outer_ice_reflections.png",
+      "sha256": "2978a33171322086d6b16f5cf9a6b0120af3e637f1c853742d01abec9714dde1",
+      "bytes": 43275
+    },
+    {
+      "path": "embed/sticker/spielbeginn-heim-v7/masks/10_opponent_primary_outer_ice_reflections.png",
+      "sha256": "2978a33171322086d6b16f5cf9a6b0120af3e637f1c853742d01abec9714dde1",
+      "bytes": 43275
+    },
+    {
+      "path": "sticker/spielbeginn-heim-v7/masks/11_opponent_secondary_outer_sparks.png",
+      "sha256": "8817a2064dd4688e4207db2702f884e5537981e27349a48580825e1371cdb111",
+      "bytes": 24971
+    },
+    {
+      "path": "embed/sticker/spielbeginn-heim-v7/masks/11_opponent_secondary_outer_sparks.png",
+      "sha256": "8817a2064dd4688e4207db2702f884e5537981e27349a48580825e1371cdb111",
+      "bytes": 24971
+    },
+    {
+      "path": "sticker/spielbeginn-heim-v7/masks/12_opponent_primary_lower_ice_shards.png",
+      "sha256": "140dba7e227eb47d1524fec3c8ccdcefdaf5816c984377ddb8d08f95f998bc57",
+      "bytes": 19046
+    },
+    {
+      "path": "embed/sticker/spielbeginn-heim-v7/masks/12_opponent_primary_lower_ice_shards.png",
+      "sha256": "140dba7e227eb47d1524fec3c8ccdcefdaf5816c984377ddb8d08f95f998bc57",
+      "bytes": 19046
+    }
+  ],
+  "spielbeginnHeimManifests": [
+    {
+      "path": "sticker/spielbeginn-heim-v7/manifest.json",
+      "sha256": "3401efdf1b6dd6c61fbedb3f5a4ffa9214c18c6124221ef2a2677a8e84cbeb50",
+      "bytes": 2776
+    },
+    {
+      "path": "embed/sticker/spielbeginn-heim-v7/manifest.json",
+      "sha256": "3401efdf1b6dd6c61fbedb3f5a4ffa9214c18c6124221ef2a2677a8e84cbeb50",
+      "bytes": 2776
     }
   ]
 }

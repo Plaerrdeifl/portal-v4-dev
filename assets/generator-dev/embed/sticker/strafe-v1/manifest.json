@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "stickerType": "STRAFE",
+  "environment": "DEV-only",
+  "canvas": {
+    "width": 1254,
+    "height": 1254,
+    "mode": "RGBA"
+  },
+  "targetExport": {
+    "width": 512,
+    "height": 512,
+    "webpMaxBytes": 102400,
+    "transparent": true
+  },
+  "sourceOfTruth": {
+    "teamLogo": "central DEV team original logo via existing resolver",
+    "colors": "central DEV team primaryColor / secondaryColor"
+  },
+  "logo_slot": {
+    "center_x": 324,
+    "center_y": 433,
+    "max_width": 360,
+    "max_height": 352,
+    "fit": "contain",
+    "logo_source": "original central team logo only"
+  },
+  "text": "STRAFE!",
+  "penalty_minutes": false,
+  "mask_mode": "white RGB + alpha; tint via source-in; draw at 0,0 full 1254x1254",
+  "draw_order": [
+    {
+      "layer": "layers/00_ice_and_arena_backdrop_registered.png"
+    },
+    {
+      "layer": "layers/00a_crystal_ice_behind_badge.png"
+    },
+    {
+      "layer": "layers/01_referee_and_arm_registered.png"
+    },
+    {
+      "layer": "layers/02_rink_and_boards_registered.png"
+    },
+    {
+      "mask": "masks/10_primary_arena_neon.png",
+      "color": "primaryColor"
+    },
+    {
+      "mask": "masks/12_primary_ice_crystal_sparks.png",
+      "color": "primaryColor"
+    },
+    {
+      "layer": "layers/03_chrome_badge_logo_slot_neutral.png"
+    },
+    {
+      "mask": "masks/13_primary_badge_chrome_light.png",
+      "color": "primaryColor"
+    },
+    {
+      "original_team_logo": "logo_slot"
+    },
+    {
+      "layer": "layers/04_metal_strafe_wordmark_registered.png"
+    },
+    {
+      "mask": "masks/11_primary_strafe_metal_rim.png",
+      "color": "primaryColor"
+    },
+    {
+      "mask": "masks/15_secondary_wordmark_specular.png",
+      "color": "secondaryColor"
+    },
+    {
+      "layer": "layers/05_puck_and_trail_registered.png"
+    },
+    {
+      "mask": "masks/14_secondary_ice_reflections.png",
+      "color": "secondaryColor"
+    }
+  ],
+  "assets": [
+    {
+      "path": "layers/00_ice_and_arena_backdrop_registered.png",
+      "kind": "layer",
+      "sha256": "a22678482ff4e01b1b4a8870fd36939e4995bd8fe0bca8de815770beb377498f",
+      "bytes": 320216
+    },
+    {
+      "path": "layers/00a_crystal_ice_behind_badge.png",
+      "kind": "layer",
+      "sha256": "ae62cf5b5262938f218f0c844e68a89bdf63eb90ac917e488f429036f13834d1",
+      "bytes": 681937
+    },
+    {
+      "path": "layers/01_referee_and_arm_registered.png",
+      "kind": "layer",
+      "sha256": "d3b8669fe5761277626f8be5c01221622273c21159d9034e919a980d6b3fef70",
+      "bytes": 1021220
+    },
+    {
+      "path": "layers/02_rink_and_boards_registered.png",
+      "kind": "layer",
+      "sha256": "b7cd51c792a82793d82a1383d1a7a2a39df0135560ce29d969dedb1a0034566f",
+      "bytes": 32628
+    },
+    {
+      "path": "layers/03_chrome_badge_logo_slot_neutral.png",
+      "kind": "layer",
+      "sha256": "de5ded789d5bf6180223f6d126e0dc6afb1ad2e9c74de59e3a7edaaa21c61da5",
+      "bytes": 584401
+    },
+    {
+      "path": "layers/04_metal_strafe_wordmark_registered.png",
+      "kind": "layer",
+      "sha256": "a17634ea2db1eaaa39819f2b9313fe2e0627f718ba3816a89b38bf83a1724761",
+      "bytes": 1045744
+    },
+    {
+      "path": "layers/05_puck_and_trail_registered.png",
+      "kind": "layer",
+      "sha256": "6c74dfb84d2f394e8389ba4454275ec3d4f75766208990706c85ca35fcbd01e5",
+      "bytes": 239447
+    },
+    {
+      "path": "masks/10_primary_arena_neon.png",
+      "kind": "color_mask",
+      "sha256": "4a928850175053da7f332503196dddb9af6b1ed4aba7ced52d9664a278245739",
+      "bytes": 151263
+    },
+    {
+      "path": "masks/11_primary_strafe_metal_rim.png",
+      "kind": "color_mask",
+      "sha256": "8f0802b3a131398a8cad79982cd4edd14e748829375f6367d1356d6952d043cb",
+      "bytes": 264475
+    },
+    {
+      "path": "masks/12_primary_ice_crystal_sparks.png",
+      "kind": "color_mask",
+      "sha256": "ea73085ac66f05599c9f3c5eff40a207f34d13d0ebc9aa511393c0f6ef0e4a9b",
+      "bytes": 149644
+    },
+    {
+      "path": "masks/13_primary_badge_chrome_light.png",
+      "kind": "color_mask",
+      "sha256": "ff02b21c4fe8d4e2b0f6cec00889909f3cd0c0d4ba49931632022aa690d1e7dd",
+      "bytes": 134644
+    },
+    {
+      "path": "masks/14_secondary_ice_reflections.png",
+      "kind": "color_mask",
+      "sha256": "e5f16624f7c7859efd801b970182765570df5f5d70a94206c83e1b268053791f",
+      "bytes": 74493
+    },
+    {
+      "path": "masks/15_secondary_wordmark_specular.png",
+      "kind": "color_mask",
+      "sha256": "c163d5a39587c05f18c1b7ac4bcdf99654e6a1b85c8f5298248c3a0926b6693f",
+      "bytes": 33040
+    }
+  ],
+  "demoOnly": {
+    "clubNames": [
+      "Mighty Dogs Schweinfurt",
+      "EHC Königsbrunn"
+    ],
+    "colors": [
+      "#3246FA/#FCFCFC",
+      "#991B1B/#181D24"
+    ],
+    "originalLogosIncludedForTestOnly": true
+  },
+  "notes": [
+    "Registered cutouts of a flattened detailed PNG; not original independently editable artwork.",
+    "Existing illustrated logo scrubbed from production fragments; badge is a separate neutral art asset.",
+    "Mask intensity and visual fidelity must be approved on DEV; do not independently move registered fragments.",
+    "Schiedsrichter-Armbinde stays orange regardless of team color.",
+    "No penalty minutes and no production deployment implied."
+  ]
+}

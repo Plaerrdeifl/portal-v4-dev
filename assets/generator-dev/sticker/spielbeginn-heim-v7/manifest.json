@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "stickerType": "SPIELBEGINN HEIM",
+  "packageType": "spielbeginn_heim",
+  "variant": "home-fixed-mighty-dogs",
+  "environment": "DEV-only",
+  "canvas": {
+    "width": 1254,
+    "height": 1254,
+    "mode": "RGBA"
+  },
+  "targetExport": {
+    "width": 512,
+    "height": 512,
+    "webpMaxBytes": 102400,
+    "transparent": true
+  },
+  "sourcePackageSha256": "d0c9ea03c26404197b0c2b5d7ac193a0014e4dad28f26f93d6889c3900e70ed6",
+  "approvedReference": "assets/sticker/spielbeginn-heim-master-v7/source/approved_target_bayreuth.png",
+  "approvedReferenceSha256": "34657661b7722f8a5866c2e11f942be495111ec5de105b196ef3d0ba838aa365",
+  "sourceOfTruth": {
+    "home": "fixed Mighty Dogs artwork supplied in the registered home-core layer",
+    "opponentLogo": "central DEV opponent original logo via existing resolver",
+    "opponentColors": "central DEV opponent primaryColor / secondaryColor"
+  },
+  "opponentLogoSlot": {
+    "x": 820,
+    "y": 86,
+    "width": 366,
+    "height": 444,
+    "fit": "contain",
+    "originalOnly": true,
+    "addedFrame": false
+  },
+  "maskMode": "white RGB + alpha; tint via source-in; draw at 0,0 full 1254x1254",
+  "drawOrder": [
+    {
+      "layer": "layers/01_right_arena_environment.png"
+    },
+    {
+      "mask": "masks/10_opponent_primary_outer_ice_reflections.png",
+      "color": "opponentPrimaryColor"
+    },
+    {
+      "mask": "masks/11_opponent_secondary_outer_sparks.png",
+      "color": "opponentSecondaryColor"
+    },
+    {
+      "mask": "masks/12_opponent_primary_lower_ice_shards.png",
+      "color": "opponentPrimaryColor"
+    },
+    {
+      "opponentOriginalLogo": "opponentLogoSlot"
+    },
+    {
+      "layer": "layers/00_home_core_no_opponent.png"
+    }
+  ],
+  "assets": [
+    {
+      "path": "layers/00_home_core_no_opponent.png",
+      "kind": "layer",
+      "sha256": "74085e4d00d211c52bc11661c682834d612396541c2cafbacfc4ab09754a144b",
+      "bytes": 2162417
+    },
+    {
+      "path": "layers/01_right_arena_environment.png",
+      "kind": "layer",
+      "sha256": "004636b5a5c51a7dd2e0615a2a4f131f2ae560b438a16d40f1023d6ac2530019",
+      "bytes": 674465
+    },
+    {
+      "path": "masks/10_opponent_primary_outer_ice_reflections.png",
+      "kind": "color_mask",
+      "sha256": "2978a33171322086d6b16f5cf9a6b0120af3e637f1c853742d01abec9714dde1",
+      "bytes": 43275
+    },
+    {
+      "path": "masks/11_opponent_secondary_outer_sparks.png",
+      "kind": "color_mask",
+      "sha256": "8817a2064dd4688e4207db2702f884e5537981e27349a48580825e1371cdb111",
+      "bytes": 24971
+    },
+    {
+      "path": "masks/12_opponent_primary_lower_ice_shards.png",
+      "kind": "color_mask",
+      "sha256": "140dba7e227eb47d1524fec3c8ccdcefdaf5816c984377ddb8d08f95f998bc57",
+      "bytes": 19046
+    }
+  ]
+}
