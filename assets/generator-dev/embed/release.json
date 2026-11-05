@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/social-media-generator",
-  "sourceCommit": "c6f9f4d7ffafbb6191c30980bcce6173b520122f",
+  "sourceCommit": "6149312736cc92455558e6f3bf6057a8f48a71bb",
   "sourcePackageLockSha256": "69e88b031faad78b0283b37c39735c82e68650f21928cd5ccc0b06ea6c446311",
   "sourceBuildCommand": "VITE_BASE_PATH=/assets/generator-dev/ npm run build",
   "artifactPath": "assets/generator-dev/embed",
@@ -19,8 +19,8 @@
     },
     {
       "path": "module.js",
-      "sha256": "db9ab07e2fb6c34dbabcd74472e5f1997289b3c8319614f8e9ee7d89d8b94707",
-      "bytes": 773877
+      "sha256": "b11d31d46954b57c0538bd7fc1bcc9f8931cc92e37ee9bf7d1a71d1960ff4f70",
+      "bytes": 780869
     },
     {
       "path": "style.css",
@@ -143,18 +143,18 @@
       "bytes": 37070
     },
     {
-      "path": "assets/App-DTqO8KLs.js",
-      "sha256": "d99c96724dad623a472fcd75181d3aec48bc7dbe8a08e76db7ef820fe1346cd6",
-      "bytes": 370044
+      "path": "assets/App-CtbOmMZ5.js",
+      "sha256": "256b5ae2fe029036d9438cb4a37736fe4e7aefeb8c6db08d9543899762891dec",
+      "bytes": 375624
     },
     {
-      "path": "assets/index-CI_5Rqe4.js",
-      "sha256": "0689c73621973651e603dfa969db4b92b0daf2298ad44145bd5f72634324d1fc",
+      "path": "assets/index-Cr1Dpi7I.js",
+      "sha256": "acbe17438594166b2a8afdb5eb980ebbcc9e57bec17b99189bf15dc2d344c282",
       "bytes": 221376
     },
     {
       "path": "index.html",
-      "sha256": "0ba4971c67a1629c1b4befdd6e0c3cf657e45f6b85e0c21e32d4156ae95cda53",
+      "sha256": "c8be347c24b0a4ca134c89a3a5c6014690d25216f1ce6e9987b6b7e8f374c9ce",
       "bytes": 599
     },
     {
@@ -179,7 +179,7 @@
     },
     {
       "path": "sw.js",
-      "sha256": "d272cf17767d7687fed65c73db3f52f439a428642bd89764989c15114814084c",
+      "sha256": "5d654804917ca040afa38cf18649a293114ff779bdcacacd3764c3e1787fdf49",
       "bytes": 1137
     },
     {
@@ -312,10 +312,10 @@
       "bytes": 3216
     }
   ],
-  "sourceMergeCommit": "7f3e4cdb5f8f7b0fc4aa5836c89fa0ea6e296b82",
-  "sourceArtifactSha256": "06f8f421dba59797d89a986e7aeaa3e83022cc6f49f0442ae3c27259d4e8c0b0",
-  "sourceWorkflowRunId": 41927986666,
-  "sourceArtifactId": 13369862218,
+  "sourceMergeCommit": "a0404cc080b21c42d2b62278d25bb74dc77d88ba",
+  "sourceArtifactSha256": "d63a168f040e76049e0a9625a915094797311eb42049c4290d1ab7b3771c5526",
+  "sourceWorkflowRunId": 41989214598,
+  "sourceArtifactId": 13396698530,
   "emptyNetLayers": [
     {
       "path": "sticker/empty-net-v1/layers/00_crystal_ice_background.png",
@@ -448,6 +448,150 @@
       "path": "embed/sticker/empty-net-v1/manifest.json",
       "sha256": "34922ff9cdf94b0f7279a28f45c35fe35e4bc8418ec0e5742bb30625d3748bbe",
       "bytes": 4741
+    }
+  ],
+  "strafeLayers": [
+    {
+      "path": "sticker/strafe-v1/layers/00_ice_and_arena_backdrop_registered.png",
+      "sha256": "a22678482ff4e01b1b4a8870fd36939e4995bd8fe0bca8de815770beb377498f",
+      "bytes": 320216
+    },
+    {
+      "path": "embed/sticker/strafe-v1/layers/00_ice_and_arena_backdrop_registered.png",
+      "sha256": "a22678482ff4e01b1b4a8870fd36939e4995bd8fe0bca8de815770beb377498f",
+      "bytes": 320216
+    },
+    {
+      "path": "sticker/strafe-v1/layers/00a_crystal_ice_behind_badge.png",
+      "sha256": "ae62cf5b5262938f218f0c844e68a89bdf63eb90ac917e488f429036f13834d1",
+      "bytes": 681937
+    },
+    {
+      "path": "embed/sticker/strafe-v1/layers/00a_crystal_ice_behind_badge.png",
+      "sha256": "ae62cf5b5262938f218f0c844e68a89bdf63eb90ac917e488f429036f13834d1",
+      "bytes": 681937
+    },
+    {
+      "path": "sticker/strafe-v1/layers/01_referee_and_arm_registered.png",
+      "sha256": "d3b8669fe5761277626f8be5c01221622273c21159d9034e919a980d6b3fef70",
+      "bytes": 1021220
+    },
+    {
+      "path": "embed/sticker/strafe-v1/layers/01_referee_and_arm_registered.png",
+      "sha256": "d3b8669fe5761277626f8be5c01221622273c21159d9034e919a980d6b3fef70",
+      "bytes": 1021220
+    },
+    {
+      "path": "sticker/strafe-v1/layers/02_rink_and_boards_registered.png",
+      "sha256": "b7cd51c792a82793d82a1383d1a7a2a39df0135560ce29d969dedb1a0034566f",
+      "bytes": 32628
+    },
+    {
+      "path": "embed/sticker/strafe-v1/layers/02_rink_and_boards_registered.png",
+      "sha256": "b7cd51c792a82793d82a1383d1a7a2a39df0135560ce29d969dedb1a0034566f",
+      "bytes": 32628
+    },
+    {
+      "path": "sticker/strafe-v1/layers/03_chrome_badge_logo_slot_neutral.png",
+      "sha256": "de5ded789d5bf6180223f6d126e0dc6afb1ad2e9c74de59e3a7edaaa21c61da5",
+      "bytes": 584401
+    },
+    {
+      "path": "embed/sticker/strafe-v1/layers/03_chrome_badge_logo_slot_neutral.png",
+      "sha256": "de5ded789d5bf6180223f6d126e0dc6afb1ad2e9c74de59e3a7edaaa21c61da5",
+      "bytes": 584401
+    },
+    {
+      "path": "sticker/strafe-v1/layers/04_metal_strafe_wordmark_registered.png",
+      "sha256": "a17634ea2db1eaaa39819f2b9313fe2e0627f718ba3816a89b38bf83a1724761",
+      "bytes": 1045744
+    },
+    {
+      "path": "embed/sticker/strafe-v1/layers/04_metal_strafe_wordmark_registered.png",
+      "sha256": "a17634ea2db1eaaa39819f2b9313fe2e0627f718ba3816a89b38bf83a1724761",
+      "bytes": 1045744
+    },
+    {
+      "path": "sticker/strafe-v1/layers/05_puck_and_trail_registered.png",
+      "sha256": "6c74dfb84d2f394e8389ba4454275ec3d4f75766208990706c85ca35fcbd01e5",
+      "bytes": 239447
+    },
+    {
+      "path": "embed/sticker/strafe-v1/layers/05_puck_and_trail_registered.png",
+      "sha256": "6c74dfb84d2f394e8389ba4454275ec3d4f75766208990706c85ca35fcbd01e5",
+      "bytes": 239447
+    },
+    {
+      "path": "sticker/strafe-v1/masks/10_primary_arena_neon.png",
+      "sha256": "4a928850175053da7f332503196dddb9af6b1ed4aba7ced52d9664a278245739",
+      "bytes": 151263
+    },
+    {
+      "path": "embed/sticker/strafe-v1/masks/10_primary_arena_neon.png",
+      "sha256": "4a928850175053da7f332503196dddb9af6b1ed4aba7ced52d9664a278245739",
+      "bytes": 151263
+    },
+    {
+      "path": "sticker/strafe-v1/masks/11_primary_strafe_metal_rim.png",
+      "sha256": "8f0802b3a131398a8cad79982cd4edd14e748829375f6367d1356d6952d043cb",
+      "bytes": 264475
+    },
+    {
+      "path": "embed/sticker/strafe-v1/masks/11_primary_strafe_metal_rim.png",
+      "sha256": "8f0802b3a131398a8cad79982cd4edd14e748829375f6367d1356d6952d043cb",
+      "bytes": 264475
+    },
+    {
+      "path": "sticker/strafe-v1/masks/12_primary_ice_crystal_sparks.png",
+      "sha256": "ea73085ac66f05599c9f3c5eff40a207f34d13d0ebc9aa511393c0f6ef0e4a9b",
+      "bytes": 149644
+    },
+    {
+      "path": "embed/sticker/strafe-v1/masks/12_primary_ice_crystal_sparks.png",
+      "sha256": "ea73085ac66f05599c9f3c5eff40a207f34d13d0ebc9aa511393c0f6ef0e4a9b",
+      "bytes": 149644
+    },
+    {
+      "path": "sticker/strafe-v1/masks/13_primary_badge_chrome_light.png",
+      "sha256": "ff02b21c4fe8d4e2b0f6cec00889909f3cd0c0d4ba49931632022aa690d1e7dd",
+      "bytes": 134644
+    },
+    {
+      "path": "embed/sticker/strafe-v1/masks/13_primary_badge_chrome_light.png",
+      "sha256": "ff02b21c4fe8d4e2b0f6cec00889909f3cd0c0d4ba49931632022aa690d1e7dd",
+      "bytes": 134644
+    },
+    {
+      "path": "sticker/strafe-v1/masks/14_secondary_ice_reflections.png",
+      "sha256": "e5f16624f7c7859efd801b970182765570df5f5d70a94206c83e1b268053791f",
+      "bytes": 74493
+    },
+    {
+      "path": "embed/sticker/strafe-v1/masks/14_secondary_ice_reflections.png",
+      "sha256": "e5f16624f7c7859efd801b970182765570df5f5d70a94206c83e1b268053791f",
+      "bytes": 74493
+    },
+    {
+      "path": "sticker/strafe-v1/masks/15_secondary_wordmark_specular.png",
+      "sha256": "c163d5a39587c05f18c1b7ac4bcdf99654e6a1b85c8f5298248c3a0926b6693f",
+      "bytes": 33040
+    },
+    {
+      "path": "embed/sticker/strafe-v1/masks/15_secondary_wordmark_specular.png",
+      "sha256": "c163d5a39587c05f18c1b7ac4bcdf99654e6a1b85c8f5298248c3a0926b6693f",
+      "bytes": 33040
+    }
+  ],
+  "strafeManifests": [
+    {
+      "path": "sticker/strafe-v1/manifest.json",
+      "sha256": "6cc2ca2604753299cd683dcc6cbff3c05c0138cb7c6f87033f9ed33a09a830d2",
+      "bytes": 5273
+    },
+    {
+      "path": "embed/sticker/strafe-v1/manifest.json",
+      "sha256": "6cc2ca2604753299cd683dcc6cbff3c05c0138cb7c6f87033f9ed33a09a830d2",
+      "bytes": 5273
     }
   ]
 }

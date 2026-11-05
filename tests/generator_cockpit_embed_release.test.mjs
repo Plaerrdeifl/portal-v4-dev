@@ -13,7 +13,10 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   assert.equal(metadata.schemaVersion, 1)
   assert.equal(metadata.environment, 'DEV')
   assert.equal(metadata.sourceRepository, 'Plaerrdeifl/social-media-generator')
-  assert.equal(metadata.sourceCommit, 'c6f9f4d7ffafbb6191c30980bcce6173b520122f')
+  assert.equal(metadata.sourceCommit, '6149312736cc92455558e6f3bf6057a8f48a71bb')
+  assert.equal(metadata.sourceMergeCommit, 'a0404cc080b21c42d2b62278d25bb74dc77d88ba')
+  assert.equal(metadata.sourceWorkflowRunId, 41989214598)
+  assert.equal(metadata.sourceArtifactId, 13396698530)
   assert.equal(metadata.artifactPath, 'assets/generator-dev/embed')
   assert.match(metadata.sourcePackageLockSha256, /^[a-f0-9]{64}$/)
   assert.equal(metadata.files.length, 4)
@@ -93,7 +96,6 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
     }
   }
 
-  assert.equal(metadata.sourceMergeCommit, '7f3e4cdb5f8f7b0fc4aa5836c89fa0ea6e296b82')
   assert.match(metadata.sourceArtifactSha256, /^[a-f0-9]{64}$/)
   assert.equal(metadata.emptyNetLayers.length, 24)
   assert.equal(new Set(metadata.emptyNetLayers.map(file => file.path)).size, 24)
@@ -127,8 +129,46 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
       assert.equal(layer?.sha256, material.sha256, prefix + material.path)
     }
   }
+  assert.equal(metadata.strafeLayers.length, 26)
+  assert.equal(new Set(metadata.strafeLayers.map(file => file.path)).size, 26)
+  for (const file of metadata.strafeLayers) {
+    assert.match(file.path, /^(?:embed\/)?sticker\/strafe-v1\/(?:layers|masks)\/\d{2}a?_[a-z0-9_]+\.png$/)
+    const bytes = await readFile(join(root, 'assets/generator-dev', file.path))
+    assert.equal(bytes.byteLength, file.bytes, file.path)
+    assert.equal(hash(bytes), file.sha256, file.path)
+    assert.deepEqual([...bytes.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10])
+    assert.equal(bytes.readUInt32BE(16), 1254, file.path)
+    assert.equal(bytes.readUInt32BE(20), 1254, file.path)
+    assert.equal(bytes[25], 6, 'RGBA alpha: ' + file.path)
+  }
+  assert.deepEqual(metadata.strafeManifests.map(file => file.path), [
+    'sticker/strafe-v1/manifest.json',
+    'embed/sticker/strafe-v1/manifest.json'
+  ])
+  for (const file of metadata.strafeManifests) {
+    const bytes = await readFile(join(root, 'assets/generator-dev', file.path))
+    assert.equal(bytes.byteLength, file.bytes, file.path)
+    assert.equal(hash(bytes), file.sha256, file.path)
+    const master = JSON.parse(bytes)
+    assert.equal(master.stickerType, 'STRAFE')
+    assert.equal(master.canvas.width, 1254)
+    assert.equal(master.canvas.height, 1254)
+    assert.equal(master.canvas.mode, 'RGBA')
+    assert.equal(master.assets.length, 13)
+    assert.equal(master.draw_order.length, 14)
+    assert.equal(master.logo_slot.fit, 'contain')
+    assert.equal(master.penalty_minutes, false)
+    const prefix = file.path.startsWith('embed/') ? 'embed/sticker/strafe-v1/' : 'sticker/strafe-v1/'
+    for (const material of master.assets) {
+      const layer = metadata.strafeLayers.find(item => item.path === prefix + material.path)
+      assert.equal(layer?.sha256, material.sha256, prefix + material.path)
+    }
+  }
   const rootRelease = JSON.parse(await readFile(join(root, 'assets/generator-dev/release.json'), 'utf8'))
   assert.equal(rootRelease.source_build_sha, metadata.sourceCommit)
+  assert.equal(rootRelease.source_merge_sha, metadata.sourceMergeCommit)
+  assert.equal(rootRelease.workflow_run_id, metadata.sourceWorkflowRunId)
+  assert.equal(rootRelease.artifact_id, metadata.sourceArtifactId)
   assert.equal(rootRelease.artifact_sha256, metadata.sourceArtifactSha256)
 
   const js = await readFile(join(release, 'module.js'), 'utf8')
@@ -155,7 +195,9 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   assert.match(js, /Sticker-Vorschau/)
   assert.match(js, /TIMEOUT/)
   assert.match(js, /EMPTY NET/)
+  assert.match(js, /STRAFE/)
   assert.match(js, /sticker\/empty-net-v1/)
+  assert.match(js, /sticker\/strafe-v1/)
   assert.match(js, /WhatsApp-WebP/)
   assert.match(js, /source-in/)
   assert.match(js, /sticker\/tor-v3/)
