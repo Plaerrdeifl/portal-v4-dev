@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/social-media-generator",
-  "sourceCommit": "5b0cc5471e037c86126f710ce12609553fa96268",
+  "sourceCommit": "0f5a03e106027ef3daca9260194884c623d7bb9d",
   "sourcePackageLockSha256": "69e88b031faad78b0283b37c39735c82e68650f21928cd5ccc0b06ea6c446311",
   "sourceBuildCommand": "VITE_BASE_PATH=/assets/generator-dev/ npm run build",
   "artifactPath": "assets/generator-dev/embed",
@@ -19,8 +19,8 @@
     },
     {
       "path": "module.js",
-      "sha256": "fe6936c90aa31040ed0b4dadcb2da248893d94f7e8b21deff15ed4066de64a10",
-      "bytes": 785523
+      "sha256": "ab7d9417994da9c4520f8fc58057b2e0d7ee89151e09aae4da8601e9230e8b74",
+      "bytes": 790160
     },
     {
       "path": "style.css",
@@ -143,18 +143,18 @@
       "bytes": 37070
     },
     {
-      "path": "assets/App-eUQYS-T2.js",
-      "sha256": "55b952be04e715250cf84b08033204763129410083569e3fba9e4753390ec8dd",
-      "bytes": 379519
+      "path": "assets/App-0iQRBlpK.js",
+      "sha256": "ebd52604136c5069e806edda13a82dc0ff9f169ea8fef3211f3489a8bf6fe2a8",
+      "bytes": 383476
     },
     {
-      "path": "assets/index-BkDcEYNG.js",
-      "sha256": "cbbe8df71af385bf693ee65acc2da4148dff420457d1496de26600d7947a07c9",
+      "path": "assets/index-WSehVyUy.js",
+      "sha256": "c7b42f6403910e08c2f668e17a38531b035153843af0da0353888dbc1407149a",
       "bytes": 221376
     },
     {
       "path": "index.html",
-      "sha256": "578604687206ae6ad73c1a9370e63e99347cbb69dfad31640b9e8957836853ff",
+      "sha256": "d62e8bc9a4c41afc6ffc298e23f6feecf1aadc2b82796cf43fc079c83c10951b",
       "bytes": 599
     },
     {
@@ -179,7 +179,7 @@
     },
     {
       "path": "sw.js",
-      "sha256": "cb9fddf57bdde3f31be737cc94fc442841f47ac61d3e1c7db20913b9863dd3ae",
+      "sha256": "bb9e249ad32ab9ad85319a9b753399e3cb733af8f1a5646c0ec4198112151610",
       "bytes": 1137
     },
     {
@@ -312,10 +312,10 @@
       "bytes": 3216
     }
   ],
-  "sourceMergeCommit": "2fcf1d91bb706e5ab9645d2278328d24b988581f",
-  "sourceArtifactSha256": "98daa5f86495d22e70543b1ff22535efd9862bb637f6d388335163e403f5e0f3",
-  "sourceWorkflowRunId": 42118681100,
-  "sourceArtifactId": 13456963284,
+  "sourceMergeCommit": "4fce2f16a9f78d18b9528a00cd13421da7841e60",
+  "sourceArtifactSha256": "227e848cc1b307873d45598a8a01504d45f9df1541badd55c34e86978c9e2d93",
+  "sourceWorkflowRunId": 42134373681,
+  "sourceArtifactId": 13464099280,
   "emptyNetLayers": [
     {
       "path": "sticker/empty-net-v1/layers/00_crystal_ice_background.png",
@@ -656,6 +656,70 @@
       "path": "embed/sticker/spielbeginn-heim-v7/manifest.json",
       "sha256": "3401efdf1b6dd6c61fbedb3f5a4ffa9214c18c6124221ef2a2677a8e84cbeb50",
       "bytes": 2776
+    }
+  ],
+  "spielbeginnAuswaertsLayers": [
+    {
+      "path": "sticker/spielbeginn-auswaerts-v1/layers/00_away_core_no_opponent.png",
+      "sha256": "ba6595f807577824a0835ab8f1aeb2ed87ab55c6d2ac3c23accafb394eacecb4",
+      "bytes": 2384087
+    },
+    {
+      "path": "embed/sticker/spielbeginn-auswaerts-v1/layers/00_away_core_no_opponent.png",
+      "sha256": "ba6595f807577824a0835ab8f1aeb2ed87ab55c6d2ac3c23accafb394eacecb4",
+      "bytes": 2384087
+    },
+    {
+      "path": "sticker/spielbeginn-auswaerts-v1/layers/01_left_travel_environment.png",
+      "sha256": "d37b9283c7d7b8f53c50129fed90c14a86ab2abce475297414a97359c000e0f9",
+      "bytes": 743970
+    },
+    {
+      "path": "embed/sticker/spielbeginn-auswaerts-v1/layers/01_left_travel_environment.png",
+      "sha256": "d37b9283c7d7b8f53c50129fed90c14a86ab2abce475297414a97359c000e0f9",
+      "bytes": 743970
+    },
+    {
+      "path": "sticker/spielbeginn-auswaerts-v1/masks/10_opponent_primary_left_burst.png",
+      "sha256": "404781ed618829ea2118348a46619c09815df3ae24bdc2634b573d071e3cc7f6",
+      "bytes": 23171
+    },
+    {
+      "path": "embed/sticker/spielbeginn-auswaerts-v1/masks/10_opponent_primary_left_burst.png",
+      "sha256": "404781ed618829ea2118348a46619c09815df3ae24bdc2634b573d071e3cc7f6",
+      "bytes": 23171
+    },
+    {
+      "path": "sticker/spielbeginn-auswaerts-v1/masks/11_opponent_secondary_left_glow.png",
+      "sha256": "c37291e98d48efef13e6881ab58d4c42d9a50cab6581471b6e37f50f91f23ff8",
+      "bytes": 20887
+    },
+    {
+      "path": "embed/sticker/spielbeginn-auswaerts-v1/masks/11_opponent_secondary_left_glow.png",
+      "sha256": "c37291e98d48efef13e6881ab58d4c42d9a50cab6581471b6e37f50f91f23ff8",
+      "bytes": 20887
+    },
+    {
+      "path": "sticker/spielbeginn-auswaerts-v1/masks/12_opponent_primary_lower_accents.png",
+      "sha256": "aa4b69b32a806156752e38c70b3fdf34754801ae10189d4a27575efc732dced9",
+      "bytes": 12816
+    },
+    {
+      "path": "embed/sticker/spielbeginn-auswaerts-v1/masks/12_opponent_primary_lower_accents.png",
+      "sha256": "aa4b69b32a806156752e38c70b3fdf34754801ae10189d4a27575efc732dced9",
+      "bytes": 12816
+    }
+  ],
+  "spielbeginnAuswaertsManifests": [
+    {
+      "path": "sticker/spielbeginn-auswaerts-v1/manifest.json",
+      "sha256": "167f38d3a2452f336c5ce78012d68ae874ef176c397bf91c402cf3da3bc2d4e7",
+      "bytes": 2990
+    },
+    {
+      "path": "embed/sticker/spielbeginn-auswaerts-v1/manifest.json",
+      "sha256": "167f38d3a2452f336c5ce78012d68ae874ef176c397bf91c402cf3da3bc2d4e7",
+      "bytes": 2990
     }
   ]
 }

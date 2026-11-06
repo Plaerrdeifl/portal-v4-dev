@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "stickerType": "SPIELBEGINN AUSWÄRTS",
+  "packageType": "spielbeginn_auswaerts",
+  "variant": "away-opponent-left-mighty-dogs-right",
+  "environment": "DEV-only",
+  "canvas": {
+    "width": 1254,
+    "height": 1254,
+    "mode": "RGBA"
+  },
+  "targetExport": {
+    "width": 512,
+    "height": 512,
+    "webpMaxBytes": 102400,
+    "transparent": true
+  },
+  "sourcePackageSha256": "e9d282830fb1c64b47bbc1c3e9676aecb6a0281d70db343a9835839c3c80d354",
+  "approvedReferences": [
+    {
+      "path": "assets/sticker/spielbeginn-auswaerts-master-v1/source/approved_target_bayreuth.png",
+      "sha256": "e781d2611d4add05c450a604ca3da54cababad46fa4b04b00cb80ba2437e992a"
+    },
+    {
+      "path": "assets/sticker/spielbeginn-auswaerts-master-v1/source/approved_target_koenigsbrunn.png",
+      "sha256": "66052ddd9009ce5c543f003acf1e6e71c93c2e6089e170c4328f83daeac40d3f"
+    }
+  ],
+  "sourceOfTruth": {
+    "away": "fixed Mighty Dogs artwork supplied in the registered away-core layer",
+    "opponentLogo": "central DEV opponent original logo via existing resolver",
+    "opponentColors": "central DEV opponent primaryColor / secondaryColor"
+  },
+  "opponentLogoSlot": {
+    "x": 18,
+    "y": 28,
+    "width": 482,
+    "height": 557,
+    "fit": "contain",
+    "originalOnly": true,
+    "addedFrame": false
+  },
+  "maskMode": "white RGB + alpha; tint via source-in; draw at 0,0 full 1254x1254",
+  "drawOrder": [
+    {
+      "layer": "layers/01_left_travel_environment.png"
+    },
+    {
+      "mask": "masks/10_opponent_primary_left_burst.png",
+      "color": "opponentPrimaryColor"
+    },
+    {
+      "mask": "masks/11_opponent_secondary_left_glow.png",
+      "color": "opponentSecondaryColor"
+    },
+    {
+      "mask": "masks/12_opponent_primary_lower_accents.png",
+      "color": "opponentPrimaryColor"
+    },
+    {
+      "opponentOriginalLogo": "opponentLogoSlot"
+    },
+    {
+      "layer": "layers/00_away_core_no_opponent.png"
+    }
+  ],
+  "assets": [
+    {
+      "path": "layers/00_away_core_no_opponent.png",
+      "kind": "layer",
+      "sha256": "ba6595f807577824a0835ab8f1aeb2ed87ab55c6d2ac3c23accafb394eacecb4",
+      "bytes": 2384087
+    },
+    {
+      "path": "layers/01_left_travel_environment.png",
+      "kind": "layer",
+      "sha256": "d37b9283c7d7b8f53c50129fed90c14a86ab2abce475297414a97359c000e0f9",
+      "bytes": 743970
+    },
+    {
+      "path": "masks/10_opponent_primary_left_burst.png",
+      "kind": "color_mask",
+      "sha256": "404781ed618829ea2118348a46619c09815df3ae24bdc2634b573d071e3cc7f6",
+      "bytes": 23171
+    },
+    {
+      "path": "masks/11_opponent_secondary_left_glow.png",
+      "kind": "color_mask",
+      "sha256": "c37291e98d48efef13e6881ab58d4c42d9a50cab6581471b6e37f50f91f23ff8",
+      "bytes": 20887
+    },
+    {
+      "path": "masks/12_opponent_primary_lower_accents.png",
+      "kind": "color_mask",
+      "sha256": "aa4b69b32a806156752e38c70b3fdf34754801ae10189d4a27575efc732dced9",
+      "bytes": 12816
+    }
+  ]
+}
