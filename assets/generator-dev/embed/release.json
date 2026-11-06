@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "environment": "DEV",
   "sourceRepository": "Plaerrdeifl/social-media-generator",
-  "sourceCommit": "0f5a03e106027ef3daca9260194884c623d7bb9d",
+  "sourceCommit": "f2cf98950cf552e146f77a81f37245c81114773e",
   "sourcePackageLockSha256": "69e88b031faad78b0283b37c39735c82e68650f21928cd5ccc0b06ea6c446311",
   "sourceBuildCommand": "VITE_BASE_PATH=/assets/generator-dev/ npm run build",
   "artifactPath": "assets/generator-dev/embed",
@@ -19,13 +19,13 @@
     },
     {
       "path": "module.js",
-      "sha256": "ab7d9417994da9c4520f8fc58057b2e0d7ee89151e09aae4da8601e9230e8b74",
-      "bytes": 790160
+      "sha256": "f444e8a517ec9e34d033b6929bba3ab9fa7cbb0104c375777198b1fc99fffe09",
+      "bytes": 1104901
     },
     {
       "path": "style.css",
-      "sha256": "0936baacd3c6858fd25d0e55b5484426161c34e9e0201e8c9e191f59944866c6",
-      "bytes": 37082
+      "sha256": "c1543d8f77bc5b152afbb972bc2d3dbcef37b6cf55d857e32472eeb6217eac53",
+      "bytes": 40525
     }
   ],
   "masterLayers": [
@@ -138,14 +138,94 @@
   ],
   "standaloneFiles": [
     {
+      "path": "assets/App-0iQRBlpK.js",
+      "sha256": "ebd52604136c5069e806edda13a82dc0ff9f169ea8fef3211f3489a8bf6fe2a8",
+      "bytes": 383476
+    },
+    {
       "path": "assets/App-B-jifKq9.css",
       "sha256": "dca06c9fd199ec6b44bee653cddca20bd208ab9153e615055cdc90f272b149d0",
       "bytes": 37070
     },
     {
-      "path": "assets/App-0iQRBlpK.js",
-      "sha256": "ebd52604136c5069e806edda13a82dc0ff9f169ea8fef3211f3489a8bf6fe2a8",
-      "bytes": 383476
+      "path": "assets/App-Ba0V83Ub.css",
+      "sha256": "452ae247aad0f995d5daf0b791b6cea3213daaa2bd7939f7e160dd5f9b80b51f",
+      "bytes": 40513
+    },
+    {
+      "path": "assets/App-C6-bsP6i.js",
+      "sha256": "4b7077d902074ede0d81b0bab195bdb5bf314a5e20dc636ff0c46d5cf75d864f",
+      "bytes": 617654
+    },
+    {
+      "path": "assets/App-CtbOmMZ5.js",
+      "sha256": "256b5ae2fe029036d9438cb4a37736fe4e7aefeb8c6db08d9543899762891dec",
+      "bytes": 375624
+    },
+    {
+      "path": "assets/App-D6C5CBfI.js",
+      "sha256": "08bdcfb5cb4b7358ace9df34858a0e2854799a895ed58c4b7b60336aa66ba27d",
+      "bytes": 365160
+    },
+    {
+      "path": "assets/App-DTqO8KLs.js",
+      "sha256": "d99c96724dad623a472fcd75181d3aec48bc7dbe8a08e76db7ef820fe1346cd6",
+      "bytes": 370044
+    },
+    {
+      "path": "assets/App-H52afXBU.js",
+      "sha256": "9d90bc98fffe6953ade85cd417906bbf02b047f5acba959ccd5f58dcfac9d37a",
+      "bytes": 361322
+    },
+    {
+      "path": "assets/App-eL1mvvj8.css",
+      "sha256": "154acf9fb01711b1730a9f7dc6858551dcb5f45af603dcfb3aff92b8adaabad2",
+      "bytes": 36993
+    },
+    {
+      "path": "assets/App-eUQYS-T2.js",
+      "sha256": "55b952be04e715250cf84b08033204763129410083569e3fba9e4753390ec8dd",
+      "bytes": 379519
+    },
+    {
+      "path": "assets/App-whnSLKGD.js",
+      "sha256": "618d02e843533ec7b8af4c597f9b7d95ae8358a43313eaf47ae844b815d3f36e",
+      "bytes": 359760
+    },
+    {
+      "path": "assets/index-BkDcEYNG.js",
+      "sha256": "cbbe8df71af385bf693ee65acc2da4148dff420457d1496de26600d7947a07c9",
+      "bytes": 221376
+    },
+    {
+      "path": "assets/index-BskT3sOD.js",
+      "sha256": "237aa813c4bd6453f304d535ea4ed1b6d55047fb78c2454068126fa648dd7f3e",
+      "bytes": 221376
+    },
+    {
+      "path": "assets/index-CI_5Rqe4.js",
+      "sha256": "0689c73621973651e603dfa969db4b92b0daf2298ad44145bd5f72634324d1fc",
+      "bytes": 221376
+    },
+    {
+      "path": "assets/index-Ck5PkM0a.js",
+      "sha256": "b80860d9d762259d8db0803c07c5bfea3df1603749a1b0df2895e50ec72c8ee8",
+      "bytes": 221376
+    },
+    {
+      "path": "assets/index-Cr1Dpi7I.js",
+      "sha256": "acbe17438594166b2a8afdb5eb980ebbcc9e57bec17b99189bf15dc2d344c282",
+      "bytes": 221376
+    },
+    {
+      "path": "assets/index-FxAguhTP.js",
+      "sha256": "2dfab4ea89647d17d6b907b4179dfff4ab56b151b3615c6c2cda62cddc68cf0c",
+      "bytes": 221395
+    },
+    {
+      "path": "assets/index-K-xinJ1B.js",
+      "sha256": "8118b8c617acd8172f7a85ffc5c96878d08d593067ce593be290891e05c503fb",
+      "bytes": 221376
     },
     {
       "path": "assets/index-WSehVyUy.js",
@@ -154,7 +234,7 @@
     },
     {
       "path": "index.html",
-      "sha256": "d62e8bc9a4c41afc6ffc298e23f6feecf1aadc2b82796cf43fc079c83c10951b",
+      "sha256": "ead40849d4c8da0c84791cfa6e1512d6487b2f9ebe604a4d51f60c1079dd628b",
       "bytes": 599
     },
     {
@@ -179,7 +259,7 @@
     },
     {
       "path": "sw.js",
-      "sha256": "bb9e249ad32ab9ad85319a9b753399e3cb733af8f1a5646c0ec4198112151610",
+      "sha256": "268f55b784a39b42dc28cc5ae2d98f209d760fde2f17b69ddde313021fa33444",
       "bytes": 1137
     },
     {
@@ -312,10 +392,10 @@
       "bytes": 3216
     }
   ],
-  "sourceMergeCommit": "4fce2f16a9f78d18b9528a00cd13421da7841e60",
-  "sourceArtifactSha256": "227e848cc1b307873d45598a8a01504d45f9df1541badd55c34e86978c9e2d93",
-  "sourceWorkflowRunId": 42134373681,
-  "sourceArtifactId": 13464099280,
+  "sourceMergeCommit": "b96609b6fa65953d883f65306b0162de5d9b61e9",
+  "sourceArtifactSha256": "51553baed99cb1defe8b50dcd883f1cb28c7b198416b4ba483830d9c7ec113c7",
+  "sourceWorkflowRunId": 42195036766,
+  "sourceArtifactId": 13491882169,
   "emptyNetLayers": [
     {
       "path": "sticker/empty-net-v1/layers/00_crystal_ice_background.png",
