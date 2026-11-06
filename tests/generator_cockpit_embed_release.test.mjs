@@ -13,10 +13,10 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   assert.equal(metadata.schemaVersion, 1)
   assert.equal(metadata.environment, 'DEV')
   assert.equal(metadata.sourceRepository, 'Plaerrdeifl/social-media-generator')
-  assert.equal(metadata.sourceCommit, '5b0cc5471e037c86126f710ce12609553fa96268')
-  assert.equal(metadata.sourceMergeCommit, '2fcf1d91bb706e5ab9645d2278328d24b988581f')
-  assert.equal(metadata.sourceWorkflowRunId, 42118681100)
-  assert.equal(metadata.sourceArtifactId, 13456963284)
+  assert.equal(metadata.sourceCommit, '0f5a03e106027ef3daca9260194884c623d7bb9d')
+  assert.equal(metadata.sourceMergeCommit, '4fce2f16a9f78d18b9528a00cd13421da7841e60')
+  assert.equal(metadata.sourceWorkflowRunId, 42134373681)
+  assert.equal(metadata.sourceArtifactId, 13464099280)
   assert.equal(metadata.artifactPath, 'assets/generator-dev/embed')
   assert.match(metadata.sourcePackageLockSha256, /^[a-f0-9]{64}$/)
   assert.equal(metadata.files.length, 4)
@@ -203,6 +203,45 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
       assert.equal(layer?.sha256, material.sha256, prefix + material.path)
     }
   }
+  assert.equal(metadata.spielbeginnAuswaertsLayers.length, 10)
+  assert.equal(new Set(metadata.spielbeginnAuswaertsLayers.map(file => file.path)).size, 10)
+  for (const file of metadata.spielbeginnAuswaertsLayers) {
+    assert.match(file.path, /^(?:embed\/)?sticker\/spielbeginn-auswaerts-v1\/(?:layers|masks)\/\d{2}_[a-z0-9_]+\.png$/)
+    const bytes = await readFile(join(root, 'assets/generator-dev', file.path))
+    assert.equal(bytes.byteLength, file.bytes, file.path)
+    assert.equal(hash(bytes), file.sha256, file.path)
+    assert.deepEqual([...bytes.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10])
+    assert.equal(bytes.readUInt32BE(16), 1254, file.path)
+    assert.equal(bytes.readUInt32BE(20), 1254, file.path)
+    assert.equal(bytes[25], 6, 'RGBA alpha: ' + file.path)
+  }
+  assert.deepEqual(metadata.spielbeginnAuswaertsManifests.map(file => file.path), [
+    'sticker/spielbeginn-auswaerts-v1/manifest.json',
+    'embed/sticker/spielbeginn-auswaerts-v1/manifest.json'
+  ])
+  for (const file of metadata.spielbeginnAuswaertsManifests) {
+    const bytes = await readFile(join(root, 'assets/generator-dev', file.path))
+    assert.equal(bytes.byteLength, file.bytes, file.path)
+    assert.equal(hash(bytes), file.sha256, file.path)
+    const master = JSON.parse(bytes)
+    assert.equal(master.stickerType, 'SPIELBEGINN AUSWÄRTS')
+    assert.equal(master.variant, 'away-opponent-left-mighty-dogs-right')
+    assert.equal(master.canvas.width, 1254)
+    assert.equal(master.canvas.height, 1254)
+    assert.equal(master.canvas.mode, 'RGBA')
+    assert.equal(master.assets.length, 5)
+    assert.equal(master.drawOrder.length, 6)
+    assert.equal(master.opponentLogoSlot.fit, 'contain')
+    assert.equal(master.opponentLogoSlot.originalOnly, true)
+    assert.equal(master.opponentLogoSlot.addedFrame, false)
+    const prefix = file.path.startsWith('embed/')
+      ? 'embed/sticker/spielbeginn-auswaerts-v1/'
+      : 'sticker/spielbeginn-auswaerts-v1/'
+    for (const material of master.assets) {
+      const layer = metadata.spielbeginnAuswaertsLayers.find(item => item.path === prefix + material.path)
+      assert.equal(layer?.sha256, material.sha256, prefix + material.path)
+    }
+  }
   const rootRelease = JSON.parse(await readFile(join(root, 'assets/generator-dev/release.json'), 'utf8'))
   assert.equal(rootRelease.source_build_sha, metadata.sourceCommit)
   assert.equal(rootRelease.source_merge_sha, metadata.sourceMergeCommit)
@@ -236,9 +275,11 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   assert.match(js, /EMPTY NET/)
   assert.match(js, /STRAFE/)
   assert.match(js, /SPIELBEGINN HEIM/)
+  assert.match(js, /SPIELBEGINN AUSWÄRTS/)
   assert.match(js, /sticker\/empty-net-v1/)
   assert.match(js, /sticker\/strafe-v1/)
   assert.match(js, /sticker\/spielbeginn-heim-v7/)
+  assert.match(js, /sticker\/spielbeginn-auswaerts-v1/)
   assert.match(js, /WhatsApp-WebP/)
   assert.match(js, /source-in/)
   assert.match(js, /sticker\/tor-v3/)
