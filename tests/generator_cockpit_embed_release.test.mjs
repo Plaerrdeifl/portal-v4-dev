@@ -13,10 +13,10 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   assert.equal(metadata.schemaVersion, 1)
   assert.equal(metadata.environment, 'DEV')
   assert.equal(metadata.sourceRepository, 'Plaerrdeifl/social-media-generator')
-  assert.equal(metadata.sourceCommit, '0f5a03e106027ef3daca9260194884c623d7bb9d')
-  assert.equal(metadata.sourceMergeCommit, '4fce2f16a9f78d18b9528a00cd13421da7841e60')
-  assert.equal(metadata.sourceWorkflowRunId, 42134373681)
-  assert.equal(metadata.sourceArtifactId, 13464099280)
+  assert.equal(metadata.sourceCommit, 'f2cf98950cf552e146f77a81f37245c81114773e')
+  assert.equal(metadata.sourceMergeCommit, 'b96609b6fa65953d883f65306b0162de5d9b61e9')
+  assert.equal(metadata.sourceWorkflowRunId, 42195036766)
+  assert.equal(metadata.sourceArtifactId, 13491882169)
   assert.equal(metadata.artifactPath, 'assets/generator-dev/embed')
   assert.match(metadata.sourcePackageLockSha256, /^[a-f0-9]{64}$/)
   assert.equal(metadata.files.length, 4)
@@ -271,6 +271,13 @@ test('Generator embed is pinned to its verified DEV source and preserves the Coc
   // Team-color sticker preview must use central team API without editing templates.
   assert.match(js, /Sticker-Master \(DEV-Prototyp\)/)
   assert.match(js, /Sticker-Vorschau/)
+
+  // New SVG-first editor must be present alongside unchanged PNG masters.
+  assert.match(js, /SVG-Sticker-Baukasten/)
+  assert.match(js, /SVG exportieren/)
+  assert.match(js, /Weiteres SVG-Element hinzufügen/)
+  assert.match(js, /Konfiguration importieren/)
+  assert.match(js, /Original-Teamlogo/)
   assert.match(js, /TIMEOUT/)
   assert.match(js, /EMPTY NET/)
   assert.match(js, /STRAFE/)
